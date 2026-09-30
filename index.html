@@ -51,7 +51,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#07120e' : '#07874f');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.28.008">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.30.001">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -59,7 +59,9 @@
     <link rel="stylesheet" href="./assets/vendor/phosphor/light/style.css?v=2.1.2">
     <script src="./assets/app-lifecycle.js" data-app-lifecycle></script>
     <script>
-      window.__APP_SHELL_VERSION__ = 'V2026.09.28.008';
+      // Public release label; increment independently of the shell cache/build ID.
+      window.__APP_RELEASE_VERSION__ = 'GNC.001';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.30.001';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1656,6 +1658,7 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
         .nav-header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;max-width:48%}
         .nav-header-meta-row{display:flex;align-items:center;justify-content:flex-end;gap:.4rem;flex-wrap:wrap}
         .nav-version-pill{display:inline-flex;align-items:center;min-height:26px;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.28);color:#007a4d;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(7,94,63,.18)}
+        #side-drawer .drawer-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .leaf-launch-btn{display:inline-flex;align-items:center;gap:.34rem;min-height:26px;padding:.32rem .68rem;border-radius:999px;background:#111827;border:1px solid rgba(255,255,255,.22);color:#ecfdf5;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(15,23,42,.2)}
 .leaf-launch-btn:active{transform:scale(.98)}
 .leaf-launch-btn--home{min-height:44px;padding:.8rem 1rem;border-radius:18px;background:linear-gradient(135deg,#0f172a,#111827);border-color:rgba(15,23,42,.12);font-size:11px;letter-spacing:.12em;justify-content:center;box-shadow:0 14px 28px rgba(15,23,42,.16)}
@@ -6799,7 +6802,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.28.008">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.30.001">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -6998,14 +7001,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.28.008"></script>
-    <script src="./assets/login-network-trace.js?v=V2026.09.28.008"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.28.008"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.28.008"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.28.008"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.28.008"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.28.008"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.28.008"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.30.001"></script>
+    <script src="./assets/login-network-trace.js?v=V2026.09.30.001"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.30.001"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.30.001"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.30.001"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.30.001"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.30.001"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.30.001"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7773,7 +7776,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.28.008').trim() || 'V2026.09.28.008';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.30.001').trim() || 'V2026.09.30.001';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -7793,7 +7796,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
 
         <div id="drawer-overlay" onclick="toggleMenu()"></div>
         <div id="side-drawer">
-            <div class="drawer-header">Menu</div>
+            <div class="drawer-header">Menu <span id="app-release-version" class="text-xs font-bold" aria-label="App release version"></span></div>
+            <script>document.getElementById('app-release-version').textContent = window.__APP_RELEASE_VERSION__;</script>
             <section id="live-data-freshness" aria-label="Data status" role="status" aria-live="polite" hidden>
                 <h2>Data status</h2>
                 <div id="live-data-status-label">Checking data</div>
@@ -9286,7 +9290,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.28.008';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.30.001';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -26477,6 +26481,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             table = normalizeAppTableName(table);
             const safeMethod = String(method || 'GET').trim().toUpperCase() || 'GET';
+            if (safeMethod === 'GET' && getAvReadDataset(table, query)) return fetchAllSupabaseRows(table, query, requestOptions);
             if (table === 'ph_master_inventory' && safeMethod === 'GET') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
             if (safeMethod === 'GET' && [REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE].includes(table)) return readSalesCompatibilityRows(table, query, requestOptions);
             if (isRetiredSupabaseRuntimeTable(table)) return safeMethod === 'GET' ? [] : {};
@@ -28604,6 +28609,28 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 throw err;
             }
             return payload;
+        }
+
+        function getAvReadDataset(table, query = '') {
+            if (table === 'ph_app_settings') return new URLSearchParams(query).get('key') === 'eq.current_season_salesyear' ? 'settings' : '';
+            const datasets = { ph_reserves: 'reserves', ph_av_notes: 'notes', ph_view_av_hot_price_keys: 'hot_prices' };
+            return Object.prototype.hasOwnProperty.call(datasets, table) ? datasets[table] : '';
+        }
+
+        async function requestAvReadPage(table, query, options = {}) {
+            const dataset = getAvReadDataset(table, query);
+            if (!dataset) throw new Error('Unsupported AV dataset.');
+            const identityScope = getSupabaseReadIdentityScope();
+            const payload = await runWithFullJitter(() => postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'av_read', dataset, query
+            }, { timeoutMs: Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS, signal: options.signal, label: 'Available stock' }), 2, 350, 2400);
+            if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            const data = payload?.data;
+            if (payload?.ok !== true || !Array.isArray(data?.rows) || !Number.isInteger(data.total) || data.total < 0) {
+                throw new Error('Available stock returned an invalid page; verified cached rows were retained.');
+            }
+            if (data.rows.length === 0 && Number(data.offset) < data.total) throw new Error('Available stock returned an incomplete page.');
+            return { rows: data.rows, total: data.total, authSource: 'app-api' };
         }
 
         async function requestInventoryRead(operation, params = {}, options = {}) {
@@ -32564,7 +32591,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.28.008').trim() || 'V2026.09.28.008';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.30.001').trim() || 'V2026.09.30.001';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -38776,6 +38803,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function getFullDatasetPageLimit(table = '') {
+            if (getAvReadDataset(String(table || '').trim())) return 500;
             const normalizedTable = String(table || '').trim();
             if (normalizedTable === 'ph_master_inventory') return (isIOSDevice() || isStandaloneApp()) ? 900 : 1000;
             if (normalizedTable === 'ph_reserves') return (isIOSDevice() || isStandaloneApp()) ? 4000 : 5000;
@@ -38812,6 +38840,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function fetchAuthenticatedSupabaseReadPage(table, queryString = '', options = {}) {
             const safeTable = normalizeAppTableName(table);
+            if (getAvReadDataset(safeTable, queryString)) return requestAvReadPage(safeTable, queryString, options);
             if (safeTable === 'ph_master_inventory') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
             const opts = options && typeof options === 'object' ? options : {};
             const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);

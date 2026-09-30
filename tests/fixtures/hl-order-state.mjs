@@ -348,6 +348,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   // whose asynchronous completion is under test.  Keeping the gate dormant by
   // default avoids making initial login timing part of an HL assertion.
   let holdNextBackgroundMasterRead = false;
+  let heldMasterRows = null;
   let heldBackgroundMasterReadStarted = null;
   let resolveHeldBackgroundMasterReadStarted = null;
   let releaseHeldBackgroundMasterRead = null;
@@ -371,8 +372,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
   let releaseHeldMetadataReads = null;
   if (!metadataGateReleased) heldMetadataReadStarted = new Promise((resolve) => { resolveHeldMetadataReadStarted = resolve; });
   const metadataGate = metadataGateReleased ? Promise.resolve() : new Promise((resolve) => { releaseHeldMetadataReads = resolve; });
-  control.holdNextBackgroundMasterRead = () => {
+  control.holdNextBackgroundMasterRead = (rows = null) => {
     if (holdNextBackgroundMasterRead || releaseHeldBackgroundMasterRead) throw new Error('HL_FIXTURE_MASTER_READ_ALREADY_HELD');
+    heldMasterRows = Array.isArray(rows) ? clone(rows) : null;
+    control.heldMasterReadRows = null;
     holdNextBackgroundMasterRead = true;
     heldBackgroundMasterReadStarted = new Promise((resolve) => { resolveHeldBackgroundMasterReadStarted = resolve; });
   };
@@ -588,17 +591,21 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (table === 'profiles') return json(route, /vnd\.pgrst\.object/.test(req.headers().accept || '') ? profile : [profile]);
       if (table === 'ph_app_settings') return json(route, seasonSettings);
       if (url.searchParams.get('select') === 'filename,last_updated' && url.searchParams.get('last_updated') === 'not.is.null') return json(route, []);
+      const requestMasterRows = table === 'ph_master_inventory'
+        ? (holdNextBackgroundMasterRead && heldMasterRows ? heldMasterRows : control.master)
+        : null;
       if (table === 'ph_master_inventory') {
         control.backgroundMasterReads++;
         if (holdNextBackgroundMasterRead) {
           holdNextBackgroundMasterRead = false;
+          heldMasterRows = null;
           resolveHeldBackgroundMasterReadStarted();
           await new Promise((resolve) => { releaseHeldBackgroundMasterRead = resolve; });
         }
         if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
       }
       const masterRead = table === 'ph_master_inventory'
-        ? inventoryReadFixture.read(control.master, url.search.slice(1))
+        ? inventoryReadFixture.read(requestMasterRows, url.search.slice(1))
         : null;
       if (masterRead && masterRead.offset > 0) {
         control.masterLaterPageReads++;
@@ -639,6 +646,25 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && Object.keys(body.payload).length === 3 && Object.keys(body.payload).every(key => ['status', 'cursor', 'limit'].includes(key))
         && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100;
       if (salesCompatibilityRead) return json(route, { ok: true, data: { rows: [], nextCursor: null } });
+      if (body.action === 'av_read') {
+        const dataset = String(body.dataset || '');
+        if (!['reserves', 'notes', 'hot_prices', 'settings'].includes(dataset)) return json(route, { ok: false }, 400);
+        const params = new URLSearchParams(body.query || '');
+        const offset = Number(params.getAll('offset').at(-1) || 0);
+        const limit = Math.min(500, Number(params.getAll('limit').at(-1) || 500));
+        const allRows = dataset === 'reserves' ? control.reserveRows : dataset === 'settings' ? seasonSettings : [];
+        const pageSize = dataset === 'reserves' && Number(options.demandPageSize) > 0 ? Math.min(limit, Number(options.demandPageSize)) : limit;
+        const rows = allRows.slice(offset, offset + pageSize);
+        if (dataset === 'reserves') {
+          control.demandReads.reserves++;
+          if (holdNextDemandFinalPage && offset > 0 && rows.length && offset + rows.length >= allRows.length) {
+            holdNextDemandFinalPage = false;
+            resolveHeldDemandFinalPageStarted();
+            await new Promise(resolve => { releaseHeldDemandFinalPage = resolve; });
+          }
+        }
+        return json(route, { ok: true, data: { rows, total: allRows.length, offset, limit: pageSize, hasMore: offset + rows.length < allRows.length } });
+      }
       if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role } });
       if (body.action === 'inventory_read') {
         const operation = String(body.operation || ''), params = body.params || {};
@@ -646,13 +672,9 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         if (operation === 'schema_capabilities') return json(route, { ok: true, data: { status: 'checked', capabilities: { evalTask: { available: true }, ncrApproval: { available: true }, holdRelease: { available: true }, avRules: { available: true }, flyerShadow: { available: true } } } });
         if (['master_page', 'master_delta', 'po_detail', 'recount_queue', 'ncr_queue', 'not_on_inventory_queue'].includes(operation)) {
           control.backgroundMasterReads++;
-          if (holdNextBackgroundMasterRead) {
-            holdNextBackgroundMasterRead = false;
-            resolveHeldBackgroundMasterReadStarted();
-            await new Promise(resolve => { releaseHeldBackgroundMasterRead = resolve; });
-          }
+          const requestMasterRows = holdNextBackgroundMasterRead && heldMasterRows ? heldMasterRows : control.master;
           const dataset = String(params.dataset || ''), limit = Math.min(500, Math.max(1, Number(params.limit) || 250)), offset = Math.max(0, Number(params.offset) || 0);
-          let rows = control.master.map(row => ({ ...row }));
+          let rows = requestMasterRows.map(row => ({ ...row }));
           if (operation === 'master_page' && dataset === 'avOpen') rows = rows.filter(row => ['F1', 'S1', 'U1', 'U2'].includes(String(row.season || '').toUpperCase()));
           if (operation === 'master_page' && dataset === 'lookup') {
             if (params.uniqueId) rows = rows.filter(row => row.unique_id === params.uniqueId);
@@ -667,6 +689,13 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           if (operation === 'ncr_queue' || operation === 'not_on_inventory_queue') rows = rows.filter(row => String(row.app_tab_assignment || '').toLowerCase() === String(params.assignment || '').toLowerCase());
           rows.sort((a, b) => String(a.unique_id || '').localeCompare(String(b.unique_id || '')));
           const total = rows.length;
+          if (holdNextBackgroundMasterRead) {
+            holdNextBackgroundMasterRead = false;
+            heldMasterRows = null;
+            control.heldMasterReadRows = clone(rows.slice(offset, offset + limit));
+            resolveHeldBackgroundMasterReadStarted();
+            await new Promise(resolve => { releaseHeldBackgroundMasterRead = resolve; });
+          }
           if (offset > 0) {
             control.masterLaterPageReads++;
             if (failNextMasterLaterPage) return json(route, { ok: false, error: 'Synthetic later inventory page failure' }, 503);

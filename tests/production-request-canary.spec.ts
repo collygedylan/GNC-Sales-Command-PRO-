@@ -35,6 +35,24 @@ async function fulfillNavigationRead(route: Route, manager = false, reads: strin
   return true;
 }
 
+async function fulfillAvRead(route: Route) {
+  const request = route.request(), url = new URL(request.url());
+  if (request.method() !== 'POST' || url.hostname !== 'kzrnyjsosryejjejliii.supabase.co'
+    || url.pathname !== '/functions/v1/app-api' || request.headers()['idempotency-key']) return false;
+  let body: Record<string, any>;
+  try { body = request.postDataJSON(); } catch { return false; }
+  if (!body || typeof body !== 'object' || Array.isArray(body) || body.action !== 'av_read'
+    || !['reserves', 'notes', 'hot_prices', 'settings'].includes(body.dataset)
+    || Object.keys(body).some(key => !['action', 'dataset', 'query'].includes(key))
+    || (body.query !== undefined && typeof body.query !== 'string')) return false;
+  const params = new URLSearchParams(body.query || '');
+  const offset = Math.max(0, Number(params.get('offset')) || 0);
+  const limit = Math.min(500, Math.max(1, Number(params.get('limit')) || 500));
+  await route.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ ok: true, data: { rows: [], total: 0, offset, limit, hasMore: false } }) });
+  return true;
+}
+
 test('live Request rep to customer, consignee, folder, and quantity flow remains actionable', async ({ page }) => {
   const blockedMutations: string[] = [];
   const pageErrors: string[] = [];
@@ -43,7 +61,7 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
   await page.route('**/*', async (route) => {
     const request = route.request();
     const method = request.method().toUpperCase();
-    if (await fulfillNavigationRead(route)) return;
+    if (await fulfillNavigationRead(route) || await fulfillAvRead(route)) return;
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       let pathname = 'unknown';
       try { pathname = new URL(request.url()).pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120); } catch {}
@@ -144,7 +162,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await page.route('**/*', async (route) => {
     const request = route.request();
     const method = request.method().toUpperCase();
-    if (await fulfillNavigationRead(route)) return;
+    if (await fulfillNavigationRead(route) || await fulfillAvRead(route)) return;
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       let pathname = 'unknown';
       try { pathname = new URL(request.url()).pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120); } catch {}
@@ -355,6 +373,7 @@ test('live PO Management uses authenticated PostgREST and never the retired data
     const method = request.method().toUpperCase();
     let parsedUrl: URL | null = null;
     try { parsedUrl = new URL(request.url()); } catch {}
+    if (await fulfillAvRead(route)) return;
     if (method === 'GET' && parsedUrl?.pathname.endsWith('/rest/v1/ph_view_po_27f1_hl')) {
       poRequests.push(parsedUrl.search);
       await route.fulfill({
@@ -423,7 +442,7 @@ test('live authorized Admin opens Access Control from the manager module card wi
     let parsedUrl: URL | null = null;
     try { parsedUrl = new URL(request.url()); } catch {}
     const pathname = parsedUrl?.pathname || '';
-    if (await fulfillNavigationRead(route, true, navigationReadRequests)) return;
+    if (await fulfillNavigationRead(route, true, navigationReadRequests) || await fulfillAvRead(route)) return;
     if (method === 'POST' && pathname.endsWith('/rest/v1/rpc/get_my_app_permissions_v1')) {
       accessRequests.push(pathname);
       await route.fulfill({

@@ -1,6 +1,6 @@
 // September 9 behavior coverage; preserved complete tests/sales-marketing-tasks.e2e.spec.ts fixture.
 // See docs/rollback-sep09-validation.md for deliberately removed later contracts.
-import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
+import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 import { expect, test } from '@playwright/test';
 
 for (const username of ['madison_austin', 'madelyn_gray']) {
@@ -96,6 +96,42 @@ async function settleIosShellVersion(page: import('@playwright/test').Page, proj
   await page.waitForFunction(() => document.body.classList.contains('role-access-ready')
     && window.eval('hasAppliedInitialHomeView === true'));
 }
+
+test('AV loads through app-api with raw reads blocked and shows release GNC.001', async ({ page, baseURL }, testInfo) => {
+  const rawReads: string[] = [], datasets = new Set<string>();
+  page.on('request', request => {
+    if (request.method() === 'GET' && /\/rest\/v1\/(ph_reserves|ph_av_notes|ph_view_av_hot_price_keys)(?:\?|$)/.test(request.url())) rawReads.push(request.url());
+    if (request.url().endsWith('/functions/v1/app-api') && request.method() === 'POST') {
+      const body = request.postDataJSON();
+      if (body?.action === 'av_read') datasets.add(body.dataset);
+    }
+  });
+  const reserves = Array.from({ length: 501 }, (_, index) => ({ unique_id: `reserve-${index}`, itemcode: 'SYNTH.003', commonname: 'Secure AV Plant', contsize: '#3', season: 'F1', lotcode: '27.F1', salesrepname: 'Riley Sales', customername: 'Synthetic Customer' }));
+  const fixture = await installHlOrderFixture(page, baseURL!, {
+    master: [hlMaster('secure-av', { commonname: 'Secure AV Plant', priority: '1' })], reserveRows: reserves,
+  });
+  await settleIosShellVersion(page, testInfo.project.name);
+  await page.route('**/rest/v1/*', route => {
+    if (/\/rest\/v1\/(ph_reserves|ph_av_notes|ph_view_av_hot_price_keys)(?:\?|$)/.test(route.request().url())) {
+      return route.fulfill({ status: 403, contentType: 'application/json', body: '{"message":"permission denied"}' });
+    }
+    return route.fallback();
+  });
+  await page.evaluate(() => (window as any).switchView('av'));
+  await expect(page.locator('#av-content')).toContainText('Secure AV Plant');
+  await expect(page.locator('#av-content')).not.toContainText('Load Failed');
+  await expect.poll(() => page.evaluate(() => window.eval('reservesInventory.length'))).toBe(501);
+  expect([...datasets]).toEqual(expect.arrayContaining(['reserves', 'notes', 'hot_prices', 'settings']));
+  expect(rawReads).toEqual([]);
+  await page.evaluate(() => (window as any).toggleMenu());
+  const release = page.locator('#app-release-version');
+  await expect(release).toBeVisible();
+  await expect(release).toHaveText('GNC.001');
+  expect(await release.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath('gnc-001-av-menu.png') });
+  expect(fixture.blockedMutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
 
 test('AV cards keep readable priority, stock and actions across themes and widths', async ({ page, baseURL }, testInfo) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_priority_fixture', role: 'ADMIN' });

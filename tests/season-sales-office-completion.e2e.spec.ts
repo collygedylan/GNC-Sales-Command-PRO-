@@ -81,6 +81,18 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
           username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0,
         } });
       }
+      const avRead = url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && body.action === 'av_read'
+        && ['reserves', 'notes', 'hot_prices', 'settings'].includes(body.dataset)
+        && !request.headers()['idempotency-key']
+        && Object.keys(body).every(key => ['action', 'dataset', 'query'].includes(key))
+        && (body.query === undefined || typeof body.query === 'string');
+      if (avRead) {
+        const params = new URLSearchParams(body.query || '');
+        const offset = Math.max(0, Number(params.get('offset')) || 0);
+        const limit = Math.min(500, Math.max(1, Number(params.get('limit')) || 500));
+        return fulfill(route, { ok: true, data: { rows: [], total: 0, offset, limit, hasMore: false } });
+      }
       if (body.action === 'season_sales_office' && body.operation === 'complete') {
         requests.push({ body, token: request.headers()['idempotency-key'] || '' });
         const reply = replies.shift() || {};
