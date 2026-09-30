@@ -1,17 +1,17 @@
-/* V2026.08.15.08 — server-gated Ops Precision pilot skin. */
+/* V2026.09.30.008 — shared Precision Clean / Cyber-Agronomy theme tokens. */
 body.ops-precision-pilot {
-  --ops-canvas: #f3f7f5;
+  --ops-canvas: #f4fbf7;
   --ops-surface: #ffffff;
-  --ops-surface-muted: #f7faf8;
-  --ops-surface-strong: #edf4f0;
-  --ops-text: #13221b;
-  --ops-text-muted: #617068;
+  --ops-surface-muted: #f9fdfb;
+  --ops-surface-strong: #eaf6ee;
+  --ops-text: #052e16;
+  --ops-text-muted: #4b6656;
   --ops-module-tile-label: #000000;
-  --ops-border: #cbd8d1;
-  --ops-border-strong: #8fa69a;
-  --ops-brand: #08784a;
-  --ops-brand-strong: #05623c;
-  --ops-brand-soft: #e6f4ed;
+  --ops-border: rgba(22, 101, 52, 0.12);
+  --ops-border-strong: #668d72;
+  --ops-brand: #15803d;
+  --ops-brand-strong: #116832;
+  --ops-brand-soft: #e1f4e7;
   --ops-info: #2563eb;
   --ops-success: #168454;
   --ops-warning: #b65f09;
@@ -19,12 +19,17 @@ body.ops-precision-pilot {
   --ops-focus: #1d73e8;
   --ops-density-1: 4px;
   --ops-density-2: 8px;
-  --ops-elevation-1: 0 1px 2px rgba(15, 35, 25, 0.08);
-  --ops-elevation-2: 0 4px 12px rgba(15, 35, 25, 0.1);
-  --ops-radius-xs: 4px;
-  --ops-radius-sm: 6px;
-  --ops-radius-md: 8px;
-  --ops-transition: 150ms ease;
+  --ops-elevation-1: 0 1px 2px rgba(5, 46, 22, 0.04), 0 4px 14px rgba(21, 128, 61, 0.05);
+  --ops-elevation-2: 0 6px 22px rgba(21, 128, 61, 0.12);
+  --ops-radius-xs: 6px;
+  --ops-radius-sm: 10px;
+  --ops-radius-md: 12px;
+  --ops-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ops-card-gradient: linear-gradient(155deg, #ffffff 0%, #f9fdfb 58%, #eef8f1 100%);
+  --ops-glass: rgba(255, 255, 255, 0.88);
+  --ops-edge-highlight: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 1px);
+  --ops-active-glow: 0 0 20px -4px rgba(21, 128, 61, 0.22);
+  --ops-number-font: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
   color: var(--ops-text);
   background: var(--ops-canvas);
   color-scheme: light;
@@ -32,25 +37,29 @@ body.ops-precision-pilot {
 }
 
 body.ops-precision-pilot[data-ops-theme="dark"] {
-  --ops-canvas: #07120e;
-  --ops-surface: #111c18;
-  --ops-surface-muted: #16231f;
-  --ops-surface-strong: #1b2b26;
-  --ops-text: #f2fbf6;
-  --ops-text-muted: #9db4aa;
+  --ops-canvas: #050806;
+  --ops-surface: #0a120e;
+  --ops-surface-muted: #0e1a12;
+  --ops-surface-strong: #14251a;
+  --ops-text: #f0fdf4;
+  --ops-text-muted: #adc9b5;
   --ops-module-tile-label: #ffffff;
-  --ops-border: rgba(99, 230, 173, 0.34);
-  --ops-border-strong: rgba(99, 230, 173, 0.62);
-  --ops-brand: #19b979;
-  --ops-brand-strong: #63e6ad;
-  --ops-brand-soft: rgba(25, 185, 121, 0.16);
+  --ops-border: rgba(34, 197, 94, 0.15);
+  --ops-border-strong: rgba(74, 222, 128, 0.68);
+  --ops-brand: #22c55e;
+  --ops-brand-strong: #4ade80;
+  --ops-brand-soft: rgba(34, 197, 94, 0.15);
   --ops-info: #73a7ff;
   --ops-success: #52ca8f;
   --ops-warning: #f3ad59;
   --ops-danger: #ff8585;
   --ops-focus: #72adff;
-  --ops-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.34);
-  --ops-elevation-2: 0 4px 14px rgba(0, 0, 0, 0.42);
+  --ops-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.28), 0 5px 18px rgba(4, 34, 15, 0.2);
+  --ops-elevation-2: 0 8px 28px rgba(0, 0, 0, 0.38);
+  --ops-card-gradient: linear-gradient(155deg, #102017 0%, #0a120e 58%, #08130d 100%);
+  --ops-glass: rgba(10, 18, 14, 0.86);
+  --ops-edge-highlight: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 1px);
+  --ops-active-glow: 0 0 20px -4px rgba(34, 197, 94, 0.3);
   color-scheme: dark;
 }
 
@@ -1741,15 +1750,6 @@ body.ops-precision-pilot {
   --ops-command-raised: #10211a;
   --ops-command-border: rgba(167, 243, 208, 0.34);
   --ops-glow: rgba(25, 185, 121, 0.18);
-}
-
-body.ops-precision-pilot[data-ops-theme="dark"] {
-  --ops-surface: #0f1c17;
-  --ops-surface-muted: #14231d;
-  --ops-surface-strong: #1a2d25;
-  --ops-border: rgba(110, 231, 179, 0.28);
-  --ops-border-strong: rgba(110, 231, 179, 0.54);
-  --ops-text-muted: #a8bdb4;
 }
 
 body.ops-precision-pilot #app-top-chrome {
@@ -5081,30 +5081,9 @@ body.ops-precision-pilot.current-view-chat.chat-conversation-open.keyboard-open 
   padding-bottom: max(7px, env(safe-area-inset-bottom)) !important;
 }
 
-/* V2026.08.15.14 — global Ag Data Solutions premium presentation system.
-   This is intentionally the final cascade: it supplies semantic materials and
-   device geometry without changing live nodes, handlers, or workflow state. */
+/* Semantic aliases and presentation primitives consume the theme tokens above. */
 body.ops-precision-pilot,
 body.ag-premium-skin {
-  --ops-canvas: #f3f7f5;
-  --ops-surface: #ffffff;
-  --ops-surface-muted: #f7faf8;
-  --ops-surface-strong: #edf4f0;
-  --ops-text: #13221b;
-  --ops-text-muted: #617068;
-  --ops-border: #cbd8d1;
-  --ops-border-strong: #8fa69a;
-  --ops-brand: #07874f;
-  --ops-brand-strong: #05623c;
-  --ops-brand-soft: #e6f4ed;
-  --ops-info: #2563eb;
-  --ops-success: #168454;
-  --ops-warning: #a85208;
-  --ops-danger: #b83232;
-  --ops-focus: #1d73e8;
-  --ops-radius-xs: 6px;
-  --ops-radius-sm: 10px;
-  --ops-radius-md: 12px;
   --ui-canvas: var(--ops-canvas);
   --ui-surface: var(--ops-surface);
   --ui-surface-muted: var(--ops-surface-muted);
@@ -5117,17 +5096,17 @@ body.ag-premium-skin {
   --ui-primary-strong: var(--ops-brand-strong);
   --ui-primary-soft: var(--ops-brand-soft);
   --ui-ring: color-mix(in srgb, var(--ops-focus) 30%, transparent);
-  --ui-shadow-card: 0 1px 2px rgba(9, 47, 31, 0.06), 0 8px 24px rgba(9, 47, 31, 0.06);
-  --ui-shadow-float: 0 18px 50px rgba(9, 47, 31, 0.14);
-  --ui-glass: color-mix(in srgb, var(--ops-surface) 88%, transparent);
-  --ui-header: linear-gradient(118deg, #05623c 0%, #07874f 56%, #056f42 100%);
-  --ui-header-text: #ffffff;
-  --ui-header-muted: rgba(255, 255, 255, 0.76);
-  --ui-header-control: rgba(255, 255, 255, 0.12);
-  --ui-header-control-border: rgba(255, 255, 255, 0.32);
-  --ui-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --ui-duration-fast: 120ms;
-  --ui-duration: 170ms;
+  --ui-shadow-card: var(--ops-elevation-1);
+  --ui-shadow-float: var(--ops-elevation-2);
+  --ui-glass: var(--ops-glass);
+  --ui-header: linear-gradient(118deg, rgba(255, 255, 255, 0.94) 0%, rgba(239, 250, 243, 0.88) 56%, rgba(255, 255, 255, 0.94) 100%);
+  --ui-header-text: var(--ops-text);
+  --ui-header-muted: var(--ops-text-muted);
+  --ui-header-control: rgba(255, 255, 255, 0.72);
+  --ui-header-control-border: var(--ops-border);
+  --ui-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ui-duration-fast: 150ms;
+  --ui-duration: 150ms;
   color: var(--ui-text);
   background: var(--ui-canvas);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -5138,29 +5117,11 @@ body.ag-premium-skin {
 
 body.ops-precision-pilot[data-ops-theme="dark"],
 body.ag-premium-skin[data-ops-theme="dark"] {
-  --ops-canvas: #07120e;
-  --ops-surface: #111c18;
-  --ops-surface-muted: #16231f;
-  --ops-surface-strong: #1b2b26;
-  --ops-text: #f2fbf6;
-  --ops-text-muted: #9db4aa;
-  --ops-border: rgba(99, 230, 173, 0.34);
-  --ops-border-strong: rgba(99, 230, 173, 0.62);
-  --ops-brand: #19b979;
-  --ops-brand-strong: #63e6ad;
-  --ops-brand-soft: rgba(25, 185, 121, 0.16);
-  --ops-info: #7aafff;
-  --ops-success: #63d9a0;
-  --ops-warning: #ffc06d;
-  --ops-danger: #ff9292;
-  --ops-focus: #72adff;
-  --ui-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.28), 0 10px 28px rgba(0, 0, 0, 0.22);
-  --ui-shadow-float: 0 20px 60px rgba(0, 0, 0, 0.4);
-  --ui-header: linear-gradient(118deg, rgba(6, 27, 19, 0.98) 0%, rgba(10, 48, 33, 0.96) 58%, rgba(7, 33, 23, 0.98) 100%);
-  --ui-header-text: #f2fbf6;
-  --ui-header-muted: #9db4aa;
-  --ui-header-control: rgba(25, 185, 121, 0.09);
-  --ui-header-control-border: rgba(99, 230, 173, 0.34);
+  --ui-header: linear-gradient(118deg, rgba(5, 15, 8, 0.98) 0%, rgba(10, 32, 17, 0.96) 58%, rgba(5, 15, 8, 0.98) 100%);
+  --ui-header-text: var(--ops-text);
+  --ui-header-muted: var(--ops-text-muted);
+  --ui-header-control: rgba(34, 197, 94, 0.09);
+  --ui-header-control-border: var(--ops-border);
 }
 
 body.ops-precision-pilot #app-wrapper,
@@ -6080,27 +6041,21 @@ body.ops-precision-pilot.current-view-chat .chat-thread-composer {
 
 /* V2026.08.16.07 — high-contrast semantic quick navigation. */
 body.ops-precision-pilot {
-  --ops-quick-nav-bg: #ffffff;
-  --ops-quick-nav-border: #b8cac0;
-  --ops-quick-nav-text: #405249;
-  --ops-quick-nav-active-bg: #e3f5ec;
-  --ops-quick-nav-active-border: #07874f;
-  --ops-quick-nav-active-text: #065f3b;
+  --ops-quick-nav-bg: var(--ops-glass);
+  --ops-quick-nav-border: var(--ops-border);
+  --ops-quick-nav-text: var(--ops-text-muted);
+  --ops-quick-nav-active-bg: var(--ops-brand-soft);
+  --ops-quick-nav-active-border: var(--ops-brand);
+  --ops-quick-nav-active-text: var(--ops-brand-strong);
   --ops-quick-nav-shadow: rgba(19, 34, 27, .16);
   --ops-quick-nav-badge: #d92d3a;
   --ops-quick-nav-badge-ring: #ffffff;
 }
 
 body.ops-precision-pilot[data-ops-theme="dark"] {
-  --ops-quick-nav-bg: #0b1c16;
-  --ops-quick-nav-border: rgba(99, 230, 173, .46);
-  --ops-quick-nav-text: #bfd3c9;
-  --ops-quick-nav-active-bg: #123d2d;
-  --ops-quick-nav-active-border: #2dcc8c;
-  --ops-quick-nav-active-text: #7aebbc;
   --ops-quick-nav-shadow: rgba(0, 0, 0, .44);
   --ops-quick-nav-badge: #ff525d;
-  --ops-quick-nav-badge-ring: #0b1c16;
+  --ops-quick-nav-badge-ring: var(--ops-surface);
 }
 
 body.ops-precision-pilot[data-ops-theme="light"] #bottom-nav,
@@ -6311,41 +6266,6 @@ body.ops-precision-pilot .drive-grid-table tbody > tr[hidden] {
     -webkit-box-orient: vertical !important;
     -webkit-line-clamp: 2 !important;
   }
-}
-
-#bottom-nav[data-resolved-theme="light"] {
-  --ops-quick-nav-bg: #ffffff;
-  --ops-quick-nav-border: #9eb5a9;
-  --ops-quick-nav-text: #33473e;
-  --ops-quick-nav-active-bg: #e3f5ec;
-  --ops-quick-nav-active-border: #07874f;
-  --ops-quick-nav-active-text: #065f3b;
-  --ops-quick-nav-badge-ring: #ffffff;
-  border-color: #9eb5a9 !important;
-  color: #33473e !important;
-  background: #ffffff !important;
-}
-
-#bottom-nav[data-resolved-theme="dark"] {
-  --ops-quick-nav-bg: #0b1c16;
-  --ops-quick-nav-border: rgba(99, 230, 173, .52);
-  --ops-quick-nav-text: #d4e5dc;
-  --ops-quick-nav-active-bg: #123d2d;
-  --ops-quick-nav-active-border: #2dcc8c;
-  --ops-quick-nav-active-text: #8bf2c3;
-  --ops-quick-nav-badge-ring: #0b1c16;
-  border-color: rgba(99, 230, 173, .52) !important;
-  color: #d4e5dc !important;
-  background: #0b1c16 !important;
-  background-image: none !important;
-}
-
-#bottom-nav[data-resolved-theme="light"] .footer-nav-btn:not(.active) {
-  color: #33473e !important;
-}
-
-#bottom-nav[data-resolved-theme="dark"] .footer-nav-btn:not(.active) {
-  color: #d4e5dc !important;
 }
 
 /* V2026.08.16.07 — primary Home launcher hierarchy and no-scroll desktop fit. */
@@ -9010,4 +8930,166 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
   .grower-mobile-toolbar{grid-template-columns:minmax(0,1fr) auto auto auto}
   .grower-mobile-toolbar.is-scout-view{grid-template-columns:minmax(0,1fr) auto}
   .grower-mobile-toolbar>button,.grower-toolbar-menu>summary{padding:6px;font-size:11px}
+}
+
+/* V2026.09.30.008 — shared materials, navigation chrome, and numeric rhythm. */
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  .app-smart-card, .app-card-shell, .inv-card, .drill-item, .item-row,
+  .task-card, .request-card, .dock-card, .overview-card,
+  .manager-module-card, .crop-roll-review-card, .sales-office-card,
+  .communication-card, .low-stock-card, .approval-card,
+  .request-swipe-surface, .chat-thread-shell, .android-chat-shell,
+  .manager-eval2-drive-group-card, .manager-eval2-item-card,
+  .grower-inventory-item, .grower-location-group, .grower-inventory-row,
+  .ui-card
+) {
+  background: var(--ops-edge-highlight), var(--ops-card-gradient) !important;
+  box-shadow: var(--ops-elevation-1) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  .manager-eval2-drive-group-card, .manager-eval2-item-card,
+  .grower-inventory-item, .grower-location-group, .grower-inventory-row,
+  .ui-card
+) { border-color: var(--ops-border) !important; }
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(.grower-item-toggle, .grower-row-toggle) {
+  border: 0 !important;
+  color: var(--ops-text) !important;
+  background: transparent !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  #app-top-chrome, #global-header-search-row, #bottom-nav,
+  .freeze-panel, .sticky-search, .fixed-filter-rail,
+  .drive-controls-sticky, .task-controls-sticky,
+  .grower-mobile-toolbar, .mobile-browse-rail,
+  .mobile-browse-filter-panel, .grower-toolbar-popover
+) {
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  #global-header-search-row, #bottom-nav, .freeze-panel,
+  .sticky-search, .fixed-filter-rail, .drive-controls-sticky,
+  .task-controls-sticky, .grower-mobile-toolbar,
+  .mobile-browse-rail, .mobile-browse-filter-panel, .grower-toolbar-popover
+) {
+  border-color: var(--ops-border) !important;
+  background: var(--ops-edge-highlight), var(--ops-glass) !important;
+  box-shadow: var(--ops-elevation-2) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot #app-top-chrome {
+  border-color: var(--ops-border) !important;
+  background: var(--ui-header) !important;
+  box-shadow: var(--ops-elevation-2) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot #global-header-search-slot :is(.input-field, input[type="text"], input[type="search"]),
+html:not(.outdoor-mode) body.ops-precision-pilot #global-header-inline-title {
+  color: var(--ops-text) !important;
+  background: var(--ops-surface-muted) !important;
+  border-color: var(--ops-border) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot #global-header-search-slot :is(input, .input-field)::placeholder {
+  color: var(--ops-text-muted) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  .mobile-browse-filters > summary, .grower-toolbar-menu > summary,
+  .grower-mobile-toolbar > button, .grower-mobile-toolbar > input,
+  .compact-filter-field, .task-top-control-button, .ui-tab
+) {
+  border-color: var(--ops-border-strong) !important;
+  color: var(--ops-text) !important;
+  background: var(--ops-surface-muted) !important;
+  min-height: 44px;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  .mobile-browse-filters > summary, .grower-toolbar-menu > summary,
+  .grower-mobile-toolbar > button, .task-top-control-button,
+  .footer-nav-btn, .ui-tab, .ui-action
+) {
+  transition: transform var(--ops-transition), opacity var(--ops-transition) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  .mobile-browse-filters[open] > summary,
+  .grower-toolbar-menu[open] > summary,
+  .task-top-control-button[aria-expanded="true"],
+  .task-top-control-button.is-filtered,
+  .ui-tab:is(.active, [aria-selected="true"]),
+  .footer-nav-btn:is(.active, [aria-current="page"])
+) {
+  border-color: var(--ops-brand) !important;
+  color: var(--ops-brand-strong) !important;
+  background: var(--ops-brand-soft) !important;
+  box-shadow: var(--ops-active-glow) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  button, [role="button"], a, input, select, textarea
+):focus-visible {
+  outline: 2px solid var(--ops-brand) !important;
+  outline-offset: 2px !important;
+  box-shadow: var(--ops-active-glow) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot :is(
+  .app-card-qty-value, .grower-quantity-total, .grower-location-total,
+  .overview-val, .app-data-number,
+  .manager-eval2-drive-group-card [data-count],
+  .manager-eval2-item-card [data-count],
+  .grower-row-details input[data-grower-draft-field="sev"]
+) {
+  font-family: var(--ops-number-font) !important;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot .grower-cuttings-btn {
+  border-color: var(--ops-brand) !important;
+  color: var(--ops-canvas) !important;
+  background: var(--ops-brand) !important;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html:not(.outdoor-mode) body.ops-precision-pilot :is(
+    #app-top-chrome, #global-header-search-row, #bottom-nav,
+    .freeze-panel, .sticky-search, .fixed-filter-rail,
+    .drive-controls-sticky, .task-controls-sticky,
+    .grower-mobile-toolbar, .mobile-browse-rail,
+    .mobile-browse-filter-panel, .grower-toolbar-popover
+  ) { background: var(--ops-surface) !important; }
+}
+
+body.performance-scroll-active :is(
+  #app-top-chrome, #global-header-search-row, #bottom-nav,
+  .freeze-panel, .sticky-search, .fixed-filter-rail,
+  .drive-controls-sticky, .task-controls-sticky,
+  .grower-mobile-toolbar, .mobile-browse-rail,
+  .mobile-browse-filter-panel, .grower-toolbar-popover
+),
+body.gnc-perf-adaptive-hard :is(
+  #app-top-chrome, #global-header-search-row, #bottom-nav,
+  .freeze-panel, .sticky-search, .fixed-filter-rail,
+  .drive-controls-sticky, .task-controls-sticky,
+  .grower-mobile-toolbar, .mobile-browse-rail,
+  .mobile-browse-filter-panel, .grower-toolbar-popover
+) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.ops-precision-pilot :is(
+    .mobile-browse-filters > summary, .grower-toolbar-menu > summary,
+    .grower-mobile-toolbar > button, .task-top-control-button,
+    .footer-nav-btn, .ui-tab, .ui-action
+  ) { transition-duration: 0.01ms !important; }
 }
