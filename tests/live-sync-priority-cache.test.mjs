@@ -263,7 +263,7 @@ test('focused AV note choices cannot use previously loaded notes before current 
 
 function transportFixture(overrides = {}) {
     const calls = [], navigation = new AbortController();
-    const ctx = { AbortController, WeakMap, Set, Error, Object, Math, Number, String, JSON,
+    const ctx = { AbortController, WeakMap, Set, Error, Object, Math, Number, String, JSON, URLSearchParams,
         REQUEST_HISTORY_TABLE: 'ph_request_history', SALES_CREDIT_REQUESTS_TABLE: 'ph_sales_credit_requests',
         productionLiveSyncNavigation: navigation, SUPABASE_READ_TIMEOUT_MS: 1000, SUPABASE_URL: 'https://fixture.invalid',
         normalizeAppTableName: value => value, getNativeAuthRequestHeaders: async () => ({ Authorization: 'synthetic' }),
@@ -274,6 +274,7 @@ function transportFixture(overrides = {}) {
         incrementInternalPerfCounter() {}, recordInternalPerfDuration() {}, ...overrides
     };
     vm.createContext(ctx);
+    vm.runInContext(html.slice(html.indexOf('function getAvReadDataset('), html.indexOf('async function requestAvReadPage(')), ctx);
     vm.runInContext(html.slice(html.indexOf('const productionLiveSyncReadSignalIds'), html.indexOf('function createProductionCoreLiveAdapter')), ctx);
     vm.runInContext(html.slice(html.indexOf('async function fetchAuthenticatedSupabaseReadPage'), html.indexOf('let activeRequestLiveRowsViewReady')), ctx);
     return { ctx, calls, navigation };

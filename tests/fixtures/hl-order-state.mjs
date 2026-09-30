@@ -639,6 +639,25 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && Object.keys(body.payload).length === 3 && Object.keys(body.payload).every(key => ['status', 'cursor', 'limit'].includes(key))
         && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100;
       if (salesCompatibilityRead) return json(route, { ok: true, data: { rows: [], nextCursor: null } });
+      if (body.action === 'av_read') {
+        const dataset = String(body.dataset || '');
+        if (!['reserves', 'notes', 'hot_prices', 'settings'].includes(dataset)) return json(route, { ok: false }, 400);
+        const params = new URLSearchParams(body.query || '');
+        const offset = Number(params.getAll('offset').at(-1) || 0);
+        const limit = Math.min(500, Number(params.getAll('limit').at(-1) || 500));
+        const allRows = dataset === 'reserves' ? control.reserveRows : dataset === 'settings' ? seasonSettings : [];
+        const pageSize = dataset === 'reserves' && Number(options.demandPageSize) > 0 ? Math.min(limit, Number(options.demandPageSize)) : limit;
+        const rows = allRows.slice(offset, offset + pageSize);
+        if (dataset === 'reserves') {
+          control.demandReads.reserves++;
+          if (holdNextDemandFinalPage && offset > 0 && rows.length && offset + rows.length >= allRows.length) {
+            holdNextDemandFinalPage = false;
+            resolveHeldDemandFinalPageStarted();
+            await new Promise(resolve => { releaseHeldDemandFinalPage = resolve; });
+          }
+        }
+        return json(route, { ok: true, data: { rows, total: allRows.length, offset, limit: pageSize, hasMore: offset + rows.length < allRows.length } });
+      }
       if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role } });
       if (body.action === 'inventory_read') {
         const operation = String(body.operation || ''), params = body.params || {};

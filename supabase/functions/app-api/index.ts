@@ -1,4 +1,5 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { readAvPage } from "../_shared/av-read.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -2944,6 +2945,26 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
+  if (action === "av_read") {
+    if (!session) return errorResponse("Unauthorized", 401);
+    if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+    let actor: Record<string, unknown>;
+    try { actor = await resolveActiveSessionProfile(session); }
+    catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
+    try {
+      const username = normalizeUsername(String(actor.username || ""));
+      const role = String(actor.role || "");
+      const access = getRoleAccessState(role);
+      const data = await readAvPage({ supabase, actor, payload,
+        canRead: table => hasTableReadAccess(role, table, username),
+        restrictRep: access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username),
+      });
+      return jsonResponse({ ok: true, data });
+    } catch (error) {
+      const failure = error as { message?: string; status?: number };
+      return errorResponse(failure.message || "AV_READ_UNAVAILABLE", failure.status || 503);
+    }
+  }
   if (action === "inventory_read") return await handleInventoryRead(session, payload);
   if (action === "db") {
     if (session && session.ver >= 2) {
