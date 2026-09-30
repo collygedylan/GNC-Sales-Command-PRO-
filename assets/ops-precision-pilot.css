@@ -1,16 +1,16 @@
-/* V2026.09.30.008 — shared Precision Clean / Cyber-Agronomy theme tokens. */
+/* V2026.09.30.011 — shared Precision Clean / Cyber-Agronomy theme tokens. */
 body.ops-precision-pilot {
-  --ops-canvas: #f4fbf7;
-  --ops-surface: #ffffff;
-  --ops-surface-muted: #f9fdfb;
-  --ops-surface-strong: #eaf6ee;
-  --ops-text: #052e16;
-  --ops-text-muted: #4b6656;
+  --ops-canvas: var(--bg-canvas, #f4fbf7);
+  --ops-surface: var(--bg-surface, #ffffff);
+  --ops-surface-muted: var(--bg-surface-muted, #f9fdfb);
+  --ops-surface-strong: var(--bg-surface-raised, #eaf6ee);
+  --ops-text: var(--text-main, #052e16);
+  --ops-text-muted: var(--text-muted, #4b6656);
   --ops-module-tile-label: #000000;
-  --ops-border: rgba(22, 101, 52, 0.12);
-  --ops-border-strong: #668d72;
-  --ops-brand: #15803d;
-  --ops-brand-strong: #116832;
+  --ops-border: var(--border-subtle, rgba(22, 101, 52, 0.12));
+  --ops-border-strong: var(--border-strong, #668d72);
+  --ops-brand: var(--accent, #15803d);
+  --ops-brand-strong: var(--accent-strong, #116832);
   --ops-brand-soft: #e1f4e7;
   --ops-info: #2563eb;
   --ops-success: #168454;
@@ -25,11 +25,11 @@ body.ops-precision-pilot {
   --ops-radius-sm: 10px;
   --ops-radius-md: 12px;
   --ops-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --ops-card-gradient: linear-gradient(155deg, #ffffff 0%, #f9fdfb 58%, #eef8f1 100%);
+  --ops-card-gradient: var(--surface-gradient, linear-gradient(155deg, #ffffff 0%, #f9fdfb 58%, #eef8f1 100%));
   --ops-glass: rgba(255, 255, 255, 0.88);
-  --ops-edge-highlight: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 1px);
-  --ops-active-glow: 0 0 20px -4px rgba(21, 128, 61, 0.22);
-  --ops-number-font: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  --ops-edge-highlight: var(--surface-bevel, linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0) 1px));
+  --ops-active-glow: var(--active-glow, 0 0 16px -2px rgba(21, 128, 61, 0.22));
+  --ops-number-font: var(--numeric-font, ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace);
   color: var(--ops-text);
   background: var(--ops-canvas);
   color-scheme: light;
@@ -37,17 +37,17 @@ body.ops-precision-pilot {
 }
 
 body.ops-precision-pilot[data-ops-theme="dark"] {
-  --ops-canvas: #050806;
-  --ops-surface: #0a120e;
-  --ops-surface-muted: #0e1a12;
-  --ops-surface-strong: #14251a;
-  --ops-text: #f0fdf4;
-  --ops-text-muted: #adc9b5;
+  --ops-canvas: var(--bg-canvas, #050806);
+  --ops-surface: var(--bg-surface, #0a120e);
+  --ops-surface-muted: var(--bg-surface-muted, #0e1a12);
+  --ops-surface-strong: var(--bg-surface-raised, #14251a);
+  --ops-text: var(--text-main, #f0fdf4);
+  --ops-text-muted: var(--text-muted, #adc9b5);
   --ops-module-tile-label: #ffffff;
-  --ops-border: rgba(34, 197, 94, 0.15);
-  --ops-border-strong: rgba(74, 222, 128, 0.68);
-  --ops-brand: #22c55e;
-  --ops-brand-strong: #4ade80;
+  --ops-border: var(--border-subtle, rgba(34, 197, 94, 0.15));
+  --ops-border-strong: var(--border-strong, rgba(74, 222, 128, 0.42));
+  --ops-brand: var(--accent, #22c55e);
+  --ops-brand-strong: var(--accent-strong, #4ade80);
   --ops-brand-soft: rgba(34, 197, 94, 0.15);
   --ops-info: #73a7ff;
   --ops-success: #52ca8f;
@@ -56,10 +56,10 @@ body.ops-precision-pilot[data-ops-theme="dark"] {
   --ops-focus: #72adff;
   --ops-elevation-1: 0 1px 2px rgba(0, 0, 0, 0.28), 0 5px 18px rgba(4, 34, 15, 0.2);
   --ops-elevation-2: 0 8px 28px rgba(0, 0, 0, 0.38);
-  --ops-card-gradient: linear-gradient(155deg, #102017 0%, #0a120e 58%, #08130d 100%);
+  --ops-card-gradient: var(--surface-gradient, linear-gradient(155deg, rgba(255, 255, 255, 0.04) 0%, #0a120e 58%, rgba(255, 255, 255, 0.01) 100%));
   --ops-glass: rgba(10, 18, 14, 0.86);
-  --ops-edge-highlight: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0) 1px);
-  --ops-active-glow: 0 0 20px -4px rgba(34, 197, 94, 0.3);
+  --ops-edge-highlight: var(--surface-bevel, linear-gradient(to bottom, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0) 1px));
+  --ops-active-glow: var(--active-glow, 0 0 16px -2px rgba(34, 197, 94, 0.35));
   color-scheme: dark;
 }
 
@@ -9093,3 +9093,178 @@ body.gnc-perf-adaptive-hard :is(
     .footer-nav-btn, .ui-tab, .ui-action
   ) { transition-duration: 0.01ms !important; }
 }
+
+/* V2026.09.30.011 — dark navigation shell, glass surfaces, and field metrics. */
+body.ops-precision-pilot {
+  --ops-canvas: var(--bg-canvas);
+  --ops-surface: var(--bg-surface);
+  --ops-surface-muted: var(--bg-surface-muted);
+  --ops-surface-strong: var(--bg-surface-raised);
+  --ops-text: var(--text-main);
+  --ops-text-muted: var(--text-muted);
+  --ops-border: var(--border-subtle);
+  --ops-border-strong: var(--border-strong);
+  --ops-brand: var(--accent);
+  --ops-brand-strong: var(--accent-strong);
+  --ops-card-gradient: var(--surface-gradient);
+  --ops-edge-highlight: var(--surface-bevel);
+  --ops-active-glow: var(--active-glow);
+  --ops-number-font: var(--numeric-font);
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] {
+  --ops-nav-dark-fallback: #0a120e;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] :is(
+  #app-top-chrome, .nav-header, #global-header-search-row,
+  #bottom-nav, #global-action-bar, #side-drawer, .drawer-header,
+  .task-tabs, .detail-tabs, .freeze-panel, .sticky-search,
+  .fixed-filter-rail, .mobile-browse-rail, .grower-mobile-toolbar
+),
+html[data-ops-prepaint-theme="dark"] :is(#bottom-nav, #side-drawer) {
+  border-color: var(--border-subtle) !important;
+  color: var(--text-main) !important;
+  background-color: var(--bg-surface) !important;
+  background-image: none !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #app-top-chrome,
+body.ops-precision-pilot[data-ops-theme="dark"] :is(.nav-header, #global-header-search-row, #bottom-nav, .mobile-browse-rail, .grower-mobile-toolbar, .sticky-search, .freeze-panel) {
+  -webkit-backdrop-filter: blur(16px) saturate(1.12);
+  backdrop-filter: blur(16px) saturate(1.12);
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav {
+  border-top: 1px solid rgba(34, 197, 94, 0.15) !important;
+  border-bottom: 0 !important;
+  background: #0a120e !important;
+  box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.3) !important;
+}
+
+html:not(.outdoor-mode) body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav {
+  background: #0a120e !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] :is(.footer-nav-btn, .drawer-item, .nav-header, #global-header-search-row) {
+  color: var(--text-muted) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] :is(.footer-nav-btn.active, .footer-nav-btn.menu-open, .footer-nav-btn[aria-current="page"]) {
+  border-color: var(--border-subtle) !important;
+  color: var(--accent-strong) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
+  box-shadow: var(--active-glow) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]) {
+  box-shadow: 0 0 16px -2px rgba(34, 197, 94, 0.35), inset 0 0 0 1px rgba(34, 197, 94, 0.24) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] :is(
+  .app-card-shell, .app-smart-card, .inv-card, .drill-item,
+  .freeze-panel, .sticky-search, .task-top-control-shell,
+  .grower-inventory-item, .grower-location-group, .grower-inventory-row,
+  .manager-module-card, .crop-roll-review-card, .sales-office-card,
+  .communication-card, .low-stock-card, .approval-card
+) {
+  border-color: var(--border-subtle) !important;
+  color: var(--text-main) !important;
+  background-color: var(--bg-surface) !important;
+  background-image: var(--surface-bevel), var(--surface-gradient) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.22) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="light"] :is(
+  .app-card-shell, .app-smart-card, .inv-card, .grower-inventory-item,
+  .grower-location-group, .grower-inventory-row, .manager-module-card,
+  .crop-roll-review-card, .sales-office-card, .communication-card,
+  .low-stock-card, .approval-card
+) {
+  background-color: var(--bg-surface) !important;
+  background-image: var(--surface-bevel), var(--surface-gradient) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] :is(
+  .bg-white, .bg-white\/95, .bg-slate-50, .bg-slate-100,
+  .bg-gray-50, .bg-gray-100, .bg-emerald-50, .bg-green-50
+) {
+  color: var(--text-main) !important;
+  background-color: var(--bg-surface-muted) !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] :is(
+  .app-card-qty-value, .app-av-catalog-stock-value,
+  .grower-quantity-total, .grower-location-total, .drive-grid-number,
+  [data-inventory-quantity], [data-field="PTRAVAILABLE"], [data-field="PTRONHAND"],
+  [data-field="Sev"], [data-field="SEV"],
+  [data-grower-draft-field="sev"], [data-grower-draft-field="ptravailable"],
+  [data-grower-draft-field="ptronhand"]
+) {
+  font-family: var(--numeric-font) !important;
+  font-variant-numeric: tabular-nums lining-nums !important;
+}
+
+body.ops-precision-pilot[data-ops-theme="dark"] :is(.app-card-qty-label, .grower-inventory-count, .app-card-subline-source) {
+  color: var(--text-muted) !important;
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html:not(.outdoor-mode) body.ops-precision-pilot :is(
+    #app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav,
+    .sticky-search, .freeze-panel, .fixed-filter-rail, .mobile-browse-rail,
+    .grower-mobile-toolbar, .grower-toolbar-popover
+  ) {
+    -webkit-backdrop-filter: blur(16px) saturate(1.12) !important;
+    backdrop-filter: blur(16px) saturate(1.12) !important;
+  }
+}
+
+/* Preserve low-cost solid surfaces for constrained devices and active scrolling. */
+body.ios-device.ops-precision-pilot :is(#app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav, .sticky-search, .freeze-panel, .mobile-browse-rail, .grower-mobile-toolbar),
+body.performance-scroll-active.ops-precision-pilot :is(#app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav, .sticky-search, .freeze-panel, .mobile-browse-rail, .grower-mobile-toolbar),
+body.gnc-perf-adaptive-hard.ops-precision-pilot :is(#app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav, .sticky-search, .freeze-panel, .mobile-browse-rail, .grower-mobile-toolbar),
+body.mobile-text-entry-active.ops-precision-pilot :is(#app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav, .mobile-browse-rail, .grower-mobile-toolbar) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html body.performance-scroll-active.ops-precision-pilot :is(#app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav, .sticky-search, .freeze-panel, .mobile-browse-rail, .grower-mobile-toolbar),
+html body.gnc-perf-adaptive-hard.ops-precision-pilot :is(#app-top-chrome, .nav-header, #global-header-search-row, #bottom-nav, .sticky-search, .freeze-panel, .mobile-browse-rail, .grower-mobile-toolbar) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.ops-precision-pilot *,
+  body.ops-precision-pilot *::before,
+  body.ops-precision-pilot *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* A field photo is optional; quantity rows retain their own geometry without one. */
+body.ops-precision-pilot .grower-item-toggle {
+  display: grid !important;
+  grid-template-columns: 56px minmax(0, 1fr) auto !important;
+  gap: 10px !important;
+}
+
+body.ops-precision-pilot .grower-item-photo,
+body.ops-precision-pilot .grower-item-photo-placeholder {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--ops-border);
+  border-radius: 12px;
+  color: var(--ops-text-muted);
+  background: var(--ops-surface-muted);
+}
+
+body.ops-precision-pilot .grower-item-photo { object-fit: cover; }
+body.ops-precision-pilot .grower-quantity-total { font-variant-numeric: tabular-nums; }

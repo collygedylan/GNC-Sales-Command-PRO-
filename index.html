@@ -14,6 +14,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#f4fbf7">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=V2026.09.30.011">
     <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
@@ -51,7 +52,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#050806' : '#f4fbf7');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.30.009">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.09.30.011">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -61,7 +62,7 @@
     <script>
       // Public release label; increment independently of the shell cache/build ID.
       window.__APP_RELEASE_VERSION__ = 'GNC.001';
-      window.__APP_SHELL_VERSION__ = 'V2026.09.30.009';
+      window.__APP_SHELL_VERSION__ = 'V2026.09.30.011';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -88,11 +89,17 @@
         html[data-ops-prepaint-theme="dark"] #main-scroll-area,
         html[data-ops-prepaint-theme="dark"] #view-wrapper{background:#050806 !important;color:#f0fdf4;color-scheme:dark}
         html[data-ops-prepaint-theme="dark"] #bottom-nav,
+        html[data-ops-prepaint-theme="dark"] #app-top-chrome,
+        html[data-ops-prepaint-theme="dark"] #global-header-search-row,
+        html[data-ops-prepaint-theme="dark"] #global-action-bar,
         html[data-ops-prepaint-theme="dark"] #side-drawer,
         html[data-ops-prepaint-theme="dark"] #home-dashboard-grid > div,
         html[data-ops-prepaint-theme="dark"] :is(.app-card-shell,.app-smart-card,.inv-card,.drill-item,.freeze-panel,.sticky-search){border-color:rgba(34,197,94,.15) !important;background:#0a120e !important;color:#f0fdf4 !important}
         html[data-ops-prepaint-theme="dark"] #home-dashboard-grid > div > :is(i,span),
-        html[data-ops-prepaint-theme="dark"] #bottom-nav{border-color:rgba(34,197,94,.15) !important;background:#0a120e !important}
+        html[data-ops-prepaint-theme="dark"] #bottom-nav,
+        html[data-ops-prepaint-theme="dark"] #app-top-chrome,
+        html[data-ops-prepaint-theme="dark"] #global-header-search-row,
+        html[data-ops-prepaint-theme="dark"] #global-action-bar{border-color:rgba(34,197,94,.15) !important;background:#0a120e !important}
         html[data-ops-prepaint-theme="dark"] #bottom-nav .footer-nav-btn{color:#adc9b5 !important;opacity:1 !important}
         html[data-ops-prepaint-theme="light"],
         html[data-ops-prepaint-theme="light"] body,
@@ -6829,7 +6836,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.30.009">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.09.30.011">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -7028,14 +7035,14 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.09.30.009"></script>
-    <script src="./assets/login-network-trace.js?v=V2026.09.30.009"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.09.30.009"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.09.30.009"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.09.30.009"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.09.30.009"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.09.30.009"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.30.009"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.09.30.011"></script>
+    <script src="./assets/login-network-trace.js?v=V2026.09.30.011"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.09.30.011"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.09.30.011"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.09.30.011"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.09.30.011"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.09.30.011"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.09.30.011"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7803,7 +7810,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.30.009').trim() || 'V2026.09.30.009';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.09.30.011').trim() || 'V2026.09.30.011';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9312,7 +9319,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.30.009';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.09.30.011';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -32768,7 +32775,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.30.009').trim() || 'V2026.09.30.009';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.09.30.011').trim() || 'V2026.09.30.011';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -126843,7 +126850,17 @@ C.14.043 C.15.000
             const draft = growerScoutRowDrafts.get(uid) || { pestCode: '', sev: '', notes: '' };
             const location = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, '-'));
             const lot = String(firstNonEmptyValue(row.LOTCODE, row.lotcode, '-'));
-            return `<section class="grower-inventory-row" data-grower-row-uid="${escapeHtml(uid)}"><button type="button" class="grower-row-toggle" aria-expanded="${expanded}" onclick="return toggleGrowerScoutRow('${encoded}')"><span>Loc ${escapeHtml(location)} · Lot ${escapeHtml(lot)}</span><strong>Avail ${escapeHtml(formatShearDecisionNumber(getShearDrivePtr(row)))} · OH ${escapeHtml(formatShearDecisionNumber(getGrowerOnHand(row)))}</strong></button>${expanded ? `<div class="grower-row-details"><div class="grower-scout-input-grid"><label>Pest Code / ID<input data-grower-draft-field="pestCode" value="${escapeHtml(draft.pestCode)}" maxlength="80" oninput="return updateGrowerScoutDraft(this)"></label><label>Sev (0–50)<input type="number" min="0" max="50" step="1" inputmode="numeric" data-grower-draft-field="sev" value="${escapeHtml(draft.sev)}" oninput="return updateGrowerScoutDraft(this)"></label></div><label class="grower-scout-notes">Notes<textarea data-grower-draft-field="notes" rows="2" oninput="return updateGrowerScoutDraft(this)">${escapeHtml(draft.notes)}</textarea></label><button type="button" class="grower-scout-save" onclick="return saveGrowerScoutRowLog('${encoded}', this)">Save scouting log</button></div>` : ''}</section>`;
+            const quantityValue = (fields = []) => {
+                const raw = firstNonEmptyValue(...fields.map((field) => row && row[field]), null);
+                if (raw === null || String(raw).trim() === '') return null;
+                const parsed = Number(String(raw).replace(/,/g, '').trim());
+                return Number.isFinite(parsed) ? parsed : null;
+            };
+            const available = quantityValue(['PTRAVAILABLE', 'ptravailable', 'PRTAVAILABLE', 'prtavailable']);
+            const hand = quantityValue(['PTRONHAND', 'ptronhand', 'PTR_ON_HAND', 'ptr_on_hand']);
+            const availableText = available === null ? 'Unknown' : formatShearDecisionNumber(available);
+            const handText = hand === null ? 'Unknown' : formatShearDecisionNumber(hand);
+            return `<section class="grower-inventory-row" data-grower-row-uid="${escapeHtml(uid)}"><button type="button" class="grower-row-toggle" aria-expanded="${expanded}" onclick="return toggleGrowerScoutRow('${encoded}')"><span>Loc ${escapeHtml(location)} · Lot ${escapeHtml(lot)}</span><strong>Avail ${escapeHtml(availableText)} · OH ${escapeHtml(handText)}</strong></button>${expanded ? `<div class="grower-row-details"><div class="grower-scout-input-grid"><label>Pest Code / ID<input data-grower-draft-field="pestCode" value="${escapeHtml(draft.pestCode)}" maxlength="80" oninput="return updateGrowerScoutDraft(this)"></label><label>Sev (0–50)<input type="number" min="0" max="50" step="1" inputmode="numeric" data-grower-draft-field="sev" value="${escapeHtml(draft.sev)}" oninput="return updateGrowerScoutDraft(this)"></label></div><label class="grower-scout-notes">Notes<textarea data-grower-draft-field="notes" rows="2" oninput="return updateGrowerScoutDraft(this)">${escapeHtml(draft.notes)}</textarea></label><button type="button" class="grower-scout-save" onclick="return saveGrowerScoutRowLog('${encoded}', this)">Save scouting log</button></div>` : ''}</section>`;
         }
 
         function renderGrowerInventoryPanel() {
@@ -126852,15 +126869,30 @@ C.14.043 C.15.000
             const visible = groups.slice(0, growerInventoryVisibleCount);
             const cards = visible.map((group) => {
                 const expanded = growerScoutExpandedItem === group.key;
-                const onHand = group.rows.reduce((total, row) => total + getGrowerOnHand(row), 0);
+                const quantityValue = (row, fields = []) => {
+                    const raw = firstNonEmptyValue(...fields.map((field) => row && row[field]), null);
+                    if (raw === null || String(raw).trim() === '') return null;
+                    const parsed = Number(String(raw).replace(/,/g, '').trim());
+                    return Number.isFinite(parsed) ? parsed : null;
+                };
+                const sumKnown = (values) => values.some((value) => value === null)
+                    ? 'Unknown'
+                    : formatShearDecisionNumber(values.reduce((total, value) => total + value, 0));
+                const availableText = sumKnown(group.rows.map((row) => quantityValue(row, ['PTRAVAILABLE', 'ptravailable', 'PRTAVAILABLE', 'prtavailable'])));
+                const onHandText = sumKnown(group.rows.map((row) => quantityValue(row, ['PTRONHAND', 'ptronhand', 'PTR_ON_HAND', 'ptr_on_hand'])));
+                const photoRow = group.rows.find((row) => getPhotoUrlList(getRowPhotoLink(row, 'drive')).length > 0);
+                const photoUrl = photoRow ? getPhotoUrlList(getRowPhotoLink(photoRow, 'drive'))[0] : '';
+                const photoHtml = photoUrl
+                    ? buildDeferredCardPhotoImg(getDirectImageUrl(photoUrl, 'card-corner'), { className: 'grower-item-photo', alt: `${group.commonName} inventory photo` })
+                    : '<span class="grower-item-photo-placeholder" aria-hidden="true"><i class="ph-bold ph-image"></i></span>';
                 const locations = new Map();
                 group.rows.forEach((row) => {
                     const name = String(firstNonEmptyValue(row.LOCATIONCODE, row.locationcode, 'No location'));
                     if (!locations.has(name)) locations.set(name, []);
                     locations.get(name).push(row);
                 });
-                const locationHtml = Array.from(locations.entries()).map(([name, locationRows]) => `<section class="grower-location-group"><div class="grower-location-total"><strong>Loc ${escapeHtml(name)}</strong><span>Avail ${escapeHtml(formatShearDecisionNumber(locationRows.reduce((sum, row) => sum + getShearDrivePtr(row), 0)))} · OH ${escapeHtml(formatShearDecisionNumber(locationRows.reduce((sum, row) => sum + getGrowerOnHand(row), 0)))}</span></div>${locationRows.map(renderGrowerInventoryRow).join('')}</section>`).join('');
-                return `<article class="grower-inventory-item" data-grower-item-key="${escapeHtml(group.key)}"><button type="button" class="grower-item-toggle" aria-expanded="${expanded}" onclick="return toggleGrowerScoutItem('${escJsAttrValue(encodeURIComponent(group.key))}')"><span><strong>${escapeHtml(group.commonName)}</strong><small>${escapeHtml(group.contSize)} · ${escapeHtml(group.itemCode)} · ${group.locations.size} locations · ${group.rows.length} rows</small></span><span class="grower-quantity-total">Avail ${escapeHtml(formatShearDecisionNumber(group.totalPtr))}<br>OH ${escapeHtml(formatShearDecisionNumber(onHand))}</span></button>${expanded ? `<div class="grower-location-list">${locationHtml}</div>` : ''}</article>`;
+                const locationHtml = Array.from(locations.entries()).map(([name, locationRows]) => `<section class="grower-location-group"><div class="grower-location-total"><strong>Loc ${escapeHtml(name)}</strong><span>Avail ${escapeHtml(sumKnown(locationRows.map((row) => quantityValue(row, ['PTRAVAILABLE', 'ptravailable', 'PRTAVAILABLE', 'prtavailable']))))} · OH ${escapeHtml(sumKnown(locationRows.map((row) => quantityValue(row, ['PTRONHAND', 'ptronhand', 'PTR_ON_HAND', 'ptr_on_hand']))))}</span></div>${locationRows.map(renderGrowerInventoryRow).join('')}</section>`).join('');
+                return `<article class="grower-inventory-item" data-grower-item-key="${escapeHtml(group.key)}"><button type="button" class="grower-item-toggle" aria-expanded="${expanded}" onclick="return toggleGrowerScoutItem('${escJsAttrValue(encodeURIComponent(group.key))}')">${photoHtml}<span><strong>${escapeHtml(group.commonName)}</strong><small>${escapeHtml(group.contSize)} · ${escapeHtml(group.itemCode)} · ${group.locations.size} locations · ${group.rows.length} rows</small></span><span class="grower-quantity-total">Avail ${escapeHtml(availableText)}<br>OH ${escapeHtml(onHandText)}</span></button>${expanded ? `<div class="grower-location-list">${locationHtml}</div>` : ''}</article>`;
             }).join('');
             return `<div class="grower-inventory-list" data-grower-inventory-list><div class="grower-inventory-count">${groups.length} items · ${rows.length} rows</div>${cards || '<div class="grower-inventory-empty">No inventory rows match these filters.</div>'}${groups.length > visible.length ? `<button type="button" class="grower-show-more" onclick="growerInventoryVisibleCount += 80; renderGrowerScout(); return false">Show more items</button>` : ''}</div>`;
         }

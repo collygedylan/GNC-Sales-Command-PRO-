@@ -9,6 +9,7 @@ const root = process.cwd();
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8');
 const html = read('index.html');
 const css = read('assets/ops-precision-pilot.css');
+const themeTokens = read('assets/theme-tokens.css');
 const client = read('assets/ops-precision-pilot.js');
 const edge = read('supabase/functions/app-api/index.ts');
 const migration = read('supabase/archive_migrations/20260815043342_dylan_live_pilot_preferences.sql');
@@ -323,8 +324,9 @@ test('all users receive Light/Dark and Cards/Grid with a preserved Dylan dark de
   assert.match(edge, /theme_mode: userKey === LEGACY_DARK_DEFAULT_USERNAME \? "dark" : "light"/);
   assert.match(darkDefaultMigration, /theme_mode = 'dark'/);
   assert.match(darkDefaultMigration, /where user_key = 'dylan_collyge'/);
-  assert.match(css, /--ops-canvas: #050806/);
-  assert.match(css, /--ops-surface: #0a120e/);
+  assert.match(themeTokens, /--bg-canvas: #050806/);
+  assert.match(themeTokens, /--bg-surface: #0a120e/);
+  assert.match(css, /--ops-canvas: var\(--bg-canvas/);
   assert.match(css, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(css, /V2026\.08\.15\.12 final responsive and theme cascade[\s\S]*grid-template-rows: none !important/);
@@ -764,12 +766,14 @@ test('Chat message groups and Communication calendar use the modern semantic sys
 
 test('V14 exposes one global semantic component layer without changing workflow nodes', () => {
   const premiumCascade = css.slice(css.lastIndexOf('Semantic aliases and presentation primitives consume the theme tokens above.'));
-  assert.match(css, /--ops-brand: #15803d/);
-  assert.match(css, /--ops-canvas: #f4fbf7/);
-  assert.match(css, /--ops-surface: #ffffff/);
-  assert.match(css, /--ops-text: #052e16/);
-  assert.match(css, /data-ops-theme="dark"[\s\S]*--ops-brand: #22c55e/);
-  assert.match(css, /data-ops-theme="dark"[\s\S]*--ops-surface: #0a120e/);
+  assert.match(themeTokens, /--accent: #15803d/);
+  assert.match(themeTokens, /--bg-canvas: #f4fbf7/);
+  assert.match(themeTokens, /--bg-surface: #ffffff/);
+  assert.match(themeTokens, /--text-main: #052e16/);
+  assert.match(themeTokens, /--accent: #22c55e/);
+  assert.match(themeTokens, /--bg-surface: #0a120e/);
+  assert.match(css, /--ops-brand: var\(--accent/);
+  assert.match(css, /--ops-surface: var\(--bg-surface/);
   assert.match(premiumCascade, /\.ui-surface,[\s\S]*\.ui-panel,[\s\S]*\.ui-card/);
   assert.match(premiumCascade, /\.ui-field,[\s\S]*input:not\(\[type="checkbox"\]\)/);
   assert.match(premiumCascade, /\.ui-tab:is\(\.active, \[aria-selected="true"\]\)/);

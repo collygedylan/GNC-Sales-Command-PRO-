@@ -11,7 +11,7 @@ import type {
   WorkflowRow
 } from '../types';
 
-export const APP_VERSION = 'V2026.09.07.v2.17';
+export const APP_VERSION = 'V2026.09.30.011';
 export const REQUEST_TABLE = 'ph_active_request';
 export const REQUEST_LIVE_TABLE = REQUEST_TABLE;
 export const INVENTORY_TABLE = 'ph_master_inventory';
@@ -252,6 +252,7 @@ export async function fetchInventoryPage(options: PageOptions = {}): Promise<Pag
     await cacheInventoryPage(page, pageSize, rows);
     return { rows, page, pageSize, total: count || rows.length, source: 'sandbox' };
   } catch (error) {
+    if (options.signal?.aborted || (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')) throw error;
     const rows = await readCachedInventoryPage(page, pageSize);
     if (!rows.length) throw error;
     return { rows, page, pageSize, total: rows.length, source: 'cache' };
