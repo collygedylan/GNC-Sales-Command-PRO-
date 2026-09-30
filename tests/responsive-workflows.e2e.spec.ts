@@ -2144,6 +2144,61 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
   }
 });
 
+test('Phone Reclass inquiry fits narrow screens and preserves optional location drafts', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/?e2e=reclass-mobile-density', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).openArgosInventoryTransactionModal === 'function');
+  await page.evaluate(() => {
+    const rows = [0, 1].map(index => ({
+      UNIQUE_ID: `mobile-density-${index}`, ITEMCODE: 'DENSITY.001', COMMONNAME: 'Mobile Density Item',
+      CONTSIZE: '#1', LOTCODE: `27.F${index + 1}`, LOCATIONCODE: `F.${index + 1}.000`,
+      SEASON: 'F1', SALEYEAR: '27', SOURCE: 'LD', PRIORITY: '1',
+      PTRONHAND: '209', PTRREVIEWED: '10', PTRAVAILABLE: '199',
+      LOCATIONPTN1: '', LOCATIONNOTE: '', SOURCE_TABLE: 'ph_master_inventory',
+    }));
+    (window as any).processAndLoadData({ data: rows, _fromCache: true });
+    (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: 27 });
+    (window as any).openArgosInventoryTransactionModal('mobile-density-0', 'reclass', '');
+  });
+  const modal = page.locator('#argos-inventory-transaction-modal');
+  const origin = modal.locator('[data-reclass-row-card="mobile-density-0"]');
+  const details = origin.locator('[data-reclass-location-details]');
+  await expect(modal).toBeVisible();
+  await expect(details).toHaveJSProperty('open', false);
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    for (const reviewVisible of [false, true]) {
+      await modal.locator('#argos-inventory-transaction-review').evaluate((button, visible) => button.classList.toggle('hidden', !visible), reviewVisible);
+      const layout = await modal.evaluate((element) => {
+        const footer = element.querySelector('.argos-tx-footer')!;
+        const email = element.querySelector('#argos-inventory-transaction-apply')!;
+        const review = element.querySelector('#argos-inventory-transaction-review')!;
+        const footerRect = footer.getBoundingClientRect();
+        const emailRect = email.getBoundingClientRect();
+        return { overflow: document.documentElement.scrollWidth - innerWidth,
+          footerRight: footerRect.right, emailRight: emailRect.right,
+          emailWidth: emailRect.width, footerWidth: footerRect.width,
+          emailHeight: emailRect.height, reviewVisible: !review.classList.contains('hidden') };
+      });
+      expect(layout.overflow).toBeLessThanOrEqual(1);
+      expect(layout.footerRight).toBeLessThanOrEqual(width + 1);
+      expect(layout.emailRight).toBeLessThanOrEqual(width + 1);
+      expect(layout.emailHeight).toBeGreaterThanOrEqual(44);
+      if (layout.reviewVisible) expect(layout.emailWidth).toBeGreaterThan(layout.footerWidth * .85);
+    }
+  }
+  await details.locator('summary').click();
+  await expect(details).toHaveJSProperty('open', true);
+  await details.locator('[data-reclass-temporary-field="locationnote"]').fill('Mobile draft preserved');
+  await origin.locator('[data-reclass-v3-action="recount"]').click();
+  await expect(details).toHaveJSProperty('open', true);
+  await expect(details.locator('[data-reclass-temporary-field="locationnote"]')).toHaveValue('Mobile draft preserved');
+  await expect(details.locator('[data-reclass-location-changed]')).toBeVisible();
+  await modal.getByRole('button', { name: 'Cancel' }).click();
+  await expect(modal).toBeHidden();
+});
+
 test('Desktop Reclass row actions preserve combined requests and disclose inquiry-wide Hold / Stop scope', async ({ page }) => {
   test.setTimeout(90_000);
   page.on('dialog', dialog => dialog.accept());
