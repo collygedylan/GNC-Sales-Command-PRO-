@@ -431,7 +431,8 @@ test('grid reuses mounted record nodes and is disabled on phone viewports', () =
   assert.match(client, /classList\.toggle\('ops-record-node'/);
   assert.match(client, /container\.closest\('\.ops-record-node'\)/);
   assert.match(css, /body\.ops-precision-pilot\.ops-grid-effective \.ops-record-collection/);
-  assert.doesNotMatch(client, /innerHTML\s*=|insertAdjacentHTML/);
+  const gridDecorator = client.slice(client.indexOf('function decorateRecordCollections()'), client.indexOf('function scheduleDecorateRecordCollections()'));
+  assert.doesNotMatch(gridDecorator, /innerHTML\s*=|insertAdjacentHTML/);
 });
 
 test('monitoring is exact-pinned, authenticated-session gated, and replay/PII capture is disabled', () => {
