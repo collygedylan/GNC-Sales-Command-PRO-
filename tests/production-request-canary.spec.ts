@@ -242,6 +242,9 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await expect(host.locator('.manager-eval2-drive-controls')).toBeVisible();
   await expect(host.locator('.manager-eval2-drive-tabs')).toHaveCount(0);
   await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
+  if (await host.locator('.mobile-browse-filters').count()) {
+    await host.locator('.mobile-browse-filters > summary').click();
+  }
   await host.getByRole('button', { name: /All Users/i }).click();
   const initialUserSheet = page.locator('#manager-eval-user-picker');
   await initialUserSheet.getByRole('checkbox', { name: /dylan_collyge/i }).click();
