@@ -3,13 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#07874f" />
+    <meta name="theme-color" content="#f4fbf7" />
+    <style>
+      html, body, #root { min-height: 100%; margin: 0; background: #f4fbf7; color: #052e16; }
+      html[data-ops-prepaint-theme="dark"], html[data-ops-prepaint-theme="dark"] body, html[data-ops-prepaint-theme="dark"] #root { background: #050806; color: #f0fdf4; }
+    </style>
+    <script>
+      (() => {
+        let mode = 'light';
+        try {
+          const raw = localStorage.getItem('gnc:v2:sandbox-session');
+          const username = raw ? JSON.parse(raw).username : 'dylan_collyge';
+          mode = localStorage.getItem(`gnc:v2:theme:${username || 'demo'}`) === 'dark' ? 'dark' : 'light';
+        } catch {}
+        document.documentElement.dataset.opsPrepaintTheme = mode;
+        const color = document.querySelector('meta[name="theme-color"]');
+        if (color) color.content = mode === 'dark' ? '#050806' : '#f4fbf7';
+      })();
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="./manifest.webmanifest" />
     <title>GNC Field App v2</title>
-    <script type="module" crossorigin src="./assets/index-gGAC8ZPl.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-RyID3PT8.css">
+    <script type="module" crossorigin src="./assets/index-BK06TBJp.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BqcHjy2E.css">
   </head>
   <body>
     <div id="root"></div>
