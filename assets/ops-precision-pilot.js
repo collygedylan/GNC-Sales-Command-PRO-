@@ -286,16 +286,14 @@
     body.dataset.opsEffectiveDisplay = effectiveDisplay;
     const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) {
-      const darkNav = effectiveTheme === 'dark';
       bottomNav.dataset.resolvedTheme = effectiveTheme;
-      bottomNav.style.setProperty('background-color', darkNav ? '#0b1c16' : '#ffffff', 'important');
-      bottomNav.style.setProperty('background-image', 'none', 'important');
-      bottomNav.style.setProperty('border-color', darkNav ? 'rgba(99, 230, 173, .52)' : '#9eb5a9', 'important');
-      bottomNav.style.setProperty('color', darkNav ? '#d4e5dc' : '#33473e', 'important');
+      for (const property of ['background-color', 'background-image', 'border-color', 'color']) {
+        bottomNav.style.removeProperty(property);
+      }
     }
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (themeColorMeta) {
-      themeColorMeta.setAttribute('content', effectiveTheme === 'dark' ? '#07120e' : '#07874f');
+      themeColorMeta.setAttribute('content', effectiveTheme === 'dark' ? '#050806' : '#f4fbf7');
     }
     writeRememberedDeviceTheme(effectiveTheme);
     if (typeof window.syncGlobalHeaderChrome === 'function') {
