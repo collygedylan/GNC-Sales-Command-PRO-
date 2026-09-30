@@ -8943,3 +8943,71 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
   #drive-content .app-drive-compact-card .app-drive-card-reclass .app-card-bottom-btn { flex-direction: column; width: 68px; padding: 4px 6px !important; gap: 2px !important; font-size: 12px !important; }
 }
 #drive-content .app-drive-compact-card .app-card-qty-value--unknown { font-size: 14px; line-height: 1.4; }
+
+/* Grower inventory uses the Drive Mode card rhythm with row-specific scouting. */
+.grower-workspace{display:grid;gap:10px;min-width:0}
+.grower-mobile-toolbar{position:sticky;top:var(--sticky-rail-offset,0px);z-index:35;display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:6px;align-items:stretch;min-width:0;padding:6px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:12px;background:var(--ops-surface,#fff)}
+.grower-mobile-toolbar.is-scout-view{grid-template-columns:minmax(0,1fr) auto}
+.grower-mobile-toolbar>input,.grower-mobile-toolbar>button,.grower-toolbar-menu>summary{box-sizing:border-box;min-width:0;min-height:44px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;padding:8px;color:var(--ops-text,#153b2c);background:var(--ops-surface-muted,#fff);font-size:12px;font-weight:800}
+.grower-mobile-toolbar>input{font-size:16px;font-weight:600;width:100%}
+.grower-toolbar-menu{position:static;min-width:0}
+.grower-toolbar-menu>summary{display:flex;align-items:center;justify-content:center;list-style:none;cursor:pointer;white-space:nowrap}
+.grower-toolbar-menu>summary::-webkit-details-marker{display:none}
+.grower-cuttings-btn{background:#19d99a!important;color:#052418!important;border-color:#19d99a!important;white-space:nowrap}
+.grower-toolbar-popover{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:40;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;padding:10px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:12px;background:var(--ops-surface,#fff);box-shadow:0 12px 28px #0005}
+.grower-toolbar-popover label{display:grid;gap:3px;min-width:0;font-size:11px;font-weight:800;color:var(--ops-text,#153b2c)}
+.grower-toolbar-popover select,.grower-toolbar-popover button{min-height:44px;min-width:0;width:100%;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;padding:7px;color:var(--ops-text,#153b2c);background:var(--ops-surface-muted,#fff);font-size:16px}
+.grower-inventory-list{display:grid;gap:8px;min-width:0}
+.grower-inventory-count{padding:0 3px;color:var(--ops-text-muted,#62786e);font-size:11px;font-weight:800;text-transform:uppercase}
+.grower-inventory-item,.grower-location-group,.grower-inventory-row{min-width:0;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:12px;background:var(--ops-surface,#fff);overflow:hidden}
+.grower-item-toggle,.grower-row-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:52px;padding:9px 11px;text-align:left;color:var(--ops-text,#153b2c)}
+.grower-item-toggle>span:first-child,.grower-row-toggle>span{min-width:0}
+.grower-item-toggle strong{display:block;font-size:16px;line-height:1.2;overflow-wrap:anywhere}
+.grower-item-toggle small{display:block;margin-top:3px;font-size:11px;font-weight:700;opacity:.75;overflow-wrap:anywhere}
+.grower-quantity-total{flex-shrink:0;text-align:right;color:var(--ops-brand-strong,#007a4d);font-size:11px;line-height:1.3;font-weight:900;white-space:nowrap}
+.grower-location-list{display:grid;gap:7px;padding:7px;border-top:1px solid var(--ops-border-strong,#2c9b6a)}
+.grower-location-total{display:flex;justify-content:space-between;gap:8px;padding:7px 9px;font-size:12px;font-weight:800;color:var(--ops-text,#153b2c)}
+.grower-location-total span{white-space:nowrap}
+.grower-inventory-row{margin:0 5px 5px}
+.grower-row-toggle{min-height:44px;font-size:12px}
+.grower-row-toggle strong{font-size:11px;white-space:nowrap}
+.grower-row-details{display:grid;gap:8px;padding:9px;border-top:1px solid var(--ops-border-strong,#2c9b6a)}
+.grower-scout-input-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.grower-row-details label{display:grid;gap:4px;min-width:0;color:var(--ops-text,#153b2c);font-size:11px;font-weight:800}
+.grower-row-details input,.grower-row-details textarea{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;padding:8px;color:var(--ops-text,#153b2c);background:var(--ops-surface-muted,#fff);font-size:16px;font-weight:600}
+.grower-row-details textarea{min-height:72px;resize:vertical}
+.grower-scout-save,.grower-show-more{min-height:44px;width:100%;border-radius:9px;padding:8px;background:#07874f;color:#fff;font-size:12px;font-weight:900}
+.grower-inventory-empty{padding:18px;text-align:center;color:var(--ops-text-muted,#62786e)}
+.mobile-office-section{display:none}
+@media(max-width:767px){
+  #view-drive #drive-mobile-mode{display:block;width:100%;min-width:0;min-height:44px;padding:6px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;background:var(--ops-surface-muted,#fff);color:var(--ops-text,#153b2c);font-size:16px;font-weight:700}
+  #view-drive #drive-drill-tabs{display:none!important}
+  body.ops-precision-pilot #drive-toolbar-rail.mobile-browse-rail{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(88px,auto)!important;overflow:visible!important;padding-bottom:0!important}
+  #view-drive #drive-toolbar-rail.mobile-browse-rail #drive-season-filters{display:block!important;width:100%!important;min-width:0!important;overflow:visible!important}
+  body.ops-precision-pilot #drive-toolbar-rail.mobile-browse-rail #drive-season-filters .drive-top-controls-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;min-width:0!important}
+  .mobile-browse-rail{position:relative!important;display:grid!important;grid-template-columns:minmax(0,1fr) minmax(88px,auto)!important;gap:6px!important;align-items:stretch!important;min-width:0!important;overflow:visible!important}
+  body.ops-precision-pilot :is(#task-tabs-container.task-top-inline,#drive-plant-filters.drive-top-inline .drive-top-controls-row,#review-plant-filters.drive-top-inline .drive-top-controls-row,#move-up-plant-filters.drive-top-inline .drive-top-controls-row,#av-top-filters.av-top-inline .av-top-controls-row,#docks-filter-controls.docks-top-inline .docks-filter-row,.crop-roll-filter-controls,.manager-crop-roll-review-filter-controls,.workflow-control-rail:not(:has(.docks-filter-row)),#request-dylan-filter-panel.compact-filter-rail,#view-request .request-view-filters,.manager-eval2-drive-controls).mobile-browse-rail{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(88px,auto)!important}
+  .mobile-browse-rail>:first-child{min-width:0!important;width:100%!important;max-width:none!important}
+  .mobile-browse-filters{position:static;min-width:88px;max-width:120px;z-index:65}
+  .mobile-browse-filters>summary{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;min-width:88px;list-style:none;cursor:pointer;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:10px;padding:7px;color:var(--ops-text,#153b2c);background:var(--ops-surface-muted,#fff);font-size:13px;font-weight:800;letter-spacing:normal;text-transform:none}
+  .mobile-browse-filters>summary::-webkit-details-marker{display:none}
+  .mobile-browse-filter-panel{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:65;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;box-sizing:border-box;max-height:min(62vh,450px);overflow:auto;overscroll-behavior:contain;padding:8px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:12px;background:var(--ops-surface,#fff);box-shadow:0 12px 28px #0005}
+  .mobile-browse-filter-panel>*{min-width:0!important;width:100%!important;max-width:none!important;box-sizing:border-box;overflow-wrap:anywhere}
+  .mobile-browse-filter-panel :is(button,select,input){min-width:0;max-width:100%;min-height:44px}
+  #view-sales-office .sales-office-desktop-tabs{display:none!important}
+  #view-sales-office .mobile-office-section{display:block;width:100%;min-height:44px;padding:6px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;background:var(--ops-surface-muted,#fff);color:var(--ops-text,#153b2c);font-size:16px;font-weight:700}
+  #view-sales-office .freeze-panel .flex.items-start{align-items:center!important;margin-bottom:0!important}
+  #view-sales-office #sales-office-crumb,#view-moves #moves-crumb{display:none!important}
+  #view-sales-office #sales-office-export-btn{min-height:44px;white-space:nowrap;padding:6px!important}
+  #view-sales-office #sales-office-export-label{font-size:10px}
+  #view-moves #moves-office-tab-strip{min-width:0;overflow:visible!important;padding:0!important}
+  #view-moves #moves-office-tab-strip>button{display:none!important}
+  #view-moves #moves-office-mobile-section{display:block;width:100%;min-height:44px;padding:6px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;background:var(--ops-surface-muted,#fff);color:var(--ops-text,#153b2c);font-size:16px;font-weight:700}
+  #view-moves .freeze-panel .flex.items-start{align-items:center!important;margin-bottom:0!important}
+  #view-production>.freeze-panel,#view-hl-order>.sticky{display:none!important}
+  #view-production-workflow .production-workflow-header .production-workflow-title{display:none!important}
+  #view-production-workflow .production-workflow-header{justify-content:flex-end!important}
+  .grower-mobile-toolbar{grid-template-columns:minmax(0,1fr) auto auto auto}
+  .grower-mobile-toolbar.is-scout-view{grid-template-columns:minmax(0,1fr) auto}
+  .grower-mobile-toolbar>button,.grower-toolbar-menu>summary{padding:6px;font-size:11px}
+}

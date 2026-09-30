@@ -446,9 +446,65 @@
         });
       });
       scheduleDecorateRecordCollections();
+      scheduleCompactBrowseRails();
       scheduleLayoutHealthCheck('mutation');
     });
     mutationObserver.observe(wrapper, { childList: true, subtree: true });
+  }
+
+  const BROWSE_RAIL_SELECTOR = [
+    '#drive-toolbar-rail',
+    '#drive-plant-filters.drive-top-inline .drive-top-controls-row',
+    '#review-plant-filters.drive-top-inline .drive-top-controls-row',
+    '#move-up-plant-filters.drive-top-inline .drive-top-controls-row',
+    '#av-top-filters.av-top-inline .av-top-controls-row',
+    '#docks-filter-controls.docks-top-inline .docks-filter-row',
+    '#task-tabs-container.task-top-inline',
+    '.crop-roll-filter-controls',
+    '.manager-crop-roll-review-filter-controls',
+    '#request-dylan-filter-panel.compact-filter-rail',
+    '#view-request .request-view-filters',
+    '.manager-eval2-drive-controls',
+    '.workflow-control-rail:not(:has(.docks-filter-row))'
+  ].join(',');
+  const compactBrowseRailState = new WeakMap();
+  let compactBrowseRailFrame = 0;
+
+  function decorateCompactBrowseRails() {
+    compactBrowseRailFrame = 0;
+    const mobile = window.innerWidth <= 767;
+    document.querySelectorAll(BROWSE_RAIL_SELECTOR).forEach((rail) => {
+      const saved = compactBrowseRailState.get(rail);
+      if (!mobile) {
+        if (saved && saved.details.isConnected) {
+          saved.children.forEach((child) => { if (child.isConnected) rail.appendChild(child); });
+          if (saved.reportGrid && saved.report && saved.reportGrid.isConnected) saved.reportGrid.prepend(saved.report);
+          saved.details.remove();
+          rail.classList.remove('mobile-browse-rail');
+          compactBrowseRailState.delete(rail);
+        }
+        return;
+      }
+      if (saved && saved.details.isConnected) return;
+      const reportGrid = rail.matches('.manager-eval2-drive-controls') ? rail.querySelector(':scope > .manager-eval2-drive-filter-grid') : null;
+      const report = reportGrid && reportGrid.firstElementChild;
+      if (report && reportGrid.children.length > 1) rail.insertBefore(report, reportGrid);
+      const children = Array.from(rail.children).filter((child) => !child.matches('.task-top-control-panel,.excel-filter-panel'));
+      if (children.length < 3) return;
+      const details = document.createElement('details');
+      details.className = 'mobile-browse-filters';
+      details.innerHTML = '<summary>Filters</summary><div class="mobile-browse-filter-panel"></div>';
+      const panel = details.lastElementChild;
+      children.slice(1).forEach((child) => panel.appendChild(child));
+      rail.appendChild(details);
+      rail.classList.add('mobile-browse-rail');
+      compactBrowseRailState.set(rail, { children, details, reportGrid, report });
+    });
+  }
+
+  function scheduleCompactBrowseRails() {
+    if (compactBrowseRailFrame) return;
+    compactBrowseRailFrame = window.requestAnimationFrame(decorateCompactBrowseRails);
   }
 
   function requestPreferenceSave() {
@@ -1024,6 +1080,7 @@
 
   window.addEventListener('resize', () => {
     applyUiState();
+    scheduleCompactBrowseRails();
     scheduleLayoutHealthCheck('resize');
   }, { passive: true });
   window.addEventListener('online', () => requestPreferenceSave(), { passive: true });
@@ -1031,10 +1088,12 @@
     document.addEventListener('DOMContentLoaded', () => {
       schedulePremiumDecorations();
       installMutationObserver();
+      scheduleCompactBrowseRails();
     }, { once: true });
   } else {
     schedulePremiumDecorations();
     installMutationObserver();
+    scheduleCompactBrowseRails();
   }
 
   window.__gncOpsPilot = Object.freeze({
