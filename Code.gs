@@ -9264,81 +9264,44 @@ function isHlTagsSocRowEligible_(row) {
 }
 
 function hlTagsMasterKey_(row) {
-  return JSON.stringify(['itemcode', 'contsize', 'locationcode', 'lotcode'].map(function(field) {
-    return hlTagsValue_(row && row[field]).toUpperCase();
+  const seasonLot = row && row.season_lot !== undefined ? row.season_lot : row && row.lotcode;
+  return JSON.stringify([row && row.itemcode, row && row.contsize, seasonLot].map(function(value) {
+    return hlTagsValue_(value).toUpperCase();
   }));
 }
 
-function fetchHlTagsMasterChunk_(filters) {
-  const prefix = SUPABASE_URL + '/rest/v1/ph_master_inventory?select=unique_id,itemcode,contsize,locationcode,lotcode,ptravailable&or='
-    + encodeURIComponent('(' + filters.join(',') + ')') + '&order=unique_id.asc&limit=500&offset=';
-  let expectedTotal = null;
-  let offset = 0;
-  const completeRows = [];
-  try {
-    while (true) {
-      const response = UrlFetchApp.fetch(prefix + offset, { method: 'get', muteHttpExceptions: true,
-        headers: getSupabaseHeadersForKey_(SUPABASE_KEY, { Prefer: 'count=exact' }) });
-      if (response.getResponseCode() !== 200 && response.getResponseCode() !== 206) return null;
-      const rows = JSON.parse(response.getContentText());
-      const headers = response.getHeaders();
-      const rangeHeader = Object.keys(headers).find(function(key) { return key.toLowerCase() === 'content-range'; });
-      const range = String(rangeHeader ? headers[rangeHeader] : '').match(/^(?:(\d+)-(\d+)|\*)\/(\d+)$/);
-      if (!Array.isArray(rows) || !range) return null;
-      const total = Number(range[3]);
-      // A capped, failed, or changing result must not turn a partial match into a unique match.
-      if (!Number.isSafeInteger(total) || total > 10000 || (expectedTotal !== null && expectedTotal !== total)) return null;
-      expectedTotal = total;
-      if (!total) return rows.length === 0 ? [] : null;
-      if (!rows.length || Number(range[1]) !== offset || Number(range[2]) !== offset + rows.length - 1 || offset + rows.length > total) return null;
-      completeRows.push.apply(completeRows, rows);
-      offset += rows.length;
-      if (offset === total) return completeRows;
-    }
-  } catch (error) {
-    // Availability is optional. Keep it unknown if the entire lookup cannot be verified.
-    return null;
-  }
+function fetchHlTagsAvailabilityChunk_(itemcodes) {
+  const safeCodes = Array.from(new Set((Array.isArray(itemcodes) ? itemcodes : []).map(function(value) {
+    return hlTagsValue_(value).toUpperCase();
+  }).filter(function(value) { return value && value.indexOf('*') === -1; })));
+  if (!safeCodes.length) return [];
+  return callSupabaseRpc_('hl_order_inventory_availability', { p_itemcodes: safeCodes });
 }
 
 function enrichHlTagsAvailability_(rows) {
   const itemcodes = Array.from(new Set(rows.map(function(row) { return hlTagsValue_(row.itemcode).toUpperCase(); })))
     .filter(function(value) { return value && value.indexOf('*') === -1; });
   const matches = new Map();
-  let filters = [];
-  let filterLength = 250;
-  function readChunk() {
-    const found = fetchHlTagsMasterChunk_(filters);
-    if (found) found.forEach(function(row) {
-      const id = hlTagsValue_(row && row.unique_id);
-      const key = hlTagsMasterKey_(row);
-      if (!matches.has(key)) matches.set(key, new Map());
-      const byId = matches.get(key);
-      const quantityText = hlTagsValue_(row && row.ptravailable).replace(/,/g, '');
-      const quantity = quantityText ? Number(quantityText) : NaN;
-      const available = Number.isFinite(quantity) && quantity >= 0 ? quantity : null;
-      // Missing identities and conflicting duplicate rows cannot prove one available location.
-      if (!id) { byId.set('', null); return; }
-      if (byId.has(id) && byId.get(id) !== available) byId.set(id, null);
-      else if (!byId.has(id)) byId.set(id, available);
-    });
-    filters = [];
-    filterLength = 250;
+  for (let offset = 0; offset < itemcodes.length; offset += 500) {
+    try {
+      const availabilityRows = fetchHlTagsAvailabilityChunk_(itemcodes.slice(offset, offset + 500));
+      if (!Array.isArray(availabilityRows)) continue;
+      availabilityRows.forEach(function(row) {
+        const key = hlTagsMasterKey_(row);
+        const rawBalance = row && row.computed_balance;
+        const text = rawBalance === null || rawBalance === undefined ? '' : String(rawBalance).replace(/,/g, '').trim();
+        const parsed = text && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text) ? Number(text) : NaN;
+        const balance = Number.isFinite(parsed) ? parsed : null;
+        if (matches.has(key) && matches.get(key) !== balance) matches.set(key, null);
+        else if (!matches.has(key)) matches.set(key, balance);
+      });
+    } catch (error) {
+      // Availability is optional; failed or missing tuples stay unknown.
+      console.warn('[HL TAGS] Availability RPC unavailable; leaving balances unknown: ' + (error && error.message ? error.message : error));
+    }
   }
-  itemcodes.forEach(function(itemcode) {
-    // Surrounding wildcards admit whitespace/case variants; the full four-field key is checked below.
-    const pattern = '%' + itemcode.replace(/[\\%_]/g, '\\$&') + '%';
-    const filter = 'itemcode.ilike."' + pattern.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
-    const length = encodeURIComponent(filter).length + 3;
-    if (length > 1400) return;
-    if (filters.length && (filters.length >= 20 || filterLength + length > 1750)) readChunk();
-    filters.push(filter);
-    filterLength += length;
-  });
-  if (filters.length) readChunk();
   return rows.map(function(row) {
-    const byId = matches.get(hlTagsMasterKey_(row));
-    const available = byId && byId.size === 1 && !byId.has('') ? Array.from(byId.values())[0] : null;
+    const available = matches.has(hlTagsMasterKey_(row)) ? matches.get(hlTagsMasterKey_(row)) : null;
     return Object.assign({}, row, { ptravailable: available === null || available === undefined ? '' : available });
   });
 }

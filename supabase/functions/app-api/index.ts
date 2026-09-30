@@ -2431,6 +2431,9 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   let query = String(payload.query || "").trim();
 
   if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) return errorResponse("Unsupported method.", 400);
+  if (table === "ph_master_inventory" && method === "GET") {
+    return errorResponse("Use the role-checked inventory_read operations.", 410, { code: "INVENTORY_READ_API_REQUIRED" });
+  }
   if (method === "GET") {
     if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
   } else if (!hasTableWriteAccess(session.role, table, method, body, session.username)) {
@@ -2462,6 +2465,248 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
     return errorResponse("Database request failed.", response.status, { details: responsePayload });
   }
   return jsonResponse({ ok: true, data: responsePayload });
+}
+
+const INVENTORY_MASTER_INITIAL_FIELDS = [
+  "unique_id", "warehouseid", "plantgroupcode", "itemcode", "qualitycode", "contsize", "commonname",
+  "lotcode", "locationcode", "source", "desigitem", "desigcust", "desigloc", "priority", "ptravailable", "s_lts", "season_supply", "saleyear",
+  "itemspec", "locationnote", "locationnotedate", "fieldtagcolor", "holdstopcode", "holdstopreason", "holdstopbegindate", "season", "blockalpha", "blocknumber",
+  "hold_release_approved_at", "hold_release_approved_by", "hold_release_approved_by_display", "hold_release_approved_holdstopbegindate",
+  "app_tab_assignment", "assignedto", "date_completed", "av_note", "sales_note", "salesnote", "match", "loc_match_qty", "initial_ptr", "spec", "caliper",
+  "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at",
+  "av_rule_priority_snapshot", "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at",
+  "eval_task_type", "eval_task_status", "eval_task_instructions", "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by", "eval_task_completed_at",
+  "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action", "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note",
+  "photo_link", "photo_name", "dock_photo_link", "dock_photo_name", "flyer_photo_link", "flyer_photo_name", "flyer_completed",
+  "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec", "flyer_caliper", "flyer_pick", "flyer_initial_ptr",
+].join(",");
+const INVENTORY_MASTER_INITIAL_BASE_FIELDS = INVENTORY_MASTER_INITIAL_FIELDS.split(",").filter((field) =>
+  !field.startsWith("hold_release_") && !field.startsWith("av_rule_")
+).join(",");
+const INVENTORY_PO_DETAIL_FIELDS = "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,app_tab_assignment,priority,season";
+const INVENTORY_NCR_QUEUE_FIELDS = "unique_id,warehouseid,plantgroupcode,itemcode,qualitycode,contsize,commonname,itemspec,locationcode,lotcode,source,desigitem,desigcust,desigloc,priority,ptronhand,ptravailable,s_lts,saleyear,season,locationnote,locationnotedate,locationptn1,fieldtagcolor,holdstopcode,holdstopreason,holdstopbegindate,last_updated,photo_link,photo_name,dock_photo_link,dock_photo_name,flyer_photo_link,flyer_photo_name,flyer_completed,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,av_note,sales_note,salesnote,match,loc_match_qty,initial_ptr,spec,caliper,ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at,ncr_approval_message,hold_release_approved_at,hold_release_approved_by,hold_release_approved_by_display,hold_release_approved_holdstopbegindate,app_tab_assignment,assignedto,eval_task_type,eval_task_status,eval_task_instructions,eval_task_assigned_by,eval_task_assigned_at,eval_task_completed_by,eval_task_completed_at,eval_task_recount_qty,eval_task_moved_up_qty,eval_task_hold_action,eval_task_hold_code,eval_task_hold_reason,eval_task_result_note";
+const INVENTORY_NOT_ON_INVENTORY_FIELDS = "unique_id,warehouseid,plantgroupcode,itemcode,qualitycode,contsize,commonname,itemspec,locationcode,lotcode,source,desigitem,desigcust,desigloc,priority,ptronhand,ptravailable,s_lts,saleyear,season,locationnote,locationnotedate,locationptn1,fieldtagcolor,holdstopcode,holdstopreason,holdstopbegindate,last_updated,photo_link,photo_name,dock_photo_link,dock_photo_name,flyer_photo_link,flyer_photo_name,flyer_completed,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,av_note,sales_note,salesnote,match,loc_match_qty,initial_ptr,spec,caliper,app_tab_assignment,assignedto";
+const INVENTORY_NCR_ASSIGNMENT_TYPES = new Set(["new-crop", "move-up", "move-down", "hold-release", "recount"]);
+const INVENTORY_NCR_FIRST_STAGE_USERS = new Set(["dylan_collyge", "megan_kelly"]);
+const INVENTORY_NCR_JD_STAGE_USERS = new Set(["jd_jones", "megan_kelly"]);
+const INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS = new Set(["not_on_inventory_dylan", "not_on_inventory_jd"]);
+const INVENTORY_SCHEMA_CAPABILITY_FIELDS: Record<string, string> = {
+  evalTask: "eval_task_type,eval_task_status,eval_task_instructions,eval_task_assigned_by,eval_task_assigned_at,eval_task_completed_by,eval_task_completed_at,eval_task_recount_qty,eval_task_moved_up_qty,eval_task_hold_action,eval_task_hold_code,eval_task_hold_reason,eval_task_result_note",
+  ncrApproval: "ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at,ncr_approval_message",
+  holdRelease: "hold_release_approved_at,hold_release_approved_by,hold_release_approved_by_display,hold_release_approved_holdstopbegindate",
+  avRules: "av_rule_bundle_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot",
+  flyerShadow: "flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name",
+};
+
+function inventoryReadParams(payload: Record<string, unknown>, allowed: string[]) {
+  if (payload.params !== undefined && (!payload.params || typeof payload.params !== "object" || Array.isArray(payload.params))) throw new Error("INVENTORY_READ_PARAMETERS_INVALID");
+  const params = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
+    ? payload.params as Record<string, unknown>
+    : {};
+  if (Object.keys(payload).some((key) => !["action", "operation", "params"].includes(key))) throw new Error("INVENTORY_READ_PAYLOAD_INVALID");
+  if (Object.keys(params).some((key) => !allowed.includes(key))) throw new Error("INVENTORY_READ_PARAMETERS_INVALID");
+  return params;
+}
+
+function inventoryReadPageBounds(params: Record<string, unknown>) {
+  const requestedLimit = Number(params.limit ?? 250);
+  const requestedOffset = Number(params.offset ?? 0);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || !Number.isInteger(requestedOffset) || requestedOffset < 0 || requestedOffset > 2_000_000) {
+    throw new Error("INVENTORY_READ_PAGE_INVALID");
+  }
+  return { limit: Math.min(500, requestedLimit), offset: requestedOffset };
+}
+
+function inventoryActorQueueAssignments(username: string) {
+  const safeUsername = normalizeUsername(username);
+  const allowed = new Set<string>();
+  for (const type of INVENTORY_NCR_ASSIGNMENT_TYPES) {
+    if (INVENTORY_NCR_FIRST_STAGE_USERS.has(safeUsername)) allowed.add(`ncr_approval_${type.replace(/-/g, "_")}_dylan`);
+    if (INVENTORY_NCR_JD_STAGE_USERS.has(safeUsername)) allowed.add(`ncr_approval_${type.replace(/-/g, "_")}_jd`);
+    if (INVENTORY_NCR_FIRST_STAGE_USERS.has(safeUsername) || INVENTORY_NCR_JD_STAGE_USERS.has(safeUsername)) {
+      allowed.add(`ncr_outbox_${type.replace(/-/g, "_")}`);
+    }
+  }
+  if (INVENTORY_NCR_FIRST_STAGE_USERS.has(safeUsername)) allowed.add("not_on_inventory_dylan");
+  if (INVENTORY_NCR_JD_STAGE_USERS.has(safeUsername)) allowed.add("not_on_inventory_jd");
+  return allowed;
+}
+
+function inventoryReadQuery(table: string, fields: string, actor: Record<string, unknown>) {
+  let query: any = supabase.from(table).select(fields, { count: "exact" });
+  const role = String(actor.role || "").trim();
+  const access = getRoleAccessState(role);
+  const compactRole = role.toUpperCase().replace(/[^A-Z0-9]+/g, "");
+  if (compactRole.includes("FOREMAN")) {
+    query = query.not("priority", "is", null).not("priority", "in", "(,-,--,---,N/A,NA,NULL,NONE)");
+  }
+  if (access.isRepLike && !access.isAdmin) {
+    query = query.or("season.is.null,season.not.ilike.U3").or("lotcode.is.null,lotcode.not.ilike.%.U3");
+  }
+  return query;
+}
+
+async function handleInventoryRead(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Unauthorized", 401);
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try {
+    actor = await resolveActiveSessionProfile(session);
+  } catch {
+    return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" });
+  }
+  const username = normalizeUsername(String(actor.username || ""));
+  const role = String(actor.role || "");
+  if (!hasTableReadAccess(role, "ph_master_inventory", username)) return errorResponse("Forbidden", 403, { code: "INVENTORY_READ_FORBIDDEN" });
+
+  const operation = String(payload.operation || "").trim().toLowerCase();
+  try {
+    if (operation === "schema_capabilities") {
+      const params = inventoryReadParams(payload, []);
+      const capabilities: Record<string, { available: boolean }> = {};
+      await Promise.all(Object.entries(INVENTORY_SCHEMA_CAPABILITY_FIELDS).map(async ([key, fields]) => {
+        const { error } = await supabase.from("ph_master_inventory").select(fields).limit(0);
+        capabilities[key] = { available: !error };
+      }));
+      return jsonResponse({ ok: true, data: { status: "checked", capabilities } });
+    }
+
+    if (operation === "master_page") {
+      const params = inventoryReadParams(payload, ["dataset", "projection", "uniqueId", "itemCode", "locationCode", "lotCode", "source", "season", "limit", "offset"]);
+      const { limit, offset } = inventoryReadPageBounds(params);
+      const dataset = String(params.dataset || "").trim();
+      const projection = String(params.projection || "initial").trim();
+      if (!["master", "avOpen", "lookup"].includes(dataset) || !["initial", "initial_base", "full"].includes(projection)) throw new Error("INVENTORY_READ_OPERATION_INVALID");
+      const uniqueId = String(params.uniqueId || "").trim();
+      const itemCode = String(params.itemCode || "").trim();
+      const locationCode = String(params.locationCode || "").trim();
+      const lotCode = String(params.lotCode || "").trim();
+      const source = String(params.source || "").trim();
+      const season = String(params.season || "").trim();
+      if (dataset === "lookup" && !uniqueId && !itemCode) throw new Error("INVENTORY_READ_FILTER_REQUIRED");
+      if (dataset === "lookup" && !uniqueId && (locationCode || lotCode || source) && !(locationCode && lotCode && source)) throw new Error("INVENTORY_READ_FILTER_INVALID");
+      if (dataset !== "lookup" && (uniqueId || itemCode || locationCode || lotCode || source || season)) throw new Error("INVENTORY_READ_FILTER_INVALID");
+      if (dataset === "avOpen" && projection === "initial") throw new Error("INVENTORY_READ_PROJECTION_INVALID");
+      if (dataset === "avOpen" && season) throw new Error("INVENTORY_READ_FILTER_INVALID");
+      const fields = dataset === "avOpen" || projection === "full" ? "*"
+        : projection === "initial_base" ? INVENTORY_MASTER_INITIAL_BASE_FIELDS : INVENTORY_MASTER_INITIAL_FIELDS;
+      let response = inventoryReadQuery("ph_master_inventory", fields, actor);
+      if (dataset === "avOpen") response.in("season", ["F1", "S1", "U1", "U2"]);
+      if (dataset === "lookup") {
+        if (uniqueId) response.eq("unique_id", uniqueId);
+        else {
+          response.eq("itemcode", itemCode);
+          if (locationCode && lotCode && source) response.eq("locationcode", locationCode).eq("lotcode", lotCode).eq("source", source);
+        }
+      }
+      if (season) response.eq("season", season);
+      response = response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
+      const { data, error, count } = await response;
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
+    }
+
+    if (operation === "master_delta") {
+      const params = inventoryReadParams(payload, ["since", "limit", "offset"]);
+      const { limit, offset } = inventoryReadPageBounds(params);
+      const since = String(params.since || "").trim();
+      if (!since || !Number.isFinite(Date.parse(since))) throw new Error("INVENTORY_READ_SINCE_INVALID");
+      const response = inventoryReadQuery("ph_master_inventory", "*", actor);
+      response.gt("last_updated", since);
+      response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
+      const { data, error, count } = await response;
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
+    }
+
+    if (operation === "po_detail") {
+      const params = inventoryReadParams(payload, ["itemCode", "contSize", "limit", "offset"]);
+      const { limit, offset } = inventoryReadPageBounds(params);
+      const itemCode = String(params.itemCode || "").trim();
+      const contSize = String(params.contSize || "").trim();
+      if (!itemCode || !contSize) throw new Error("PO_DETAIL_FILTER_REQUIRED");
+      if (!await resolveModuleAllowed(supabase, actor, "po-management")) return errorResponse("Forbidden", 403, { code: "PO_ACCESS_FORBIDDEN" });
+      const response = inventoryReadQuery("ph_master_inventory", INVENTORY_PO_DETAIL_FIELDS, actor);
+      response.eq("itemcode", itemCode).eq("contsize", contSize);
+      response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
+      const { data, error, count } = await response;
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
+    }
+
+    if (operation === "recount_queue" || operation === "ncr_queue" || operation === "not_on_inventory_queue") {
+      const allowedParams = operation === "ncr_queue" ? ["queueType", "assignment", "limit", "offset"]
+        : operation === "not_on_inventory_queue" ? ["assignment", "limit", "offset"] : ["limit", "offset"];
+      const params = inventoryReadParams(payload, allowedParams);
+      const { limit, offset } = inventoryReadPageBounds(params);
+      let assignment = "ncr_inventory_recount";
+      let fields = "*";
+      let updatedAtFirst = true;
+      if (operation === "ncr_queue") {
+        const queueType = String(params.queueType || "").trim();
+        assignment = String(params.assignment || "").trim().toLowerCase();
+        if (!INVENTORY_NCR_ASSIGNMENT_TYPES.has(queueType)) throw new Error("NCR_QUEUE_TYPE_INVALID");
+        const expected = inventoryActorQueueAssignments(username);
+        const assignmentType = queueType.replace(/-/g, "_");
+        if (!expected.has(assignment) || ![`ncr_approval_${assignmentType}_dylan`, `ncr_approval_${assignmentType}_jd`, `ncr_outbox_${assignmentType}`].includes(assignment)) {
+          return errorResponse("Forbidden", 403, { code: "QUEUE_ASSIGNMENT_FORBIDDEN" });
+        }
+        fields = INVENTORY_NCR_QUEUE_FIELDS;
+        updatedAtFirst = false;
+      } else if (operation === "not_on_inventory_queue") {
+        assignment = String(params.assignment || "").trim().toLowerCase();
+        if (!INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS.has(assignment) || !inventoryActorQueueAssignments(username).has(assignment)) {
+          return errorResponse("Forbidden", 403, { code: "QUEUE_ASSIGNMENT_FORBIDDEN" });
+        }
+        fields = INVENTORY_NOT_ON_INVENTORY_FIELDS;
+        updatedAtFirst = false;
+      } else if (!FULL_ACCESS_USER_KEYS.has(username) && !getRoleAccessState(role).isAdmin && !getRoleAccessState(role).isQcSupervisor) {
+        return errorResponse("Forbidden", 403, { code: "QUEUE_ASSIGNMENT_FORBIDDEN" });
+      }
+      let query: any = supabase.from("ph_master_inventory").select(fields, { count: "exact" }).eq("app_tab_assignment", assignment);
+      query = updatedAtFirst ? query.order("last_updated", { ascending: false, nullsFirst: false }).order("unique_id", { ascending: true })
+        : query.order("unique_id", { ascending: true });
+      const { data, error, count } = await query.range(offset, offset + limit - 1);
+      if (error) throw error;
+      const rows = Array.isArray(data) ? data : [];
+      return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
+    }
+
+    if (operation === "verify_row") {
+      const params = inventoryReadParams(payload, ["kind", "uniqueId", "expectedAssignment", "expectedAssignee"]);
+      const kind = String(params.kind || "").trim();
+      const uniqueId = String(params.uniqueId || "").trim();
+      const assignment = String(params.expectedAssignment || "").trim().toLowerCase();
+      const assignee = normalizeUsername(String(params.expectedAssignee || ""));
+      if (!["ncr_approval", "not_on_inventory"].includes(kind) || !uniqueId || !assignment) throw new Error("INVENTORY_ROW_VERIFICATION_INVALID");
+      const actorAssignments = inventoryActorQueueAssignments(username);
+      if (!actorAssignments.has(assignment)) return errorResponse("Forbidden", 403, { code: "QUEUE_ASSIGNMENT_FORBIDDEN" });
+      if (kind === "not_on_inventory" && !INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS.has(assignment)) throw new Error("INVENTORY_ROW_VERIFICATION_INVALID");
+      const { data, error } = await supabase.from("ph_master_inventory").select("unique_id,app_tab_assignment,assignedto").eq("unique_id", uniqueId).maybeSingle();
+      if (error) throw error;
+      const row = data as Record<string, unknown> | null;
+      if (!row) return jsonResponse({ ok: true, data: { status: "missing", matches: false } });
+      const assignmentMatches = String(row.app_tab_assignment || "").trim().toLowerCase() === assignment;
+      const assigneeMatches = !Object.prototype.hasOwnProperty.call(params, "expectedAssignee")
+        || normalizeUsername(String(row.assignedto || "")) === assignee;
+      const matches = assignmentMatches && assigneeMatches;
+      return jsonResponse({ ok: true, data: { status: matches ? "matched" : "mismatch", matches } });
+    }
+
+    return errorResponse("Unsupported inventory read operation.", 400, { code: "INVENTORY_READ_OPERATION_INVALID" });
+  } catch (error) {
+    const message = String(error instanceof Error ? error.message : error || "INVENTORY_READ_FAILED");
+    if (/PAYLOAD_INVALID|PARAMETERS_INVALID|PAGE_INVALID|OPERATION_INVALID|FILTER_INVALID|FILTER_REQUIRED|PROJECTION_INVALID|SINCE_INVALID|TYPE_INVALID|VERIFICATION_INVALID/.test(message)) {
+      return errorResponse("Invalid inventory read request.", 400, { code: message });
+    }
+    return errorResponse("Inventory data is temporarily unavailable.", 503, { code: "INVENTORY_READ_FAILED", retryable: true });
+  }
 }
 
 async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, req: Request) {
@@ -2699,6 +2944,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
+  if (action === "inventory_read") return await handleInventoryRead(session, payload);
   if (action === "db") {
     if (session && session.ver >= 2) {
       return errorResponse("Native Auth sessions must use PostgREST with RLS for database access.", 410, {

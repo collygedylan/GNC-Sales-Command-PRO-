@@ -168,7 +168,17 @@ async function installPendingRequestFixture(page: Page, baseURL: string, initial
   const reads: string[] = [];
   const fixture = await installColdFixture(page, baseURL, {
     beforeLogin: async () => {
-      await page.route(/\/rest\/v1\/(?:ph_request_queue_live_rows|ph_active_request_live_rows|ph_master_inventory|ph_request_history|ph_sales_credit_requests|ph_inventory_edit_requests|ph_customer_consignee_sales_reps)(?:\?|$)/, async route => {
+      await page.route('**/functions/v1/app-api', async route => {
+        const body = route.request().postDataJSON() || {};
+        if (body.action !== 'inventory_read' || !['master_page', 'master_delta'].includes(body.operation)) return route.fallback();
+        reads.push('ph_master_inventory');
+        if (mode === 'failed') return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic inventory read failure' }) });
+        await unrelatedGate;
+        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: {
+          rows: [], total: 0, offset: body.params?.offset || 0, limit: body.params?.limit || 500, hasMore: false
+        } }) });
+      });
+      await page.route(/\/rest\/v1\/(?:ph_request_queue_live_rows|ph_active_request_live_rows|ph_request_history|ph_sales_credit_requests|ph_inventory_edit_requests|ph_customer_consignee_sales_reps)(?:\?|$)/, async route => {
         const table = new URL(route.request().url()).pathname.split('/').pop() || '';
         reads.push(table);
         const headers = {
@@ -181,7 +191,7 @@ async function installPendingRequestFixture(page: Page, baseURL: string, initial
           if (mode === 'failed') return fulfill({ message: 'Synthetic required request read failure' }, 500);
           return fulfill(mode === 'rows' ? [pendingRequestRow] : []);
         }
-        if (['ph_master_inventory', 'ph_inventory_edit_requests', 'ph_customer_consignee_sales_reps'].includes(table)) {
+        if (['ph_inventory_edit_requests', 'ph_customer_consignee_sales_reps'].includes(table)) {
           await unrelatedGate;
           return fulfill({ message: `Synthetic held ${table} failure` }, 500);
         }
@@ -541,8 +551,20 @@ test('Tasks verifies both AV Blank inputs without waiting for unopened task cate
 
 
 test('Drive previews same-permission cache before revisions and keeps it display-only through import and failure', async ({ page, baseURL }, testInfo) => {
+  const forbiddenMasterReads: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (request.method() === 'GET' && url.pathname === '/rest/v1/ph_master_inventory') forbiddenMasterReads.push(request.url());
+  });
   const fixture = await installColdFixture(page, baseURL!);
   await page.locator('#home-tile-drive').click(); await waitForVerifiedDrive(page);
+  fixture.master[0].last_updated = '2026-09-01T12:00:00.000Z';
+  const deltaIds = await page.evaluate(async () => {
+    const rows = await window.eval(`fetchAllInventoryReadRows('master_delta', { since: '2026-01-01T00:00:00.000Z' }, { limit: 500 })`);
+    return rows.map((row: any) => String(row.unique_id || ''));
+  });
+  expect(deltaIds).toContain(String(fixture.master[0].unique_id));
+  expect(fixture.inventoryReadOperations).toContain('master_delta');
   expect(await page.evaluate(() => window.eval('getProductionLiveSyncContext().dataPermissionVersion'))).toBe('hl-policy-1');
   const reads = fixture.backgroundMasterReads;
   fixture.setDatasetSourceState('ph_master_inventory', 'importing');
@@ -612,7 +634,13 @@ test('Drive previews same-permission cache before revisions and keeps it display
     expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
     expect(fixture.backgroundMasterReads).toBe(reads);
     fixture.setDatasetSourceState('ph_master_inventory', 'ready');
-    await page.route(/\/rest\/v1\/ph_master_inventory(?:\?|$)/, route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ message: 'Synthetic refresh failure' }) }));
+    await page.route('**/functions/v1/app-api', async route => {
+      const body = route.request().postDataJSON() || {};
+      if (body.action === 'inventory_read' && ['master_page', 'master_delta'].includes(body.operation)) {
+        return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic refresh failure' }) });
+      }
+      return route.fallback();
+    });
     await page.evaluate(() => window.eval("signalProductionLiveSync('retry-after-import', 0)"));
     await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Needs attention');
     await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Needs attention · Retry');
@@ -622,6 +650,8 @@ test('Drive previews same-permission cache before revisions and keeps it display
     await page.locator('#drawer-logout-btn').click();
     await expect(page.locator('#view-login')).toBeVisible();
   } finally { release(); }
+  expect(forbiddenMasterReads).toEqual([]);
+  expect(fixture.inventoryReadOperations).toContain('master_page');
   expect(fixture.errors).toEqual([]); expect(fixture.blockedMutations).toEqual([]);
 });
 
