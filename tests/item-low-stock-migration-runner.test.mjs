@@ -7,6 +7,7 @@ import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
   perennialAssignmentMigrationName, passwordReconciliationMigrationName, releaseDatabaseMigrations, migrationContractQuery,
+  productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -61,6 +62,46 @@ test('migration and history entry are atomic and a retry verifies the same conte
   const retry={query:async(sql)=>({rows:sql.startsWith('select name')?[{name:'item_low_stock_targets',statements:[migrationBody(source)]}]:sql.startsWith('select to_regprocedure')?[{installed:true}]:[]})};
   assert.equal((await applyItemLowStockMigration({client:retry,source})).status,'already_applied');
   assert.throws(()=>migrationBody('select 1'),/TRANSACTION_REQUIRED/);
+});
+
+test('consolidated production baseline satisfies archived migrations without replay or ledger writes', async () => {
+  assert.equal(productionBaselineVersion, '20260929200000');
+  for (const targetMigrationName of releaseDatabaseMigrations) {
+    const queries = [];
+    const client = { query: async (sql, params) => {
+      queries.push({ sql, params });
+      if (sql.startsWith('select name, statements')) return { rows: [] };
+      if (sql === 'select name from supabase_migrations.schema_migrations where version = $1') {
+        assert.deepEqual(params, [productionBaselineVersion]);
+        return { rows: [{ name: 'production_baseline' }] };
+      }
+      if (sql === migrationContractQuery(targetMigrationName)) return { rows: [{ installed: true }] };
+      return { rows: [] };
+    } };
+    const result = await applyItemLowStockMigration({ client, source: 'begin; select should_not_run; commit;', targetMigrationName });
+    assert.equal(result.status, 'included_in_baseline');
+    assert.equal(queries.at(-1).sql, 'commit');
+    assert.ok(!queries.some(({ sql }) => sql.includes('should_not_run') || sql.startsWith('insert into')));
+  }
+});
+
+test('baseline path fails closed when its identity or required contract is missing', async () => {
+  for (const [baselineName, installed, expected] of [
+    ['unexpected_baseline', true, /MIGRATION_HISTORY_MISMATCH/],
+    ['production_baseline', false, /DATABASE_CONTRACT_MISSING/]
+  ]) {
+    const queries = [];
+    const client = { query: async (sql) => {
+      queries.push(sql);
+      if (sql.startsWith('select name, statements')) return { rows: [] };
+      if (sql === 'select name from supabase_migrations.schema_migrations where version = $1') return { rows: [{ name: baselineName }] };
+      if (sql === migrationContractQuery(migrationName)) return { rows: [{ installed }] };
+      return { rows: [] };
+    } };
+    await assert.rejects(applyItemLowStockMigration({ client, source: 'begin; select should_not_run; commit;' }), expected);
+    assert.equal(queries.at(-1), 'rollback');
+    assert.ok(!queries.some(sql => sql.includes('should_not_run') || sql.startsWith('insert into')));
+  }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
   assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName]);
