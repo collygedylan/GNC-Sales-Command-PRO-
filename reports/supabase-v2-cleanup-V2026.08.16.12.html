@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Supabase v2 Cleanup Report - V2026.08.16.12</title>
+  <style>
+    :root { color-scheme:dark; font-family:Inter,ui-sans-serif,system-ui,sans-serif; background:#07120e; color:#f2fbf6; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:32px 20px 64px; background:#07120e; }
+    main { width:min(960px,100%); margin:auto; }
+    header,.panel { border:1px solid rgba(99,230,173,.34); background:#111c18; border-radius:12px; padding:24px; margin-bottom:18px; }
+    h1 { margin:0 0 8px; font-size:clamp(26px,5vw,42px); }
+    h2 { margin:0 0 14px; font-size:21px; }
+    p,li { color:#cfe0d8; line-height:1.58; }
+    .eyebrow { color:#63e6ad; font-weight:800; letter-spacing:.12em; text-transform:uppercase; font-size:12px; }
+    .metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:20px; }
+    .metric { border:1px solid rgba(99,230,173,.24); background:#0b1712; border-radius:10px; padding:16px; }
+    .metric strong { display:block; color:#63e6ad; font-size:24px; }
+    .metric span { color:#9db4aa; font-size:13px; }
+    code,a { color:#8ef0c2; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Ag Data Solutions - Completed 2026-08-16</div>
+    <h1>Supabase v2 Cleanup Report</h1>
+    <p>Backend report <strong>V2026.08.16.12</strong>. The objects shown in the recording were compatibility views, not duplicate data tables.</p>
+    <div class="metrics">
+      <div class="metric"><strong>72 to 0</strong><span>v2 compatibility views</span></div>
+      <div class="metric"><strong>0</strong><span>physical v2 tables</span></div>
+      <div class="metric"><strong>0</strong><span>rows or files deleted</span></div>
+      <div class="metric"><strong>7.27 GB</strong><span>current logical database</span></div>
+    </div>
+  </header>
+
+  <section class="panel">
+    <h2>What the recording showed</h2>
+    <p>The eye icon beside each <code>v2_</code> name identified an ordinary Postgres view. Each alias read from an existing canonical <code>ph_</code> relation and stored no rows of its own. That is why removing all 72 aliases did not change database size.</p>
+  </section>
+
+  <section class="panel">
+    <h2>What changed</h2>
+    <ul>
+      <li><code>notify-chat</code> was updated from version 8 to 9 to use <code>ph_app_users</code> and <code>ph_chat_members</code>.</li>
+      <li><code>inventory-assistant</code> was updated from version 10 to 11 to use its six canonical <code>ph_</code> relations.</li>
+      <li>All 72 temporary <code>v2_</code> compatibility views were retired.</li>
+      <li>The live app UI, workflows, table rows, and Storage objects were not changed.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Safety and verification</h2>
+    <ul>
+      <li>Remaining <code>v2_</code> objects after cleanup: <strong>0</strong>.</li>
+      <li>Database dependencies on the retired views: <strong>0</strong>.</li>
+      <li>Every drop used <code>RESTRICT</code>; no <code>CASCADE</code> was used.</li>
+      <li>The migration aborted unless it found exactly 72 ordinary views and zero physical <code>v2_</code> objects.</li>
+      <li>Production migration: <code>20260817003458_retire_v2_compatibility_views</code>.</li>
+      <li>Rollback definition: <code>20260802173907_rename_v2_to_ph_compatibility_views</code>.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>What remains</h2>
+    <p>The remaining <code>ph_</code> entries are the canonical production tables and views, not duplicates. The earlier <a href="./supabase-cleanup-V2026.08.16.11.html">empty-table cleanup report</a> explains why 12 currently empty operational tables were intentionally retained.</p>
+  </section>
+</main>
+</body>
+</html>

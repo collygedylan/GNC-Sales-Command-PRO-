@@ -1,0 +1,116 @@
+{
+  "source": "bloomscapes-demo",
+  "rendererSourceCommit": "40c41e7fc2ef20ffd86989693d09cdcdd6d0d8b5",
+  "backendProject": "apztnscvagayslumnalr",
+  "base": "/v2/partner/",
+  "files": [
+    {
+      "path": "assets/index-B5eWPKuw.js",
+      "sha256": "cf8f1169442303877332fc4337f1104447c9ebbcbbb48e02e09d486ffb879d18"
+    },
+    {
+      "path": "assets/index-W24WULL4.css",
+      "sha256": "96a390ac30b9a1655ca336ea7f80c13c586069db21413e99256405f30bcabbdd"
+    },
+    {
+      "path": "fonts.css",
+      "sha256": "b8e686edc66bd646db8db6e1bfd8784cf39ee61fd2c7e87b9729d3137c6367de"
+    },
+    {
+      "path": "index.html",
+      "sha256": "07d67c999b216048feea08dd7cc5ed6bef4dba5e7fd30c7af31aa1cb5cbf4e42"
+    },
+    {
+      "path": "nursery/icon.svg",
+      "sha256": "19137ea7e6628737bf8a7216fc142a10b5f61bde54af9024c882e722a7dce656"
+    },
+    {
+      "path": "nursery/index.html",
+      "sha256": "07d67c999b216048feea08dd7cc5ed6bef4dba5e7fd30c7af31aa1cb5cbf4e42"
+    },
+    {
+      "path": "nursery/manifest.webmanifest",
+      "sha256": "3564f4fbc7ea83ba88e7f99d0c94f145b963cd7cdfb8390ecc908a2c17543e3f"
+    },
+    {
+      "path": "nursery/sw.js",
+      "sha256": "ee92d260ba92b4ff824ed00fb5243d1456818f665220185a77072615574f0ca3"
+    },
+    {
+      "path": "operations/index.html",
+      "sha256": "07d67c999b216048feea08dd7cc5ed6bef4dba5e7fd30c7af31aa1cb5cbf4e42"
+    },
+    {
+      "path": "plants/CREDITS.md",
+      "sha256": "f75c1c2cde41764e9a24232b2f707e216d17401cc08babb27af7fc1c885f0040"
+    },
+    {
+      "path": "plants/coneflower-alt.webp",
+      "sha256": "f7f88ea96deede9ed02623d8b5afc95285e8e76ef36c6817748149e5d887270e"
+    },
+    {
+      "path": "plants/coneflower.webp",
+      "sha256": "62bb3262d0f7467a98730ad6fa3897c55e8d35476aea674d84d63f88aaead864"
+    },
+    {
+      "path": "plants/crapemyrtle.webp",
+      "sha256": "337882d0f7c65238d52cfc0c93a1578a047023061e041aed5979e1fcf74909c1"
+    },
+    {
+      "path": "plants/hosta.webp",
+      "sha256": "fd37fb6ba7e7f33b0a695fad3846c6830a3bc5612fc12574e1d782cc24f01714"
+    },
+    {
+      "path": "plants/hydrangea.webp",
+      "sha256": "1822858a63b0b86cb8cad3e13e9c856b8f0147f057a01528512cfc1fc434e784"
+    },
+    {
+      "path": "plants/japanese-maple.webp",
+      "sha256": "43db957022a0df0181a5ea5e9bf7cd4baa76883db27f78488bc9c751bcf94db7"
+    },
+    {
+      "path": "plants/juniper.webp",
+      "sha256": "a7063f2b2130b07a75b9e7e992d403c66b27a7234d3ff27f553db4d895055fc3"
+    },
+    {
+      "path": "plants/lavender.webp",
+      "sha256": "9a200a34a44a82f725fa05adf43d99f21530a2addbb57844f74d97e1f69d070c"
+    },
+    {
+      "path": "plants/liriope.webp",
+      "sha256": "458e02fbbb6d94ed373434040b7e6ddcd26df3e8cd8e1bcfef4d57e6b99ef7c1"
+    },
+    {
+      "path": "plants/magnolia.webp",
+      "sha256": "0248367335d0b8a0d4bc4d20d9edf9f2acfb999cebbc8d7a43b1f37a8190df08"
+    },
+    {
+      "path": "plants/manifest.json",
+      "sha256": "b1a0898470313a84751c8f5b7ad4a3d6d7aa440fa0330a80b53cd3efa634ea97"
+    },
+    {
+      "path": "plants/muhly-grass.webp",
+      "sha256": "3525e061e11280d0f97d4fa005abcb7e0e2286f0b4e4cec3ed3f5a1e03f72fe7"
+    },
+    {
+      "path": "plants/redbud-alt.webp",
+      "sha256": "ef639c6e46bba8b2c9b450cbf54f59ee9fd564ba0994856bb0100a8d8c325b6a"
+    },
+    {
+      "path": "plants/redbud.webp",
+      "sha256": "da0cb2bb5183a72d6e6af58cc0ad921212707fe7167cbbb94c2d4cf23c2ab715"
+    },
+    {
+      "path": "plants/salvia.webp",
+      "sha256": "40244705022269b8ed37c564c6d73327cd687ae482be79f45cc992386f168510"
+    },
+    {
+      "path": "runtime-config.json",
+      "sha256": "27dcd5b876150687d370fe27b37b864481f800076355d687f876df774640cc62"
+    },
+    {
+      "path": "shop/index.html",
+      "sha256": "07d67c999b216048feea08dd7cc5ed6bef4dba5e7fd30c7af31aa1cb5cbf4e42"
+    }
+  ]
+}

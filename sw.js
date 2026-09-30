@@ -1,20 +1,64 @@
-/* GREENLEAF PROFESSIONAL SERVICE WORKER
+/* AG DATA SOLUTIONS PROFESSIONAL SERVICE WORKER
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.07.02.11';
+const APP_SHELL_BUILD = 'V2026.09.30.004';
+const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
 const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
-const CACHE_NAME = 'greenleaf-v4.3-rebuild-' + APP_SHELL_BUILD;
+const INSTALL_ASSET_TIMEOUT_MS = 8500;
+const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
+// A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
+const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1';
+const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
+const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
+const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
+const IMAGE_CACHE_MAX_ENTRIES = 500;
+const IMAGE_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const IMAGE_CACHE_MAX_BYTES = 100 * 1024 * 1024;
+const OPAQUE_IMAGE_ESTIMATED_BYTES = 2 * 1024 * 1024;
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
-  './Greenleaf Logo.png',
-  'https://cdn.tailwindcss.com',
-  'https://unpkg.com/@phosphor-icons/web',
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
+  './assets/ops-precision-pilot.css',
+  './assets/ops-precision-pilot.js',
+  './assets/eval-reports-engine.js',
+  './assets/photo-history-v2026090401.js',
+  './assets/drive-demand-detail.js',
+  './assets/login-network-trace.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
+  './assets/live-sync-registry.js',
+  './assets/live-sync-adapters.js',
+  './assets/live-sync-coordinator.js',
+  './assets/live-tailwind-v2026082010.min.css',
+  './assets/live-app-runtime-v2026082010.min.js',
+  './assets/live-app-styles-base-v2026090503.css',
+  './assets/live-app-styles-authority-v2026090503.css',
+  './assets/image-optimize-worker-v2026090401.js',
+  './assets/vendor/supabase-browser-2.112.3.min.js',
+  './assets/vendor/fabric-6.7.1.min.mjs',
+  './assets/vendor/phosphor/regular/style.css',
+  './assets/vendor/phosphor/regular/Phosphor.woff2',
+  './assets/vendor/phosphor/bold/style.css',
+  './assets/vendor/phosphor/bold/Phosphor-Bold.woff2',
+  './assets/vendor/phosphor/duotone/style.css',
+  './assets/vendor/phosphor/duotone/Phosphor-Duotone.woff2',
+  './assets/vendor/phosphor/fill/style.css',
+  './assets/vendor/phosphor/fill/Phosphor-Fill.woff2',
+  './assets/vendor/phosphor/light/style.css',
+  './assets/vendor/phosphor/light/Phosphor-Light.woff2',
+  './ag-data-solutions-logo-v2026080925.png',
+  './ag-data-solutions-logo-v2026090503-224.webp',
+  './ag-data-solutions-logo-v2026090503-448.webp',
+  './ag-data-solutions-splash-v2026081709.png',
+  './ag-data-solutions-icon-v2026080925-32.png',
+  './ag-data-solutions-icon-v2026080925-180.png',
+  './ag-data-solutions-icon-v2026080925-192.png',
+  './ag-data-solutions-icon-v2026080925-512.png'
 ];
+const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
+const CONTENT_VERSION_REGEX = /(?:[._-](?:v?20\d{6,}|[a-f0-9]{8,})[._-]|\/assets\/vendor\/)/i;
+const PRIVATE_NETWORK_PATH_REGEX = /\/(?:auth\/v1|rest\/v1|functions\/v1|storage\/v1\/object\/sign)(?:\/|$)/i;
 
 function normalizeShellBuild(value = '') {
   return String(value || '').trim();
@@ -27,9 +71,44 @@ function buildShellUrl(build = '') {
 
 function getRequestUrl(requestOrUrl) {
   try {
-    return new URL(typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl.url, self.location.href);
+    const value = typeof requestOrUrl === 'string' ? requestOrUrl : requestOrUrl && (requestOrUrl.url || requestOrUrl.href);
+    return value ? new URL(value, self.location.href) : null;
   } catch (error) {
     return null;
+  }
+}
+
+function isProductionShellUrl(value) {
+  const url = getRequestUrl(value);
+  const scope = getRequestUrl(self.registration.scope);
+  if (!url || !scope || url.origin !== scope.origin) return false;
+  return url.pathname === scope.pathname || url.pathname === new URL('index.html', scope).pathname;
+}
+
+function isIndependentAppUrl(value) {
+  const url = getRequestUrl(value);
+  const scope = getRequestUrl(self.registration.scope);
+  if (!url || !scope || url.origin !== scope.origin) return false;
+  const appPath = new URL('v2/', scope).pathname;
+  return url.pathname === appPath.slice(0, -1) || url.pathname.startsWith(appPath);
+}
+
+function isIndependentAppRequest(request) {
+  return isIndependentAppUrl(request) || Boolean(request && request.referrer && isIndependentAppUrl(request.referrer));
+}
+
+function isRetiredRootCacheName(name) {
+  // This is the only historical shell-cache namespace established by this worker.
+  // Unknown, Workbox, v2, and partner caches belong to other applications.
+  return String(name).startsWith('ag-data-v4.3-rebuild-') && name !== CACHE_NAME;
+}
+
+async function matchRootCache(request, options) {
+  try {
+    const cache = await caches.open(CACHE_NAME);
+    return await cache.match(request, options);
+  } catch (error) {
+    return undefined;
   }
 }
 
@@ -39,8 +118,24 @@ function getRequestedShellBuild(request) {
   return normalizeShellBuild(requestUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
 }
 
+async function fetchWithTimeout(request, options = {}, timeoutMs = INSTALL_ASSET_TIMEOUT_MS) {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timeoutId = controller ? setTimeout(() => {
+    try { controller.abort(); } catch (error) {}
+  }, Math.max(1000, Number(timeoutMs) || INSTALL_ASSET_TIMEOUT_MS)) : null;
+  try {
+    return await fetch(request, {
+      ...options,
+      signal: controller ? controller.signal : options.signal
+    });
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 async function cacheShellResponse(cache, requestedShellUrl, networkResponse) {
   if (!cache || !requestedShellUrl || !networkResponse || networkResponse.status !== 200) return;
+  if (!isProductionShellUrl(requestedShellUrl) || (networkResponse.url && !isProductionShellUrl(networkResponse.url))) return;
   const responseClone = networkResponse.clone();
   const responseCloneForCurrent = networkResponse.clone();
   const responseCloneForIndex = networkResponse.clone();
@@ -61,7 +156,7 @@ async function getCachedShellFallback(cache, requestedShellUrl, navigationReques
   for (const candidate of candidates) {
     if (!candidate) continue;
     try {
-      const cached = cache ? await cache.match(candidate) : await caches.match(candidate);
+      const cached = cache ? await cache.match(candidate) : await matchRootCache(candidate);
       if (cached) return cached;
     } catch (error) {}
   }
@@ -72,20 +167,146 @@ async function cacheShellInstallAsset(cache, asset) {
   if (!cache || !asset) return;
   try {
     if (String(asset).startsWith('./')) {
-      const response = await fetch(asset, { cache: 'reload', credentials: 'same-origin' });
+      const response = await fetchWithTimeout(asset, { cache: 'reload', credentials: 'same-origin' }, INSTALL_ASSET_TIMEOUT_MS);
       if (response && response.status === 200) {
         await cache.put(asset, response);
       }
       return;
     }
-    await cache.add(asset);
+    const response = await fetchWithTimeout(asset, { cache: 'reload', mode: 'no-cors' }, INSTALL_REMOTE_ASSET_TIMEOUT_MS);
+    if (response) await cache.put(asset, response);
   } catch (error) {}
+}
+
+function getAbsoluteAssetUrl(asset = '') {
+  try {
+    return new URL(String(asset || ''), self.registration.scope).href;
+  } catch (error) {
+    return '';
+  }
+}
+
+function isPrecachedRuntimeAssetUrl(url = null) {
+  if (!url) return false;
+  const href = typeof url === 'string' ? url : url.href;
+  if (!href) return false;
+  return ASSETS_TO_CACHE.some((asset) => getAbsoluteAssetUrl(asset) === href);
+}
+
+function shouldRuntimeCacheRequest(request, response) {
+  if (!request || !response || response.status !== 200) return false;
+  if (isIndependentAppRequest(request)) return false;
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl) return false;
+  if (requestUrl.origin !== self.location.origin) return isPrecachedRuntimeAssetUrl(requestUrl);
+  if (/\/index\.html$/i.test(requestUrl.pathname)) return false;
+  return RUNTIME_CACHE_EXTENSION_REGEX.test(requestUrl.pathname);
+}
+
+function shouldBypassServiceWorkerCache(request) {
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl) return true;
+  if (isIndependentAppRequest(request)) return true;
+  if (requestUrl.origin !== self.location.origin && PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;
+  if (PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;
+  if (/\btoken=|\bsignature=|\bsigned=/i.test(requestUrl.search)) return true;
+  return false;
+}
+
+async function readImageCacheMetadata() {
+  try {
+    const cache = await caches.open(IMAGE_CACHE_METADATA_NAME);
+    const response = await cache.match(IMAGE_CACHE_METADATA_URL);
+    const value = response ? await response.json() : null;
+    return value && typeof value === 'object' && value.entries ? value : { entries: {} };
+  } catch (error) {
+    return { entries: {} };
+  }
+}
+
+async function writeImageCacheMetadata(metadata) {
+  try {
+    const cache = await caches.open(IMAGE_CACHE_METADATA_NAME);
+    await cache.put(IMAGE_CACHE_METADATA_URL, new Response(JSON.stringify(metadata), {
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+    }));
+  } catch (error) {}
+}
+
+function isRuntimeImageRequest(request) {
+  const requestUrl = getRequestUrl(request);
+  if (!requestUrl) return false;
+  if (request && request.destination === 'image') return true;
+  if (/\.(?:png|jpg|jpeg|webp|gif|avif|svg)(?:$|[?#])/i.test(requestUrl.href)) return true;
+  if (/\/storage\/v1\/(?:render\/image|object)\/public\//i.test(requestUrl.pathname)) return true;
+  if (/drive\.google\.com$/i.test(requestUrl.hostname) && /\/(?:thumbnail|uc)$/i.test(requestUrl.pathname)) return true;
+  if (/googleusercontent\.com$/i.test(requestUrl.hostname)) return true;
+  return false;
+}
+
+async function pruneRuntimeImageCache(cache, metadata = null) {
+  if (!cache) return;
+  try {
+    const keys = await cache.keys();
+    const safeMetadata = metadata || await readImageCacheMetadata();
+    const now = Date.now();
+    const entries = keys.map((key) => {
+      const stored = safeMetadata.entries[key.url] || {};
+      return {
+        key,
+        url: key.url,
+        cachedAt: Number(stored.cachedAt || 0),
+        size: Math.max(0, Number(stored.size || OPAQUE_IMAGE_ESTIMATED_BYTES))
+      };
+    }).sort((a, b) => a.cachedAt - b.cachedAt);
+    let totalBytes = entries.reduce((sum, entry) => sum + entry.size, 0);
+    let totalEntries = entries.length;
+    for (const entry of entries) {
+      const expired = !entry.cachedAt || now - entry.cachedAt > IMAGE_CACHE_MAX_AGE_MS;
+      const overflowing = totalEntries > IMAGE_CACHE_MAX_ENTRIES || totalBytes > IMAGE_CACHE_MAX_BYTES;
+      if (!expired && !overflowing) continue;
+      await cache.delete(entry.key).catch(() => false);
+      delete safeMetadata.entries[entry.url];
+      totalEntries -= 1;
+      totalBytes -= entry.size;
+    }
+    await writeImageCacheMetadata(safeMetadata);
+  } catch (error) {}
+}
+
+async function handleRuntimeImageRequest(event) {
+  if (shouldBypassServiceWorkerCache(event.request)) return fetch(event.request);
+  const imageCache = await caches.open(IMAGE_CACHE_NAME).catch(() => null);
+  const cachedResponse = imageCache ? await imageCache.match(event.request, { ignoreVary: true }).catch(() => null) : null;
+  if (cachedResponse) return cachedResponse;
+  const networkResponse = await fetch(event.request).catch(() => null);
+  if (networkResponse) {
+    if (networkResponse.ok || networkResponse.type === 'opaque') {
+      const responseClone = networkResponse.clone();
+      event.waitUntil(
+        caches.open(IMAGE_CACHE_NAME).then(async (cache) => {
+            const metadata = await readImageCacheMetadata();
+            const contentLength = Number(networkResponse.headers.get('content-length') || 0);
+            metadata.entries[event.request.url] = {
+              cachedAt: Date.now(),
+              size: contentLength > 0 ? contentLength : (networkResponse.type === 'opaque' ? OPAQUE_IMAGE_ESTIMATED_BYTES : 0)
+            };
+            await cache.put(event.request, responseClone).catch(() => {});
+            await pruneRuntimeImageCache(cache, metadata);
+          })
+          .catch(() => {})
+      );
+    }
+    return networkResponse;
+  }
+  return matchRootCache(event.request).then((fallback) => fallback || Response.error());
 }
 
 async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   try {
     const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     await Promise.all(clientList.map((client) => {
+      if (!client || !isProductionShellUrl(client.url)) return Promise.resolve();
       try {
         client.postMessage({
           type,
@@ -99,32 +320,40 @@ async function broadcastShellVersion(type = 'GNC_SHELL_VERSION') {
   } catch (error) {}
 }
 
+async function navigateInactiveClientToCurrentShell(clientId = '', reason = 'inactive-shell-update') {
+  const safeClientId = String(clientId || '').trim();
+  if (!safeClientId) return false;
+  try {
+    const client = await self.clients.get(safeClientId);
+    if (!client || typeof client.navigate !== 'function') return false;
+    if (client.visibilityState !== 'hidden' && client.focused !== false) return false;
+    const clientUrl = getRequestUrl(client.url);
+    if (!isProductionShellUrl(clientUrl)) return false;
+    if (clientUrl && clientUrl.searchParams.get('shellr') === APP_SHELL_RUNTIME_REVISION) return false;
+    await client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+async function navigateInactiveClientsToCurrentShell(reason = 'inactive-shell-update') {
+  try {
+    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    await Promise.all(clientList.map((client) => (
+      client && isProductionShellUrl(client.url) && (client.visibilityState === 'hidden' || client.focused === false)
+        ? navigateInactiveClientToCurrentShell(client.id, reason)
+        : Promise.resolve(false)
+    )));
+  } catch (error) {}
+}
+
 function buildAbsoluteShellUrl(build = APP_SHELL_BUILD, reason = '') {
   const shellUrl = new URL(buildShellUrl(build), self.registration.scope);
+  shellUrl.searchParams.set('shellr', APP_SHELL_RUNTIME_REVISION);
   shellUrl.searchParams.set('shellts', String(Date.now()));
   if (reason) shellUrl.searchParams.set('shellreason', String(reason || '').slice(0, 48));
   return shellUrl.href;
-}
-
-function isStaleShellClient(client) {
-  if (!client || !client.url) return false;
-  const clientUrl = getRequestUrl(client.url);
-  if (!clientUrl) return false;
-  const scopeUrl = getRequestUrl(self.registration.scope);
-  if (scopeUrl && clientUrl.origin !== scopeUrl.origin) return false;
-  if (scopeUrl && !clientUrl.href.startsWith(scopeUrl.href)) return false;
-  const clientBuild = normalizeShellBuild(clientUrl.searchParams.get(APP_SHELL_QUERY_PARAM) || '');
-  return clientBuild !== APP_SHELL_BUILD;
-}
-
-async function navigateStaleShellClients(reason = 'activate') {
-  try {
-    const clientList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    await Promise.all(clientList.map((client) => {
-      if (!isStaleShellClient(client) || typeof client.navigate !== 'function') return Promise.resolve(false);
-      return client.navigate(buildAbsoluteShellUrl(APP_SHELL_BUILD, reason)).catch(() => false);
-    }));
-  } catch (error) {}
 }
 
 self.addEventListener('install', (event) => {
@@ -138,16 +367,22 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.map((key) => key !== CACHE_NAME ? caches.delete(key) : Promise.resolve())))
+      .then((keys) => {
+        return Promise.all(keys.filter(isRetiredRootCacheName).map((key) => caches.delete(key)));
+      })
+      .then(() => {
+        if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
+        return self.registration.navigationPreload.enable().catch(() => {});
+      })
       .then(() => self.clients.claim())
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
-      .then(() => navigateStaleShellClients('sw-activate'))
+      .then(() => navigateInactiveClientsToCurrentShell('sw-activated'))
   );
 });
-
 self.addEventListener('message', (event) => {
   const data = event && event.data ? event.data : {};
   if (!data || typeof data !== 'object') return;
+  if (!event.source || !isProductionShellUrl(event.source.url)) return;
   if (data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {
@@ -163,21 +398,35 @@ self.addEventListener('message', (event) => {
     } catch (error) {}
   }
 });
-
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
+function handleProductionFetch(event) {
+  if (isIndependentAppRequest(event.request)) return;
+  // A root registration may temporarily control /v2 before its own worker installs.
+  // It must never answer another document navigation with the production shell.
+  if (event.request.mode === 'navigate' && !isProductionShellUrl(event.request)) return;
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+    if (event.clientId) event.waitUntil(navigateInactiveClientToCurrentShell(event.clientId, 'inactive-network-activity'));
+    return;
+  }
+  if (shouldBypassServiceWorkerCache(event.request)) return;
   if (event.request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         const requestedBuild = getRequestedShellBuild(event.request);
         const currentShellUrl = buildShellUrl(APP_SHELL_BUILD);
         const requestedShellUrl = buildShellUrl(requestedBuild || APP_SHELL_BUILD);
-        const primaryShellUrl = requestedBuild && requestedBuild !== APP_SHELL_BUILD
+        const isStaleShellNavigation = requestedBuild && requestedBuild !== APP_SHELL_BUILD;
+        const primaryShellUrl = isStaleShellNavigation
           ? buildAbsoluteShellUrl(APP_SHELL_BUILD, 'stale-navigation')
           : event.request;
         const cache = await caches.open(CACHE_NAME).catch(() => null);
         const cachedShellFallback = await getCachedShellFallback(cache, currentShellUrl, event.request);
-        const navigationNetwork = fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' })
+        const preloadedNavigation = event.preloadResponse
+          ? event.preloadResponse.catch(() => null)
+          : Promise.resolve(null);
+        const navigationNetwork = preloadedNavigation.then((preloadedResponse) => {
+          if (preloadedResponse && preloadedResponse.status === 200 && !isStaleShellNavigation) return preloadedResponse;
+          return fetch(primaryShellUrl, { cache: 'no-store', credentials: 'same-origin' });
+        })
           .then(async (networkResponse) => {
             if (networkResponse && networkResponse.status === 200) {
               await cacheShellResponse(cache, currentShellUrl, networkResponse);
@@ -185,6 +434,10 @@ self.addEventListener('fetch', (event) => {
             return networkResponse;
           })
           .catch(() => null);
+        if (isStaleShellNavigation) {
+          const currentNetworkShell = await navigationNetwork;
+          if (currentNetworkShell) return currentNetworkShell;
+        }
         if (cachedShellFallback) {
           const fastResponse = await Promise.race([
             navigationNetwork,
@@ -210,48 +463,102 @@ self.addEventListener('fetch', (event) => {
         if (cachedShellFallback) return cachedShellFallback;
         const cachedFromCache = await getCachedShellFallback(cache, currentShellUrl, event.request);
         if (cachedFromCache) return cachedFromCache;
-        const globalCurrentShell = await caches.match(APP_SHELL_URL);
+        const globalCurrentShell = await matchRootCache(APP_SHELL_URL);
         if (globalCurrentShell) return globalCurrentShell;
-        const globalRequestedShell = await caches.match(requestedShellUrl);
+        const globalRequestedShell = await matchRootCache(requestedShellUrl);
         if (globalRequestedShell) return globalRequestedShell;
-        const cachedRequestedNavigation = await caches.match(event.request);
+        const cachedRequestedNavigation = await matchRootCache(event.request);
         if (cachedRequestedNavigation) return cachedRequestedNavigation;
-        const globalIndex = await caches.match('./index.html');
+        const globalIndex = await matchRootCache('./index.html');
         if (globalIndex) return globalIndex;
         return Response.error();
       })()
     );
     return;
   }
+  if (isRuntimeImageRequest(event.request)) {
+    event.respondWith(handleRuntimeImageRequest(event));
+    return;
+  }
+  const requestUrl = getRequestUrl(event.request);
+  if (isPrecachedRuntimeAssetUrl(requestUrl) || (requestUrl && requestUrl.origin === self.location.origin && CONTENT_VERSION_REGEX.test(requestUrl.pathname))) {
+    event.respondWith(
+      matchRootCache(event.request).then((cached) => cached || fetch(event.request).then((response) => {
+        if (shouldRuntimeCacheRequest(event.request, response)) {
+          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone())).catch(() => {}));
+        }
+        return response;
+      }))
+    );
+    return;
+  }
   event.respondWith(
-    fetch(event.request).then((networkResponse) => {
-      if (networkResponse && networkResponse.status === 200) {
+    matchRootCache(event.request).then((cachedResponse) => {
+      const networkRequest = fetch(event.request).then((networkResponse) => {
+      if (shouldRuntimeCacheRequest(event.request, networkResponse)) {
         const responseClone = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone)).catch(() => {});
       }
       return networkResponse;
-    }).catch(() => caches.match(event.request))
+      });
+      if (cachedResponse) {
+        event.waitUntil(networkRequest.catch(() => null));
+        return cachedResponse;
+      }
+      return networkRequest.catch(() => matchRootCache(event.request));
+    })
   );
+}
+
+self.addEventListener('fetch', (event) => {
+  if (isIndependentAppRequest(event.request)) return;
+  if (event.request.mode === 'navigate' || event.request.method !== 'GET') {
+    handleProductionFetch(event);
+    return;
+  }
+  if (shouldBypassServiceWorkerCache(event.request)) return;
+  // Referrer policy can hide /v2 behind an origin-only referrer. Resolve the
+  // actual client before starting any root cache reads/writes for its resources.
+  event.respondWith((async () => {
+    if (event.clientId) {
+      try {
+        const client = await self.clients.get(event.clientId);
+        if (!client || !isProductionShellUrl(client.url)) return fetch(event.request);
+      } catch (error) {
+        return fetch(event.request);
+      }
+    }
+    let response;
+    handleProductionFetch({
+      request: event.request,
+      clientId: event.clientId,
+      preloadResponse: event.preloadResponse,
+      waitUntil: promise => event.waitUntil(promise),
+      respondWith: promise => { response = promise; }
+    });
+    return response || fetch(event.request);
+  })());
 });
 
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
-    try { data = event.data.json(); } catch (error) { data = { title: 'Greenleaf Message', body: event.data.text() }; }
+    try { data = event.data.json(); } catch (error) { data = { title: 'Ag Data Message', body: event.data.text() }; }
   }
-  const title = data.title || 'Greenleaf Message';
-  const iconUrl = new URL(data.icon || './Greenleaf Logo.png', self.registration.scope).href;
-  const targetUrl = new URL(data.url || APP_SHELL_URL, self.registration.scope).href;
+  const title = data.title || 'Ag Data Message';
+  const iconUrl = new URL(data.icon || './ag-data-solutions-icon-v2026080925-192.png', self.registration.scope).href;
+  const requestedTarget = getRequestUrl(data.url || APP_SHELL_URL);
+  const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const options = {
     body: data.body || 'You have a new message.',
     icon: iconUrl,
     badge: iconUrl,
-    data: { url: targetUrl, viewId: data.viewId || 'request', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '' },
+    data: { url: targetUrl, viewId: data.viewId || 'request', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
     vibrate: [200, 100, 200],
     silent: false,
     requireInteraction: true,
     timestamp: Date.now(),
-    tag: data.tag || 'greenleaf-alert',
+    tag: data.tag || 'ag-data-alert',
     renotify: true
   };
   event.waitUntil(self.registration.showNotification(title, options));
@@ -260,21 +567,22 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const payload = event.notification && event.notification.data ? event.notification.data : {};
-  const targetUrl = payload.url || APP_SHELL_URL;
+  const requestedTarget = getRequestUrl(payload.url || APP_SHELL_URL);
+  const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const targetView = payload.viewId || 'request';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientList) => {
       for (const client of clientList) {
-        if ('focus' in client) {
+        if (isProductionShellUrl(client.url) && 'focus' in client) {
           await client.focus();
-          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
+          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
           return client;
         }
       }
       if (clients.openWindow) {
         const opened = await clients.openWindow(targetUrl);
         if (opened) {
-          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '' }); } catch (error) {}
+          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
         }
         return opened;
       }
@@ -286,6 +594,7 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => Promise.all(clientList.map((client) => {
+      if (!client || !isProductionShellUrl(client.url)) return Promise.resolve();
       try { return client.postMessage({ type: 'GNC_RESUBSCRIBE_PUSH' }); } catch (error) { return Promise.resolve(); }
     })))
   );
