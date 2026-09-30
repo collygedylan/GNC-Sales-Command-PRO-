@@ -1,7 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const siteDir = String(process.env.RELEASE_CANARY_SITE_DIR || '_site').trim() || '_site';
-
 // Run the hosted, mutation-blocked canaries against the sealed candidate too.
 // This catches fixture and navigation changes before they reach production.
 export default defineConfig({
@@ -26,7 +24,7 @@ export default defineConfig({
     { name: 'production-iphone-webkit', use: { ...devices['iPhone 13'] } },
   ],
   webServer: {
-    command: `python -m http.server 43144 --bind 127.0.0.1 --directory ${JSON.stringify(siteDir)}`,
+    command: 'python -m http.server 43144 --bind 127.0.0.1 --directory _site',
     url: 'http://127.0.0.1:43144',
     reuseExistingServer: false,
     timeout: 20_000,
