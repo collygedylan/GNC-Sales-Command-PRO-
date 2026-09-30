@@ -159,8 +159,6 @@ async function fixture(page: Page, baseURL: string) {
     const emptyRead = () => route.fulfill({ status: 200, contentType: 'application/json',
       headers: { 'access-control-allow-origin': new URL(baseURL).origin,
         'access-control-allow-credentials': 'true', 'content-range': '*/0' }, body: '[]' });
-    if (request.method() === 'GET' && url.pathname === '/rest/v1/ph_master_inventory'
-        && url.searchParams.get('app_tab_assignment') === 'eq.not_on_inventory_dylan') return emptyRead();
     if (request.method() === 'POST' && url.pathname === '/rest/v1/rpc/search_historical_inventory_common_names') {
       const payload = request.postDataJSON();
       expect(Object.keys(payload).sort(), 'historical-name read parameters').toEqual(['result_limit', 'search_text']);
@@ -176,6 +174,9 @@ async function fixture(page: Page, baseURL: string) {
     const reply = (data: unknown) => route.fulfill({ status: 200, contentType: 'application/json',
       headers: { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' },
       body: JSON.stringify({ ok: true, data }) });
+    if (body.action === 'inventory_read' && operation === 'not_on_inventory_queue') {
+      return reply({ rows: [], total: 0, offset: body.params?.offset || 0, limit: body.params?.limit || 250, hasMore: false });
+    }
     if (body.commandId || body.command_id || /^(save|submit|publish|send|complete|add|claim|release|assign|review|amend|authorize|upload|delete|update|set_)/.test(operation)) {
       blocked.push(`${body.action}:${operation}`);
       return route.fulfill({ status: 403, contentType: 'application/json',

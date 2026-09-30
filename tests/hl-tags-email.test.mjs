@@ -27,6 +27,7 @@ function harness(options = {}) {
   const actualSends = [];
   const logs = [];
   const canonical = options.rows || [row()];
+  let rpcIndex = 0;
   const reply = (status, body, headers = {}) => ({ getResponseCode: () => status, getContentText: () => JSON.stringify(body), getHeaders: () => headers });
   const context = vm.createContext({
     Utilities: { formatDate: () => '09/11/2026' },
@@ -35,30 +36,23 @@ function harness(options = {}) {
     PropertiesService: { getScriptProperties: () => ({ getProperty: (name) => name === 'SUPABASE_SERVICE_ROLE_KEY' ? (options.serviceKey ?? 'sb_secret_fixture') : '' }) },
     UrlFetchApp: { fetch: (url, request) => {
       reads.push({ url, request });
-      assert.equal(request.method, 'get', 'verification must only read');
       if (options.fetchError) throw new Error(`${accessToken}: ${options.fetchError}`);
       const parsed = new URL(url);
+      if (parsed.pathname === '/rest/v1/rpc/hl_order_inventory_availability') {
+        assert.equal(request.method, 'post');
+        const body = JSON.parse(request.payload);
+        assert.ok(Array.isArray(body.p_itemcodes));
+        assert.ok(body.p_itemcodes.length <= 500);
+        if (options.rpcError) throw new Error('availability rpc failed');
+        if (options.rpcPages) return reply(options.rpcPages[rpcIndex++]?.status ?? 200, options.rpcPages[rpcIndex - 1]?.rows ?? []);
+        rpcIndex++;
+        return reply(options.rpcStatus ?? 200, options.availabilityRows ?? []);
+      }
+      assert.equal(request.method, 'get', 'profile and SOC verification must only read');
       if (parsed.pathname === '/auth/v1/user') return reply(options.authStatus ?? 200, options.authUser ?? { id: userId });
       if (parsed.pathname === '/rest/v1/profiles') {
         assert.equal(parsed.searchParams.get('id'), `eq.${userId}`);
         return reply(options.profileStatus ?? 200, options.profiles ?? [{ id: userId, username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false, ...options.profile }]);
-      }
-      if (parsed.pathname === '/rest/v1/ph_master_inventory') {
-        assert.equal(parsed.searchParams.get('select'), 'unique_id,itemcode,contsize,locationcode,lotcode,ptravailable');
-        assert.equal(request.headers.Prefer, 'count=exact');
-        assert.ok(parsed.searchParams.get('or')?.includes('itemcode.ilike.'), 'inventory lookup must be filtered');
-        assert.equal(parsed.searchParams.get('order'), 'unique_id.asc');
-        const offset = Number(parsed.searchParams.get('offset'));
-        if (options.masterFetchError) throw new Error('Inventory read unavailable');
-        if (options.masterPages) {
-          const page = options.masterPages.find((entry) => entry.offset === offset);
-          assert.ok(page, `unexpected inventory page offset ${offset}`);
-          return reply(page.status ?? 200, page.rows, page.range ? { 'Content-Range': page.range } : {});
-        }
-        const masterRows = options.masterRows || [];
-        const pageRows = masterRows.slice(offset, offset + 500);
-        const range = masterRows.length ? `${offset}-${offset + pageRows.length - 1}/${masterRows.length}` : '*/0';
-        return reply(options.masterStatus ?? 200, pageRows, { 'Content-Range': range });
       }
       assert.equal(parsed.pathname, '/rest/v1/ph_soc_master');
       const filter = parsed.searchParams.get('unique_id');
@@ -308,11 +302,11 @@ test('ordinary Bloom reports retain all automatic and selected recipients and na
 });
 
 function masterRow(overrides = {}) {
-  return { unique_id: 'MASTER-1', itemcode: 'ABC', contsize: '3G', locationcode: 'C.12.4', lotcode: 'LOT-1', ptravailable: '27', ...overrides };
+  return { itemcode: 'ABC', contsize: '3G', season_lot: 'LOT-1', computed_balance: 27, ...overrides };
 }
 
-test('exact master match enriches availability only and normalizes all four key fields', () => {
-  const h = harness({ rows: [row({ ptravailable: '999' })], masterRows: [masterRow({ itemcode: ' abc ', contsize: ' 3g ', locationcode: ' c.12.4 ', lotcode: ' lot-1 ', commonname: 'Wrong inventory name', quantityordered: '9999' })] });
+test('availability RPC matches item, size, and season lot and enriches only the availability value', () => {
+  const h = harness({ rows: [row({ ptravailable: '999' })], availabilityRows: [masterRow({ itemcode: ' abc ', contsize: ' 3g ', season_lot: ' lot-1 ', computed_balance: '27' })] });
   assert.equal(h.prepare().ok, true);
   const text = h.renderedMessages[0][2];
   assert.match(text, /PTR available: 27/);
@@ -325,68 +319,42 @@ test('exact master match enriches availability only and normalizes all four key 
   assert.doesNotMatch(text, /Wrong inventory|9999|MASTER-1/);
 });
 
-test('zero inventory availability remains known', () => {
-  const h = harness({ masterRows: [masterRow({ ptravailable: 0 })] });
+test('zero RPC availability remains known', () => {
+  const h = harness({ availabilityRows: [masterRow({ computed_balance: 0 })] });
   assert.equal(h.prepare().ok, true);
   assert.match(h.renderedMessages[0][2], /PTR available: 0/);
 });
 
-test('finite numeric inventory values use the same parsing as the client preview', () => {
-  for (const [ptravailable, expected] of [['1,234', '1234'], ['1e2', '100'], [1e-7, '1e-7']]) {
-    const h = harness({ masterRows: [masterRow({ ptravailable })] });
+test('finite numeric RPC values use the same formatting as the client preview', () => {
+  for (const [computed_balance, expected] of [['1,234', '1234'], ['1e2', '100'], [1e-7, '1e-7']]) {
+    const h = harness({ availabilityRows: [masterRow({ computed_balance })] });
     assert.equal(h.prepare().ok, true);
     assert.ok(h.renderedMessages[0][2].includes(`PTR available: ${expected}`));
   }
 });
 
-test('missing, ambiguous, incomplete keys and invalid quantities remain unknown without SOC fallback', () => {
-  const cases = [[], [masterRow(), masterRow({ unique_id: 'MASTER-2' })], [masterRow({ unique_id: '' })],
-    [masterRow({ itemcode: 'ABCD' })], [masterRow({ contsize: '5G' })], [masterRow({ locationcode: 'C.12.5' })], [masterRow({ lotcode: 'LOT-2' })],
-    [masterRow({ ptravailable: '' })], [masterRow({ ptravailable: '-1' })], [masterRow({ ptravailable: 'unknown' })]];
-  for (const masterRows of cases) {
-    const h = harness({ rows: [row({ ptravailable: '999' })], masterRows });
+test('missing tuples, mismatched tuple fields, and invalid balances remain unknown without SOC fallback', () => {
+  const cases = [[], [masterRow({ itemcode: 'ABCD' })], [masterRow({ contsize: '5G' })],
+    [masterRow({ season_lot: 'LOT-2' })], [masterRow({ computed_balance: null })], [masterRow({ computed_balance: 'unknown' })]];
+  for (const availabilityRows of cases) {
+    const h = harness({ rows: [row({ ptravailable: '999' })], availabilityRows });
     assert.equal(h.prepare().ok, true);
     assert.match(h.renderedMessages[0][2], /PTR available: Unknown/);
     assert.equal(h.renderedMessages.length, 1);
   }
 });
 
-test('matching duplicate inventory rows count once, conflicting duplicate quantities remain unknown', () => {
-  const same = harness({ masterRows: [masterRow(), masterRow({ ptravailable: 27 })] });
+test('duplicate RPC tuples with matching balances are stable and conflicting balances remain unknown', () => {
+  const same = harness({ availabilityRows: [masterRow(), masterRow({ computed_balance: 27 })] });
   assert.equal(same.prepare().ok, true);
   assert.match(same.renderedMessages[0][2], /PTR available: 27/);
-  const conflicting = harness({ masterRows: [masterRow(), masterRow({ ptravailable: 28 }), masterRow()] });
+  const conflicting = harness({ availabilityRows: [masterRow(), masterRow({ computed_balance: 28 }), masterRow()] });
   assert.equal(conflicting.prepare().ok, true);
   assert.match(conflicting.renderedMessages[0][2], /PTR available: Unknown/);
 });
 
-test('master pagination finds a second matching identity beyond the first page', () => {
-  const unrelated = Array.from({ length: 499 }, (_, i) => masterRow({ unique_id: `OTHER-${i}`, locationcode: 'OTHER' }));
-  const h = harness({ masterRows: [masterRow(), ...unrelated, masterRow({ unique_id: 'MASTER-2' })] });
-  assert.equal(h.prepare().ok, true);
-  assert.match(h.renderedMessages[0][2], /PTR available: Unknown/);
-  assert.deepEqual(h.reads.filter(({ url }) => url.includes('/ph_master_inventory?')).map(({ url }) => new URL(url).searchParams.get('offset')), ['0', '500']);
-});
-
-test('capped master pages continue from the returned range instead of assuming completion', () => {
-  const h = harness({ masterPages: [
-    { offset: 0, rows: [masterRow({ locationcode: 'OTHER' })], range: '0-0/2' },
-    { offset: 1, rows: [masterRow()], range: '1-1/2' }
-  ] });
-  assert.equal(h.prepare().ok, true);
-  assert.match(h.renderedMessages[0][2], /PTR available: 27/);
-});
-
-test('failed or unverified complete inventory reads keep availability unknown and still render', () => {
-  const cases = [
-    { masterStatus: 503 }, { masterFetchError: true },
-    { masterPages: [{ offset: 0, rows: [masterRow()] }] },
-    { masterPages: [{ offset: 0, rows: [masterRow()], range: '0-0/10001' }] },
-    { masterPages: [{ offset: 0, rows: [masterRow()], range: '0-0/2' }, { offset: 1, rows: [], range: '*/2' }] },
-    { masterPages: [{ offset: 0, rows: [masterRow()], range: '0-0/2' }, { offset: 1, rows: [masterRow()], range: '1-1/3' }] },
-    { masterPages: [{ offset: 0, rows: [masterRow()], range: '0-0/2' }, { offset: 1, rows: [masterRow()], status: 500 }] }
-  ];
-  for (const options of cases) {
+test('failed availability RPC keeps balances unknown and still renders', () => {
+  for (const options of [{ rpcStatus: 503 }, { rpcError: true }]) {
     const h = harness(options);
     assert.equal(h.prepare().ok, true);
     assert.match(h.renderedMessages[0][2], /PTR available: Unknown/);
@@ -394,13 +362,13 @@ test('failed or unverified complete inventory reads keep availability unknown an
   }
 });
 
-test('master itemcode lookups are bounded and blank itemcodes never issue an unfiltered read', () => {
-  const h = harness({ rows: Array.from({ length: 43 }, (_, i) => row({ unique_id: `SOC-${i}`, itemcode: `ITEM${i}` })) });
+test('availability requests are batched at 500 item codes and blank codes issue no RPC', () => {
+  const h = harness({ rows: Array.from({ length: 500 }, (_, i) => row({ unique_id: `SOC-${i}`, itemcode: `ITEM${i}` })) });
   assert.equal(h.prepare().ok, true);
-  const reads = h.reads.filter(({ url }) => url.includes('/ph_master_inventory?'));
-  assert.equal(reads.length, 3);
-  assert.ok(reads.every(({ url }) => url.length < 1800));
+  const reads = h.reads.filter(({ url }) => url.includes('/rpc/hl_order_inventory_availability'));
+  assert.equal(reads.length, 1);
+  assert.equal(JSON.parse(reads[0].request.payload).p_itemcodes.length, 500);
   const blank = harness({ rows: [row({ itemcode: '' })] });
   assert.equal(blank.prepare().ok, true);
-  assert.ok(blank.reads.every(({ url }) => !url.includes('/ph_master_inventory?')));
+  assert.ok(blank.reads.every(({ url }) => !url.includes('/rpc/hl_order_inventory_availability')));
 });

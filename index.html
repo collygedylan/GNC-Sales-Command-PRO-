@@ -9989,18 +9989,18 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         });
         const LIVE_SYNC_VIEW_POLICY = Object.freeze({
             home: { realtimeTables: [], pollMs: 'visible-default' },
-            managers: { realtimeTables: ['ph_master_inventory', WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings', 'ph_item_inquiry_coverage'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            managers: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings', 'ph_item_inquiry_coverage'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             chat: { realtimeTables: ['ph_chat_conversations', 'ph_chat_participants', 'ph_chat_messages'], pollMs: 60000 },
             drive: { realtimeTables: [WAREHOUSE_ASSIGNED_ITEMS_TABLE], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'crop-roll': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            tasks: { realtimeTables: ['ph_master_inventory', 'ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            request: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_inventory_edit_requests', 'ph_av_option_eval_requests', SHEAR_LIST_TABLE, 'ph_sales_office', 'ph_master_inventory', 'ph_soc_master'], pollMs: REQUEST_VISIBLE_POLL_MS },
+            tasks: { realtimeTables: ['ph_active_request', 'ph_sales_office', FLYER_FOLDER_ROWS_TABLE, FLYER_FOLDER_HISTORY_TABLE, WAREHOUSE_ASSIGNED_ITEMS_TABLE, 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            request: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_inventory_edit_requests', 'ph_av_option_eval_requests', SHEAR_LIST_TABLE, 'ph_sales_office', 'ph_soc_master'], pollMs: REQUEST_VISIBLE_POLL_MS },
             'sales-office': { realtimeTables: ['ph_sales_office', 'ph_app_settings'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             moves: { realtimeTables: ['ph_sales_office'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'take-back': { realtimeTables: ['ph_take_back_queue'], pollMs: 'visible-default' },
             av: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             reserves: { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
-            'hl-order': { realtimeTables: ['ph_soc_master', 'ph_master_inventory'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
+            'hl-order': { realtimeTables: ['ph_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             docks: { realtimeTables: ['ph_dock_item_status', 'ph_dock_issue_status', 'ph_dock_issue_allocations'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             reports: { realtimeTables: ['ph_active_request', REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE, 'ph_soc_master'], pollMs: FOREGROUND_INVENTORY_POLL_MS },
             'po-management': { realtimeTables: [], pollMs: FOREGROUND_INVENTORY_POLL_MS },
@@ -12243,7 +12243,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const seen = new Set();
             raw.forEach((tableName) => {
                 const key = normalizeAppTableName(tableName);
-                if (!key || seen.has(key) || isRetiredSupabaseRuntimeTable(key)) return;
+                if (!key || key === 'ph_master_inventory' || seen.has(key) || isRetiredSupabaseRuntimeTable(key)) return;
                 seen.add(key);
                 next.push(key);
             });
@@ -12644,27 +12644,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             }
         }
 
-        function shouldKeepMasterRealtimeSubscribed() {
-            try {
-                return !!(currentUser && (
-                    canAccessView('drive')
-                    || canAccessView('tasks')
-                    || canAccessView('av')
-                    || canAccessView('sales-office')
-                    || canAccessView('review')
-                    || canAccessView('low-stock')
-                    || canAccessView('moves')
-                    || canAccessView('reports')
-                ));
-            } catch (error) {
-                return false;
-            }
-        }
-
         function getAlwaysOnRealtimeTablesForView(viewId = '') {
             const tables = [];
             if (shouldKeepRequestRealtimeSubscribed()) tables.push('ph_active_request');
-            if (shouldKeepMasterRealtimeSubscribed()) tables.push('ph_master_inventory');
             return tables;
         }
 
@@ -26385,6 +26367,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const safeTable = normalizeAppTableName(table);
             const safeMethod = String(method || 'POST').trim().toUpperCase();
             if (!safeTable || !['GET', 'POST', 'PATCH', 'DELETE'].includes(safeMethod)) throw new Error('Invalid secure database request.');
+            if (safeTable === 'ph_master_inventory' && safeMethod === 'GET') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
             if (safeMethod === 'GET' && nativeReadRequiresRls()) {
                 return (await fetchAuthenticatedSupabaseReadPage(safeTable, query, requestOptions)).rows;
             }
@@ -26494,6 +26477,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function supabaseFetch(table, method='GET', body=null, query='select=*', requestOptions = {}) {
             table = normalizeAppTableName(table);
             const safeMethod = String(method || 'GET').trim().toUpperCase() || 'GET';
+            if (table === 'ph_master_inventory' && safeMethod === 'GET') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
             if (safeMethod === 'GET' && [REQUEST_HISTORY_TABLE, SALES_CREDIT_REQUESTS_TABLE].includes(table)) return readSalesCompatibilityRows(table, query, requestOptions);
             if (isRetiredSupabaseRuntimeTable(table)) return safeMethod === 'GET' ? [] : {};
             const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
@@ -27227,23 +27211,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             evalTaskColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/ph_master_inventory?select=unique_id,${EVAL_TASK_SELECT_FIELDS}&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'EVAL Task Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('eval_task') || normalizedError.includes('column')) maybeWarnEvalTaskSchemaMissing(errorText);
-                        return false;
-                    }
-                    evalTaskColumnsReady = true;
-                    evalTaskSchemaWarningShown = false;
-                    return true;
+                    const capabilities = await getInventorySchemaCapabilities(force);
+                    evalTaskColumnsReady = capabilities.evalTask?.available === true;
+                    if (!evalTaskColumnsReady) maybeWarnEvalTaskSchemaMissing('The backend inventory schema capability check did not find EVAL task columns.');
+                    else evalTaskSchemaWarningShown = false;
+                    return evalTaskColumnsReady;
                 } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('eval_task') || normalizedError.includes('column')) maybeWarnEvalTaskSchemaMissing(error);
                     return false;
                 } finally {
                     evalTaskColumnsProbePromise = null;
@@ -28001,29 +27974,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             ncrApprovalRequesterColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/ph_master_inventory?select=unique_id,ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at,ncr_approval_message&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'NCR Approval Requester Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('ncr_') || normalizedError.includes('column')) {
-                            maybeWarnNcrApprovalRequesterSchemaMissing(errorText);
-                            return false;
-                        }
-                        return false;
-                    }
-                    ncrApprovalRequesterColumnsReady = true;
-                    ncrApprovalRequesterSchemaWarningShown = false;
-                    return true;
+                    const capabilities = await getInventorySchemaCapabilities(force);
+                    ncrApprovalRequesterColumnsReady = capabilities.ncrApproval?.available === true;
+                    if (!ncrApprovalRequesterColumnsReady) maybeWarnNcrApprovalRequesterSchemaMissing('The backend inventory schema capability check did not find NCR requester columns.');
+                    else ncrApprovalRequesterSchemaWarningShown = false;
+                    return ncrApprovalRequesterColumnsReady;
                 } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('ncr_') || normalizedError.includes('column')) {
-                        maybeWarnNcrApprovalRequesterSchemaMissing(error);
-                        return false;
-                    }
                     return false;
                 } finally {
                     ncrApprovalRequesterColumnsProbePromise = null;
@@ -28207,29 +28163,12 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             holdReleaseOverrideColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/ph_master_inventory?select=unique_id,hold_release_approved_at,hold_release_approved_by,hold_release_approved_by_display,hold_release_approved_holdstopbegindate&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Hold Release Override Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('hold_release_') || normalizedError.includes('column')) {
-                            maybeWarnHoldReleaseOverrideSchemaMissing(errorText);
-                            return false;
-                        }
-                        return false;
-                    }
-                    holdReleaseOverrideColumnsReady = true;
-                    holdReleaseOverrideSchemaWarningShown = false;
-                    return true;
+                    const capabilities = await getInventorySchemaCapabilities(force);
+                    holdReleaseOverrideColumnsReady = capabilities.holdRelease?.available === true;
+                    if (!holdReleaseOverrideColumnsReady) maybeWarnHoldReleaseOverrideSchemaMissing('The backend inventory schema capability check did not find hold release override columns.');
+                    else holdReleaseOverrideSchemaWarningShown = false;
+                    return holdReleaseOverrideColumnsReady;
                 } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('hold_release_') || normalizedError.includes('column')) {
-                        maybeWarnHoldReleaseOverrideSchemaMissing(error);
-                        return false;
-                    }
                     return false;
                 } finally {
                     holdReleaseOverrideColumnsProbePromise = null;
@@ -28251,30 +28190,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             avRuleColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/ph_master_inventory?select=unique_id,av_rule_bundle_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'AV Rule Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('av_rule_') || normalizedError.includes('column')) {
-                            avRuleColumnsReady = false;
-                            maybeWarnAvRuleSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
-                    avRuleColumnsReady = true;
-                    return true;
+                    const capabilities = await getInventorySchemaCapabilities(force);
+                    avRuleColumnsReady = capabilities.avRules?.available === true;
+                    if (!avRuleColumnsReady) maybeWarnAvRuleSchemaMissing();
+                    return avRuleColumnsReady;
                 } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('av_rule_') || normalizedError.includes('column')) {
-                        avRuleColumnsReady = false;
-                        maybeWarnAvRuleSchemaMissing();
-                        return false;
-                    }
                     return false;
                 } finally {
                     avRuleColumnsProbePromise = null;
@@ -28297,30 +28217,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             flyerShadowColumnsProbePromise = (async () => {
                 if (navigator.onLine === false) return false;
                 try {
-                    const url = `${SUPABASE_URL}/rest/v1/ph_master_inventory?select=unique_id,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,flyer_photo_link,flyer_photo_name&limit=1`;
-                    const response = await fetchWithTimeout(url, {
-                        method: 'GET',
-                        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Content-Type': 'application/json' }
-                    }, SUPABASE_READ_TIMEOUT_MS, 'Flyer Shadow Schema');
-                    if (!response.ok) {
-                        const errorText = await getResponseError(response, `Supabase read failed (${response.status})`);
-                        const normalizedError = String(errorText || '').toLowerCase();
-                        if (normalizedError.includes('flyer_') || normalizedError.includes('column')) {
-                            flyerShadowColumnsReady = false;
-                            maybeWarnFlyerShadowSchemaMissing();
-                            return false;
-                        }
-                        return false;
-                    }
-                    flyerShadowColumnsReady = true;
-                    return true;
+                    const capabilities = await getInventorySchemaCapabilities(force);
+                    flyerShadowColumnsReady = capabilities.flyerShadow?.available === true;
+                    if (!flyerShadowColumnsReady) maybeWarnFlyerShadowSchemaMissing();
+                    return flyerShadowColumnsReady;
                 } catch (error) {
-                    const normalizedError = String(error && error.message ? error.message : error || '').toLowerCase();
-                    if (normalizedError.includes('flyer_') || normalizedError.includes('column')) {
-                        flyerShadowColumnsReady = false;
-                        maybeWarnFlyerShadowSchemaMissing();
-                        return false;
-                    }
                     return false;
                 } finally {
                     flyerShadowColumnsProbePromise = null;
@@ -28703,6 +28604,81 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 throw err;
             }
             return payload;
+        }
+
+        async function requestInventoryRead(operation, params = {}, options = {}) {
+            const safeOperation = String(operation || '').trim();
+            if (!['master_page','master_delta','po_detail','recount_queue','ncr_queue','not_on_inventory_queue','verify_row','schema_capabilities'].includes(safeOperation)) {
+                throw new Error('Unsupported inventory read operation.');
+            }
+            const identityScope = getSupabaseReadIdentityScope();
+            const payload = await runWithFullJitter(() => postAppFunctionJson(APP_API_FUNCTION_URL, {
+                action: 'inventory_read', operation: safeOperation, params: params && typeof params === 'object' ? params : {}
+            }, {
+                timeoutMs: Math.max(1000, Number(options.timeoutMs) || SUPABASE_READ_TIMEOUT_MS),
+                label: String(options.label || 'Inventory data'),
+                signal: options.signal
+            }), 2, 350, 2400);
+            if (identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            if (!payload || payload.ok !== true || !Object.prototype.hasOwnProperty.call(payload, 'data')) {
+                throw new Error(String(payload?.error || payload?.message || 'Inventory data is unavailable.'));
+            }
+            return payload.data;
+        }
+
+        async function fetchInventoryReadPage(operation, params = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, options = {}) {
+            const safeLimit = Math.max(1, Math.min(500, Math.floor(Number(limit) || INITIAL_PAGE_LIMIT)));
+            const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+            const result = await requestInventoryRead(operation, { ...params, limit: safeLimit, offset: safeOffset }, options);
+            if (!result || !Array.isArray(result.rows)) throw new Error('Inventory data returned an invalid page; verified cached rows were retained.');
+            const total = result.total === null || result.total === undefined ? null : Number(result.total);
+            return { rows: result.rows, total: Number.isFinite(total) ? total : null, offset: safeOffset, limit: safeLimit, hasMore: result.hasMore === true };
+        }
+
+        async function fetchAllInventoryReadRows(operation, params = {}, options = {}) {
+            const limit = Math.max(1, Math.min(500, Math.floor(Number(options.limit) || 500)));
+            const allRows = [];
+            let offset = 0;
+            let pageCount = 0;
+            let expectedTotal = null;
+            const onFirstPage = typeof options.onFirstPage === 'function' ? options.onFirstPage : null;
+            while (true) {
+                if (options.signal?.aborted) throw Object.assign(new Error('Inventory read cancelled.'), { code: 'REQUEST_ABORTED' });
+                const page = await fetchInventoryReadPage(operation, params, limit, offset, options);
+                if (expectedTotal === null) expectedTotal = page.total;
+                if (pageCount === 0 && onFirstPage && page.rows.length) {
+                    try { await onFirstPage(page.rows.slice(), { table: 'ph_master_inventory', query: `inventory_read:${operation}`, total: page.total, limit, loaded: page.rows.length, offset }); }
+                    catch (error) { console.warn('First inventory page hydration failed.', error); }
+                }
+                if (!page.rows.length) break;
+                allRows.push(...page.rows);
+                pageCount += 1;
+                if (page.total !== null ? allRows.length >= page.total : !page.hasMore && page.rows.length < limit) break;
+                offset += page.rows.length;
+                if (pageCount > 10000) throw new Error('Inventory response exceeded the safe page limit.');
+                await yieldToUiFrame();
+            }
+            if (options.requireComplete === true) {
+                const ids = allRows.map((row) => String(row?.unique_id || '').trim());
+                if (expectedTotal === null || allRows.length !== expectedTotal || ids.some((id) => !id) || new Set(ids).size !== ids.length) {
+                    throw new Error('Complete inventory rows could not be verified. Retry the report.');
+                }
+            }
+            return allRows;
+        }
+
+        let inventorySchemaCapabilitiesPromise = null;
+        let inventorySchemaCapabilitiesSnapshot = null;
+        async function getInventorySchemaCapabilities(force = false) {
+            if (!force && inventorySchemaCapabilitiesSnapshot) return inventorySchemaCapabilitiesSnapshot;
+            if (!force && inventorySchemaCapabilitiesPromise) return inventorySchemaCapabilitiesPromise;
+            inventorySchemaCapabilitiesPromise = requestInventoryRead('schema_capabilities', {}, { label: 'Inventory schema capabilities' })
+                .then((result) => {
+                    inventorySchemaCapabilitiesSnapshot = result && result.capabilities && typeof result.capabilities === 'object' ? result.capabilities : {};
+                    return inventorySchemaCapabilitiesSnapshot;
+                })
+                .finally(() => { inventorySchemaCapabilitiesPromise = null; });
+            return inventorySchemaCapabilitiesPromise;
         }
 
         function getOpsPilotBridge(reason = '') {
@@ -32546,18 +32522,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return `select=${CROP_ROLL_DRIVE_ROW_SELECT_FIELDS}&order=crop_roll_view.desc,blockalpha.asc,locationcode.asc,itemcode.asc,lotcode.asc`;
         }
 
-        function buildMasterInitialRowsQuery(querySuffix = '') {
-            return `select=${getMasterInitialSelectFields()}${String(querySuffix || '')}`;
-        }
-
-        async function fetchMasterInitialRowsPage(querySuffix = '', limit = INITIAL_PAGE_LIMIT, offset = 0) {
-            const buildQuery = () => buildMasterInitialRowsQuery(querySuffix);
-            try {
-                return await fetchSupabasePage('ph_master_inventory', buildQuery(), limit, offset);
-            } catch (error) {
-                if (!markMissingOptionalMasterInitialColumns(error)) throw error;
-                return fetchSupabasePage('ph_master_inventory', buildQuery(), limit, offset);
-            }
+        async function fetchMasterInitialRowsPage(filters = {}, limit = INITIAL_PAGE_LIMIT, offset = 0, projection = 'initial') {
+            const safeFilters = filters && typeof filters === 'object' && !Array.isArray(filters) ? filters : {};
+            const page = await fetchInventoryReadPage('master_page', {
+                dataset: Object.keys(safeFilters).length ? 'lookup' : 'master',
+                projection,
+                ...safeFilters
+            }, limit, offset, { label: 'Inventory rows' });
+            return page.rows;
         }
         const NCR_EMAIL_RECIPIENTS = Object.freeze([
             'jd_jones@greenleafnursery.com',
@@ -34365,11 +34337,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 id: `core:${key}`, cacheKey: JSON.stringify([key, definition.table, query, season && [season.seasonCode, season.salesYear], ...(key === 'master' ? ['complete-identity-v2'] : [])]),
                 sourceKeys: window.AgMetricLiveSyncRegistry.getSourceKeys([`core:${key}`]),
                 stage: (options = {}) => withProductionLiveSyncSignal(options.signal, async (signal) => {
-                    const rows = await fetchAllSupabaseRows(definition.table, query, {
-                        signal, count: key === 'master', requireComplete: key === 'master',
+                    const readOptions = {
+                        signal,
                         onFirstPage: options.preview ? (rows) => options.preview({ key,
                             payload: buildDatasetPayload(key, JSON.parse(JSON.stringify(rows))), rowCount: rows.length, partial: true }) : null
-                    });
+                    };
+                    const rows = key === 'master'
+                        ? await fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'full' }, { ...readOptions, requireComplete: true, limit: 500 })
+                        : await fetchAllSupabaseRows(definition.table, query, readOptions);
                     if (!Array.isArray(rows)) throw new Error(`${key} returned an invalid data snapshot.`);
                     const rawRows = JSON.parse(JSON.stringify(rows));
                     return { key, rawRows, payload: buildDatasetPayload(key, rows), rowCount: rows.length,
@@ -38837,6 +38812,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function fetchAuthenticatedSupabaseReadPage(table, queryString = '', options = {}) {
             const safeTable = normalizeAppTableName(table);
+            if (safeTable === 'ph_master_inventory') throw new Error('Raw browser inventory reads are disabled; use inventory_read operations.');
             const opts = options && typeof options === 'object' ? options : {};
             const timeoutMs = Math.max(1000, Number(opts.timeoutMs) || SUPABASE_READ_TIMEOUT_MS);
             const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
@@ -39366,21 +39342,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 let rows = [];
                 let missingOptionalCropRollDrive = false;
                 try {
-                    rows = (wantsFull || shouldFetchAllForInitial)
-                        ? await fetchAllSupabaseRows(definition.table, resolvedQuery, firstPageHydrationOptions)
-                        : await fetchSupabasePage(definition.table, resolvedQuery, resolvedInitialLimit, 0);
+                    if (key === 'master' || key === 'avOpen') {
+                        const inventoryReadParams = key === 'avOpen'
+                            ? { dataset: 'avOpen', projection: 'full' }
+                            : { dataset: 'master', projection: wantsFull ? 'full' : 'initial' };
+                        rows = (wantsFull || shouldFetchAllForInitial)
+                            ? await fetchAllInventoryReadRows('master_page', inventoryReadParams, { ...firstPageHydrationOptions, limit: 500 })
+                            : (await fetchInventoryReadPage('master_page', inventoryReadParams, Math.min(resolvedInitialLimit, 500), 0, { label: 'Inventory rows' })).rows;
+                    } else {
+                        rows = (wantsFull || shouldFetchAllForInitial)
+                            ? await fetchAllSupabaseRows(definition.table, resolvedQuery, firstPageHydrationOptions)
+                            : await fetchSupabasePage(definition.table, resolvedQuery, resolvedInitialLimit, 0);
+                    }
                 } catch (error) {
                     if (key === 'master' && !wantsFull && shouldFetchAllForInitial && markMissingOptionalMasterInitialColumns(error)) {
-                        rows = await fetchAllSupabaseRows(definition.table, buildMasterInitialDatasetQuery());
+                        rows = await fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'initial_base' }, { ...firstPageHydrationOptions, limit: 500 });
                     } else if (key === 'master' && shouldFetchAllForInitial) {
                         console.warn('Fast master inventory load failed; retrying with full master rows.', error);
                         try {
-                            const fallbackQuerySource = definition.fullQuery || 'select=*&order=unique_id.asc';
-                            const fallbackQuery = typeof fallbackQuerySource === 'function' ? fallbackQuerySource('full', options) : fallbackQuerySource;
-                            rows = await fetchAllSupabaseRows(definition.table, fallbackQuery || 'select=*&order=unique_id.asc');
+                            rows = await fetchAllInventoryReadRows('master_page', { dataset: 'master', projection: 'full' }, { ...firstPageHydrationOptions, limit: 500 });
                         } catch (fallbackError) {
                             console.warn('Full master retry failed; showing first master page while background sync retries.', fallbackError);
-                            rows = await fetchSupabasePage(definition.table, 'select=*&order=unique_id.asc', resolvedInitialLimit, 0);
+                            rows = (await fetchInventoryReadPage('master_page', { dataset: 'master', projection: 'full' }, Math.min(resolvedInitialLimit, 500), 0, { label: 'Inventory rows' })).rows;
                         }
                     } else if (key === 'requests' && isOptionalTableMissingError(error, definition.table)) {
                         activeRequestLiveRowsViewReady = false;
@@ -41654,7 +41637,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const candidateIds = [masterId, sourceUid].map((value) => String(value || '').trim()).filter(Boolean);
             for (const uid of candidateIds) {
                 try {
-                    const rows = await fetchMasterInitialRowsPage(`&unique_id=eq.${encodeURIComponent(uid)}`, 1, 0);
+                    const rows = await fetchMasterInitialRowsPage({ uniqueId: uid }, 1, 0);
                     const formattedRows = formatFetchedRows(rows || [], 'ph_master_inventory');
                     if (formattedRows.length) return formattedRows[0];
                 } catch (error) {
@@ -41667,8 +41650,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const sourceCode = getMasterInventorySourceCode(item);
             if (!itemCode || !locationCode || !lotCode || !sourceCode) return null;
             try {
-                const querySuffix = `&itemcode=eq.${encodeURIComponent(itemCode)}&locationcode=eq.${encodeURIComponent(locationCode)}&lotcode=eq.${encodeURIComponent(lotCode)}&source=eq.${encodeURIComponent(sourceCode)}&order=unique_id.asc`;
-                const rows = await fetchMasterInitialRowsPage(querySuffix, 5, 0);
+                const rows = await fetchMasterInitialRowsPage({ itemCode, locationCode, lotCode, source: sourceCode }, 5, 0);
                 const formattedRows = formatFetchedRows(rows || [], 'ph_master_inventory');
                 return formattedRows[0] || null;
             } catch (error) {
@@ -41700,22 +41682,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function verifyNcrApprovalMasterPayload(masterId = '', payload = null) {
             const safeMasterId = String(masterId || '').trim();
             if (!safeMasterId || !payload || navigator.onLine === false) return false;
-            const fields = ['unique_id', 'app_tab_assignment', 'assignedto'];
             try {
-                const rows = await fetchSupabasePage('ph_master_inventory', `select=${fields.join(',')}&unique_id=eq.${encodeURIComponent(safeMasterId)}`, 1, 0);
-                const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-                if (!row) return false;
-                if (Object.prototype.hasOwnProperty.call(payload, 'app_tab_assignment')) {
-                    const expectedAssignment = String(firstNonEmptyValue(payload.app_tab_assignment, '') || '').trim();
-                    const actualAssignment = String(firstNonEmptyValue(row.app_tab_assignment, row.APP_TAB_ASSIGNMENT, '') || '').trim();
-                    if (actualAssignment !== expectedAssignment) return false;
-                }
-                if (Object.prototype.hasOwnProperty.call(payload, 'assignedto')) {
-                    const expectedAssignee = String(firstNonEmptyValue(payload.assignedto, '') || '').trim();
-                    const actualAssignee = String(firstNonEmptyValue(row.assignedto, row.ASSIGNEDTO, '') || '').trim();
-                    if (actualAssignee !== expectedAssignee) return false;
-                }
-                return true;
+                const result = await requestInventoryRead('verify_row', {
+                    kind: 'ncr_approval', uniqueId: safeMasterId,
+                    expectedAssignment: String(firstNonEmptyValue(payload.app_tab_assignment, '') || '').trim(),
+                    ...(Object.prototype.hasOwnProperty.call(payload, 'assignedto') ? { expectedAssignee: String(firstNonEmptyValue(payload.assignedto, '') || '').trim() } : {})
+                }, { label: 'Verify approval row' });
+                return result?.status === 'matched' && result.matches === true;
             } catch (error) {
                 console.warn('NCR approval master verification failed', error);
                 return false;
@@ -57197,15 +57170,14 @@ function toggleDriveQuickRequestItem(domId) {
             if (shouldUseRealtime() && hasHealthyRealtimeSubscriptions(activeRealtimeTables)) return;
             const checkTime=new Date().toISOString();
             try {
-                const masterDeltaQuery = appendEvalMasterScopeToQuery(`select=*&last_updated=gt.${encodeURIComponent(lastSyncTime)}`);
                 let data = [];
+                let masterDeltaComplete = false;
                 try {
-                    const secureDeltaRows = await runAppApiSupabaseWrite('ph_master_inventory', 'GET', null, masterDeltaQuery, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
-                    data = Array.isArray(secureDeltaRows) ? secureDeltaRows : [];
-                } catch (secureDeltaError) {
-                    if (!SUPABASE_KEY) throw secureDeltaError;
-                    const response=await fetch(`${SUPABASE_URL}/rest/v1/ph_master_inventory?${masterDeltaQuery}`,{method:'GET',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}});
-                    if(response.ok) data=await response.json();
+                    data = await fetchAllInventoryReadRows('master_delta', { since: lastSyncTime }, { label: 'Inventory changes', limit: 500 });
+                    masterDeltaComplete = true;
+                } catch (masterDeltaError) {
+                    // Keep the last verified snapshot intact. A later app-api poll or revision refresh retries this delta.
+                    console.warn('Inventory delta refresh failed; verified cached inventory was retained.', masterDeltaError);
                 }
                 if(Array.isArray(data)) {
                     if(data&&data.length>0){
@@ -57284,7 +57256,7 @@ function toggleDriveQuickRequestItem(domId) {
                     queueInteractiveViewRender('docks', false, true, 48, 220);
                 }
 
-                lastSyncTime=checkTime;
+                if (masterDeltaComplete) lastSyncTime=checkTime;
                 lastSuccessfulSyncTime = checkTime;
                 syncDiagnosticsOverride = '';
                 updateSyncDiagnostics();
@@ -69137,22 +69109,13 @@ function toggleDriveQuickRequestItem(domId) {
         async function verifyNotOnInventoryApprovalMasterPayload(masterId = '', payload = null) {
             const safeMasterId = String(masterId || '').trim();
             if (!safeMasterId || !payload || navigator.onLine === false) return false;
-            const fields = ['unique_id', 'app_tab_assignment', 'assignedto'];
             try {
-                const rows = await fetchSupabasePage('ph_master_inventory', `select=${fields.join(',')}&unique_id=eq.${encodeURIComponent(safeMasterId)}`, 1, 0);
-                const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-                if (!row) return false;
-                if (Object.prototype.hasOwnProperty.call(payload, 'app_tab_assignment')) {
-                    const expectedAssignment = String(firstNonEmptyValue(payload.app_tab_assignment, '') || '').trim();
-                    const actualAssignment = String(firstNonEmptyValue(row.app_tab_assignment, row.APP_TAB_ASSIGNMENT, '') || '').trim();
-                    if (actualAssignment !== expectedAssignment) return false;
-                }
-                if (Object.prototype.hasOwnProperty.call(payload, 'assignedto')) {
-                    const expectedAssignee = String(firstNonEmptyValue(payload.assignedto, '') || '').trim();
-                    const actualAssignee = String(firstNonEmptyValue(row.assignedto, row.ASSIGNEDTO, '') || '').trim();
-                    if (actualAssignee !== expectedAssignee) return false;
-                }
-                return true;
+                const result = await requestInventoryRead('verify_row', {
+                    kind: 'not_on_inventory', uniqueId: safeMasterId,
+                    expectedAssignment: String(firstNonEmptyValue(payload.app_tab_assignment, '') || '').trim(),
+                    ...(Object.prototype.hasOwnProperty.call(payload, 'assignedto') ? { expectedAssignee: String(firstNonEmptyValue(payload.assignedto, '') || '').trim() } : {})
+                }, { label: 'Verify approval row' });
+                return result?.status === 'matched' && result.matches === true;
             } catch (error) {
                 console.warn('Not On Inventory approval verification failed', error);
                 return false;
@@ -73450,8 +73413,7 @@ function toggleDriveQuickRequestItem(domId) {
                 // Query only this displayed PO item's exact code and size. RLS
                 // remains the visibility authority; no PO view can borrow HL's
                 // Dylan-specific inventory snapshot or load the master globally.
-                const query = `select=unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,app_tab_assignment,priority,season&itemcode=eq.${encodeURIComponent(itemcode)}&contsize=eq.${encodeURIComponent(contsize)}&order=unique_id.asc&limit=${limit}&offset=${offset}`;
-                const page = await fetchAuthenticatedSupabaseReadPage('ph_master_inventory', query, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                const page = await fetchInventoryReadPage('po_detail', { itemCode: itemcode, contSize: contsize }, limit, offset, { label: 'PO inventory detail' });
                 if (request !== poManagementInventoryRequest || owner !== getSupabaseReadIdentityScope() || !canAccessView('po-management')) return null;
                 const batch = Array.isArray(page?.rows) ? page.rows : [];
                 rows.push(...batch);
@@ -88706,7 +88668,9 @@ function toggleDriveQuickRequestItem(domId) {
         let hlOrderPreview = null;
         let hlOrderSending = false;
         let hlOrderAvailabilityPending = null;
-        let hlOrderAvailabilityIds = [];
+        let hlOrderAvailabilityRows = new Map();
+        let hlOrderAvailabilityCacheKey = '';
+        let hlOrderAvailabilityLoadedAt = 0;
         let hlOrderInventorySnapshot = null;
         let hlOrderVerificationContext = null;
         let hlOrderStateData = null;
@@ -88771,7 +88735,9 @@ function toggleDriveQuickRequestItem(domId) {
         function clearHlOrderInventorySnapshot() {
             hlOrderInventorySnapshot = null;
             hlOrderVerificationContext = null;
-            hlOrderAvailabilityIds = [];
+            hlOrderAvailabilityRows = new Map();
+            hlOrderAvailabilityCacheKey = '';
+            hlOrderAvailabilityLoadedAt = 0;
         }
 
         function getHlOrderVerificationContextKey(context) {
@@ -88942,37 +88908,91 @@ function toggleDriveQuickRequestItem(domId) {
             return matches;
         }
 
-        function getHlOrderAvailability(source, matches) {
-            if (!canUseHlOrderVerifiedData(['master']) || !source.itemcode || source.itemcode.includes('*')) return '';
-            const ids = [...(matches.get(getHlOrderInventoryKey(source)) || [])];
-            if (ids.length !== 1 || !ids[0]) return '';
-            const verifiedIds = hlOrderAvailabilityIds.includes(ids[0]) ? hlOrderAvailabilityIds : ids;
-            const rows = getHlOrderVerifiedInventoryRows(verifiedIds)?.filter((row) => String(row.UNIQUE_ID ?? row.unique_id ?? '').trim() === ids[0]);
-            if (!rows?.length || rows.some((row) => getHlOrderInventoryKey(row) !== getHlOrderInventoryKey(source))) return '';
-            const values = new Set(rows.map((row) => getHlOrderQuantity(row.PTRAVAILABLE ?? row.ptravailable)));
-            const quantity = [...values][0];
-            return values.size === 1 && quantity !== null && quantity >= 0 ? String(quantity) : '';
+        function normalizeHlAvailabilityValue(value) {
+            return String(value ?? '').trim().toUpperCase();
+        }
+
+        function getHlOrderAvailabilityTupleKey(itemcode, contsize, seasonLot) {
+            return JSON.stringify([itemcode, contsize, seasonLot].map(normalizeHlAvailabilityValue));
+        }
+
+        async function fetchHlOrderAvailabilityByItemCodes(itemCodes, options = {}) {
+            const codes = [...new Set((Array.isArray(itemCodes) ? itemCodes : [])
+                .map(normalizeHlAvailabilityValue).filter((code) => code && !code.includes('*')))];
+            const rowsByTuple = new Map();
+            let failed = false;
+            for (let offset = 0; offset < codes.length; offset += 500) {
+                if (options.signal?.aborted) throw Object.assign(new Error('HL availability read cancelled.'), { code: 'REQUEST_ABORTED' });
+                const batch = codes.slice(offset, offset + 500);
+                try {
+                    const result = await supabaseRpc('hl_order_inventory_availability', { p_itemcodes: batch }, {
+                        timeoutMs: options.timeoutMs || SUPABASE_READ_TIMEOUT_MS,
+                        signal: options.signal
+                    });
+                    if (!Array.isArray(result)) { failed = true; continue; }
+                    result.forEach((row) => {
+                        if (!row || typeof row !== 'object') return;
+                        const itemcode = normalizeHlAvailabilityValue(row.itemcode);
+                        const contsize = normalizeHlAvailabilityValue(row.contsize);
+                        const seasonLot = normalizeHlAvailabilityValue(row.season_lot);
+                        if (!itemcode || !contsize || !seasonLot || !batch.includes(itemcode)) return;
+                        const rawBalance = row.computed_balance;
+                        const balance = rawBalance === null || rawBalance === undefined || String(rawBalance).trim() === ''
+                            ? null : Number(String(rawBalance).replace(/,/g, ''));
+                        rowsByTuple.set(getHlOrderAvailabilityTupleKey(itemcode, contsize, seasonLot), {
+                            itemcode, contsize, season_lot: seasonLot,
+                            computed_balance: Number.isFinite(balance) ? balance : null
+                        });
+                    });
+                } catch (error) {
+                    if (options.signal?.aborted || error?.code === 'REQUEST_ABORTED') throw error;
+                    failed = true;
+                }
+            }
+            return { rowsByTuple, failed, itemCodes: codes };
         }
 
         async function ensureHlOrderAvailability(rows) {
             if (hlOrderAvailabilityPending) { try { await hlOrderAvailabilityPending; } catch (_) {} }
             if (!canUseHlOrder()) return false;
             const owner = captureHlOrderOwnership();
-            const update = () => {
-                if (!isHlOrderOwnershipCurrent(owner) || !canUseHlOrderVerifiedData()) return false;
-                const ids = getHlOrderDriveMatches(rows).map(row => String(row.UNIQUE_ID ?? row.unique_id)).sort();
-                const changed = JSON.stringify(hlOrderAvailabilityIds) !== JSON.stringify(ids);
-                hlOrderAvailabilityIds = ids;
-                return changed;
-            };
-            if (canUseHlOrderVerifiedData()) return update();
-            const coordinator = getProductionLiveSyncCoordinator();
-            if (!coordinator || document.hidden || navigator.onLine === false) return false;
-            const pending = coordinator.check('hl-order-inventory');
+            const codes = [...new Set((Array.isArray(rows) ? rows : []).map((row) => getHlOrderSource(row).itemcode)
+                .map(normalizeHlAvailabilityValue).filter((code) => code && !code.includes('*')))];
+            if (!codes.length || navigator.onLine === false) return false;
+            const cacheKey = JSON.stringify([owner.readIdentity, codes]);
+            if (hlOrderAvailabilityCacheKey === cacheKey && (Date.now() - hlOrderAvailabilityLoadedAt) < 30000) return false;
+            const pending = (async () => {
+                const previous = JSON.stringify([...hlOrderAvailabilityRows.entries()]);
+                try {
+                    const result = await fetchHlOrderAvailabilityByItemCodes(codes, { timeoutMs: SUPABASE_READ_TIMEOUT_MS });
+                    if (!isHlOrderOwnershipCurrent(owner)) return false;
+                    if (result.failed) return false;
+                    const requested = new Set(codes);
+                    for (const [key, value] of hlOrderAvailabilityRows.entries()) {
+                        if (requested.has(value.itemcode)) hlOrderAvailabilityRows.delete(key);
+                    }
+                    result.rowsByTuple.forEach((value, key) => hlOrderAvailabilityRows.set(key, value));
+                } catch (error) {
+                    if (isHlOrderOwnershipCurrent(owner)) console.warn('HL availability RPC failed; balances remain unknown.', error);
+                    return false;
+                }
+                if (isHlOrderOwnershipCurrent(owner)) {
+                    hlOrderAvailabilityCacheKey = cacheKey;
+                    hlOrderAvailabilityLoadedAt = Date.now();
+                }
+                return previous !== JSON.stringify([...hlOrderAvailabilityRows.entries()]);
+            })();
             hlOrderAvailabilityPending = pending;
-            try { return await pending ? update() : false; }
-            catch (_) { return false; }
+            try { return await pending; }
             finally { if (hlOrderAvailabilityPending === pending) hlOrderAvailabilityPending = null; }
+        }
+
+        function getHlOrderAvailabilitySummaryRows(group = {}) {
+            const itemcode = normalizeHlAvailabilityValue(group.itemcode);
+            const contsize = normalizeHlAvailabilityValue(group.contsize);
+            const knownLots = ['27.F1', '27.S1'];
+            return knownLots.map((seasonLot) => hlOrderAvailabilityRows.get(getHlOrderAvailabilityTupleKey(itemcode, contsize, seasonLot))
+                || { itemcode, contsize, season_lot: seasonLot, computed_balance: null });
         }
 
         function makeHlOrderRow(value, quantity = null) {
@@ -89954,6 +89974,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (!group) return '<section id="hl-order-detail"><p class="p-6">These rows changed or moved to another view. Use Back to return to Needed and review current demand.</p></section>';
             void ensureHlOrderAvailability(group.rows).then((updated) => { if (updated && hlOrderDetailKey === group.key) renderHlOrder(); });
             const esc = escapeHtml;
+            const groupedAvailability = getHlOrderAvailabilitySummaryRows(group).map((entry) => {
+                const balance = entry.computed_balance === null ? 'Unknown' : formatPoManagementNumber(String(entry.computed_balance));
+                return `<div class="rounded-lg border border-emerald-100 bg-white px-3 py-2"><span class="font-bold">${esc(entry.itemcode)} · ${esc(entry.contsize)} · ${esc(entry.season_lot)}</span><span class="ml-2">Available: <strong>${esc(balance)}</strong></span></div>`;
+            }).join('');
             const editableRows = group.rows.filter((row) => { const draft = (hlOrderStateData.draft || []).find((entry) => entry.source_id === row.unique_id); return !draft || ['ready','draft'].includes(draft.status || 'draft'); });
             const rows = group.rows.map((row) => {
                 const draft = (hlOrderStateData.draft || []).find((entry) => entry.source_id === row.unique_id);
@@ -89963,7 +89987,7 @@ function toggleDriveQuickRequestItem(domId) {
                 const locked = draft && !['draft','ready'].includes(draft.status || 'draft');
                 return `<div data-hl-source-id="${esc(row.unique_id)}" class="rounded-xl border border-slate-200 bg-white p-3"><label class="flex min-h-[44px] items-center gap-3 font-bold"><input type="checkbox" data-hl-select ${edit.selected ? 'checked' : ''} ${locked ? 'disabled' : ''} onchange="editHlOrderRow(this)">SOC quantity: ${esc(row.quantityordered || 'Unknown')}</label>${Number(row.hl_available_quantity) < Number(row.quantityordered) ? `<p class="text-sm font-bold text-amber-800">Remaining HL demand: ${esc(row.hl_available_quantity)}</p>` : ''}<p class="text-sm">${esc(row.locationcode)} · Lot ${esc(row.lotcode || 'Not provided')} · ${esc(row.transactionnumber || row.purchaseordernumber || '')}</p><p class="text-sm text-slate-600">${esc(row.customername)} ${esc(row.consigneename)}</p>${buildHlPoBalanceHtml(draft || row)}<label class="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold">HL order quantity <input type="number" inputmode="decimal" min="0" step="1" data-hl-quantity value="${esc(edit.quantity)}" max="${esc(row.hl_available_quantity ?? row.quantityordered)}" ${locked ? 'disabled' : ''} class="min-h-[44px] w-28 rounded-lg border border-slate-300 p-2" oninput="editHlOrderRow(this)"></label>${draft ? `<p class="mt-2 text-sm font-bold text-emerald-800">In HL Cart${locked ? ' · Delivery pending or needs review' : ''}</p>` : ''}</div>`;
             }).join('');
-            return `<section id="hl-order-detail" class="space-y-4"><header><h2 class="text-xl font-black text-[#007a4d]">${esc(group.commonname || group.itemcode)}</h2><p>${esc(group.itemcode)} · ${esc(group.contsize)}</p><p class="text-sm">Ship date: ${esc(formatHlOrderShipDate(group.planstartdate))} · Dock ${esc(group.dock || 'Not provided')} · Stop ${esc(group.stopnumber || 'Not provided')}</p><p class="font-bold">SOC quantity: ${esc(group.quantity)}</p></header><h3 class="font-bold">SOC rows</h3>${rows}<p class="text-sm text-slate-600">Any SOC quantity you do not order from HL is covered locally. Remove dismisses the selected demand and can be undone.</p><div class="flex flex-wrap gap-2">${hlOrderButton('orderHlSelectedRows', [], 'Order selected rows', false, !editableRows.length)}${hlOrderButton('removeHlSelectedRows', [], 'Remove selected rows', true, !editableRows.length)}</div><h3 class="pt-2 font-bold">Park Hill Drive inventory · all matching locations and seasons</h3><p class="text-sm text-slate-600">Availability is current stock, separate from the SOC quantities above.</p>${buildHlOrderDriveRegionHtml(group.rows, `needed:${group.key}`)}</section>`;
+            return `<section id="hl-order-detail" class="space-y-4"><header><h2 class="text-xl font-black text-[#007a4d]">${esc(group.commonname || group.itemcode)}</h2><p>${esc(group.itemcode)} · ${esc(group.contsize)}</p><p class="text-sm">Ship date: ${esc(formatHlOrderShipDate(group.planstartdate))} · Dock ${esc(group.dock || 'Not provided')} · Stop ${esc(group.stopnumber || 'Not provided')}</p><p class="font-bold">SOC quantity: ${esc(group.quantity)}</p></header><section aria-label="Grouped availability" class="space-y-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3"><h3 class="font-bold">Availability by item, size, and season lot</h3>${groupedAvailability}</section><h3 class="font-bold">SOC rows</h3>${rows}<p class="text-sm text-slate-600">Any SOC quantity you do not order from HL is covered locally. Remove dismisses the selected demand and can be undone.</p><div class="flex flex-wrap gap-2">${hlOrderButton('orderHlSelectedRows', [], 'Order selected rows', false, !editableRows.length)}${hlOrderButton('removeHlSelectedRows', [], 'Remove selected rows', true, !editableRows.length)}</div><h3 class="pt-2 font-bold">Park Hill Drive inventory · all matching locations and seasons</h3><p class="text-sm text-slate-600">Availability is current stock, separate from the SOC quantities above.</p>${buildHlOrderDriveRegionHtml(group.rows, `needed:${group.key}`)}</section>`;
         }
 
         function buildHlOrderDriveRegionHtml(sources, scope, lot = '', inventoryMatches = null) {
@@ -90452,7 +90476,7 @@ function toggleDriveQuickRequestItem(domId) {
         function resetHlOrderState() {
             clearHlOrderInventorySnapshot();
             [...selectedItemSources].forEach(([id, source]) => { if (source === 'hl-order') { selectedItems.delete(id); selectedItemSources.delete(id); } });
-            hlOrderSelections.clear(); hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null; hlOrderPreview = null; hlOrderAvailabilityIds = [];
+            hlOrderSelections.clear(); hlOrderDetailEdits.clear(); hlOrderDetailEditRevision = null; hlOrderPreview = null;
             hlOrderDriveDetailReturnContext = null; hlOrderDriveRenderedDomIds.clear();
             hlOrderStateData = null; hlOrderStatePending = null; hlOrderStateLoadedAt = 0; hlOrderStateError = ''; hlOrderPendingCommand = null; hlOrderPreviewShipDate = '';
             hlOrderTimeoutPaused = false;
@@ -103797,13 +103821,13 @@ function toggleDriveQuickRequestItem(domId) {
             return matches;
         }
 
-        async function fetchRequestItemCodeOptionRowsFromSupabase(querySuffix = '', options = {}) {
+        async function fetchRequestItemCodeOptionRowsFromSupabase(itemCode = '', options = {}) {
             const safeOptions = (options && typeof options === 'object' && !Array.isArray(options)) ? options : {};
             const pageSize = Math.max(25, Math.min(100, Number(safeOptions.pageSize) || 100));
             const maxRows = Math.max(pageSize, Number(safeOptions.maxRows) || 1200);
             const rows = [];
             for (let offset = 0; offset < maxRows; offset += pageSize) {
-                const page = await fetchMasterInitialRowsPage(querySuffix, pageSize, offset);
+                const page = await fetchMasterInitialRowsPage({ itemCode: String(itemCode || '').trim() }, pageSize, offset);
                 const pageRows = Array.isArray(page) ? page : [];
                 if (!pageRows.length) break;
                 rows.push(...pageRows);
@@ -103833,7 +103857,7 @@ function toggleDriveQuickRequestItem(domId) {
                 let primaryLookupError = null;
                 if (canFetchRemoteRows) {
                     try {
-                        const itemRows = await fetchRequestItemCodeOptionRowsFromSupabase(`&itemcode=eq.${encodeURIComponent(itemCode)}`, { pageSize: 100, maxRows: 2500 });
+                        const itemRows = await fetchRequestItemCodeOptionRowsFromSupabase(itemCode, { pageSize: 100, maxRows: 2500 });
                         rawRows.push(...itemRows);
                     } catch (lookupError) {
                         primaryLookupError = lookupError;
@@ -112637,9 +112661,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             requestRecountMasterRefreshInFlight = true;
             requestRecountMasterRefreshLastAt = now;
             try {
-                const assignment = getNcrApprovalAssignment('recount', 'inventory') || 'ncr_inventory_recount';
-                const query = `select=*&app_tab_assignment=eq.${encodeURIComponent(assignment)}&order=updated_at.desc.nullslast,unique_id.asc`;
-                const rows = await fetchAllSupabaseRows('ph_master_inventory', query);
+                const rows = await fetchAllInventoryReadRows('recount_queue', {}, { label: 'Recount queue', limit: 500 });
                 const formattedRows = formatFetchedRows(rows || [], 'ph_master_inventory');
                 const nextIds = new Set();
                 let changed = false;
@@ -150863,10 +150885,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!isNcrApprovalTaskView(safeView)) return [];
             const assignment = getNcrApprovalOutboxAssignmentForView(safeView);
             if (!assignment) return [];
-            const selectFields = getNcrApprovalTaskSelectFields(canReadRequesterFields);
-            const query = `select=${selectFields}&app_tab_assignment=eq.${encodeURIComponent(assignment)}&order=updated_at.desc.nullslast,unique_id.asc`;
             try {
-                const rawRows = await fetchSupabasePage('ph_master_inventory', query, 250, 0);
+                const rawRows = (await fetchInventoryReadPage('ncr_queue', {
+                    queueType: getNcrApprovalTypeForTaskView(safeView), assignment
+                }, 250, 0, { label: 'NCR approval queue' })).rows;
                 return formatFetchedRows(rawRows || [], 'ph_master_inventory').filter((row) => {
                     if (!row) return false;
                     if (shouldHideEmptyPaperNcrApprovalPackage(row)) return false;
@@ -150884,7 +150906,6 @@ ${folderNote ? `Folder Note: ${folderNote}
             const safeAssignment = String(assignment || '').trim();
             const approvalType = getNcrApprovalTypeForTaskView(safeView);
             const allowedStages = new Set(getNcrApprovalStagesForCurrentUser());
-            const selectFields = getNcrApprovalTaskSelectFields(canReadRequesterFields);
             const queryAssignments = (safeAssignment ? [safeAssignment] : getNcrApprovalAssignmentsForCurrentTaskUser(safeView))
                 .map((value) => String(value || '').trim().toLowerCase())
                 .filter((value, index, values) => value && values.indexOf(value) === index)
@@ -150896,12 +150917,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                         && allowedStages.has(stage)
                         && getNcrApprovalAssignment(type, stage) === value;
                 });
-            const queries = queryAssignments.map((value) => `select=${selectFields}&app_tab_assignment=eq.${encodeURIComponent(value)}&order=unique_id.asc`);
             const seen = new Set();
             const rows = [];
-            for (const query of queries) {
+            for (const assignmentValue of queryAssignments) {
                 try {
-                    const rawRows = await fetchSupabasePage('ph_master_inventory', query, 250, 0);
+                    const rawRows = (await fetchInventoryReadPage('ncr_queue', {
+                        queueType: approvalType, assignment: assignmentValue
+                    }, 250, 0, { label: 'NCR approval queue' })).rows;
                     formatFetchedRows(rawRows || [], 'ph_master_inventory').forEach((row) => {
                         const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
                         if (!uid || seen.has(uid)) return;
@@ -151033,9 +151055,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!isNotOnInventoryApprovalTaskView(safeView)) return [];
             const safeAssignment = String(assignment || '').trim();
             if (!safeAssignment) return [];
-            const selectFields = getNcrApprovalTaskSelectFields(false);
-            const query = `select=${selectFields}&app_tab_assignment=eq.${encodeURIComponent(safeAssignment)}&order=unique_id.asc`;
-            const rawRows = await fetchSupabasePage('ph_master_inventory', query, 250, 0);
+            const rawRows = (await fetchInventoryReadPage('not_on_inventory_queue', {
+                assignment: safeAssignment
+            }, 250, 0, { label: 'Not-on-inventory queue' })).rows;
             return formatFetchedRows(rawRows || [], 'ph_master_inventory').filter((row) => {
                 if (!row) return false;
                 const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();

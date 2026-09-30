@@ -87,6 +87,7 @@ export function createHlOrderState(options = {}) {
     hlMaster('master-other-size', { contsize: '#7', locationcode: 'A.07.001' }),
     hlMaster('master-other-item', { itemcode: 'UNRELATED', locationcode: 'A.08.001' })],
     commands: [], pdfRequests: [], blockedMutations: [], errors: [], runtime: 0, datasetRevision: 1,
+    inventoryReadOperations: [], availabilityRpcCalls: [],
     failAction: null, failPreview: false, loseSubmitResponse: false, replay: new Map(), previews: new Map(), sequence: 0,
     poBalances, receiptAdjustments: [], importPreviews: new Map(), activeCutoff: options.poCutoff || null };
   // These rows are intentionally separate from the HL state source rows. Drive
@@ -521,6 +522,22 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
       const op = url.pathname.split('/').pop(), body = req.postDataJSON() || {};
+      if (op === 'hl_order_inventory_availability') {
+        control.availabilityRpcCalls.push((Array.isArray(body.p_itemcodes) ? body.p_itemcodes : []).map(value => String(value || '').trim().toUpperCase()));
+        const requested = new Set((Array.isArray(body.p_itemcodes) ? body.p_itemcodes : []).map(value => String(value || '').trim().toUpperCase()));
+        const grouped = new Map();
+        control.master.forEach(row => {
+          const itemcode = String(row.itemcode || '').trim().toUpperCase(), contsize = String(row.contsize || '').trim().toUpperCase();
+          const season_lot = String(row.lotcode || '').trim().toUpperCase();
+          if (!itemcode || !contsize || !season_lot || !requested.has(itemcode)) return;
+          const key = JSON.stringify([itemcode, contsize, season_lot]);
+          const balance = Number(String(row.ptravailable || '').replace(/,/g, ''));
+          const current = grouped.get(key) || { itemcode, contsize, season_lot, computed_balance: 0 };
+          if (Number.isFinite(balance)) current.computed_balance += balance;
+          grouped.set(key, current);
+        });
+        return json(route, [...grouped.values()]);
+      }
       if (op === 'hl_order_state' || op === 'hl_order_command' || op === 'hl_order_restock_state' || op === 'hl_order_restock_state_v2') {
         if (username !== 'dylan_collyge') return json(route, { message: 'HL_ORDER_FORBIDDEN' }, 403);
         if (op === 'hl_order_state') return json(route, control.snapshot());
@@ -623,6 +640,49 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100;
       if (salesCompatibilityRead) return json(route, { ok: true, data: { rows: [], nextCursor: null } });
       if (body.action === 'native_session_bridge') return json(route, { ok: true, session: { token: 'synthetic-bridge', expiresAt: Date.now() + 3600000, username, displayName: username, role } });
+      if (body.action === 'inventory_read') {
+        const operation = String(body.operation || ''), params = body.params || {};
+        control.inventoryReadOperations.push(operation);
+        if (operation === 'schema_capabilities') return json(route, { ok: true, data: { status: 'checked', capabilities: { evalTask: { available: true }, ncrApproval: { available: true }, holdRelease: { available: true }, avRules: { available: true }, flyerShadow: { available: true } } } });
+        if (['master_page', 'master_delta', 'po_detail', 'recount_queue', 'ncr_queue', 'not_on_inventory_queue'].includes(operation)) {
+          control.backgroundMasterReads++;
+          if (holdNextBackgroundMasterRead) {
+            holdNextBackgroundMasterRead = false;
+            resolveHeldBackgroundMasterReadStarted();
+            await new Promise(resolve => { releaseHeldBackgroundMasterRead = resolve; });
+          }
+          const dataset = String(params.dataset || ''), limit = Math.min(500, Math.max(1, Number(params.limit) || 250)), offset = Math.max(0, Number(params.offset) || 0);
+          let rows = control.master.map(row => ({ ...row }));
+          if (operation === 'master_page' && dataset === 'avOpen') rows = rows.filter(row => ['F1', 'S1', 'U1', 'U2'].includes(String(row.season || '').toUpperCase()));
+          if (operation === 'master_page' && dataset === 'lookup') {
+            if (params.uniqueId) rows = rows.filter(row => row.unique_id === params.uniqueId);
+            if (params.itemCode) rows = rows.filter(row => String(row.itemcode || '') === params.itemCode);
+            if (params.locationCode) rows = rows.filter(row => String(row.locationcode || '') === params.locationCode);
+            if (params.lotCode) rows = rows.filter(row => String(row.lotcode || '') === params.lotCode);
+            if (params.source) rows = rows.filter(row => String(row.source || '') === params.source);
+          }
+          if (operation === 'master_delta') rows = rows.filter(row => String(row.last_updated || '') > String(params.since || ''));
+          if (operation === 'po_detail') rows = rows.filter(row => String(row.itemcode || '') === params.itemCode && String(row.contsize || '') === params.contSize);
+          if (operation === 'recount_queue') rows = [];
+          if (operation === 'ncr_queue' || operation === 'not_on_inventory_queue') rows = rows.filter(row => String(row.app_tab_assignment || '').toLowerCase() === String(params.assignment || '').toLowerCase());
+          rows.sort((a, b) => String(a.unique_id || '').localeCompare(String(b.unique_id || '')));
+          const total = rows.length;
+          if (offset > 0) {
+            control.masterLaterPageReads++;
+            if (failNextMasterLaterPage) { failNextMasterLaterPage = false; return json(route, { ok: false, error: 'Synthetic later inventory page failure' }, 503); }
+            if (emptyMasterLaterPage) return json(route, { ok: true, data: { rows: [], total, offset, limit, hasMore: false } });
+            if (holdNextMasterLaterPage) {
+              holdNextMasterLaterPage = false;
+              resolveHeldMasterLaterPageStarted();
+              await new Promise(resolve => { releaseHeldMasterLaterPage = resolve; });
+            }
+          }
+          const pageRows = rows.slice(offset, offset + limit);
+          if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
+          return json(route, { ok: true, data: { rows: pageRows, total, offset, limit, hasMore: offset + pageRows.length < total } });
+        }
+        if (operation === 'verify_row') return json(route, { ok: true, data: { status: 'matched', matches: true } });
+      }
       if (body.action === 'db') {
         control.blockedMutations.push(`PROHIBITED_NATIVE_DB:${body.method}:${body.table}`);
         return json(route, { ok: false, error: 'Native Auth sessions must use PostgREST with RLS for database access.', code: 'DIRECT_RLS_REQUIRED' }, 410);

@@ -148,20 +148,35 @@ test('fresh HL tab navigation reuses state and loads Restocking only on demand',
 });
 
 test('cards use all five grouping fields and detail shows all accessible matching Drive seasons despite search filters', async ({ page, baseURL }, info) => {
+  const forbiddenMasterReads: string[] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (request.method() === 'GET' && url.pathname === '/rest/v1/ph_master_inventory') forbiddenMasterReads.push(request.url());
+  });
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1' }),
     hlSoc('date', { planstartdate: '2026-09-16' }), hlSoc('dock', { dock: '5' }), hlSoc('stop', { stopnumber: '3' }), hlSoc('size', { contsize: '#7' }), hlSoc('item', { itemcode: 'OTHER' })] });
-  expect(fixture.runtime).toBe(1);
+  expect(fixture.runtime).toBeGreaterThan(0);
   // These are existing Drive controls, not HL filter state. No list contents are replaced.
   await page.evaluate(() => {
     const search = document.getElementById('drive-search') as HTMLInputElement | null;
     if (search) { search.value = 'UNRELATED'; search.dispatchEvent(new Event('input', { bubbles: true })); }
   });
   await openHl(page);
+  expect(await page.evaluate(() => window.eval("LIVE_SYNC_VIEW_POLICY['hl-order'].realtimeTables.includes('ph_master_inventory')"))).toBe(false);
+  expect(await page.evaluate(() => window.eval("normalizeRealtimeTableList(['ph_master_inventory']).includes('ph_master_inventory')"))).toBe(false);
   await expect(page.locator('[data-hl-group]')).toHaveCount(6);
   const card = page.locator('[data-hl-group]').filter({ hasText: 'SOC quantity: 25' });
   await expect(card).toContainText('Dock: 4'); await expect(card).toContainText('Stop: 2');
   await navigateHl(page, card.getByRole('button', { name: 'View HL order details', exact: true }));
   const detail = page.locator('#hl-order-detail');
+  const availability = detail.getByRole('region', { name: 'Grouped availability' });
+  await expect(availability.getByRole('heading', { name: 'Availability by item, size, and season lot' })).toBeVisible();
+  await expect(detail).toContainText('27.F1');
+  await expect(detail).toContainText('Available: 90');
+  await expect(availability).toContainText('27.S1');
+  await expect(availability).toContainText('Available: Unknown');
+  await expect.poll(() => fixture.availabilityRpcCalls.length).toBeGreaterThan(0);
+  expect(fixture.availabilityRpcCalls.flat()).toContain('SYNTH.003');
   await expect(detail.locator('[data-hl-source-id]')).toHaveCount(2);
   await expect(detail.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]')).toHaveValue('10');
   await expect(detail.locator('[data-hl-source-id="hl-b"] [data-hl-quantity]')).toHaveValue('15');
@@ -180,6 +195,8 @@ test('cards use all five grouping fields and detail shows all accessible matchin
   await capture(page, info.outputPath('hl-full-detail.png'));
   await backHl(page);
   await expect(page.locator('[data-hl-group]')).toHaveCount(6);
+  expect(forbiddenMasterReads).toEqual([]);
+  expect(fixture.inventoryReadOperations).toContain('master_page');
   expect(fixture.commands).toHaveLength(0); assertIsolated(fixture);
 });
 

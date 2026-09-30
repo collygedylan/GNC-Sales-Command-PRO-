@@ -499,7 +499,7 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
     }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
         season: { seasonCode: 'S1', salesYear: 27 }, getCurrentAppSeasonSettings: () => ctx.season,
-        fetchAllSupabaseRows: async () => [], buildDatasetPayload: (key, rows) => ({ key, rows }),
+        fetchAllSupabaseRows: async () => [], fetchAllInventoryReadRows: async (operation, params) => { ctx.inventoryRead = { operation, params }; return []; }, buildDatasetPayload: (key, rows) => ({ key, rows }),
         canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
     vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
@@ -507,6 +507,7 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
     const staged = await av.stage();
     assert.equal(staged.key, 'master');
     assert.equal(staged.hlOrderInventory, null, 'ordinary AV staging does not acquire an HL snapshot');
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.inventoryRead)), { operation: 'master_page', params: { dataset: 'master', projection: 'full' } });
     ctx.season = { seasonCode: 'F1', salesYear: 27 };
     assert.notEqual(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
         'season changed off-screen cannot retain old derived inventory under unchanged stock revisions');
@@ -781,13 +782,11 @@ test('native database helpers never fall through to the prohibited legacy proxy'
     vm.createContext(ctx);
     vm.runInContext(html.slice(html.indexOf('async function fetchAuthenticatedSupabaseReadPage('), html.indexOf('async function fetchSupabaseRowsPage(')), ctx);
     vm.runInContext(html.slice(html.indexOf('async function runAppApiSupabaseWrite('), html.indexOf('async function supabaseFetch(')), ctx);
-    await assert.rejects(ctx.runAppApiSupabaseWrite('ph_master_inventory', 'GET', null, 'select=*'), error => error.code === 'NATIVE_SESSION_RECOVERY_REQUIRED');
+    await assert.rejects(ctx.runAppApiSupabaseWrite('ph_master_inventory', 'GET', null, 'select=*'), /Raw browser inventory reads are disabled/);
     assert.equal(calls.length, 0);
     ctx.getNativeAuthRequestHeaders = async () => ({ Authorization: 'Bearer native-token' });
-    const rows = await ctx.runAppApiSupabaseWrite('ph_master_inventory', 'GET', null, 'select=*', { count: true });
-    assert.equal(rows.length, 1); assert.equal(calls.length, 1);
-    assert.equal(calls[0].headers.Prefer, 'count=exact');
-    assert.equal(calls[0].headers.Authorization, 'Bearer native-token');
+    await assert.rejects(ctx.runAppApiSupabaseWrite('ph_master_inventory', 'GET', null, 'select=*', { count: true }), /Raw browser inventory reads are disabled/);
+    assert.equal(calls.length, 0, 'native and legacy sessions cannot issue a raw browser inventory GET');
 });
 
 

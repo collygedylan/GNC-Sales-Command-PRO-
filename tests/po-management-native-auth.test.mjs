@@ -5,12 +5,13 @@ import test from 'node:test';
 import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const appApi = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const migration = fs.readFileSync(
-  new URL('../supabase/migrations/20260828014753_restore_po_management_native_auth_access.sql', import.meta.url),
+  new URL('../supabase/archive_migrations/20260828014753_restore_po_management_native_auth_access.sql', import.meta.url),
   'utf8'
 );
 const healthRepair = fs.readFileSync(
-  new URL('../supabase/migrations/20260902160400_optimize_po_management_health_snapshot.sql', import.meta.url),
+  new URL('../supabase/archive_migrations/20260902160400_optimize_po_management_health_snapshot.sql', import.meta.url),
   'utf8'
 );
 const healthProbe = fs.readFileSync(new URL('../scripts/probe-production-auth-health.mjs', import.meta.url), 'utf8')
@@ -46,16 +47,15 @@ test('PO Management loader uses authenticated PostgREST paging with sanitized er
   assert.doesNotMatch(loader, /error && error\.message \? error\.message/);
 });
 
-test('PO inventory detail reads every RLS-visible exact item-and-size row without HL access', () => {
+test('PO inventory detail uses the role-checked app-api with exact item and size filters', () => {
   const start = html.indexOf('function renderPoManagementInventoryRows(');
   const end = html.indexOf('function getWeatherHoldNumber(', start);
   const detail = html.slice(start, end);
   assert.ok(start > 0 && end > start);
-  assert.match(detail, /fetchAuthenticatedSupabaseReadPage\('ph_master_inventory', query/);
-  assert.match(detail, /itemcode=eq\.\$\{encodeURIComponent\(itemcode\)\}/);
-  assert.match(detail, /contsize=eq\.\$\{encodeURIComponent\(contsize\)\}/);
-  assert.match(detail, /order=unique_id\.asc/);
-  assert.match(detail, /offset=\$\{offset\}/);
+  assert.match(detail, /fetchInventoryReadPage\('po_detail', \{ itemCode: itemcode, contSize: contsize \}/);
+  assert.match(appApi, /operation === "po_detail"[\s\S]*resolveModuleAllowed\(supabase, actor, "po-management"\)/);
+  assert.match(appApi, /INVENTORY_PO_DETAIL_FIELDS[\s\S]*eq\("itemcode", itemCode\)\.eq\("contsize", contSize\)/);
+  assert.match(html, /Math\.min\(500, Math\.floor\(Number\(limit\)/);
   assert.match(detail, /owner !== getSupabaseReadIdentityScope\(\)/);
   assert.match(detail, /!canAccessView\('po-management'\)/);
   assert.match(detail, /Exact item, size, location and lot match/);
