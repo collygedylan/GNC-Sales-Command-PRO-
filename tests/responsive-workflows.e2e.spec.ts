@@ -2150,7 +2150,7 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
   await page.goto('/?e2e=reclass-mobile-density', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openArgosInventoryTransactionModal === 'function');
   await page.evaluate(() => {
-    const rows = [0, 1].map(index => ({
+    const rows = Array.from({ length: 6 }, (_, index) => ({
       UNIQUE_ID: `mobile-density-${index}`, ITEMCODE: 'DENSITY.001', COMMONNAME: 'Mobile Density Item',
       CONTSIZE: '#1', LOTCODE: `27.F${index + 1}`, LOCATIONCODE: `F.${index + 1}.000`,
       SEASON: 'F1', SALEYEAR: '27', SOURCE: 'LD', PRIORITY: '1',
@@ -2165,9 +2165,24 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
   const origin = modal.locator('[data-reclass-row-card="mobile-density-0"]');
   const details = origin.locator('[data-reclass-location-details]');
   await expect(modal).toBeVisible();
-  await expect(details).toHaveJSProperty('open', false);
-  for (const width of [320, 390]) {
+  await expect(modal.locator('.argos-reclass-inquiry-heading')).toHaveCount(0);
+  await expect(modal.locator('.argos-reclass-action-scope-notice')).toHaveCount(0);
+  await expect(modal.locator('[data-reclass-row-card]')).toHaveCount(6);
+  await expect(modal.locator('[data-reclass-row-expanded="false"]')).toHaveCount(6);
+  await expect(origin.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
+  for (const width of [320, 390, 460]) {
     await page.setViewportSize({ width, height: 844 });
+    const density = await modal.evaluate((element) => {
+      const chips = Array.from(element.querySelectorAll('.argos-tx-source-chip'));
+      const rows = Array.from(element.querySelectorAll('[data-reclass-row-card]'));
+      const footerTop = element.querySelector('.argos-tx-footer')!.getBoundingClientRect().top;
+      return { sourceRows: new Set(chips.map(chip => Math.round(chip.getBoundingClientRect().top))).size,
+        visibleRows: rows.filter(row => row.getBoundingClientRect().bottom <= footerTop).length,
+        minToggleHeight: Math.min(...rows.map(row => row.querySelector('.argos-reclass-row-toggle')!.getBoundingClientRect().height)) };
+    });
+    expect(density.sourceRows).toBe(2);
+    expect(density.visibleRows).toBeGreaterThanOrEqual(3);
+    expect(density.minToggleHeight).toBeGreaterThanOrEqual(44);
     for (const reviewVisible of [false, true]) {
       await modal.locator('#argos-inventory-transaction-review').evaluate((button, visible) => button.classList.toggle('hidden', !visible), reviewVisible);
       const layout = await modal.evaluate((element) => {
@@ -2188,6 +2203,10 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
       if (layout.reviewVisible) expect(layout.emailWidth).toBeGreaterThan(layout.footerWidth * .85);
     }
   }
+  await origin.locator('.argos-reclass-row-toggle').click();
+  await expect(origin).toHaveAttribute('data-reclass-row-expanded', 'true');
+  await expect(details).toHaveJSProperty('open', false);
+  await expect(origin.locator('.argos-reclass-action-panel-title').first()).not.toContainText('scope above');
   await details.locator('summary').click();
   await expect(details).toHaveJSProperty('open', true);
   await details.locator('[data-reclass-temporary-field="locationnote"]').fill('Mobile draft preserved');
@@ -2355,16 +2374,16 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     const second = modal.locator('[data-reclass-row-card="row-1"]');
     await expect(modal).toBeVisible();
     await expect(cards).toHaveCount(41);
-    await expect(origin).toHaveAttribute('data-reclass-row-expanded', 'true');
-    await expect(origin.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
+    await expect(origin).toHaveAttribute('data-reclass-row-expanded', 'false');
+    await expect(origin.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await expect(second.locator('[data-reclass-row-hydrated="false"]')).toHaveCount(1);
     await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(0);
 
     await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
     await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
-    await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('F1');
-    await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Hold: 39');
+    await expect(modal.locator('.argos-reclass-inquiry-heading')).toHaveCount(0);
+    await expect(modal.locator('.argos-reclass-action-scope-notice')).toHaveCount(0);
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
@@ -2391,7 +2410,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
     await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Actions');
     await expect(origin).toHaveAttribute('data-reclass-scope-actions', 'hold');
-    await expect(origin).toContainText('Inquiry-wide request: On Hold will be applied to all eligible rows');
+    await expect(second).toContainText('Inquiry-wide request: On Hold will be applied to all eligible rows');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
