@@ -268,6 +268,7 @@ function requestQueueLifecycleFixture() {
     const ctx = { Error, Object, String, AbortController,
         productionLiveSyncNavigation: new AbortController(),
         REQUEST_QUEUE_LIVE_ROWS_TABLE: 'ph_request_queue_live_rows', ACTIVE_REQUEST_TABLE: 'ph_active_request',
+        isRequestQueueLiveRowsViewMissingError: error => error?.code === '42P01' && /ph_request_queue_live_rows/i.test(error?.message || ''),
         console: { warn: (...args) => warnings.push(args) },
         transport: async () => [{ unique_id: 'isolated-request' }],
         fetchAllSupabaseRows: (table, query, options) => {
@@ -330,7 +331,7 @@ test('request queue navigation rejects late successful data without changing vie
 test('active request queue still falls back for real view failures and shares its navigation signal', async () => {
     const { ctx, calls, warnings, ready } = requestQueueLifecycleFixture();
     ctx.transport = async table => {
-        if (table === 'ph_request_queue_live_rows') throw new Error('view unavailable');
+        if (table === 'ph_request_queue_live_rows') throw Object.assign(new Error('relation ph_request_queue_live_rows does not exist'), { code: '42P01' });
         return [{ unique_id: 'pending-request' }];
     };
     assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'pending-request');
@@ -392,12 +393,12 @@ test('navigation stops visible-document reads until restoration or trusted inter
     assert.equal(suspends.length, 3, 'both navigations and a blocked loader suspend the coordinator');
 });
 function fixture(concurrency = 3) {
-    const ctx = { Map, Promise, JSON, String, Error, SUPABASE_READ_CONCURRENCY_LIMIT: concurrency,
+    const ctx = { Map, Promise, JSON, String, Number, Math, Date, Error, AbortController, setTimeout, clearTimeout, SUPABASE_READ_CONCURRENCY_LIMIT: concurrency,
         SUPABASE_URL: 'https://fixture.invalid', currentUser: 'dylan_collyge', currentRole: 'Admin', currentUserDivision: '10',
         nativeAuthSessionActive: true, nativeAuthProfile: { id: 'user-a' }, incrementInternalPerfCounter() {}, getCurrentLoginCacheScopeKey: () => 'scope'
     };
     vm.createContext(ctx);
-    vm.runInContext(html.slice(start, end) + '\nthis.generation = () => { productionLiveSyncReadGeneration++; }; this.permission = value => { productionLiveSyncReadPermissionVersion = value; }; this.resetAuth = () => { productionLiveSyncReadAuthEpoch++; }; this.reads = supabaseReadInFlight;', ctx);
+    vm.runInContext(html.slice(start, end) + '\nthis.generation = () => { productionLiveSyncReadGeneration++; abortSupabaseReadsBeforeGeneration(productionLiveSyncReadGeneration); }; this.permission = value => { productionLiveSyncReadPermissionVersion = value; }; this.resetAuth = () => { productionLiveSyncReadAuthEpoch++; }; this.reads = supabaseReadInFlight;', ctx);
     return ctx;
 }
 
@@ -410,13 +411,23 @@ test('identical same-scope reads within one verified generation share a request'
 });
 
 test('a fresh snapshot generation cannot join a pre-revision inventory read', async () => {
-    const ctx = fixture(); const gate = deferred();
-    const old = ctx.runDedupeSupabaseRead('all:soc:query', () => gate.promise);
+    const ctx = fixture(); const gate = deferred(); let calls = 0;
+    const old = ctx.runDedupeSupabaseRead('all:soc:query', ({ signal } = {}) => {
+        calls++;
+        return new Promise((resolve, reject) => {
+            signal.addEventListener('abort', () => reject(Object.assign(new Error('cancelled'), { code: 'REQUEST_ABORTED' })), { once: true });
+            gate.promise.then(resolve, reject);
+        });
+    });
+    const oldRejected = assert.rejects(old, error => error.code === 'REQUEST_ABORTED');
     await settle(); ctx.generation();
-    const fresh = ctx.runDedupeSupabaseRead('all:soc:query', async () => ['new-generation']);
+    const fresh = ctx.runDedupeSupabaseRead('all:soc:query', async () => { calls++; return ['new-generation']; });
     assert.notEqual(old, fresh);
+    await oldRejected;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await settle();
+    assert.equal(calls, 2, 'new generation starts only after the old signal aborts and its request settles');
     assert.deepEqual(await fresh, ['new-generation']);
-    gate.resolve(['old-generation']); await old;
 });
 
 test('account switching rejects old in-flight data and never shares it with the new account', async () => {
@@ -448,15 +459,28 @@ test('same-role permission changes and logout-login epochs discard earlier reads
     }
 });
 
-test('an old completion cannot remove a newer in-flight cache entry', async () => {
-    const ctx = fixture(); const oldGate = deferred(); const freshGate = deferred();
-    const old = ctx.runDedupeSupabaseRead('same', () => oldGate.promise);
+test('generation handoff leaves one in-flight request for a dataset', async () => {
+    const ctx = fixture(); const oldGate = deferred(); const freshGate = deferred(); let calls = 0;
+    const old = ctx.runDedupeSupabaseRead('same', ({ signal } = {}) => {
+        calls++;
+        return new Promise((resolve, reject) => {
+            signal.addEventListener('abort', () => reject(Object.assign(new Error('cancelled'), { code: 'REQUEST_ABORTED' })), { once: true });
+            oldGate.promise.then(resolve, reject);
+        });
+    });
+    const oldRejected = assert.rejects(old, error => error.code === 'REQUEST_ABORTED');
     await settle(); ctx.generation();
-    const fresh = ctx.runDedupeSupabaseRead('same', () => freshGate.promise);
-    oldGate.resolve([]); await old;
+    const fresh = ctx.runDedupeSupabaseRead('same', async () => { calls++; return freshGate.promise; });
+    await oldRejected;
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await settle();
+    assert.equal(calls, 2, 'the fresh request starts after the old generation has settled');
     assert.equal(ctx.reads.size, 1);
-    assert.equal(ctx.runDedupeSupabaseRead('same', async () => ['wrong']), fresh);
+    const duplicate = ctx.runDedupeSupabaseRead('same', async () => { calls++; return ['wrong']; });
+    assert.equal(ctx.reads.size, 1);
+    assert.equal(calls, 2, 'a duplicate joins the current generation rather than starting a second fetch');
     freshGate.resolve([]); await fresh; assert.equal(ctx.reads.size, 0);
+    assert.deepEqual(await duplicate, []);
 });
 
 test('settings-only updates rebuild current-season collections from verified inventory without a download', () => {

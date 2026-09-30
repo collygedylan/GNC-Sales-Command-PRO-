@@ -60,7 +60,9 @@
             options.onBackgroundStatus?.(backgroundStatus);
         }
         function closeSubscription() {
-            if (unsubscribe) unsubscribe();
+            if (unsubscribe) {
+                try { Promise.resolve(unsubscribe()).catch(() => {}); } catch (_) {}
+            }
             unsubscribe = null; subscribedScope = '';
         }
         function reset() {

@@ -106,7 +106,7 @@ values ('DONE-C-LEGACY', 'DONE-C', 'DONE-ITEM-C', 'flyer_folder');
 select is(public.complete_season_sales_office_v1('season_done_test', 'DONE-C', 1, 'done-c-legacy-token')->>'status', 'done', 'legacy mirror bootstraps only its linked ITEMCODE lifecycle');
 select is((select count(*)::integer from public.ph_sales_office where master_id='DONE-C'), 0, 'legacy mirror disappears after canonical completion');
 select throws_ok($q$select public.complete_season_sales_office_v1('season_done_test', 'DONE-D', 1, 'done-d-wrong-winner-token')$q$,
-  '40001', 'SEASON_SALES_WINNER_CHANGED', 'legacy row cannot complete a different deterministic winner');
+  'PT409', 'SEASON_SALES_WINNER_CHANGED', 'legacy row cannot complete a different deterministic winner');
 select is((select count(*)::integer from public.ph_season_sales_office_state where itemcode_normalized='DONE-ITEM-D'), 0, 'failed legacy completion rolls back its attempted staging changes');
 
 insert into public.ph_cav_import (unique_id, itemcode, season, holdstopreason, last_updated)
@@ -114,10 +114,10 @@ values ('DONE-CAV-A', 'DONE-ITEM-A', 'F1', '', now() + interval '1 second');
 select lives_ok($q$select public.reconcile_season_sales_office_v1(array['DONE-ITEM-A'], false, 'new-blank-cav', null)$q$, 'a newer blank Custom AV import reconciles');
 select is((select status || ':' || revision || ':' || reopen_reason from public.ph_season_sales_office_state where itemcode_normalized='DONE-ITEM-A'), 'open:3:cav_blank', 'the existing newer-blank rule reopens Done');
 select throws_ok($q$select public.complete_season_sales_office_v1('season_done_test', 'DONE-A', 1, 'done-a-first-token')$q$,
-  '40001', 'SEASON_SALES_STALE_REVISION', 'late lost-response replay cannot acknowledge a reopened revision');
+  'PT409', 'SEASON_SALES_STALE_REVISION', 'late lost-response replay cannot acknowledge a reopened revision');
 select is((select state_revision from public.ph_sales_office where unique_id='DONE-A'), 3, 'late retry leaves the legitimately reopened mirror visible');
 select throws_ok($q$select public.complete_season_sales_office_v1('season_done_test', 'DONE-A', 1, 'done-a-stale-new-token')$q$,
-  '40001', 'SEASON_SALES_STALE_REVISION', 'a stale new completion cannot finish reopened work');
+  'PT409', 'SEASON_SALES_STALE_REVISION', 'a stale new completion cannot finish reopened work');
 select is(public.complete_season_sales_office_v1('season_done_test', 'DONE-A', 3, 'done-a-reopened-token')->>'status', 'done', 'current revision can explicitly complete reopened work');
 update public.ph_cav_import set holdstopreason='SPEC', last_updated=now()+interval '2 seconds' where unique_id='DONE-CAV-A';
 select lives_ok($q$select public.reconcile_season_sales_office_v1(array['DONE-ITEM-A'], false, 'new-nonblank-cav', null)$q$, 'a newer nonblank import reconciles');
@@ -138,7 +138,7 @@ update public.ph_master_inventory set ptravailable='200' where unique_id='DONE-A
 select lives_ok($q$select public.reconcile_season_sales_office_v1(array['DONE-ITEM-A'], false, 'winner-changed', null)$q$, 'new deterministic winner reconciles');
 select is((select status || ':' || revision || ':' || winner_unique_id from public.ph_season_sales_office_state where itemcode_normalized='DONE-ITEM-A'), 'open:9:DONE-A-ALT', 'winner changes retain their existing reopening rule');
 select throws_ok($q$select public.complete_season_sales_office_v1('season_done_test', 'DONE-A', 7, 'done-a-final-token')$q$,
-  '40001', 'SEASON_SALES_STALE_REVISION', 'old-winner replay cannot affect new-winner work');
+  'PT409', 'SEASON_SALES_STALE_REVISION', 'old-winner replay cannot affect new-winner work');
 select is((select count(*)::integer from public.ph_sales_office where unique_id='DONE-A-ALT'), 1, 'new-winner card survives old completion replay');
 select throws_ok($q$update public.ph_season_sales_office_events set metadata='{}' where state_id=(select id from public.ph_season_sales_office_state where itemcode_normalized='DONE-ITEM-A')$q$,
   '42501', 'SEASON_SALES_AUDIT_APPEND_ONLY', 'completion and reopening history remains append-only');
