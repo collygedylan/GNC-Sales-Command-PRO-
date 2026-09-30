@@ -56,6 +56,23 @@ async function harness(page: Page, baseURL: string) {
         && /^\/macros\/s\/[^/]+\/exec$/.test(url.pathname) && request.postData() === '{"type":"manual_status"}';
       const isRevisionRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1';
+      const inventoryReadOperations = new Set([
+        'master_page', 'master_delta', 'po_detail', 'recount_queue',
+        'ncr_queue', 'not_on_inventory_queue', 'verify_row', 'schema_capabilities'
+      ]);
+      const isInventoryRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && body?.action === 'inventory_read'
+        && inventoryReadOperations.has(String(body.operation || ''));
+      if (isInventoryRead) {
+        const params = body.params && typeof body.params === 'object' ? body.params : {};
+        const data = body.operation === 'schema_capabilities'
+          ? { status: 'checked', capabilities: {} }
+          : body.operation === 'verify_row'
+            ? { status: 'missing', matches: false }
+            : { rows: [], total: 0, offset: Math.max(0, Number(params.offset) || 0), limit: Math.max(1, Number(params.limit) || 500), hasMore: false };
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ ok: true, data }) });
+      }
       if (!isManualStatusRead && !isRevisionRead && !['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'].includes(url.pathname)) {
         unexpectedMutations.push(`${request.method()}:${url.pathname}`);
       }
