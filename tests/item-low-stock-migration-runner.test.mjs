@@ -331,7 +331,8 @@ test('cloud rollout verifies the existing release proof before schema and import
   assert.ok(workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials')<workflow.indexOf('Sync Code.gs into Apps Script'));
   assert.ok(workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials')<workflow.indexOf('Configure Production Schedule dispatch and deploy backend functions'));
   assert.ok(workflow.indexOf('Configure Production Schedule dispatch and deploy backend functions')<workflow.indexOf('Sync Code.gs into Apps Script'));
-  assert.ok(workflow.indexOf('Queue the initial signed workbook import')<workflow.indexOf('Push the verified static site to gh-pages without force'));
+  assert.doesNotMatch(workflow, /seed-production-schedule-release|Queue the initial signed workbook import/);
+  assert.ok(workflow.indexOf('Install dependencies and build the complete site')<workflow.indexOf('Push the verified static site to gh-pages without force'));
   const steps = yaml.load(workflow).jobs['sync-codegs'].steps;
   const previewStep = steps.find(step => step.name === 'Preview perennial policy impact (read only)');
   const artifactStep = steps.find(step => step.name === 'Retain sanitized perennial impact preview');

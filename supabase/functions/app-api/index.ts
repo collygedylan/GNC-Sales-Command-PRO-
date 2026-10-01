@@ -4231,13 +4231,18 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const role = String(actor.role || "");
       const access = getRoleAccessState(role);
       const data = await readAvPage({ supabase, actor, payload,
-        canRead: table => hasTableReadAccess(role, table, username),
+        // readAvPage exposes only the single current-season setting here; do
+        // not grant rep-like accounts access to arbitrary app settings.
+        canRead: table => hasTableReadAccess(role, table, username)
+          || (table === "ph_app_settings" && access.isRepLike),
         restrictRep: access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username),
       });
       return jsonResponse({ ok: true, data });
     } catch (error) {
-      const failure = error as { message?: string; status?: number };
-      return errorResponse(failure.message || "AV_READ_UNAVAILABLE", failure.status || 503);
+      const failure = error as { message?: string; status?: number; code?: string };
+      return errorResponse(failure.message || "AV_READ_UNAVAILABLE", failure.status || 503, {
+        code: failure.code || failure.message || "AV_READ_UNAVAILABLE",
+      });
     }
   }
   if (action === "inventory_read") return await handleInventoryRead(session, payload);

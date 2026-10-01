@@ -171,14 +171,15 @@ test('backend schema and functions deploy before guarded Pages publication', () 
   assert.match(read('.github/workflows/pages-static.yml'), /node scripts\/check-compatible-apps-script\.mjs/);
 });
 
-test('Pages publication seeds a complete snapshot, rebuilds from guarded main, then pushes without force', () => {
+test('Pages publication rebuilds from guarded main without importing workbook data, then pushes without force', () => {
   const steps = publish.steps;
-  const guardBefore = steps.findIndex(step => step.name === 'Verify current main before seeding');
-  const seed = steps.findIndex(step => step.name === 'Queue the initial signed workbook import and wait for a complete snapshot');
-  const build = steps.findIndex(step => step.name === 'Install dependencies and build the complete site after snapshot activation');
+  const guardBefore = steps.findIndex(step => step.name === 'Verify current main before building');
+  const build = steps.findIndex(step => step.name === 'Install dependencies and build the complete site');
   const guardAfter = steps.findIndex(step => step.name === 'Recheck current main and release proof before publication');
   const push = steps.find(step => step.name === 'Push the verified static site to gh-pages without force');
-  assert.ok(guardBefore >= 0 && seed > guardBefore && build > seed && guardAfter > build);
+  assert.ok(guardBefore >= 0 && build > guardBefore && guardAfter > build);
+  assert.doesNotMatch(JSON.stringify(backend), /seed-production-schedule-release|PRODUCTION_SCHEDULE_IMPORT_TIMEOUT_MS|production_schedule_start_import_v1/);
+  assert.equal(publish['timeout-minutes'], 25);
   assert.ok(push && steps.indexOf(push) > guardAfter);
   assert.match(push.run, /git -C .* push .*HEAD:gh-pages/);
   assert.doesNotMatch(push.run, /--force(?:-with-lease)?/);

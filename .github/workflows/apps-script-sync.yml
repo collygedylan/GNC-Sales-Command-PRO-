@@ -14,7 +14,6 @@ on:
       - scripts/pages-release.mjs
       - scripts/sync-codegs-to-apps-script.js
       - scripts/apply-item-low-stock-migration.mjs
-      - scripts/seed-production-schedule-release.mjs
       - supabase/migrations/20261001012038_production_schedule_snapshot_v1.sql
       - supabase/migrations/20261001025638_aura_hr_command_center_v1.sql
       - supabase/functions/app-api/index.ts
@@ -184,11 +183,11 @@ jobs:
           retention-days: 90
 
   publish-pages:
-    name: Seed Production Schedule, build and publish Pages
+    name: Build and publish Pages
     needs: [authorize-production, sync-codegs]
     if: github.ref == 'refs/heads/main' && needs.authorize-production.outputs.authorized == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 25
     permissions:
       contents: write
     steps:
@@ -203,20 +202,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Verify current main before seeding
+      - name: Verify current main before building
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/lib/production-release-guard.mjs
 
-      - name: Queue the initial signed workbook import and wait for a complete snapshot
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          APPS_SCRIPT_WEB_APP_URL: https://script.google.com/macros/s/${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}/exec
-          PRODUCTION_SCHEDULE_IMPORT_TIMEOUT_MS: '16200000'
-        run: node scripts/seed-production-schedule-release.mjs
-
-      - name: Install dependencies and build the complete site after snapshot activation
+      # Workbook imports are user-initiated in Managers > Production Schedule.
+      # Code publication must neither start an import nor wait for one to finish.
+      - name: Install dependencies and build the complete site
         run: |
           npm ci
           npm run build:pilot-monitoring
