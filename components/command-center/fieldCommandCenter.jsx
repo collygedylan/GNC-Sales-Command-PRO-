@@ -184,17 +184,17 @@ function mondayOf(date) {
 function localDate(date) { return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; }
 const weekDates = week => Array.from({ length: 7 }, (_, day) => { const date = new Date(week); date.setDate(date.getDate() + day); return localDate(date); });
 
-function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
-  const person = employee && typeof employee === 'object' ? employee : {};
+function EmployeeLaborCard({ employee, jobs, week, entries: rawEntries, onSave }) {
+  employee = employee && typeof employee === 'object' ? employee : {};
   const jobRows = records(jobs);
-  const savedRows = records(entries);
+  const entries = useMemo(() => records(rawEntries), [rawEntries]);
   const [localEntries, setLocalEntries] = useState([]);
   const localEntriesRef = useRef([]);
   const [state, setState] = useState('');
   const timers = useRef(new Map());
   const dates = useMemo(() => weekDates(week), [week]);
   useEffect(() => {
-    const saved = savedRows.filter(row => row.employee_id === person.id && dates.includes(row.work_date));
+    const saved = entries.filter(row => row.employee_id === employee.id && dates.includes(row.work_date));
     const grouped = new Map();
     for (const row of saved) {
       const code = safeText(row.job_code);
@@ -203,7 +203,7 @@ function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
     }
     localEntriesRef.current = [...grouped.values()];
     setLocalEntries(localEntriesRef.current);
-  }, [person.id, entries, dates]);
+  }, [employee.id, entries, dates]);
   useEffect(() => () => { for (const timer of timers.current.values()) clearTimeout(timer); timers.current.clear(); }, []);
   const edit = (key, field, value) => {
     setLocalEntries(current => {
@@ -220,7 +220,7 @@ function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
       if (value === '' || !Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 24) { setState('Enter 0–24 hours.'); return; }
       setState('Saving…');
       try {
-        await onSave({ employee_id: person.id, work_date: field, job_code: row.job_code, hours: Number(value) });
+        await onSave({ employee_id: employee.id, work_date: field, job_code: row.job_code, hours: Number(value) });
         setLocalEntries(current => {
           const updated = current.map(item => item.key === key ? { ...item, persisted: true } : item);
           localEntriesRef.current = updated;
@@ -231,13 +231,13 @@ function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
       catch (error) { setState(errorText(error)); }
     }, 550));
   };
-  return <article className="alpha-panel alpha-stack"><div className="alpha-row alpha-row-between"><div><h3>{safeText(person.name)}</h3><span className="alpha-muted alpha-date">#{safeText(person.emp_number)} · {safeText(person.department)}</span></div><button type="button" onClick={() => setLocalEntries(current => {
+  return <article className="alpha-panel alpha-stack"><div className="alpha-row alpha-row-between"><div><h3>{safeText(employee.name)}</h3><span className="alpha-muted alpha-date">#{safeText(employee.emp_number)} · {safeText(employee.department)}</span></div><button type="button" onClick={() => setLocalEntries(current => {
       const updated = [...current, { key: newId(), job_code: '', hours: {}, persisted: false }];
       localEntriesRef.current = updated;
       return updated;
     })} disabled={!jobRows.length}>Add job code</button></div>
     {!jobRows.length && <p className="alpha-muted">No job codes are configured yet.</p>}
-    {localEntries.map(row => <div className="alpha-entry" key={row.key}><label>Job code<select value={row.job_code} onChange={event => edit(row.key, 'job_code', event.target.value)} disabled={row.persisted}><option value="">Select job</option>{jobRows.map(job => <option key={job.job_code} value={job.job_code}>{job.job_code} · {safeText(job.description)}</option>)}</select></label><div className="alpha-week">{dates.map((date, index) => <div className="alpha-day" key={date}><label htmlFor={`${row.key}-${date}`}>{['M','T','W','T','F','S','S'][index]}</label><input id={`${row.key}-${date}`} type="number" min="0" max="24" step="0.25" inputMode="decimal" aria-label={`${date} hours for ${safeText(person.name)}, ${row.job_code}`} value={row.hours?.[date] ?? ''} onChange={event => edit(row.key, date, event.target.value)}/></div>)}</div></div>)}
+    {localEntries.map(row => <div className="alpha-entry" key={row.key}><label>Job code<select value={row.job_code} onChange={event => edit(row.key, 'job_code', event.target.value)} disabled={row.persisted}><option value="">Select job</option>{jobRows.map(job => <option key={job.job_code} value={job.job_code}>{job.job_code} · {safeText(job.description)}</option>)}</select></label><div className="alpha-week">{dates.map((date, index) => <div className="alpha-day" key={date}><label htmlFor={`${row.key}-${date}`}>{['M','T','W','T','F','S','S'][index]}</label><input id={`${row.key}-${date}`} type="number" min="0" max="24" step="0.25" inputMode="decimal" aria-label={`${date} hours for ${safeText(employee.name)}, ${row.job_code}`} value={row.hours?.[date] ?? ''} onChange={event => edit(row.key, date, event.target.value)}/></div>)}</div></div>)}
     {state && <div className={`alpha-status ${state === 'Saved' || state === 'Saving…' ? '' : 'alpha-error'}`} role="status">{state}</div>}
   </article>;
 }
