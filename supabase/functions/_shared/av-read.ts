@@ -97,8 +97,18 @@ export async function readAvPage({ supabase, actor, payload, canRead, restrictRe
     }
   }
   query = query.order(source.key, { ascending: true }).range(offset, offset + pageSize - 1);
-  const { data, error, count } = await query;
-  if (error) throw Object.assign(new Error("AV_READ_UNAVAILABLE"), { status: 503 });
+  const { data, error, count, status: responseStatus } = await query;
+  if (error) {
+    const code = String(error.code || error.sqlState || error.sqlstate || "").trim().toUpperCase();
+    const reportedStatus = Number(error.status || responseStatus) || 0;
+    const status = code === "42501" ? 403 : code === "40001" || code === "PT409" ? 409
+      : [401, 403].includes(reportedStatus) ? reportedStatus
+      : reportedStatus >= 400 && reportedStatus < 600 ? reportedStatus : 503;
+    throw Object.assign(new Error(code === "42501" ? "AV_READ_FORBIDDEN" : "AV_READ_UNAVAILABLE"), {
+      status,
+      code: code || (status === 503 ? "AV_READ_UNAVAILABLE" : ""),
+    });
+  }
   if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 });
   return { rows: data, total: count, offset, limit: pageSize, hasMore: offset + data.length < count };
 }
