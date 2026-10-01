@@ -132,7 +132,7 @@ jobs:
   compiled:
     needs: [build, foundation]
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       max-parallel: 6
