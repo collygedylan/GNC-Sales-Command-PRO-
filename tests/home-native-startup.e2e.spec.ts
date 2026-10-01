@@ -137,6 +137,7 @@ test('Reload app aborts an in-flight inline manifest check before recovering a f
 });
 
 const nativeStartupCases = [
+  { username: 'nelly_aguilar', role: 'admin', startupMode: 'cold', dynamic: false, visible: ['drive', 'managers', 'sales-inventory', 'production'] },
   { username: 'native_start_admin', role: 'ADMIN', startupMode: 'cold', dynamic: false, visible: ['drive', 'managers'] },
   { username: 'native_start_manager', role: 'MANAGER', startupMode: 'restored', dynamic: false, visible: ['drive', 'managers'] },
   { username: 'native_start_rep', role: 'REP', startupMode: 'cold', dynamic: true, visible: ['drive', 'sales'] },

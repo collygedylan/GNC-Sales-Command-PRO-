@@ -655,7 +655,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && !req.headers()['idempotency-key'];
       if (sourceFreshnessRead) return json(route, { ok: true, data: { filename: null, last_updated: null } });
       const datasetRead = body.action === 'dataset_read' && ['soc', 'reserves', 'cav', 'sales_office', 'request_queue',
-        'dock_item', 'dock_issue', 'dock_allocations'].includes(body.dataset)
+        'dock_item', 'dock_issue', 'dock_allocations', 'inventory_edits', 'shear'].includes(body.dataset)
         && Object.keys(body).every(key => ['action', 'dataset', 'params'].includes(key))
         && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
         && Object.keys(body.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))

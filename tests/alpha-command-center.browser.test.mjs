@@ -269,3 +269,38 @@ test('weekly labor autosaves two job codes for the same employee and date', asyn
   assert.equal(new Set(saved.map(row => row.entry.work_date)).size, 1);
   await page.evaluate(() => window.handle.destroy());
 });
+
+test('optional HR and Comm permission denials stay inside an empty alpha view without retries', async t => {
+  const browser = await chromium.launch({ headless: true });
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await openCommandCenter(page);
+  await page.evaluate(() => {
+    window.reads = [];
+    window.deps = {
+      isAuthorized: () => window.identity.active,
+      callApi: async payload => { window.reads.push(payload.action); throw { status: 403, message: 'Forbidden' }; },
+      client: { from(table) {
+        window.reads.push(table);
+        const query = {};
+        for (const method of ['select', 'eq', 'order', 'gte', 'lte', 'limit']) query[method] = () => query;
+        query.then = resolve => Promise.resolve({ data: null, error: { code: '42501', message: 'permission denied' } }).then(resolve);
+        return query;
+      } },
+    };
+    window.handle = window.mountForVerifiedDylan('hr', window.deps);
+  });
+  await page.getByText('No employees found in this department.').waitFor();
+  assert.equal(await page.locator('[role="alert"]').count(), 0);
+  assert.deepEqual(await page.evaluate(() => window.reads), ['core_employees', 'hr_job_codes', 'labor_timesheets']);
+  await page.evaluate(() => { window.handle.destroy(); window.handle = window.mountForVerifiedDylan('communications', window.deps); });
+  await page.getByLabel('Recipient name').waitFor();
+  await page.waitForFunction(() => window.reads.includes('alpha_chat_list'));
+  await page.waitForTimeout(250);
+  assert.equal(await page.locator('[role="alert"]').count(), 0);
+  assert.equal(await page.evaluate(() => window.reads.filter(value => value === 'alpha_chat_list').length), 1);
+  assert.deepEqual(errors, []);
+  await page.evaluate(() => window.handle.destroy());
+});

@@ -8,6 +8,22 @@ const safeText = value => String(value == null ? '' : value);
 const errorText = error => safeText(error?.message || error || 'Request failed. Try again.');
 const when = value => { const date = new Date(value); return Number.isNaN(date.valueOf()) ? '' : date.toLocaleString(); };
 const records = value => Array.isArray(value) ? value.filter(row => row && typeof row === 'object' && !Array.isArray(row)) : [];
+const isAccessDenial = error => ['401', '403', '42501'].includes(String(error?.status || ''))
+  || ['401', '403', '42501'].includes(String(error?.code || ''));
+
+// Optional alpha reads never fail the legacy shell. Writes must still report errors.
+async function readOptionalAlpha(deps, read, empty = { data: [] }) {
+  if (!deps.isAuthorized()) return empty;
+  try {
+    const result = await read();
+    if (!deps.isAuthorized()) return empty;
+    if (result?.error) throw result.error;
+    return result || empty;
+  } catch (error) {
+    if (!deps.isAuthorized() || isAccessDenial(error)) return empty;
+    throw error;
+  }
+}
 
 class CommandCenterBoundary extends React.Component {
   constructor(props) { super(props); this.state = { failed: false }; }
@@ -26,11 +42,17 @@ class CommandCenterBoundary extends React.Component {
 
 function useAuthorizedApi(deps) {
   return useCallback(async (payload, signal) => {
-    if (!deps.isAuthorized()) throw new Error('Dylan’s verified session is required.');
-    const result = await deps.callApi(payload, signal);
-    if (!deps.isAuthorized()) throw new Error('Session changed.');
-    if (!result?.ok) throw new Error(safeText(result?.error || result?.message || 'Request failed.'));
-    return result;
+    const read = async () => {
+      if (!deps.isAuthorized()) throw new Error('Dylan’s verified session is required.');
+      const result = await deps.callApi(payload, signal);
+      if (!deps.isAuthorized()) throw new Error('Session changed.');
+      if (!result?.ok) throw Object.assign(new Error(safeText(result?.error || result?.message || 'Request failed.')), { code: result?.code, status: result?.status });
+      return result;
+    };
+    if (['alpha_chat_list', 'alpha_chat_page', 'alpha_timeoff_list'].includes(payload.action)) {
+      return readOptionalAlpha(deps, read, { ok: true, rows: [], hasMore: false });
+    }
+    return read();
   }, [deps]);
 }
 
@@ -262,9 +284,9 @@ function HrHub({ deps }) {
       setLoading(true);
       try {
         const [staff, codes, hours] = await Promise.all([
-          deps.client.from('core_employees').select('id,name,emp_number,department,role,hired_date,vacation_balance').eq('active', true).order('name').limit(200),
-          deps.client.from('hr_job_codes').select('job_code,description').eq('enabled', true).order('job_code').limit(200),
-          deps.client.from('labor_timesheets').select('id,employee_id,work_date,job_code,hours').gte('work_date', dates[0]).lte('work_date', dates[6]).limit(1000),
+          readOptionalAlpha(deps, () => deps.client.from('core_employees').select('id,name,emp_number,department,role,hired_date,vacation_balance').eq('active', true).order('name').limit(200)),
+          readOptionalAlpha(deps, () => deps.client.from('hr_job_codes').select('job_code,description').eq('enabled', true).order('job_code').limit(200)),
+          readOptionalAlpha(deps, () => deps.client.from('labor_timesheets').select('id,employee_id,work_date,job_code,hours').gte('work_date', dates[0]).lte('work_date', dates[6]).limit(1000)),
         ]);
         for (const result of [staff,codes,hours]) if (result?.error) throw result.error;
         if (active && deps.isAuthorized()) {

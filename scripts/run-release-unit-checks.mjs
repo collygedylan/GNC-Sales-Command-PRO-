@@ -7,6 +7,8 @@ export const releaseUnitScriptNames = Object.freeze(['test:photo', 'test:pilot',
 export const explicitReleaseUnitTests = Object.freeze([
   'tests/aura-voice.test.mjs',
   'tests/alpha-command-center.test.mjs',
+  'tests/floor-startup-hotfix.test.mjs',
+  'tests/dataset-read-hotfix.test.mjs',
   'tests/soc-order-history.test.mjs',
   'tests/item-low-stock-migration-runner.test.mjs',
   'tests/password-change-handler.test.mjs',
