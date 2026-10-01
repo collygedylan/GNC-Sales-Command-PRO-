@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'V2026.10.01.002';
+const RELEASE = 'V2026.10.01.003';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');

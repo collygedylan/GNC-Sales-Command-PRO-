@@ -12,7 +12,10 @@ const errorHelper = source.slice(errorHelperStart, errorHelperEnd);
 const start = source.indexOf('// This read boundary deliberately accepts dataset and typed filter names');
 const end = source.indexOf('function hasTableWriteAccess(', start);
 assert.ok(start >= 0 && end > start, 'dataset read and productivity handlers should be present');
-const block = source.slice(start, end);
+const datasetEnd = source.indexOf('function productionScheduleBase64Url(', start);
+const productivityStart = source.indexOf('async function handleAppendProductivityHistory(', datasetEnd);
+assert.ok(datasetEnd > start && productivityStart > datasetEnd && productivityStart < end);
+const block = source.slice(start, datasetEnd) + source.slice(productivityStart, end);
 
 function harness({ readable = true, writable = true, role = 'admin', username = 'dylan_collyge', rows = [{ unique_id: 'one' }], count = 1, dbError = null, writeError = null } = {}) {
   const queries = [];
@@ -113,12 +116,32 @@ test('default projections are explicit current columns and Request signatures ar
   for (const match of projectionBlock[1].matchAll(/^\s*([a-z_]+): ("[^"]*"),$/gm)) {
     projections.set(match[1], JSON.parse(match[2]).split(','));
   }
-  assert.equal(projections.size, 11);
+  assert.equal(projections.size, 13);
   assert.ok([...projections.values()].every((fields) => fields.length > 1 && fields.every((field) => /^[a-z][a-z0-9_]*$/.test(field))));
   assert.doesNotMatch(projectionBlock[1], /:\s*"\*"/);
   const request = source.match(/request_queue:\s*\{[\s\S]*?signatures:\s*"([^"]+)"/);
   assert.ok(request, 'Request signature projection should exist');
   assert.ok(request[1].split(',').every((field) => projections.get('ph_request_queue_live_rows').includes(field)));
+});
+
+test('Inventory edits and Shear use authorized bounded reads without changing role access', async () => {
+  for (const [dataset, table, key, order] of [
+    ['inventory_edits', 'ph_inventory_edit_requests', 'id', 'stage_updated_at'],
+    ['shear', 'ph_shear_list', 'unique_id', 'created_at'],
+  ]) {
+    const denied = harness({ readable: false });
+    assert.equal((await denied.context.datasetReadTest(denied.session('rep', 'floor_user'), { dataset, params: {} })).status, 403);
+    assert.deepEqual(denied.tables, []);
+    const h = harness({ rows: [{ [key]: 'row-1' }], count: 550 });
+    const result = await h.context.datasetReadTest(h.session(), { dataset, params: { limit: 1000, offset: 0, filters: [{ field: 'status', op: 'eq', value: 'open' }], order: [{ field: order, ascending: false }] } });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.data.limit, 500);
+    assert.equal(result.body.data.total, 550);
+    assert.equal(result.body.data.hasMore, true);
+    assert.equal(h.tables[0], table);
+    assert.ok(h.queries[0].calls.some(([method, field]) => method === 'order' && field === key));
+    assert.ok(h.queries[0].calls.some(([method, fields]) => method === 'select' && fields !== '*' && fields.includes('lotcode')));
+  }
 });
 
 test('dataset_read validates filter names and safely builds typed OR expressions', async () => {
