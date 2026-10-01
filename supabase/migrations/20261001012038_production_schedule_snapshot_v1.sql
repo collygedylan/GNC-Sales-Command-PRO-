@@ -1,3 +1,5 @@
+begin;
+
 -- Private, versioned snapshots for the 2027 Production Schedule workbook.
 -- Browser reads and writes go through the authenticated app-api only.
 
@@ -379,3 +381,5 @@ grant execute on function public.production_schedule_start_import_v1(text),
   public.production_schedule_read_rows_v1(integer, uuid, integer, integer, text, jsonb),
   public.production_schedule_read_status_v1(uuid)
   to service_role;
+
+commit;
