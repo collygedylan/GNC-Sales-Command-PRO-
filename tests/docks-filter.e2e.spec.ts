@@ -41,8 +41,12 @@ async function openCompactFilters(page: Page) {
   const details = page.locator('#docks-filter-controls').locator('details.mobile-browse-filters');
   if (await details.count()) {
     const summary = details.locator('summary');
-    if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) await summary.click();
+    if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) {
+      await summary.focus();
+      await summary.press('Enter');
+    }
     await expect(details).toHaveAttribute('open', '');
+    await expect(details.locator('.mobile-browse-filter-panel')).toBeVisible();
   }
 }
 

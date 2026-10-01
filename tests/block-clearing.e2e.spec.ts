@@ -319,7 +319,7 @@ async function installPdfFetch(page: Page, response: 'success' | 'http-error' | 
         && ((payload.action === 'inventory_read' && payload.operation === 'source_freshness'
             && Object.keys(payload).every(key => ['action', 'operation', 'params'].includes(key))
             && (!payload.params || Object.keys(payload.params).length === 0))
-          || (payload.action === 'dataset_read' && ['soc', 'reserves'].includes(payload.dataset)
+          || (payload.action === 'dataset_read' && ['soc', 'reserves', 'cav'].includes(payload.dataset)
             && Object.keys(payload).every(key => ['action', 'dataset', 'params'].includes(key))
             && payload.params && Number.isInteger(payload.params.limit) && payload.params.limit >= 1 && payload.params.limit <= 500
             && Number.isInteger(payload.params.offset) && payload.params.offset >= 0

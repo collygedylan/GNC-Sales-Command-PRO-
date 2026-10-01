@@ -301,6 +301,24 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
         return { contractVersion: 1, permissionVersion: 'fixture-access-1', serverTime: new Date().toISOString(),
           sources: payload.p_dataset_keys.map(key => ({ key, revision: key === 'ph_soc_master' ? fixture.revision : '1', state: key === 'ph_soc_master' ? fixture.state : 'ready' })) };
       };
+      const originalFixturePostAppFunctionJson = postAppFunctionJson;
+      postAppFunctionJson = async (url, payload, options = {}) => {
+        if (url === APP_API_FUNCTION_URL && payload?.action === 'dataset_read' && payload.dataset === 'soc'
+          && Object.keys(payload).every(key => ['action', 'dataset', 'params'].includes(key))
+          && payload.params && typeof payload.params === 'object' && !Array.isArray(payload.params)
+          && Object.keys(payload.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))
+          && Number.isInteger(payload.params.limit) && payload.params.limit >= 1 && payload.params.limit <= 500
+          && Number.isInteger(payload.params.offset) && payload.params.offset >= 0
+          && Array.isArray(payload.params.filters || []) && Array.isArray(payload.params.order || [])
+          && (!payload.params.anyOf || Array.isArray(payload.params.anyOf))
+          && !options.idempotencyKey) {
+          fixture.reads.push('dataset_read:soc');
+          const { limit, offset } = payload.params;
+          const pageRows = structuredClone(fixture.rows).slice(offset, offset + limit);
+          return { ok: true, data: { rows: pageRows, total: fixture.rows.length, offset, limit, hasMore: offset + pageRows.length < fixture.rows.length } };
+        }
+        return originalFixturePostAppFunctionJson(url, payload, options);
+      };
       runDockTripStatusRequest = async () => ({ ok: true, data: [] });
       chatApiGet = async () => [];
       evalWorkApi = async operation => {

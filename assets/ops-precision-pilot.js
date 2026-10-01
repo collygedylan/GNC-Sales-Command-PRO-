@@ -502,6 +502,13 @@
       const railKey = compactBrowseRailKey(rail);
       details.open = compactBrowseRailOpenState.get(railKey) === true;
       details.addEventListener('toggle', () => compactBrowseRailOpenState.set(railKey, details.open));
+      const summary = details.querySelector('summary');
+      summary.addEventListener('click', () => {
+        // `toggle` is queued after the native disclosure activation. Persist the
+        // intended state immediately so a rail rebuild in that same task cannot
+        // recreate the Filters panel with a stale, closed value.
+        compactBrowseRailOpenState.set(railKey, !details.open);
+      }, true);
       const panel = details.lastElementChild;
       children.slice(1).forEach((child) => panel.appendChild(child));
       rail.appendChild(details);

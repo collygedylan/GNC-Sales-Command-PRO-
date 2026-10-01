@@ -666,10 +666,18 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && !req.headers()['idempotency-key'];
       if (datasetRead) {
         if (body.dataset === 'reserves') control.demandReads.reserves++;
+        if (body.dataset === 'soc') control.demandReads.openOrders++;
         const allRows = body.dataset === 'soc' ? (control.demandSocRows ?? control.rows)
           : body.dataset === 'reserves' ? control.reserveRows : [];
-        const { limit, offset } = body.params;
+        const { offset } = body.params;
+        const limit = body.dataset === 'reserves' && Number(options.demandPageSize) > 0
+          ? Math.min(body.params.limit, Number(options.demandPageSize)) : body.params.limit;
         const rows = allRows.slice(offset, offset + limit);
+        if (body.dataset === 'reserves' && holdNextDemandFinalPage && offset > 0 && rows.length && offset + rows.length >= allRows.length) {
+          holdNextDemandFinalPage = false;
+          resolveHeldDemandFinalPageStarted();
+          await new Promise(resolve => { releaseHeldDemandFinalPage = resolve; });
+        }
         return json(route, { ok: true, data: { rows, total: allRows.length, offset, limit, hasMore: offset + rows.length < allRows.length } });
       }
       // The Dylan-only Manager card reads Production Schedule metadata on mount.

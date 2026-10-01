@@ -472,11 +472,16 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
     const date = el.querySelector('.app-av-catalog-photo-evidence .app-inline-thumb-date')!;
     const viewPhotos = el.querySelector('.app-av-secondary-action')!;
     const locationMatch = el.querySelector('.app-av-catalog-photo-match')!;
+    const surfaceProbe = document.createElement('span');
+    surfaceProbe.style.backgroundColor = 'var(--av-surface)';
+    el.append(surfaceProbe);
+    const cardSurface = getComputedStyle(surfaceProbe).backgroundColor;
+    surfaceProbe.remove();
     return {
       dateReadable: parseFloat(getComputedStyle(date).fontSize) >= 13,
       viewPhotosReadable: parseFloat(getComputedStyle(viewPhotos).fontSize) >= 14,
       dateFollowsLocationMatch: Boolean(locationMatch.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING),
-      dateSurfaceMatchesCard: getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
+      dateSurfaceMatchesCard: getComputedStyle(date).backgroundColor === cardSurface
     };
   });
   expect(photoText).toEqual({ dateReadable: true, viewPhotosReadable: true, dateFollowsLocationMatch: true, dateSurfaceMatchesCard: true });
@@ -495,7 +500,12 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
   await expect(page.locator('body')).toHaveAttribute('data-ops-theme', 'dark');
   await expect.poll(() => card.evaluate(el => {
     const date = el.querySelector('.app-av-catalog-photo-evidence .app-inline-thumb-date')!;
-    return getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
+    const surfaceProbe = document.createElement('span');
+    surfaceProbe.style.backgroundColor = 'var(--av-surface)';
+    el.append(surfaceProbe);
+    const cardSurface = getComputedStyle(surfaceProbe).backgroundColor;
+    surfaceProbe.remove();
+    return getComputedStyle(date).backgroundColor === cardSurface
       && parseFloat(getComputedStyle(date).fontSize) >= 13;
   })).toBe(true);
   await card.screenshot({ path: testInfo.outputPath('av-photo-loaded-390-dark.png') });
