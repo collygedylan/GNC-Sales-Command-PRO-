@@ -437,3 +437,54 @@ alter table public.ph_soc_master add column if not exists assignedto text;
 alter table public.ph_soc_master add column if not exists flyer_assigned text;
 alter table public.ph_soc_master add column if not exists date_completed timestamptz;
 alter table public.ph_soc_master add column if not exists flyer_completed text;
+
+-- Required composite row type for the handover worker in the isolated replay.
+CREATE TABLE IF NOT EXISTS public.ph_flyer_folder_rows (
+    unique_id text NOT NULL,
+    master_unique_id text,
+    source_table text DEFAULT 'v2_master_inventory'::text,
+    flyer_title text DEFAULT 'Unassigned'::text NOT NULL,
+    flyer_assigned text,
+    flyer_cat text,
+    flyer_inst text,
+    flyer_notes text,
+    flyer_completed timestamp with time zone,
+    assignedto text,
+    date_completed timestamp with time zone,
+    itemcode text,
+    commonname text,
+    contsize text,
+    locationcode text,
+    lotcode text,
+    priority text,
+    ptravailable text,
+    s_lts text,
+    holdstopcode text,
+    plantgroupcode text,
+    locationnote text,
+    av_note text,
+    match numeric,
+    loc_match_qty numeric,
+    spec text,
+    caliper text,
+    pick text,
+    initial_ptr numeric,
+    flyer_av_note text,
+    flyer_match numeric,
+    flyer_loc_match_qty numeric,
+    flyer_spec text,
+    flyer_caliper text,
+    flyer_pick text,
+    flyer_initial_ptr numeric,
+    flyer_photo_link text,
+    flyer_photo_name text,
+    snapshot jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_by_username text,
+    created_by_display text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ci_handover_flyer_uid ON public.ph_flyer_folder_rows(unique_id);
+ALTER TABLE public.ph_flyer_folder_rows ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.ph_flyer_folder_rows FROM public, anon, authenticated;
+GRANT ALL ON public.ph_flyer_folder_rows TO service_role;

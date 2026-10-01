@@ -15,6 +15,17 @@ const requestWorkflowBaseline = fs.readFileSync(new URL('../supabase/ci/request_
 const departmentCalendarBaseline = fs.readFileSync(new URL('../supabase/ci/department_calendar_baseline.sql', import.meta.url), 'utf8');
 const evalReport2Migration = fs.readFileSync(new URL('../supabase/archive_migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql', import.meta.url), 'utf8');
 
+test('handover CI includes the production flyer row type before compiling the worker', () => {
+  const fixture = fs.readFileSync(new URL('../supabase/ci/scheduled_handover_fixture.sql', import.meta.url), 'utf8');
+  const baseline = fs.readFileSync(new URL('../supabase/migrations/20260929200000_production_baseline.sql', import.meta.url), 'utf8');
+  const expected = baseline.match(/CREATE TABLE public\.ph_flyer_folder_rows \([\s\S]*?\n\);/)[0]
+    .replace('CREATE TABLE public.', 'CREATE TABLE IF NOT EXISTS public.').replace(/\r\n/g, '\n');
+  assert.ok(fixture.replace(/\r\n/g, '\n').includes(expected));
+  assert.match(fixture, /ALTER TABLE public\.ph_flyer_folder_rows ENABLE ROW LEVEL SECURITY/);
+  assert.match(fixture, /REVOKE ALL ON public\.ph_flyer_folder_rows FROM public, anon, authenticated/);
+  assert.ok(workflow.indexOf('20261001215507_ci_scheduled_handover_fixture.sql') < workflow.indexOf('cp supabase/migrations/20261001215508_scheduled_handover_005.sql'));
+});
+
 test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', () => {
   // Assertion names are checked against pgTAP's public API documentation:
   // https://pgtap.org/documentation.html (plan, ok, is, isnt, throws_ok,
