@@ -646,6 +646,29 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && Object.keys(body.payload).length === 3 && Object.keys(body.payload).every(key => ['status', 'cursor', 'limit'].includes(key))
         && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100;
       if (salesCompatibilityRead) return json(route, { ok: true, data: { rows: [], nextCursor: null } });
+      // app-api reads use POST transport, so allow only the exact read actions
+      // used by the mounted Drive/Manager views. Writes continue to hit the
+      // blocked mutation path below.
+      const sourceFreshnessRead = body.action === 'inventory_read' && body.operation === 'source_freshness'
+        && Object.keys(body).every(key => ['action', 'operation', 'params'].includes(key))
+        && (!body.params || (typeof body.params === 'object' && !Array.isArray(body.params) && Object.keys(body.params).length === 0))
+        && !req.headers()['idempotency-key'];
+      if (sourceFreshnessRead) return json(route, { ok: true, data: { filename: null, last_updated: null } });
+      const datasetRead = body.action === 'dataset_read' && ['soc', 'reserves'].includes(body.dataset)
+        && Object.keys(body).every(key => ['action', 'dataset', 'params'].includes(key))
+        && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+        && Object.keys(body.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))
+        && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
+        && Number.isInteger(body.params.offset) && body.params.offset >= 0
+        && (!body.params.projection || ['default', 'signature', 'ids'].includes(body.params.projection))
+        && Array.isArray(body.params.filters || []) && Array.isArray(body.params.anyOf || []) && Array.isArray(body.params.order || [])
+        && !req.headers()['idempotency-key'];
+      if (datasetRead) {
+        const allRows = body.dataset === 'soc' ? (control.demandSocRows ?? control.rows) : control.reserveRows;
+        const { limit, offset } = body.params;
+        const rows = allRows.slice(offset, offset + limit);
+        return json(route, { ok: true, data: { rows, total: allRows.length, offset, limit, hasMore: offset + rows.length < allRows.length } });
+      }
       if (body.action === 'av_read') {
         const dataset = String(body.dataset || '');
         if (!['reserves', 'notes', 'hot_prices', 'settings'].includes(dataset)) return json(route, { ok: false }, 400);

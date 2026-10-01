@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 test('deployed shell footer opens cold and warm views and returns from Menu with native input', async ({ page, baseURL, isMobile }) => {
   const appOrigin = new URL(baseURL!).origin;
   const attemptedMutations: string[] = [];
+  const blockedReadOnlyAppApiCalls: string[] = [];
   const runtimeResponses: string[] = [];
   const pageErrors: string[] = [];
   let releaseInitialPreferences!: () => void;
@@ -42,7 +43,35 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
         return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
           body: JSON.stringify({ ok: true, data: { username: 'dylan_collyge', views: [], shortcuts: null, footerRevision: 0, accessRevision: 0 } }) });
       }
-      attemptedMutations.push(`${request.method()}:${url.pathname}`);
+      const knownReadOnlyAppApiCall = request.method() === 'POST'
+        && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api'
+        && !request.headers()['idempotency-key']
+        && ((body?.action === 'inventory_read' && body.operation === 'source_freshness'
+          && Object.keys(body).sort().join(',') === 'action,operation,params'
+          && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+          && Object.keys(body.params).length === 0)
+          || (body?.action === 'dataset_read' && ['request_queue', 'dock_item', 'dock_issue', 'dock_allocations'].includes(body.dataset)
+            && Object.keys(body).sort().join(',') === 'action,dataset,params'
+            && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+            && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
+            && Number.isInteger(body.params.offset) && body.params.offset >= 0
+            && (!body.params.projection || ['default', 'signature', 'ids'].includes(body.params.projection))
+            && Array.isArray(body.params.filters || []) && Array.isArray(body.params.anyOf || []) && Array.isArray(body.params.order || [])
+            && Object.keys(body.params).every((key) => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))));
+      if (knownReadOnlyAppApiCall) {
+        blockedReadOnlyAppApiCalls.push(`${body.action}:${body.operation || body.dataset}`);
+        if (body.action === 'dataset_read') {
+          const params = body.params;
+          return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+            body: JSON.stringify({ ok: true, data: { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false } }) });
+        }
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ ok: true, data: { filename: null, last_updated: null } }) });
+      }
+      const actionSummary = url.pathname === '/functions/v1/app-api'
+        ? `:${body?.action || 'unclassified'}${body?.dataset ? `:${body.dataset}` : ''}` : '';
+      attemptedMutations.push(`${request.method()}:${url.pathname}${actionSummary}`);
       await route.abort('blockedbyclient');
     } else if (new URL(request.url()).origin !== appOrigin) {
       await route.abort('blockedbyclient');
@@ -149,4 +178,5 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   ]);
   expect(attemptedMutations.filter((request) => !expectedBlockedBackgroundRequests.has(request)),
     'navigation must not attempt a business-data mutation').toEqual([]);
+  expect(blockedReadOnlyAppApiCalls.filter((call) => !['inventory_read:source_freshness', 'dataset_read:request_queue', 'dataset_read:dock_item', 'dataset_read:dock_issue', 'dataset_read:dock_allocations'].includes(call))).toEqual([]);
 });

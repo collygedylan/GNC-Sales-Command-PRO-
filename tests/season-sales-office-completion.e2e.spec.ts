@@ -40,6 +40,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   const startupReadPaths = new Set(['/rest/v1/ph_request_queue_live_rows', '/rest/v1/ph_active_request']);
   const requests: CompletionRequest[] = [];
   const unexpectedMutations: string[] = [];
+  const blockedReadOnlyAppApiCalls: string[] = [];
   const pageErrors: string[] = [];
   const runtimeResponses: string[] = [];
   const replies: Reply[] = [];
@@ -93,6 +94,31 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         const limit = Math.min(500, Math.max(1, Number(params.get('limit')) || 500));
         return fulfill(route, { ok: true, data: { rows: [], total: 0, offset, limit, hasMore: false } });
       }
+      const readOnlyAppApi = url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api'
+        && !request.headers()['idempotency-key']
+        && ((body.action === 'inventory_read' && body.operation === 'source_freshness'
+          && Object.keys(body).sort().join(',') === 'action,operation,params'
+          && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+          && Object.keys(body.params).length === 0)
+          || (body.action === 'dataset_read' && ['request_queue', 'active_request', 'sales_office', 'soc', 'cav', 'reserves', 'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history'].includes(body.dataset)
+            && Object.keys(body).sort().join(',') === 'action,dataset,params'
+            && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+            && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
+            && Number.isInteger(body.params.offset) && body.params.offset >= 0
+            && (!body.params.projection || ['default', 'signature', 'ids'].includes(body.params.projection))
+            && Array.isArray(body.params.filters || []) && Array.isArray(body.params.anyOf || []) && Array.isArray(body.params.order || [])
+            && Object.keys(body.params).every((key) => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))));
+      if (readOnlyAppApi) {
+        blockedReadOnlyAppApiCalls.push(`${body.action}:${body.operation || body.dataset}`);
+        if (body.action === 'dataset_read') {
+          const params = body.params as Record<string, any>;
+          const sourceRows = body.dataset === 'sales_office' ? rows : [];
+          const pageRows = sourceRows.slice(params.offset, params.offset + params.limit);
+          return fulfill(route, { ok: true, data: { rows: pageRows, total: sourceRows.length, offset: params.offset, limit: params.limit, hasMore: params.offset + pageRows.length < sourceRows.length } });
+        }
+        return fulfill(route, { ok: true, data: { filename: null, last_updated: null } });
+      }
       if (body.action === 'season_sales_office' && body.operation === 'complete') {
         requests.push({ body, token: request.headers()['idempotency-key'] || '' });
         const reply = replies.shift() || {};
@@ -104,7 +130,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         return fulfill(route, { ok: true, username: 'dylan_collyge', allowed: true, canManage: true, users: ['dylan_collyge'] });
       }
       // Detect the old generic DELETE even when hidden inside the secure proxy.
-      unexpectedMutations.push(`POST:app-api:${body.action}:${body.operation || body.method || ''}`);
+      unexpectedMutations.push(`POST:app-api:${body.action}:${body.operation || body.dataset || body.method || Object.keys(body).join(',')}`);
       return route.abort('blockedbyclient');
     }
     if (!['GET', 'HEAD'].includes(request.method())) {
@@ -182,6 +208,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   };
   const assertClean = () => {
     expect(unexpectedMutations, 'Season completion must never fall through to generic deletion or another business write').toEqual([]);
+    expect(blockedReadOnlyAppApiCalls.filter((call) => !['inventory_read:source_freshness', ...['request_queue', 'active_request', 'sales_office', 'soc', 'cav', 'reserves', 'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history'].map((dataset) => `dataset_read:${dataset}`)].includes(call))).toEqual([]);
     expect(pageErrors, 'the real completion lifecycle must not throw unhandled browser errors').toEqual([]);
   };
   return { requests, replies, card, done, seed, refresh, assertClean };
@@ -334,12 +361,23 @@ test('navigation cancels an in-flight request queue read without launching a tea
   const readGate = new Promise<void>(resolve => { releaseRead = resolve; });
   const fallbackReads: string[] = [];
   page.on('request', request => {
-    if (new URL(request.url()).pathname === '/rest/v1/ph_active_request') fallbackReads.push(request.url());
+    if (new URL(request.url()).pathname === '/functions/v1/app-api') {
+      const body = request.postDataJSON() || {};
+      if (body.action === 'dataset_read' && body.dataset === 'active_request') fallbackReads.push(request.url());
+    }
   });
-  await page.route(/\/rest\/v1\/ph_request_queue_live_rows\?select=unique_id&/, async route => {
-    beginRead();
-    await readGate;
-    await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+  await page.route('**/functions/v1/app-api', async route => {
+    const request = route.request();
+    const body = request.postDataJSON() || {};
+    if (body.action === 'dataset_read' && body.dataset === 'request_queue' && body.params?.projection === 'ids') {
+      beginRead();
+      await readGate;
+      const params = body.params;
+      await route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({ ok: true, data: { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false } }) });
+      return;
+    }
+    await route.fallback();
   });
   await page.evaluate(() => window.eval(`
     activeRequestLiveRowsViewReady = null;

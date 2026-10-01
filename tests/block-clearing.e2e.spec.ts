@@ -312,6 +312,27 @@ async function installPdfFetch(page: Page, response: 'success' | 'http-error' | 
         return new Response(JSON.stringify({ ok: true, data: { rows: [], total: 0, offset, limit, hasMore: false } }),
           { status: 200, headers: { 'content-type': 'application/json' } });
       }
+      const appApiRead = String(options.method || 'GET').toUpperCase() === 'POST'
+        && target.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && target.pathname === '/functions/v1/app-api'
+        && !new Headers(options.headers || {}).has('idempotency-key')
+        && ((payload.action === 'inventory_read' && payload.operation === 'source_freshness'
+            && Object.keys(payload).every(key => ['action', 'operation', 'params'].includes(key))
+            && (!payload.params || Object.keys(payload.params).length === 0))
+          || (payload.action === 'dataset_read' && ['soc', 'reserves'].includes(payload.dataset)
+            && Object.keys(payload).every(key => ['action', 'dataset', 'params'].includes(key))
+            && payload.params && Number.isInteger(payload.params.limit) && payload.params.limit >= 1 && payload.params.limit <= 500
+            && Number.isInteger(payload.params.offset) && payload.params.offset >= 0
+            && (!payload.params.projection || ['default', 'signature', 'ids'].includes(payload.params.projection))
+            && Array.isArray(payload.params.filters || []) && Array.isArray(payload.params.anyOf || []) && Array.isArray(payload.params.order || [])
+            && Object.keys(payload.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))));
+      if (appApiRead) {
+        const params = payload.params || {};
+        const body = payload.action === 'dataset_read'
+          ? { ok: true, data: { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false } }
+          : { ok: true, data: { filename: null, last_updated: null } };
+        return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+      }
       if (payload.type !== 'block_clearing_pdf') {
         if (!['GET', 'HEAD'].includes(String(options.method || 'GET').toUpperCase())) window.bcUnexpectedWrites.push({ url: String(url), payload });
         return new Response(JSON.stringify({ error: 'Unrelated network request disabled by fixture' }), { status: 503 });

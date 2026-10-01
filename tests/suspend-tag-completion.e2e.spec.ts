@@ -11,6 +11,7 @@ type Reply = {
 type CompletionRequest = { body: Record<string, any> };
 const sourceRevision = '2026-09-08T14:00:00.000Z';
 const completionTime = '2026-09-08T15:00:00.000Z';
+const safeDatasetReads = new Set(['request_queue', 'active_request', 'soc', 'cav', 'reserves', 'sales_office', 'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history']);
 const fixtures: FixtureRow[] = [1, 2].map((index) => ({
   UNIQUE_ID: `browser-suspend-${index}`,
   ITEMCODE: `BROWSER-ONLY-SUSPEND-${index}`,
@@ -45,6 +46,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   const receipts = new Map<string, Record<string, unknown>>();
   const requests: CompletionRequest[] = [];
   const unexpectedMutations: string[] = [];
+  const blockedReadOnlyAppApiCalls: string[] = [];
   const pageErrors: string[] = [];
   const runtimeResponses: string[] = [];
   const replies: Reply[] = [];
@@ -107,6 +109,29 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         const offset = Math.max(0, Number(params.get('offset')) || 0);
         const limit = Math.min(500, Math.max(1, Number(params.get('limit')) || 500));
         return fulfill(route, { ok: true, data: { rows: [], total: 0, offset, limit, hasMore: false } });
+      }
+      const readOnlyAppApi = url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api'
+        && !request.headers()['idempotency-key']
+        && ((body.action === 'inventory_read' && body.operation === 'source_freshness'
+          && Object.keys(body).sort().join(',') === 'action,operation,params'
+          && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+          && Object.keys(body.params).length === 0)
+          || (body.action === 'dataset_read' && safeDatasetReads.has(body.dataset)
+            && Object.keys(body).sort().join(',') === 'action,dataset,params'
+            && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+            && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
+            && Number.isInteger(body.params.offset) && body.params.offset >= 0
+            && (!body.params.projection || ['default', 'signature', 'ids'].includes(body.params.projection))
+            && Array.isArray(body.params.filters || []) && Array.isArray(body.params.anyOf || []) && Array.isArray(body.params.order || [])
+            && Object.keys(body.params).every((key) => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))));
+      if (readOnlyAppApi) {
+        blockedReadOnlyAppApiCalls.push(`${body.action}:${body.operation || body.dataset}`);
+        if (body.action === 'dataset_read') {
+          const params = body.params as Record<string, any>;
+          return fulfill(route, { ok: true, data: { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false } });
+        }
+        return fulfill(route, { ok: true, data: { filename: null, last_updated: null } });
       }
       // Opening Queue > Location Moves performs this authenticated read. Keep
       // every Location Work mutation blocked while allowing the navigation.
@@ -189,6 +214,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   };
   const assertClean = () => {
     expect(unexpectedMutations, 'Done must not issue generic PATCH/DELETE, email or stock writes').toEqual([]);
+    expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
   };
   return { requests, replies, receipts, backendRows, card, done, complete, seed, refresh, assertClean };
