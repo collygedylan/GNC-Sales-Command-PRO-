@@ -527,6 +527,7 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   await page.locator('#dock-info-modal').getByRole('button', { name: 'CANCEL', exact: true }).click();
   await expectDockCounts(page, 2, 2);
   await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().getStatus().state`))).toBe('Up to date');
   await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
 
   // Exercise real side-adapter cache keys and commits, with only the protected

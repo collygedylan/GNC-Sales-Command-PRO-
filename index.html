@@ -87413,7 +87413,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal?.contains(focused)) focused.blur();
             // Capture the post-close dependency context, after the editor and
             // its focus no longer protect the discarded draft from refresh.
-            if (canUseProductionLiveSync()) scheduleProductionLiveSyncRender(true);
+            if (canUseProductionLiveSync()) {
+                signalProductionLiveSync('dock-editor-closed', 0);
+                scheduleProductionLiveSyncRender(true);
+            }
         }
 
         function openDockInfoModal(dockNum, tripNumber) {
