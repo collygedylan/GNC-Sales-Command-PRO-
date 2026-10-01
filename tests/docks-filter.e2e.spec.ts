@@ -37,6 +37,15 @@ async function expectDockCounts(page: Page, shown: number, total: number, hidden
   }
 }
 
+async function openCompactFilters(page: Page) {
+  const details = page.locator('#docks-filter-controls').locator('details.mobile-browse-filters');
+  if (await details.count()) {
+    const summary = details.locator('summary');
+    if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) await summary.click();
+    await expect(details).toHaveAttribute('open', '');
+  }
+}
+
 async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: string): string, project: { name: string } }) {
   const controls = page.locator('#docks-filter-controls');
   const shells = controls.locator('[data-dock-filter-shell]');
@@ -44,7 +53,8 @@ async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: 
   for (const theme of ['light', 'dark']) {
     await page.evaluate(value => document.body.setAttribute('data-ops-theme', value), theme);
     const geometry = await controls.evaluate(element => {
-      const shellRects = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell]'), node => node.getBoundingClientRect());
+      const shellRects = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell]'))
+        .filter(node => node.getClientRects().length > 0).map(node => node.getBoundingClientRect());
       const targets = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell] button, [data-dock-filter-shell] select'))
         .filter(node => node.getClientRects().length).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
       return {
@@ -59,6 +69,7 @@ async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: 
     if (geometry.phone) expect(geometry.railHeight, JSON.stringify(geometry)).toBeLessThanOrEqual(120);
     await page.screenshot({ path: testInfo.outputPath(`docks-compact-${theme}.png`) });
   }
+  await openCompactFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
   const sheet = page.locator('#dock-mobile-filter-sheet');
   const popup = await sheet.isVisible() ? sheet : page.locator('[data-dock-customer-panel]');
@@ -196,8 +207,9 @@ async function harness(page: Page, baseURL: string, rows: Row[], customCustomers
 test('compact filter rail remains usable across themes, larger text and shortened phone height', async ({ page, baseURL }, testInfo) => {
   const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
   await expectDockCounts(page, 55, 117);
-  await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   await assertCompactDockLayout(page, testInfo);
+  await openCompactFilters(page);
+  await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   session.assertClean();
 });
 
@@ -218,6 +230,7 @@ test('two sessions retain local choices, converge after clear, and keep All incl
     await expectDockCounts(other, 55, 149, 1);
     await expect(other.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
     await expect(other.locator('[data-dock-active-filter-chips]')).toHaveCount(0);
+    await openCompactFilters(other);
     await expect(other.locator('[data-dock-clear-filters]')).toBeVisible();
     await expect(other.locator('#docks-content')).toContainText('55 Items');
     await expect(other.locator('#docks-content')).not.toContainText('Dock 29');
@@ -433,6 +446,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
 
 test('real customer controls expose empty Custom, All and device-saved selections', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!, [row('a', 'Customer A'), row('b', 'Customer B', '29')]);
+  await openCompactFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
   const sheet = page.locator('#dock-mobile-filter-sheet');
   const panel = page.locator('[data-dock-customer-panel]');
@@ -442,10 +456,12 @@ test('real customer controls expose empty Custom, All and device-saved selection
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
   await expectDockCounts(page, 0, 2, 2);
   await expect(page.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
+  await openCompactFilters(page);
   await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   await page.reload({ waitUntil: 'load' });
   await app.seed([row('a', 'Customer A'), row('b', 'Customer B', '29')]);
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
+  await openCompactFilters(page);
   await page.locator('[data-dock-clear-filters]').click();
   await expectDockCounts(page, 2, 2);
   app.assertClean();

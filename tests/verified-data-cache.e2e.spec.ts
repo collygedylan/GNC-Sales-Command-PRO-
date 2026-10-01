@@ -39,18 +39,30 @@ async function expectDockCounts(page: Page, shown: number, total: number, hidden
   }
 }
 
+async function openDockMobileFilters(page: Page) {
+  if ((page.viewportSize()?.width || 1000) >= 768) return;
+  const disclosure = page.locator('#docks-filter-controls .mobile-browse-filters');
+  await expect(disclosure).toBeVisible();
+  if (await disclosure.getAttribute('open') === null) await disclosure.locator(':scope > summary').click();
+  await expect(disclosure).toHaveAttribute('open', '');
+}
+
 async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: string): string, project: { name: string } }) {
   const controls = page.locator('#docks-filter-controls');
   const shells = controls.locator('[data-dock-filter-shell]');
   await expect(shells).toHaveCount(4);
+  const disclosure = controls.locator('.mobile-browse-filters');
+  if (await disclosure.count() && await disclosure.getAttribute('open') !== null) {
+    await disclosure.locator(':scope > summary').click();
+    await expect(disclosure).not.toHaveAttribute('open', '');
+  }
   for (const theme of ['light', 'dark']) {
     await page.evaluate(value => document.body.setAttribute('data-ops-theme', value), theme);
     const geometry = await controls.evaluate(element => {
-      const shellRects = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell]'), node => node.getBoundingClientRect());
       const targets = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell] button, [data-dock-filter-shell] select'))
         .filter(node => node.getClientRects().length).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
       return {
-        railHeight: Math.max(...shellRects.map(rect => rect.bottom)) - Math.min(...shellRects.map(rect => rect.top)),
+        railHeight: element.getBoundingClientRect().height,
         targets,
         pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
         phone: window.innerWidth < 768,
@@ -61,6 +73,7 @@ async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: 
     if (geometry.phone) expect(geometry.railHeight, JSON.stringify(geometry)).toBeLessThanOrEqual(120);
     await page.screenshot({ path: testInfo.outputPath(`docks-compact-${theme}.png`) });
   }
+  await openDockMobileFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
   const sheet = page.locator('#dock-mobile-filter-sheet');
   const popup = await sheet.isVisible() ? sheet : page.locator('[data-dock-customer-panel]');
@@ -94,6 +107,7 @@ async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: 
       return hit === element || element.contains(hit) ? [] : [element.id];
     }));
     expect(unobstructed).toEqual([]);
+    await openDockMobileFilters(page);
     await page.locator('[data-dock-filter-shell="customer"] > button').click();
     const compactPopup = await sheet.isVisible() ? sheet : page.locator('[data-dock-customer-panel]');
     await expect(compactPopup).toBeVisible();
@@ -198,6 +212,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], customCustomers
 test('compact filter rail remains usable across themes, larger text and shortened phone height', async ({ page, baseURL }, testInfo) => {
   const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
   await expectDockCounts(page, 55, 117);
+  await openDockMobileFilters(page);
   await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   await assertCompactDockLayout(page, testInfo);
   session.assertClean();
@@ -220,6 +235,7 @@ test('two sessions retain local choices, converge after clear, and keep All incl
     await expectDockCounts(other, 55, 149, 1);
     await expect(other.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
     await expect(other.locator('[data-dock-active-filter-chips]')).toHaveCount(0);
+    await openDockMobileFilters(other);
     await expect(other.locator('[data-dock-clear-filters]')).toBeVisible();
     await expect(other.locator('#docks-content')).toContainText('55 Items');
     await expect(other.locator('#docks-content')).not.toContainText('Dock 29');

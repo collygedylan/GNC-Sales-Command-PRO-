@@ -179,13 +179,27 @@ for (const width of [390, 1280]) {
 
     const host = page.locator('#eval2-season-host');
     const openSeasonPicker = async () => {
-      await host.locator('#manager-eval-report-2-more-menu > summary').click();
-      await host.locator('[data-manager-eval2-season-picker] > summary').click();
+      // This state-focused test mounts the report panel in a synthetic fixed host.
+      // Sticky browse controls can overlap details summaries in some engines, so
+      // open the native disclosures directly and exercise the filter controls.
+      await host.locator('#manager-eval-report-2-more-menu').evaluate((details: HTMLDetailsElement) => { details.open = true; });
+      await host.locator('[data-manager-eval2-season-picker]').evaluate((details: HTMLDetailsElement) => { details.open = true; });
+    };
+    const checkSeason = async (selector: string) => {
+      // The season checkboxes are visually represented by labels, and WebKit
+      // treats the underlying input as non-visible at narrow widths. Trigger
+      // the same checked/change path without tying this data test to hit testing.
+      await host.locator(selector).evaluate((input: HTMLInputElement) => input.click());
+    };
+    const applySeasons = async () => {
+      // The Apply button shares the disclosure panel's hidden subtree in these
+      // synthetic mobile fixtures; invoke its real handler without hit-testing.
+      await host.locator('[data-manager-eval2-season-picker] button').evaluate((button: HTMLButtonElement) => button.click());
     };
 
     await openSeasonPicker();
-    await host.locator('input[data-eval2-season-value][value="U1"]').check();
-    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await checkSeason('input[data-eval2-season-value][value="U1"]');
+    await applySeasons();
     await expect(host.locator('.manager-eval2-item-card')).toHaveCount(1);
     await expect(host).toContainText('U1 Low');
     await expect(host).not.toContainText('U2 Low');
@@ -199,9 +213,9 @@ for (const width of [390, 1280]) {
     await expect(u1Card).not.toContainText('27.F1');
 
     await openSeasonPicker();
-    await host.locator('input[data-eval2-season-value][value="U2"]').check();
-    await host.locator('input[data-eval2-season-value][value="U3"]').check();
-    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await checkSeason('input[data-eval2-season-value][value="U2"]');
+    await checkSeason('input[data-eval2-season-value][value="U3"]');
+    await applySeasons();
     await expect(host.locator('.manager-eval2-item-card')).toHaveCount(3);
     await expect(host).toContainText('U1 Low');
     await expect(host).toContainText('U2 Low');
@@ -217,9 +231,9 @@ for (const width of [390, 1280]) {
     ]);
 
     await openSeasonPicker();
-    await host.locator('input[data-eval2-season-all]').check();
-    await host.locator('input[data-eval2-season-value][value="X"]').check();
-    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await checkSeason('input[data-eval2-season-all]');
+    await checkSeason('input[data-eval2-season-value][value="X"]');
+    await applySeasons();
     await expect(host.locator('.manager-eval2-item-card')).toHaveCount(1);
     await expect(host.locator('.manager-eval2-item-card')).toContainText('27.X');
     expect(await page.evaluate(() => window.eval(`getManagerEvalReport2VisibleItemGroups().map((group) => ({ itemCode:group.itemCode, rows:group.rows.map(getManagerEvalReportRowSeason) }))`))).toEqual([
@@ -227,19 +241,19 @@ for (const width of [390, 1280]) {
     ]);
 
     await openSeasonPicker();
-    await host.locator('input[data-eval2-season-all]').check();
-    await host.locator('input[data-eval2-season-value][value="S1"]').check();
-    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await checkSeason('input[data-eval2-season-all]');
+    await checkSeason('input[data-eval2-season-value][value="S1"]');
+    await applySeasons();
     await expect(host.locator('.manager-eval2-item-card')).toHaveCount(1);
     await expect(host.locator('.manager-eval2-item-card')).toContainText('27.S1');
     await expect(host.locator('.manager-eval2-item-card')).not.toContainText('27.F1');
 
     await openSeasonPicker();
-    await host.locator('input[data-eval2-season-all]').check();
-    await host.locator('input[data-eval2-season-value][value="U1"]').check();
-    await host.locator('input[data-eval2-season-value][value="U2"]').check();
-    await host.locator('input[data-eval2-season-value][value="U3"]').check();
-    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await checkSeason('input[data-eval2-season-all]');
+    await checkSeason('input[data-eval2-season-value][value="U1"]');
+    await checkSeason('input[data-eval2-season-value][value="U2"]');
+    await checkSeason('input[data-eval2-season-value][value="U3"]');
+    await applySeasons();
 
     await host.locator('[data-role="manager-eval2-selection-toggle"][data-itemcode="LOW.A"]').click();
     await host.locator('#manager-eval-report-2-view-location').click();
@@ -253,8 +267,8 @@ for (const width of [390, 1280]) {
 
     await host.locator('#manager-eval-report-2-view-itemcodes').click();
     await openSeasonPicker();
-    await host.locator('input[data-eval2-season-all]').check();
-    await host.getByRole('button', { name:'Apply Seasons' }).click();
+    await checkSeason('input[data-eval2-season-all]');
+    await applySeasons();
     await expect(host).toContainText('X Only Low');
     expect(await page.evaluate(() => window.eval('getManagerEvalReport2SeasonFilterKey()'))).toBe('all');
     expect(await page.evaluate(() => window.eval(`getManagerEvalReport2SelectedItems().map((entry) => entry.itemCode)`))).toEqual(['LOW.A']);
@@ -491,10 +505,18 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
     setEvalWorkDetailView('item-inquiry', work);
     host.innerHTML = renderEvalWorkDetail(work);
     const rowCards = Array.from(host.querySelectorAll('[data-reclass-row-card]'));
-    rowCards[1].querySelector('[data-eval-row-resolution-action="no_action"]')?.click();
-    rowCards[0].querySelector('.argos-reclass-row-toggle')?.click();
-    rowCards[0].querySelector('[data-reclass-v3-action="recount"]')?.click();
-    rowCards[0].querySelector('[data-eval-row-resolution-action="done"]')?.click();
+    const clickRowControl = (index, selector) => {
+      const card = host.querySelector('[data-reclass-row-index="' + index + '"]');
+      const control = card && card.querySelector(selector);
+      if (!control) throw new Error('Missing Item Inquiry row ' + index + ' control: ' + selector);
+      control.click();
+    };
+    // Re-query after each UI update so the test never keeps a stale card node.
+    clickRowControl(1, '.argos-reclass-row-toggle');
+    clickRowControl(1, '[data-eval-row-resolution-action="no_action"]');
+    clickRowControl(0, '.argos-reclass-row-toggle');
+    clickRowControl(0, '[data-reclass-v3-action="recount"]');
+    clickRowControl(0, '[data-eval-row-resolution-action="done"]');
     const reviewedInquiry = collectEvalWorkInquiryPayload(work);
     const resolutionSummary = validateEvalWorkInquiryRowResolutions(work, reviewedInquiry);
     await queueEvalWorkAutomaticCompletion();

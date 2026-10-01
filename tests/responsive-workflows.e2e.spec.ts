@@ -3228,18 +3228,26 @@ test('light and dark navigation use explicit semantic fallback colors', async ({
     // This assertion validates the resolved fallback colors, not their transition.
     // Disable transitions so WebKit cannot sample a mid-animation color value.
     await page.addStyleTag({ content: '#bottom-nav, #bottom-nav * { transition: none !important; }' });
+    // Match the production shell's prepaint state before removing its runtime theme.
+    await page.locator('html').evaluate((root, resolvedTheme) => {
+      (root as HTMLElement).dataset.opsPrepaintTheme = resolvedTheme;
+    }, theme);
     await page.locator('body').evaluate((body) => body.removeAttribute('data-ops-theme'));
     const navState = await page.locator('#bottom-nav').evaluate((nav) => {
-      const toRgb = (value: string) => (value.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
-      const luminance = (value: string) => {
-        const channels = toRgb(value).map((channel) => {
+      const toRgba = (value: string) => (value.match(/[\d.]+/g) || []).map(Number);
+      const luminance = (channels: number[]) => {
+        const linear = channels.map((channel) => {
           const normalized = channel / 255;
           return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
         });
-        return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
       };
-      const contrast = (foreground: string, background: string) => {
-        const [lighter, darker] = [luminance(foreground), luminance(background)].sort((a, b) => b - a);
+      const contrast = (foreground: string, background: string, surface: string) => {
+        const surfaceRgb = toRgba(surface).slice(0, 3);
+        const backgroundRgba = toRgba(background);
+        const alpha = backgroundRgba[3] ?? 1;
+        const compositedBackground = backgroundRgba.slice(0, 3).map((channel, index) => channel * alpha + surfaceRgb[index] * (1 - alpha));
+        const [lighter, darker] = [luminance(toRgba(foreground)), luminance(compositedBackground)].sort((a, b) => b - a);
         return (lighter + 0.05) / (darker + 0.05);
       };
       const inactive = nav.querySelector('.footer-nav-btn:not(.active)') as HTMLElement;
@@ -3254,13 +3262,13 @@ test('light and dark navigation use explicit semantic fallback colors', async ({
         inactiveColor: inactiveStyle.color,
         activeColor: activeStyle.color,
         activeBackground: activeStyle.backgroundColor,
-        inactiveContrast: contrast(inactiveStyle.color, navStyle.backgroundColor),
-        activeContrast: contrast(activeStyle.color, activeStyle.backgroundColor),
+        inactiveContrast: contrast(inactiveStyle.color, navStyle.backgroundColor, navStyle.backgroundColor),
+        activeContrast: contrast(activeStyle.color, activeStyle.backgroundColor, navStyle.backgroundColor),
         labelOpacity: getComputedStyle(label).opacity,
         resolvedTheme: (nav as HTMLElement).dataset.resolvedTheme,
       };
     });
-    expect(navState.background).toBe(theme === 'dark' ? 'rgb(11, 28, 22)' : 'rgb(255, 255, 255)');
+    expect(navState.background).toBe(theme === 'dark' ? 'rgb(10, 18, 14)' : 'rgba(255, 255, 255, 0.88)');
     expect(navState.border).not.toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
     expect(navState.inactiveContrast).toBeGreaterThanOrEqual(4.5);
     expect(navState.activeContrast).toBeGreaterThanOrEqual(4.5);

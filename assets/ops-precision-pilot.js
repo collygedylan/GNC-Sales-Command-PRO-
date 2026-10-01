@@ -466,7 +466,14 @@
     '.workflow-control-rail:not(:has(.docks-filter-row))'
   ].join(',');
   const compactBrowseRailState = new WeakMap();
+  const compactBrowseRailOpenState = new Map();
   let compactBrowseRailFrame = 0;
+
+  function compactBrowseRailKey(rail) {
+    const owner = rail.closest('[id]');
+    const railName = rail.id || rail.getAttribute('aria-label') || Array.from(rail.classList).sort().join('.');
+    return `${owner ? owner.id : ''}:${railName}`;
+  }
 
   function decorateCompactBrowseRails() {
     compactBrowseRailFrame = 0;
@@ -492,6 +499,9 @@
       const details = document.createElement('details');
       details.className = 'mobile-browse-filters';
       details.innerHTML = '<summary>Filters</summary><div class="mobile-browse-filter-panel"></div>';
+      const railKey = compactBrowseRailKey(rail);
+      details.open = compactBrowseRailOpenState.get(railKey) === true;
+      details.addEventListener('toggle', () => compactBrowseRailOpenState.set(railKey, details.open));
       const panel = details.lastElementChild;
       children.slice(1).forEach((child) => panel.appendChild(child));
       rail.appendChild(details);

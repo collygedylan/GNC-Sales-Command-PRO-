@@ -274,7 +274,13 @@ test('Suspend filters stay in the view, preserve a restored choice across Queue 
   await expect(page.locator('#request-search-container')).toBeHidden();
   await expect(page.locator('#request-filter-toolbar .workflow-control')).toHaveCount(0);
   await expect(category('suspend-tag')).toContainText('2');
-  for (const control of controls) await expect(control).toBeInViewport();
+  const compactFilters = shell.locator('.mobile-browse-filters');
+  await expect(compactFilters.locator('summary')).toHaveText('Filters');
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await compactFilters.locator('summary').click();
+  await expect(compactFilters).toHaveAttribute('open', '');
+  await expect(compactFilters.locator('.mobile-browse-filter-panel')).toBeVisible();
+  for (const control of controls) await expect(control).toBeVisible();
 
   // Dylan's old shared Queue filter is deliberately nonmatching. It remains
   // available to Request/reps, but cannot narrow Suspend rows or its badge.

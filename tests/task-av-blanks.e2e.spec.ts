@@ -104,6 +104,9 @@ test('AV loads through app-api with raw reads blocked and shows release GNC.001'
     if (request.url().endsWith('/functions/v1/app-api') && request.method() === 'POST') {
       const body = request.postDataJSON();
       if (body?.action === 'av_read') datasets.add(body.dataset);
+      // Current production runtime routes the reserves projection through the
+      // bounded read boundary; count only that exact dataset, not generic POSTs.
+      if (body?.action === 'dataset_read' && body.dataset === 'reserves') datasets.add(body.dataset);
     }
   });
   const reserves = Array.from({ length: 501 }, (_, index) => ({ unique_id: `reserve-${index}`, itemcode: 'SYNTH.003', commonname: 'Secure AV Plant', contsize: '#3', season: 'F1', lotcode: '27.F1', salesrepname: 'Riley Sales', customername: 'Synthetic Customer' }));
