@@ -9,6 +9,8 @@ if (!args.includes('--pglite-root') || !dependencyRoot) throw new Error('Pass --
 const require = createRequire(path.join(path.resolve(dependencyRoot), 'package.json'));
 const { PGlite } = require('@electric-sql/pglite');
 const db = new PGlite();
+const flyerRowFixture = fs.readFileSync(new URL('./scheduled_handover_fixture.sql', import.meta.url), 'utf8')
+  .match(/CREATE TABLE IF NOT EXISTS public\.ph_flyer_folder_rows \([\s\S]*?\n\);/)[0];
 const fixture = `
 create role anon; create role authenticated; create role service_role bypassrls; create role authenticator;
 create schema auth; create schema private; create schema cron; create schema vault; create schema net; create schema storage; create table storage.objects(id bigint);
@@ -20,7 +22,7 @@ create table public.ph_app_users(id int primary key,username text not null uniqu
 create table public.ph_eval_assignment_users(username text primary key,display_name text not null,active bool default true,source text,updated_at timestamptz default now());
 create table public.ph_app_settings(key text primary key,value jsonb not null default '{}'::jsonb,updated_by text,updated_at timestamptz default now());
 create table public.ph_eval_work(id uuid primary key,status text,assignee_username text,assignee_usernames text[],assignee_profiles jsonb,version int default 1,updated_at timestamptz default now());
-create table public.ph_flyer_folder_rows(unique_id text primary key,assignedto text,flyer_assigned text,flyer_completed timestamptz,date_completed timestamptz,updated_at timestamptz default now());
+${flyerRowFixture}
 create table public.ph_push_subscriptions(id bigint generated always as identity primary key,profile_id uuid,username text,notifications_enabled bool default true);
 create table public.test_protected_data(id int primary key,value text);
 insert into public.test_protected_data values(1,'shared protected row');
