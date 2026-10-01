@@ -103,7 +103,8 @@ jobs:
   functional:
     needs: [build, foundation]
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # A cold browser install can leave too little of a 15-minute job for the shard.
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       max-parallel: 4
