@@ -38,6 +38,10 @@ function harness(options = {}) {
       reads.push({ url, request });
       if (options.fetchError) throw new Error(`${accessToken}: ${options.fetchError}`);
       const parsed = new URL(url);
+      if (parsed.pathname === '/rest/v1/rpc/resolve_operational_recipients_v1') {
+        assert.equal(request.method, 'post');
+        return reply(200, JSON.parse(request.payload).p_recipients);
+      }
       if (parsed.pathname === '/rest/v1/rpc/hl_order_inventory_availability') {
         assert.equal(request.method, 'post');
         const body = JSON.parse(request.payload);

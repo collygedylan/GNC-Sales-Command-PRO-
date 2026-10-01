@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
-import { normalizeUsername } from "../_shared/app-auth.ts";
+import { isAppAccountActive, normalizeUsername } from "../_shared/app-auth.ts";
 import { withObservedRequest } from "../_shared/observability.ts";
 
 const corsHeaders = {
@@ -44,6 +44,7 @@ async function requireNativeAuthAdmin(req: Request) {
     .maybeSingle();
   if (profileError || !profile || profile.disabled_at) return null;
   if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) return null;
+  if (!await isAppAccountActive(admin, { id: String(data.user.id) })) return null;
   const role = String(profile.role || "").trim().toUpperCase();
   const metadataAdmin = data.user.app_metadata?.auth_admin === true;
   if (!metadataAdmin && !role.includes("ADMIN") && !role.includes("MANAGER")) return null;

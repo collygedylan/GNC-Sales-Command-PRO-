@@ -184,6 +184,22 @@ jobs:
           # after historical fixtures have installed their legacy RPC bodies.
           cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261001025638_aura_hr_command_center_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/ci/scheduled_handover_fixture.sql "$ci_root/supabase/migrations/20261001215507_ci_scheduled_handover_fixture.sql"
+          cp supabase/migrations/20261001215508_scheduled_handover_005.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261001215511_request_archive_005.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261001222228_handover_assignment_transfer_005.sql "$ci_root/supabase/migrations/"
+          # Deactivate the external worker before the disposable replay commits,
+          # so CI remains deterministic after the production cutoff date.
+          python3 - "$ci_root" <<'PY'
+          from pathlib import Path
+          import sys
+          migration = Path(sys.argv[1]) / "supabase/migrations/20261001215508_scheduled_handover_005.sql"
+          source = migration.read_text().rstrip()
+          if not source.endswith("commit;"):
+              raise SystemExit("Handover migration must retain its transaction wrapper")
+          isolation = Path("supabase/ci/scheduled_handover_isolation.sql").read_text()
+          migration.write_text(source[:-len("commit;")] + isolation + "\ncommit;\n")
+          PY
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -224,6 +240,7 @@ jobs:
           cp supabase/tests/photo_history_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/hr_command_center_schema_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/hr_command_center_behavior_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/scheduled_handover_005_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/function_search_path_pinning_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/season_sales_done_lifecycle_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/season_sales_av_note_retention_test.sql "$ci_root/supabase/tests/"
@@ -251,6 +268,15 @@ jobs:
         run: supabase --workdir "$SUPABASE_CI_ROOT" test db
       - id: dependencies
         run: npm ci
+      - name: Isolated handover and archive SQL behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          pglite_root="$RUNNER_TEMP/gnc-handover-pglite"
+          npm install --prefix "$pglite_root" --no-save --package-lock=false @electric-sql/pglite@0.5.8
+          node supabase/ci/scheduled_handover_pglite.mjs --pglite-root "$pglite_root"
+          node supabase/ci/handover_assignment_pglite.mjs --pglite-root "$pglite_root"
+          node supabase/ci/request_archive_pglite.mjs --pglite-root "$pglite_root"
       - id: browser_setup
         run: |
           node --test tests/prepare-ci-playwright-apt.test.mjs
@@ -284,6 +310,7 @@ jobs:
         run: |
           deno check --node-modules-dir=auto supabase/functions/app-api/index.ts supabase/functions/request-delivery-worker/index.ts
           deno check --node-modules-dir=auto supabase/functions/calendar-reminder-sweep/index.ts supabase/functions/send-push-alert/index.ts
+          deno check --node-modules-dir=auto supabase/functions/scheduled-offboarding/index.ts supabase/functions/auth-admin/index.ts supabase/functions/inventory-assistant/index.ts
           deno check --node-modules-dir=auto supabase/functions/hl-po-pdf-import/index.ts
           deno test --node-modules-dir=auto --allow-env --allow-net supabase/functions
       - name: Save relation-size report query

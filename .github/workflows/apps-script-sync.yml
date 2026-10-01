@@ -19,6 +19,14 @@ on:
       - supabase/functions/app-api/index.ts
       - supabase/functions/send-push-alert/index.ts
       - supabase/functions/calendar-reminder-sweep/index.ts
+      - supabase/functions/scheduled-offboarding/**
+      - supabase/functions/auth-admin/index.ts
+      - supabase/functions/inventory-assistant/index.ts
+      - supabase/functions/_shared/app-auth.ts
+      - supabase/functions/_shared/operational-routing.ts
+      - supabase/migrations/20261001215508_scheduled_handover_005.sql
+      - supabase/migrations/20261001215511_request_archive_005.sql
+      - supabase/migrations/20261001222228_handover_assignment_transfer_005.sql
       - supabase/config.toml
       - .github/workflows/release-database.yml
       - scripts/preview-perennial-assignment.mjs
@@ -147,6 +155,9 @@ jobs:
           supabase functions deploy app-api --project-ref "$project_ref"
           supabase functions deploy send-push-alert --project-ref "$project_ref"
           supabase functions deploy calendar-reminder-sweep --project-ref "$project_ref"
+          supabase functions deploy scheduled-offboarding --project-ref "$project_ref"
+          supabase functions deploy auth-admin --project-ref "$project_ref"
+          supabase functions deploy inventory-assistant --project-ref "$project_ref"
 
       - name: Check whether deployed Apps Script already has identical code
         id: compatibility

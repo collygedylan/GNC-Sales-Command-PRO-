@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -23,6 +23,13 @@ test('migration target is the configured Supabase project and never a browser ke
   assert.match(validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres',api),/sslmode=verify-full/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres?host=other.example',api),/TARGET_INVALID/);
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres?sslmode=disable',api),/TLS_REQUIRED/);
+});
+
+test('handover release requires an armed minute job or an already completed Auth ban', () => {
+  const query = migrationContractQuery(scheduledHandoverMigrationName);
+  assert.match(query, /completed_at is not null and auth_banned_at is not null/);
+  assert.match(query, /jobname='scheduled_handover_kayla_nelly_20261002' and active and schedule='\* \* \* \* \*'/);
+  assert.match(query, /command='select private\.scheduled_handover_dispatch_v1\(\);'/);
 });
 test('Postgres client pins the Supabase CA and ignores URI TLS overrides while preserving connection identity', () => {
   const api='https://testproject.supabase.co';
@@ -66,7 +73,7 @@ test('migration and history entry are atomic and a retry verifies the same conte
 
 test('consolidated production baseline satisfies archived migrations without replay or ledger writes', async () => {
   assert.equal(productionBaselineVersion, '20260929200000');
-  for (const targetMigrationName of releaseDatabaseMigrations.filter(name => name !== productionScheduleMigrationName && name !== auraHrCommandCenterMigrationName)) {
+  for (const targetMigrationName of [migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]) {
     const queries = [];
     const client = { query: async (sql, params) => {
       queries.push({ sql, params });
@@ -105,7 +112,7 @@ test('Production Schedule migration applies additively after an older consolidat
 });
 
 test('release migration sources satisfy the atomic production runner contract', () => {
-  for (const name of [productionScheduleMigrationName, auraHrCommandCenterMigrationName]) {
+  for (const name of [productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName]) {
     const source = fs.readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
     const body = migrationBody(source);
     assert.ok(body.trim().length > 0, `${name} contains a migration body`);
@@ -132,7 +139,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -341,7 +348,7 @@ test('cloud rollout verifies the existing release proof before schema and import
   assert.equal(artifactStep.if,'always()','retain the written preview artifact after a fail-closed preflight');
   assert.equal(migrationStep.if,undefined,'failed preview must prevent schema and importer deployment');
   for (const name of releaseDatabaseMigrations) {
-    const directory = name === productionScheduleMigrationName || name === auraHrCommandCenterMigrationName ? 'migrations' : 'archive_migrations';
+    const directory = [migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName].includes(name) ? 'archive_migrations' : 'migrations';
     assert.ok(workflow.includes(`supabase/${directory}/${name}`), `${name} is tracked in its canonical migration directory`);
   }
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);

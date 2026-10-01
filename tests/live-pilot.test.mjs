@@ -649,7 +649,7 @@ test('design pills and Drive metrics use the professional responsive card system
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);
 });
 
-test('Kayla can add every inventory Drive row to Bloom Picker and use the full operational action set', () => {
+test('Kayla and Nelly can add inventory Drive rows to Bloom Picker without broadening other role gates', () => {
   const selectionPolicy = html.slice(
     html.indexOf('function canCurrentUserSelectDriveWorkflowRow'),
     html.indexOf('function isCurrentDriveCardOptionsContext')
@@ -671,7 +671,7 @@ test('Kayla can add every inventory Drive row to Bloom Picker and use the full o
   assert.doesNotMatch(driveCardBuilder, /driveArgosRailHtml = canSelectDriveWorkflow \?/);
   assert.match(selectionPolicy, /const canUseFullDriveWorkflow = canUseFullDriveBloomPickerWorkflow\(userOverride, displayOverride\)/);
   assert.match(selectionPolicy, /if \(canUseFullDriveWorkflow\) return true/);
-  assert.match(html, /const FULL_DRIVE_BLOOM_PICKER_USERS = Object\.freeze\(new Set\(\['kayla_knepp'\]\)\)/);
+  assert.match(html, /const FULL_DRIVE_BLOOM_PICKER_USERS = Object\.freeze\(new Set\(\['kayla_knepp', 'nelly_aguilar'\]\)\)/);
   assert.match(html, /function canUseFullDriveBloomPickerWorkflow[\s\S]*FULL_DRIVE_BLOOM_PICKER_USERS\.has\(key\)/);
   assert.match(html, /canAddItemToBloomPicker[\s\S]*canRepAddBloomPickerRow[\s\S]*access && access\.isRep && !access\.isCsr && isBloomPickerEligibleItem\(item\)/);
   assert.match(html, /handleInventoryCardBottomCartAction[\s\S]*selectionSource = safeSourceView === 'drive' && access\.isRep && !access\.isCsr \? 'drive-bloom'/);
@@ -1282,7 +1282,8 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.match(appAuth, /supabaseAdmin\.auth\.getUser\(bearer\)/);
   assert.match(appAuth, /authUserId: String\(user\.id\)/);
   assert.match(appAuth, /if \(error \|\| !user\?\.id\) throw new Error\("native_session_unavailable"\)/);
-  assert.match(appAuth, /return await readAppSessionFromRequest\(req\)/);
+  assert.match(appAuth, /return await readAppSessionFromRequest\(req, supabaseAdmin\)/);
+  assert.match(appAuth, /isAppAccountActive\(supabaseAdmin, \{ username: session.username \}\)/);
   assert.match(edge, /action === "native_session_bridge"/);
   assert.match(edge, /session\.ver < 2/);
   assert.match(html, /async function ensureNativeAppSessionBridge\(force = false\)/);
@@ -1674,7 +1675,7 @@ test('Warehouse assignments are Supabase-authoritative and the Sheet is export-o
 });
 
 test('Eval assignment management uses the requested roster and ItemCode + GenusName identity', () => {
-  assert.match(html, /const EVAL_ASSIGNMENT_HONORARY_USERS = Object\.freeze\(\['kayla_knepp', 'jd_jones'\]\)/);
+  assert.match(html, /const EVAL_ASSIGNMENT_HONORARY_USERS = Object\.freeze\(\['kayla_knepp', 'jd_jones', 'nelly_aguilar'\]\)/);
   assert.match(html, /const EVAL_ASSIGNMENT_ROSTER_USERS = Object\.freeze\(\['josh_vann', 'jorge_colunga', 'abigail_vazquez', 'bobby_adair', 'charley_robertson', 'ellen_ward', 'zoe_green', 'mitch_kaiser', 'dylan_collyge', 'megan_kelly', \.\.\.EVAL_ASSIGNMENT_HONORARY_USERS\]\)/);
   assert.match(html, /charey_robertson: 'charley_robertson'/);
   assert.match(html, /boby: 'bobby_adair'/);

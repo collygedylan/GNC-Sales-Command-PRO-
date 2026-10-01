@@ -239,11 +239,11 @@ test('Eval Reports #2 uses the shared searchable evaluator picker and refreshes 
   assert.match(html, /evalWorkApi\('create_batch'[\s\S]*await loadEvalWorkAssignments\(true\)[\s\S]*Eval Work Queued/);
 });
 
-test('Eval picker supports multiple roster users and labels Kayla and JD as honorary evaluators', () => {
-  assert.match(html, /const EVAL_ASSIGNMENT_HONORARY_USERS = Object\.freeze\(\['kayla_knepp', 'jd_jones'\]\)/);
+test('Eval picker supports multiple roster users and labels Kayla, JD, and Nelly as honorary evaluators', () => {
+  assert.match(html, /const EVAL_ASSIGNMENT_HONORARY_USERS = Object\.freeze\(\['kayla_knepp', 'jd_jones', 'nelly_aguilar'\]\)/);
   assert.match(html, /role: honorary\.has[\s\S]*'Honorary Eval User'/);
   assert.match(html, /title: 'Reassign Eval Work'[\s\S]*allowedUsernames: EVAL_ASSIGNMENT_ROSTER_USERS/);
-  assert.match(appApi, /"kayla_knepp", "jd_jones"/);
+  assert.match(appApi, /"kayla_knepp", "jd_jones", "nelly_aguilar"/);
   assert.match(multiAssigneeMigration, /^begin;[\s\S]*commit;\s*$/);
   assert.match(multiAssigneeMigration, /create or replace function public\.reassign_eval_work_v2\(p_payload jsonb\)/);
   assert.match(multiAssigneeMigration, /revoke all on function public\.reassign_eval_work_v2\(jsonb\) from public, anon, authenticated/);
