@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { assertCompleteSnapshot, createSignedInitialImport } from '../scripts/seed-production-schedule-release.mjs';
 
 const titles = ['PROD SCHED', 'PltDate-PltGrp', 'ContTable', 'Code Key', 'Calculations', "New Weighted%'s", 'CPB'];
@@ -31,4 +32,11 @@ test('release publication requires all seven ordered source sheets and the match
   assert.throws(() => assertCompleteSnapshot(metadata, '00000000-0000-4000-8000-000000000014'), /SNAPSHOT_INCOMPLETE/);
   assert.throws(() => assertCompleteSnapshot({ ...metadata, sheets: metadata.sheets.slice(0, 6) }, snapshotId), /SNAPSHOT_INCOMPLETE/);
   assert.throws(() => assertCompleteSnapshot({ ...metadata, sheets: metadata.sheets.map((sheet, index) => index ? sheet : { ...sheet, title: 'Wrong' }) }, snapshotId), /SHEET_SET_MISMATCH/);
+});
+
+test('release re-dispatches a signed command for an already-running snapshot', () => {
+  const source = readFileSync(new URL('../scripts/seed-production-schedule-release.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /if\s*\(started\.already_running\s*!==\s*true\)/);
+  assert.match(source, /const command = createSignedInitialImport\(/);
+  assert.match(source, /const accepted = await readJson\(appsScriptUrl,/);
 });

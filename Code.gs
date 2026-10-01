@@ -703,11 +703,14 @@ function removeProductionScheduleImportTriggers_() {
   }).forEach(function(trigger) { ScriptApp.deleteTrigger(trigger); });
 }
 
-function scheduleProductionScheduleImportTrigger_() {
+function scheduleProductionScheduleImportTrigger_(replaceExisting) {
+  // Re-arm a stalled snapshot when its signed command is delivered again.
+  if (replaceExisting === true) removeProductionScheduleImportTriggers_();
   const exists = ScriptApp.getProjectTriggers().some(function(trigger) {
     return trigger.getHandlerFunction() === PRODUCTION_SCHEDULE_IMPORT_HANDLER_;
   });
-  if (!exists) ScriptApp.newTrigger(PRODUCTION_SCHEDULE_IMPORT_HANDLER_).timeBased().after(60000).create();
+  // A recurring trigger survives a lock miss or an Apps Script hard timeout.
+  if (!exists) ScriptApp.newTrigger(PRODUCTION_SCHEDULE_IMPORT_HANDLER_).timeBased().everyMinutes(1).create();
 }
 
 function acceptProductionScheduleImportCommand_(payload) {
@@ -733,7 +736,7 @@ function acceptProductionScheduleImportCommand_(payload) {
       };
       props.setProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_, JSON.stringify(current));
     }
-    scheduleProductionScheduleImportTrigger_();
+    scheduleProductionScheduleImportTrigger_(true);
     return { ok: true, accepted: true, status: 'queued', snapshotId: command.snapshotId };
   } finally {
     lock.releaseLock();
@@ -758,11 +761,13 @@ function runProductionScheduleImportChunk_() {
   if (!lock.tryLock(1000)) return { status: 'locked' };
   const started = Date.now();
   try {
-    removeProductionScheduleImportTriggers_();
     const props = PropertiesService.getScriptProperties();
     let state = null;
     try { state = JSON.parse(props.getProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_) || 'null'); } catch (ignored) {}
-    if (!state || !state.snapshot_id) return { status: 'idle' };
+    if (!state || !state.snapshot_id) {
+      removeProductionScheduleImportTriggers_();
+      return { status: 'idle' };
+    }
     // Install recovery before touching the workbook or Supabase so a hard
     // Apps Script timeout still leaves a continuation trigger in place.
     scheduleProductionScheduleImportTrigger_();

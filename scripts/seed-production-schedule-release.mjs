@@ -92,15 +92,14 @@ async function main() {
     fail('PRODUCTION_SCHEDULE_IMPORT_ID_INVALID');
   }
 
-  if (started.already_running !== true) {
-    const timestamp = new Date().toISOString();
-    const command = createSignedInitialImport({ snapshotId, requestedBy: 'github_actions_release', timestamp, secret: signingSecret });
-    const accepted = await readJson(appsScriptUrl, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(command),
-    }, 'PRODUCTION_SCHEDULE_IMPORT_DISPATCH');
-    if (accepted?.ok !== true || accepted?.accepted !== true || accepted?.snapshotId !== snapshotId) {
-      fail(`PRODUCTION_SCHEDULE_IMPORT_NOT_ACCEPTED_${String(accepted?.code || 'UNKNOWN').replace(/[^A-Za-z0-9_]/g, '_').slice(0, 60)}`);
-    }
+  // Re-delivering the same signed snapshot also restores a lost worker trigger.
+  const timestamp = new Date().toISOString();
+  const command = createSignedInitialImport({ snapshotId, requestedBy: 'github_actions_release', timestamp, secret: signingSecret });
+  const accepted = await readJson(appsScriptUrl, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(command),
+  }, 'PRODUCTION_SCHEDULE_IMPORT_DISPATCH');
+  if (accepted?.ok !== true || accepted?.accepted !== true || accepted?.snapshotId !== snapshotId) {
+    fail(`PRODUCTION_SCHEDULE_IMPORT_NOT_ACCEPTED_${String(accepted?.code || 'UNKNOWN').replace(/[^A-Za-z0-9_]/g, '_').slice(0, 60)}`);
   }
 
   const deadline = Date.now() + timeoutMs;

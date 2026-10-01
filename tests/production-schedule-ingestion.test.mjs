@@ -13,6 +13,7 @@ function createContext({ sheets = [], rpc = () => ({}) } = {}) {
   const triggers = [];
   const rpcCalls = [];
   let sourceUpdatedAt = '2026-09-30T12:00:00.000Z';
+  let lockAvailable = true;
   const context = vm.createContext({
     console,
     PropertiesService: {
@@ -29,12 +30,16 @@ function createContext({ sheets = [], rpc = () => ({}) } = {}) {
       computeHmacSha256Signature: (message, key) => Array.from(crypto.createHmac('sha256', key).update(message).digest()),
       base64EncodeWebSafe: (bytes) => Buffer.from(bytes).toString('base64').replace(/\+/g, '-').replace(/\//g, '_')
     },
-    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
+    LockService: { getScriptLock: () => ({ tryLock: () => lockAvailable, releaseLock: () => {} }) },
     ScriptApp: {
       getProjectTriggers: () => triggers.slice(),
       deleteTrigger: (trigger) => { const index = triggers.indexOf(trigger); if (index >= 0) triggers.splice(index, 1); },
       newTrigger: (handlerFunction) => ({
-        timeBased: () => ({ after: () => ({ create: () => { const trigger = { getHandlerFunction: () => handlerFunction }; triggers.push(trigger); return trigger; } }) })
+        timeBased: () => ({ everyMinutes: (minutes) => ({ create: () => {
+          const trigger = { getHandlerFunction: () => handlerFunction, intervalMinutes: minutes };
+          triggers.push(trigger);
+          return trigger;
+        } }) })
       })
     },
     DriveApp: {
@@ -45,7 +50,8 @@ function createContext({ sheets = [], rpc = () => ({}) } = {}) {
     __properties: properties,
     __triggers: triggers,
     __rpc: rpc,
-    __setSourceUpdatedAt: (value) => { sourceUpdatedAt = value; }
+    __setSourceUpdatedAt: (value) => { sourceUpdatedAt = value; },
+    __setLockAvailable: (value) => { lockAvailable = value; }
   });
   new vm.Script(code, { filename: 'Code.gs' }).runInContext(context);
   vm.runInContext(`callSupabaseRpc_ = function(name, payload) { __rpcCalls.push({ name, payload }); return __rpc(name, payload); };`, context);
@@ -196,6 +202,28 @@ test('worker handles a bounded number of row batches per execution and resumes f
   assert.equal(state.sheet_index, 0);
   assert.equal(state.cursor, 800);
   assert.equal(context.__triggers.length, 1);
+});
+
+test('signed redelivery re-arms a recurring worker after a lost or locked continuation', () => {
+  const context = createContext({ sheets: sevenSheets });
+  const delivery = { contractVersion: 'production-schedule-import-v1', workbookId, runId: snapshotId, snapshotId, requestedBy: 'dylan' };
+  context.__command = signPayload(delivery);
+  vm.runInContext('acceptProductionScheduleImportCommand_(__command)', context);
+  const initialTrigger = context.__triggers[0];
+  assert.equal(initialTrigger.intervalMinutes, 1);
+
+  context.__setLockAvailable(false);
+  assert.equal(vm.runInContext('runProductionScheduleImportChunk_().status', context), 'locked');
+  assert.equal(context.__triggers[0], initialTrigger, 'lock contention retains the recurring trigger');
+  context.__setLockAvailable(true);
+
+  const accepted = vm.runInContext('acceptProductionScheduleImportCommand_(__command)', context);
+  assert.equal(accepted.snapshotId, snapshotId);
+  assert.equal(context.__triggers.length, 1);
+  assert.notEqual(context.__triggers[0], initialTrigger, 'redelivery replaces a stale trigger');
+  assert.equal(context.__triggers[0].intervalMinutes, 1);
+  assert.equal(vm.runInContext('runProductionScheduleImportChunk_().status', context), 'complete');
+  assert.equal(context.__triggers.length, 0);
 });
 
 test('import RPC failure retries are bounded and never promote an incomplete snapshot', () => {
