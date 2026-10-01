@@ -153,6 +153,15 @@ test('HR migration contract verifies partitioned labor tables and the scheduled 
   assert.ok(calls.some(({ sql }) => sql === 'select hr_schema;'));
   assert.equal(calls.find(({ sql }) => sql.startsWith('insert into supabase_migrations')).params[1], 'aura_hr_command_center_v1');
 });
+
+test('HR migration lets pg_cron and pg_net create their own schemas', () => {
+  const source = fs.readFileSync(new URL('../supabase/migrations/20261001025638_aura_hr_command_center_v1.sql', import.meta.url), 'utf8');
+  assert.match(source, /create extension if not exists pg_cron\s*;/i);
+  assert.match(source, /create extension if not exists pg_net with schema extensions\s*;/i);
+  assert.doesNotMatch(source, /create schema if not exists (?:cron|net)\s*;/i);
+  assert.match(source, /do \$\$\s*declare month_start date := date '2025-01-01';\s*month_end date;\s*partition_name text;\s*begin/i);
+});
+
 test('reminder credentials are written through Vault create/update APIs without logging their values', async () => {
   const calls = [];
   const createClient = { query: async (sql, params) => {

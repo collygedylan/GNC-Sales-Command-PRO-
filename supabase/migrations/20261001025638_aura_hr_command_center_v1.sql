@@ -1,9 +1,8 @@
 begin;
 
-create schema if not exists cron;
-create schema if not exists net;
-create extension if not exists pg_cron with schema cron;
-create extension if not exists pg_net with schema net;
+create schema if not exists extensions;
+create extension if not exists pg_cron;
+create extension if not exists pg_net with schema extensions;
 
 create table public.core_employees (
   id uuid primary key default gen_random_uuid(),
@@ -54,8 +53,8 @@ create table public.labor_timesheets (
 create table public.labor_timesheets_default partition of public.labor_timesheets default;
 do $$
 declare month_start date := date '2025-01-01';
-declare month_end date;
-declare partition_name text;
+  month_end date;
+  partition_name text;
 begin
   while month_start < date '2036-01-01' loop
     month_end := (month_start + interval '1 month')::date;
