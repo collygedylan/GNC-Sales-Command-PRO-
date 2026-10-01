@@ -42,6 +42,13 @@ try {
   await mkdir(site, { recursive: true });
   for (const name of files) await copyTree(path.join(root, name), path.join(site, name));
   await copyTree(path.join(root, 'assets'), path.join(site, 'assets'));
+  // Native AURA modules stay out of the public shell bundle and are fetched
+  // only after the verified owner signs in. Their relative ESM imports require
+  // the same directory layout in the static site.
+  for (const directory of ['services', 'utils', 'components/common']) await mkdir(path.join(site, directory), { recursive: true });
+  await copyTree(path.join(root, 'services', 'auraVoiceService.js'), path.join(site, 'services', 'auraVoiceService.js'));
+  await copyTree(path.join(root, 'utils', 'auraIntentParser.js'), path.join(site, 'utils', 'auraIntentParser.js'));
+  await copyTree(path.join(root, 'components', 'common', 'auraVoiceWidget.js'), path.join(site, 'components', 'common', 'auraVoiceWidget.js'));
   await copyTree(path.join(root, 'reports'), path.join(site, 'reports'));
   await copyTree(path.join(root, 'v2', 'dist'), path.join(site, 'v2'));
   for (const script of ['build-live-shell.mjs', 'write-deployment-fingerprint.mjs']) {
