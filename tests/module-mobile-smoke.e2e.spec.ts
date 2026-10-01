@@ -148,8 +148,8 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
   expect(fixtureControl.errors).toEqual([]);
 });
 
-async function fixture(page: Page, baseURL: string) {
-  const source = await installSalesMobileFixture(page, baseURL);
+async function fixture(page: Page, baseURL: string, options: { username?: string } = {}) {
+  const source = await installSalesMobileFixture(page, baseURL, options);
   const blocked: string[] = [];
   // These Manager reads are outside the HL fixture's inventory projection.
   // Model their empty state explicitly; unknown RPCs and all writes still fall
@@ -310,8 +310,10 @@ const phoneHubRouteGroups: Record<string, HubRoute[]> = {
   ],
 };
 
-async function checkHubRoutes(page: Page, baseURL: string, info: TestInfo, routes: HubRoute[]) {
-  const f = await fixture(page, baseURL), evidence: Evidence[] = [];
+async function checkHubRoutes(page: Page, baseURL: string, info: TestInfo, routes: HubRoute[], legacyCommunication = false) {
+  // The legacy Communication hub remains available to other accounts; Dylan
+  // receives the separate Command Center in its place.
+  const f = await fixture(page, baseURL, legacyCommunication ? { username: 'module_communication_admin' } : {}), evidence: Evidence[] = [];
   try {
     for (const [parent, selector, view] of routes) await test.step(`${parent}/${view}`, async () => {
       await drawer(page, parent);
@@ -380,7 +382,7 @@ for (const [group, views] of Object.entries(drawerGroups)) test(`phone opening s
 
 for (const [group, routes] of Object.entries(phoneHubRouteGroups)) {
   test(`phone opening smoke: ${group}`, async ({ page, baseURL }, info) => {
-    await checkHubRoutes(page, baseURL!, info, routes);
+    await checkHubRoutes(page, baseURL!, info, routes, group === 'Communication and Reports routes');
   });
 }
 

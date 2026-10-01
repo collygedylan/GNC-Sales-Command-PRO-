@@ -25775,6 +25775,35 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             for (const key of supabaseReadFailureCooldowns.keys()) if (key.startsWith(prefix)) supabaseReadFailureCooldowns.delete(key);
         }
 
+        function clearSupabaseReadFailuresForVisibleContext(context = getProductionLiveSyncContext()) {
+            const identityScope = getSupabaseReadIdentityScope();
+            const tables = new Set((context?.adapters || []).flatMap(adapter => Array.isArray(adapter?.sourceKeys) ? adapter.sourceKeys : [])
+                .map(table => String(table || '').trim()).filter(Boolean));
+            for (const adapter of context?.adapters || []) {
+                if (adapter?.id === 'core:requests') tables.add(REQUEST_QUEUE_LIVE_ROWS_TABLE);
+            }
+            const readTable = readKey => {
+                const value = String(readKey || '');
+                if (value.startsWith('inventory_read:')) return 'ph_master_inventory';
+                const match = value.match(/^(?:all|page|legacy|compatibility):([^:]+):/);
+                return match ? match[1] : '';
+            };
+            for (const key of supabaseReadFailureCooldowns.keys()) {
+                let scope, readKey;
+                try { [scope, readKey] = JSON.parse(key); } catch (_) { continue; }
+                if (scope === identityScope && tables.has(readTable(readKey))) supabaseReadFailureCooldowns.delete(key);
+            }
+            for (const key of supabaseReadTerminalDenials.keys()) {
+                let scope, tableKey;
+                try { [scope, tableKey] = JSON.parse(key); } catch (_) { continue; }
+                if (scope === identityScope && String(tableKey || '').startsWith('table:') && tables.has(String(tableKey).slice(6))) {
+                    supabaseReadTerminalDenials.delete(key);
+                } else if (scope === identityScope && tableKey === 'inventory_read' && tables.has('ph_master_inventory')) {
+                    supabaseReadTerminalDenials.delete(key);
+                }
+            }
+        }
+
         function getSupabaseReadErrorCode(error) {
             const direct = String(error && (error.code || error.sqlState || error.sqlstate) || '').trim().toUpperCase();
             const message = String(error && error.message || error || '');
@@ -34917,7 +34946,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return JSON.stringify([context.scope, context.dataPermissionVersion || '', context.viewKey, context.adapters.map(adapter => [adapter.id, adapter.cacheKey])]);
         }
 
-        function hasProgressiveViewData(context = getProductionLiveSyncContext()) {
+        function hasProgressiveViewDataForContext(context = getProductionLiveSyncContext()) {
             return !!(context.progressive && context.visible && productionDisplayGroups.has(productionDisplayGroupKey(context)));
         }
 
@@ -34993,6 +35022,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function retryProductionDataStatus() {
             const coordinator = getProductionLiveSyncCoordinator();
             if (!coordinator) return false;
+            clearSupabaseReadFailuresForVisibleContext();
             productionLiveSyncViewLoad = null;
             if (getCurrentVisibleViewId() === 'hl-order') {
                 if (hlOrderStateError) void loadHlOrderState(true).catch(() => {});
@@ -40451,7 +40481,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const viewLoadRetryStates = new Map();
         const viewLoadRetryTimers = new Map();
         function hasProgressiveViewData(context = null) {
-            if (typeof hasProgressiveViewDataForContext === 'function') return hasProgressiveViewDataForContext(context);
+            if (typeof hasProgressiveViewDataForContext === 'function') return hasProgressiveViewDataForContext(context || getProductionLiveSyncContext());
             const viewId = getCurrentVisibleViewId();
             const config = getViewLoadingConfig(viewId);
             return !!(config && (config.required || []).some((item) => getDatasetRenderRowCount(item.key) > 0));
@@ -87383,7 +87413,10 @@ function toggleDriveQuickRequestItem(domId) {
             if (modal?.contains(focused)) focused.blur();
             // Capture the post-close dependency context, after the editor and
             // its focus no longer protect the discarded draft from refresh.
-            if (canUseProductionLiveSync()) scheduleProductionLiveSyncRender(true);
+            if (canUseProductionLiveSync()) {
+                signalProductionLiveSync('dock-editor-closed', 0);
+                scheduleProductionLiveSyncRender(true);
+            }
         }
 
         function openDockInfoModal(dockNum, tripNumber) {
@@ -138080,7 +138113,7 @@ C.14.043 C.15.000
                 const existingHrRoot = container.querySelector('#manager-hr-command-root');
                 if (existingHrRoot) { void mountAlphaCommandCenter('hr', existingHrRoot); return; }
             }
-            if (activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && ensureViewDataForRender('managers')) return;
+            if (activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && ensureViewDataForRender('managers')) return;
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
@@ -138119,7 +138152,13 @@ C.14.043 C.15.000
                 if (slot && retainedRecords) slot.replaceWith(retainedRecords);
                 const reportPickerSlot = shell.querySelector('details[data-manager-eval2-report-picker]');
                 if (retainedReportPicker && reportPickerSlot) reportPickerSlot.replaceWith(retainedReportPicker);
-                container.replaceChildren(...shell.childNodes);
+                // While a refresh is loading, its index may be temporarily
+                // unavailable and the panel renderer returns only a spinner.
+                // Keep the last complete panel attached so the open report
+                // picker and its current choices survive that intermediate render.
+                if (!(retainedReportPicker && !reportPickerSlot && managerEvalReport2LoadState.loading)) {
+                    container.replaceChildren(...shell.childNodes);
+                }
             } else container.innerHTML = html;
             if (activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW) {
                 const scheduleRoot = container.querySelector('#manager-production-schedule-root');

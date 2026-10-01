@@ -269,6 +269,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     host.style.cssText = 'position:fixed;inset:0;z-index:9000;width:390px;overflow:auto;background:#fff;';
     host.innerHTML = renderManagerEvalReports2Panel();
     document.body.appendChild(host);
+    window.dispatchEvent(new Event('resize'));
     return { release: String(window.__APP_SHELL_VERSION__ || '') };
   })()`));
   expect(setup.release).toBe(expectedRelease);
@@ -278,12 +279,12 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await expect(host).toContainText('Eval Reports #2');
   await expect(host.locator('.manager-eval2-drive-controls')).toBeVisible();
   await expect(host.locator('.manager-eval2-drive-tabs')).toHaveCount(0);
-  await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
   if ((page.viewportSize()?.width ?? 1024) <= 767) {
     const filters = host.locator('.mobile-browse-filters > summary');
     await expect(filters).toBeVisible();
     await filters.click();
   }
+  await expect(host.locator('#manager-eval-report-2-more-menu')).toBeVisible();
   const users = host.getByRole('button', { name: /All Users/i });
   await expect(users).toBeVisible();
   await users.click();

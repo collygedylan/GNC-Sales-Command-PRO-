@@ -96,13 +96,23 @@ test('10,000-row reports reuse the index and local filters without low-stock req
   // Apply operates on real controls and the compiled renderer.
   await page.locator('[data-manager-eval2-report-picker] summary').click();
   await page.locator('[data-eval2-report-id][value="not-in-f1"]').uncheck();
-  await page.locator('[data-eval2-report-id][value="u1"]').check();
   await page.evaluate(() => (window as any).eval(`(() => {
     scheduleManagersRender = window.__savedScheduleManagersRender;
-    const original = applyManagerEvalReport2ReportPicker;
-    const renderRecords = renderManagerEvalReport2Records;
+    const original = setManagerEvalReport2Reports;
+    const records = document.getElementById('manager-eval-report-2-records');
+    const previousCards = new Set(records.querySelectorAll('.manager-eval2-item-card'));
     let startedAt = 0;
     window.__applyStages = {};
+    const observer = new MutationObserver(() => {
+      if (!startedAt || getManagerEvalReport2SelectedReportIds().join(',') !== 'u1') return;
+      const newCard = Array.from(records.querySelectorAll('.manager-eval2-item-card'))
+        .find(card => !previousCards.has(card));
+      if (newCard && window.__applyReportTiming?.firstRowsMs == null) {
+        window.__applyReportTiming.firstRowsMs = performance.now() - startedAt;
+        observer.disconnect();
+      }
+    });
+    observer.observe(records, { childList:true, subtree:true });
     for (const name of ['refreshManagerEvalReport2BrowseRegion', 'getManagerEvalReport2VisibleItemGroups', 'syncManagerEvalReport2SelectionUi', 'renderMarkupChunkedByKey', 'setContainerHtml', 'getChunkRenderPacing']) {
       const fn = window[name];
       window[name] = (...args) => {
@@ -115,24 +125,19 @@ test('10,000-row reports reuse the index and local filters without low-stock req
         return result;
       };
     }
-    renderManagerEvalReport2Records = () => {
-      const result = renderRecords();
-      if (startedAt && window.__applyReportTiming?.firstRowsMs == null && getManagerEvalReport2SelectedReportIds().join(',') === 'u1'
-        && document.querySelector('.manager-eval2-item-card')) {
-        window.__applyReportTiming.firstRowsMs = performance.now() - startedAt;
+    setManagerEvalReport2Reports = ids => {
+      if (ids.includes('u1') && !startedAt) startedAt = performance.now();
+      const value = original(ids);
+      if (startedAt && window.__applyReportTiming == null) {
+        window.__applyReportTiming = { acknowledgeMs:performance.now() - startedAt };
       }
-      return result;
-    };
-    applyManagerEvalReport2ReportPicker = button => {
-      const start = performance.now();
-      startedAt = start;
-      const value = original(button);
-      window.__applyReportTiming = { acknowledgeMs:performance.now() - start };
       return value;
     };
   })()`));
+  // The checkbox applies its selection immediately; Apply Reports only closes the picker.
+  await page.locator('[data-eval2-report-id][value="u1"]').check();
   await page.getByRole('button', { name: 'Apply Reports', exact: true }).click();
-  await page.waitForFunction(() => (window as any).__applyReportTiming?.firstRowsMs != null);
+  await page.waitForFunction(() => (window as any).__applyReportTiming?.firstRowsMs != null, undefined, { timeout: 15_000 });
   const apply = await page.evaluate(() => ({...(window as any).__applyReportTiming, stages:(window as any).__applyStages}));
   await testInfo.attach('apply-report-timings', { body:JSON.stringify(apply), contentType:'application/json' });
   expect(apply.acknowledgeMs).toBeLessThan(100);

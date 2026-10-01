@@ -63,6 +63,31 @@ async function harness(page: Page, baseURL: string) {
       const isInventoryRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && url.pathname === '/functions/v1/app-api' && body?.action === 'inventory_read'
         && inventoryReadOperations.has(String(body.operation || ''));
+      const safeDatasets = new Set([
+        'request_queue', 'active_request', 'soc', 'cav', 'reserves', 'sales_office',
+        'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history',
+      ]);
+      const readParams = body?.params && typeof body.params === 'object' && !Array.isArray(body.params) ? body.params : null;
+      const isDatasetRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && body?.action === 'dataset_read'
+        && Object.keys(body).every(key => ['action', 'dataset', 'params'].includes(key))
+        && safeDatasets.has(String(body.dataset || '')) && readParams
+        && Number.isInteger(readParams.limit) && readParams.limit >= 1 && readParams.limit <= 500
+        && Number.isInteger(readParams.offset) && readParams.offset >= 0
+        && typeof readParams.projection === 'string'
+        && Array.isArray(readParams.filters) && Array.isArray(readParams.order);
+      const isFreshnessRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && body?.action === 'inventory_read'
+        && Object.keys(body).every(key => ['action', 'operation', 'params'].includes(key))
+        && body.operation === 'source_freshness' && body.params && typeof body.params === 'object'
+        && Object.keys(body.params).length === 0;
+      if (isDatasetRead || isFreshnessRead) {
+        const params = readParams || body.params;
+        const data = isFreshnessRead ? { filename: null, last_updated: null }
+          : { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false };
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ ok: true, data }) });
+      }
       if (isInventoryRead) {
         const params = body.params && typeof body.params === 'object' ? body.params : {};
         const data = body.operation === 'schema_capabilities'
@@ -313,7 +338,9 @@ test('forced password retry retains the gate and entered password until synchron
     persistAppSessionRecord = record => { window.__passwordRetrySaved = record; };
     finalizeLogin = async () => { window.__passwordRetryFinalized = true; };
     showToast = (title,message) => window.__passwordRetryToasts.push({title,message});
+    const originalPostAppFunctionJson = postAppFunctionJson;
     postAppFunctionJson = async (url,payload) => {
+      if(payload.action !== 'password_change') return originalPostAppFunctionJson(url,payload);
       window.__passwordRetryCalls.push(payload);
       if(window.__passwordRetryCalls.length === 1) throw Object.assign(new Error('Synchronization unconfirmed'), {payload:{code:'PASSWORD_CHANGE_RETRY_REQUIRED'}});
       return {ok:true,session:{token:'synthetic-completed-session',username:'nelly_aguilar',displayName:'Nelly Aguilar',role:'User',expiresAt:Date.now()+60000,mustChangePassword:false}};
@@ -331,7 +358,8 @@ test('forced password retry retains the gate and entered password until synchron
   await page.evaluate(() => window.eval('submitNewPassword()'));
   expect(await page.evaluate(() => window.eval('window.__passwordRetryFinalized'))).toBe(true);
   expect(await page.evaluate(() => window.eval('window.__passwordRetrySaved.mustChangePassword'))).toBe(false);
-  expect(await page.evaluate(() => window.eval('window.__passwordRetryCalls.map(call => call.action)'))).toEqual(['password_change', 'password_change']);
+  expect(await page.evaluate(() => window.eval("window.__passwordRetryCalls.filter(call => call.action === 'password_change').map(call => call.action)")))
+    .toEqual(['password_change', 'password_change']);
   await expect(page.locator('#new-password')).toHaveValue('');
   await expect(page.locator('#confirm-password')).toHaveValue('');
   app.assertClean();

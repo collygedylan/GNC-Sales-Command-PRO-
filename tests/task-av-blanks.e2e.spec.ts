@@ -104,6 +104,9 @@ test('AV loads through app-api with raw reads blocked and shows release GNC.001'
     if (request.url().endsWith('/functions/v1/app-api') && request.method() === 'POST') {
       const body = request.postDataJSON();
       if (body?.action === 'av_read') datasets.add(body.dataset);
+      // Current production runtime routes the reserves projection through the
+      // bounded read boundary; count only that exact dataset, not generic POSTs.
+      if (body?.action === 'dataset_read' && body.dataset === 'reserves') datasets.add(body.dataset);
     }
   });
   const reserves = Array.from({ length: 501 }, (_, index) => ({ unique_id: `reserve-${index}`, itemcode: 'SYNTH.003', commonname: 'Secure AV Plant', contsize: '#3', season: 'F1', lotcode: '27.F1', salesrepname: 'Riley Sales', customername: 'Synthetic Customer' }));
@@ -280,8 +283,14 @@ test('photo modal reserves its layout before delayed photos load and keeps the s
   await page.evaluate(urls => (window as any).openPhotoModal(urls, 'Delayed photos', 0), photos);
   const gallery = page.locator('#photo-modal-gallery');
   const reservedHeight = await gallery.evaluate(el => el.getBoundingClientRect().height);
+  const expectedReservedHeight = await page.evaluate(() => {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const visualHeightToken = rootStyle.getPropertyValue('--visual-height').trim();
+    const visualHeight = visualHeightToken.endsWith('px') ? Number.parseFloat(visualHeightToken) : window.innerHeight;
+    return Math.min(window.innerHeight * .8, visualHeight - 5 * Number.parseFloat(rootStyle.fontSize));
+  });
   try {
-    expect(reservedHeight, 'reserve the gallery before either image has dimensions').toBeCloseTo(844 * .8, 0);
+    expect(reservedHeight, 'reserve the gallery before either image has dimensions').toBeCloseTo(expectedReservedHeight, 0);
     await expect(page.locator('#photo-modal-counter')).toHaveText('1 / 2');
   } finally {
     releaseImages();
@@ -469,11 +478,16 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
     const date = el.querySelector('.app-av-catalog-photo-evidence .app-inline-thumb-date')!;
     const viewPhotos = el.querySelector('.app-av-secondary-action')!;
     const locationMatch = el.querySelector('.app-av-catalog-photo-match')!;
+    const surfaceProbe = document.createElement('span');
+    surfaceProbe.style.backgroundColor = 'var(--av-surface)';
+    el.append(surfaceProbe);
+    const cardSurface = getComputedStyle(surfaceProbe).backgroundColor;
+    surfaceProbe.remove();
     return {
       dateReadable: parseFloat(getComputedStyle(date).fontSize) >= 13,
       viewPhotosReadable: parseFloat(getComputedStyle(viewPhotos).fontSize) >= 14,
       dateFollowsLocationMatch: Boolean(locationMatch.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING),
-      dateSurfaceMatchesCard: getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
+      dateSurfaceMatchesCard: getComputedStyle(date).backgroundColor === cardSurface
     };
   });
   expect(photoText).toEqual({ dateReadable: true, viewPhotosReadable: true, dateFollowsLocationMatch: true, dateSurfaceMatchesCard: true });
@@ -492,7 +506,12 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
   await expect(page.locator('body')).toHaveAttribute('data-ops-theme', 'dark');
   await expect.poll(() => card.evaluate(el => {
     const date = el.querySelector('.app-av-catalog-photo-evidence .app-inline-thumb-date')!;
-    return getComputedStyle(date).backgroundColor === getComputedStyle(el).backgroundColor
+    const surfaceProbe = document.createElement('span');
+    surfaceProbe.style.backgroundColor = 'var(--av-surface)';
+    el.append(surfaceProbe);
+    const cardSurface = getComputedStyle(surfaceProbe).backgroundColor;
+    surfaceProbe.remove();
+    return getComputedStyle(date).backgroundColor === cardSurface
       && parseFloat(getComputedStyle(date).fontSize) >= 13;
   })).toBe(true);
   await card.screenshot({ path: testInfo.outputPath('av-photo-loaded-390-dark.png') });

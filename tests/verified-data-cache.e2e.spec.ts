@@ -39,18 +39,30 @@ async function expectDockCounts(page: Page, shown: number, total: number, hidden
   }
 }
 
+async function openDockMobileFilters(page: Page) {
+  if ((page.viewportSize()?.width || 1000) >= 768) return;
+  const disclosure = page.locator('#docks-filter-controls .mobile-browse-filters');
+  await expect(disclosure).toBeVisible();
+  if (await disclosure.getAttribute('open') === null) await disclosure.locator(':scope > summary').click();
+  await expect(disclosure).toHaveAttribute('open', '');
+}
+
 async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: string): string, project: { name: string } }) {
   const controls = page.locator('#docks-filter-controls');
   const shells = controls.locator('[data-dock-filter-shell]');
   await expect(shells).toHaveCount(4);
+  const disclosure = controls.locator('.mobile-browse-filters');
+  if (await disclosure.count() && await disclosure.getAttribute('open') !== null) {
+    await disclosure.locator(':scope > summary').click();
+    await expect(disclosure).not.toHaveAttribute('open', '');
+  }
   for (const theme of ['light', 'dark']) {
     await page.evaluate(value => document.body.setAttribute('data-ops-theme', value), theme);
     const geometry = await controls.evaluate(element => {
-      const shellRects = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell]'), node => node.getBoundingClientRect());
       const targets = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell] button, [data-dock-filter-shell] select'))
         .filter(node => node.getClientRects().length).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
       return {
-        railHeight: Math.max(...shellRects.map(rect => rect.bottom)) - Math.min(...shellRects.map(rect => rect.top)),
+        railHeight: element.getBoundingClientRect().height,
         targets,
         pageOverflow: document.documentElement.scrollWidth - window.innerWidth,
         phone: window.innerWidth < 768,
@@ -61,6 +73,7 @@ async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: 
     if (geometry.phone) expect(geometry.railHeight, JSON.stringify(geometry)).toBeLessThanOrEqual(120);
     await page.screenshot({ path: testInfo.outputPath(`docks-compact-${theme}.png`) });
   }
+  await openDockMobileFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
   const sheet = page.locator('#dock-mobile-filter-sheet');
   const popup = await sheet.isVisible() ? sheet : page.locator('[data-dock-customer-panel]');
@@ -94,6 +107,7 @@ async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: 
       return hit === element || element.contains(hit) ? [] : [element.id];
     }));
     expect(unobstructed).toEqual([]);
+    await openDockMobileFilters(page);
     await page.locator('[data-dock-filter-shell="customer"] > button').click();
     const compactPopup = await sheet.isVisible() ? sheet : page.locator('[data-dock-customer-panel]');
     await expect(compactPopup).toBeVisible();
@@ -198,6 +212,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], customCustomers
 test('compact filter rail remains usable across themes, larger text and shortened phone height', async ({ page, baseURL }, testInfo) => {
   const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
   await expectDockCounts(page, 55, 117);
+  await openDockMobileFilters(page);
   await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   await assertCompactDockLayout(page, testInfo);
   session.assertClean();
@@ -220,6 +235,7 @@ test('two sessions retain local choices, converge after clear, and keep All incl
     await expectDockCounts(other, 55, 149, 1);
     await expect(other.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
     await expect(other.locator('[data-dock-active-filter-chips]')).toHaveCount(0);
+    await openDockMobileFilters(other);
     await expect(other.locator('[data-dock-clear-filters]')).toBeVisible();
     await expect(other.locator('#docks-content')).toContainText('55 Items');
     await expect(other.locator('#docks-content')).not.toContainText('Dock 29');
@@ -284,6 +300,24 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
         if (fixture.readFailure) throw new Error('Synthetic revision connection failure');
         return { contractVersion: 1, permissionVersion: 'fixture-access-1', serverTime: new Date().toISOString(),
           sources: payload.p_dataset_keys.map(key => ({ key, revision: key === 'ph_soc_master' ? fixture.revision : '1', state: key === 'ph_soc_master' ? fixture.state : 'ready' })) };
+      };
+      const originalFixturePostAppFunctionJson = postAppFunctionJson;
+      postAppFunctionJson = async (url, payload, options = {}) => {
+        if (url === APP_API_FUNCTION_URL && payload?.action === 'dataset_read' && payload.dataset === 'soc'
+          && Object.keys(payload).every(key => ['action', 'dataset', 'params'].includes(key))
+          && payload.params && typeof payload.params === 'object' && !Array.isArray(payload.params)
+          && Object.keys(payload.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))
+          && Number.isInteger(payload.params.limit) && payload.params.limit >= 1 && payload.params.limit <= 500
+          && Number.isInteger(payload.params.offset) && payload.params.offset >= 0
+          && Array.isArray(payload.params.filters || []) && Array.isArray(payload.params.order || [])
+          && (!payload.params.anyOf || Array.isArray(payload.params.anyOf))
+          && !options.idempotencyKey) {
+          fixture.reads.push('dataset_read:soc');
+          const { limit, offset } = payload.params;
+          const pageRows = structuredClone(fixture.rows).slice(offset, offset + limit);
+          return { ok: true, data: { rows: pageRows, total: fixture.rows.length, offset, limit, hasMore: offset + pageRows.length < fixture.rows.length } };
+        }
+        return originalFixturePostAppFunctionJson(url, payload, options);
       };
       runDockTripStatusRequest = async () => ({ ok: true, data: [] });
       chatApiGet = async () => [];
@@ -435,6 +469,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
 
 test('real customer controls expose empty Custom, All and device-saved selections', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!, [row('a', 'Customer A'), row('b', 'Customer B', '29')]);
+  await openDockMobileFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
   const sheet = page.locator('#dock-mobile-filter-sheet');
   const panel = page.locator('[data-dock-customer-panel]');
@@ -444,10 +479,12 @@ test('real customer controls expose empty Custom, All and device-saved selection
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
   await expectDockCounts(page, 0, 2, 2);
   await expect(page.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
+  await openDockMobileFilters(page);
   await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   await page.reload({ waitUntil: 'load' });
   await app.seed([row('a', 'Customer A'), row('b', 'Customer B', '29')]);
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
+  await openDockMobileFilters(page);
   await page.locator('[data-dock-clear-filters]').click();
   await expectDockCounts(page, 2, 2);
   app.assertClean();
@@ -490,6 +527,7 @@ test('native refresh preserves an open Dock draft and reloads changed query and 
   await page.locator('#dock-info-modal').getByRole('button', { name: 'CANCEL', exact: true }).click();
   await expectDockCounts(page, 2, 2);
   await expect.poll(() => page.evaluate(() => window.eval(`!productionLiveSyncRenderPending && !productionLiveSyncActiveRender`))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().getStatus().state`))).toBe('Up to date');
   await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
 
   // Exercise real side-adapter cache keys and commits, with only the protected

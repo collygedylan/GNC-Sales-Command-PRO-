@@ -8875,6 +8875,7 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
 .grower-toolbar-menu>summary::-webkit-details-marker{display:none}
 .grower-cuttings-btn{background:#19d99a!important;color:#052418!important;border-color:#19d99a!important;white-space:nowrap}
 .grower-toolbar-popover{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:40;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;padding:10px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:12px;background:var(--ops-surface,#fff);box-shadow:0 12px 28px #0005}
+.grower-toolbar-menu:not([open])>.grower-toolbar-popover{display:none!important}
 .grower-toolbar-popover label{display:grid;gap:3px;min-width:0;font-size:11px;font-weight:800;color:var(--ops-text,#153b2c)}
 .grower-toolbar-popover select,.grower-toolbar-popover button{min-height:44px;min-width:0;width:100%;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:9px;padding:7px;color:var(--ops-text,#153b2c);background:var(--ops-surface-muted,#fff);font-size:16px}
 .grower-inventory-list{display:grid;gap:8px;min-width:0}
@@ -8911,6 +8912,7 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
   .mobile-browse-filters{position:static;min-width:88px;max-width:120px;z-index:65}
   .mobile-browse-filters>summary{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:44px;min-width:88px;list-style:none;cursor:pointer;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:10px;padding:7px;color:var(--ops-text,#153b2c);background:var(--ops-surface-muted,#fff);font-size:13px;font-weight:800;letter-spacing:normal;text-transform:none}
   .mobile-browse-filters>summary::-webkit-details-marker{display:none}
+  .mobile-browse-filters:not([open])>.mobile-browse-filter-panel{display:none!important}
   .mobile-browse-filter-panel{position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:65;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;box-sizing:border-box;max-height:min(62vh,450px);overflow:auto;overscroll-behavior:contain;padding:8px;border:1px solid var(--ops-border-strong,#2c9b6a);border-radius:12px;background:var(--ops-surface,#fff);box-shadow:0 12px 28px #0005}
   .mobile-browse-filter-panel>*{min-width:0!important;width:100%!important;max-width:none!important;box-sizing:border-box;overflow-wrap:anywhere}
   .mobile-browse-filter-panel :is(button,select,input){min-width:0;max-width:100%;min-height:44px}
@@ -9116,6 +9118,11 @@ body.ops-precision-pilot[data-ops-theme="dark"] {
   --ops-nav-dark-fallback: #0a120e;
 }
 
+/* The saved dark preference reaches <html> before the body theme attribute is set. */
+html:not(.outdoor-mode)[data-ops-prepaint-theme="dark"] body.ops-precision-pilot:not([data-ops-theme="light"]) {
+  --ops-glass: rgba(10, 18, 14, 0.86);
+}
+
 body.ops-precision-pilot[data-ops-theme="dark"] :is(
   #app-top-chrome, .nav-header, #global-header-search-row,
   #bottom-nav, #global-action-bar, #side-drawer, .drawer-header,
@@ -9142,8 +9149,10 @@ body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav {
   box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.3) !important;
 }
 
-html:not(.outdoor-mode) body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav {
-  background: #0a120e !important;
+html:not(.outdoor-mode) body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav,
+html:not(.outdoor-mode)[data-ops-prepaint-theme="dark"] body.ops-precision-pilot:not([data-ops-theme="light"]) #bottom-nav {
+  background: var(--bg-surface) !important;
+  border-top: 1px solid rgba(34, 197, 94, 0.15) !important;
 }
 
 body.ops-precision-pilot[data-ops-theme="dark"] :is(.footer-nav-btn, .drawer-item, .nav-header, #global-header-search-row) {
@@ -9157,7 +9166,11 @@ body.ops-precision-pilot[data-ops-theme="dark"] :is(.footer-nav-btn.active, .foo
   box-shadow: var(--active-glow) !important;
 }
 
-body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]) {
+body.ops-precision-pilot[data-ops-theme="dark"] #bottom-nav .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]),
+html:not(.outdoor-mode)[data-ops-prepaint-theme="dark"] body.ops-precision-pilot:not([data-ops-theme="light"]) #bottom-nav .footer-nav-btn:is(.active, .menu-open, [aria-current="page"]) {
+  border-color: var(--border-subtle) !important;
+  color: var(--accent-strong) !important;
+  background: rgba(34, 197, 94, 0.12) !important;
   box-shadow: 0 0 16px -2px rgba(34, 197, 94, 0.35), inset 0 0 0 1px rgba(34, 197, 94, 0.24) !important;
 }
 

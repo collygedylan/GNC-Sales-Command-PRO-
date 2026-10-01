@@ -201,6 +201,13 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
   const handle = async (route: Route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     const body = route.request().postDataJSON();
+    // Dylan's replacement Communications view reads a bounded conversation list.
+    // Keep all command-center writes and other actions blocked by the outer canary.
+    if (body?.action === 'alpha_chat_list' && navigation.username === 'dylan_collyge'
+      && Number.isInteger(body.limit) && body.limit > 0 && body.limit <= 50) {
+      return route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ ok: true, rows: [] }) });
+    }
     if (!['request_history', 'sales_credit', 'navigation_preferences', 'production_workflow', 'inventory_transaction_history'].includes(body?.action)) return route.fallback();
     commands.push(copy(body));
     const headers = { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' };

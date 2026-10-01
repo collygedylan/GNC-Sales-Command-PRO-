@@ -95,7 +95,7 @@ test('browser shards and compiled suites use isolated runners without racing per
   assert.deepEqual(home.map(x => x.shard), ['1/2','2/2']);
   const hl = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.hl-order.config.ts');
   assert.deepEqual(hl.map(x => x.shard), ['1/3','2/3','3/3']);
-  assert.equal(validation.jobs.compiled['timeout-minutes'], 12);
+  assert.equal(validation.jobs.compiled['timeout-minutes'], 20);
   assert.match(validation.jobs.compiled.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*matrix.shard.*--shard=/);
   assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-timing.config.ts --workers=1/);
   assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-android.config.ts --project=android --workers=1/);

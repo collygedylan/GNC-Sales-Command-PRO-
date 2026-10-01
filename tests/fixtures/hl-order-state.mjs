@@ -646,6 +646,54 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && Object.keys(body.payload).length === 3 && Object.keys(body.payload).every(key => ['status', 'cursor', 'limit'].includes(key))
         && body.payload.status === 'all' && body.payload.cursor === null && body.payload.limit === 100;
       if (salesCompatibilityRead) return json(route, { ok: true, data: { rows: [], nextCursor: null } });
+      // app-api reads use POST transport, so allow only the exact read actions
+      // used by the mounted Drive/Manager views. Writes continue to hit the
+      // blocked mutation path below.
+      const sourceFreshnessRead = body.action === 'inventory_read' && body.operation === 'source_freshness'
+        && Object.keys(body).every(key => ['action', 'operation', 'params'].includes(key))
+        && (!body.params || (typeof body.params === 'object' && !Array.isArray(body.params) && Object.keys(body.params).length === 0))
+        && !req.headers()['idempotency-key'];
+      if (sourceFreshnessRead) return json(route, { ok: true, data: { filename: null, last_updated: null } });
+      const datasetRead = body.action === 'dataset_read' && ['soc', 'reserves', 'cav', 'sales_office', 'request_queue',
+        'dock_item', 'dock_issue', 'dock_allocations'].includes(body.dataset)
+        && Object.keys(body).every(key => ['action', 'dataset', 'params'].includes(key))
+        && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+        && Object.keys(body.params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))
+        && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
+        && Number.isInteger(body.params.offset) && body.params.offset >= 0
+        && (!body.params.projection || ['default', 'signature', 'ids'].includes(body.params.projection))
+        && Array.isArray(body.params.filters || []) && Array.isArray(body.params.anyOf || []) && Array.isArray(body.params.order || [])
+        && !req.headers()['idempotency-key'];
+      if (datasetRead) {
+        if (body.dataset === 'reserves') control.demandReads.reserves++;
+        if (body.dataset === 'soc') control.demandReads.openOrders++;
+        const allRows = body.dataset === 'soc' ? (control.demandSocRows ?? control.rows)
+          : body.dataset === 'reserves' ? control.reserveRows : [];
+        const { offset } = body.params;
+        const isDemandDataset = body.dataset === 'reserves' || body.dataset === 'soc';
+        const limit = isDemandDataset && Number(options.demandPageSize) > 0
+          ? Math.min(body.params.limit, Number(options.demandPageSize)) : body.params.limit;
+        const rows = allRows.slice(offset, offset + limit);
+        if (isDemandDataset && holdNextDemandFinalPage && offset > 0 && rows.length && offset + rows.length >= allRows.length) {
+          holdNextDemandFinalPage = false;
+          resolveHeldDemandFinalPageStarted();
+          await new Promise(resolve => { releaseHeldDemandFinalPage = resolve; });
+        }
+        return json(route, { ok: true, data: { rows, total: allRows.length, offset, limit, hasMore: offset + rows.length < allRows.length } });
+      }
+      // The Dylan-only Manager card reads Production Schedule metadata on mount.
+      // Keep this fixture read-only and exact; refresh/row actions remain
+      // blocked unless a dedicated test explicitly opts into their contracts.
+      const productionScheduleMetadataRead = body.action === 'production_schedule' && body.operation === 'metadata'
+        && Object.keys(body).length === 2 && Object.keys(body).every(key => ['action', 'operation'].includes(key))
+        && !req.headers()['idempotency-key'];
+      if (productionScheduleMetadataRead) return json(route, { ok: true, snapshot: null, sheets: [] });
+      const productionScheduleStatusRead = body.action === 'production_schedule' && body.operation === 'status'
+        && Object.keys(body).every(key => ['action', 'operation', 'runId'].includes(key))
+        && (body.runId === undefined || body.runId === null || (typeof body.runId === 'string'
+          && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.runId)))
+        && !req.headers()['idempotency-key'];
+      if (productionScheduleStatusRead) return json(route, { ok: true, run: { id: null, status: 'empty' } });
       if (body.action === 'av_read') {
         const dataset = String(body.dataset || '');
         if (!['reserves', 'notes', 'hot_prices', 'settings'].includes(dataset)) return json(route, { ok: false }, 400);
@@ -718,7 +766,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       }
       if (body.action === 'season_sales_office' && body.operation === 'access') return json(route, { ok: true, allowed: false, canManage: false, users: [] });
       if (['list', 'get', 'state'].includes(body.operation) || /get|load|status|preferences|capabilit|health|telemetry|event/.test(body.action || '')) return json(route, { ok: true, data: [], preferences: {}, eligible: false });
-      control.blockedMutations.push(`API ${body.action}:${body.operation || ''}`); return json(route, { ok: false, error: 'Blocked' }, 403);
+      control.blockedMutations.push(`API ${body.action}:${body.operation || ''}:${body.dataset || ''}`); return json(route, { ok: false, error: 'Blocked' }, 403);
     }
     return route.abort('blockedbyclient');
   });

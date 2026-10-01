@@ -61,6 +61,20 @@ async function harness(page: Page, baseURL: string) {
       const isInventoryRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && url.pathname === '/functions/v1/app-api' && body?.action === 'inventory_read'
         && inventoryReadOperations.has(String(body.operation || ''));
+      const requestQueueParams = body?.params && typeof body.params === 'object' && !Array.isArray(body.params) ? body.params : null;
+      const isRequestQueueRead = request.method() === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api' && body?.action === 'dataset_read' && body.dataset === 'request_queue'
+        && Object.keys(body).sort().join(',') === 'action,dataset,params' && requestQueueParams
+        && Number.isInteger(requestQueueParams.limit) && requestQueueParams.limit >= 1 && requestQueueParams.limit <= 500
+        && Number.isInteger(requestQueueParams.offset) && requestQueueParams.offset >= 0
+        && (!requestQueueParams.projection || ['default', 'signature', 'ids'].includes(requestQueueParams.projection))
+        && Array.isArray(requestQueueParams.filters || []) && Array.isArray(requestQueueParams.anyOf || [])
+        && Array.isArray(requestQueueParams.order || [])
+        && Object.keys(requestQueueParams).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key));
+      if (isRequestQueueRead) {
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ ok: true, data: { rows: [], total: 0, offset: requestQueueParams.offset, limit: requestQueueParams.limit, hasMore: false } }) });
+      }
       if (isInventoryRead) {
         const params = body.params && typeof body.params === 'object' ? body.params : {};
         const data = body.operation === 'schema_capabilities'
@@ -72,7 +86,9 @@ async function harness(page: Page, baseURL: string) {
           body: JSON.stringify({ ok: true, data }) });
       }
       if (!isManualStatusRead && !isRevisionRead && !['/rest/v1/rpc/report_app_health_event', '/rest/v1/rpc/get_app_user_directory'].includes(url.pathname)) {
-        unexpectedMutations.push(`${request.method()}:${url.pathname}`);
+        const action = String(body?.action || 'unclassified');
+        const detail = body?.dataset ? `:${body.dataset}` : body?.operation ? `:${body.operation}` : '';
+        unexpectedMutations.push(`${request.method()}:${url.pathname}:${action}${detail}`);
       }
       return route.abort('blockedbyclient');
     }

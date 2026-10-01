@@ -151,10 +151,13 @@ for (const role of ['ADMIN', 'SALES']) {
     }
     if (role === 'ADMIN') {
       await page.evaluate(() => (window as any).switchView('communication'));
-      await expect(page.locator('#communication-hub-grid')).toBeVisible();
+      // Dylan's command center replaces the legacy communication tiles.
+      await expect(page.locator('#communication-hub-grid')).toBeHidden();
+      const commandCenter = page.locator('#alpha-communications-root');
+      await expect(commandCenter).toBeVisible();
       for (const theme of ['light', 'dark']) {
         await page.evaluate(nextTheme => { document.body.dataset.opsTheme = nextTheme; }, theme);
-        await expectModuleTileLabelColor(page, theme as 'light' | 'dark', '#communication-hub-grid > button:visible');
+        await expect(commandCenter.getByRole('heading', { name: 'Communications', exact: true })).toBeVisible();
       }
       await page.evaluate(() => (window as any).switchView('sales'));
       await expect(page.locator('#sales-hub-grid')).toBeVisible();
