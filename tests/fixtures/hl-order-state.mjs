@@ -670,10 +670,11 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         const allRows = body.dataset === 'soc' ? (control.demandSocRows ?? control.rows)
           : body.dataset === 'reserves' ? control.reserveRows : [];
         const { offset } = body.params;
-        const limit = body.dataset === 'reserves' && Number(options.demandPageSize) > 0
+        const isDemandDataset = body.dataset === 'reserves' || body.dataset === 'soc';
+        const limit = isDemandDataset && Number(options.demandPageSize) > 0
           ? Math.min(body.params.limit, Number(options.demandPageSize)) : body.params.limit;
         const rows = allRows.slice(offset, offset + limit);
-        if (body.dataset === 'reserves' && holdNextDemandFinalPage && offset > 0 && rows.length && offset + rows.length >= allRows.length) {
+        if (isDemandDataset && holdNextDemandFinalPage && offset > 0 && rows.length && offset + rows.length >= allRows.length) {
           holdNextDemandFinalPage = false;
           resolveHeldDemandFinalPageStarted();
           await new Promise(resolve => { releaseHeldDemandFinalPage = resolve; });
