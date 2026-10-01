@@ -269,6 +269,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     host.style.cssText = 'position:fixed;inset:0;z-index:9000;width:390px;overflow:auto;background:#fff;';
     host.innerHTML = renderManagerEvalReports2Panel();
     document.body.appendChild(host);
+    window.dispatchEvent(new Event('resize'));
     return { release: String(window.__APP_SHELL_VERSION__ || '') };
   })()`));
   expect(setup.release).toBe(expectedRelease);
