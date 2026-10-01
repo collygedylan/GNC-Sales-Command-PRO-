@@ -128,7 +128,6 @@ alter table public.hr_job_codes enable row level security;
 alter table public.hr_events enable row level security;
 alter table public.labor_timesheets enable row level security;
 alter table public.hr_calendar_reminder_outbox enable row level security;
-alter table realtime.messages enable row level security;
 
 create policy hr_core_employees_select on public.core_employees for select to authenticated
   using (private.hr_department_access_v1(department));

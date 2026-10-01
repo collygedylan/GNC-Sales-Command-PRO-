@@ -160,6 +160,9 @@ test('HR migration lets pg_cron and pg_net create their own schemas', () => {
   assert.match(source, /create extension if not exists pg_net with schema extensions\s*;/i);
   assert.doesNotMatch(source, /create schema if not exists (?:cron|net)\s*;/i);
   assert.match(source, /do \$\$\s*declare month_start date := date '2025-01-01';\s*month_end date;\s*partition_name text;\s*begin/i);
+  assert.doesNotMatch(source, /alter table realtime\.messages enable row level security/i);
+  assert.match(source, /create policy alpha_dylan_chat_realtime_select on realtime\.messages/i);
+  assert.match(source, /create policy alpha_dylan_chat_realtime_insert on realtime\.messages/i);
 });
 
 test('reminder credentials are written through Vault create/update APIs without logging their values', async () => {
