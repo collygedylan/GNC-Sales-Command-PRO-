@@ -283,7 +283,12 @@ test('photo modal reserves its layout before delayed photos load and keeps the s
   await page.evaluate(urls => (window as any).openPhotoModal(urls, 'Delayed photos', 0), photos);
   const gallery = page.locator('#photo-modal-gallery');
   const reservedHeight = await gallery.evaluate(el => el.getBoundingClientRect().height);
-  const expectedReservedHeight = await page.evaluate(() => window.innerHeight * .8);
+  const expectedReservedHeight = await page.evaluate(() => {
+    const rootStyle = getComputedStyle(document.documentElement);
+    const visualHeightToken = rootStyle.getPropertyValue('--visual-height').trim();
+    const visualHeight = visualHeightToken.endsWith('px') ? Number.parseFloat(visualHeightToken) : window.innerHeight;
+    return Math.min(window.innerHeight * .8, visualHeight - 5 * Number.parseFloat(rootStyle.fontSize));
+  });
   try {
     expect(reservedHeight, 'reserve the gallery before either image has dimensions').toBeCloseTo(expectedReservedHeight, 0);
     await expect(page.locator('#photo-modal-counter')).toHaveText('1 / 2');
