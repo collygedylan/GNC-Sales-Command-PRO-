@@ -38,6 +38,8 @@ async function expectDockCounts(page: Page, shown: number, total: number, hidden
 }
 
 async function openCompactFilters(page: Page) {
+  // Desktop renders the full filter rail without a disclosure wrapper.
+  if ((page.viewportSize()?.width ?? 1000) >= 768) return;
   const details = page.locator('#docks-filter-controls').locator('details.mobile-browse-filters');
   // The production rail is wrapped on the next animation frame after its
   // controls render. Wait for that mobile enhancement instead of silently
