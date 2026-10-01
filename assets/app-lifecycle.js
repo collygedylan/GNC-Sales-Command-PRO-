@@ -100,4 +100,44 @@
     });
     root.addEventListener('online', () => notify('online', 'online'));
     root.addEventListener('offline', () => notify('offline', 'offline'));
+
+    // Available before the application runtime, including when an old runtime fails.
+    // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
+    let shellRecovery = null;
+    root.recoverShellVersionMismatch = (currentBuild, targetBuild) => {
+        const current = String(currentBuild || '').trim();
+        const target = String(targetBuild || '').trim();
+        if (!current || current === target || !/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)
+            || root.navigator?.onLine === false) return Promise.resolve(false);
+        if (shellRecovery) return shellRecovery;
+        const marker = `${current}:${target}`;
+        const next = new URL(root.location.href);
+        if (next.searchParams.get('shellrecovered') === marker) return Promise.resolve(false);
+        try {
+            if (root.sessionStorage.getItem('gnc_shell_recovery_v1') === marker) return Promise.resolve(false);
+            root.sessionStorage.setItem('gnc_shell_recovery_v1', marker);
+        } catch (_) { /* The URL also bounds recovery when storage is disabled. */ }
+        shellRecovery = (async () => {
+            suspendNavigation();
+            try {
+                const registrations = await root.navigator.serviceWorker?.getRegistrations() || [];
+                await Promise.allSettled(registrations.map(registration => registration.unregister()));
+            } catch (_) {}
+            try {
+                const keys = await root.caches?.keys() || [];
+                await Promise.allSettled(keys.map(key => root.caches.delete(key)));
+            } catch (_) {}
+            root.__swReg = null;
+            next.searchParams.set('shellv', target);
+            next.searchParams.set('shellts', String(Date.now()));
+            next.searchParams.set('shellrecovered', marker);
+            // reload(true) is ignored by some browsers; a fresh URL also bypasses HTTP caches.
+            try {
+                root.history.replaceState(root.history.state, '', next.toString());
+                root.location.reload(true);
+            } catch (_) { root.location.replace(next.toString()); }
+            return true;
+        })();
+        return shellRecovery;
+    };
 })(typeof window !== 'undefined' ? window : globalThis);
