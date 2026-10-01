@@ -544,6 +544,7 @@ test('a queued verified render cannot paint after navigation or an account chang
 
 test('closing a Dock editor replaces its captured dialog render and releases hidden focus', () => {
     let open = true, nextId = 0, renders = 0;
+    const signals = [];
     const timers = new Map();
     const focused = { matches: () => true, blur: () => { ctx.document.activeElement = null; } };
     const modal = { classList: { add: () => { open = false; } }, contains: element => element === focused };
@@ -552,7 +553,7 @@ test('closing a Dock editor replaces its captured dialog render and releases hid
         productionVerifiedViewKey: () => open ? 'docks:dialog' : 'docks', getCurrentVisibleViewId: () => 'docks',
         document: { hidden: false, getElementById: id => id === 'dock-info-modal' ? modal : null, activeElement: focused },
         window: { AgMetricLiveSyncRegistry: { views: { docks: { kind: 'data' } } } },
-        canUseProductionLiveSync: () => true, hasProductionLiveSyncDraft: () => open,
+        canUseProductionLiveSync: () => true, signalProductionLiveSync: (...args) => signals.push(args), hasProductionLiveSyncDraft: () => open,
         setTimeout: fn => { timers.set(++nextId, fn); return nextId; }, clearTimeout: id => timers.delete(id),
         markViewDirty() {}, renderViewContent: () => { renders++; } };
     installRefreshRenderFixture(ctx);
@@ -561,6 +562,7 @@ test('closing a Dock editor replaces its captured dialog render and releases hid
     vm.runInContext(html.slice(html.indexOf('        function closeDockInfoModal()'), html.indexOf('        function openDockInfoModal(')), ctx);
     ctx.scheduleProductionLiveSyncRender(); // The capture-phase click sees the open dialog.
     ctx.closeDockInfoModal();
+    assert.deepEqual(signals, [['dock-editor-closed', 0]]);
     assert.equal(timers.size, 1); assert.equal(ctx.document.activeElement, null);
     [...timers.values()][0]();
     assert.equal(renders, 1); assert.equal(ctx.productionLiveSyncDraftChanged, false);
