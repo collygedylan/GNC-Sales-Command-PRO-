@@ -8,7 +8,7 @@ const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
 test('foundation is a required sealed-artifact gate before functional and feature suites', () => {
   const job = workflow.jobs.foundation;
   assert.equal(job.needs, 'build');
-  assert.equal(job['timeout-minutes'], 8);
+  assert.equal(job['timeout-minutes'], 20);
   assert.ok(job.steps.some(step => step.uses === './.github/actions/download-release'));
   assert.ok(job.steps.some(step => step.run === 'npm run test:foundation -- --reporter=github'));
   assert.ok(job.steps.some(step => step.run === 'node scripts/release-artifact.mjs verify'));
