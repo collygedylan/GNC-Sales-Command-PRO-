@@ -77,7 +77,8 @@ jobs:
   foundation:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    # Browser dependency installation can consume over eight minutes on a cold runner.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
