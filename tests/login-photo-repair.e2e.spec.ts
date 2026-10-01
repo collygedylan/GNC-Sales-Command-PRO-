@@ -32,7 +32,7 @@ test('login tracing separates SDK wait from network wait without retaining crede
             body: JSON.stringify(credentials),
           });
           await response.json();
-          return { data: null, error: { message: 'fixture-password-secret' } };
+          return { data: null, error: { code: 'invalid_credentials', status: 400, message: 'fixture-password-secret' } };
         },
       },
     }) };
