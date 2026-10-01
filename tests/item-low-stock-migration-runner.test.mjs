@@ -104,6 +104,15 @@ test('Production Schedule migration applies additively after an older consolidat
   assert.ok(queries.some(({ sql, params }) => sql.startsWith('insert into supabase_migrations.schema_migrations') && params[0] === '20261001012038'));
 });
 
+test('release migration sources satisfy the atomic production runner contract', () => {
+  for (const name of [productionScheduleMigrationName, auraHrCommandCenterMigrationName]) {
+    const source = fs.readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
+    const body = migrationBody(source);
+    assert.ok(body.trim().length > 0, `${name} contains a migration body`);
+    assert.doesNotMatch(body, /^\s*(?:begin|commit)\s*;/i, `${name} has one outer transaction`);
+  }
+});
+
 test('baseline path fails closed when its identity or required contract is missing', async () => {
   for (const [baselineName, installed, expected] of [
     ['unexpected_baseline', true, /MIGRATION_HISTORY_MISMATCH/],
