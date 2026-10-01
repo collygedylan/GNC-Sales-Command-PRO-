@@ -3170,6 +3170,372 @@ async function handleInventoryRead(
   }
 }
 
+const AURA_INVENTORY_FIELDS = "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,ptronhand,s_lts,season,saleyear,desigitem,app_tab_assignment";
+const AURA_MAX_INVENTORY_ROWS = 5000;
+const AURA_INVENTORY_PAGE_SIZE = 500;
+
+function auraCanonicalName(value: unknown) {
+  return String(value ?? "").normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US");
+}
+
+function auraCanonicalSize(value: unknown) {
+  return String(value ?? "").normalize("NFKC").trim().toLocaleLowerCase("en-US")
+    .replace(/^#\s*/, "").replace(/\s+/g, " ");
+}
+
+function auraNumber(value: unknown): number | null {
+  const raw = String(value ?? "").trim().replace(/,/g, "");
+  if (!raw || !/^-?(?:\d+\.?\d*|\.\d+)$/.test(raw)) return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function auraComparableSalesYear(value: unknown): number | null {
+  const parsed = auraNumber(value);
+  if (parsed == null || parsed < 1) return null;
+  const year = Math.round(parsed >= 2000 ? parsed % 100 : parsed);
+  return year <= 99 ? year : null;
+}
+
+function auraPriorityCompare(left: Record<string, unknown>, right: Record<string, unknown>) {
+  const leftPriority = auraNumber(left.priority);
+  const rightPriority = auraNumber(right.priority);
+  if (leftPriority != null && rightPriority == null) return -1;
+  if (leftPriority == null && rightPriority != null) return 1;
+  if (leftPriority != null && rightPriority != null && leftPriority !== rightPriority) return leftPriority - rightPriority;
+  return String(left.unique_id || "").localeCompare(String(right.unique_id || ""), "en", { numeric: true, sensitivity: "base" });
+}
+
+async function readAuraSeasonSettings() {
+  const { data, error } = await supabase.from("ph_app_settings").select("key,value")
+    .eq("key", "current_season_salesyear").maybeSingle();
+  if (error) throw error;
+  const value = data?.value && typeof data.value === "object" && !Array.isArray(data.value)
+    ? data.value as Record<string, unknown>
+    : {};
+  const season = String(value.seasonCode ?? value.season_code ?? value.currentSeason ?? value.current_season ?? "").trim().toUpperCase();
+  const salesYear = auraComparableSalesYear(value.salesYear ?? value.sales_year ?? value.currentSalesYear ?? value.current_sales_year ?? value.salesyear);
+  if (!/^[A-Z][0-9]$/.test(season) || salesYear == null) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+  return { season, salesYear };
+}
+
+function auraSearchPattern(value: string) {
+  // PostgREST uses SQL LIKE patterns for ilike; escape user-supplied wildcard characters.
+  return value.replace(/[\\%_*]/g, "\\$&");
+}
+
+function auraPublicInventoryRow(row: Record<string, unknown>) {
+  return {
+    unique_id: String(row.unique_id || ""),
+    itemcode: row.itemcode ?? null,
+    commonname: row.commonname ?? null,
+    contsize: row.contsize ?? null,
+    locationcode: row.locationcode ?? null,
+    lotcode: row.lotcode ?? null,
+    ptravailable: row.ptravailable ?? null,
+    priority: row.priority ?? null,
+    ptronhand: row.ptronhand ?? null,
+    s_lts: row.s_lts ?? null,
+    season: row.season ?? null,
+    saleyear: row.saleyear ?? null,
+  };
+}
+
+async function readAuraMatchingInventory(input: {
+  commonName: string;
+  contSize: string;
+  locationCode?: string;
+}) {
+  const settings = await readAuraSeasonSettings();
+  const buildQuery = () => {
+    let query = supabase.from("ph_master_inventory").select(AURA_INVENTORY_FIELDS)
+      .ilike("commonname", auraSearchPattern(input.commonName))
+      .ilike("contsize", auraSearchPattern(input.contSize))
+      .eq("season", settings.season);
+    if (input.locationCode) query = query.ilike("locationcode", auraSearchPattern(input.locationCode));
+    return query;
+  };
+
+  const collected: Record<string, unknown>[] = [];
+  let cursor = "";
+  let scanTruncated = false;
+  const pageCount = Math.ceil(AURA_MAX_INVENTORY_ROWS / AURA_INVENTORY_PAGE_SIZE);
+  for (let page = 0; page < pageCount; page++) {
+    let query = buildQuery();
+    if (cursor) query = query.gt("unique_id", cursor);
+    const { data, error } = await query.order("unique_id", { ascending: true }).limit(AURA_INVENTORY_PAGE_SIZE);
+    if (error) throw error;
+    const rows = Array.isArray(data) ? data as Record<string, unknown>[] : [];
+    collected.push(...rows);
+    if (rows.length < AURA_INVENTORY_PAGE_SIZE) break;
+    cursor = String(rows[rows.length - 1]?.unique_id || "");
+    if (!cursor) throw new Error("AURA_INVENTORY_CURSOR_INVALID");
+    if (page === pageCount - 1) {
+      const { data: nextRows, error: lookaheadError } = await buildQuery().gt("unique_id", cursor)
+        .order("unique_id", { ascending: true }).limit(1);
+      if (lookaheadError) throw lookaheadError;
+      scanTruncated = Array.isArray(nextRows) && nextRows.length > 0;
+    }
+  }
+
+  const filtered: Record<string, unknown>[] = [];
+  let uncertain = scanTruncated;
+  for (const row of collected) {
+    if (auraCanonicalName(row.commonname) !== auraCanonicalName(input.commonName)
+      || auraCanonicalSize(row.contsize) !== auraCanonicalSize(input.contSize)) continue;
+    const year = auraComparableSalesYear(row.saleyear);
+    if (year == null) { uncertain = true; continue; }
+    if (year > settings.salesYear) continue;
+    const assignment = String(row.app_tab_assignment || "").trim().toLowerCase();
+    if (["not_on_inventory_dylan", "not_on_inventory_jd", "not_on_inventory_denied"].includes(assignment)) continue;
+    if (String(row.desigitem || "").toUpperCase().includes("SHFT")) continue;
+    const openStock = auraNumber(row.s_lts);
+    if (openStock == null) { uncertain = true; continue; }
+    if (openStock <= 0) continue;
+    filtered.push(row);
+  }
+  return { rows: filtered, settings, complete: !uncertain, scanTruncated };
+}
+
+async function handleAuraInventorySearch(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Sign in with Dylan’s active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
+  if (session.mustChangePassword) return errorResponse("Complete the password change before using AURA.", 403, { code: "AURA_PROFILE_INACTIVE" });
+  // Reject other identities before resolving a profile or querying application data.
+  if (!session.authUserId || normalizeUsername(session.username || "") !== "dylan_collyge") {
+    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
+  }
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("Dylan’s active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
+  if (normalizeUsername(String(actor.username || "")) !== "dylan_collyge" || String(actor.id || "") !== String(session.authUserId)) {
+    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
+  }
+
+  const commonName = String(payload.commonName || "").trim().slice(0, 160);
+  const contSize = String(payload.contSize || "").trim().slice(0, 48);
+  const mode = String(payload.mode || "count").trim().toLowerCase();
+  const locationCode = String(payload.locationCode || "").trim().slice(0, 64);
+  const quantity = payload.quantity == null || payload.quantity === "" ? null : auraNumber(payload.quantity);
+  const offset = payload.offset == null ? 0 : Number(payload.offset);
+  const requestedLimit = payload.limit == null ? 100 : Number(payload.limit);
+  const limit = Math.min(500, requestedLimit);
+  if (Object.keys(payload).some(key => !["action", "commonName", "contSize", "mode", "locationCode", "quantity", "offset", "limit"].includes(key))) {
+    return errorResponse("AURA search request is invalid.", 400, { code: "AURA_SEARCH_INVALID" });
+  }
+  if (!commonName || !contSize || !["count", "order", "scout"].includes(mode)
+    || (mode === "order" && (quantity == null || quantity <= 0))
+    || !Number.isInteger(offset) || offset < 0 || offset > AURA_MAX_INVENTORY_ROWS
+    || !Number.isInteger(requestedLimit) || requestedLimit < 1 || requestedLimit > 500) {
+    return errorResponse("AURA needs a plant name and container size; order searches also need a positive quantity.", 400, { code: "AURA_SEARCH_INVALID" });
+  }
+
+  try {
+    const result = await readAuraMatchingInventory({ commonName, contSize, ...(locationCode ? { locationCode } : {}) });
+    let rows = result.rows;
+    let totalAvailable = 0;
+    for (const row of rows) {
+      const available = auraNumber(row.ptravailable);
+      if (available == null) result.complete = false;
+      else totalAvailable += available;
+    }
+    if (mode === "order") {
+      rows = rows.filter(row => {
+        const available = auraNumber(row.ptravailable);
+        return available != null && quantity != null && available >= quantity;
+      }).sort(auraPriorityCompare);
+    } else {
+      rows = rows.sort((a, b) => String(a.locationcode || "").localeCompare(String(b.locationcode || ""), "en", { numeric: true, sensitivity: "base" })
+        || String(a.lotcode || "").localeCompare(String(b.lotcode || ""), "en", { numeric: true, sensitivity: "base" })
+        || String(a.unique_id || "").localeCompare(String(b.unique_id || ""), "en", { numeric: true, sensitivity: "base" }));
+    }
+    const hasMore = offset + limit < rows.length || result.scanTruncated;
+    return jsonResponse({ ok: true, data: {
+      rows: rows.slice(offset, offset + limit).map(auraPublicInventoryRow),
+      totalAvailable: result.complete ? totalAvailable : null,
+      complete: result.complete,
+      season: result.settings.season,
+      salesYear: result.settings.salesYear,
+      offset,
+      limit,
+      hasMore,
+    } });
+  } catch (error) {
+    const failure = error as { code?: string };
+    recordHandledError("app-api", "aura_inventory_search", error, 503);
+    if (failure.code === "42501") return errorResponse("AURA cannot read this inventory data with the active account permissions.", 403, { code: "AURA_DATA_FORBIDDEN" });
+    return errorResponse("AURA could not verify current inventory. Retry after the data connection recovers.", 503, {
+      code: "AURA_INVENTORY_UNAVAILABLE",
+      retryable: true,
+    });
+  }
+}
+
+function auraSeverityLabel(score: number | null) {
+  if (score == null || score === 0) return "none";
+  if (score <= 10) return "low";
+  if (score <= 25) return "medium";
+  if (score <= 40) return "high";
+  return "critical";
+}
+
+async function handleAuraScoutLog(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Sign in with Dylan’s active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
+  if (session.mustChangePassword) return errorResponse("Complete the password change before using AURA.", 403, { code: "AURA_PROFILE_INACTIVE" });
+  if (!session.authUserId || normalizeUsername(session.username || "") !== "dylan_collyge") {
+    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
+  }
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("Dylan’s active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
+  if (normalizeUsername(String(actor.username || "")) !== "dylan_collyge" || String(actor.id || "") !== String(session.authUserId)) {
+    return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
+  }
+
+  const allowed = new Set(["action", "sourceInventoryUid", "expected", "pestCode", "issueType", "sevScore", "notes", "idempotencyKey"]);
+  if (Object.keys(payload).some(key => !allowed.has(key))) return errorResponse("AURA scouting request is invalid.", 400, { code: "AURA_SCOUT_INVALID" });
+  const expected = payload.expected && typeof payload.expected === "object" && !Array.isArray(payload.expected)
+    ? payload.expected as Record<string, unknown>
+    : {};
+  const sourceInventoryUid = String(payload.sourceInventoryUid || "").trim().slice(0, 200);
+  const expectedItem = String(expected.itemcode || "").trim();
+  const expectedName = String(expected.commonname || "").trim();
+  const expectedSize = String(expected.contsize || "").trim();
+  const expectedLocation = String(expected.locationcode || "").trim();
+  const expectedLot = String(expected.lotcode || "").trim();
+  const pestCode = String(payload.pestCode || "").trim().slice(0, 100);
+  const notes = String(payload.notes || "").trim().slice(0, 4000);
+  const issueType = String(payload.issueType || "pest").trim().toLowerCase();
+  const idempotencyKey = String(payload.idempotencyKey || "").trim();
+  const sevScore = payload.sevScore == null || payload.sevScore === "" ? null
+    : (typeof payload.sevScore === "number" || typeof payload.sevScore === "string" && /^\d+$/.test(payload.sevScore.trim()))
+    ? Number(payload.sevScore)
+    : Number.NaN;
+  if (!sourceInventoryUid || !expectedItem || !expectedName || !expectedSize || !expectedLocation || !expectedLot
+    || !pestCode || !idempotencyKey || idempotencyKey.length < 12 || idempotencyKey.length > 200
+    || !/^[A-Za-z0-9_-]+$/.test(idempotencyKey)
+    || !["pest", "disease", "nutrient"].includes(issueType)
+    || (sevScore != null && (!Number.isInteger(sevScore) || sevScore < 0 || sevScore > 50))) {
+    return errorResponse("AURA needs a pest code, exact inventory row, valid idempotency key, and severity from 0 to 50.", 400, { code: "AURA_SCOUT_INVALID" });
+  }
+
+  try {
+    const idempotencyHash = await sha256Hex(new TextEncoder().encode(`aura-scout-v1\u0000${session.authUserId}\u0000${idempotencyKey}`));
+    const reportId = `aura-${idempotencyHash}`;
+    const reportFields = "unique_id,status,source_inventory_uid,itemcode,common_name,contsize,locationcode,lotcode,pest_code,sev_score,issue_type,manual_note,created_by_username,review_status,created_at";
+    const { data: prior, error: priorError } = await supabase.from("ph_grower_scout_reports").select(reportFields)
+      .eq("unique_id", reportId).maybeSingle();
+    if (priorError) throw priorError;
+    if (prior) {
+      const sameRequest = normalizeUsername(String(prior.created_by_username || "")) === "dylan_collyge"
+        && String(prior.source_inventory_uid || "") === sourceInventoryUid
+        && String(prior.itemcode || "") === expectedItem
+        && auraCanonicalName(prior.common_name) === auraCanonicalName(expectedName)
+        && auraCanonicalSize(prior.contsize) === auraCanonicalSize(expectedSize)
+        && String(prior.locationcode || "") === expectedLocation
+        && String(prior.lotcode || "") === expectedLot
+        && String(prior.pest_code || "") === pestCode
+        && String(prior.issue_type || "pest") === issueType
+        && (prior.sev_score == null ? null : Number(prior.sev_score)) === sevScore
+        && String(prior.manual_note || "") === (notes || `AURA scouting: ${issueType} ${pestCode}`);
+      if (!sameRequest) return errorResponse("That AURA request key was already used for different scouting details.", 409, { code: "AURA_IDEMPOTENCY_CONFLICT" });
+      return jsonResponse({ ok: true, data: { status: "duplicate", report: prior } });
+    }
+
+    const settings = await readAuraSeasonSettings();
+    const { data: inventoryRow, error: inventoryError } = await supabase.from("ph_master_inventory")
+      .select(AURA_INVENTORY_FIELDS).eq("unique_id", sourceInventoryUid).maybeSingle();
+    if (inventoryError) throw inventoryError;
+    if (!inventoryRow
+      || String(inventoryRow.itemcode || "").trim() !== expectedItem
+      || auraCanonicalName(inventoryRow.commonname) !== auraCanonicalName(expectedName)
+      || auraCanonicalSize(inventoryRow.contsize) !== auraCanonicalSize(expectedSize)
+      || String(inventoryRow.locationcode || "").trim() !== expectedLocation
+      || String(inventoryRow.lotcode || "").trim() !== expectedLot) {
+      return errorResponse("The selected inventory row changed or is no longer available. Refresh and review the row.", 409, { code: "AURA_SCOUT_ROW_CHANGED" });
+    }
+    const year = auraComparableSalesYear(inventoryRow.saleyear);
+    const openStock = auraNumber(inventoryRow.s_lts);
+    if (String(inventoryRow.season || "").trim().toUpperCase() !== settings.season
+      || year == null || year > settings.salesYear || openStock == null || openStock <= 0
+      || ["not_on_inventory_dylan", "not_on_inventory_jd", "not_on_inventory_denied"].includes(String(inventoryRow.app_tab_assignment || "").trim().toLowerCase())
+      || String(inventoryRow.desigitem || "").toUpperCase().includes("SHFT")) {
+      return errorResponse("That row is outside the current open-stock scope. Refresh and select a current row.", 409, { code: "AURA_SCOUT_ROW_OUT_OF_SCOPE" });
+    }
+
+    const manualNote = notes || `AURA scouting: ${issueType} ${pestCode}`;
+    const record = {
+      unique_id: reportId,
+      status: "dylan_review",
+      report_language: "en",
+      locationcode: String(inventoryRow.locationcode || ""),
+      itemcode: String(inventoryRow.itemcode || ""),
+      genus: null,
+      common_name: String(inventoryRow.commonname || ""),
+      contsize: String(inventoryRow.contsize || ""),
+      season: String(inventoryRow.season || ""),
+      salesyear: year,
+      manual_note: manualNote,
+      transcript: null,
+      summary_json: { source: "aura_manual", source_inventory_uid: sourceInventoryUid },
+      pest_issue: issueType === "pest",
+      disease_issue: issueType === "disease",
+      nutrient_issue: issueType === "nutrient",
+      manual_review: true,
+      issue_type: issueType,
+      severity: auraSeverityLabel(sevScore),
+      diagnosis: pestCode,
+      created_by_username: "dylan_collyge",
+      created_by_display: String(actor.display_name || actor.username || "Dylan"),
+      source_inventory_uid: sourceInventoryUid,
+      lotcode: String(inventoryRow.lotcode || ""),
+      pest_code: pestCode,
+      sev_score: sevScore,
+      review_status: "pending",
+      worker_id: null,
+      attempts: 0,
+    };
+    const { data: saved, error: saveError } = await supabase.from("ph_grower_scout_reports").insert(record)
+      .select(reportFields).single();
+    if (saveError) {
+      if (saveError.code === "23505") {
+        const { data: duplicate, error: duplicateError } = await supabase.from("ph_grower_scout_reports").select(reportFields)
+          .eq("unique_id", reportId).maybeSingle();
+        if (duplicateError) throw duplicateError;
+        if (duplicate && normalizeUsername(String(duplicate.created_by_username || "")) === "dylan_collyge"
+          && String(duplicate.source_inventory_uid || "") === sourceInventoryUid
+          && String(duplicate.itemcode || "") === expectedItem
+          && auraCanonicalName(duplicate.common_name) === auraCanonicalName(expectedName)
+          && auraCanonicalSize(duplicate.contsize) === auraCanonicalSize(expectedSize)
+          && String(duplicate.locationcode || "") === expectedLocation
+          && String(duplicate.lotcode || "") === expectedLot
+          && String(duplicate.pest_code || "") === pestCode
+          && String(duplicate.issue_type || "pest") === issueType
+          && (duplicate.sev_score == null ? null : Number(duplicate.sev_score)) === sevScore
+          && String(duplicate.manual_note || "") === manualNote) {
+          return jsonResponse({ ok: true, data: { status: "duplicate", report: duplicate } });
+        }
+        return errorResponse("That AURA request key was already used for different scouting details.", 409, { code: "AURA_IDEMPOTENCY_CONFLICT" });
+      }
+      throw saveError;
+    }
+    return jsonResponse({ ok: true, data: { status: "saved", report: saved } });
+  } catch (error) {
+    const failure = error as { code?: string };
+    recordHandledError("app-api", "aura_scout_log", error, 503);
+    if (failure.code === "42501") return errorResponse("AURA cannot save scouting reports with the active account permissions.", 403, { code: "AURA_DATA_FORBIDDEN" });
+    return errorResponse("AURA could not save the scouting report. Your details are still available to retry.", 503, {
+      code: "AURA_SCOUT_UNAVAILABLE",
+      retryable: true,
+    });
+  }
+}
+
 async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, req: Request) {
   if (!session) return errorResponse("Unauthorized", 401);
   const access = getRoleAccessState(session.role);
@@ -3405,6 +3771,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
+  if (action === "aura_inventory_search") return await handleAuraInventorySearch(session, payload);
+  if (action === "aura_scout_log") return await handleAuraScoutLog(session, payload);
   if (action === "dataset_read") return await handleDatasetRead(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);
