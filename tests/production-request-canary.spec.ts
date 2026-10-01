@@ -5,6 +5,14 @@ const expectedCommit = String(process.env.EXPECTED_COMMIT || process.env.GITHUB_
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
 
 const canaryProfileId = '00000000-0000-4000-8000-000000000071';
+function describeUnhandledAppApiPost(request: import('@playwright/test').Request) {
+  const url = new URL(request.url());
+  if (url.hostname !== 'kzrnyjsosryejjejliii.supabase.co' || url.pathname !== '/functions/v1/app-api') return '';
+  let body: Record<string, unknown>;
+  try { body = request.postDataJSON(); } catch { return ':unparseable'; }
+  const safeKey = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 48) || 'missing';
+  return `:${safeKey(body?.action)}:${safeKey(body?.operation)}:${safeKey(body?.dataset)}`;
+}
 async function fulfillNavigationRead(route: Route, manager = false, reads: string[] = []) {
   const request = route.request(), url = new URL(request.url());
   if (request.method() !== 'POST' || url.hostname !== 'kzrnyjsosryejjejliii.supabase.co'
@@ -53,6 +61,35 @@ async function fulfillAvRead(route: Route) {
   return true;
 }
 
+async function fulfillScopedDataRead(route: Route) {
+  const request = route.request(), url = new URL(request.url());
+  if (request.method() !== 'POST' || url.hostname !== 'kzrnyjsosryejjejliii.supabase.co'
+    || url.pathname !== '/functions/v1/app-api' || request.headers()['idempotency-key']) return false;
+  let body: Record<string, any>;
+  try { body = request.postDataJSON(); } catch { return false; }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
+  if (body.action === 'inventory_read' && body.operation === 'source_freshness'
+    && Object.keys(body).sort().join(',') === 'action,operation,params'
+    && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
+    && !Object.keys(body.params).length) {
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ ok: true, data: { filename: null, last_updated: null } }) });
+    return true;
+  }
+  if (body.action !== 'dataset_read' || !['soc', 'cav', 'reserves', 'request_queue'].includes(body.dataset)
+    || Object.keys(body).sort().join(',') !== 'action,dataset,params'
+    || !body.params || typeof body.params !== 'object' || Array.isArray(body.params)) return false;
+  const params = body.params;
+  if (!Number.isInteger(params.limit) || params.limit < 1 || params.limit > 500
+    || !Number.isInteger(params.offset) || params.offset < 0
+    || !['default', 'signature', 'ids'].includes(params.projection || 'default')
+    || !Array.isArray(params.filters || []) || !Array.isArray(params.anyOf || []) || !Array.isArray(params.order || [])
+    || Object.keys(params).some(key => !['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))) return false;
+  await route.fulfill({ status: 200, contentType: 'application/json',
+    body: JSON.stringify({ ok: true, data: { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false } }) });
+  return true;
+}
+
 test('live Request rep to customer, consignee, folder, and quantity flow remains actionable', async ({ page }) => {
   const blockedMutations: string[] = [];
   const pageErrors: string[] = [];
@@ -61,11 +98,11 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
   await page.route('**/*', async (route) => {
     const request = route.request();
     const method = request.method().toUpperCase();
-    if (await fulfillNavigationRead(route) || await fulfillAvRead(route)) return;
+    if (await fulfillNavigationRead(route) || await fulfillAvRead(route) || await fulfillScopedDataRead(route)) return;
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       let pathname = 'unknown';
       try { pathname = new URL(request.url()).pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120); } catch {}
-      blockedMutations.push(`${method}:${pathname}`);
+      blockedMutations.push(`${method}:${pathname}${describeUnhandledAppApiPost(request)}`);
       await route.abort('blockedbyclient');
       return;
     }
@@ -162,11 +199,11 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   await page.route('**/*', async (route) => {
     const request = route.request();
     const method = request.method().toUpperCase();
-    if (await fulfillNavigationRead(route) || await fulfillAvRead(route)) return;
+    if (await fulfillNavigationRead(route) || await fulfillAvRead(route) || await fulfillScopedDataRead(route)) return;
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       let pathname = 'unknown';
       try { pathname = new URL(request.url()).pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120); } catch {}
-      blockedMutations.push(`${method}:${pathname}`);
+      blockedMutations.push(`${method}:${pathname}${describeUnhandledAppApiPost(request)}`);
       await route.abort('blockedbyclient');
       return;
     }
@@ -395,7 +432,7 @@ test('live PO Management uses authenticated PostgREST and never the retired data
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
       const pathname = parsedUrl?.pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120) || 'unknown';
-      blockedMutations.push(`${method}:${pathname}`);
+      blockedMutations.push(`${method}:${pathname}${describeUnhandledAppApiPost(request)}`);
       await route.abort('blockedbyclient');
       return;
     }
@@ -449,7 +486,7 @@ test('live authorized Admin opens Access Control from the manager module card wi
     let parsedUrl: URL | null = null;
     try { parsedUrl = new URL(request.url()); } catch {}
     const pathname = parsedUrl?.pathname || '';
-    if (await fulfillNavigationRead(route, true, navigationReadRequests) || await fulfillAvRead(route)) return;
+    if (await fulfillNavigationRead(route, true, navigationReadRequests) || await fulfillAvRead(route) || await fulfillScopedDataRead(route)) return;
     if (method === 'POST' && pathname.endsWith('/rest/v1/rpc/get_my_app_permissions_v1')) {
       accessRequests.push(pathname);
       await route.fulfill({
@@ -532,7 +569,7 @@ test('live authorized Admin opens Access Control from the manager module card wi
       return;
     }
     if (!['GET', 'HEAD', 'OPTIONS'].includes(method)) {
-      blockedMutations.push(`${method}:${pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120) || 'unknown'}`);
+      blockedMutations.push(`${method}:${pathname.replace(/[^a-z0-9_./-]+/gi, '_').slice(0, 120) || 'unknown'}${describeUnhandledAppApiPost(request)}`);
       await route.abort('blockedbyclient');
       return;
     }

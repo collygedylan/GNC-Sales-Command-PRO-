@@ -53,6 +53,14 @@ test('database reusable workflow is secret-free and has read-only repository per
   assert.match(workflow, /node-version: 22\s+cache: npm/);
 });
 
+test('Edge Function CI resolves pinned npm imports used by the push sender', () => {
+  const edge = databaseJob.steps.find(step => step.name === 'Run Edge Function unit tests');
+  assert.ok(edge);
+  for (const line of edge.run.split('\n').filter(line => /^\s*deno (?:check|test)\b/.test(line))) {
+    assert.match(line, /--node-modules-dir=auto/, 'Deno must install pinned npm imports before checking or testing');
+  }
+});
+
 test('archived regression migrations and pgTAP tests remain staged in the isolated database fixture', () => {
   const migrations = [...workflow.matchAll(/cp supabase\/archive_migrations\/(\S+)/g)].map(match => match[1]);
   assert.equal(migrations.length, 128);
@@ -182,7 +190,7 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs',
     'CI=true REQUEST_HISTORY_TEST_DB_URL="$DB_URL" node scripts/test-request-history-scale.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
-    'deno test --allow-env --allow-net supabase/functions',
+    'deno test --node-modules-dir=auto --allow-env --allow-net supabase/functions',
   ];
   let previous = -1;
   for (const command of commands) {

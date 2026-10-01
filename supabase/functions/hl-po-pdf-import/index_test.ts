@@ -65,7 +65,7 @@ Deno.test('service authentication uses caller credentials and protected PostgRES
  for(const headers of credentials) {
   const calls:Array<{url:string,headers:Headers}>=[];
   const check=createHlPoServiceAuthorizer('https://fixture.invalid',(async(url,init)=>{
-   calls.push({url:String(url),headers:new Headers(init?.headers)});
+   calls.push({url:String(url),headers:new Headers((init as { headers?: HeadersInit } | undefined)?.headers)});
    return Response.json(String(url).endsWith('/hl_po_import_capabilities')?{version:2,pdf:true}:{status:'staging'});
   }) as typeof fetch);
   const verified=await check(new Request('https://fixture.invalid',{headers}));
