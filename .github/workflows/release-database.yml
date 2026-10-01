@@ -182,6 +182,7 @@ jobs:
           # Replay the current non-retryable Season Sales conflict migration
           # after historical fixtures have installed their legacy RPC bodies.
           cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261001025638_aura_hr_command_center_v1.sql "$ci_root/supabase/migrations/"
           # These acceptance files raise on every failed SQL assertion. Add a TAP
           # envelope for pg_prove without replacing or suppressing any assertion.
           python3 - "$ci_root" <<'PY'
@@ -220,6 +221,8 @@ jobs:
           cp supabase/tests/shear_location_inquiry_v1_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/photo_delivery_health_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/photo_history_rls_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/hr_command_center_schema_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/hr_command_center_behavior_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/function_search_path_pinning_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/season_sales_done_lifecycle_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/season_sales_av_note_retention_test.sql "$ci_root/supabase/tests/"
@@ -279,6 +282,7 @@ jobs:
         id: edge
         run: |
           deno check supabase/functions/app-api/index.ts supabase/functions/request-delivery-worker/index.ts
+          deno check supabase/functions/calendar-reminder-sweep/index.ts supabase/functions/send-push-alert/index.ts
           deno check supabase/functions/hl-po-pdf-import/index.ts
           deno test --allow-env --allow-net supabase/functions
       - name: Save relation-size report query

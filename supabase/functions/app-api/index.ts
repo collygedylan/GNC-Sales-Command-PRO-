@@ -3536,6 +3536,420 @@ async function handleAuraScoutLog(
   }
 }
 
+type DylanSession = Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>;
+
+async function requireDylanNativeProfile(session: DylanSession) {
+  if (!session || session.mustChangePassword || Number(session.ver) !== 2 || !session.authUserId
+    || normalizeUsername(session.username || "") !== "dylan_collyge") return null;
+  try {
+    const profile = await resolveActiveSessionProfile(session);
+    if (normalizeUsername(String(profile.username || "")) !== "dylan_collyge"
+      || String(profile.id || "") !== String(session.authUserId)) return null;
+    return profile;
+  } catch {
+    return null;
+  }
+}
+
+function alphaCursorEncode(value: Record<string, string>) {
+  return btoa(JSON.stringify(value)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function alphaCursorDecode(value: unknown) {
+  const raw = String(value || "").trim();
+  if (!raw || raw.length > 512 || !/^[A-Za-z0-9_-]+$/.test(raw)) return null;
+  try {
+    const padded = raw.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - raw.length % 4) % 4);
+    const decoded = JSON.parse(atob(padded)) as Record<string, unknown>;
+    return decoded && typeof decoded === "object" ? decoded : null;
+  } catch { return null; }
+}
+
+function alphaCursorOr(field: string, timestamp: string, id: string) {
+  return `${field}.lt.${timestamp},and(${field}.eq.${timestamp},id.lt.${id})`;
+}
+
+async function alphaDeterministicUuid(input: string) {
+  const digest = await sha256Hex(new TextEncoder().encode(input));
+  const bytes = digest.slice(0, 32).split("");
+  bytes[12] = "5";
+  const variant = parseInt(bytes[16], 16);
+  bytes[16] = ((variant & 0x3) | 0x8).toString(16);
+  const hex = bytes.join("");
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+}
+
+async function assertDylanAction(session: DylanSession) {
+  const actor = await requireDylanNativeProfile(session);
+  if (!actor) throw Object.assign(new Error("This command is available only to Dylan’s verified active account."), { status: 403, code: "ALPHA_DYLAN_FORBIDDEN" });
+  return actor;
+}
+
+function alphaChatMessage(row: Record<string, unknown>) {
+  return {
+    id: String(row.id || ""),
+    conversationId: String(row.conversation_id || ""),
+    senderUsername: normalizeUsername(String(row.sender_username || "")),
+    senderDisplayName: String(row.sender_display_name || row.sender_name || row.sender_username || ""),
+    body: String(row.body || row.message_text || ""),
+    createdAt: String(row.created_at || ""),
+    clientId: String(row.client_id || ""),
+  };
+}
+
+async function alphaConversationAccess(conversationId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(conversationId)) return false;
+  const { data, error } = await supabase.from("ph_chat_participants").select("conversation_id")
+    .eq("conversation_id", conversationId).eq("username", "dylan_collyge").limit(1);
+  if (error) throw error;
+  return Array.isArray(data) && data.length === 1;
+}
+
+async function alphaChatList(session: DylanSession, payload: Record<string, unknown>) {
+  await assertDylanAction(session);
+  if (Object.keys(payload).some(key => !["action", "cursor", "limit"].includes(key))) return errorResponse("Chat list request is invalid.", 400, { code: "ALPHA_CHAT_LIST_INVALID" });
+  const limitValue = payload.limit == null ? 50 : Number(payload.limit);
+  if (!Number.isInteger(limitValue) || limitValue < 1 || limitValue > 100) return errorResponse("Chat list page size must be between 1 and 100.", 400, { code: "ALPHA_CHAT_LIST_INVALID" });
+  const limit = limitValue;
+  const { data: ownParticipants, error: ownError } = await supabase.from("ph_chat_participants")
+    .select("conversation_id,last_read_at,is_archived").eq("username", "dylan_collyge").eq("is_archived", false).limit(5000);
+  if (ownError) throw ownError;
+  const ids = [...new Set((ownParticipants || []).map(row => String(row.conversation_id || "")).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
+  if (!ids.length) return jsonResponse({ ok: true, rows: [], nextCursor: null, hasMore: false });
+  let query = supabase.from("ph_chat_conversations")
+    .select("id,title,is_group,updated_at,last_message_at,last_message_preview,last_message_sender")
+    .in("id", ids).order("updated_at", { ascending: false }).order("id", { ascending: false }).limit(limit + 1);
+  const cursor = alphaCursorDecode(payload.cursor);
+  if (payload.cursor && (!cursor || typeof cursor.updatedAt !== "string" || typeof cursor.id !== "string" || !/^[0-9a-f-]{36}$/i.test(cursor.id))) {
+    return errorResponse("Chat list cursor is invalid.", 400, { code: "ALPHA_CHAT_CURSOR_INVALID" });
+  }
+  if (cursor) query = query.or(alphaCursorOr("updated_at", String(cursor.updatedAt), String(cursor.id)));
+  const { data: conversations, error: conversationError } = await query;
+  if (conversationError) throw conversationError;
+  const fetched = conversations || [];
+  const hasMore = fetched.length > limit;
+  const page = fetched.slice(0, limit);
+  const pageIds = page.map(row => String(row.id));
+  const { data: participants, error: participantError } = pageIds.length
+    ? await supabase.from("ph_chat_participants").select("conversation_id,username,display_name,is_archived")
+      .in("conversation_id", pageIds).eq("is_archived", false).limit(1000)
+    : { data: [], error: null };
+  if (participantError) throw participantError;
+  const participantsByConversation = new Map<string, Array<{ username: string; displayName: string }>>();
+  for (const participant of participants || []) {
+    const id = String(participant.conversation_id || "");
+    const list = participantsByConversation.get(id) || [];
+    list.push({ username: normalizeUsername(String(participant.username || "")), displayName: String(participant.display_name || participant.username || "") });
+    participantsByConversation.set(id, list);
+  }
+  const readAtByConversation = new Map((ownParticipants || []).map(row => [String(row.conversation_id), String(row.last_read_at || "")]));
+  const rows = page.map(row => ({
+    id: String(row.id), title: String(row.title || ""), isGroup: row.is_group === true,
+    updatedAt: String(row.updated_at || ""), lastMessageAt: String(row.last_message_at || ""),
+    lastMessagePreview: String(row.last_message_preview || ""), participants: participantsByConversation.get(String(row.id)) || [],
+    lastReadAt: readAtByConversation.get(String(row.id)) || "",
+  }));
+  const oldest = page.at(-1);
+  const nextCursor = hasMore && oldest ? alphaCursorEncode({ updatedAt: String(oldest.updated_at), id: String(oldest.id) }) : null;
+  return jsonResponse({ ok: true, rows, nextCursor, hasMore });
+}
+
+async function alphaChatPage(session: DylanSession, payload: Record<string, unknown>) {
+  await assertDylanAction(session);
+  if (Object.keys(payload).some(key => !["action", "conversationId", "cursor", "limit"].includes(key))) return errorResponse("Chat page request is invalid.", 400, { code: "ALPHA_CHAT_PAGE_INVALID" });
+  const conversationId = String(payload.conversationId || "").trim();
+  const limitValue = payload.limit == null ? 50 : Number(payload.limit);
+  if (!/^[0-9a-f-]{36}$/i.test(conversationId) || !Number.isInteger(limitValue) || limitValue < 1 || limitValue > 100) {
+    return errorResponse("Chat page request is invalid.", 400, { code: "ALPHA_CHAT_PAGE_INVALID" });
+  }
+  if (!await alphaConversationAccess(conversationId)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
+  let query = supabase.from("ph_chat_messages").select("id,conversation_id,sender_username,sender_display_name,sender_name,body,message_text,created_at,client_id")
+    .eq("conversation_id", conversationId).order("created_at", { ascending: false }).order("id", { ascending: false }).limit(limitValue + 1);
+  const cursor = alphaCursorDecode(payload.cursor);
+  if (payload.cursor && (!cursor || typeof cursor.createdAt !== "string" || typeof cursor.id !== "string" || !/^[0-9a-f-]{36}$/i.test(cursor.id))) {
+    return errorResponse("Chat page cursor is invalid.", 400, { code: "ALPHA_CHAT_CURSOR_INVALID" });
+  }
+  if (cursor) query = query.or(alphaCursorOr("created_at", String(cursor.createdAt), String(cursor.id)));
+  const { data, error } = await query;
+  if (error) throw error;
+  const fetched = data || [];
+  const hasMore = fetched.length > limitValue;
+  const descendingPage = fetched.slice(0, limitValue);
+  const oldest = descendingPage.at(-1);
+  const rows = descendingPage.reverse().map(alphaChatMessage);
+  const nextCursor = hasMore && oldest ? alphaCursorEncode({ createdAt: String(oldest.created_at), id: String(oldest.id) }) : null;
+  return jsonResponse({ ok: true, conversationId, rows, nextCursor, hasMore });
+}
+
+async function alphaChatMarkRead(session: DylanSession, payload: Record<string, unknown>) {
+  await assertDylanAction(session);
+  if (Object.keys(payload).some(key => !["action", "conversationId"].includes(key))) return errorResponse("Chat read request is invalid.", 400, { code: "ALPHA_CHAT_READ_INVALID" });
+  const conversationId = String(payload.conversationId || "").trim();
+  if (!await alphaConversationAccess(conversationId)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
+  const readAt = new Date().toISOString();
+  const { error } = await supabase.from("ph_chat_participants").update({ last_read_at: readAt })
+    .eq("conversation_id", conversationId).eq("username", "dylan_collyge");
+  if (error) throw error;
+  return jsonResponse({ ok: true, conversationId, readAt });
+}
+
+async function alphaFindDirectConversation(recipientUsername: string) {
+  const { data: targetParticipants, error: targetError } = await supabase.from("ph_chat_participants")
+    .select("conversation_id").eq("username", recipientUsername).eq("is_archived", false).limit(1000);
+  if (targetError) throw targetError;
+  const ids = [...new Set((targetParticipants || []).map(row => String(row.conversation_id || "")).filter(id => /^[0-9a-f-]{36}$/i.test(id)))];
+  if (!ids.length) return "";
+  const { data: shared, error: sharedError } = await supabase.from("ph_chat_participants").select("conversation_id,username")
+    .in("conversation_id", ids).in("username", ["dylan_collyge", recipientUsername]).eq("is_archived", false).limit(2000);
+  if (sharedError) throw sharedError;
+  const userSets = new Map<string, Set<string>>();
+  for (const row of shared || []) {
+    const id = String(row.conversation_id || "");
+    const set = userSets.get(id) || new Set<string>();
+    set.add(normalizeUsername(String(row.username || "")));
+    userSets.set(id, set);
+  }
+  const candidates = [...userSets].filter(([, users]) => users.size === 2 && users.has("dylan_collyge") && users.has(recipientUsername)).map(([id]) => id);
+  if (!candidates.length) return "";
+  const { data: conversations, error } = await supabase.from("ph_chat_conversations").select("id,updated_at")
+    .in("id", candidates).eq("is_group", false).order("updated_at", { ascending: false }).limit(1);
+  if (error) throw error;
+  return String(conversations?.[0]?.id || "");
+}
+
+async function alphaResolveRecipient(name: string) {
+  const query = name.trim().toLowerCase();
+  const { data, error } = await supabase.from("profiles").select("id,username,display_name,role,disabled_at,locked_until,must_change_password")
+    .is("disabled_at", null).eq("must_change_password", false).limit(1000);
+  if (error) throw error;
+  const active = (data || []).filter(row => {
+    const locked = Date.parse(String(row.locked_until || ""));
+    return (!Number.isFinite(locked) || locked <= Date.now()) && normalizeUsername(String(row.username || "")) !== "dylan_collyge";
+  });
+  const matches = active.filter(row => String(row.display_name || "").trim().toLowerCase() === query
+    || normalizeUsername(String(row.username || "")) === normalizeUsername(query));
+  if (matches.length > 1) return { error: errorResponse("That name matches more than one active profile. Use a more specific username.", 409, { code: "ALPHA_CHAT_RECIPIENT_AMBIGUOUS" }) };
+  if (!matches.length) {
+    if (/\b(department|evaluators|counters|inventory|production|sales office|managers)\b/i.test(name)) {
+      return { error: errorResponse("Department recipients are not configured for AURA yet.", 409, { code: "ALPHA_CHAT_DEPARTMENT_UNCONFIGURED" }) };
+    }
+    return { error: errorResponse("No unique active recipient matched that name.", 404, { code: "ALPHA_CHAT_RECIPIENT_NOT_FOUND" }) };
+  }
+  const row = matches[0];
+  return { profile: row, username: normalizeUsername(String(row.username || "")), displayName: String(row.display_name || row.username || "") };
+}
+
+async function auraChatSend(session: DylanSession, payload: Record<string, unknown>) {
+  const actor = await assertDylanAction(session);
+  if (Object.keys(payload).some(key => !["action", "recipientName", "message", "clientId", "conversationId"].includes(key))) return errorResponse("AURA message request is invalid.", 400, { code: "AURA_CHAT_INVALID" });
+  const rawBody = String(payload.message || "").trim();
+  if (rawBody.length > 4000) return errorResponse("Messages are limited to 4,000 characters.", 400, { code: "AURA_CHAT_INVALID" });
+  const body = rawBody;
+  const clientId = String(payload.clientId || "").trim();
+  const suppliedConversation = String(payload.conversationId || "").trim();
+  if (!body || body.length > 4000 || !/^[A-Za-z0-9_-]{8,120}$/.test(clientId)) return errorResponse("AURA needs a message and a valid idempotency key.", 400, { code: "AURA_CHAT_INVALID" });
+
+  let recipientUsername = "";
+  let recipientName = "";
+  let conversationId = suppliedConversation;
+  if (suppliedConversation) {
+    if (!await alphaConversationAccess(suppliedConversation)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
+    const { data: participants, error } = await supabase.from("ph_chat_participants").select("username,display_name")
+      .eq("conversation_id", suppliedConversation).eq("is_archived", false).limit(100);
+    if (error) throw error;
+    const other = (participants || []).filter(row => normalizeUsername(String(row.username || "")) !== "dylan_collyge");
+    if (other.length !== 1 || (participants || []).length !== 2) return errorResponse("AURA replies are available only in a direct conversation.", 409, { code: "AURA_CHAT_CONVERSATION_NOT_DIRECT" });
+    recipientUsername = normalizeUsername(String(other[0].username || ""));
+    recipientName = String(other[0].display_name || other[0].username || "");
+  } else {
+    const rawName = String(payload.recipientName || "").trim().slice(0, 160);
+    if (!rawName) return errorResponse("Choose one active recipient.", 400, { code: "AURA_CHAT_RECIPIENT_REQUIRED" });
+    const resolved = await alphaResolveRecipient(rawName);
+    if (resolved.error) return resolved.error;
+    recipientUsername = resolved.username;
+    recipientName = resolved.displayName;
+    conversationId = await alphaFindDirectConversation(recipientUsername);
+    if (!conversationId) conversationId = await alphaDeterministicUuid(`aura-direct-v1:${["dylan_collyge", recipientUsername].sort().join(":")}`);
+  }
+
+  const now = new Date().toISOString();
+  const conversationPayload = {
+    id: conversationId, title: "", is_group: false, created_by: "dylan_collyge",
+    created_by_display: String(actor.display_name || actor.username || "Dylan"), created_at: now, updated_at: now,
+    last_message_at: now, last_message_preview: body.length > 160 ? `${body.slice(0,157)}...` : body,
+    last_message_sender: String(actor.display_name || actor.username || "Dylan"),
+  };
+  const { error: conversationError } = await supabase.from("ph_chat_conversations")
+    .upsert(conversationPayload, { onConflict: "id", ignoreDuplicates: true });
+  if (conversationError) throw conversationError;
+  const participants = [
+    { conversation_id: conversationId, username: "dylan_collyge", display_name: String(actor.display_name || actor.username || "Dylan"), is_archived: false },
+    { conversation_id: conversationId, username: recipientUsername, display_name: recipientName, is_archived: false },
+  ];
+  const { error: participantsError } = await supabase.from("ph_chat_participants")
+    .upsert(participants, { onConflict: "conversation_id,username", ignoreDuplicates: true });
+  if (participantsError) throw participantsError;
+
+  const messageId = await alphaDeterministicUuid(`aura-chat-v1:${String(actor.id)}:${clientId}`);
+  const { data: prior, error: priorError } = await supabase.from("ph_chat_messages")
+    .select("id,conversation_id,sender_username,body,message_text,client_id")
+    .eq("id", messageId).maybeSingle();
+  if (priorError) throw priorError;
+  if (prior && (String(prior.conversation_id || "") !== conversationId
+    || normalizeUsername(String(prior.sender_username || "")) !== "dylan_collyge"
+    || String(prior.body || prior.message_text || "") !== body || String(prior.client_id || "") !== clientId)) {
+    return errorResponse("That message key was already used for different content.", 409, { code: "AURA_CHAT_IDEMPOTENCY_CONFLICT" });
+  }
+  if (!prior) {
+    const displayName = String(actor.display_name || actor.username || "Dylan");
+    const { error: insertError } = await supabase.from("ph_chat_messages").insert({
+      id: messageId, conversation_id: conversationId, sender_username: "dylan_collyge",
+      sender_display_name: displayName, sender_name: displayName, message_type: "text",
+      body, message_text: body, created_at: now, client_id: clientId,
+    });
+    if (insertError && insertError.code !== "23505") throw insertError;
+    if (insertError?.code === "23505") {
+      const { data: raced, error: racedError } = await supabase.from("ph_chat_messages")
+        .select("id,conversation_id,sender_username,body,message_text,client_id").eq("id", messageId).maybeSingle();
+      if (racedError) throw racedError;
+      if (!raced || String(raced.conversation_id || "") !== conversationId || String(raced.body || raced.message_text || "") !== body) throw insertError;
+    }
+  }
+  const { error: conversationUpdateError } = await supabase.from("ph_chat_conversations").update({
+    updated_at: now, last_message_at: now, last_message_preview: conversationPayload.last_message_preview,
+    last_message_sender: conversationPayload.last_message_sender,
+  }).eq("id", conversationId);
+  if (conversationUpdateError) throw conversationUpdateError;
+  return jsonResponse({ ok: true, messageId, conversationId, recipientName, message: body });
+}
+
+async function alphaTimeoffList(session: DylanSession, payload: Record<string, unknown>) {
+  await assertDylanAction(session);
+  if (Object.keys(payload).some(key => !["action", "offset", "limit", "status"].includes(key))) return errorResponse("Time-off list request is invalid.", 400, { code: "ALPHA_TIMEOFF_LIST_INVALID" });
+  const offset = payload.offset == null ? 0 : Number(payload.offset);
+  const limit = payload.limit == null ? 50 : Number(payload.limit);
+  if (!Number.isInteger(offset) || offset < 0 || offset > 5000 || !Number.isInteger(limit) || limit < 1 || limit > 100) return errorResponse("Time-off page is invalid.", 400, { code: "ALPHA_TIMEOFF_LIST_INVALID" });
+  let query = supabase.from("ph_department_calendar_events").select("unique_id,department,event_type,title,description,start_at,end_at,all_day,requested_by_username,requested_by_display,assigned_to_username,assigned_to_display,status,approved_by_username,approved_by_display,approved_at,assigned_usernames,assigned_displays,created_at,updated_at,hr_source_event_id")
+    .eq("event_type", "time_off").is("hr_source_event_id", null).order("start_at", { ascending: true }).order("unique_id", { ascending: true }).range(offset, offset + limit);
+  if (payload.status && ["requested", "approved", "denied", "cancelled"].includes(String(payload.status))) query = query.eq("status", String(payload.status));
+  const { data, error } = await query;
+  if (error) throw error;
+  const fetched = data || [];
+  return jsonResponse({ ok: true, rows: fetched.slice(0, limit).map(row => ({
+    id: String(row.unique_id), department: String(row.department || "General"), title: String(row.title || ""),
+    description: String(row.description || ""), startAt: String(row.start_at || ""), endAt: String(row.end_at || ""),
+    allDay: row.all_day === true, requestedByUsername: normalizeUsername(String(row.requested_by_username || "")),
+    assignedUsername: normalizeUsername(String(row.assigned_to_username || "")), status: String(row.status || "requested"),
+    approvedByUsername: normalizeUsername(String(row.approved_by_username || "")), hrSourceEventId: String(row.hr_source_event_id || ""),
+  })), offset, limit, hasMore: fetched.length > limit });
+}
+
+async function alphaTimeoffRequest(session: DylanSession, payload: Record<string, unknown>) {
+  const actor = await assertDylanAction(session);
+  if (Object.keys(payload).some(key => !["action", "clientId", "title", "startAt", "endAt", "department", "assignedUsername"].includes(key))) return errorResponse("Time-off request is invalid.", 400, { code: "ALPHA_TIMEOFF_REQUEST_INVALID" });
+  const clientId = String(payload.clientId || "").trim();
+  const title = String(payload.title || "").trim().slice(0, 180);
+  const startAt = String(payload.startAt || "").trim();
+  const endAt = String(payload.endAt || "").trim();
+  const startMs = Date.parse(startAt), endMs = Date.parse(endAt);
+  const assignedUsername = normalizeUsername(String(payload.assignedUsername || "dylan_collyge"));
+  if (!/^[A-Za-z0-9_-]{8,120}$/.test(clientId) || !title || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs
+    || endMs - startMs > 31 * 24 * 60 * 60 * 1000) return errorResponse("Enter a title and valid time-off dates (31 days maximum).", 400, { code: "ALPHA_TIMEOFF_REQUEST_INVALID" });
+  const { data: activeTarget, error: targetError } = await supabase.from("profiles").select("id,username,display_name,disabled_at,locked_until,must_change_password")
+    .eq("username", assignedUsername).maybeSingle();
+  if (targetError) throw targetError;
+  const lockTime = Date.parse(String(activeTarget?.locked_until || ""));
+  if (!activeTarget?.id || activeTarget.disabled_at || activeTarget.must_change_password || (Number.isFinite(lockTime) && lockTime > Date.now())) {
+    return errorResponse("Select an active employee profile for the time-off request.", 404, { code: "ALPHA_TIMEOFF_EMPLOYEE_NOT_FOUND" });
+  }
+  const idHash = await sha256Hex(new TextEncoder().encode(`alpha-timeoff-v1:${String(actor.id)}:${clientId}`));
+  const eventId = `alpha-timeoff-${idHash.slice(0, 40)}`;
+  const event = {
+    unique_id: eventId, department: String(payload.department || "General").trim().slice(0, 120) || "General",
+    event_type: "time_off", title, description: "Requested through the HR/Labor Command Center.",
+    start_at: new Date(startMs).toISOString(), end_at: new Date(endMs).toISOString(), all_day: false,
+    requested_by_username: "dylan_collyge", requested_by_display: String(actor.display_name || "Dylan"),
+    assigned_to_username: assignedUsername, assigned_to_display: String(activeTarget.display_name || activeTarget.username),
+    assigned_usernames: [assignedUsername], assigned_displays: [String(activeTarget.display_name || activeTarget.username)],
+    recurrence_type: "none", recurrence_interval: 1, status: "requested", approved_by_username: null,
+    approved_by_display: null, approved_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+  };
+  const selectColumns = "unique_id,title,start_at,end_at,assigned_to_username,requested_by_username,status,department,created_at,updated_at";
+  const { data: prior, error: priorError } = await supabase.from("ph_department_calendar_events").select(selectColumns)
+    .eq("unique_id", eventId).maybeSingle();
+  if (priorError) throw priorError;
+  if (prior) {
+    const matches = normalizeUsername(String(prior.requested_by_username || "")) === "dylan_collyge"
+      && String(prior.title || "") === title
+      && new Date(String(prior.start_at || "")).getTime() === startMs
+      && new Date(String(prior.end_at || "")).getTime() === endMs
+      && normalizeUsername(String(prior.assigned_to_username || "")) === assignedUsername;
+    if (!matches) return errorResponse("That request key was already used for different time-off details.", 409, { code: "ALPHA_TIMEOFF_IDEMPOTENCY_CONFLICT" });
+    return jsonResponse({ ok: true, event: { id: prior.unique_id, title: prior.title, startAt: prior.start_at, endAt: prior.end_at, assignedUsername: prior.assigned_to_username, status: prior.status, department: prior.department } });
+  }
+  const { error: insertError } = await supabase.from("ph_department_calendar_events").insert(event);
+  if (insertError && insertError.code !== "23505") throw insertError;
+  const { data: saved, error: readError } = await supabase.from("ph_department_calendar_events").select(selectColumns)
+    .eq("unique_id", eventId).maybeSingle();
+  if (readError) throw readError;
+  if (!saved || normalizeUsername(String(saved.requested_by_username || "")) !== "dylan_collyge") throw new Error("ALPHA_TIMEOFF_SAVE_UNAVAILABLE");
+  if (String(saved.title || "") !== title || new Date(String(saved.start_at || "")).getTime() !== startMs
+    || new Date(String(saved.end_at || "")).getTime() !== endMs
+    || normalizeUsername(String(saved.assigned_to_username || "")) !== assignedUsername) {
+    return errorResponse("That request key was already used for different time-off details.", 409, { code: "ALPHA_TIMEOFF_IDEMPOTENCY_CONFLICT" });
+  }
+  return jsonResponse({ ok: true, event: { id: saved.unique_id, title: saved.title, startAt: saved.start_at, endAt: saved.end_at, assignedUsername: saved.assigned_to_username, status: saved.status, department: saved.department } });
+}
+
+async function alphaTimeoffApprove(session: DylanSession, payload: Record<string, unknown>) {
+  const actor = await assertDylanAction(session);
+  if (Object.keys(payload).some(key => !["action", "eventId", "status"].includes(key))) return errorResponse("Time-off approval is invalid.", 400, { code: "ALPHA_TIMEOFF_APPROVAL_INVALID" });
+  const eventId = String(payload.eventId || "").trim();
+  const status = String(payload.status || "").trim().toLowerCase();
+  if (!eventId || !["approved", "denied", "cancelled"].includes(status)) return errorResponse("Choose an event and a valid decision.", 400, { code: "ALPHA_TIMEOFF_APPROVAL_INVALID" });
+  const { data: prior, error: priorError } = await supabase.from("ph_department_calendar_events")
+    .select("unique_id,event_type,status,requested_by_username,assigned_to_username,assigned_usernames").eq("unique_id", eventId).maybeSingle();
+  if (priorError) throw priorError;
+  const priorStatus = String(prior?.status || "");
+  const allowedTransition = status === "cancelled"
+    ? priorStatus === "requested" || priorStatus === "approved"
+    : priorStatus === "requested";
+  if (!prior || prior.event_type !== "time_off" || !allowedTransition) {
+    return errorResponse("That time-off request cannot be approved here.", 404, { code: "ALPHA_TIMEOFF_NOT_FOUND" });
+  }
+  if (status === "approved") {
+    const assigned = Array.isArray(prior.assigned_usernames) ? prior.assigned_usernames : [];
+    const usernames = [...new Set([prior.assigned_to_username, ...assigned].map(value => normalizeUsername(String(value || ""))).filter(Boolean))];
+    if (!usernames.length) return errorResponse("Assign an employee before approving this time-off request.", 409, { code: "ALPHA_TIMEOFF_EMPLOYEE_UNAVAILABLE" });
+    const { data: employeeProfiles, error: profileError } = await supabase.from("profiles").select("id,username,locked_until,must_change_password")
+      .in("username", usernames).is("disabled_at", null).eq("must_change_password", false);
+    if (profileError) throw profileError;
+    const activeProfiles = (employeeProfiles || []).filter(row => {
+      const locked = Date.parse(String(row.locked_until || ""));
+      return !Number.isFinite(locked) || locked <= Date.now();
+    });
+    const profileByUsername = new Map(activeProfiles.map(row => [normalizeUsername(String(row.username || "")), String(row.id || "")]));
+    const profileIds = usernames.map(username => profileByUsername.get(username) || "");
+    if (profileIds.some(id => !id)) return errorResponse("An assigned employee profile is unavailable. Update the request before approval.", 409, { code: "ALPHA_TIMEOFF_EMPLOYEE_UNAVAILABLE" });
+    const { data: employees, error: employeeError } = await supabase.from("core_employees").select("id,profile_id")
+      .in("profile_id", profileIds).eq("active", true);
+    if (employeeError) throw employeeError;
+    const mappedIds = new Set((employees || []).map(row => String(row.profile_id || "")));
+    if (profileIds.some(id => !mappedIds.has(id))) return errorResponse("Add an active HR employee record for every assigned profile before approving time off.", 409, { code: "ALPHA_TIMEOFF_HR_RECORD_REQUIRED" });
+  }
+  const update = {
+    status, approved_by_username: status === "approved" ? "dylan_collyge" : null,
+    approved_by_display: status === "approved" ? String(actor.display_name || "Dylan") : null,
+    approved_at: status === "approved" ? new Date().toISOString() : null, updated_at: new Date().toISOString(),
+  };
+  const { data: saved, error } = await supabase.from("ph_department_calendar_events").update(update)
+    .eq("unique_id", eventId).eq("status", priorStatus)
+    .select("unique_id,title,start_at,end_at,assigned_to_username,status,department,approved_by_username,approved_at").maybeSingle();
+  if (error) throw error;
+  if (!saved) return errorResponse("The request changed while you were reviewing it. Refresh and try again.", 409, { code: "ALPHA_TIMEOFF_CHANGED" });
+  return jsonResponse({ ok: true, event: { id: saved.unique_id, title: saved.title, startAt: saved.start_at, endAt: saved.end_at, assignedUsername: saved.assigned_to_username, status: saved.status, department: saved.department, approvedByUsername: saved.approved_by_username, approvedAt: saved.approved_at } });
+}
+
 async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, req: Request) {
   if (!session) return errorResponse("Unauthorized", 401);
   const access = getRoleAccessState(session.role);
@@ -3773,6 +4187,24 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
   if (action === "aura_inventory_search") return await handleAuraInventorySearch(session, payload);
   if (action === "aura_scout_log") return await handleAuraScoutLog(session, payload);
+  if (["aura_chat_send", "alpha_chat_list", "alpha_chat_page", "alpha_chat_mark_read", "alpha_timeoff_list", "alpha_timeoff_request", "alpha_timeoff_approve"].includes(action)) {
+    try {
+      if (action === "aura_chat_send") return await auraChatSend(session, payload);
+      if (action === "alpha_chat_list") return await alphaChatList(session, payload);
+      if (action === "alpha_chat_page") return await alphaChatPage(session, payload);
+      if (action === "alpha_chat_mark_read") return await alphaChatMarkRead(session, payload);
+      if (action === "alpha_timeoff_list") return await alphaTimeoffList(session, payload);
+      if (action === "alpha_timeoff_request") return await alphaTimeoffRequest(session, payload);
+      return await alphaTimeoffApprove(session, payload);
+    } catch (error) {
+      const failure = error as { message?: string; status?: number; code?: string };
+      const status = Number(failure.status) || (failure.code === "42501" ? 403 : 503);
+      if (status >= 500) recordHandledError("app-api", action, error, status);
+      return errorResponse(status === 403 ? "This feature is available only to Dylan’s verified active account." : "The request could not be completed.", status, {
+        code: String(failure.code || `${action.toUpperCase()}_FAILED`),
+      });
+    }
+  }
   if (action === "dataset_read") return await handleDatasetRead(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);

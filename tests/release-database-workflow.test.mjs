@@ -55,6 +55,8 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     '20260929200000_production_baseline.sql',
     '20260930183036_grower_row_scout_fields.sql',
     '20260930205254_season_sales_business_conflicts_use_pt409.sql',
+    '20261001012038_production_schedule_snapshot_v1.sql',
+    '20261001025638_aura_hr_command_center_v1.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
@@ -136,6 +138,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     'grouped_eval_itemcode_health_test.sql',
     'hl_order_lifecycle_test.sql', 'hl_order_delivery_test.sql', 'hl_order_ship_dates_test.sql', 'hl_order_po_receipts_test.sql',
     'hl_order_restock_test.sql', 'hl_po_seasons_test.sql', 'hl_po_health_test.sql',
+    'hr_command_center_behavior_test.sql', 'hr_command_center_schema_test.sql',
     'sep09_eval_review_compatibility_test.sql',
     'sales_credit_workflow_test.sql', 'sales_history_docks_test.sql', 'navigation_preferences_test.sql', 'production_workflow_test.sql',
     'request_metadata_notifications_test.sql',

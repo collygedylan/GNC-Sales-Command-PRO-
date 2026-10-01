@@ -35,6 +35,8 @@ function harness(sourceFactory = factorySource) {
     const ctx = { SalesWorkspace: {isView:()=>true,stageRefresh:async()=>{calls.push(['api','sales_credit','sources']);return {rows};},applyRefresh(){}}, BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
         fetchAllSupabaseRows: async (table, query) => { calls.push(['GET', table, query]); return table === 'ph_crop_roll_runs' ? [] : rows; },
         fetchPoManagementRows: async () => { calls.push(['GET', 'po']); return rows; },
+        runDedupeSupabaseRead: async (_key, taskFn, options = {}) => taskFn({ signal: options.signal }),
+        productionLiveSyncNavigation: { signal: null },
         supabaseFetch: async (table, method, body, query) => { calls.push([method, table, query]); return rows; },
         runDockTripStatusRequest: async (operation) => { calls.push(['dock', operation]); return { data: rows }; },
         runAppApiSupabaseWrite: async (table, method) => { calls.push([method, table]); return rows; },
@@ -422,8 +424,10 @@ test('every registered physical source has a database revision contract', () => 
     assert.deepEqual(migrations, [
       '20260929200000_production_baseline.sql',
       '20260930183036_grower_row_scout_fields.sql',
-      '20260930205254_season_sales_business_conflicts_use_pt409.sql'
-    ], 'active migrations contain the baseline, Grower fields, and Season Sales conflict fix');
+      '20260930205254_season_sales_business_conflicts_use_pt409.sql',
+      '20261001012038_production_schedule_snapshot_v1.sql',
+      '20261001025638_aura_hr_command_center_v1.sql',
+    ], 'active migrations contain the baseline, Grower fields, conflict fix, Production Schedule, and HR command center');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
     // the source for validating the registered source-key contracts.

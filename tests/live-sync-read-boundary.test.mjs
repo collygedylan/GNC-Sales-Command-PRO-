@@ -862,12 +862,13 @@ test('SIGNED_OUT watcher invalidates pending native recovery before clearing the
     const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: 'old',
         getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
         invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
+    disposeAuraWidget: () => calls.push('dispose-aura'),
         closeBloomscapesPendingOrders: () => calls.push('close') };
     vm.createContext(ctx);
     const from = html.indexOf('function installNativeRoleRefreshWatchers()');
     vm.runInContext(html.slice(from, html.indexOf("document.addEventListener('visibilitychange'", from)), ctx);
     ctx.installNativeRoleRefreshWatchers(); callback('SIGNED_OUT', null);
-    assert.deepEqual(calls.slice(0, 2), ['invalidate', 'reset']);
+    assert.deepEqual(calls.slice(0, 3), ['dispose-aura', 'invalidate', 'reset']);
     assert.equal(ctx.nativeAuthSessionActive, false); assert.equal(ctx.nativeAuthAccessToken, '');
 });
 
@@ -895,6 +896,7 @@ test('initial restored auth event keeps its pending session read while a known a
     const ctx = { window: {}, nativeAuthProfile: null,
         getSupabaseBrowserClient: () => ({ auth: { onAuthStateChange: fn => { callback = fn; return {}; } } }),
         invalidateNativeAuthRecovery: () => calls.push('invalidate'), resetProductionLiveSync: () => calls.push('reset'),
+        disposeAuraWidget: () => calls.push('dispose-aura'),
         closeBloomscapesPendingOrders: () => {}, setTimeout: () => {} };
     vm.createContext(ctx);
     const from = html.indexOf('function installNativeRoleRefreshWatchers()');
@@ -903,5 +905,5 @@ test('initial restored auth event keeps its pending session read while a known a
     assert.deepEqual(calls, []);
     ctx.nativeAuthProfile = { id: 'account-a' };
     callback('SIGNED_IN', { user: { id: 'account-b' } });
-    assert.deepEqual(calls, ['invalidate', 'reset']);
+    assert.deepEqual(calls, ['dispose-aura', 'invalidate', 'reset']);
 });

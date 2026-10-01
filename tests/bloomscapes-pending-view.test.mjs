@@ -63,13 +63,13 @@ function dialogElement() {
 }
 
 function harness(options = {}) {
-  const calls = [], toasts = [], timers = [], refreshes = [];
+  const calls = [], toasts = [], timers = [], refreshes = [], auraDisposals = [];
   let dialog = options.noDialog ? null : dialogElement();
   let authCallback;
   class FixedDate extends Date { static now() { return NOW; } }
   const mutation = () => { throw new Error('Pending review must not mutate inventory or use legacy order actions'); };
   const ctx = vm.createContext({
-    invalidateNativeAuthRecovery() {}, productionDisplayGroups: new Set(), Date: FixedDate, Intl, atob: (value) => Buffer.from(value, 'base64').toString('binary'),
+    invalidateNativeAuthRecovery() {}, disposeAuraWidget: () => auraDisposals.push('dispose'), productionDisplayGroups: new Set(), Date: FixedDate, Intl, atob: (value) => Buffer.from(value, 'base64').toString('binary'),
     currentUser: 'dylan_collyge', currentRole: 'Admin', nativeAuthProfile: profile(),
     nativeAuthSessionActive: true, nativeAuthAccessToken: token(),
     navigator: { onLine: true }, window: {}, localStorage: storage(), sessionStorage: storage(),
@@ -112,7 +112,7 @@ function harness(options = {}) {
     globalThis.pendingState = () => bloomscapesPendingState;
   `, ctx);
   ctx.installNativeRoleRefreshWatchers();
-  return { ctx, calls, toasts, refreshes,
+  return { ctx, calls, toasts, refreshes, auraDisposals,
     get dialog() { return dialog; },
     auth: (event, session) => authCallback(event, session),
     flushTimers: async () => { for (const callback of timers.splice(0)) await callback(); },
@@ -218,6 +218,7 @@ test('real SIGNED_OUT callback immediately erases private data and rejects a del
   const flight = h.ctx.loadBloomscapesPendingOrders();
   await sent.promise;
   h.auth('SIGNED_OUT', null);
+  assert.deepEqual(h.auraDisposals, ['dispose']);
   assertCleared(h);
   assert.equal(h.ctx.nativeAuthSessionActive, false);
   assert.equal(h.ctx.nativeAuthAccessToken, '');
@@ -232,6 +233,7 @@ test('same-role native identity switch erases the private dialog before deferred
   const flight = h.ctx.loadBloomscapesPendingOrders();
   await sent.promise;
   h.auth('SIGNED_IN', { user: { id: 'other-admin-user' }, access_token: token({ sub: 'other-admin-user' }) });
+  assert.deepEqual(h.auraDisposals, ['dispose']);
   assertCleared(h);
   assert.equal(h.ctx.currentRole, 'Admin');
   assert.equal(h.refreshes.length, 0, 'privacy cleanup must not wait for role refresh');
@@ -247,6 +249,7 @@ test('ordinary token refresh for the same Dylan identity does not discard displa
   await h.ctx.loadBloomscapesPendingOrders();
   const before = h.dialog.innerHTML;
   h.auth('TOKEN_REFRESHED', { user: { id: DYLAN_ID }, access_token: token() });
+  assert.deepEqual(h.auraDisposals, [], 'same-account token refresh keeps the command center mounted');
   assert.equal(h.dialog.innerHTML, before);
   assert.equal(h.ctx.pendingState().orders.length, 1);
   await h.flushTimers();

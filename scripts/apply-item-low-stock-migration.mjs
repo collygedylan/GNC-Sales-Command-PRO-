@@ -7,7 +7,8 @@ export const migrationName = '20260928145055_item_low_stock_targets.sql';
 export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_assignment_override.sql';
 export const passwordReconciliationMigrationName = '20260929160000_password_change_profile_reconciliation.sql';
 export const productionScheduleMigrationName = '20261001012038_production_schedule_snapshot_v1.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName]);
+export const auraHrCommandCenterMigrationName = '20261001025638_aura_hr_command_center_v1.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -173,7 +174,21 @@ export function migrationContractQuery(name) {
   if (name === perennialAssignmentMigrationName) return "select to_regprocedure('public.reconcile_eval_itemcodes(uuid)') is not null and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_warehouse_assigned_items' and column_name='zone_override_active') as installed";
   if (name === passwordReconciliationMigrationName) return "select to_regprocedure('public.prepare_password_change_profile(text,uuid,text)') is not null and to_regprocedure('public.complete_password_change_profile(uuid,uuid,text,text)') is not null as installed";
   if (name === productionScheduleMigrationName) return "select to_regprocedure('public.production_schedule_start_import_v1(text)') is not null and to_regprocedure('public.production_schedule_read_metadata_v1()') is not null and to_regclass('public.production_schedule_rows') is not null as installed";
+  if (name === auraHrCommandCenterMigrationName) return "select to_regclass('public.core_employees') is not null and to_regclass('public.hr_job_codes') is not null and to_regclass('public.hr_events') is not null and to_regclass('public.labor_timesheets') is not null and exists(select 1 from pg_partitioned_table where partrelid='public.labor_timesheets'::regclass) and to_regprocedure('public.hr_claim_calendar_reminders_v1(integer)') is not null and to_regprocedure('public.hr_finish_calendar_reminder_v1(uuid,boolean,text)') is not null and to_regprocedure('private.hr_purge_calendar_reminders_v1()') is not null and to_regprocedure('private.hr_active_username_v1()') is not null and exists(select 1 from cron.job where jobname='hr_calendar_reminder_sweep') as installed";
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
+}
+
+export async function upsertVaultSecret({ client, name, value, description }) {
+  if (!client || !/^[a-z][a-z0-9_]{2,63}$/.test(String(name || '')) || !String(value || '')) {
+    throw new Error('HR_VAULT_SECRET_INPUT_INVALID');
+  }
+  const prior = await client.query('select id from vault.secrets where name = $1 limit 1', [name]);
+  if (prior.rows.length) {
+    await client.query('select vault.update_secret($1,$2,$3,$4)', [prior.rows[0].id, value, name, description || null]);
+    return 'updated';
+  }
+  await client.query('select vault.create_secret($1,$2,$3)', [value, name, description || null]);
+  return 'created';
 }
 
 export function migrationBody(source) {
@@ -257,10 +272,17 @@ async function main(args = process.argv.slice(2)) {
       console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
     } else {
       for (const targetMigrationName of releaseDatabaseMigrations) {
-        const sourceDirectory = targetMigrationName === productionScheduleMigrationName ? 'migrations' : 'archive_migrations';
+        const sourceDirectory = targetMigrationName === productionScheduleMigrationName || targetMigrationName === auraHrCommandCenterMigrationName ? 'migrations' : 'archive_migrations';
         const source = fs.readFileSync(new URL(`../supabase/${sourceDirectory}/${targetMigrationName}`, import.meta.url), 'utf8');
         const applied = await applyItemLowStockMigration({ client, source, targetMigrationName, onPhase: next => { phase = next; } });
         console.log(`${targetMigrationName}: ${applied.status}.`);
+      }
+      if (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.SUPABASE_URL) {
+        await upsertVaultSecret({ client, name: 'hr_calendar_project_url', value: process.env.SUPABASE_URL, description: 'Supabase project URL used by the scheduled HR calendar reminder dispatcher.' });
+        await upsertVaultSecret({ client, name: 'hr_calendar_service_role_key', value: process.env.SUPABASE_SERVICE_ROLE_KEY, description: 'Service role credential used only by the pg_cron calendar reminder dispatcher.' });
+        console.log('HR calendar reminder Vault credentials synchronized.');
+      } else {
+        throw new Error('HR_VAULT_CREDENTIALS_REQUIRED');
       }
     }
   } catch (error) {
