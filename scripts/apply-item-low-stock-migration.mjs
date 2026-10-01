@@ -6,7 +6,9 @@ import pg from 'pg';
 export const migrationName = '20260928145055_item_low_stock_targets.sql';
 export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_assignment_override.sql';
 export const passwordReconciliationMigrationName = '20260929160000_password_change_profile_reconciliation.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
+export const productionScheduleMigrationName = '20261001012038_production_schedule_snapshot_v1.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName]);
+const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
 const NETWORK_ERROR_CODES = new Set([
@@ -170,6 +172,7 @@ export function migrationContractQuery(name) {
   if (name === migrationName) return "select to_regprocedure('public.get_eval_item_low_stock_targets_v1(text[],text,integer)') is not null as installed";
   if (name === perennialAssignmentMigrationName) return "select to_regprocedure('public.reconcile_eval_itemcodes(uuid)') is not null and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_warehouse_assigned_items' and column_name='zone_override_active') as installed";
   if (name === passwordReconciliationMigrationName) return "select to_regprocedure('public.prepare_password_change_profile(text,uuid,text)') is not null and to_regprocedure('public.complete_password_change_profile(uuid,uuid,text,text)') is not null as installed";
+  if (name === productionScheduleMigrationName) return "select to_regprocedure('public.production_schedule_start_import_v1(text)') is not null and to_regprocedure('public.production_schedule_read_metadata_v1()') is not null and to_regclass('public.production_schedule_rows') is not null as installed";
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }
 
@@ -197,7 +200,7 @@ export async function applyItemLowStockMigration({ client, source, onPhase = () 
       // The production baseline contains these archived migrations. Its ledger
       // intentionally has no entries for their former individual versions.
       const baseline = await client.query('select name from supabase_migrations.schema_migrations where version = $1', [productionBaselineVersion]);
-      if (baseline.rows.length) {
+      if (baseline.rows.length && baselineIncludedMigrations.has(targetMigrationName)) {
         if (baseline.rows.length !== 1 || baseline.rows[0].name !== 'production_baseline') throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
         onPhase('contract_check');
         const result = await client.query(contractQuery);
@@ -254,7 +257,8 @@ async function main(args = process.argv.slice(2)) {
       console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
     } else {
       for (const targetMigrationName of releaseDatabaseMigrations) {
-        const source = fs.readFileSync(new URL(`../supabase/archive_migrations/${targetMigrationName}`, import.meta.url), 'utf8');
+        const sourceDirectory = targetMigrationName === productionScheduleMigrationName ? 'migrations' : 'archive_migrations';
+        const source = fs.readFileSync(new URL(`../supabase/${sourceDirectory}/${targetMigrationName}`, import.meta.url), 'utf8');
         const applied = await applyItemLowStockMigration({ client, source, targetMigrationName, onPhase: next => { phase = next; } });
         console.log(`${targetMigrationName}: ${applied.status}.`);
       }

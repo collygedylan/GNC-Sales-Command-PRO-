@@ -28,6 +28,10 @@ const corsHeaders = {
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+const PRODUCTION_SCHEDULE_WORKBOOK_ID = "1myBn2DzyhYtTj2MmYatf26jz575TjqxSpxC-kFt1Mhw";
+const PRODUCTION_SCHEDULE_USERS = new Set(["dylan_collyge", "megan_kelly", "jd_jones"]);
+const PRODUCTION_SCHEDULE_SIGNING_SECRET = SUPABASE_SERVICE_ROLE_KEY.trim();
+const PRODUCTION_SCHEDULE_APPS_SCRIPT_URL = String(Deno.env.get("APPS_SCRIPT_WEB_APP_URL") || "").trim();
 const LEGACY_DARK_DEFAULT_USERNAME = "dylan_collyge";
 const LIVE_PILOT_FEATURE_KEYS = ["skin", "preferences", "card_grid", "monitoring"] as const;
 const LIVE_PILOT_SENTRY_DSN = String(Deno.env.get("LIVE_PILOT_SENTRY_DSN") || "").trim();
@@ -669,6 +673,160 @@ async function handleDatasetRead(
   } catch (error) {
     const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
     return errorResponse("Dataset read parameters are invalid.", 400, { code });
+  }
+}
+
+function productionScheduleBase64Url(bytes: Uint8Array) {
+  let binary = "";
+  bytes.forEach((value) => { binary += String.fromCharCode(value); });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+export function parseProductionScheduleRequest(payload: Record<string, unknown>) {
+  const operation = String(payload.operation || "").trim().toLowerCase();
+  if (!["metadata", "rows", "status", "refresh"].includes(operation)) throw new Error("PRODUCTION_SCHEDULE_OPERATION_INVALID");
+  const allowed = new Set(["action", "operation", "sheetId", "q", "filters", "cursor", "limit", "snapshotId", "runId"]);
+  if (Object.keys(payload).some((key) => !allowed.has(key))) throw new Error("PRODUCTION_SCHEDULE_PAYLOAD_INVALID");
+  if (operation !== "rows") return { operation } as const;
+  if (payload.sheetId === null || payload.sheetId === undefined || !(typeof payload.sheetId === "number" || typeof payload.sheetId === "string")) {
+    throw new Error("PRODUCTION_SCHEDULE_SHEET_INVALID");
+  }
+  const sheetId = Number(payload.sheetId);
+  if (!Number.isInteger(sheetId) || sheetId < 0 || sheetId > 6) throw new Error("PRODUCTION_SCHEDULE_SHEET_INVALID");
+  const rawLimit = payload.limit === undefined ? 100 : Number(payload.limit);
+  if (!Number.isInteger(rawLimit) || rawLimit < 1) throw new Error("PRODUCTION_SCHEDULE_LIMIT_INVALID");
+  const limit = Math.min(500, rawLimit);
+  const rawCursor = String(payload.cursor || "").trim();
+  if (rawCursor && !/^[1-9][0-9]{0,8}$/.test(rawCursor)) throw new Error("PRODUCTION_SCHEDULE_CURSOR_INVALID");
+  if (payload.filters !== undefined && (!payload.filters || typeof payload.filters !== "object" || Array.isArray(payload.filters))) {
+    throw new Error("PRODUCTION_SCHEDULE_FILTERS_INVALID");
+  }
+  const rawFilters = payload.filters && typeof payload.filters === "object" && !Array.isArray(payload.filters)
+    ? payload.filters as Record<string, unknown>
+    : {};
+  if (Object.keys(rawFilters).length > 12) throw new Error("PRODUCTION_SCHEDULE_FILTERS_INVALID");
+  const filters: Record<string, string> = {};
+  for (const [rawIndex, rawValue] of Object.entries(rawFilters)) {
+    if (!/^[1-9][0-9]{0,3}$/.test(rawIndex) || typeof rawValue !== "string" || rawValue.length > 200) {
+      throw new Error("PRODUCTION_SCHEDULE_FILTER_INVALID");
+    }
+    const value = rawValue.trim();
+    if (value) filters[rawIndex] = value;
+  }
+  if (payload.q !== undefined && typeof payload.q !== "string") throw new Error("PRODUCTION_SCHEDULE_SEARCH_INVALID");
+  const query = String(payload.q || "").trim();
+  if (query.length > 200) throw new Error("PRODUCTION_SCHEDULE_SEARCH_INVALID");
+  const snapshotId = String(payload.snapshotId || "").trim();
+  if (snapshotId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(snapshotId)) {
+    throw new Error("PRODUCTION_SCHEDULE_SNAPSHOT_INVALID");
+  }
+  return { operation, sheetId, limit, cursor: rawCursor ? Number(rawCursor) : 0, q: query, filters, snapshotId: snapshotId || null } as const;
+}
+
+export function isProductionScheduleUser(value: unknown) {
+  return PRODUCTION_SCHEDULE_USERS.has(String(value || "").trim().toLowerCase());
+}
+
+export async function signProductionScheduleCommand(command: Record<string, unknown>, timestamp: string, secret: string) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const deliveryJson = JSON.stringify(command);
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}.${deliveryJson}`));
+  return { deliveryJson, signature: productionScheduleBase64Url(new Uint8Array(signature)) };
+}
+
+async function handleProductionScheduleAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Sign in to open Production Schedule.", 401, { code: "PRODUCTION_SCHEDULE_UNAUTHORIZED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
+  const profileUsername = String(actor.username || "").trim().toLowerCase();
+  if (!isProductionScheduleUser(profileUsername)) {
+    return errorResponse("Production Schedule is limited to authorized users.", 403, { code: "PRODUCTION_SCHEDULE_FORBIDDEN" });
+  }
+  const username = normalizeUsername(profileUsername);
+
+  let parsed: ReturnType<typeof parseProductionScheduleRequest>;
+  try { parsed = parseProductionScheduleRequest(payload); }
+  catch (error) {
+    const code = String(error instanceof Error ? error.message : error || "PRODUCTION_SCHEDULE_PAYLOAD_INVALID");
+    return errorResponse("Production Schedule request is invalid.", 400, { code });
+  }
+
+  if (parsed.operation === "metadata") {
+    const { data, error } = await supabase.rpc("production_schedule_read_metadata_v1");
+    if (error) return databaseFailureResponse("Production Schedule metadata is unavailable.", error, "PRODUCTION_SCHEDULE_METADATA_UNAVAILABLE");
+    return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { snapshot: null, sheets: [] }) });
+  }
+  if (parsed.operation === "rows") {
+    const { data, error } = await supabase.rpc("production_schedule_read_rows_v1", {
+      p_sheet_index: parsed.sheetId,
+      p_snapshot_id: parsed.snapshotId,
+      p_cursor: parsed.cursor,
+      p_limit: parsed.limit,
+      p_search: parsed.q,
+      p_filters: parsed.filters,
+    });
+    if (error) return databaseFailureResponse("Production Schedule rows are unavailable.", error, "PRODUCTION_SCHEDULE_ROWS_UNAVAILABLE");
+    return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { rows: [], nextCursor: null, total: 0, snapshotId: null, hasMore: false }) });
+  }
+  if (parsed.operation === "status") {
+    const runId = String(payload.runId || "").trim();
+    if (runId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId)) {
+      return errorResponse("Production Schedule run ID is invalid.", 400, { code: "PRODUCTION_SCHEDULE_RUN_INVALID" });
+    }
+    const { data, error } = await supabase.rpc("production_schedule_read_status_v1", { p_snapshot_id: runId || null });
+    if (error) return databaseFailureResponse("Production Schedule status is unavailable.", error, "PRODUCTION_SCHEDULE_STATUS_UNAVAILABLE");
+    return jsonResponse({ ok: true, run: data && typeof data === "object" ? data : { id: null, status: "empty" } });
+  }
+
+  if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
+    return errorResponse("Production Schedule refresh is not configured. Contact the application administrator.", 503, { code: "PRODUCTION_SCHEDULE_REFRESH_NOT_CONFIGURED" });
+  }
+  const { data: started, error: startError } = await supabase.rpc("production_schedule_start_import_v1", { p_requested_by: username });
+  if (startError) return databaseFailureResponse("A Production Schedule refresh could not be started.", startError, "PRODUCTION_SCHEDULE_REFRESH_START_FAILED");
+  const startData = started && typeof started === "object" ? started as Record<string, unknown> : {};
+  if (startData.already_running === true) {
+    return errorResponse("A Production Schedule refresh is already running.", 409, { code: "PRODUCTION_SCHEDULE_REFRESH_IN_PROGRESS", run: { id: startData.snapshot_id, status: startData.status } });
+  }
+  const snapshotId = String(startData.snapshot_id || "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(snapshotId)) {
+    return errorResponse("The Production Schedule refresh could not be initialized.", 503, { code: "PRODUCTION_SCHEDULE_REFRESH_START_INVALID" });
+  }
+  const timestamp = new Date().toISOString();
+  const command = {
+    contractVersion: "production-schedule-import-v1",
+    workbookId: PRODUCTION_SCHEDULE_WORKBOOK_ID,
+    runId: snapshotId,
+    snapshotId,
+    requestedBy: username,
+  };
+  const { deliveryJson, signature } = await signProductionScheduleCommand(command, timestamp, PRODUCTION_SCHEDULE_SIGNING_SECRET);
+  try {
+    const response = await fetch(PRODUCTION_SCHEDULE_APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "production_schedule_import_v1", timestamp, signature, deliveryJson }),
+      signal: AbortSignal.timeout(15000),
+      redirect: "follow",
+    });
+    const responseText = await response.text();
+    let result: Record<string, unknown> = {};
+    try { result = responseText ? JSON.parse(responseText) as Record<string, unknown> : {}; } catch { /* handled below */ }
+    if (!response.ok || result.ok !== true || result.accepted !== true) {
+      const failureCode = String(result.code || `APPS_SCRIPT_HTTP_${response.status}`).replace(/[^A-Za-z0-9_]/g, "_").toUpperCase().slice(0, 100);
+      await supabase.rpc("production_schedule_fail_import_v1", { p_snapshot_id: snapshotId, p_error_code: failureCode });
+      return errorResponse("Production Schedule refresh could not be queued.", 502, { code: "PRODUCTION_SCHEDULE_REFRESH_DISPATCH_FAILED" });
+    }
+    return jsonResponse({ ok: true, run: { id: snapshotId, status: "queued" } }, 202);
+  } catch (_error) {
+    // A network failure is ambiguous: Apps Script may have accepted the signed
+    // command before the response was lost. Keep the run queued so status can
+    // resolve it without risking a duplicate import.
+    return jsonResponse({ ok: true, run: { id: snapshotId, status: "queued" }, dispatchPending: true }, 202);
   }
 }
 
@@ -3175,7 +3333,7 @@ async function handlePhotoUpload(session: Awaited<ReturnType<typeof readSupabase
   }
 }
 
-serve((req) => withObservedRequest("app-api", req, async () => {
+if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return errorResponse("Method not allowed.", 405);
 
@@ -3248,6 +3406,7 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
   if (action === "dataset_read") return await handleDatasetRead(session, payload);
+  if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);
   if (action === "av_read") {
     if (!session) return errorResponse("Unauthorized", 401);

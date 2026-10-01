@@ -578,6 +578,287 @@ const SHEAR_LOCATION_INQUIRY_EVENT_TYPE_ = 'shear_location_inquiry';
 const LOCATION_WORK_ASSIGNMENT_EVENT_TYPE_ = 'location_work_assignment';
 const LOCATION_WORK_COMPLETION_EVENT_TYPE_ = 'location_work_completion';
 
+// Production Schedule is a read-only import from one approved Drive workbook.
+// Keep the source identity and tab order fixed so an unexpected replacement or
+// reordered workbook fails closed instead of publishing mismatched rows.
+const PRODUCTION_SCHEDULE_WORKBOOK_ID_ = '1myBn2DzyhYtTj2MmYatf26jz575TjqxSpxC-kFt1Mhw';
+const PRODUCTION_SCHEDULE_SHEETS_ = [
+  { title: 'PROD SCHED', headerRow: 8 },
+  { title: 'PltDate-PltGrp', headerRow: 1 },
+  { title: 'ContTable', headerRow: 1 },
+  { title: 'Code Key', headerRow: 1 },
+  { title: 'Calculations', headerRow: 1 },
+  { title: "New Weighted%'s", headerRow: 2, groupedHeaderRow: 1 },
+  { title: 'CPB', headerRow: 1 }
+];
+const PRODUCTION_SCHEDULE_IMPORT_ROWS_PER_CHUNK_ = 100;
+const PRODUCTION_SCHEDULE_IMPORT_MAX_CHUNKS_PER_RUN_ = 8;
+const PRODUCTION_SCHEDULE_IMPORT_BUDGET_MS_ = 180000;
+const PRODUCTION_SCHEDULE_IMPORT_HANDLER_ = 'runProductionScheduleImportChunk_';
+const PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_ = 'PRODUCTION_SCHEDULE_IMPORT_STATE_V1';
+const PRODUCTION_SCHEDULE_IMPORT_MAX_FAILURES_ = 3;
+
+function productionScheduleEqual_(left, right) {
+  const a = String(left || '');
+  const b = String(right || '');
+  if (a.length !== b.length || !a.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function productionScheduleSigningKey_() {
+  // This existing owner-authorized integration already holds the service key
+  // in Script Properties; all three schedule dispatchers use that same key.
+  return String(SUPABASE_KEY || '').trim();
+}
+
+function verifyProductionScheduleImportCommand_(payload) {
+  const timestamp = String(payload && payload.timestamp || '').trim();
+  const signature = String(payload && payload.signature || '').trim();
+  const deliveryJson = String(payload && payload.deliveryJson || '');
+  const timestampMs = Date.parse(timestamp);
+  if (!timestamp || !signature || !deliveryJson || !Number.isFinite(timestampMs)) {
+    throw new Error('PRODUCTION_SCHEDULE_SIGNATURE_REQUIRED');
+  }
+  const ageMs = Date.now() - timestampMs;
+  if (ageMs < -60000 || ageMs > 300000) throw new Error('PRODUCTION_SCHEDULE_SIGNATURE_EXPIRED');
+  const key = productionScheduleSigningKey_();
+  if (!key) throw new Error('PRODUCTION_SCHEDULE_SIGNING_KEY_MISSING');
+  const expected = requestDeliveryBase64Url_(Utilities.computeHmacSha256Signature(
+    timestamp + '.' + deliveryJson, key, Utilities.Charset.UTF_8
+  ));
+  if (!productionScheduleEqual_(expected, signature)) throw new Error('PRODUCTION_SCHEDULE_SIGNATURE_INVALID');
+  let delivery;
+  try { delivery = JSON.parse(deliveryJson); } catch (error) { throw new Error('PRODUCTION_SCHEDULE_COMMAND_INVALID'); }
+  if (!delivery || delivery.contractVersion !== 'production-schedule-import-v1' ||
+      delivery.workbookId !== PRODUCTION_SCHEDULE_WORKBOOK_ID_ ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(delivery.snapshotId || '')) ||
+      String(delivery.runId || '') !== String(delivery.snapshotId || '')) {
+    throw new Error('PRODUCTION_SCHEDULE_COMMAND_INVALID');
+  }
+  return delivery;
+}
+
+function productionScheduleSheetMetadata_(spreadsheet) {
+  const sheets = spreadsheet.getSheets();
+  if (sheets.length !== PRODUCTION_SCHEDULE_SHEETS_.length) throw new Error('PRODUCTION_SCHEDULE_SHEET_SET_CHANGED');
+  return PRODUCTION_SCHEDULE_SHEETS_.map(function(config, sheetIndex) {
+    const sheet = sheets[sheetIndex];
+    if (!sheet || sheet.getName() !== config.title) throw new Error('PRODUCTION_SCHEDULE_SHEET_ORDER_CHANGED');
+    const lastRow = Math.max(config.headerRow, Number(sheet.getLastRow()) || config.headerRow);
+    const lastColumn = Math.max(1, Number(sheet.getLastColumn()) || 1);
+    const headerStart = config.groupedHeaderRow || config.headerRow;
+    const headerHeight = config.headerRow - headerStart + 1;
+    const headerRange = sheet.getRange(headerStart, 1, headerHeight, lastColumn);
+    const headerRows = headerRange.getDisplayValues();
+    if (config.groupedHeaderRow && typeof headerRange.getMergedRanges === 'function') {
+      headerRange.getMergedRanges().forEach(function(merged) {
+        const rowOffset = merged.getRow() - headerStart;
+        if (rowOffset !== 0 || merged.getNumRows() !== 1) return;
+        const firstColumn = merged.getColumn() - 1;
+        const groupLabel = String(headerRows[0][firstColumn] || '').trim();
+        if (!groupLabel) return;
+        const endColumn = Math.min(lastColumn, firstColumn + merged.getNumColumns());
+        for (let columnIndex = firstColumn + 1; columnIndex < endColumn; columnIndex++) {
+          if (!headerRows[0][columnIndex]) headerRows[0][columnIndex] = groupLabel;
+        }
+      });
+    }
+    const columns = [];
+    for (let columnIndex = 0; columnIndex < lastColumn; columnIndex++) {
+      const parts = headerRows.map(function(row) { return String(row[columnIndex] == null ? '' : row[columnIndex]).trim(); }).filter(Boolean);
+      const header = parts.join(' / ') || ('Column ' + (columnIndex + 1));
+      columns.push({ index: columnIndex + 1, header: header });
+    }
+    return {
+      sheet: sheet,
+      metadata: {
+        sheet_index: sheetIndex,
+        title: config.title,
+        header_row: config.headerRow,
+        columns: columns,
+        row_count: Math.max(0, lastRow - config.headerRow)
+      }
+    };
+  });
+}
+
+function productionScheduleSparseRows_(startRow, displayRows) {
+  const rows = [];
+  (displayRows || []).forEach(function(displayRow, rowIndex) {
+    const cells = {};
+    (displayRow || []).forEach(function(value, columnIndex) {
+      const text = value == null ? '' : String(value);
+      if (text !== '') cells[String(columnIndex + 1)] = text;
+    });
+    if (Object.keys(cells).length) rows.push({ source_row: startRow + rowIndex, cells: cells });
+  });
+  return rows;
+}
+
+function removeProductionScheduleImportTriggers_() {
+  ScriptApp.getProjectTriggers().filter(function(trigger) {
+    return trigger.getHandlerFunction() === PRODUCTION_SCHEDULE_IMPORT_HANDLER_;
+  }).forEach(function(trigger) { ScriptApp.deleteTrigger(trigger); });
+}
+
+function scheduleProductionScheduleImportTrigger_() {
+  const exists = ScriptApp.getProjectTriggers().some(function(trigger) {
+    return trigger.getHandlerFunction() === PRODUCTION_SCHEDULE_IMPORT_HANDLER_;
+  });
+  if (!exists) ScriptApp.newTrigger(PRODUCTION_SCHEDULE_IMPORT_HANDLER_).timeBased().after(60000).create();
+}
+
+function acceptProductionScheduleImportCommand_(payload) {
+  const command = verifyProductionScheduleImportCommand_(payload);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) throw new Error('PRODUCTION_SCHEDULE_WORKER_BUSY');
+  try {
+    const props = PropertiesService.getScriptProperties();
+    let current = null;
+    try { current = JSON.parse(props.getProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_) || 'null'); } catch (ignored) {}
+    if (current && current.snapshot_id && current.snapshot_id !== command.snapshotId) {
+      throw new Error('PRODUCTION_SCHEDULE_IMPORT_ALREADY_ACTIVE');
+    }
+    if (!current) {
+      current = {
+        snapshot_id: command.snapshotId,
+        requested_by: String(command.requestedBy || ''),
+        sheet_index: 0,
+        cursor: 0,
+        source_updated_at: '',
+        failures: 0,
+        sheets_initialized: false
+      };
+      props.setProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_, JSON.stringify(current));
+    }
+    scheduleProductionScheduleImportTrigger_();
+    return { ok: true, accepted: true, status: 'queued', snapshotId: command.snapshotId };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function productionScheduleMarkFailed_(snapshotId, code) {
+  try {
+    callSupabaseRpc_('production_schedule_fail_import_v1', {
+      p_snapshot_id: snapshotId,
+      p_error_code: /^[A-Z0-9_]+$/.test(String(code || '')) ? String(code) : 'PRODUCTION_SCHEDULE_IMPORT_FAILED'
+    });
+  } catch (error) {
+    console.warn('[PRODUCTION SCHEDULE] failure status update deferred');
+  }
+  removeProductionScheduleImportTriggers_();
+  PropertiesService.getScriptProperties().deleteProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_);
+}
+
+function runProductionScheduleImportChunk_() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return { status: 'locked' };
+  const started = Date.now();
+  try {
+    removeProductionScheduleImportTriggers_();
+    const props = PropertiesService.getScriptProperties();
+    let state = null;
+    try { state = JSON.parse(props.getProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_) || 'null'); } catch (ignored) {}
+    if (!state || !state.snapshot_id) return { status: 'idle' };
+    // Install recovery before touching the workbook or Supabase so a hard
+    // Apps Script timeout still leaves a continuation trigger in place.
+    scheduleProductionScheduleImportTrigger_();
+
+    const sourceFile = DriveApp.getFileById(PRODUCTION_SCHEDULE_WORKBOOK_ID_);
+    const sourceUpdatedAt = sourceFile.getLastUpdated().toISOString();
+    if (state.source_updated_at && state.source_updated_at !== sourceUpdatedAt) {
+      productionScheduleMarkFailed_(state.snapshot_id, 'PRODUCTION_SCHEDULE_SOURCE_CHANGED');
+      return { status: 'failed', code: 'PRODUCTION_SCHEDULE_SOURCE_CHANGED' };
+    }
+    state.source_updated_at = sourceUpdatedAt;
+    const spreadsheet = SpreadsheetApp.openById(PRODUCTION_SCHEDULE_WORKBOOK_ID_);
+    const sheetEntries = productionScheduleSheetMetadata_(spreadsheet);
+    if (!state.sheets_initialized) {
+      callSupabaseRpc_('production_schedule_set_sheets_v1', {
+        p_snapshot_id: state.snapshot_id,
+        p_sheets: sheetEntries.map(function(entry) { return entry.metadata; })
+      });
+      state.sheets_initialized = true;
+    }
+
+    let chunks = 0;
+    while (chunks < PRODUCTION_SCHEDULE_IMPORT_MAX_CHUNKS_PER_RUN_ && Date.now() - started < PRODUCTION_SCHEDULE_IMPORT_BUDGET_MS_) {
+      const entry = sheetEntries[state.sheet_index];
+      if (!entry) {
+        if (DriveApp.getFileById(PRODUCTION_SCHEDULE_WORKBOOK_ID_).getLastUpdated().toISOString() !== state.source_updated_at) {
+          throw new Error('PRODUCTION_SCHEDULE_SOURCE_CHANGED');
+        }
+        callSupabaseRpc_('production_schedule_finish_import_v1', { p_snapshot_id: state.snapshot_id });
+        removeProductionScheduleImportTriggers_();
+        props.deleteProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_);
+        return { status: 'complete', snapshotId: state.snapshot_id };
+      }
+
+      const totalRows = Number(entry.metadata.row_count) || 0;
+      if (state.cursor >= totalRows) {
+        callSupabaseRpc_('production_schedule_update_progress_v1', {
+          p_snapshot_id: state.snapshot_id,
+          p_sheet_index: state.sheet_index,
+          p_processed_rows: totalRows,
+          p_total_rows: totalRows
+        });
+        state.sheet_index += 1;
+        state.cursor = 0;
+        state.failures = 0;
+        props.setProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_, JSON.stringify(state));
+        continue;
+      }
+
+      const rowsToRead = Math.min(PRODUCTION_SCHEDULE_IMPORT_ROWS_PER_CHUNK_, totalRows - state.cursor);
+      const sourceRow = entry.metadata.header_row + 1 + state.cursor;
+      const displayRows = entry.sheet.getRange(sourceRow, 1, rowsToRead, entry.metadata.columns.length).getDisplayValues();
+      const rows = productionScheduleSparseRows_(sourceRow, displayRows);
+      if (rows.length) {
+        callSupabaseRpc_('production_schedule_append_rows_v1', {
+          p_snapshot_id: state.snapshot_id,
+          p_sheet_index: state.sheet_index,
+          p_rows: rows
+        });
+      }
+      state.cursor += rowsToRead;
+      state.failures = 0;
+      callSupabaseRpc_('production_schedule_update_progress_v1', {
+        p_snapshot_id: state.snapshot_id,
+        p_sheet_index: state.sheet_index,
+        p_processed_rows: state.cursor,
+        p_total_rows: totalRows
+      });
+      // Persist after both RPCs. A retry after an RPC timeout safely replays
+      // the same source rows through the database's unique-key upsert.
+      props.setProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_, JSON.stringify(state));
+      chunks += 1;
+    }
+    scheduleProductionScheduleImportTrigger_();
+    return { status: 'running', sheetIndex: state.sheet_index, cursor: state.cursor };
+  } catch (error) {
+    let state = null;
+    try { state = JSON.parse(PropertiesService.getScriptProperties().getProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_) || 'null'); } catch (ignored) {}
+    if (!state || !state.snapshot_id) return { status: 'failed' };
+    const code = /^[A-Z0-9_]+$/.test(String(error && error.message || ''))
+      ? String(error.message)
+      : 'PRODUCTION_SCHEDULE_IMPORT_RETRYABLE';
+    state.failures = (Number(state.failures) || 0) + 1;
+    if (code === 'PRODUCTION_SCHEDULE_SOURCE_CHANGED' || state.failures >= PRODUCTION_SCHEDULE_IMPORT_MAX_FAILURES_) {
+      productionScheduleMarkFailed_(state.snapshot_id, code);
+      return { status: 'failed', code: code };
+    }
+    PropertiesService.getScriptProperties().setProperty(PRODUCTION_SCHEDULE_IMPORT_STATE_KEY_, JSON.stringify(state));
+    scheduleProductionScheduleImportTrigger_();
+    console.warn('[PRODUCTION SCHEDULE] bounded retry scheduled code=' + code);
+    return { status: 'retry_scheduled', attempt: state.failures };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getSupabaseHeadersForKey_(key, extraHeaders) {
   const headers = Object.assign({}, extraHeaders || {});
   const safeKey = String(key || '').trim();
@@ -17940,6 +18221,10 @@ function handlePhotoArchiveRequest_(payload) {
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+
+    if (payload.type === 'production_schedule_import_v1') {
+      return jsonOutput_(acceptProductionScheduleImportCommand_(payload));
+    }
 
     if (payload.type === 'deployment_health') {
       return jsonOutput_(getAppsScriptDeploymentHealth_());

@@ -14,6 +14,9 @@ on:
       - scripts/pages-release.mjs
       - scripts/sync-codegs-to-apps-script.js
       - scripts/apply-item-low-stock-migration.mjs
+      - scripts/seed-production-schedule-release.mjs
+      - supabase/migrations/20261001012038_production_schedule_snapshot_v1.sql
+      - .github/workflows/release-database.yml
       - scripts/preview-perennial-assignment.mjs
       - scripts/certs/supabase-prod-ca-2021.crt
       - supabase/archive_migrations/20260928145055_item_low_stock_targets.sql
@@ -54,12 +57,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/lib/production-release-guard.mjs
 
+      - name: Require backend deployment credentials before production changes
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_ACCESS_TOKEN" || { echo 'SUPABASE_ACCESS_TOKEN_REQUIRED'; exit 1; }
+          test -n "$SUPABASE_URL" || { echo 'SUPABASE_URL_REQUIRED'; exit 1; }
+          test -n "$SUPABASE_DB_URL" || { echo 'SUPABASE_DB_URL_REQUIRED'; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo 'SUPABASE_SERVICE_ROLE_KEY_REQUIRED'; exit 1; }
+          [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
+
   sync-codegs:
     name: Update Apps Script Code.gs
     needs: authorize-production
     if: needs.authorize-production.outputs.authorized == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
 
     steps:
       - name: Check out repository
@@ -69,6 +88,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.111.0
 
       - name: Install Google API client
         run: npm install --no-save googleapis@144.0.0
@@ -100,6 +124,22 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: node scripts/apply-item-low-stock-migration.mjs
+
+      - name: Configure Production Schedule dispatch and deploy app-api
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          project_ref="${SUPABASE_URL#https://}"
+          project_ref="${project_ref%.supabase.co}"
+          [[ "$project_ref" =~ ^[a-z0-9]{20}$ ]] || { echo 'SUPABASE_PROJECT_REF_INVALID'; exit 1; }
+          web_app_url="https://script.google.com/macros/s/${APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID}/exec"
+          supabase login --token "$SUPABASE_ACCESS_TOKEN"
+          supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
+          supabase functions deploy app-api --project-ref "$project_ref"
 
       - name: Check whether deployed Apps Script already has identical code
         id: compatibility
@@ -136,41 +176,69 @@ jobs:
           retention-days: 90
 
   publish-pages:
-    name: Hand off the compatible backend to Pages
+    name: Seed Production Schedule, build and publish Pages
     needs: [authorize-production, sync-codegs]
     if: github.ref == 'refs/heads/main' && needs.authorize-production.outputs.authorized == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 330
     permissions:
-      contents: read
-      actions: write
+      contents: write
     steps:
-      - name: Dispatch Pages only after verified backend deployment
-        uses: actions/github-script@v7
+      - name: Check out the authorized main release
+        uses: actions/checkout@v4
         with:
-          script: |
-            const { owner, repo } = context.repo;
-            const { data: main } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
-            if (main.object.sha !== context.sha) {
-              core.notice('Main advanced while deploying the backend; its newer release owns publication.');
-              return;
-            }
-            const existing = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner, repo, workflow_id: 'pages-static.yml', head_sha: context.sha, per_page: 100,
-            });
-            if (existing.some(run => run.head_branch === 'main' && run.head_sha === context.sha &&
-                (run.status !== 'completed' || run.conclusion === 'success'))) {
-              core.notice('Pages is already queued, running, or successful for this merge.');
-              return;
-            }
-            // Recheck after the run lookup; Pages also checks current main and
-            // independently verifies the sealed proof before publication.
-            const { data: latestMain } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
-            if (latestMain.object.sha !== context.sha) {
-              core.notice('Main advanced before Pages dispatch.');
-              return;
-            }
-            await github.rest.actions.createWorkflowDispatch({
-              owner, repo, workflow_id: 'pages-static.yml', ref: 'main',
-            });
-            core.notice(`Dispatched Pages after compatible backend deployment for ${context.sha}.`);
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Verify current main before seeding
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/lib/production-release-guard.mjs
+
+      - name: Queue the initial signed workbook import and wait for a complete snapshot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          APPS_SCRIPT_WEB_APP_URL: https://script.google.com/macros/s/${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}/exec
+          PRODUCTION_SCHEDULE_IMPORT_TIMEOUT_MS: '16200000'
+        run: node scripts/seed-production-schedule-release.mjs
+
+      - name: Install dependencies and build the complete site after snapshot activation
+        run: |
+          npm ci
+          npm run build:pilot-monitoring
+          npm run build:live:assets
+          npm run build:v2
+          node scripts/prepare-release-site.mjs
+
+      - name: Recheck current main and release proof before publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/lib/production-release-guard.mjs
+
+      - name: Push the verified static site to gh-pages without force
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repository="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git fetch "$repository" gh-pages:refs/remotes/origin/gh-pages
+          pages_dir="$RUNNER_TEMP/gnc-gh-pages"
+          git worktree add --detach "$pages_dir" refs/remotes/origin/gh-pages
+          rsync -a --delete --exclude='.git' _site/ "$pages_dir/"
+          test -f "$pages_dir/CNAME"
+          test -f "$pages_dir/.nojekyll"
+          git -C "$pages_dir" add -A
+          if git -C "$pages_dir" diff --cached --quiet; then
+            echo 'GHPAGES_ALREADY_CURRENT'
+            exit 0
+          fi
+          git -C "$pages_dir" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Publish ${GITHUB_SHA:0:12} to GitHub Pages"
+          git -C "$pages_dir" push "$repository" HEAD:gh-pages
