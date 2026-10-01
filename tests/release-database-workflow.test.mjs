@@ -193,7 +193,8 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
 
 test('handover cron is disabled inside the disposable migration transaction only', () => {
   const isolation = fs.readFileSync(new URL('../supabase/ci/scheduled_handover_isolation.sql', import.meta.url), 'utf8');
-  assert.match(isolation, /update cron\.job set active=false where jobname='scheduled_handover_kayla_nelly_20261002'/);
+  assert.match(isolation, /select cron\.alter_job\(jobid, active := false\)\s+from cron\.job where jobname='scheduled_handover_kayla_nelly_20261002'/);
+  assert.doesNotMatch(isolation, /(?:update|delete from)\s+cron\.job/i);
   assert.match(workflow, /source\[:-len\("commit;"\)\] \+ isolation \+ "\\ncommit;\\n"/);
   const productionRunner = fs.readFileSync(new URL('../scripts/apply-item-low-stock-migration.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(productionRunner, /scheduled_handover_isolation/);
