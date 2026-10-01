@@ -70,6 +70,22 @@ export function parseAuraIntent(input) {
   const text = normalizeTranscript(input);
   if (!text) return { type: "unknown", raw: "" };
 
+  const chatMatch = text.match(/^(?:please\s+)?send\s+(?:a\s+)?message\s+to\s+(.+?)\s+saying\s+(.+)$/i);
+  if (chatMatch) {
+    const recipientName = cleanName(chatMatch[1]);
+    const message = String(chatMatch[2] ?? "").trim().replace(/[.!?]+$/g, "");
+    const department = /\b(?:department|team|office|crew|everyone|all\s+(?:staff|employees|managers))\b/i.test(recipientName)
+      || /^(?:plant evaluators|kiers\s*(?:and|&)\s*counters|sales|production|managers|inventory|office)$/i.test(recipientName);
+    if (recipientName && message) {
+      return {
+        type: "chat",
+        recipientType: department ? "department" : "person",
+        recipientName,
+        message,
+      };
+    }
+  }
+
   const orderStart = text.match(/^(?:please\s+)?(?:start|create|build|begin)\s+(?:an?\s+)?order\s+for\s+(.+)$/i);
   if (orderStart) {
     const rest = orderStart[1];

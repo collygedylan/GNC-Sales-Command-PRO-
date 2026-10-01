@@ -966,7 +966,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function refreshManagerEvalReport2BrowseRegion\(options = \{\}\)/);
   assert.match(html, /const driveAroundLayout = tab === MANAGER_EVAL_REPORTS_2_VIEW/);
   assert.match(html, /const blockClearingLayout = tab === MANAGER_BLOCK_CLEARING_VIEW/);
-  assert.match(html, /moduleFreeze\.classList\.toggle\('hidden', driveAroundLayout \|\| blockClearingLayout \|\| tab === MANAGER_PRODUCTION_SCHEDULE_VIEW\)/);
+  assert.match(html, /moduleFreeze\.classList\.toggle\('hidden', driveAroundLayout \|\| blockClearingLayout \|\| tab === MANAGER_PRODUCTION_SCHEDULE_VIEW \|\| tab === MANAGER_HR_COMMAND_VIEW\)/);
   assert.match(html, /const accessibleTitle = '<h2 class="sr-only">Eval Reports #2<\/h2>'/);
   assert.match(html, /managerEvalReport2Cache\.rowsByItemCode = new Map\(\)/);
   assert.match(html, /function getManagerEvalReport2SelectedRows\(\)/);

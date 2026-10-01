@@ -76,6 +76,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
   if (eventType.startsWith("codex_ops_")) return ["dylan_collyge"];
+  if (eventType === "hr_calendar_reminder") return ["dylan_collyge"];
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
   if (eventType === "eval_assignment_unassigned" || eventType === "eval_assignment_summary") {
     const direct = normalizePayloadUserList(payload.managerUsernames || payload.manager_usernames || payload.targetUsers);
@@ -110,6 +111,25 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
   const assignedTo = String(payload.assignedTo || repName || "Unassigned").trim();
   const createdBy = String(payload.createdBy || payload.sentBy || "Someone").trim();
   const itemsCount = Math.max(0, Number(payload.itemsCount) || 0);
+  if (eventType === "hr_calendar_reminder") {
+    const reminderKind = String(payload.reminderKind || "calendar").trim().toLowerCase();
+    const titles: Record<string, string> = {
+      time_off_tomorrow: "Time Off Tomorrow",
+      meeting_day_before: "Meeting Tomorrow",
+      meeting_t1h: "Meeting in One Hour",
+      meeting_t30m: "Meeting in 30 Minutes",
+      meeting_t15m: "Meeting in 15 Minutes",
+    };
+    const calendarEventId = String(payload.calendarEventId || "").trim();
+    return {
+      title: titles[reminderKind] || "Calendar Reminder",
+      body: String(payload.bodyPreview || "You have an upcoming calendar event.").trim(),
+      tag: `hr-calendar-${calendarEventId || Date.now()}-${reminderKind}`,
+      viewId: "department-calendar",
+      calendarEventId,
+      url: "./",
+    };
+  }
   if (eventType.startsWith("codex_ops_")) {
     const taskId = String(payload.taskId || "").trim();
     const states: Record<string, { title: string; body: string }> = {
@@ -297,8 +317,14 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
   const codexEventTypes = new Set(["codex_ops_needs_input", "codex_ops_ready", "codex_ops_live", "codex_ops_failed", "codex_ops_reverted"]);
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary" && !codexEventTypes.has(eventType)) {
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "hr_calendar_reminder" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary" && !codexEventTypes.has(eventType)) {
     return jsonResponse({ error: "Unsupported event type." }, 400);
+  }
+  // The legacy service-role JWT helper only inspects claims. Reminder pushes
+  // require the actual configured service credential even if gateway JWT
+  // verification is changed, so a forged role claim cannot schedule alerts.
+  if (eventType === "hr_calendar_reminder" && authHeader !== SUPABASE_SERVICE_ROLE_KEY && apiKey !== SUPABASE_SERVICE_ROLE_KEY) {
+    return jsonResponse({ error: "This reminder event is service-only." }, 403);
   }
 
   const targetUsers = buildTargetUsers(eventType, payload);

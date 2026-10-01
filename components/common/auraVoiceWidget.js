@@ -50,7 +50,7 @@ const CSS = `
 `;
 
 /** Mount after the shell has verified Dylan's native session; this module never authenticates users itself. */
-export function mountAuraWidget({ host = document.body, requestInventory, saveScout, openOrder, isAuthorized = () => false } = {}) {
+export function mountAuraWidget({ host = document.body, requestInventory, saveScout, openOrder, sendMessage, isAuthorized = () => false } = {}) {
   if (typeof document === "undefined" || !host || !isAuthorized()) return { destroy() {} };
   let destroyed = false;
   let panelOpen = false;
@@ -59,6 +59,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
   let pendingRows = [];
   let selectedRow = null;
   let idempotencyKeys = new Map();
+  let wakeArmed = false;
+  let consumedFinalCount = 0;
   let voiceStatus = { status: "idle", message: "" };
   const root = make("div");
   root.dataset.auraRoot = "";
@@ -81,7 +83,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
 
   const session = createAuraVoiceSession({
     onState: (next) => { voiceStatus = next; renderStatus(); },
-    onTranscript: (transcript) => { input.value = transcript; submitCommand(transcript); },
+    onRecognition: handleRecognition,
   });
 
   const panel = make("section", "aura-panel");
@@ -133,7 +135,61 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
     else if (voiceStatus.status === "listening") status.textContent = "Listening on this device…";
     else if (voiceStatus.status === "hearing") status.textContent = "Parsing locally…";
     else if (voiceStatus.status === "starting") status.textContent = "Starting local recognition…";
+    else if (voiceStatus.status === "restarting") status.textContent = "Reconnecting to local speech…";
+    else if (voiceStatus.status === "speaking") status.textContent = "AURA is responding…";
+    else if (voiceStatus.status === "paused") status.textContent = "Paused while the app is hidden.";
+    else if (wakeArmed) status.textContent = "AURA heard you. Say the command.";
     else status.textContent = "Ready when you are.";
+  }
+
+  function joinedResults(results) {
+    const spans = [];
+    let text = "";
+    results.forEach((result, index) => {
+      const transcript = String(result.transcript ?? "").trim();
+      if (!transcript) return;
+      if (text) text += " ";
+      const start = text.length;
+      text += transcript;
+      spans.push({ start, end: text.length, isFinal: result.isFinal === true, index });
+    });
+    return { text, spans };
+  }
+
+  function handleRecognition({ results = [], text = "" } = {}) {
+    if (!current()) return;
+    if (results.length < consumedFinalCount) consumedFinalCount = 0;
+    const freshResults = results.slice(consumedFinalCount);
+    if (results.length && !freshResults.length) return;
+    const stream = joinedResults(freshResults);
+    const fullText = stream.text || String(text ?? "").trim();
+    if (!fullText) return;
+
+    let commandText = "";
+    let commandStart = 0;
+    const wakeMatch = fullText.match(/\bhey\s+aura\b[\s,:-]*/i);
+    if (wakeMatch) {
+      wakeArmed = true;
+      commandStart = wakeMatch.index + wakeMatch[0].length;
+      commandText = fullText.slice(commandStart).trim();
+      renderStatus();
+      if (!panelOpen) togglePanel(true);
+    } else if (wakeArmed) {
+      commandText = fullText;
+      commandStart = 0;
+    } else {
+      return;
+    }
+
+    if (!commandText || commandText.length < 2) return;
+    const commandSpans = stream.spans.filter((span) => span.end > commandStart);
+    if (!commandSpans.length || !commandSpans.every((span) => span.isFinal)) return;
+
+    consumedFinalCount = results.reduce((count, result) => count + (result.isFinal ? 1 : 0), 0);
+    wakeArmed = false;
+    renderStatus();
+    input.value = commandText;
+    void submitCommand(commandText, { source: "voice" });
   }
 
   function showRows(rows, actionLabel, onChoose) {
@@ -170,7 +226,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
     return commandController.signal;
   }
 
-  async function submitCommand(rawText) {
+  async function submitCommand(rawText, { source = "typed" } = {}) {
     if (!current()) return;
     const intent = parseAuraIntent(rawText);
     pendingIntent = intent;
@@ -181,6 +237,34 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
     if (intent.type === "unknown") {
       setMessage(FALLBACK);
       session.speak(FALLBACK);
+      return;
+    }
+    if (intent.type === "chat") {
+      if (intent.recipientType === "department") {
+        const unavailable = "Department recipients aren’t configured yet, so I didn’t send anything.";
+        setMessage(unavailable);
+        session.speak(unavailable);
+        return;
+      }
+      if (typeof sendMessage !== "function") {
+        setMessage("Messaging isn’t connected yet. I didn’t send anything.");
+        return;
+      }
+      const signal = newSignal();
+      const key = globalThis.crypto?.randomUUID?.() || `aura-chat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+      setMessage(`Sending your message to ${intent.recipientName}…`);
+      try {
+        const response = await sendMessage(intent, { signal, idempotencyKey: key, source });
+        if (!current() || signal.aborted) return;
+        if (response?.ok === false) throw new Error(response.error?.message || response.message || "The message was not sent.");
+        const recipient = response?.recipientName || intent.recipientName;
+        const confirmation = `Message sent to ${recipient}.`;
+        setMessage(confirmation);
+        session.speak(confirmation);
+      } catch (error) {
+        if (!current() || signal.aborted) return;
+        setMessage(error?.message || "The message was not sent. You can retry explicitly.");
+      }
       return;
     }
     if (typeof requestInventory !== "function") {
@@ -281,11 +365,6 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
 
   function togglePanel(force) {
     panelOpen = typeof force === "boolean" ? force : !panelOpen;
-    if (!panelOpen) {
-      commandController?.abort();
-      commandController = null;
-      session.stop();
-    }
     panel.hidden = !panelOpen;
     fab.setAttribute("aria-expanded", String(panelOpen));
     fab.setAttribute("aria-label", panelOpen ? "Close AURA assistant" : "Open AURA voice assistant");
@@ -301,7 +380,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
   }
   function onMicClick() {
     if (!current()) return;
-    if (session.listening) session.stop();
+    if (session.enabled) session.stop();
     else session.start();
   }
 
@@ -320,7 +399,11 @@ export function mountAuraWidget({ host = document.body, requestInventory, saveSc
     if (ownsStyle) style?.remove();
   }
 
-  return { destroy };
+  return {
+    destroy,
+    // Starts listening only if microphone permission is already granted; it never prompts.
+    startIfAllowed: () => session.startIfAllowed(),
+  };
 }
 
 export default mountAuraWidget;

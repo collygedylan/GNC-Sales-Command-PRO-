@@ -197,6 +197,9 @@ jobs:
           digest: ${{ needs.build.outputs.digest }}
       - name: Compiled shell — ${{ matrix.suite }}
         run: npx playwright test --config ${{ matrix.config }} --workers=1 --retries=0 --reporter=github,blob ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
+      - name: AURA command center browser interactions
+        if: matrix.suite == 'module-mobile'
+        run: node --test tests/alpha-command-center.browser.test.mjs
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}

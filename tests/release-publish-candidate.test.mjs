@@ -149,74 +149,42 @@ test('the dispatcher is trusted, least-scoped, and cannot recursively dispatch i
   assert.doesNotMatch(workflow.on.workflow_run.workflows.join(' '), /Publish validated candidate|Deploy static app to Pages/);
 });
 
-const handoff = backend.jobs['publish-pages'];
-const handoffScript = handoff.steps.find(step => step.uses === 'actions/github-script@v7').with.script;
+const publish = backend.jobs['publish-pages'];
 
-async function runHandoff({ mainShas = [mergeSha, mergeSha], existing = [], lookupError = false } = {}) {
-  const calls = { dispatches: [], notices: [], refs: 0 };
-  const github = { rest: {
-    git: { getRef: async () => ({ data: { object: { sha: mainShas[calls.refs++] } } }) },
-    actions: {
-      listWorkflowRuns: async args => {
-        assert.equal(args.workflow_id, 'pages-static.yml');
-        assert.equal(args.head_sha, mergeSha);
-        if (lookupError) throw Error('GITHUB_API_UNAVAILABLE');
-        return { data: existing };
-      },
-      createWorkflowDispatch: async args => { calls.dispatches.push(JSON.parse(JSON.stringify(args))); },
-    },
-  }, paginate: async (method, args) => (await method(args)).data };
-  await vm.runInNewContext(`(async () => {\n${handoffScript}\n})()`, {
-    github, context: { repo: { owner: 'example', repo: 'gnc' }, sha: mergeSha },
-    core: { notice: message => calls.notices.push(message) },
-  });
-  return calls;
-}
-
-test('schema and verified Apps Script health must succeed before the Pages handoff', () => {
-  assert.deepEqual(handoff.needs, ['authorize-production', 'sync-codegs']);
-  assert.match(handoff.if, /refs\/heads\/main/);
-  assert.match(handoff.if, /authorized == 'true'/);
-  assert.doesNotMatch(handoff.if, /always\(|failure\(|cancelled\(/);
+test('backend schema and functions deploy before guarded Pages publication', () => {
+  assert.deepEqual(publish.needs, ['authorize-production', 'sync-codegs']);
+  assert.match(publish.if, /refs\/heads\/main/);
+  assert.match(publish.if, /authorized == 'true'/);
+  assert.doesNotMatch(publish.if, /always\(|failure\(|cancelled\(/);
   assert.equal(backend.permissions['pull-requests'], 'read');
   assert.equal(backend.permissions.actions, 'read');
-  assert.deepEqual(handoff.permissions, { contents: 'read', actions: 'write' });
-  assert.doesNotMatch(JSON.stringify(handoff), /secrets\.|APPS_SCRIPT_CLASPRC_JSON/);
-  const steps = backend.jobs['sync-codegs'].steps;
-  const schema = steps.findIndex(step => step.run === 'node scripts/apply-item-low-stock-migration.mjs');
-  const compatibility = steps.findIndex(step => step.run === 'node scripts/apps-script-sync-preflight.mjs');
-  const deploy = steps.findIndex(step => step.run === 'node scripts/sync-codegs-to-apps-script.js');
-  assert.ok(schema >= 0 && compatibility > schema && deploy > compatibility);
-  assert.equal(steps[schema].if, undefined, 'database schema handoff must run on every authorized main release');
-  assert.equal(steps[deploy].if, "steps.compatibility.outputs.sync-required == 'true'");
-  const recoveryEvidence = steps.find(step => step.with?.path === '.gnc-local/apps-script-recovery-evidence.json');
-  assert.equal(recoveryEvidence.if, steps[deploy].if);
-  assert.equal(steps[compatibility].env.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID, '${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}');
-  assert.equal(steps.some(step => step['continue-on-error']), false);
+  assert.doesNotMatch(JSON.stringify(publish), /APPS_SCRIPT_CLASPRC_JSON/);
+
+  const backendSteps = backend.jobs['sync-codegs'].steps;
+  const migration = backendSteps.findIndex(step => step.name === 'Apply backend release migrations and synchronize reminder Vault credentials');
+  const functions = backendSteps.findIndex(step => step.name === 'Configure Production Schedule dispatch and deploy backend functions');
+  assert.ok(migration >= 0 && functions > migration, 'migration and backend deployment precede the Pages dependency');
+  assert.match(backendSteps[functions].run, /supabase functions deploy app-api/);
+  assert.match(backendSteps[functions].run, /supabase functions deploy calendar-reminder-sweep/);
+  assert.equal(backendSteps.some(step => step['continue-on-error']), false);
   assert.match(read('scripts/sync-codegs-to-apps-script.js'), /await createAppsScriptRecoveryEvidence/);
   assert.match(read('.github/workflows/pages-static.yml'), /node scripts\/check-compatible-apps-script\.mjs/);
 });
 
-test('successful backend handoff dispatches Pages on current main', async () => {
-  const calls = await runHandoff();
-  assert.deepEqual(calls.dispatches, [{ owner: 'example', repo: 'gnc', workflow_id: 'pages-static.yml', ref: 'main' }]);
-  assert.equal(calls.refs, 2);
-});
-
-test('Pages handoff rejects main advancing before or during lookup and fails closed on API errors', async () => {
-  for (const mainShas of [['newer-main'], [mergeSha, 'newer-main']]) {
-    assert.deepEqual((await runHandoff({ mainShas })).dispatches, []);
-  }
-  await assert.rejects(runHandoff({ lookupError: true }), /GITHUB_API_UNAVAILABLE/);
-});
-
-test('Pages handoff deduplicates the same main release and permits recovery from a failed run', async () => {
-  for (const state of [{ status: 'queued' }, { status: 'in_progress' }, { status: 'completed', conclusion: 'success' }]) {
-    assert.deepEqual((await runHandoff({ existing: [{ head_branch: 'main', head_sha: mergeSha, ...state }] })).dispatches, []);
-  }
-  for (const existing of [
-    [{ head_branch: 'main', head_sha: mergeSha, status: 'completed', conclusion: 'failure' }],
-    [{ head_branch: 'main', head_sha: 'older-sha', status: 'completed', conclusion: 'success' }],
-    [{ head_branch: 'feature', head_sha: mergeSha, status: 'in_progress' }],
-  ]) assert.equal((await runHandoff({ existing })).dispatches.length, 1);
+test('Pages publication seeds a complete snapshot, rebuilds from guarded main, then pushes without force', () => {
+  const steps = publish.steps;
+  const guardBefore = steps.findIndex(step => step.name === 'Verify current main before seeding');
+  const seed = steps.findIndex(step => step.name === 'Queue the initial signed workbook import and wait for a complete snapshot');
+  const build = steps.findIndex(step => step.name === 'Install dependencies and build the complete site after snapshot activation');
+  const guardAfter = steps.findIndex(step => step.name === 'Recheck current main and release proof before publication');
+  const push = steps.find(step => step.name === 'Push the verified static site to gh-pages without force');
+  assert.ok(guardBefore >= 0 && seed > guardBefore && build > seed && guardAfter > build);
+  assert.ok(push && steps.indexOf(push) > guardAfter);
+  assert.match(push.run, /git -C .* push .*HEAD:gh-pages/);
+  assert.doesNotMatch(push.run, /--force(?:-with-lease)?/);
+  assert.match(push.run, /test -f "\$pages_dir\/CNAME"/);
+  assert.match(push.run, /test -f "\$pages_dir\/\.nojekyll"/);
+  assert.match(steps[guardAfter].run, /production-release-guard/);
+  assert.equal(publish.permissions.contents, 'write');
+  assert.doesNotMatch(JSON.stringify(publish), /actions\/github-script@v7/);
 });

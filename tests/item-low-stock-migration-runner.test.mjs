@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, releaseDatabaseMigrations, migrationContractQuery,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -66,7 +66,7 @@ test('migration and history entry are atomic and a retry verifies the same conte
 
 test('consolidated production baseline satisfies archived migrations without replay or ledger writes', async () => {
   assert.equal(productionBaselineVersion, '20260929200000');
-  for (const targetMigrationName of releaseDatabaseMigrations.filter(name => name !== productionScheduleMigrationName)) {
+  for (const targetMigrationName of releaseDatabaseMigrations.filter(name => name !== productionScheduleMigrationName && name !== auraHrCommandCenterMigrationName)) {
     const queries = [];
     const client = { query: async (sql, params) => {
       queries.push({ sql, params });
@@ -123,7 +123,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -138,6 +138,37 @@ test('release schema handoff applies the perennial override after low-stock and 
   assert.equal(history.params[1],'perennial_zone_assignment_override');
   assert.ok(queries.some(entry=>entry.sql===migrationContractQuery(perennialAssignmentMigrationName)));
   assert.throws(()=>migrationContractQuery('unlisted.sql'),/MIGRATION_HISTORY_MISMATCH/);
+});
+test('HR migration contract verifies partitioned labor tables and the scheduled reminder action', async () => {
+  const contract = migrationContractQuery(auraHrCommandCenterMigrationName);
+  assert.match(contract, /hr_calendar_reminder_sweep/);
+  assert.match(contract, /hr_claim_calendar_reminders_v1/);
+  const calls = [];
+  const client = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    return { rows: sql === contract ? [{ installed: true }] : [] };
+  } };
+  const result = await applyItemLowStockMigration({ client, source: 'begin; select hr_schema; commit;', targetMigrationName: auraHrCommandCenterMigrationName });
+  assert.equal(result.status, 'applied');
+  assert.ok(calls.some(({ sql }) => sql === 'select hr_schema;'));
+  assert.equal(calls.find(({ sql }) => sql.startsWith('insert into supabase_migrations')).params[1], 'aura_hr_command_center_v1');
+});
+test('reminder credentials are written through Vault create/update APIs without logging their values', async () => {
+  const calls = [];
+  const createClient = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    return { rows: [] };
+  } };
+  assert.equal(await upsertVaultSecret({ client: createClient, name: 'hr_calendar_project_url', value: 'https://example.supabase.co', description: 'test' }), 'created');
+  assert.match(calls.at(-1).sql, /vault\.create_secret/);
+  assert.ok(calls.at(-1).params.includes('https://example.supabase.co'));
+  const updateClient = { query: async (sql, params) => {
+    calls.push({ sql, params });
+    return sql.startsWith('select id') ? { rows: [{ id: 'secret-id' }] } : { rows: [] };
+  } };
+  assert.equal(await upsertVaultSecret({ client: updateClient, name: 'hr_calendar_project_url', value: 'https://new.example.supabase.co' }), 'updated');
+  assert.match(calls.at(-1).sql, /vault\.update_secret/);
+  await assert.rejects(upsertVaultSecret({ client: createClient, name: 'bad-name', value: 'secret' }), /VAULT_SECRET_INPUT_INVALID/);
 });
 test('perennial production preview is aggregate only and rolls back its read-only transaction',async()=>{
   const calls=[];
@@ -275,20 +306,20 @@ test('cloud rollout verifies the existing release proof before schema and import
   const workflow=fs.readFileSync('.github/workflows/apps-script-sync.yml','utf8');
   assert.ok(workflow.indexOf('Recheck current main and release proof')<workflow.indexOf('Preview perennial policy impact (read only)'));
   assert.ok(workflow.indexOf('apply-item-low-stock-migration.mjs\n')<workflow.indexOf('Sync Code.gs into Apps Script'));
-  assert.ok(workflow.indexOf('Preview perennial policy impact (read only)')<workflow.indexOf('Apply low-stock and perennial schemas'));
-  assert.ok(workflow.indexOf('Apply low-stock and perennial schemas')<workflow.indexOf('Sync Code.gs into Apps Script'));
-  assert.ok(workflow.indexOf('Apply low-stock and perennial schemas')<workflow.indexOf('Configure Production Schedule dispatch and deploy app-api'));
-  assert.ok(workflow.indexOf('Configure Production Schedule dispatch and deploy app-api')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  assert.ok(workflow.indexOf('Preview perennial policy impact (read only)')<workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials'));
+  assert.ok(workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  assert.ok(workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials')<workflow.indexOf('Configure Production Schedule dispatch and deploy backend functions'));
+  assert.ok(workflow.indexOf('Configure Production Schedule dispatch and deploy backend functions')<workflow.indexOf('Sync Code.gs into Apps Script'));
   assert.ok(workflow.indexOf('Queue the initial signed workbook import')<workflow.indexOf('Push the verified static site to gh-pages without force'));
   const steps = yaml.load(workflow).jobs['sync-codegs'].steps;
   const previewStep = steps.find(step => step.name === 'Preview perennial policy impact (read only)');
   const artifactStep = steps.find(step => step.name === 'Retain sanitized perennial impact preview');
-  const migrationStep = steps.find(step => step.name === 'Apply low-stock and perennial schemas before the compatible importer');
+  const migrationStep = steps.find(step => step.name === 'Apply backend release migrations and synchronize reminder Vault credentials');
   assert.equal(previewStep.run,'node scripts/preview-perennial-assignment.mjs');
   assert.equal(artifactStep.if,'always()','retain the written preview artifact after a fail-closed preflight');
   assert.equal(migrationStep.if,undefined,'failed preview must prevent schema and importer deployment');
   for (const name of releaseDatabaseMigrations) {
-    const directory = name === productionScheduleMigrationName ? 'migrations' : 'archive_migrations';
+    const directory = name === productionScheduleMigrationName || name === auraHrCommandCenterMigrationName ? 'migrations' : 'archive_migrations';
     assert.ok(workflow.includes(`supabase/${directory}/${name}`), `${name} is tracked in its canonical migration directory`);
   }
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);

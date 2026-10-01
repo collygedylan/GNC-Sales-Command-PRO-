@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.09.30.014",
+  "version": "2026.10.01.001",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -15,7 +15,8 @@
     "build:live:css": "tailwindcss -i assets/live-tailwind-source.css -o assets/live-tailwind-v2026082010.min.css --minify",
     "build:live:vendor": "node scripts/vendor-live-assets.mjs && esbuild scripts/live-supabase-entry.js --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=assets/vendor/supabase-browser-2.112.3.min.js",
     "build:live:schedule": "node scripts/build-production-schedule.mjs",
-    "build:live:assets": "npm run build:live:css && npm run build:live:vendor && npm run build:live:schedule",
+    "build:live:command-center": "node scripts/build-alpha-command-center.mjs",
+    "build:live:assets": "npm run build:live:css && npm run build:live:vendor && npm run build:live:schedule && npm run build:live:command-center",
     "build:live:shell": "node scripts/build-live-shell.mjs",
     "build:live": "npm run build:live:assets && npm run build:live:shell",
     "build:v2": "tsc --noEmit -p tsconfig.json && vite build --config vite.v2.config.ts",

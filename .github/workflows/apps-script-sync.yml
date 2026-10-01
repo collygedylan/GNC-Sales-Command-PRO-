@@ -16,6 +16,11 @@ on:
       - scripts/apply-item-low-stock-migration.mjs
       - scripts/seed-production-schedule-release.mjs
       - supabase/migrations/20261001012038_production_schedule_snapshot_v1.sql
+      - supabase/migrations/20261001025638_aura_hr_command_center_v1.sql
+      - supabase/functions/app-api/index.ts
+      - supabase/functions/send-push-alert/index.ts
+      - supabase/functions/calendar-reminder-sweep/index.ts
+      - supabase/config.toml
       - .github/workflows/release-database.yml
       - scripts/preview-perennial-assignment.mjs
       - scripts/certs/supabase-prod-ca-2021.crt
@@ -118,14 +123,15 @@ jobs:
           if-no-files-found: ignore
           retention-days: 90
 
-      - name: Apply low-stock and perennial schemas before the compatible importer
+      - name: Apply backend release migrations and synchronize reminder Vault credentials
         env:
           GH_TOKEN: ${{ github.token }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/apply-item-low-stock-migration.mjs
 
-      - name: Configure Production Schedule dispatch and deploy app-api
+      - name: Configure Production Schedule dispatch and deploy backend functions
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -140,6 +146,8 @@ jobs:
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
           supabase functions deploy app-api --project-ref "$project_ref"
+          supabase functions deploy send-push-alert --project-ref "$project_ref"
+          supabase functions deploy calendar-reminder-sweep --project-ref "$project_ref"
 
       - name: Check whether deployed Apps Script already has identical code
         id: compatibility

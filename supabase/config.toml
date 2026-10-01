@@ -395,6 +395,13 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/app-api/index.ts"
 
+[functions.calendar-reminder-sweep]
+enabled = true
+# The function verifies the service-role bearer itself because pg_cron invokes
+# it with the key stored in Vault; user sessions are rejected.
+verify_jwt = false
+entrypoint = "./functions/calendar-reminder-sweep/index.ts"
+
 [functions.request-delivery-worker]
 enabled = true
 verify_jwt = false
