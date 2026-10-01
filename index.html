@@ -138110,7 +138110,7 @@ C.14.043 C.15.000
                 const existingHrRoot = container.querySelector('#manager-hr-command-root');
                 if (existingHrRoot) { void mountAlphaCommandCenter('hr', existingHrRoot); return; }
             }
-            if (activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && ensureViewDataForRender('managers')) return;
+            if (activeHomeTab !== MANAGER_SEASON_PRIORITY_VIEW && activeHomeTab !== MANAGER_PRODUCTION_SCHEDULE_VIEW && activeHomeTab !== MANAGER_HR_COMMAND_VIEW && activeHomeTab !== MANAGER_EVAL_REPORTS_2_VIEW && ensureViewDataForRender('managers')) return;
             if (activeHomeTab !== 'productivity') selectedProductivityUser = '';
             let html = '';
             if (activeHomeTab === 'dashboard') html = renderManagerModulePicker(access, managerApprovalTabs, managerToolTabs);
@@ -138149,7 +138149,13 @@ C.14.043 C.15.000
                 if (slot && retainedRecords) slot.replaceWith(retainedRecords);
                 const reportPickerSlot = shell.querySelector('details[data-manager-eval2-report-picker]');
                 if (retainedReportPicker && reportPickerSlot) reportPickerSlot.replaceWith(retainedReportPicker);
-                container.replaceChildren(...shell.childNodes);
+                // While a refresh is loading, its index may be temporarily
+                // unavailable and the panel renderer returns only a spinner.
+                // Keep the last complete panel attached so the open report
+                // picker and its current choices survive that intermediate render.
+                if (!(retainedReportPicker && !reportPickerSlot && managerEvalReport2LoadState.loading)) {
+                    container.replaceChildren(...shell.childNodes);
+                }
             } else container.innerHTML = html;
             if (activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW) {
                 const scheduleRoot = container.querySelector('#manager-production-schedule-root');
