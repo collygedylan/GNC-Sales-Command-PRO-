@@ -39,15 +39,17 @@ async function expectDockCounts(page: Page, shown: number, total: number, hidden
 
 async function openCompactFilters(page: Page) {
   const details = page.locator('#docks-filter-controls').locator('details.mobile-browse-filters');
-  if (await details.count()) {
-    const summary = details.locator('summary');
-    if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) {
-      await summary.focus();
-      await summary.press('Enter');
-    }
-    await expect(details).toHaveAttribute('open', '');
-    await expect(details.locator('.mobile-browse-filter-panel')).toBeVisible();
+  // The production rail is wrapped on the next animation frame after its
+  // controls render. Wait for that mobile enhancement instead of silently
+  // continuing against the intentionally hidden controls.
+  await expect(details).toHaveCount(1);
+  const summary = details.locator('summary');
+  if (!(await details.evaluate(element => (element as HTMLDetailsElement).open))) {
+    await summary.focus();
+    await summary.press('Enter');
   }
+  await expect(details).toHaveAttribute('open', '');
+  await expect(details.locator('.mobile-browse-filter-panel')).toBeVisible();
 }
 
 async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: string): string, project: { name: string } }) {
@@ -57,10 +59,11 @@ async function assertCompactDockLayout(page: Page, testInfo: { outputPath(name: 
   for (const theme of ['light', 'dark']) {
     await page.evaluate(value => document.body.setAttribute('data-ops-theme', value), theme);
     const geometry = await controls.evaluate(element => {
+      const visible = (node: HTMLElement) => node.getClientRects().length > 0 && !node.closest('details:not([open])');
       const shellRects = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell]'))
-        .filter(node => node.getClientRects().length > 0).map(node => node.getBoundingClientRect());
+        .filter(visible).map(node => node.getBoundingClientRect());
       const targets = Array.from(element.querySelectorAll<HTMLElement>('[data-dock-filter-shell] button, [data-dock-filter-shell] select'))
-        .filter(node => node.getClientRects().length).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
+        .filter(visible).map(node => ({ width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
       return {
         railHeight: Math.max(...shellRects.map(rect => rect.bottom)) - Math.min(...shellRects.map(rect => rect.top)),
         targets,

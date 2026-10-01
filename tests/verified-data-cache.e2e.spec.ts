@@ -469,6 +469,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
 
 test('real customer controls expose empty Custom, All and device-saved selections', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!, [row('a', 'Customer A'), row('b', 'Customer B', '29')]);
+  await openDockMobileFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
   const sheet = page.locator('#dock-mobile-filter-sheet');
   const panel = page.locator('[data-dock-customer-panel]');
@@ -478,10 +479,12 @@ test('real customer controls expose empty Custom, All and device-saved selection
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
   await expectDockCounts(page, 0, 2, 2);
   await expect(page.locator('[data-dock-filter-status]')).toHaveClass(/\bsr-only\b/);
+  await openDockMobileFilters(page);
   await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
   await page.reload({ waitUntil: 'load' });
   await app.seed([row('a', 'Customer A'), row('b', 'Customer B', '29')]);
   await expect(page.locator('[data-dock-customer-summary]')).toHaveText('Custom · 0 selected');
+  await openDockMobileFilters(page);
   await page.locator('[data-dock-clear-filters]').click();
   await expectDockCounts(page, 2, 2);
   app.assertClean();
