@@ -282,10 +282,10 @@ jobs:
       - name: Run Edge Function unit tests
         id: edge
         run: |
-          deno check supabase/functions/app-api/index.ts supabase/functions/request-delivery-worker/index.ts
-          deno check supabase/functions/calendar-reminder-sweep/index.ts supabase/functions/send-push-alert/index.ts
-          deno check supabase/functions/hl-po-pdf-import/index.ts
-          deno test --allow-env --allow-net supabase/functions
+          deno check --node-modules-dir=auto supabase/functions/app-api/index.ts supabase/functions/request-delivery-worker/index.ts
+          deno check --node-modules-dir=auto supabase/functions/calendar-reminder-sweep/index.ts supabase/functions/send-push-alert/index.ts
+          deno check --node-modules-dir=auto supabase/functions/hl-po-pdf-import/index.ts
+          deno test --node-modules-dir=auto --allow-env --allow-net supabase/functions
       - name: Save relation-size report query
         run: |
           mkdir -p artifacts
