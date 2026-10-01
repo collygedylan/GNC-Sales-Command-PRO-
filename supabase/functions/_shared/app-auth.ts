@@ -177,7 +177,21 @@ export async function verifyAppSessionToken(token = ""): Promise<AppSessionClaim
   }
 }
 
-export async function readAppSessionFromRequest(req: Request) {
+type AccountClient = { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<any> };
+
+// Check the stored cutoff on every request. JWT/HMAC expiry and Auth bans alone
+// cannot revoke a previously issued token at the scheduled handover time.
+export async function isAppAccountActive(client: AccountClient, identity: { id?: string; username?: string }) {
+  try {
+    const { data, error } = await client.rpc("app_account_active_v1", {
+      p_profile_id: identity.id || null,
+      p_username: identity.id ? null : normalizeUsername(identity.username || ""),
+    });
+    return !error && data === true;
+  } catch { return false; }
+}
+
+export async function readAppSessionFromRequest(req: Request, supabaseAdmin?: AccountClient) {
   const headerValue = String(
     req.headers.get("x-gnc-session") ||
       req.headers.get("x-app-session") ||
@@ -186,12 +200,14 @@ export async function readAppSessionFromRequest(req: Request) {
   ).trim();
   if (!headerValue) return null;
   const token = headerValue.replace(/^(Bearer|Session)\s+/i, "").trim();
-  return await verifyAppSessionToken(token);
+  const session = await verifyAppSessionToken(token);
+  if (!session || !supabaseAdmin || !await isAppAccountActive(supabaseAdmin, { username: session.username })) return null;
+  return session;
 }
 
 export async function readSupabaseOrAppSessionFromRequest(
   req: Request,
-  supabaseAdmin: { auth: { getUser: (token: string) => Promise<any> }; from: (table: string) => any },
+  supabaseAdmin: AccountClient & { auth: { getUser: (token: string) => Promise<any> }; from: (table: string) => any },
 ): Promise<AppSessionClaims | null> {
   const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (bearer && supabaseAdmin) try {
@@ -205,6 +221,7 @@ export async function readSupabaseOrAppSessionFromRequest(
       .maybeSingle();
     if (profileError || !profile || profile.disabled_at) return null;
     if (profile.locked_until && new Date(profile.locked_until).getTime() > Date.now()) return null;
+    if (!await isAppAccountActive(supabaseAdmin, { id: String(user.id) })) return null;
     const nowSeconds = Math.floor(Date.now() / 1000);
     return {
       ver: 2,
@@ -219,5 +236,5 @@ export async function readSupabaseOrAppSessionFromRequest(
   } catch (_error) {
     // Fall through to the signed legacy session during the dual-auth window.
   }
-  return await readAppSessionFromRequest(req);
+  return await readAppSessionFromRequest(req, supabaseAdmin);
 }

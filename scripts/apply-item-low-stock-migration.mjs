@@ -8,7 +8,10 @@ export const perennialAssignmentMigrationName = '20260929013125_perennial_zone_a
 export const passwordReconciliationMigrationName = '20260929160000_password_change_profile_reconciliation.sql';
 export const productionScheduleMigrationName = '20261001012038_production_schedule_snapshot_v1.sql';
 export const auraHrCommandCenterMigrationName = '20261001025638_aura_hr_command_center_v1.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName]);
+export const scheduledHandoverMigrationName = '20261001215508_scheduled_handover_005.sql';
+export const requestArchiveMigrationName = '20261001215511_request_archive_005.sql';
+export const handoverAssignmentMigrationName = '20261001222228_handover_assignment_transfer_005.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -170,6 +173,9 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === scheduledHandoverMigrationName) return "select to_regprocedure('public.app_account_active_v1(uuid,text)') is not null and to_regprocedure('public.resolve_operational_recipients_v1(text[],text)') is not null and to_regprocedure('public.scheduled_handover_tick_v1()') is not null and exists(select 1 from private.scheduled_account_handover_v1 where departing_profile_id='e2584b32-472c-4888-b592-394235050b5b'::uuid and successor_profile_id='961b0a0f-11a6-4db5-b066-582f772ab8e7'::uuid and effective_at='2026-10-03 04:00:00+00'::timestamptz and ((completed_at is not null and auth_banned_at is not null) or exists(select 1 from cron.job where jobname='scheduled_handover_kayla_nelly_20261002' and active and schedule='* * * * *' and command='select private.scheduled_handover_dispatch_v1();'))) as installed";
+  if (name === handoverAssignmentMigrationName) return "select to_regprocedure('private.transfer_remaining_handover_assignments_v1(text,integer)') is not null and to_regprocedure('private.handover_normalize_assignment_v1()') is not null as installed";
+  if (name === requestArchiveMigrationName) return "select to_regprocedure('public.request_archive_command_v1(uuid,text,text,uuid)') is not null and to_regprocedure('public.request_archive_list_v1(uuid,integer,integer)') is not null as installed";
   if (name === migrationName) return "select to_regprocedure('public.get_eval_item_low_stock_targets_v1(text[],text,integer)') is not null as installed";
   if (name === perennialAssignmentMigrationName) return "select to_regprocedure('public.reconcile_eval_itemcodes(uuid)') is not null and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_warehouse_assigned_items' and column_name='zone_override_active') as installed";
   if (name === passwordReconciliationMigrationName) return "select to_regprocedure('public.prepare_password_change_profile(text,uuid,text)') is not null and to_regprocedure('public.complete_password_change_profile(uuid,uuid,text,text)') is not null as installed";
@@ -272,7 +278,7 @@ async function main(args = process.argv.slice(2)) {
       console.log(`LOW_STOCK_SCHEMA_DIAGNOSTIC status=ok installed=${probe.installed}`);
     } else {
       for (const targetMigrationName of releaseDatabaseMigrations) {
-        const sourceDirectory = targetMigrationName === productionScheduleMigrationName || targetMigrationName === auraHrCommandCenterMigrationName ? 'migrations' : 'archive_migrations';
+        const sourceDirectory = baselineIncludedMigrations.has(targetMigrationName) ? 'archive_migrations' : 'migrations';
         const source = fs.readFileSync(new URL(`../supabase/${sourceDirectory}/${targetMigrationName}`, import.meta.url), 'utf8');
         const applied = await applyItemLowStockMigration({ client, source, targetMigrationName, onPhase: next => { phase = next; } });
         console.log(`${targetMigrationName}: ${applied.status}.`);

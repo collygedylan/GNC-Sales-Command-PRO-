@@ -21,6 +21,7 @@ function fixture(options = {}) {
     Deno: { env: { get: () => options.noSecret ? '' : 'synthetic-test-signing-secret' } },
     normalizeUsername: value => String(value || '').trim().toLowerCase(),
     isForcedPasswordValue: value => value.toUpperCase() === 'WELCOME',
+    isAppAccountActive: async () => options.accountActive !== false,
     errorResponse: (message, status, extra = {}) => ({ status, body: { ok: false, error: message, ...extra } }),
     jsonResponse: body => ({ status: 200, body }),
     createAppSession: async claims => { calls.push({ type: 'session', claims }); return { token: 'synthetic-session', claims: { ...claims, exp: 100 } }; },
@@ -123,6 +124,21 @@ test('optional password change is not allowed through this forced-reset handler'
   const f = fixture({ prepareResults: [{ data: [{ status: 'password_change_not_required' }] }] });
   assert.equal((await f.invoke()).body.code, 'PASSWORD_CHANGE_NOT_REQUIRED');
   assert.equal(f.calls.length, 1);
+});
+
+test('scheduled cutoff blocks password reconciliation and rejects an old native token', async () => {
+  const f = fixture({ accountActive: false });
+  assert.equal((await f.invoke()).status, 403);
+  assert.equal(f.calls.length, 0);
+  const request = new Request('http://localhost', { headers: { authorization: 'Bearer existing-token' } });
+  assert.equal(await f.context.readPasswordChangeSession(request, null), null);
+});
+
+test('crossing the cutoff after Auth update cannot complete or issue another session', async () => {
+  const f = fixture(); let checks = 0;
+  f.context.isAppAccountActive = async () => ++checks < 3;
+  assert.equal((await f.invoke()).status, 403);
+  assert.deepEqual(f.calls.map(call => call.type), ['prepare_password_change_profile', 'updateUserById']);
 });
 
 test('invalid/anonymous input and missing signing secret never change an account', async () => {

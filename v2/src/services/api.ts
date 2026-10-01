@@ -11,7 +11,7 @@ import type {
   WorkflowRow
 } from '../types';
 
-export const APP_VERSION = 'V2026.10.01.004';
+export const APP_VERSION = 'V2026.10.01.005';
 export const REQUEST_TABLE = 'ph_active_request';
 export const REQUEST_LIVE_TABLE = REQUEST_TABLE;
 export const INVENTORY_TABLE = 'ph_master_inventory';

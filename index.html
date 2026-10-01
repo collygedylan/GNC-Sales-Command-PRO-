@@ -14,7 +14,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#f4fbf7">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=V2026.10.01.004">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=V2026.10.01.005">
     <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
@@ -52,7 +52,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#050806' : '#f4fbf7');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.01.004">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.01.005">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -62,7 +62,7 @@
     <script>
       // Public release label; increment independently of the shell cache/build ID.
       window.__APP_RELEASE_VERSION__ = 'GNC.001';
-      window.__APP_SHELL_VERSION__ = 'V2026.10.01.004';
+      window.__APP_SHELL_VERSION__ = 'V2026.10.01.005';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -1575,8 +1575,23 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
 .request-swipe-row--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important;border-color:#007a4d !important}
 .request-swipe-surface{position:relative;z-index:2;width:100%;background:#ffffff;border-radius:inherit;padding:0;transition:transform .18s ease;will-change:transform;touch-action:pan-y;-webkit-user-select:none;user-select:none}
 .request-swipe-surface--season{background:linear-gradient(180deg,#ecfdf5 0%,#dcfce7 100%) !important}
-        .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
+        .request-swipe-action{position:absolute;top:0;right:0;bottom:0;width:88px;min-height:44px;display:flex;align-items:center;justify-content:center;background:#ffffff;color:#dc2626;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;z-index:1}
+        .request-swipe-action--left{right:auto;left:0}
+        .request-swipe-row.request-archive-exiting .request-swipe-surface{opacity:0;transform:translateX(-18px)!important;transition:transform 140ms cubic-bezier(.4,0,.2,1),opacity 140ms cubic-bezier(.4,0,.2,1)!important;pointer-events:none}
+        @media (prefers-reduced-motion:reduce){.request-swipe-row.request-archive-exiting .request-swipe-surface{transition:none!important}}
         .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px);-webkit-transform:translateX(-88px)}
+        .request-swipe-row.swipe-open--left .request-swipe-surface{transform:translateX(88px);-webkit-transform:translateX(88px)}
+        .request-category-options .request-archive-undo{min-height:44px;border:1px solid var(--ops-border,rgba(16,185,129,.35));border-radius:999px;background:var(--ops-surface,#fff);color:var(--ops-accent,#047857);padding:.55rem .9rem;font-weight:900;white-space:nowrap}
+        .request-archive-list{display:grid;gap:.55rem}
+        .request-archive-card{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:.8rem 1rem;border:1px solid var(--ops-border,rgba(16,185,129,.28));border-radius:1rem;background:var(--ops-surface,#fff);box-shadow:0 8px 22px rgba(15,23,42,.06)}
+        .request-archive-card__copy{display:grid;gap:.2rem;min-width:0}
+        .request-archive-card__title{font-weight:900;color:var(--ops-text,#0f172a);overflow-wrap:anywhere}
+        .request-archive-card__meta{font-size:.78rem;font-weight:650;color:var(--ops-muted,#64748b);overflow-wrap:anywhere}
+        .request-archive-control{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:76px;padding:.55rem .85rem;border:1px solid var(--ops-border,rgba(16,185,129,.4));border-radius:.8rem;background:var(--ops-surface,#fff);color:var(--ops-accent,#047857);font-size:.75rem;font-weight:900;letter-spacing:.05em;text-transform:uppercase;touch-action:manipulation}
+        .request-archive-control:disabled{opacity:.45;cursor:not-allowed}
+        .request-archive-empty{display:grid;justify-items:center;gap:.8rem;padding:2.5rem 1rem;text-align:center;color:var(--ops-muted,#64748b);font-weight:750}
+        .request-archive-empty--error{color:#b91c1c}
+        .request-archive-pager{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.8rem 0;color:var(--ops-muted,#64748b);font-size:.75rem;font-weight:800}
         #request-rep-modal{background:rgba(15,23,42,.58);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
         #request-rep-modal .request-create-panel{max-width:460px;border:1px solid rgba(16,185,129,.22);border-radius:24px;background:linear-gradient(180deg,#ffffff 0%,#f8fffb 100%);box-shadow:0 28px 70px rgba(15,23,42,.24);text-align:left}
         #request-rep-modal h3{color:#007a4d!important;font-weight:900;letter-spacing:-.01em}
@@ -6836,8 +6851,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.01.004">
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=V2026.10.01.004">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.01.005">
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=V2026.10.01.005">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -6919,6 +6934,12 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
     </style>
 <style>
 [data-secondary-back]{display:none!important}
+body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-row{overflow:hidden!important;touch-action:pan-y!important}
+body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-surface{overflow:hidden!important;transition:transform .18s ease!important;-webkit-transition:-webkit-transform .18s ease!important}
+body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-action{display:flex!important;position:absolute!important;top:0!important;right:0!important;bottom:0!important;width:88px!important;min-width:88px!important;height:auto!important;min-height:44px!important;max-height:none!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important}
+body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-row.swipe-open .request-swipe-surface{transform:translateX(-88px)!important;-webkit-transform:translateX(-88px)!important}
+body.ios-device.viewport-phone.current-view-request #view-request .request-swipe-row.swipe-open--left .request-swipe-surface{transform:translateX(88px)!important;-webkit-transform:translateX(88px)!important}
+.request-swipe-action:focus-visible,.request-archive-control:focus-visible,.request-archive-undo:focus-visible{outline:3px solid #16a34a!important;outline-offset:2px!important}
 #global-header-inline-back:popover-open{position:fixed!important;inset:calc(env(safe-area-inset-top,0px) + 12px) auto auto 12px!important;margin:0!important;display:flex!important;min-width:44px;min-height:44px;background:var(--ops-surface,#fff);border:1px solid var(--ops-border,#bcd9cd);border-radius:12px;color:var(--ops-brand-strong,#007a4d)}
 .location-base-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:72px;margin:0 0 12px;padding:16px;border:1px solid var(--ops-border,#bbdbc9);border-radius:var(--ops-radius-md,12px);background:var(--ops-surface,#fff);color:var(--ops-text,#18372b);text-align:left;cursor:pointer;touch-action:manipulation}
 .location-base-card strong,.location-base-card small{display:block}.location-base-card strong{font-size:1.3rem;color:var(--ops-brand-strong,#007a4d)}
@@ -7036,15 +7057,15 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.10.01.004"></script>
-    <script src="./assets/login-network-trace.js?v=V2026.10.01.004"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.10.01.004"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.10.01.004"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.10.01.004"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.10.01.004"></script>
-    <script src="./assets/production-schedule.js?v=V2026.10.01.004"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.10.01.004"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.10.01.004"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.10.01.005"></script>
+    <script src="./assets/login-network-trace.js?v=V2026.10.01.005"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.10.01.005"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.10.01.005"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.10.01.005"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.10.01.005"></script>
+    <script src="./assets/production-schedule.js?v=V2026.10.01.005"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.10.01.005"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.10.01.005"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7812,7 +7833,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.10.01.004').trim() || 'V2026.10.01.004';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.10.01.005').trim() || 'V2026.10.01.005';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9275,7 +9296,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         const APP_API_DB_WRITE_PROXY_UNAVAILABLE_STORAGE_KEY = 'gnc_app_api_write_proxy_unavailable_until_v1';
         const PUSH_VAPID_PUBLIC_KEY = 'BAnr5wnptNgeqol-aJzw1eW_4CnuHpQNlvJ3vmo4VGVfuRsHNO5bRZdT-8NN8qUL5bTlUxYrx592fbG26EYjEN4';
         const PUSH_ALERT_NEW_REQUEST_USERS = new Set(['dylan_collyge','jd_jones','megan_kelly']);
-        const PUSH_ALERT_FLYER_USERS = new Set(['morgan_anderson','kayla_knepp','dylan_collyge','jd_jones','megan_kelly']);
+        const PUSH_ALERT_FLYER_USERS = new Set(['morgan_anderson','kayla_knepp','dylan_collyge','jd_jones','megan_kelly','nelly_aguilar']);
         const PUSH_DELIVERY_RETRY_DELAYS_MS = [0, 1500, 6000, 15000];
         const PUSH_MOBILE_REFRESH_STORAGE_KEY = 'gnc_mobile_push_refresh_v1';
         const DEPARTMENT_CALENDAR_READ_STORAGE_KEY = 'gnc_department_calendar_read_v1';
@@ -9322,7 +9343,7 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.10.01.004';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.10.01.005';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -27632,7 +27653,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             hold: 'Hold',
             'stop-ship': 'Stop Ship'
         });
-        const EVAL_ASSIGNMENT_HONORARY_USERS = Object.freeze(['kayla_knepp', 'jd_jones']);
+        const EVAL_ASSIGNMENT_HONORARY_USERS = Object.freeze(['kayla_knepp', 'jd_jones', 'nelly_aguilar']);
         const EVAL_ASSIGNMENT_ROSTER_USERS = Object.freeze(['josh_vann', 'jorge_colunga', 'abigail_vazquez', 'bobby_adair', 'charley_robertson', 'ellen_ward', 'zoe_green', 'mitch_kaiser', 'dylan_collyge', 'megan_kelly', ...EVAL_ASSIGNMENT_HONORARY_USERS]);
         const EVAL_TASK_FALLBACK_USERS = EVAL_ASSIGNMENT_ROSTER_USERS;
         const EVAL_TASK_INACTIVE_USERS = Object.freeze(new Set(['murphy_stanley']));
@@ -31469,7 +31490,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const DYLAN_EQUIVALENT_USER_KEYS = Object.freeze(new Set(['dylan_collyge', 'megan_kelly']));
         const PRIVILEGED_MANAGER_USER_TOKENS = new Set([...PRIVILEGED_MANAGER_USER_KEYS, 'dylan', 'jd', 'jdjones', 'jd jones', 'megan', 'megankelly', 'megan kelly']);
         const SALES_CREDIT_REVIEW_USERS = new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']);
-        const ABBEY_BURKA_REQUEST_VIEWERS = new Set([...PRIVILEGED_MANAGER_USER_KEYS, 'kayla_knepp', 'kayla knepp', 'kaylaknepp']);
+        const ABBEY_BURKA_REQUEST_VIEWERS = new Set([...PRIVILEGED_MANAGER_USER_KEYS, 'kayla_knepp', 'kayla knepp', 'kaylaknepp', 'nelly_aguilar', 'nelly aguilar', 'nellyaguilar']);
         const REQUEST_NA_CUSTOMER_NAME = 'N/A';
         const REQUEST_NA_CONSIGNEE_NAME = 'N/A';
         const REQUEST_REP_CUSTOMER_OVERRIDES = Object.freeze([
@@ -33116,7 +33137,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.10.01.004').trim() || 'V2026.10.01.004';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.10.01.005').trim() || 'V2026.10.01.005';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -34076,7 +34097,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return isPrivilegedManagerUser();
         }
 
-        const SHARED_TASK_COLLABORATOR_KEYS = new Set(['dylan_collyge', 'morgan_anderson', 'kayla_knepp', 'jd_jones', 'megan_kelly']);
+        const SHARED_TASK_COLLABORATOR_KEYS = new Set(['dylan_collyge', 'morgan_anderson', 'kayla_knepp', 'nelly_aguilar', 'jd_jones', 'megan_kelly']);
         function normalizeSharedTaskCollaboratorKey(value = '') {
             return String(value || '').trim().toLowerCase().replace(/\s+/g, '_');
         }
@@ -38179,6 +38200,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         const REQUEST_TAB_LABELS = Object.freeze({
             'bunch-notes': 'Bunch Notes',
             pending: 'Request',
+            archived: 'Archived',
             'suspend-tag': 'Suspend',
             moves: 'Location Moves',
             recount: 'Recount',
@@ -38189,6 +38211,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getRequestTabQueueCounts() {
             const counts = {
                 pending: 0,
+                archived: Math.max(0, Number(requestArchiveListState && requestArchiveListState.total) || 0),
                 'suspend-tag': 0,
                 moves: 0,
                 recount: 0,
@@ -38253,6 +38276,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const capabilities = getRequestCapabilities();
             const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
             if (canUseGeneralQueue && canSeeRegularRequestTabs(access)) categories.push('pending');
+            if (canUseGeneralQueue && canCurrentUserArchiveRequestRows()) categories.push('archived');
             if (canUseGeneralQueue && canSeeSuspendTagRequestTab(access)) categories.push('suspend-tag');
             if (canUseGeneralQueue && canSeeMovesRequestTab(access)) categories.push('moves');
             if (canUseGeneralQueue && canSeeRecountRequestTab(access)) categories.push('recount');
@@ -38277,11 +38301,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 const active = activeReqTab === category;
                 return `<button type="button" class="request-category-chip${active ? ' is-active' : ''}" data-request-category="${escapeHtml(category)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return setReqTab('${escapeHtml(category)}')"><span>${escapeHtml(REQUEST_TAB_LABELS[category])}</span><span class="request-category-chip__count${count > 0 ? ' has-count' : ''}">${escapeHtml(formatRequestTabCount(count))}</span></button>`;
             }).join('');
-            toolbar.innerHTML = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}</div>`;
+            const undoHtml = activeReqTab === 'pending' && requestArchiveUndo.uid && requestArchiveUndo.expiresAt > Date.now()
+                ? `<button type="button" class="request-archive-undo" onclick="return undoRequestArchive('${escapeHtml(requestArchiveUndo.uid)}')" aria-label="Undo archive">Undo archive</button>`
+                : '';
+            toolbar.innerHTML = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}${undoHtml}</div>`;
             toolbar.dataset.toolbarSingleRow = 'true';
             return true;
         }
 
+        let requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, error: '', loaded: false, controller: null };
+        let requestArchiveUndo = { uid: '', expiresAt: 0, timer: null };
+        const requestArchiveInFlightByUid = new Map();
         let requestDeliveryRecoveryOpen = false;
         let requestDeliveryRecoveryLoading = false;
         let requestDeliveryRecoveryRows = [];
@@ -38291,7 +38321,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function canManageRequestDeliveryRecovery() {
             const access = getRoleAccessState();
             const userKey = normalizeEvalAccessUserKey(firstNonEmptyValue(currentUser, currentUserDisplay, ''));
-            return userKey === 'kayla_knepp'
+            return userKey === 'kayla_knepp' || userKey === 'nelly_aguilar'
                 || !!(access && access.isAdmin)
                 || PRIVILEGED_MANAGER_USER_KEYS.includes(userKey);
         }
@@ -38399,6 +38429,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const requested = String(tab || '').trim().toLowerCase();
             const capabilities = getRequestCapabilities();
             const canUseGeneralQueue = !!(capabilities && capabilities.canViewQueue);
+            if (requested === 'archived' && canUseGeneralQueue && canCurrentUserArchiveRequestRows()) return 'archived';
             if (requested === 'bunch-notes' && canSeeBunchNotesRequestTab()) return 'bunch-notes';
             if (requested === 'eval-work' && canSeeEvalWorkRequestTab()) return 'eval-work';
             if (requested === 'reps' && requestSalesRepsManagerMode && canUseGeneralQueue && canSeeRegularRequestTabs(access) && !isRestrictedEvalUser(access)) return 'reps';
@@ -44610,7 +44641,7 @@ let avTopControlsRenderToken = 0;
         const BLOOM_PICKER_ORDER_META_TOKEN = '||BP_META||';
         const BLOOM_PICKER_ORDER_DRAFT_STORAGE_PREFIX = 'gnc_bloom_picker_order_draft_v1';
         const BLOOM_PICKER_ORDER_DRAFTS_STORAGE_PREFIX = 'gnc_bloom_picker_order_drafts_v1';
-        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'megan', 'megan_kelly', 'morgan', 'morgan_anderson', 'kayla', 'kayla_knepp']);
+        const PROTECTED_UNLOCK_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'megan', 'megan_kelly', 'morgan', 'morgan_anderson', 'kayla', 'kayla_knepp', 'nelly', 'nelly_aguilar']);
         const PHOTO_DELETE_OVERRIDE_USERS = new Set(['dylan', 'dylan_collyge', 'jd', 'jd_jones', 'megan', 'megan_kelly']);
         const PROTECTED_EDIT_CONFIG = {
             'ssn-': { containerId: 'det-season-content', cameraId: 'camera-btn-ssn', photoField: 'SAVED_PHOTO_LINK', photoNameField: 'SAVED_PHOTO_NAME', inputIds: ['ssn-av-note', 'ssn-match', 'ssn-spec', 'ssn-caliper', 'ssn-pick', 'ssn-comments'] },
@@ -44673,7 +44704,7 @@ let avTopControlsRenderToken = 0;
 
         function canUseCustomerConsigneeOutreach() {
             const tokens = getProtectedUserTokens();
-            return hasPrivilegedManagerAccess(tokens) || tokens.has('kayla') || tokens.has('kayla_knepp');
+            return hasPrivilegedManagerAccess(tokens) || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('nelly') || tokens.has('nelly_aguilar');
         }
 
         function canViewDriveCustomerConsigneeRows() {
@@ -44693,7 +44724,7 @@ let avTopControlsRenderToken = 0;
             if (requestCapabilities && requestCapabilities.canCreateGeneral && canAccessView('drive')) return true;
             if (access && access.isRep && !access.isCsr && !canUseFullDriveBloomPickerWorkflow()) return false;
             const hasAdminViews = canAccessView('drive') && canAccessView('tasks');
-            return hasAdminViews || canUseRequestRepScopedAccess() || hasPrivilegedManagerAccess(tokens) || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('morgan') || tokens.has('morgan_anderson');
+            return hasAdminViews || canUseRequestRepScopedAccess() || hasPrivilegedManagerAccess(tokens) || tokens.has('kayla') || tokens.has('kayla_knepp') || tokens.has('nelly') || tokens.has('nelly_aguilar') || tokens.has('morgan') || tokens.has('morgan_anderson');
         }
 
         function canUseDriveBloomPickerForTakeBack() {
@@ -44701,8 +44732,8 @@ let avTopControlsRenderToken = 0;
             return !!(canAccessView('drive') && (access.isForeman || canUseDriveQuickRequest()));
         }
 
-        const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge', 'megan_kelly']));
-        const FULL_DRIVE_BLOOM_PICKER_USERS = Object.freeze(new Set(['kayla_knepp']));
+        const DRIVE_CARD_OPTIONS_ALWAYS_USERS = Object.freeze(new Set(['kayla_knepp', 'jd_jones', 'dylan_collyge', 'megan_kelly', 'nelly_aguilar']));
+        const FULL_DRIVE_BLOOM_PICKER_USERS = Object.freeze(new Set(['kayla_knepp', 'nelly_aguilar']));
 
         function getCurrentDriveCardOptionUserKeys(userOverride = '', displayOverride = '') {
             return [userOverride, displayOverride, currentUser, currentUserDisplay]
@@ -52714,6 +52745,7 @@ function toggleDriveQuickRequestItem(domId) {
         const FLYER_ASSIGNABLE_USER_FALLBACK = Object.freeze([
             { username: 'morgan_anderson', display: 'morgan_anderson' },
             { username: 'kayla_knepp', display: 'kayla_knepp' },
+            { username: 'nelly_aguilar', display: 'nelly_aguilar' },
             { username: 'dylan_collyge', display: 'dylan_collyge' },
             { username: 'jd_jones', display: 'jd_jones' },
             { username: 'todd_dowty', display: 'todd_dowty' }
@@ -80274,6 +80306,10 @@ function toggleDriveQuickRequestItem(domId) {
                 scrollDelayMs: 40
             });
             if (nextTab === 'bunch-notes') { BunchNote.backQueue(); void BunchNote.refresh(); return scheduled; }
+            if (nextTab === 'archived') {
+                loadRequestArchivePage(0).catch((error) => console.warn('Archived request page failed', error));
+                return scheduled;
+            }
             if (nextTab === 'eval-work') {
                 loadEvalWorkAssignments(true).catch(() => {});
                 return scheduled;
@@ -96159,6 +96195,7 @@ function toggleDriveQuickRequestItem(domId) {
             { username: 'jd_jones', display: 'JD Jones' },
             { username: 'megan_kelly', display: 'Megan Kelly' },
             { username: 'kayla_knepp', display: 'Kayla Knepp' },
+            { username: 'nelly_aguilar', display: 'Nelly Aguilar' },
             { username: 'abbey_burka', display: 'Abbey Burka' }
         ]);
 
@@ -96248,7 +96285,7 @@ function toggleDriveQuickRequestItem(domId) {
             BLOOM_EMAIL_PURPOSE_FALLBACK_RECIPIENTS.forEach(addRecipient);
             BLOOM_CROP_UPDATE_INTERNAL_RECIPIENTS.forEach((email) => addRecipient({ email, display: formatBloomPurposeDisplayName(email) }));
             try {
-                getAssignableAppUserOptions([...PRIVILEGED_MANAGER_USER_KEYS, 'kayla_knepp', 'abbey_burka']).forEach(addRecipient);
+                getAssignableAppUserOptions([...PRIVILEGED_MANAGER_USER_KEYS, 'kayla_knepp', 'nelly_aguilar', 'abbey_burka']).forEach(addRecipient);
             } catch (err) {}
             try { (Array.isArray(appEmailRecipientUsers) ? appEmailRecipientUsers : []).forEach(addRecipient); } catch (err) {}
             BLOOM_CROP_UPDATE_REP_GROUPS.forEach((group) => {
@@ -112784,6 +112821,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             updateFooterChatBadge();
             syncRequestTabButtons();
             syncRequestHeaderSearchChrome();
+            const container = document.getElementById('request-content');
+            const crumb = document.getElementById('request-crumb');
             if (activeReqTab === 'bunch-notes') { BunchNote.render(); return; }
             document.getElementById('request-content')?.classList.remove('bn-root');
             if (activeReqTab === 'eval-work') {
@@ -112800,6 +112839,14 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 applyRequestRenderMarkup(container, crumb, work ? 'Eval Work Detail' : 'Eval Work', html, signature);
                 return;
             }
+            if (activeReqTab === 'archived') {
+                if (!requestArchiveListState.loaded && !requestArchiveListState.loading) loadRequestArchivePage(0).catch(() => {});
+                const state = requestArchiveListState;
+                const html = renderRequestArchivePageHtml(state);
+                applyRequestRenderMarkup(container, crumb, 'Archived Requests', html,
+                    `request:archived:${state.loading ? 'loading' : 'ready'}:${state.error}:${state.offset}:${state.total}:${state.rows.map((row) => row.unique_id).join('|')}`);
+                return;
+            }
             if (ensureViewDataForRender('request')) return;
             runAfterShellInteractive(() => {
                 if (!isViewVisible('request')) return;
@@ -112809,8 +112856,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 }).catch(() => {});
                 queueRequestVisibleRenderCatchup('request-render-catchup');
             }, isTouchConstrainedDevice() ? 320 : 90);
-            const container = document.getElementById('request-content');
-            const crumb = document.getElementById('request-crumb');
             bumpChunkRenderTokenByKey('request-main');
 
             const baseRequestItems = getScopedRequestItems(requestsInventory);
@@ -113198,6 +113243,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return { row: null, surface: null, startX: 0, startY: 0, deltaX: 0, startOffset: 0, dragging: false, pointerId: null, inputType: '' };
         }
         const REQUEST_SWIPE_OPEN_OFFSET = -88;
+        const REQUEST_SWIPE_OPEN_OFFSET_RIGHT = 88;
         const REQUEST_SWIPE_OPEN_THRESHOLD = -44;
         let requestSwipeState = createRequestSwipeState();
         let requestSwipeMoveBound = false;
@@ -135531,7 +135577,7 @@ C.14.043 C.15.000
         });
 
         function isKaylaLimitedAccessManagerUser(userOverride = '') {
-            return normalizeMovesUserKey(firstNonEmptyValue(userOverride, currentUser, currentUserDisplay, '')) === 'kayla_knepp';
+            return ['kayla_knepp', 'nelly_aguilar'].includes(normalizeMovesUserKey(firstNonEmptyValue(userOverride, currentUser, currentUserDisplay, '')));
         }
 
         function canManageAccessControl(userOverride = '') {
@@ -138683,7 +138729,7 @@ C.14.043 C.15.000
 
         function closeRequestSwipe(row) {
             if (!row) return;
-            row.classList.remove('swipe-open');
+            row.classList.remove('swipe-open', 'swipe-open--left');
             const surface = row.querySelector('.request-swipe-surface');
             setRequestSwipeSurfaceOffset(surface, 0);
             if (requestSwipeState.row === row) {
@@ -138753,8 +138799,8 @@ C.14.043 C.15.000
                 surface,
                 startX: point.clientX,
                 startY: point.clientY,
-                deltaX: row.classList.contains('swipe-open') ? REQUEST_SWIPE_OPEN_OFFSET : 0,
-                startOffset: row.classList.contains('swipe-open') ? REQUEST_SWIPE_OPEN_OFFSET : 0,
+                deltaX: row.classList.contains('swipe-open--left') ? REQUEST_SWIPE_OPEN_OFFSET_RIGHT : row.classList.contains('swipe-open') ? REQUEST_SWIPE_OPEN_OFFSET : 0,
+                startOffset: row.classList.contains('swipe-open--left') ? REQUEST_SWIPE_OPEN_OFFSET_RIGHT : row.classList.contains('swipe-open') ? REQUEST_SWIPE_OPEN_OFFSET : 0,
                 dragging: true,
                 pointerId: isPointerEvent ? event.pointerId : null,
                 inputType: isPointerEvent ? `pointer-${pointerType || 'unknown'}` : 'touch'
@@ -138776,8 +138822,8 @@ C.14.043 C.15.000
                 closeRequestSwipe(requestSwipeState.row);
                 return;
             }
-            const nextOffset = Math.max(REQUEST_SWIPE_OPEN_OFFSET, Math.min(0, requestSwipeState.startOffset + dx));
-            if (nextOffset === 0 && dx > 0 && requestSwipeState.startOffset === 0) return;
+            const nextOffset = Math.max(REQUEST_SWIPE_OPEN_OFFSET, Math.min(REQUEST_SWIPE_OPEN_OFFSET_RIGHT, requestSwipeState.startOffset + dx));
+            if (nextOffset === 0 && requestSwipeState.startOffset === 0) return;
             cancelPress();
             requestSwipeState.deltaX = nextOffset;
             setRequestSwipeSurfaceOffset(requestSwipeState.surface, nextOffset);
@@ -138793,7 +138839,9 @@ C.14.043 C.15.000
                 return;
             }
             const row = requestSwipeState.row;
-            const shouldArchive = requestSwipeState.deltaX <= REQUEST_SWIPE_OPEN_THRESHOLD;
+            const actualSwipeDelta = requestSwipeState.deltaX - requestSwipeState.startOffset;
+            const cancelledGesture = /cancel/i.test(String(event && event.type || ''));
+            const shouldArchive = !cancelledGesture && requestSwipeState.startOffset === 0 && Math.abs(actualSwipeDelta) >= Math.abs(REQUEST_SWIPE_OPEN_THRESHOLD);
             requestSwipeState.dragging = false;
             releaseRequestSwipeMoveListener();
             closeRequestSwipe(row);
@@ -138891,8 +138939,8 @@ C.14.043 C.15.000
                 button.type = 'button';
                 button.className = 'request-inline-remove-action';
                 button.setAttribute('data-fast-press-ignore', 'true');
-                button.setAttribute('aria-label', 'Remove request row');
-                button.innerHTML = '<i class="ph-bold ph-trash"></i><span>Remove</span>';
+                button.setAttribute('aria-label', 'Archive request row');
+                button.innerHTML = '<i class="ph-bold ph-archive-box"></i><span>Archive</span>';
                 button.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -138908,6 +138956,7 @@ C.14.043 C.15.000
             if (!row) return false;
             closeAllRequestSwipes(row);
             row.classList.add('swipe-open');
+            row.classList.remove('swipe-open--left');
             const surface = row.querySelector('.request-swipe-surface');
             setRequestSwipeSurfaceOffset(surface, REQUEST_SWIPE_OPEN_OFFSET);
             if (event) {
@@ -139061,10 +139110,15 @@ C.14.043 C.15.000
                 if (planstartValid) surface.dataset.planstartValid = planstartValid;
                 surface.setAttribute('role', 'button');
                 surface.setAttribute('tabindex', '0');
-                surface.setAttribute('aria-label', row.getAttribute('aria-label') || 'Open request row');
+                surface.setAttribute('aria-label', `${row.getAttribute('aria-label') || 'Open request row'}. Press Delete to archive.`);
                 surface.addEventListener('click', (event) => handleRequestSwipeSurfaceClick(row, event));
                 surface.addEventListener('keydown', (event) => {
                     const key = String(event && event.key || '').trim();
+                    if (key === 'Delete' || key === 'Backspace') {
+                        event.preventDefault();
+                        archiveRequestRow(row.dataset.requestUid);
+                        return false;
+                    }
                     if (key !== 'Enter' && key !== ' ') return true;
                     return openRequestSwipeRowDetail(row, event);
                 });
@@ -139075,7 +139129,8 @@ C.14.043 C.15.000
                 const action = document.createElement('button');
                 action.type = 'button';
                 action.className = 'request-swipe-action';
-                action.innerText = 'Remove';
+                action.innerText = 'Archive';
+                action.setAttribute('aria-label', 'Archive request row');
                 action.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -139138,25 +139193,43 @@ C.14.043 C.15.000
             ].map((value) => String(value || '').trim()).filter(Boolean).join(' ');
             const customer = String(firstNonEmptyValue(item && item.REQ_CUSTOMER, item && item.req_customer, '') || '').trim();
             const folder = String(firstNonEmptyValue(item && item.REQUEST_FOLDER, item && item.request_folder, '') || '').trim();
+            const lot = String(firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, '') || '').trim();
+            const uid = getItemUniqueId(item);
             const details = [
                 plantLine,
+                lot ? `Lot: ${lot}` : '',
+                uid ? `Request ID: ${uid}` : '',
                 customer ? `Customer: ${customer}` : '',
                 folder ? `Folder: ${folder}` : ''
             ].filter(Boolean).join('\n');
-            return `Remove this request row from Pending Requests?\n\n${details || 'This row will be removed from the Request tab.'}`;
+            return `Archive this request row from Pending Requests? It can be restored later.\n\n${details || 'This row will move to Archived Requests.'}`;
+        }
+
+        function clearRequestArchiveUndo() {
+            if (requestArchiveUndo.timer) clearTimeout(requestArchiveUndo.timer);
+            requestArchiveUndo = { uid: '', expiresAt: 0, timer: null, identityScope: '' };
+            renderRequestCategoryToolbar();
+        }
+
+        function offerRequestArchiveUndo(uid = '') {
+            if (requestArchiveUndo.timer) clearTimeout(requestArchiveUndo.timer);
+            requestArchiveUndo = { uid: String(uid || '').trim(), expiresAt: Date.now() + 12000, timer: null, identityScope: getSupabaseReadIdentityScope() };
+            requestArchiveUndo.timer = setTimeout(clearRequestArchiveUndo, 12000);
+            renderRequestCategoryToolbar();
         }
 
         async function confirmArchiveRequestRow(item = null) {
             if (!item) return false;
             return showAppConfirm(getRequestArchiveConfirmMessage(item), {
-                title: 'Remove Request Row?',
-                confirmLabel: 'Remove',
+                title: 'Archive Request Row?',
+                confirmLabel: 'Archive',
                 cancelLabel: 'Keep Row',
                 tone: 'danger'
             });
         }
 
         async function archiveRequestRow(uid) {
+            const actionIdentityScope = getSupabaseReadIdentityScope();
             const archiveUid = String(uid || '').trim();
             const item = findRequestInventoryRowByUniqueId(archiveUid);
             if (!item) {
@@ -139168,43 +139241,122 @@ C.14.043 C.15.000
             const requestUid = getItemUniqueId(item) || archiveUid;
             if (!canCurrentUserArchiveRequestRow(item)) {
                 closeAllRequestSwipes();
-                showToast('Not Allowed', 'This login cannot remove request rows.', true);
+                showToast('Not Allowed', 'This login cannot archive request rows.', true);
                 return;
             }
             if (!(await confirmArchiveRequestRow(item))) {
                 closeAllRequestSwipes();
-                showToast('Kept', 'Request row was not removed.');
+                showToast('Kept', 'Request row remains in Pending Requests.');
                 return;
             }
+            if (!actionIdentityScope || actionIdentityScope !== getSupabaseReadIdentityScope()) return;
+            const visibleRow = document.querySelector(`.request-swipe-row[data-request-uid="${CSS.escape(requestUid)}"]`);
+            if (visibleRow) {
+                visibleRow.classList.add('request-archive-exiting');
+                if (!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) {
+                    await new Promise((resolve) => setTimeout(resolve, 140));
+                }
+            }
+            if (actionIdentityScope !== getSupabaseReadIdentityScope()) return;
+            const idempotencyKey = makeRequestArchiveIdempotencyKey();
             item.REQ_ARCHIVED = true;
             buildSearchIndex(item);
-            upsertRequestHistoryRows([item], 'archived').catch(() => {});
-            queuePendingRequestArchive(item);
+            queuePendingRequestArchive(requestUid, 'archive', idempotencyKey);
+            requestArchiveListState.loaded = false;
             closeAllRequestSwipes();
             refreshRequestViewAfterArchive();
             persistCurrentCache();
-            showToast('Removing', 'Updating request...', false);
-            const archived = await syncRequestArchive(requestUid, 3);
-            if (archived) {
+            showToast('Archiving', 'Request is being moved out of Pending Requests.', false);
+            const archivePromise = syncRequestArchive(requestUid, 'archive', idempotencyKey, 3);
+            requestArchiveInFlightByUid.set(requestUid, archivePromise);
+            const result = await archivePromise;
+            if (requestArchiveInFlightByUid.get(requestUid) === archivePromise) requestArchiveInFlightByUid.delete(requestUid);
+            if (actionIdentityScope !== getSupabaseReadIdentityScope()) return;
+            if (result.ok) {
                 clearPendingRequestArchive(requestUid);
-                showToast('Removed', 'Request removed from Request tab.');
-                maybeSendRequestCompletionEmailForFolder(getRequestFolderName(item), item, { suppressFailureToast: true }).catch((error) => {
-                    console.warn('Request completion email check after row removal failed', error);
-                });
-                return;
-            }
-            if (requestArchiveDeniedIds.has(`${getSupabaseReadIdentityScope()}:${requestUid}`)) {
-                clearPendingRequestArchive(requestUid);
-                item.REQ_ARCHIVED = false;
-                buildSearchIndex(item);
+                offerRequestArchiveUndo(requestUid);
                 refreshRequestViewAfterArchive();
                 persistCurrentCache();
+                showToast('Archived', 'Request moved out of Pending Requests. Undo is available briefly.', false);
+                if (isViewVisible('request') && activeReqTab === 'archived') loadRequestArchivePage(requestArchiveListState.offset, true).catch(() => {});
                 return;
             }
-            const retryDelay = computePendingRequestArchiveRetryDelay(1);
-            updatePendingRequestArchiveRetry(requestUid, 1, retryDelay);
-            schedulePendingRequestArchiveFlush(retryDelay);
-            showToast('Retrying', 'Request removal will keep retrying automatically.', false);
+            clearPendingRequestArchive(requestUid);
+            item.REQ_ARCHIVED = false;
+            buildSearchIndex(item);
+            clearRequestArchiveUndo();
+            refreshRequestViewAfterArchive();
+            persistCurrentCache();
+            showToast('Archive Failed', String(result.error && result.error.message || 'The request could not be archived and was restored to the queue.'), true);
+        }
+
+        async function confirmRequestArchiveRestore(item = null) {
+            const exactRow = [
+                firstNonEmptyValue(item && item.COMMONNAME, item && item.commonname, 'Request row'),
+                firstNonEmptyValue(item && item.CONTSIZE, item && item.contsize, ''),
+                firstNonEmptyValue(item && item.LOCATIONCODE, item && item.locationcode, ''),
+                firstNonEmptyValue(item && item.LOTCODE, item && item.lotcode, ''),
+                getItemUniqueId(item)
+            ].map(value => String(value || '').trim()).filter(Boolean).join(' · ');
+            return showAppConfirm(`Restore this archived request row?\n\n${exactRow}`, {
+                title: 'Restore Request Row?', confirmLabel: 'Restore', cancelLabel: 'Keep Archived', tone: 'primary'
+            });
+        }
+
+        async function restoreArchivedRequestRow(uid = '', skipConfirmation = false) {
+            const actionIdentityScope = getSupabaseReadIdentityScope();
+            const id = String(uid || '').trim();
+            const index = requestArchiveListState.rows.findIndex((row) => String(row && row.UNIQUE_ID || '').trim() === id);
+            const row = index >= 0 ? requestArchiveListState.rows[index] : findRequestInventoryRowByUniqueId(id);
+            if (!id || !canCurrentUserArchiveRequestRow(row) || (!skipConfirmation && !(await confirmRequestArchiveRestore(row)))) return false;
+            if (!actionIdentityScope || actionIdentityScope !== getSupabaseReadIdentityScope()) return false;
+            const oldArchived = row.REQ_ARCHIVED;
+            row.REQ_ARCHIVED = false;
+            if (index >= 0) {
+                requestArchiveListState.rows.splice(index, 1);
+                requestArchiveListState.total = Math.max(0, requestArchiveListState.total - 1);
+            }
+            const idempotencyKey = makeRequestArchiveIdempotencyKey();
+            queuePendingRequestArchive(id, 'restore', idempotencyKey);
+            refreshRequestViewAfterArchive();
+            if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
+            const restorePromise = syncRequestArchive(id, 'restore', idempotencyKey, 3);
+            requestArchiveInFlightByUid.set(id, restorePromise);
+            const result = await restorePromise;
+            if (requestArchiveInFlightByUid.get(id) === restorePromise) requestArchiveInFlightByUid.delete(id);
+            if (actionIdentityScope !== getSupabaseReadIdentityScope()) return false;
+            if (result.ok) {
+                clearPendingRequestArchive(id);
+                clearRequestArchiveUndo();
+                requestArchiveListState.loaded = false;
+                if (isViewVisible('request') && activeReqTab === 'archived') loadRequestArchivePage(requestArchiveListState.offset, true).catch(() => {});
+                showToast('Restored', 'Request returned to the active queue.');
+                return false;
+            }
+            clearPendingRequestArchive(id);
+            row.REQ_ARCHIVED = oldArchived;
+            if (index >= 0) {
+                requestArchiveListState.rows.splice(Math.min(index, requestArchiveListState.rows.length), 0, row);
+                requestArchiveListState.total += 1;
+            }
+            refreshRequestViewAfterArchive();
+            if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
+            showToast('Restore Failed', String(result.error && result.error.message || 'The request remains archived.'), true);
+            return false;
+        }
+
+        async function undoRequestArchive(uid = '') {
+            if (String(uid || '').trim() !== requestArchiveUndo.uid || requestArchiveUndo.expiresAt < Date.now()
+                || !requestArchiveUndo.identityScope || requestArchiveUndo.identityScope !== getSupabaseReadIdentityScope()) return false;
+            const inFlight = requestArchiveInFlightByUid.get(String(uid || '').trim());
+            if (inFlight) {
+                const result = await inFlight;
+                if (!result || !result.ok) return false;
+            }
+            const item = findRequestInventoryRowByUniqueId(uid);
+            if (!item || !item.REQ_ARCHIVED) return false;
+            clearRequestArchiveUndo();
+            return restoreArchivedRequestRow(uid, true);
         }
 
         function ensureFlyerSwipeMoveListener() {
@@ -143799,30 +143951,91 @@ C.14.043 C.15.000
             return mergedServerRows;
         }
         const requestArchiveDeniedIds = new Set();
-        async function getRequestArchiveStatus(requestId = '') {
-            const id = String(requestId || '').trim();
-            if (!id) return { known: true, exists: false, archived: false };
-            try {
-                const rows = await fetchSupabasePage('ph_active_request', `select=unique_id,req_archived&unique_id=eq.${encodeURIComponent(id)}`, 1, 0);
-                if (!Array.isArray(rows) || rows.length === 0) return { known: true, exists: false, archived: false };
-                const row = rows[0] || {};
-                const matches = String(row.unique_id || row.UNIQUE_ID || '').trim() === id;
-                return {
-                    known: true,
-                    exists: matches,
-                    archived: matches && !!(row.req_archived ?? row.REQ_ARCHIVED)
-                };
-            } catch (error) {
-                if (isSupabaseReadTerminalDenial(error)) {
-                    requestArchiveDeniedIds.add(`${getSupabaseReadIdentityScope()}:${id}`);
-                    notifySupabaseReadAccessDenied('Request archive', error);
-                }
-                return { known: false, exists: false, archived: false };
-            }
+        function makeRequestArchiveIdempotencyKey() {
+            try { if (crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID(); } catch (error) {}
+            return `req-archive-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
         }
-        async function confirmRequestArchived(requestId = '') {
-            const status = await getRequestArchiveStatus(requestId);
-            return !!(status.known && (!status.exists || status.archived));
+        function createRequestArchiveError(payload = null) {
+            const error = new Error(String(payload && (payload.error || payload.message) || 'Request archive failed.'));
+            error.status = Number(payload && payload.status || 0);
+            error.code = String(payload && (payload.code || payload.sqlstate) || '').trim().toUpperCase();
+            return error;
+        }
+        function isRequestArchiveTerminalFailure(error = null) {
+            const status = Number(error && error.status || 0);
+            const code = String(error && error.code || '').trim().toUpperCase();
+            return [400, 401, 403, 404, 409].includes(status)
+                || ['PT400', 'PT404', 'PT409', '42501'].includes(code);
+        }
+        async function callRequestArchiveApi(body = {}, options = {}) {
+            const identity = getSupabaseReadIdentityScope();
+            const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'request_archive', ...body }, {
+                timeoutMs: Number(options.timeoutMs) || 20000,
+                signal: options.signal,
+                label: 'Request archive',
+                idempotencyKey: options.idempotencyKey || ''
+            });
+            if (identity !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
+            if (!payload || payload.ok !== true || !payload.data) throw createRequestArchiveError(payload);
+            return payload.data;
+        }
+        function normalizeArchivedRequestRow(source = null) {
+            if (!source || typeof source !== 'object') return null;
+            const row = { ...source };
+            const aliases = {
+                UNIQUE_ID: 'unique_id', MASTER_ID: 'master_id', COMMONNAME: 'commonname', CONTSIZE: 'contsize',
+                LOCATIONCODE: 'locationcode', LOTCODE: 'lotcode', ITEMCODE: 'itemcode', PTRAVAILABLE: 'ptravailable',
+                PRIORITY: 'priority', QUALITYCODE: 'qualitycode', REQUEST_FOLDER: 'request_folder',
+                REQ_CUSTOMER: 'req_customer', REQ_QTY: 'req_qty', REQ_STATUS: 'req_status',
+                REQ_ARCHIVED: 'req_archived', CUSTOMERNAME: 'customername'
+            };
+            Object.entries(aliases).forEach(([upper, lower]) => { if (row[upper] === undefined) row[upper] = row[lower]; });
+            row.UNIQUE_ID = String(row.UNIQUE_ID || '').trim();
+            if (!row.UNIQUE_ID) return null;
+            row.REQ_ARCHIVED = true;
+            row.REQUEST_HISTORY = false;
+            row.DOM_ID = `reqarch_${row.UNIQUE_ID.replace(/[^a-z0-9_-]+/gi, '_')}`;
+            buildSearchIndex(row);
+            return row;
+        }
+        function renderRequestArchivePageHtml(state = requestArchiveListState) {
+            if (state.loading) return '<div class="request-archive-empty" role="status">Loading archived request rows…</div>';
+            if (state.error) return `<div class="request-archive-empty request-archive-empty--error" role="alert">${escapeHtml(state.error)}<button type="button" class="request-archive-control" onclick="return loadRequestArchivePage(${Number(state.offset) || 0}, true)">Retry</button></div>`;
+            const rows = Array.isArray(state.rows) ? state.rows : [];
+            const cards = rows.map((row) => {
+                const uid = String(row.UNIQUE_ID || '');
+                const itemLine = [row.CONTSIZE, row.LOCATIONCODE, row.LOTCODE].map((v) => String(v || '').trim()).filter(Boolean).join(' · ');
+                const customer = String(row.REQ_CUSTOMER || row.CUSTOMERNAME || '').trim();
+                return `<article class="request-archive-card"><div class="request-archive-card__copy"><strong>${escapeHtml(row.COMMONNAME || 'Unknown item')}</strong><span>${escapeHtml(itemLine || row.ITEMCODE || uid)}</span>${customer ? `<span>${escapeHtml(customer)}${row.REQ_QTY ? ` · Qty ${escapeHtml(row.REQ_QTY)}` : ''}</span>` : ''}</div><button type="button" class="request-archive-control" aria-label="Restore ${escapeHtml(row.COMMONNAME || 'request')}" onclick="return restoreArchivedRequestRow('${escapeHtml(uid)}')">Restore</button></article>`;
+            }).join('');
+            const limit = Math.max(1, Number(state.limit) || 100), offset = Math.max(0, Number(state.offset) || 0);
+            const pager = Number(state.total) > limit
+                ? `<div class="request-archive-pager"><button type="button" class="request-archive-control" ${offset ? '' : 'disabled'} onclick="return loadRequestArchivePage(${Math.max(0, offset - limit)}, true)">Previous</button><span>${Math.floor(offset / limit) + 1} / ${Math.max(1, Math.ceil(Number(state.total) / limit))} · ${Number(state.total)} rows</span><button type="button" class="request-archive-control" ${state.hasMore ? '' : 'disabled'} onclick="return loadRequestArchivePage(${offset + limit}, true)">Next</button></div>`
+                : `<div class="request-archive-pager">${Number(state.total) || 0} archived request${Number(state.total) === 1 ? '' : 's'}</div>`;
+            return rows.length ? `<div class="request-archive-list">${cards}</div>${pager}` : '<div class="request-archive-empty">No archived request rows.</div>';
+        }
+        async function loadRequestArchivePage(offset = 0, force = false) {
+            if (!canCurrentUserArchiveRequestRows()) return false;
+            const safeOffset = Math.max(0, Number(offset) || 0);
+            if (requestArchiveListState.loaded && requestArchiveListState.offset === safeOffset && !force) return true;
+            if (requestArchiveListState.loading && requestArchiveListState.offset === safeOffset && !force) return false;
+            if (requestArchiveListState.controller) requestArchiveListState.controller.abort();
+            const controller = new AbortController();
+            requestArchiveListState = { ...requestArchiveListState, offset: safeOffset, loading: true, error: '', controller };
+            if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
+            try {
+                const data = await callRequestArchiveApi({ operation: 'list', offset: safeOffset, limit: 100 }, { signal: controller.signal });
+                if (controller.signal.aborted || !Array.isArray(data.rows) || Number(data.offset) !== safeOffset || !Number.isInteger(Number(data.total))) return false;
+                requestArchiveListState = { rows: data.rows.map(normalizeArchivedRequestRow).filter(Boolean), total: Math.max(0, Number(data.total) || 0), offset: safeOffset, limit: Math.min(500, Math.max(1, Number(data.limit) || 100)), hasMore: !!data.hasMore, loading: false, error: '', loaded: true, controller: null };
+                if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
+                updateFooterRequestBadge();
+                return true;
+            } catch (error) {
+                if (controller.signal.aborted || error && error.name === 'AbortError') return false;
+                requestArchiveListState = { ...requestArchiveListState, loading: false, error: String(error && error.message || 'Archived requests are unavailable.'), loaded: false, controller: null };
+                if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
+                return false;
+            }
         }
 
         function clearPendingRequestArchiveFlushTimer() {
@@ -143835,6 +144048,9 @@ C.14.043 C.15.000
         function normalizePendingRequestArchiveEntry(entry = {}) {
             const source = entry && typeof entry === 'object' ? entry : {};
             return {
+                operation: source.operation === 'restore' ? 'restore' : 'archive',
+                idempotencyKey: String(source.idempotencyKey || '').trim(),
+                identityScope: String(source.identityScope || '').trim(),
                 timestamp: Math.max(0, Number(source.timestamp) || Date.now()),
                 attempts: Math.max(0, Number(source.attempts) || 0),
                 lastAttemptAt: Math.max(0, Number(source.lastAttemptAt) || 0),
@@ -143843,9 +144059,7 @@ C.14.043 C.15.000
         }
 
         function computePendingRequestArchiveRetryDelay(attempts = 0) {
-            const attemptCount = Math.max(0, Number(attempts) || 0);
-            if (attemptCount <= 0) return 1600;
-            return Math.min(45000, 1600 * Math.pow(2, Math.min(attemptCount, 4)));
+            return Math.min(8000, 600 * Math.pow(2, Math.max(0, Number(attempts) || 0)) + Math.floor(Math.random() * 250));
         }
 
         function schedulePendingRequestArchiveFlush(fallbackDelayMs = 2500) {
@@ -143875,6 +144089,9 @@ C.14.043 C.15.000
             const existing = normalizePendingRequestArchiveEntry(map[id]);
             const retryDelay = Math.max(500, Number(delayMs) || 0);
             map[id] = {
+                operation: existing.operation,
+                idempotencyKey: existing.idempotencyKey,
+                identityScope: existing.identityScope,
                 timestamp: existing.timestamp || Date.now(),
                 attempts: Math.max(0, Number(attempts) || 0),
                 lastAttemptAt: Date.now(),
@@ -143889,80 +144106,89 @@ C.14.043 C.15.000
             await new Promise((resolve) => setTimeout(resolve, waitMs));
         }
 
-        async function tryHardDeleteRequestClone(requestId = '') {
-            const id = String(requestId || '').trim();
-            if (!id) return false;
-            try {
-                await supabaseFetch('ph_active_request', 'DELETE', null, `unique_id=eq.${encodeURIComponent(id)}`);
-            } catch (error) {
-                if (isSupabaseReadTerminalDenial(error)) {
-                    requestArchiveDeniedIds.add(`${getSupabaseReadIdentityScope()}:${id}`);
-                    notifySupabaseReadAccessDenied('Request archive', error);
-                    return false;
-                }
-            }
-            const status = await getRequestArchiveStatus(id);
-            return !!(status.known && !status.exists);
-        }
-
-        async function syncRequestArchive(uid, maxAttempts = 1) {
+        async function syncRequestArchive(uid, operation = 'archive', idempotencyKey = '', maxAttempts = 3) {
             const id = String(uid || '').trim();
-            const attempts = Math.max(1, Number(maxAttempts) || 1);
-            if (!id) return false;
-            for (let attempt = 0; attempt < attempts; attempt++) {
+            const op = operation === 'restore' ? 'restore' : 'archive';
+            const key = idempotencyKey || makeRequestArchiveIdempotencyKey();
+            const identityScope = getSupabaseReadIdentityScope();
+            const attemptLimit = Math.max(1, Math.min(3, Number(maxAttempts) || 3));
+            if (!id || !identityScope) return { ok: false, attempts: 0, error: new Error('Request row not found.') };
+            const persisted = normalizePendingRequestArchiveEntry(getPendingRequestArchiveMap()[id]);
+            let attemptsUsed = persisted.idempotencyKey === key && persisted.operation === op ? persisted.attempts : 0;
+            const attemptsRemaining = Math.min(attemptLimit, Math.max(0, 3 - attemptsUsed));
+            if (!attemptsRemaining) return { ok: false, attempts: attemptsUsed, error: new Error('Archive retry limit reached. Refresh the Request view before retrying.') };
+            let lastError = null;
+            for (let attempt = 0; attempt < attemptsRemaining; attempt++) {
+                if (identityScope !== getSupabaseReadIdentityScope()) {
+                    const error = new Error('Request archive cancelled because the signed-in account changed.');
+                    error.name = 'AbortError';
+                    return { ok: false, attempts: attemptsUsed, error };
+                }
+                attemptsUsed += 1;
+                updatePendingRequestArchiveRetry(id, attemptsUsed, 600);
                 try {
-                    await supabaseFetch('ph_active_request', 'PATCH', { req_archived: true }, `unique_id=eq.${encodeURIComponent(id)}`);
-                } catch (error) {
-                    if (isSupabaseReadTerminalDenial(error)) {
-                        requestArchiveDeniedIds.add(`${getSupabaseReadIdentityScope()}:${id}`);
-                        notifySupabaseReadAccessDenied('Request archive', error);
-                        return false;
+                    const data = await callRequestArchiveApi({ operation: op, uid: id, idempotencyKey: key }, { idempotencyKey: key });
+                    if (identityScope !== getSupabaseReadIdentityScope()) {
+                        const error = new Error('Request archive cancelled because the signed-in account changed.');
+                        error.name = 'AbortError';
+                        return { ok: false, attempts: attemptsUsed, error };
                     }
-                }
-
-                const archiveStatus = await getRequestArchiveStatus(id);
-                if (archiveStatus.known && (!archiveStatus.exists || archiveStatus.archived)) return true;
-
-                if (archiveStatus.known && archiveStatus.exists && !archiveStatus.archived) {
-                    const removed = await tryHardDeleteRequestClone(id);
-                    if (removed) return true;
-                }
-
-                if (attempt < attempts - 1) {
-                    await waitForRequestArchiveRetry(900 * (attempt + 1));
+                    return { ok: true, attempts: attemptsUsed, data };
+                } catch (error) {
+                    lastError = error;
+                    if (identityScope !== getSupabaseReadIdentityScope()) {
+                        const cancelled = new Error('Request archive cancelled because the signed-in account changed.');
+                        cancelled.name = 'AbortError';
+                        return { ok: false, attempts: attemptsUsed, error: cancelled };
+                    }
+                    if (isRequestArchiveTerminalFailure(error) || attempt >= attemptsRemaining - 1) break;
+                    await waitForRequestArchiveRetry(600 * Math.pow(2, attempt) + Math.floor(Math.random() * 250));
                 }
             }
-            return false;
+            if (isSupabaseReadTerminalDenial(lastError)) {
+                requestArchiveDeniedIds.add(`${getSupabaseReadIdentityScope()}:${id}`);
+                notifySupabaseReadAccessDenied('Request archive', lastError);
+            }
+            return { ok: false, attempts: attemptsUsed, error: lastError };
         }
 
         function getPendingRequestArchiveMap() {
             try {
                 const raw = localStorage.getItem('gnc_pending_request_archives') || '{}';
                 const parsed = JSON.parse(raw);
-                return parsed && typeof parsed === 'object' ? parsed : {};
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+                const identityScope = getSupabaseReadIdentityScope();
+                if (!identityScope) return {};
+                return Object.fromEntries(Object.entries(parsed).filter(([, entry]) => {
+                    const scope = String(entry && entry.identityScope || '').trim();
+                    return !!scope && scope === identityScope;
+                }));
             } catch (error) {
                 return {};
             }
         }
 
         function setPendingRequestArchiveMap(map) {
-            localStorage.setItem('gnc_pending_request_archives', JSON.stringify(map || {}));
-            if (!(map && Object.keys(map).length)) clearPendingRequestArchiveFlushTimer();
+            const safeMap = map && typeof map === 'object' && !Array.isArray(map) ? map : {};
+            try { localStorage.setItem('gnc_pending_request_archives', JSON.stringify(safeMap)); } catch (error) {}
+            if (!Object.keys(safeMap).length) clearPendingRequestArchiveFlushTimer();
         }
 
-        function queuePendingRequestArchive(itemOrId) {
+        function queuePendingRequestArchive(itemOrId, operation = 'archive', idempotencyKey = '') {
             const uid = getItemUniqueId(itemOrId);
             if (!uid) return;
             const map = getPendingRequestArchiveMap();
             const existing = normalizePendingRequestArchiveEntry(map[uid]);
             map[uid] = {
+                operation: operation === 'restore' ? 'restore' : 'archive',
+                idempotencyKey: idempotencyKey || existing.idempotencyKey || makeRequestArchiveIdempotencyKey(),
+                identityScope: getSupabaseReadIdentityScope(),
                 timestamp: existing.timestamp || Date.now(),
                 attempts: 0,
                 lastAttemptAt: 0,
-                nextAttemptAt: Date.now() + 1200
+                nextAttemptAt: Date.now()
             };
             setPendingRequestArchiveMap(map);
-            schedulePendingRequestArchiveFlush(1200);
             const item = typeof itemOrId === 'string' ? findRequestInventoryRowByUniqueId(uid) : itemOrId;
             if (item) backupLocalItem(item);
         }
@@ -143978,13 +144204,15 @@ C.14.043 C.15.000
         }
 
         function applyPendingRequestArchives() {
+            if (!Array.isArray(requestsInventory)) return;
             const map = getPendingRequestArchiveMap();
             const ids = Object.keys(map);
             if (!ids.length) return;
             requestsInventory.forEach((item) => {
                 const uid = getItemUniqueId(item);
                 if (!uid || !map[uid]) return;
-                item.REQ_ARCHIVED = true;
+                const entry = normalizePendingRequestArchiveEntry(map[uid]);
+                item.REQ_ARCHIVED = entry.operation !== 'restore';
                 buildSearchIndex(item);
             });
         }
@@ -143993,38 +144221,40 @@ C.14.043 C.15.000
             if (!currentUser || pendingRequestArchiveFlushInFlight) return;
             pendingRequestArchiveFlushInFlight = true;
             try {
-                const map = getPendingRequestArchiveMap();
-                const ids = Object.keys(map);
+                const pending = getPendingRequestArchiveMap();
+                const ids = Object.keys(pending);
                 if (!ids.length) {
                     clearPendingRequestArchiveFlushTimer();
                     return;
                 }
-                const now = Date.now();
-                const remaining = {};
-                let nextDelay = null;
                 for (const uid of ids) {
-                    if (requestArchiveDeniedIds.has(`${getSupabaseReadIdentityScope()}:${uid}`)) continue;
-                    const entry = normalizePendingRequestArchiveEntry(map[uid]);
-                    if (entry.nextAttemptAt > now) {
-                        remaining[uid] = entry;
-                        const dueDelay = Math.max(500, entry.nextAttemptAt - now);
-                        nextDelay = nextDelay === null ? dueDelay : Math.min(nextDelay, dueDelay);
+                    if (requestArchiveInFlightByUid.has(uid)) continue;
+                    const rawEntry = getPendingRequestArchiveMap()[uid];
+                    const entry = normalizePendingRequestArchiveEntry(rawEntry);
+                    if (!entry.identityScope || entry.identityScope !== getSupabaseReadIdentityScope()) { clearPendingRequestArchive(uid); continue; }
+                    if (entry.nextAttemptAt > Date.now()) continue;
+                    if (!entry.idempotencyKey) {
+                        entry.idempotencyKey = makeRequestArchiveIdempotencyKey();
+                        pending[uid] = entry;
+                        setPendingRequestArchiveMap(pending);
+                    }
+                    if (requestArchiveDeniedIds.has(`${getSupabaseReadIdentityScope()}:${uid}`)) { clearPendingRequestArchive(uid); continue; }
+                    const result = await syncRequestArchive(uid, entry.operation, entry.idempotencyKey, 1);
+                    if (result.ok) { clearPendingRequestArchive(uid); continue; }
+                    const attempts = Math.min(3, entry.attempts + 1);
+                    if (!isRequestArchiveTerminalFailure(result.error) && attempts < 3) {
+                        const delay = computePendingRequestArchiveRetryDelay(attempts);
+                        updatePendingRequestArchiveRetry(uid, attempts, delay);
+                        schedulePendingRequestArchiveFlush(delay);
                         continue;
                     }
-                    const archived = await syncRequestArchive(uid, entry.attempts > 0 ? 1 : 2);
-                    if (archived) continue;
-                    const nextAttempts = entry.attempts + 1;
-                    const retryDelay = computePendingRequestArchiveRetryDelay(nextAttempts);
-                    remaining[uid] = {
-                        timestamp: entry.timestamp || Date.now(),
-                        attempts: nextAttempts,
-                        lastAttemptAt: Date.now(),
-                        nextAttemptAt: Date.now() + retryDelay
-                    };
-                    nextDelay = nextDelay === null ? retryDelay : Math.min(nextDelay, retryDelay);
+                    const item = findRequestInventoryRowByUniqueId(uid);
+                    if (item) { item.REQ_ARCHIVED = entry.operation === 'restore'; buildSearchIndex(item); }
+                    clearPendingRequestArchive(uid);
+                    refreshRequestViewAfterArchive();
+                    showToast('Archive Not Saved', String(result.error && result.error.message || 'The request remains in its previous queue state.'), true);
                 }
-                setPendingRequestArchiveMap(remaining);
-                if (Object.keys(remaining).length) schedulePendingRequestArchiveFlush(nextDelay || 2500);
+                if (Object.keys(getPendingRequestArchiveMap()).length) schedulePendingRequestArchiveFlush(1000);
             } finally {
                 pendingRequestArchiveFlushInFlight = false;
             }

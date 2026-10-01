@@ -1,6 +1,10 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(78);
+-- This rollback-only suite exercises Kayla's legacy capabilities before the
+-- cutoff. The separate handover suite tests the real scheduled denial.
+create or replace function private.scheduled_handover_cutoff_reached_v1(p_username text,p_at timestamptz)
+returns boolean language sql stable security definer set search_path='' as $$ select false $$;
 
 select has_function('private', 'can_read_all_request_rows_v1', array[]::text[], 'Request queue has a statement-cached global-read helper');
 select has_function('private', 'current_restricted_request_identity_v1', array[]::text[], 'Request queue has a statement-cached restricted identity helper');
@@ -19,7 +23,7 @@ insert into auth.users (
   ('10000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'dylan_collyge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'abigail_vazquez@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('10000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'chance_alldredge@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
-  ('10000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'kayla_knepp@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
+  ('e2584b32-472c-4888-b592-394235050b5b', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'kayla_knepp@greenleafnursery.com', '', now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
 on conflict (id) do nothing;
 
 insert into public.profiles (id, username, display_name, role) values
@@ -28,7 +32,7 @@ insert into public.profiles (id, username, display_name, role) values
   ('10000000-0000-0000-0000-000000000003', 'dylan_collyge', 'Dylan Collyge', 'ADMIN'),
   ('10000000-0000-0000-0000-000000000004', 'abigail_vazquez', 'Abigail Vazquez', 'EVAL'),
   ('10000000-0000-0000-0000-000000000005', 'chance_alldredge', 'Chance Alldredge', E'\nREP'),
-  ('10000000-0000-0000-0000-000000000006', 'kayla_knepp', 'Kayla Knepp', E'\nSalesRep')
+  ('e2584b32-472c-4888-b592-394235050b5b', 'kayla_knepp', 'Kayla Knepp', E'\nSalesRep')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
 insert into public.ph_master_inventory (
@@ -116,7 +120,7 @@ select throws_ok(
   'Chance cannot mutate another user Request row'
 );
 
-select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000006', true);
+select set_config('request.jwt.claim.sub', 'e2584b32-472c-4888-b592-394235050b5b', true);
 select is((public.get_request_capabilities()->>'contract_version')::integer, 2, 'Kayla receives Request capability contract version 2');
 select is((public.get_request_capabilities()->>'scope'), 'global', 'Kayla retains global Request scope despite her SalesRep role');
 select ok((public.get_request_capabilities()->>'can_create_general')::boolean, 'Kayla can create general and plant requests');

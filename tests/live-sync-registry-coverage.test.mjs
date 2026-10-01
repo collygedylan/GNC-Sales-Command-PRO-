@@ -167,6 +167,8 @@ test('every implemented request subview has an explicit surface instead of silen
   const tabs = [...new Set([...functionSource('renderRequest').matchAll(/activeReqTab === '([^']+)'/g)].map(match => match[1]))];
   assert.ok(tabs.includes('reps') && tabs.includes('suspend-tag'));
   for (const tab of tabs) assert.ok(registry.surfaces[`request:${tab}`], `Unclassified Que surface request:${tab}`);
+  assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:archived'] })), [],
+    'Archived rows are loaded only through the capability-checked archive RPC.');
 });
 
 test('Pending requests verifies only its queue cohort while every other request tab keeps its joins', () => {

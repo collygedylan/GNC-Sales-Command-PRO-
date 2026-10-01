@@ -497,7 +497,7 @@ function sendHoursReminderEmail() {
     let recipientList = "dylan_collyge@greenleafnursery.com"; 
     let subject = "GNC PARK HILL: Labor Hours Reminder";
     let body = "Reminder please turn your hours in by 8:15 a.m. Thanks! Management";
-    GmailApp.sendEmail(recipientList, subject, body, { name: "GNC PARK HILL" });
+    sendOperationalEmail_(recipientList, subject, body, { name: "GNC PARK HILL" });
   }
 }
 
@@ -1393,6 +1393,7 @@ const EMAIL_APPROVAL_TOKEN_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const EMAIL_APPROVAL_USER_EMAILS_ = Object.freeze({
   dylan_collyge: 'dylan_collyge@greenleafnursery.com',
   kayla_knepp: 'kayla_knepp@greenleafnursery.com',
+  nelly_aguilar: 'nelly_aguilar@greenleafnursery.com',
   jd_jones: 'jd_jones@greenleafnursery.com',
   megan_kelly: 'megan_kelly@greenleafnursery.com',
   mitch_kaiser: 'mitch_kaiser@greenleafnursery.com',
@@ -8700,6 +8701,37 @@ function dedupeEmailAddresses_(values) {
   return unique;
 }
 
+// Rebuild recipients at the last delivery boundary, including retry jobs and
+// stored thread recipients. The service-only database resolver owns the cutoff.
+function resolveOperationalEmailHeaders_(to, cc, bcc) {
+  const groups = [to, cc, bcc].map(function(value) { return dedupeEmailAddresses_(value); });
+  const seen = {};
+  const resolved = groups.map(function(group) {
+    if (!group.length) return [];
+    const values = callSupabaseRpc_('resolve_operational_recipients_v1', { p_recipients: group, p_kind: 'email' });
+    if (!Array.isArray(values) || values.some(function(value) { return typeof value !== 'string'; })) {
+      throw new Error('RECIPIENT_RESOLUTION_UNAVAILABLE');
+    }
+    return dedupeEmailAddresses_(values).filter(function(email) {
+      if (seen[email]) return false;
+      seen[email] = true;
+      return true;
+    });
+  });
+  if (!resolved[0].length && !resolved[1].length && !resolved[2].length) throw new Error('NO_ACTIVE_RECIPIENTS');
+  return { to: resolved[0], cc: resolved[1], bcc: resolved[2] };
+}
+
+function sendOperationalEmail_(to, subject, body, options) {
+  const safeOptions = Object.assign({}, options || {});
+  const headers = resolveOperationalEmailHeaders_(to, safeOptions.cc, safeOptions.bcc);
+  delete safeOptions.cc;
+  delete safeOptions.bcc;
+  if (headers.cc.length) safeOptions.cc = headers.cc.join(',');
+  if (headers.bcc.length) safeOptions.bcc = headers.bcc.join(',');
+  return GmailApp.sendEmail(headers.to.join(','), subject, body, safeOptions);
+}
+
 function resolveRequestRecipientEmail_(repName, fallbackEmail) {
   const normalized = String(repName || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
   const compact = normalized.replace(/\s+/g, '');
@@ -9901,7 +9933,7 @@ function sendFlyerCreatedEmail_(payload) {
     itemsHtml,
     '</div>'
   ].join(''));
-  GmailApp.sendEmail(recipients.toList, subject, textBody, {
+  sendOperationalEmail_(recipients.toList, subject, textBody, {
     htmlBody: htmlBody,
     name: 'GNC PH Flyer'
   });
@@ -11899,6 +11931,9 @@ function verifyInventoryWorkflowActor_(payload) {
   // also checks that its session still belongs to the verified Auth user.
   const claims = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(token.split('.')[1])).getDataAsString());
   if (!user.id || claims.sub !== user.id || !claims.session_id) throw new Error('Your session could not be verified. Sign in again.');
+  if (callSupabaseRpc_('app_account_active_v1', { p_profile_id: user.id, p_username: null }) !== true) {
+    throw new Error('This account is no longer active. Contact an administrator.');
+  }
   return inventoryWorkflowRpc_('inventory_workflow_session_actor_v1', { p_actor_id: user.id, p_session_id: claims.session_id });
 }
 
@@ -12162,7 +12197,7 @@ function sendInventoryTransactionEmail_(payload, context) {
   const subjectName = String(firstNonEmptyRequestValue_(item.commonname, 'Inventory')).replace(/\s+/g, ' ').trim();
   const subjectLocation = firstNonEmptyRequestValue_(item.locationcode, '');
   const subject = '[External] GNC PH ' + actionLabel + ': ' + subjectName + (subjectLocation ? ' ' + subjectLocation : '');
-  GmailApp.sendEmail(recipients.join(','), subject, buildInventoryTransactionEmailText_(item, safeContext), {
+  sendOperationalEmail_(recipients.join(','), subject, buildInventoryTransactionEmailText_(item, safeContext), {
     htmlBody: htmlBody,
     name: 'GNC PH ' + actionLabel
   });
@@ -14090,6 +14125,7 @@ function renderApprovalStatusPage_(title, message, tone) {
 function renderApprovalConfirmWebApp_(params) {
   const valid = validateEmailApprovalParams_(params);
   if (!valid.ok) return renderApprovalStatusPage_('Approval Link', valid.message, 'bad');
+  if (!isActiveEmailApprovalActor_(valid.stage)) return renderApprovalStatusPage_('Approval Sign-in Required', 'Open this approval in the app using the assigned approver account. No changes were made.', 'bad');
   const row = fetchEmailApprovalMasterRow_(valid.uid);
   if (!row) return renderApprovalStatusPage_('Approval Link', 'This row could not be found. Open the app to review it.', 'bad');
   const assignment = String(getEmailApprovalRowValue_(row, ['app_tab_assignment', 'APP_TAB_ASSIGNMENT'], '') || '').trim();
@@ -14150,7 +14186,18 @@ function renderApprovalConfirmWebApp_(params) {
   return HtmlService.createHtmlOutput(renderApprovalPageHtml_(typeLabel + ' Approval', body)).setTitle(typeLabel + ' Approval');
 }
 
+function isActiveEmailApprovalActor_(stage) {
+  // A forwarded signed link proves possession, not the actor's identity. Never
+  // use the deployment owner's effective identity to authorize the visitor.
+  const expected = stage === 'dylan' ? 'dylan_collyge' : stage === 'jd' ? 'jd_jones' : '';
+  const email = normalizeEmailAddress_(Session.getActiveUser().getEmail());
+  if (!expected || email !== EMAIL_APPROVAL_USER_EMAILS_[expected]) return false;
+  try { return callSupabaseRpc_('app_account_active_v1', { p_profile_id: null, p_username: expected }) === true; }
+  catch (_) { return false; }
+}
+
 function handleEmailApprovalConfirm_(valid, row, params) {
+  if (!isActiveEmailApprovalActor_(valid.stage)) return renderApprovalStatusPage_('Approval Sign-in Required', 'Your account cannot approve this request. Open the app to continue.', 'bad');
   const nowIso = new Date().toISOString();
   const tableName = row.__approval_table_name || getRuntimeSiteSplitTableName_('ph_master_inventory', 'PH');
   if (valid.stage === 'dylan') {
@@ -15707,6 +15754,8 @@ function buildMimeEmail_(options) {
     'To: ' + String(options.toList || '')
   ];
   const fromHeader = formatMimeMailbox_(options.fromName, options.fromAddress);
+  if (options.ccList) lines.push('Cc: ' + String(options.ccList));
+  if (options.bccList) lines.push('Bcc: ' + String(options.bccList));
   if (fromHeader) lines.push('From: ' + fromHeader);
   const messageIdHeader = String(options.messageIdHeader || '').trim();
   if (messageIdHeader) lines.push('Message-ID: ' + messageIdHeader);
@@ -15772,6 +15821,10 @@ function extractGmailMessageHeader_(message, headerName) {
 }
 
 function sendGmailApiMessage_(options) {
+  const headers = resolveOperationalEmailHeaders_(options.toList || options.toArray, options.ccList || options.cc, options.bccList || options.bcc);
+  const policyRecipients = options.requiredRecipientEmails ? resolveOperationalEmailHeaders_(options.requiredRecipientEmails, [], []).to : null;
+  const submitterRecipients = options.submitterEmails && options.submitterEmails.length ? resolveOperationalEmailHeaders_(options.submitterEmails, [], []).to : [];
+  options = Object.assign({}, options, { toList: headers.to.join(','), toArray: headers.to, ccList: headers.cc.join(','), bccList: headers.bcc.join(',') });
   const request = {
     raw: base64UrlEncode_(buildMimeEmail_(options))
   };
@@ -15799,6 +15852,8 @@ function sendGmailApiMessage_(options) {
     messageId: internetMessageId || sentId,
     gmailMessageId: sentId,
     recipients: options.toArray || [],
+    resolvedRequiredRecipients: policyRecipients,
+    resolvedSubmitterRecipients: submitterRecipients,
     mode: threadId ? 'gmail_api_threaded' : 'gmail_api'
   };
 }
@@ -15901,19 +15956,20 @@ function decorateRequestLifecycleEmailResult_(payload, result, recipients) {
   if (safeType !== 'new_request' && safeType !== 'request_complete') return result;
 
   const recipientList = dedupeEmailAddresses_(
-    recipients && Array.isArray(recipients.toArray) ? recipients.toArray : result && result.recipients
+    result && Array.isArray(result.recipients) ? result.recipients : recipients && recipients.toArray
   );
-  const requiredRecipientsSatisfied = REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.every(function(email) {
+  const requiredRecipients = result && Array.isArray(result.resolvedRequiredRecipients) ? result.resolvedRequiredRecipients : REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_;
+  const requiredRecipientsSatisfied = requiredRecipients.every(function(email) {
     return recipientList.indexOf(normalizeEmailAddress_(email)) !== -1;
   });
-  const submitterEmails = collectRequestSubmitterEmails_(safePayload);
+  const submitterEmails = result && Array.isArray(result.resolvedSubmitterRecipients) ? result.resolvedSubmitterRecipients : collectRequestSubmitterEmails_(safePayload);
   const submitterIncluded = submitterEmails.length === 0 || submitterEmails.every(function(email) {
     return recipientList.indexOf(normalizeEmailAddress_(email)) !== -1;
   });
 
   return Object.assign({}, result || {}, {
     lifecycleRecipientPolicyVersion: REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_,
-    requiredRecipientCount: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.length,
+    requiredRecipientCount: requiredRecipients.length,
     requiredRecipientsSatisfied: requiredRecipientsSatisfied,
     submitterRecorded: submitterEmails.length > 0,
     submitterIncluded: submitterIncluded
@@ -15943,7 +15999,7 @@ function sendRequestEmailWithFallback_(payload) {
   if (safeType === 'ncr_complete') {
     const ncrCompleteName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH NCR').trim() || 'GNC PH NCR';
     try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+      sendOperationalEmail_(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
         name: ncrCompleteName
       });
@@ -15967,7 +16023,7 @@ function sendRequestEmailWithFallback_(payload) {
   if (safeType === 'bloom_crop_update') {
     const bloomCropUpdateName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Crop Update').trim() || 'GNC PH Crop Update';
     try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+      sendOperationalEmail_(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
         name: bloomCropUpdateName
       });
@@ -15991,7 +16047,7 @@ function sendRequestEmailWithFallback_(payload) {
   if (safeType === 'bloom_purpose_report') {
     const bloomPurposeName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Report').trim() || 'GNC PH Report';
     try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+      sendOperationalEmail_(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
         name: bloomPurposeName
       });
@@ -16026,7 +16082,7 @@ function sendRequestEmailWithFallback_(payload) {
     };
     if (attachments.length) options.attachments = attachments;
     try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, options);
+      sendOperationalEmail_(recipients.toList, message.subject, message.textBody || message.subject, options);
       return {
         ok: true,
         status: 200,
@@ -16047,7 +16103,7 @@ function sendRequestEmailWithFallback_(payload) {
   if (safeType === 'ncr_approval' || safeType === 'hold_release_request') {
     const approvalEmailName = getApprovalEmailDisplayName_(payload);
     try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+      sendOperationalEmail_(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
         name: approvalEmailName
       });
@@ -16071,7 +16127,7 @@ function sendRequestEmailWithFallback_(payload) {
   if (safeType === 'drive_customer_outreach') {
     const driveOutreachName = String(payload.fromName || payload.brandLabel || payload.emailDisplayName || 'GNC PH Reserves').trim() || 'GNC PH Reserves';
     try {
-      GmailApp.sendEmail(recipients.toList, message.subject, message.textBody || message.subject, {
+      sendOperationalEmail_(recipients.toList, message.subject, message.textBody || message.subject, {
         htmlBody: message.htmlBody,
         name: driveOutreachName
       });
@@ -16112,6 +16168,8 @@ function sendRequestEmailWithFallback_(payload) {
     const result = sendGmailApiMessage_({
       toList: recipients.toList,
       toArray: recipients.toArray,
+      requiredRecipientEmails: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_,
+      submitterEmails: collectRequestSubmitterEmails_(payload),
       subject: message.subject,
       textBody: message.textBody,
       htmlBody: message.htmlBody,
@@ -17612,7 +17670,7 @@ function hlOrderDeliveryRecord_(delivery, status, result) {
 
 function hlOrderEmailReceipt_(result, messageIdHeader, recipient) {
   return { gmail_message_id: String(result.gmailMessageId || result.gmail_message_id || ''), thread_id: String(result.threadId || result.thread_id || ''),
-    message_id: String(result.messageId || result.message_id || messageIdHeader), message_id_header: messageIdHeader, recipients: [recipient], mode: String(result.mode || 'gmail_api') };
+    message_id: String(result.messageId || result.message_id || messageIdHeader), message_id_header: messageIdHeader, recipients: Array.isArray(result.recipients) ? result.recipients : [recipient], mode: String(result.mode || 'gmail_api') };
 }
 
 function handleSignedHlOrderDelivery_(delivery) {
@@ -17672,7 +17730,7 @@ function handleSignedHlOrderDelivery_(delivery) {
     // Either durable database receipt or Sent-mail/Script receipt can recover a lost worker acknowledgement.
     try { saveRequestDeliveryReceipt_(expectedId, result); } catch (receiptError) {}
     hlOrderDeliveryRecord_(delivery, 'sent', hlOrderEmailReceipt_(result, expectedId, recipient));
-    return Object.assign({}, result, { ok: true, recipients: [recipient], messageIdHeader: expectedId, mode: 'hl_order_gmail_api' });
+    return Object.assign({}, result, { ok: true, recipients: result.recipients || [recipient], messageIdHeader: expectedId, mode: 'hl_order_gmail_api' });
   } catch (error) {
     const code = sendStarted ? 'HL_ORDER_DELIVERY_UNKNOWN' : /^HL_ORDER_[A-Z_]+$/.test(String(error && error.message || '')) ? error.message : 'HL_ORDER_DELIVERY_UNAVAILABLE';
     if (sendStarted) { try { hlOrderDeliveryRecord_(delivery, 'unknown', { code: code, message_id_header: String(delivery.messageIdHeader || '') }); } catch (recordError) {} }
@@ -17765,7 +17823,7 @@ function handleSignedBunchNoteDelivery_(delivery) {
     const recipients = Array.from(new Set(saved.recipients.map(function(r) { return normalizeEmailAddress_(r.email); })));
     if (!recipients.length || recipients.indexOf(dylan) === -1 || recipients.some(function(email) { return !isLikelyEmailAddress_(email); })) throw new Error('BUNCH_NOTE_RECIPIENT_INVALID');
     const receipt = saved.receipt && saved.receipt.gmail_message_id ? saved.receipt : getRequestDeliveryReceipt_(expectedId) || findSentRequestDeliveryByMessageId_(expectedId);
-    function durableReceipt(result) { return {gmail_message_id:result.gmailMessageId || result.gmail_message_id,thread_id:result.threadId || result.thread_id || '',message_id:expectedId,message_id_header:expectedId,recipients:recipients,mode:'bunch_note_gmail_api'}; }
+    function durableReceipt(result) { return {gmail_message_id:result.gmailMessageId || result.gmail_message_id,thread_id:result.threadId || result.thread_id || '',message_id:expectedId,message_id_header:expectedId,recipients:result.recipients || recipients,mode:'bunch_note_gmail_api'}; }
     if (receipt) {
       const recovered = durableReceipt(receipt);
       bunchNoteDeliveryRecord_(delivery,'sent',recovered);
@@ -17786,7 +17844,7 @@ function handleSignedBunchNoteDelivery_(delivery) {
     if (!result || !result.ok || !result.gmailMessageId) throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN');
     try { saveRequestDeliveryReceipt_(expectedId,result); } catch (ignored) {}
     bunchNoteDeliveryRecord_(delivery,'sent',durableReceipt(result));
-    return Object.assign({},result,{ok:true,recipients:recipients,messageIdHeader:expectedId,mode:'bunch_note_gmail_api'});
+    return Object.assign({},result,{ok:true,recipients:result.recipients || recipients,messageIdHeader:expectedId,mode:'bunch_note_gmail_api'});
   } catch (error) {
     if (started) { try { bunchNoteDeliveryRecord_(delivery,'unknown',{message_id_header:delivery.messageIdHeader}); } catch (ignored) {} }
     const code = started ? 'BUNCH_NOTE_DELIVERY_UNKNOWN' : String(error.message || 'BUNCH_NOTE_DELIVERY_FAILED');
@@ -18459,7 +18517,7 @@ function doPost(e) {
       }
 
       if (recipient) {
-        GmailApp.sendEmail(recipient, subject, textBody || subject, { htmlBody: htmlBody, name: "GNC PARK HILL" });
+        sendOperationalEmail_(recipient, subject, textBody || subject, { htmlBody: htmlBody, name: "GNC PARK HILL" });
         return ContentService.createTextOutput(JSON.stringify({ ok: true, status: "success" })).setMimeType(ContentService.MimeType.JSON);
       } else {
         return ContentService.createTextOutput(JSON.stringify({

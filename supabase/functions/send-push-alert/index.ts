@@ -3,6 +3,7 @@ import { withObservedRequest } from "../_shared/observability.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import webpush from "npm:web-push@3.6.7";
 import { getRoleAccessState, normalizeUsername, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { resolveOperationalRecipients } from "../_shared/operational-routing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -75,6 +76,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
+  if (eventType === "scheduled_handover_complete" || eventType === "scheduled_handover_failed") return ["dylan_collyge"];
   if (eventType.startsWith("codex_ops_")) return ["dylan_collyge"];
   if (eventType === "hr_calendar_reminder") return ["dylan_collyge"];
   if (eventType === "new_request") return [...REQUEST_ALERT_USERNAMES];
@@ -104,6 +106,14 @@ function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
 }
 
 function buildNotification(eventType: string, payload: Record<string, unknown>) {
+  if (eventType === "scheduled_handover_complete" || eventType === "scheduled_handover_failed") {
+    return {
+      title: eventType === "scheduled_handover_complete" ? "Scheduled handover complete" : "Scheduled handover needs attention",
+      body: eventType === "scheduled_handover_complete" ? "Kayla's app access is disabled and unfinished work has transferred to Nelly." : "Kayla's scheduled access cutoff is enforced. Review the handover audit for unfinished steps.",
+      tag: `handover-${String(payload.transitionId || "scheduled")}-${eventType}`,
+      viewId: "managers", url: "./",
+    };
+  }
   const customer = String(payload.customer || "Unknown Customer").trim();
   const repName = String(payload.repName || payload.requestedBy || "Unknown Rep").trim();
   const folderId = String(payload.folderId || "").trim();
@@ -272,29 +282,6 @@ function buildSubscription(row: Record<string, unknown>) {
   };
 }
 
-function decodeBase64UrlText(value = "") {
-  const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
-  return atob(padded);
-}
-
-function getJwtPayload(token = "") {
-  const parts = String(token || "").trim().split(".");
-  if (parts.length < 2) return null;
-  try {
-    return JSON.parse(decodeBase64UrlText(parts[1])) as Record<string, unknown>;
-  } catch (_error) {
-    return null;
-  }
-}
-
-function isServiceRoleJwt(token = "") {
-  const payload = getJwtPayload(token);
-  const role = String(payload?.role || "").trim();
-  const issuer = String(payload?.iss || "").trim().toLowerCase();
-  return role === "service_role" && issuer === "supabase";
-}
-
 serve((req) => withObservedRequest("send-push-alert", req, async () => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
@@ -307,7 +294,7 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
   const apiKey = String(req.headers.get("apikey") || "").trim();
   const session = await readSupabaseOrAppSessionFromRequest(req, supabase);
   const sessionAccess = session ? getRoleAccessState(session.role) : null;
-  const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY || isServiceRoleJwt(authHeader) || isServiceRoleJwt(apiKey);
+  const hasServiceRole = authHeader === SUPABASE_SERVICE_ROLE_KEY || apiKey === SUPABASE_SERVICE_ROLE_KEY;
   const hasAppSession = !!(session && !session.mustChangePassword && sessionAccess);
 
   if (!hasServiceRole && !hasAppSession) {
@@ -317,17 +304,19 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
   const codexEventTypes = new Set(["codex_ops_needs_input", "codex_ops_ready", "codex_ops_live", "codex_ops_failed", "codex_ops_reverted"]);
-  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "hr_calendar_reminder" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary" && !codexEventTypes.has(eventType)) {
+  const handoverEventTypes = new Set(["scheduled_handover_complete", "scheduled_handover_failed"]);
+  if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "hr_calendar_reminder" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary" && !codexEventTypes.has(eventType) && !handoverEventTypes.has(eventType)) {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
-  // The legacy service-role JWT helper only inspects claims. Reminder pushes
-  // require the actual configured service credential even if gateway JWT
-  // verification is changed, so a forged role claim cannot schedule alerts.
-  if (eventType === "hr_calendar_reminder" && authHeader !== SUPABASE_SERVICE_ROLE_KEY && apiKey !== SUPABASE_SERVICE_ROLE_KEY) {
+  // Reminders and handover notices require the configured service credential;
+  // an active app session cannot send these administrative event types.
+  if ((eventType === "hr_calendar_reminder" || handoverEventTypes.has(eventType)) && authHeader !== SUPABASE_SERVICE_ROLE_KEY && apiKey !== SUPABASE_SERVICE_ROLE_KEY) {
     return jsonResponse({ error: "This reminder event is service-only." }, 403);
   }
 
-  const targetUsers = buildTargetUsers(eventType, payload);
+  let targetUsers: string[];
+  try { targetUsers = await resolveOperationalRecipients(supabase, buildTargetUsers(eventType, payload), "username"); }
+  catch { return jsonResponse({ error: "Recipient routing is temporarily unavailable. No push was sent." }, 503); }
   if (!targetUsers.length) {
     return jsonResponse({ delivered: 0, targets: [] });
   }
@@ -335,7 +324,8 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
   const query = supabase
     .from(PUSH_TABLE)
     .select("id,username,endpoint,p256dh,auth,subscription_json")
-    .eq("notifications_enabled", true);
+    .eq("notifications_enabled", true)
+    .in("username", targetUsers);
 
   const { data, error } = await query;
   if (error) {
@@ -359,7 +349,12 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
 
   for (let start = 0; start < subscriptions.length; start += PUSH_SEND_CONCURRENCY) {
     const chunk = subscriptions.slice(start, start + PUSH_SEND_CONCURRENCY);
+    // A long send may cross the cutoff after the initial subscription query.
+    let currentTargets: Set<string>;
+    try { currentTargets = new Set(await resolveOperationalRecipients(supabase, targetUsers, "username")); }
+    catch { return jsonResponse({ error: "Recipient routing changed. Remaining pushes were stopped.", delivered }, 503); }
     await Promise.all(chunk.map(async (row) => {
+      if (!currentTargets.has(normalizeUsername(String(row.username || "")))) return;
       try {
         await webpush.sendNotification(buildSubscription(row), notificationPayload, WEB_PUSH_OPTIONS);
         delivered += 1;

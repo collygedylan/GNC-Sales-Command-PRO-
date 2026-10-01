@@ -4,7 +4,7 @@ import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/na
 import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
-import { createAppSession, getRoleAccessState, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
+import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail, isPhotoHistoryUsernameAllowed } from "../_shared/photo-history.ts";
 import {
@@ -338,7 +338,8 @@ function databaseFailureResponse(
 ) {
   const dbError = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const code = String(dbError.code || fallbackCode);
-  const status = code === "42501" ? 403 : code === "40001" ? 409 : 503;
+  const explicitStatus = /^PT[45]\d{2}$/.test(code) ? Number(code.slice(2)) : 0;
+  const status = code === "42501" ? 403 : code === "40001" || code === "23505" ? 409 : explicitStatus || 503;
   return errorResponse(message, status, { code });
 }
 
@@ -688,6 +689,30 @@ async function handleDatasetRead(
   }
 }
 
+async function handleRequestArchive(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, payload: Record<string, unknown>) {
+    if (!session) return errorResponse("Sign in before archiving requests.", 401);
+    let actor: Record<string, unknown>;
+    try { actor = await resolveActiveSessionProfile(session); }
+    catch { return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" }); }
+    const operation = String(payload.operation || "");
+    if (operation === "list") {
+      const offset = Number(payload.offset ?? 0), limit = Number(payload.limit ?? 100);
+      if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) return errorResponse("Invalid archive page.", 400);
+      const { data, error } = await supabase.rpc("request_archive_list_v1", { p_actor_id: actor.id, p_offset: offset, p_limit: Math.min(limit, 500) });
+      if (error) return databaseFailureResponse("Archived requests could not be loaded.", error, "REQUEST_ARCHIVE_READ_FAILED");
+      return jsonResponse({ ok: true, data });
+    }
+    const uid = String(payload.uid || "").trim(), key = String(payload.idempotencyKey || "").trim();
+    if (!["archive", "restore"].includes(operation) || !uid || uid.length > 240 || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+      return errorResponse("Invalid archive command.", 400, { code: "REQUEST_ARCHIVE_COMMAND_INVALID" });
+    }
+    const { data, error } = await supabase.rpc("request_archive_command_v1", {
+      p_actor_id: actor.id, p_uid: uid, p_operation: operation, p_idempotency_key: key,
+    });
+    if (error) return databaseFailureResponse("The archive change was not accepted. Refresh the request and retry.", error, "REQUEST_ARCHIVE_FAILED");
+    return jsonResponse({ ok: true, data });
+}
+
 function productionScheduleBase64Url(bytes: Uint8Array) {
   let binary = "";
   bytes.forEach((value) => { binary += String.fromCharCode(value); });
@@ -952,7 +977,7 @@ const EVAL_WORK_MANAGER_USERS = new Set(["dylan_collyge", "megan_kelly", "jd_jon
 const EVAL_WORK_ASSIGNABLE_USERS = new Set([
   "josh_vann", "jorge_colunga", "abigail_vazquez", "bobby_adair", "charley_robertson",
   "ellen_ward", "zoe_green", "mitch_kaiser", "dylan_collyge", "megan_kelly",
-  "kayla_knepp", "jd_jones",
+  "kayla_knepp", "jd_jones", "nelly_aguilar",
 ]);
 
 function isEvalWorkManager(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>) {
@@ -977,6 +1002,7 @@ async function resolveActiveSessionProfile(
     || (Number.isFinite(lockedUntil) && lockedUntil > Date.now())) {
     throw new Error("profile_not_active");
   }
+  if (!await isAppAccountActive(supabase, { id: String(profile.id) })) throw new Error("profile_not_active");
   return profile as Record<string, unknown>;
 }
 
@@ -1814,6 +1840,7 @@ async function resolveEvalWorkAssignee(usernameValue: unknown) {
   if (!profile?.id || profile.disabled_at || (Number.isFinite(lockedUntil) && lockedUntil > Date.now())) {
     throw new Error("eval_work_assignee_not_active");
   }
+  if (!await isAppAccountActive(supabase, { id: String(profile.id) })) throw new Error("eval_work_assignee_not_active");
   const { data: authUser, error: authUserError } = await supabase.auth.admin.getUserById(String(profile.id));
   if (authUserError) throw authUserError;
   const email = String(authUser?.user?.email || "").trim().toLowerCase();
@@ -2697,6 +2724,9 @@ async function handleLogin(payload: Record<string, unknown>) {
   }) || null;
 
   if (!matchedUser) return jsonResponse({ ok: false, reason: "mismatch" }, 200);
+  if (!await isAppAccountActive(supabase, { username: normalizedInput })) {
+    return errorResponse("This account is no longer active. Contact an administrator.", 403, { code: "ACCOUNT_INACTIVE" });
+  }
 
   const dbUsername = String(matchedUser.username || matchedUser.USERNAME || username).trim() || username;
   const role = String(matchedUser.role || matchedUser.ROLE || "User").trim() || "User";
@@ -2774,8 +2804,12 @@ async function readPasswordChangeSession(req: Request, session: Awaited<ReturnTy
   try {
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user?.id) return null;
+    const verifiedEmail = String(data.user.email || "").trim().toLowerCase();
+    const identity = /^[a-z0-9_]+@greenleafnursery\.com$/.test(verifiedEmail)
+      ? { username: verifiedEmail.split("@")[0] } : { id: String(data.user.id) };
+    if (!await isAppAccountActive(supabase, identity)) return null;
     const now = Math.floor(Date.now() / 1000);
-    return { ver: 2, authUserId: String(data.user.id), username: "", displayName: "", role: "", mustChangePassword: true, iat: now, exp: now + 300 };
+    return { ver: 2, authUserId: String(data.user.id), username: identity.username || "", displayName: "", role: "", mustChangePassword: true, iat: now, exp: now + 300 };
   } catch { return null; }
 }
 
@@ -2805,6 +2839,11 @@ async function handlePasswordChange(
   const retryResponse = () => errorResponse("Your password change has not been fully confirmed. Keep this screen open and retry with the same new password.", 503, { code: "PASSWORD_CHANGE_RETRY_REQUIRED", retryable: true });
   let nextSession;
   try {
+    if (!await isAppAccountActive(supabase, session.authUserId ? { id: session.authUserId } : { username })) {
+      // Legacy-only reconciliation is allowed through its verified username;
+      // the native fallback already checked its Auth-verified email identity.
+      if (!username || !await isAppAccountActive(supabase, { username })) return errorResponse("This account is no longer active.", 403, { code: "ACCOUNT_INACTIVE" });
+    }
     const fingerprint = await passwordChangeFingerprint(newPassword);
     const prepare = async (authUserId: string | null) => {
       const { data, error } = await supabase.rpc("prepare_password_change_profile", {
@@ -2842,8 +2881,10 @@ async function handlePasswordChange(
     let completed = profile;
     if (profile.status !== "completed") {
       if (profile.status !== "ready" || profile.must_change_password !== true) return retryResponse();
+      if (!await isAppAccountActive(supabase, { id: String(profile.profile_id) })) return errorResponse("This account is no longer active.", 403, { code: "ACCOUNT_INACTIVE" });
       const { error: nativePasswordError } = await supabase.auth.admin.updateUserById(String(profile.profile_id), { password: newPassword });
       if (nativePasswordError) return retryResponse();
+      if (!await isAppAccountActive(supabase, { id: String(profile.profile_id) })) return errorResponse("This account is no longer active.", 403, { code: "ACCOUNT_INACTIVE" });
       const { data: completedData, error: completeError } = await supabase.rpc("complete_password_change_profile", {
         p_attempt_id: String(profile.attempt_id), p_auth_user_id: String(profile.profile_id),
         p_password: newPassword, p_password_fingerprint: fingerprint,
@@ -4218,6 +4259,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
   if (action === "dataset_read") return await handleDatasetRead(session, payload);
+  if (action === "request_archive") return await handleRequestArchive(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);
   if (action === "av_read") {

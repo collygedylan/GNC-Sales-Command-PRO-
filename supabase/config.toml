@@ -402,6 +402,12 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/calendar-reminder-sweep/index.ts"
 
+[functions.scheduled-offboarding]
+enabled = true
+# The worker compares the bearer to the configured service credential itself.
+verify_jwt = false
+entrypoint = "./functions/scheduled-offboarding/index.ts"
+
 [functions.request-delivery-worker]
 enabled = true
 verify_jwt = false

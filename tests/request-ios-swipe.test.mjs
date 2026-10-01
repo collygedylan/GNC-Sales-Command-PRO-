@@ -8,6 +8,7 @@ const capabilityMigration = readFileSync(new URL('../supabase/archive_migrations
 const capabilityPolicyGrantMigration = readFileSync(new URL('../supabase/archive_migrations/20260825223040_grant_request_policy_helper.sql', import.meta.url), 'utf8');
 const chanceCapabilityMigration = readFileSync(new URL('../supabase/archive_migrations/20260826133016_allow_chance_alldredge_request_create_own.sql', import.meta.url), 'utf8');
 const kaylaCapabilityV2Migration = readFileSync(new URL('../supabase/archive_migrations/20260826170020_request_capabilities_v2_restore_kayla.sql', import.meta.url), 'utf8');
+const requestArchiveMigration = readFileSync(new URL('../supabase/migrations/20261001215511_request_archive_005.sql', import.meta.url), 'utf8');
 
 test('Request permissions come from one authenticated capability contract', () => {
   assert.match(capabilityMigration, /create or replace function public\.get_request_capabilities\(\)/);
@@ -200,8 +201,44 @@ test('iOS Request rendering uses the swipe surface instead of disabling it', () 
   assert.match(decorateCode, /pointerup', handleRequestSwipeEnd, \{ passive: false \}/);
 });
 
-test('iOS Request swipe reveals a touch-sized Remove action', () => {
+test('Request swipe archives in either direction after confirmation and retains an accessible 44px action', () => {
   assert.match(html, /body\.ios-device\.viewport-phone\.current-view-request #view-request \.request-swipe-row\{[\s\S]*overflow:hidden !important/);
   assert.match(html, /body\.ios-device\.viewport-phone\.current-view-request #view-request \.request-swipe-row\.swipe-open \.request-swipe-surface\{[\s\S]*translateX\(-88px\)/);
   assert.match(html, /body\.ios-device\.viewport-phone\.current-view-request #view-request \.request-swipe-action\{[\s\S]*display:flex !important[\s\S]*width:88px !important[\s\S]*min-height:44px !important/);
+  const swipeEnd = html.slice(html.indexOf('function handleRequestSwipeEnd'), html.indexOf('function handleRequestSwipeTouchEnd'));
+  assert.match(swipeEnd, /Math\.abs\(actualSwipeDelta\) >= Math\.abs\(REQUEST_SWIPE_OPEN_THRESHOLD\)/);
+  assert.match(swipeEnd, /cancelledGesture = \/cancel\/i\.test/);
+  assert.match(swipeEnd, /!cancelledGesture/);
+  assert.match(swipeEnd, /setTimeout\(\(\) => archiveRequestRow\(requestUid\), 0\)/);
+  const archiveFlow = html.slice(html.indexOf('async function archiveRequestRow'), html.indexOf('async function confirmRequestArchiveRestore'));
+  assert.match(archiveFlow, /await confirmArchiveRequestRow\(item\)/);
+  assert.match(archiveFlow, /actionIdentityScope !== getSupabaseReadIdentityScope\(\)/);
+  assert.match(archiveFlow, /request-archive-exiting/);
+  assert.match(archiveFlow, /item\.REQ_ARCHIVED = true/);
+  assert.match(archiveFlow, /queuePendingRequestArchive\(requestUid, 'archive', idempotencyKey\)/);
+  assert.match(archiveFlow, /syncRequestArchive\(requestUid, 'archive', idempotencyKey, 3\)/);
+  assert.match(archiveFlow, /if \(result\.ok\)[\s\S]*offerRequestArchiveUndo\(requestUid\)/);
+  assert.match(archiveFlow, /item\.REQ_ARCHIVED = false/);
+  assert.match(html.slice(html.indexOf('async function confirmArchiveRequestRow'), html.indexOf('async function archiveRequestRow')), /confirmLabel: 'Archive'/);
+  assert.doesNotMatch(archiveFlow, /hardDelete|deleteRequest|sendRequestCompletion|sendRequestEmail/i);
+});
+
+test('archive commands are capability-gated, account-scoped, reversible, and never delete rows', () => {
+  assert.match(html, /function canCurrentUserArchiveRequestRows\(\)[\s\S]*capabilities\.canArchive/);
+  assert.match(html, /identityScope: getSupabaseReadIdentityScope\(\)/);
+  assert.match(html, /scope === identityScope/);
+  assert.match(html, /restoreArchivedRequestRow\(uid/);
+  assert.match(html, /request_archive/);
+  const sync = html.slice(html.indexOf('async function syncRequestArchive'), html.indexOf('function getPendingRequestArchiveMap'));
+  assert.match(sync, /const identityScope = getSupabaseReadIdentityScope\(\)/);
+  assert.match(sync, /if \(identityScope !== getSupabaseReadIdentityScope\(\)\)/);
+  assert.match(sync, /error\.name = 'AbortError'/);
+  assert.match(requestArchiveMigration, /private\.can_manage_requests\(\)/);
+  assert.match(requestArchiveMigration, /pg_advisory_xact_lock/);
+  assert.match(requestArchiveMigration, /request_archive_command_ledger/);
+  assert.match(requestArchiveMigration, /set req_archived = true/);
+  assert.match(requestArchiveMigration, /set req_archived = false/);
+  assert.match(requestArchiveMigration, /drop policy if exists ph_active_request_manager_delete/);
+  assert.doesNotMatch(requestArchiveMigration, /delete from public\.ph_active_request/i);
+  assert.doesNotMatch(requestArchiveMigration, /send.*(?:email|completion)/i);
 });

@@ -79,7 +79,7 @@ test('private realtime channel checks session freshness and removes the channel 
 
 test('calendar reminders require the configured service credential and target only Dylan', () => {
   assert.match(pushSender, /eventType === "hr_calendar_reminder"[\s\S]*?return \["dylan_collyge"\]/);
-  assert.match(pushSender, /eventType === "hr_calendar_reminder" && authHeader !== SUPABASE_SERVICE_ROLE_KEY && apiKey !== SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(pushSender, /\(eventType === "hr_calendar_reminder" \|\| handoverEventTypes\.has\(eventType\)\) && authHeader !== SUPABASE_SERVICE_ROLE_KEY && apiKey !== SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(reminderSweep, /bearer !== SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(reminderSweep, /targetUsers: \["dylan_collyge"\]/);
 });
