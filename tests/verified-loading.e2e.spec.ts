@@ -10,6 +10,18 @@ type Visit = {
 };
 type Totals = { requests: number; bytes: number; pending: Promise<void>[] };
 
+function isStrictDatasetRead(body: any, dataset: string) {
+  const params = body?.params;
+  return body?.action === 'dataset_read' && body.dataset === dataset
+    && Object.keys(body).sort().join(',') === 'action,dataset,params'
+    && params && typeof params === 'object' && !Array.isArray(params)
+    && Number.isInteger(params.limit) && params.limit >= 1 && params.limit <= 500
+    && Number.isInteger(params.offset) && params.offset >= 0
+    && (!params.projection || ['default', 'signature', 'ids'].includes(params.projection))
+    && Array.isArray(params.filters || []) && Array.isArray(params.anyOf || []) && Array.isArray(params.order || [])
+    && Object.keys(params).every(key => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key));
+}
+
 async function coordinatorEvidence(page: Page) {
   return page.evaluate(() => {
     const coordinator = window.eval('getProductionLiveSyncCoordinator()');
@@ -170,6 +182,16 @@ async function installPendingRequestFixture(page: Page, baseURL: string, initial
     beforeLogin: async () => {
       await page.route('**/functions/v1/app-api', async route => {
         const body = route.request().postDataJSON() || {};
+        if (isStrictDatasetRead(body, 'request_queue')) {
+          reads.push('dataset_read:request_queue');
+          const { limit, offset } = body.params;
+          if (mode === 'failed') return route.fulfill({ status: 503, contentType: 'application/json',
+            headers: { 'access-control-allow-origin': origin }, body: JSON.stringify({ ok: false, error: 'Synthetic required request read failure' }) });
+          const allRows = mode === 'rows' ? [pendingRequestRow] : [];
+          const rows = allRows.slice(offset, offset + limit);
+          return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': origin },
+            body: JSON.stringify({ ok: true, data: { rows, total: allRows.length, offset, limit, hasMore: offset + rows.length < allRows.length } }) });
+        }
         if (body.action !== 'inventory_read' || !['master_page', 'master_delta'].includes(body.operation)) return route.fallback();
         reads.push('ph_master_inventory');
         if (mode === 'failed') return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic inventory read failure' }) });
@@ -178,7 +200,7 @@ async function installPendingRequestFixture(page: Page, baseURL: string, initial
           rows: [], total: 0, offset: body.params?.offset || 0, limit: body.params?.limit || 500, hasMore: false
         } }) });
       });
-      await page.route(/\/rest\/v1\/(?:ph_request_queue_live_rows|ph_active_request_live_rows|ph_request_history|ph_sales_credit_requests|ph_inventory_edit_requests|ph_customer_consignee_sales_reps)(?:\?|$)/, async route => {
+      await page.route(/\/rest\/v1\/(?:ph_request_history|ph_sales_credit_requests|ph_inventory_edit_requests|ph_customer_consignee_sales_reps)(?:\?|$)/, async route => {
         const table = new URL(route.request().url()).pathname.split('/').pop() || '';
         reads.push(table);
         const headers = {
@@ -187,10 +209,6 @@ async function installPendingRequestFixture(page: Page, baseURL: string, initial
           'content-range': mode === 'rows' ? '0-0/1' : '*/0'
         };
         const fulfill = (value: unknown, status = 200) => route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(value) });
-        if (table === 'ph_request_queue_live_rows' || table === 'ph_active_request_live_rows') {
-          if (mode === 'failed') return fulfill({ message: 'Synthetic required request read failure' }, 500);
-          return fulfill(mode === 'rows' ? [pendingRequestRow] : []);
-        }
         if (['ph_inventory_edit_requests', 'ph_customer_consignee_sales_reps'].includes(table)) {
           await unrelatedGate;
           return fulfill({ message: `Synthetic held ${table} failure` }, 500);
@@ -337,7 +355,7 @@ test('mobile Pending Requests renders its required rows while unrelated reads ar
     await expect(page.locator('#request-content')).toContainText('Synthetic pending request Hosta');
     await expect(page.locator('#request-content')).not.toContainText('Load Failed');
     await expectPendingRequestScope(page);
-    expect(control.reads.some(table => ['ph_request_queue_live_rows', 'ph_active_request_live_rows'].includes(table)),
+    expect(control.reads.includes('dataset_read:request_queue'),
       'Pending Requests must fetch its own required queue rows').toBe(true);
   } finally {
     control.releaseUnrelatedReads();
@@ -493,9 +511,15 @@ for (const view of ['Drive', 'Tasks'] as const) test(`benchmark records three in
           }) }
         ],
         beforeLogin: async () => {
-          await page.route(/\/rest\/v1\/ph_cav_import(?:\?|$)/, route => route.fulfill({ contentType: 'application/json', body: JSON.stringify([
-            { itemcode: 'SYNTH.003', season: 'F1', holdstopreason: '' }
-          ]) }));
+          await page.route('**/functions/v1/app-api', async route => {
+            const body = route.request().postDataJSON() || {};
+            if (!isStrictDatasetRead(body, 'cav')) return route.fallback();
+            const { limit, offset } = body.params;
+            const allRows = [{ itemcode: 'SYNTH.003', season: 'F1', holdstopreason: '' }];
+            const rows = allRows.slice(offset, offset + limit);
+            return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': new URL(baseURL!).origin },
+              body: JSON.stringify({ ok: true, data: { rows, total: allRows.length, offset, limit, hasMore: offset + rows.length < allRows.length } }) });
+          });
           await expect(page.locator('#login-button')).toBeEnabled();
         }
       } : {});
@@ -526,8 +550,17 @@ test('Tasks verifies both AV Blank inputs without waiting for unopened task cate
   let cavReads = 0, optionalReads = 0;
   const fixture = await installColdFixture(page, baseURL!, {
     beforeLogin: async () => {
-      await page.route(/\/rest\/v1\/ph_cav_import(?:\?|$)/, async route => {
-        cavReads++; await cavGate; await route.fallback();
+      const origin = new URL(baseURL!).origin;
+      await page.route('**/functions/v1/app-api', async route => {
+        const body = route.request().postDataJSON() || {};
+        if (!isStrictDatasetRead(body, 'cav')) return route.fallback();
+        cavReads++;
+        await cavGate;
+        const { limit, offset } = body.params;
+        const allRows = [{ itemcode: 'SYNTH.003', season: 'F1', holdstopreason: '' }];
+        const rows = allRows.slice(offset, offset + limit);
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': origin },
+          body: JSON.stringify({ ok: true, data: { rows, total: allRows.length, offset, limit, hasMore: offset + rows.length < allRows.length } }) });
       });
       await page.route(/\/rest\/v1\/(ph_av_notes|ph_view_av_hot_price_keys|ph_flyer_folder_rows|ph_flyer_folder_history)(?:\?|$)/, async route => {
         optionalReads++; await optionalGate; await route.fallback();
