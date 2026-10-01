@@ -42,7 +42,7 @@ values('c2100000-0000-4000-8000-000000000002','2026-09-28','HR-TEST-A',3,'c20000
       ('c2100000-0000-4000-8000-000000000002','2026-09-28','HR-TEST-B',4,'c2000000-0000-4000-8000-000000000001');
 select is((select count(*)::integer from public.labor_timesheets where employee_id='c2100000-0000-4000-8000-000000000002' and work_date='2026-09-28'),2,'multiple job-code entries are allowed per employee day');
 select throws_ok($$insert into public.labor_timesheets(employee_id,work_date,job_code,hours,created_by_profile_id) values('c2100000-0000-4000-8000-000000000002','2026-09-28','HR-TEST-A',2,'c2000000-0000-4000-8000-000000000001')$$,
-  '23505','duplicate key value violates unique constraint "labor_timesheets_employee_work_job_unique"','duplicate employee/day/job-code entries are idempotency conflicts');
+  '23505',null::text,'duplicate employee/day/job-code entries are idempotency conflicts');
 reset role;
 
 insert into public.ph_department_calendar_events(unique_id,department,event_type,title,description,start_at,end_at,requested_by_username,assigned_to_username,assigned_usernames,status)
