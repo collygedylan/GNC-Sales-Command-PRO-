@@ -12,6 +12,7 @@ const browserConfig = fs.readFileSync(new URL('../playwright.database.config.ts'
 const provisioning = fs.readFileSync(new URL('./native-auth-provisioning-local.spec.js', import.meta.url), 'utf8');
 const legacyBaseline = fs.readFileSync(new URL('../supabase/ci/native_auth_legacy_user_baseline.sql', import.meta.url), 'utf8');
 const requestWorkflowBaseline = fs.readFileSync(new URL('../supabase/ci/request_workflow_baseline.sql', import.meta.url), 'utf8');
+const departmentCalendarBaseline = fs.readFileSync(new URL('../supabase/ci/department_calendar_baseline.sql', import.meta.url), 'utf8');
 const evalReport2Migration = fs.readFileSync(new URL('../supabase/archive_migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql', import.meta.url), 'utf8');
 
 test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', () => {
@@ -34,6 +35,15 @@ test('request workflow baseline provides the text hold start date consumed by Ev
   assert.ok(inventory, 'CI baseline defines the legacy master inventory table');
   assert.match(inventory[1], /\bholdstopbegindate\s+text\b/i);
   assert.match(evalReport2Migration, /eval_report2_inventory_date_v1\(m\.holdstopbegindate\)/i);
+});
+
+test('isolated database stages the existing calendar before the HR migration', () => {
+  assert.match(departmentCalendarBaseline, /create table public\.ph_department_calendar_events\s*\(/i);
+  assert.match(departmentCalendarBaseline, /unique_id text primary key/i);
+  assert.match(departmentCalendarBaseline, /assigned_usernames jsonb/i);
+  assert.doesNotMatch(departmentCalendarBaseline, /hr_source_event_id/i);
+  assert.match(workflow, /cp supabase\/ci\/department_calendar_baseline\.sql "\$ci_root\/supabase\/migrations\/20260929200001_ci_department_calendar_baseline\.sql"/);
+  assert.match(workflow, /cp supabase\/migrations\/20261001025638_aura_hr_command_center_v1\.sql/);
 });
 
 test('database reusable workflow is secret-free and has read-only repository permissions', () => {
