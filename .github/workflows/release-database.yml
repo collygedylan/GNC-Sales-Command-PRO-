@@ -128,6 +128,7 @@ jobs:
           cp supabase/archive_migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/archive_migrations/20260904070154_photo_delivery_health_v1.sql "$ci_root/supabase/migrations/"
           cp supabase/archive_migrations/20260904142737_dylan_photo_history_gallery_v1.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261001012038_production_schedule_snapshot_v1.sql "$ci_root/supabase/migrations/"
             cp supabase/archive_migrations/20260904143546_photo_history_catalog_refresh_refinement.sql "$ci_root/supabase/migrations/"
             cp supabase/archive_migrations/20260904151119_photo_history_required_copies_v2.sql "$ci_root/supabase/migrations/"
           cp supabase/archive_migrations/20260906022733_pin_remaining_public_function_search_paths.sql "$ci_root/supabase/migrations/"

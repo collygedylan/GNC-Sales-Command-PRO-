@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, releaseDatabaseMigrations, migrationContractQuery,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, releaseDatabaseMigrations, migrationContractQuery,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -66,7 +66,7 @@ test('migration and history entry are atomic and a retry verifies the same conte
 
 test('consolidated production baseline satisfies archived migrations without replay or ledger writes', async () => {
   assert.equal(productionBaselineVersion, '20260929200000');
-  for (const targetMigrationName of releaseDatabaseMigrations) {
+  for (const targetMigrationName of releaseDatabaseMigrations.filter(name => name !== productionScheduleMigrationName)) {
     const queries = [];
     const client = { query: async (sql, params) => {
       queries.push({ sql, params });
@@ -83,6 +83,25 @@ test('consolidated production baseline satisfies archived migrations without rep
     assert.equal(queries.at(-1).sql, 'commit');
     assert.ok(!queries.some(({ sql }) => sql.includes('should_not_run') || sql.startsWith('insert into')));
   }
+});
+
+test('Production Schedule migration applies additively after an older consolidated baseline', async () => {
+  const queries = [];
+  const client = { query: async (sql, params) => {
+    queries.push({ sql, params });
+    if (sql.startsWith('select name, statements')) return { rows: [] };
+    if (sql === 'select name from supabase_migrations.schema_migrations where version = $1') {
+      return { rows: [{ name: 'production_baseline' }] };
+    }
+    if (sql === migrationContractQuery(productionScheduleMigrationName)) return { rows: [{ installed: true }] };
+    return { rows: [] };
+  } };
+  const result = await applyItemLowStockMigration({
+    client, source: 'begin; select schedule_schema; commit;', targetMigrationName: productionScheduleMigrationName,
+  });
+  assert.equal(result.status, 'applied');
+  assert.ok(queries.some(({ sql }) => sql === 'select schedule_schema;'));
+  assert.ok(queries.some(({ sql, params }) => sql.startsWith('insert into supabase_migrations.schema_migrations') && params[0] === '20261001012038'));
 });
 
 test('baseline path fails closed when its identity or required contract is missing', async () => {
@@ -104,8 +123,9 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
+  assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
     queries.push({sql,params});
     if(sql.startsWith('select name'))return{rows:[]};
@@ -257,6 +277,9 @@ test('cloud rollout verifies the existing release proof before schema and import
   assert.ok(workflow.indexOf('apply-item-low-stock-migration.mjs\n')<workflow.indexOf('Sync Code.gs into Apps Script'));
   assert.ok(workflow.indexOf('Preview perennial policy impact (read only)')<workflow.indexOf('Apply low-stock and perennial schemas'));
   assert.ok(workflow.indexOf('Apply low-stock and perennial schemas')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  assert.ok(workflow.indexOf('Apply low-stock and perennial schemas')<workflow.indexOf('Configure Production Schedule dispatch and deploy app-api'));
+  assert.ok(workflow.indexOf('Configure Production Schedule dispatch and deploy app-api')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  assert.ok(workflow.indexOf('Queue the initial signed workbook import')<workflow.indexOf('Push the verified static site to gh-pages without force'));
   const steps = yaml.load(workflow).jobs['sync-codegs'].steps;
   const previewStep = steps.find(step => step.name === 'Preview perennial policy impact (read only)');
   const artifactStep = steps.find(step => step.name === 'Retain sanitized perennial impact preview');
@@ -265,7 +288,9 @@ test('cloud rollout verifies the existing release proof before schema and import
   assert.equal(artifactStep.if,'always()','retain the written preview artifact after a fail-closed preflight');
   assert.equal(migrationStep.if,undefined,'failed preview must prevent schema and importer deployment');
   for (const name of releaseDatabaseMigrations) {
-    assert.ok(workflow.includes(`supabase/archive_migrations/${name}`), `${name} is tracked in the archived source path`);
+    const directory = name === productionScheduleMigrationName ? 'migrations' : 'archive_migrations';
+    assert.ok(workflow.includes(`supabase/${directory}/${name}`), `${name} is tracked in its canonical migration directory`);
   }
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
+  assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
 });
