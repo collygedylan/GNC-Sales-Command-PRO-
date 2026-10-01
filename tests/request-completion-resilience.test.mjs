@@ -29,9 +29,9 @@ const requestDetailEntryContract = html.slice(
 test('Request completion derives the completing user server-side without a legacy schema probe', () => {
   assert.doesNotMatch(saveData, /await ensureRequestCompletionUserColumnsReady\(/);
   assert.match(saveData, /save_request_work derives completion identity from the/);
-  assert.match(completionSchemaProbe, /const nativeHeaders = await getNativeAuthRequestHeaders\(\)/);
-  assert.match(completionSchemaProbe, /headers: nativeHeaders/);
-  assert.doesNotMatch(completionSchemaProbe, /'Authorization': 'Bearer ' \+ SUPABASE_KEY/);
+  assert.match(completionSchemaProbe, /await fetchSupabasePage\(ACTIVE_REQUEST_LIVE_ROWS_TABLE, 'select=\*', 1, 0\)/);
+  assert.match(completionSchemaProbe, /notifySupabaseReadAccessDenied\('Request completion', error\)/);
+  assert.doesNotMatch(completionSchemaProbe, /\/rest\/v1\/|getNativeAuthRequestHeaders\(|'Authorization': 'Bearer ' \+ SUPABASE_KEY/);
 });
 
 test('native auth refreshes once before protected Request reads or writes fail', () => {

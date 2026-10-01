@@ -25,6 +25,7 @@ function dashboardMetadataFixture() {
         formatFetchedRows: rows => rows,
         yieldToUiFrame: async () => {}, commits: 0,
         updateDashboardSyncSummary: () => { ctx.commits++; },
+        runDedupeSupabaseRead: async (_key, task, options = {}) => task({ signal: options.signal }),
         transport: async table => ({ rows: [{ filename: `${ctx.owner}-${table}.csv`, last_updated: '2026-09-12T12:00:00Z' }] }),
         fetchAuthenticatedSupabaseReadPage: (table, query, options) => {
             calls.push({ table, query, options, owner: ctx.owner });
@@ -267,7 +268,7 @@ function requestQueueLifecycleFixture() {
     const calls = [], warnings = [];
     const ctx = { Error, Object, String, AbortController,
         productionLiveSyncNavigation: new AbortController(),
-        REQUEST_QUEUE_LIVE_ROWS_TABLE: 'ph_request_queue_live_rows', ACTIVE_REQUEST_TABLE: 'ph_active_request',
+        REQUEST_QUEUE_LIVE_ROWS_TABLE: 'ph_request_queue_live_rows', ACTIVE_REQUEST_TABLE: 'ph_active_request', ACTIVE_REQUEST_LIVE_ROWS_TABLE: 'ph_active_request_live_rows',
         isRequestQueueLiveRowsViewMissingError: error => error?.code === '42P01' && /ph_request_queue_live_rows/i.test(error?.message || ''),
         console: { warn: (...args) => warnings.push(args) },
         transport: async () => [{ unique_id: 'isolated-request' }],
@@ -335,12 +336,12 @@ test('active request queue still falls back for real view failures and shares it
         return [{ unique_id: 'pending-request' }];
     };
     assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'pending-request');
-    assert.deepEqual(calls.map(call => call.table), ['ph_request_queue_live_rows', 'ph_active_request']);
+    assert.deepEqual(calls.map(call => call.table), ['ph_request_queue_live_rows', 'ph_active_request_live_rows']);
     assert.ok(calls.every(call => call.options.signal === ctx.productionLiveSyncNavigation.signal));
     assert.equal(ready(), false);
     assert.equal(warnings.length, 1);
     assert.equal((await ctx.fetchActiveRequestLiveRows())[0].unique_id, 'pending-request');
-    assert.equal(calls[2].table, 'ph_active_request');
+    assert.equal(calls[2].table, 'ph_active_request_live_rows');
     assert.equal(warnings.length, 1);
 });
 

@@ -323,6 +323,21 @@ function errorResponse(message: string, status = 400, extra: Record<string, unkn
   return jsonResponse({ error: message, ...extra }, status);
 }
 
+// Preserve Postgres/PostgREST error identity across the authorized API boundary.
+// In particular, permission failures must stay terminal (403) for clients and
+// serialization conflicts must stay conflicts (409), rather than being
+// flattened into a retryable generic 503.
+function databaseFailureResponse(
+  message: string,
+  error: unknown,
+  fallbackCode: string,
+) {
+  const dbError = error && typeof error === "object" ? error as Record<string, unknown> : {};
+  const code = String(dbError.code || fallbackCode);
+  const status = code === "42501" ? 403 : code === "40001" ? 409 : 503;
+  return errorResponse(message, status, { code });
+}
+
 function ensureServerConfig() {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
@@ -446,6 +461,282 @@ function hasTableReadAccess(role = "", table = "", username = "") {
     return new Set(["ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   return false;
+}
+
+// This read boundary deliberately accepts dataset and typed filter names rather
+// than PostgREST query strings. The table, projection, stable key, and filter
+// fields are all selected by this server-owned map.
+const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
+  ph_request_queue_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,delivery_event_id,delivery_status,delivery_attempt_count,delivery_next_attempt_at,delivery_first_attempt_at,delivery_last_attempt_at,delivery_lease_expires_at,delivery_error_code,delivery_email_delivered_at,delivery_push_delivered_at,delivery_delivered_at,delivery_mode,delivery_age_seconds,delivery_display_state",
+  ph_active_request_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,customeridentityid,customername,consigneeidentityid,consigneename",
+  ph_soc_master: "unique_id,concat,last_updated,assignedto,date_completed,dock_photo_link,dock_photo_name,dock_spec,dock_caliper,dock_note,contsize,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccount,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortnamevariety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landed,retailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,dock_num,source,desigitem,desigcust,desigloc,filename",
+  ph_cav_import: "unique_id,last_updated,filename,itemcode,commonname,contsize,season,ptravailable,brand,spec,hz,unitprice,holdstopreason,ordertotal,product_description,brand_code,h,available,reserved_qty,order_qty,unit_price,n_star,hot_price,hold_reason,ext_item_total,created_at",
+  ph_reserves: "unique_id,concat,last_updated,assigned_to,assignedto,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,date_completed,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,item,size,container,location,lot,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccountidgroup,national_account_idgroup,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortname,variety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landedretailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit,merch_shipped,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,nationalaccount,sortnamevariety,landed,retailprice,dock_num,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,contsize,source,desigitem,desigcust,desigloc,filename",
+  ph_sales_office: "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,sales_note,photo_link,completed_by,completed_at,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,spec,caliper,photo_name,move_batch_id,move_from_locationcode,move_to_locationcode,move_actual_qty,workflow_status,workflow_detail,state_revision,reopen_reason,source_revision,updated_at,arrived_at",
+  ph_dock_team_status: "dock_num,checker,inspector,mistake,status,updated_by,updated_at",
+  ph_dock_item_status: "unique_id,checker_done,inspector_done,checker_completed_by,inspector_completed_by,updated_by,updated_at",
+  ph_dock_issue_status: "issue_source_unique_id,source_master_unique_id,source_master_id,dock_num,stop_number,source_locationcode,source_itemcode,source_commonname,source_contsize,source_lotcode,source_qty,source_salesrep,source_customername,source_consigneename,issue_note,issue_state,flagged_by,flagged_at,resolved_by,resolved_at,updated_by,updated_at,source_match_key,issue_photo_link,issue_photo_name,source_photo_link,source_photo_name,source_loc_match_qty,source_spec,source_caliper",
+  ph_dock_issue_allocations: "allocation_unique_id,issue_source_unique_id,alt_master_unique_id,alt_master_id,allocated_qty,alt_locationcode,alt_lotcode,alt_itemcode,alt_commonname,alt_contsize,alt_ptravailable,updated_by,updated_at",
+  ph_productivity_history: "id,event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot",
+};
+const DATASET_READ_SOURCES: Record<string, { table: string; permission: string; key: string; fields: string; signatures?: string; filterFields: Set<string>; orderFields: Set<string> }> = {
+  request_queue: {
+    table: "ph_request_queue_live_rows", permission: "ph_request_queue_live_rows", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_request_queue_live_rows,
+    signatures: "unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,delivery_status,delivery_attempt_count,delivery_error_code,delivery_display_state,delivery_delivered_at",
+    filterFields: new Set(["unique_id", "master_id", "itemcode", "locationcode", "lotcode", "requested_by", "request_selected_rep_username", "request_folder", "req_status", "req_archived", "req_rep_action", "app_tab_assignment", "master_app_tab_assignment", "request_source", "created_at", "updated_at", "delivery_status"]),
+    orderFields: new Set(["unique_id", "created_at", "updated_at", "req_status", "delivery_status"]),
+  },
+  active_request: {
+    table: "ph_active_request_live_rows", permission: "ph_active_request_live_rows", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_active_request_live_rows,
+    signatures: "unique_id,req_status,req_archived,req_rep_action,request_folder,req_customer,req_qty,date_completed,req_match,req_spec,req_caliper,desired_spec,desired_caliper,req_pic_note,request_note,req_comments,av_note,req_photo_link,req_photo_name,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by",
+    filterFields: new Set(["unique_id", "master_id", "itemcode", "locationcode", "lotcode", "requested_by", "request_selected_rep_username", "request_folder", "req_status", "req_archived", "req_rep_action", "app_tab_assignment", "master_app_tab_assignment", "request_source", "created_at", "updated_at", "date_completed"]),
+    orderFields: new Set(["unique_id", "created_at", "updated_at", "date_completed", "req_status"]),
+  },
+  soc: {
+    table: "ph_soc_master", permission: "ph_soc_master", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_soc_master,
+    filterFields: new Set(["unique_id", "tripnumber", "stopnumber", "dock_num", "assignedto", "salesrepid", "salesrepname", "customername", "consigneename", "transactionnumber", "itemcode", "locationcode", "lotcode", "season", "source", "last_updated", "date_completed", "planstart", "warehouseid", "stagename"]),
+    orderFields: new Set(["unique_id", "last_updated", "date_completed", "tripnumber", "stopnumber", "itemcode", "locationcode"]),
+  },
+  cav: {
+    table: "ph_cav_import", permission: "ph_cav_import", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_cav_import,
+    filterFields: new Set(["unique_id", "itemcode", "season", "contsize", "filename", "last_updated", "hot_price", "brand_code", "hold_reason"]),
+    orderFields: new Set(["unique_id", "itemcode", "season", "last_updated", "hot_price"]),
+  },
+  reserves: {
+    table: "ph_reserves", permission: "ph_reserves", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_reserves,
+    filterFields: new Set(["unique_id", "itemcode", "locationcode", "lotcode", "season", "salesrepname", "customername", "consigneename", "tripnumber", "dock_num", "source", "holdstopreason", "last_updated", "assignedto", "assigned_to", "warehouseid"]),
+    orderFields: new Set(["unique_id", "last_updated", "itemcode", "locationcode", "lotcode", "season", "salesrepname", "customername"]),
+  },
+  sales_office: {
+    table: "ph_sales_office", permission: "ph_sales_office", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_sales_office,
+    filterFields: new Set(["unique_id", "master_id", "so_source", "order_folder", "order_number", "order_customer", "order_status", "workflow_status", "move_batch_id", "itemcode", "locationcode", "lotcode", "completed_by", "completed_at", "updated_at"]),
+    orderFields: new Set(["unique_id", "completed_at", "updated_at", "order_submitted_at", "order_status", "workflow_status"]),
+  },
+  dock_team: {
+    table: "ph_dock_team_status", permission: "ph_dock_team_status", key: "dock_num", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_dock_team_status,
+    filterFields: new Set(["dock_num", "status", "updated_by", "updated_at"]), orderFields: new Set(["dock_num", "updated_at"]),
+  },
+  dock_item: {
+    table: "ph_dock_item_status", permission: "ph_dock_item_status", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_dock_item_status,
+    filterFields: new Set(["unique_id", "checker_done", "inspector_done", "updated_by", "updated_at"]), orderFields: new Set(["unique_id", "updated_at"]),
+  },
+  dock_issue: {
+    table: "ph_dock_issue_status", permission: "ph_dock_issue_status", key: "issue_source_unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_dock_issue_status,
+    filterFields: new Set(["issue_source_unique_id", "source_master_unique_id", "dock_num", "source_locationcode", "source_itemcode", "source_lotcode", "issue_state", "source_match_key", "updated_at"]), orderFields: new Set(["issue_source_unique_id", "dock_num", "updated_at"]),
+  },
+  dock_allocations: {
+    table: "ph_dock_issue_allocations", permission: "ph_dock_issue_allocations", key: "allocation_unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_dock_issue_allocations,
+    filterFields: new Set(["allocation_unique_id", "issue_source_unique_id", "alt_master_unique_id", "updated_at"]), orderFields: new Set(["allocation_unique_id", "issue_source_unique_id", "updated_at"]),
+  },
+  productivity_history: {
+    table: "ph_productivity_history", permission: "ph_productivity_history", key: "event_key",
+    fields: "event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot",
+    filterFields: new Set(["event_key", "completed_by_username", "completed_at", "source_kind", "source_table", "source_unique_id"]), orderFields: new Set(["event_key", "completed_at", "completed_by_username"]),
+  },
+};
+const DATASET_READ_FILTER_OPERATORS = new Set(["eq", "neq", "in", "ilike", "is", "gte", "lte", "gt", "lt", "not.is", "not.ilike"]);
+const DATASET_READ_PAGE_MAX = 500;
+const PRODUCTIVITY_HISTORY_SOURCE_KINDS = new Set(["season_sales_note", "location_sales_note", "need_av", "flyer", "request", "sales_office_order", "end_cap", "task"]);
+const PRODUCTIVITY_HISTORY_ENTRY_FIELDS = new Set(["event_key", "completed_by_username", "completed_by_display", "completed_at", "source_table", "source_kind", "source_unique_id", "source_assignment", "itemcode", "commonname", "contsize", "locationcode", "lotcode", "customer_name", "request_folder", "snapshot"]);
+
+function validateDatasetReadParams(payload: Record<string, unknown>) {
+  if (Object.keys(payload).some((key) => !["action", "dataset", "params"].includes(key))) throw new Error("DATASET_READ_PAYLOAD_INVALID");
+  const params = payload.params && typeof payload.params === "object" && !Array.isArray(payload.params)
+    ? payload.params as Record<string, unknown> : {};
+  if (payload.params !== undefined && (!payload.params || typeof payload.params !== "object" || Array.isArray(payload.params))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
+  if (Object.keys(params).some((key) => !["limit", "offset", "projection", "filters", "anyOf", "order"].includes(key))) throw new Error("DATASET_READ_PARAMETERS_INVALID");
+  const requestedLimit = Number(params.limit ?? 250), offset = Number(params.offset ?? 0);
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 1 || !Number.isInteger(offset) || offset < 0 || offset > 2_000_000) throw new Error("DATASET_READ_PAGE_INVALID");
+  const limit = Math.min(DATASET_READ_PAGE_MAX, requestedLimit);
+  const projection = String(params.projection || "default");
+  if (!["default", "signature", "ids"].includes(projection)) throw new Error("DATASET_READ_PROJECTION_INVALID");
+  const rawFilters = params.filters ?? [];
+  const rawAnyOf = params.anyOf ?? [];
+  const rawOrder = params.order ?? [];
+  if (!Array.isArray(rawFilters) || rawFilters.length > 30 || !Array.isArray(rawAnyOf) || rawAnyOf.length > 30 || !Array.isArray(rawOrder) || rawOrder.length > 4) throw new Error("DATASET_READ_FILTER_INVALID");
+  return { limit, offset, projection, filters: rawFilters as unknown[], anyOf: rawAnyOf as unknown[], order: rawOrder as unknown[] };
+}
+
+function datasetReadScalar(value: unknown) {
+  if (value === null || typeof value === "boolean") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.length <= 500 && !/[\x00-\x1f]/.test(value)) return value;
+  throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
+}
+
+function datasetReadFilterParts(source: typeof DATASET_READ_SOURCES[string], filters: unknown[]) {
+  return filters.map((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("DATASET_READ_FILTER_INVALID");
+    const filter = raw as Record<string, unknown>;
+    if (Object.keys(filter).some((key) => !["field", "op", "value"].includes(key))) throw new Error("DATASET_READ_FILTER_INVALID");
+    const field = String(filter.field || ""), op = String(filter.op || "");
+    if (!source.filterFields.has(field) || !DATASET_READ_FILTER_OPERATORS.has(op) || !Object.prototype.hasOwnProperty.call(filter, "value")) throw new Error("DATASET_READ_FILTER_INVALID");
+    let value: unknown = filter.value;
+    if (op === "in") {
+      if (!Array.isArray(value) || value.length < 1 || value.length > 100) throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
+      value = value.map(datasetReadScalar);
+    } else {
+      value = datasetReadScalar(value);
+      if ((op === "ilike" || op === "not.ilike") && typeof value !== "string") throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
+      if ((op === "is" || op === "not.is") && value !== null && typeof value !== "boolean") throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
+    }
+    return { field, op, value };
+  });
+}
+
+function datasetReadOrLiteral(value: unknown) {
+  if (value === null) return "null";
+  const text = String(value);
+  return /[,()."\\]/.test(text) ? `"${text.replace(/\\/g, "\\\\").replace(/"/g, "\\\"")}"` : text;
+}
+
+function datasetReadOrCondition(filter: { field: string; op: string; value: unknown }) {
+  const op = filter.op === "not.is" || filter.op === "not.ilike" ? filter.op : filter.op;
+  const value = Array.isArray(filter.value)
+    ? `(${filter.value.map(datasetReadOrLiteral).join(",")})`
+    : datasetReadOrLiteral(filter.value);
+  return `${filter.field}.${op}.${value}`;
+}
+
+async function handleDatasetRead(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Unauthorized", 401, { code: "DATASET_READ_UNAUTHORIZED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
+  const username = normalizeUsername(String(actor.username || ""));
+  const role = String(actor.role || "");
+  const dataset = String(payload.dataset || "").trim().toLowerCase();
+  const source = DATASET_READ_SOURCES[dataset];
+  if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
+  if (!hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  let parsed: ReturnType<typeof validateDatasetReadParams>;
+  try { parsed = validateDatasetReadParams(payload); }
+  catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
+
+  if (parsed.projection === "signature" && !source.signatures) return errorResponse("This dataset has no signature projection.", 400, { code: "DATASET_READ_PROJECTION_INVALID" });
+  const fields = parsed.projection === "ids" ? source.key : parsed.projection === "signature" ? source.signatures! : source.fields;
+  let query: any = supabase.from(source.table).select(fields, { count: "exact" });
+  try {
+    const filters = datasetReadFilterParts(source, parsed.filters);
+    for (const filter of filters) {
+      if (filter.op === "in") query = query.in(filter.field, filter.value);
+      else if (filter.op === "is") query = query.is(filter.field, filter.value);
+      else if (filter.op === "not.is") query = query.not(filter.field, "is", filter.value);
+      else if (filter.op === "not.ilike") query = query.not(filter.field, "ilike", filter.value);
+      else query = query.filter(filter.field, filter.op, filter.value);
+    }
+    const anyOf = datasetReadFilterParts(source, parsed.anyOf);
+    if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
+
+    // Rep access to reserve rows is always scoped to the active profile; a
+    // client filter can narrow this set but cannot remove the server scope.
+    const access = getRoleAccessState(role);
+    if (dataset === "reserves" && access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username)) {
+      const patterns = new Set<string>();
+      for (const value of [actor.username, actor.display_name]) {
+        const parts = String(value || "").toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+        if (parts.length < 2) continue;
+        patterns.add(`${parts[0]}*${parts.at(-1)}`);
+        patterns.add(`${parts.at(-1)}*${parts[0]}`);
+      }
+      if (!patterns.size) return errorResponse("Your sales representative profile is incomplete.", 403, { code: "DATASET_READ_REP_IDENTITY_REQUIRED" });
+      const repScope = [...patterns].map((pattern) => `salesrepname.ilike.${datasetReadOrLiteral(pattern)}`).join(",");
+      const anyOfScope = anyOf.length ? `or(${anyOf.map(datasetReadOrCondition).join(",")})` : "";
+      query = query.or(anyOfScope ? `and(or(${repScope}),${anyOfScope})` : repScope);
+    } else if (anyOf.length) {
+      query = query.or(anyOf.map(datasetReadOrCondition).join(","));
+    }
+
+    for (const raw of parsed.order) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("DATASET_READ_ORDER_INVALID");
+      const order = raw as Record<string, unknown>;
+      if (Object.keys(order).some((key) => !["field", "ascending"].includes(key)) || typeof order.ascending !== "boolean") throw new Error("DATASET_READ_ORDER_INVALID");
+      const field = String(order.field || "");
+      if (!source.orderFields.has(field)) throw new Error("DATASET_READ_ORDER_INVALID");
+      query = query.order(field, { ascending: order.ascending });
+    }
+    if (!parsed.order.some((entry) => entry && typeof entry === "object" && (entry as Record<string, unknown>).field === source.key)) {
+      query = query.order(source.key, { ascending: true });
+    }
+    const { data, error, count } = await query.range(parsed.offset, parsed.offset + parsed.limit - 1);
+    if (error) return databaseFailureResponse("Dataset read failed.", error, "DATASET_READ_UNAVAILABLE");
+    if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    return jsonResponse({ ok: true, data: { rows: data, total: count, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < count } });
+  } catch (error) {
+    const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
+    return errorResponse("Dataset read parameters are invalid.", 400, { code });
+  }
+}
+
+async function handleAppendProductivityHistory(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Unauthorized", 401, { code: "PRODUCTIVITY_HISTORY_UNAUTHORIZED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
+  const username = normalizeUsername(String(actor.username || ""));
+  const role = String(actor.role || "");
+  if (!hasTableWriteAccess(role, "ph_productivity_history", "POST", payload.entries, username)) return errorResponse("You do not have access to productivity history.", 403, { code: "PRODUCTIVITY_HISTORY_FORBIDDEN" });
+  if (Object.keys(payload).some((key) => !["action", "entries"].includes(key)) || !Array.isArray(payload.entries) || payload.entries.length < 1 || payload.entries.length > 500) {
+    return errorResponse("Productivity history entries are invalid.", 400, { code: "PRODUCTIVITY_HISTORY_PAYLOAD_INVALID" });
+  }
+  const entries: Record<string, unknown>[] = [];
+  const keys = new Set<string>();
+  try {
+    for (const raw of payload.entries) {
+      if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("PRODUCTIVITY_HISTORY_ENTRY_INVALID");
+      const entry = raw as Record<string, unknown>;
+      if (Object.keys(entry).some((key) => !PRODUCTIVITY_HISTORY_ENTRY_FIELDS.has(key))) throw new Error("PRODUCTIVITY_HISTORY_ENTRY_INVALID");
+      const eventKey = String(entry.event_key || "").trim();
+      const completedBy = normalizeUsername(String(entry.completed_by_username || ""));
+      const completedAt = String(entry.completed_at || "").trim();
+      const sourceTable = String(entry.source_table || "").trim().toLowerCase();
+      const sourceKind = String(entry.source_kind || "").trim().toLowerCase();
+      const sourceUid = String(entry.source_unique_id || "").trim();
+      if (!eventKey || eventKey.length > 1200 || !completedBy || completedBy.length > 120 || !completedAt || !Number.isFinite(Date.parse(completedAt))
+        || !sourceTable || sourceTable.length > 120 || !PRODUCTIVITY_HISTORY_SOURCE_KINDS.has(sourceKind) || !sourceUid || sourceUid.length > 240) {
+        throw new Error("PRODUCTIVITY_HISTORY_ENTRY_INVALID");
+      }
+      const expectedEventKey = `${sourceTable}|${sourceKind}|${sourceUid}|${completedAt}|${completedBy}`;
+      if (eventKey !== expectedEventKey || keys.has(eventKey)) throw new Error("PRODUCTIVITY_HISTORY_IDEMPOTENCY_KEY_INVALID");
+      keys.add(eventKey);
+      const snapshot = entry.snapshot && typeof entry.snapshot === "object" && !Array.isArray(entry.snapshot) ? entry.snapshot : {};
+      if (JSON.stringify(snapshot).length > 40000) throw new Error("PRODUCTIVITY_HISTORY_SNAPSHOT_TOO_LARGE");
+      entries.push({
+        event_key: eventKey,
+        completed_by_username: completedBy,
+        completed_by_display: String(entry.completed_by_display || completedBy).trim().slice(0, 200),
+        completed_at: completedAt,
+        source_table: sourceTable,
+        source_kind: sourceKind,
+        source_unique_id: sourceUid,
+        source_assignment: String(entry.source_assignment || "").trim().slice(0, 160) || null,
+        itemcode: String(entry.itemcode || "").trim().slice(0, 160) || null,
+        commonname: String(entry.commonname || "").trim().slice(0, 300) || null,
+        contsize: String(entry.contsize || "").trim().slice(0, 120) || null,
+        locationcode: String(entry.locationcode || "").trim().slice(0, 160) || null,
+        lotcode: String(entry.lotcode || "").trim().slice(0, 160) || null,
+        customer_name: String(entry.customer_name || "").trim().slice(0, 300) || null,
+        request_folder: String(entry.request_folder || "").trim().slice(0, 200) || null,
+        snapshot,
+      });
+    }
+    const { data, error } = await supabase.from("ph_productivity_history")
+      .upsert(entries, { onConflict: "event_key" })
+      .select("event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot");
+    if (error) return databaseFailureResponse("Productivity history could not be saved.", error, "PRODUCTIVITY_HISTORY_UNAVAILABLE");
+    return jsonResponse({ ok: true, data: { rows: Array.isArray(data) ? data : [] } });
+  } catch (error) {
+    const code = String(error instanceof Error ? error.message : error || "PRODUCTIVITY_HISTORY_ENTRY_INVALID");
+    return errorResponse("Productivity history entries are invalid.", 400, { code });
+  }
 }
 
 function hasTableWriteAccess(role = "", table = "", method = "POST", body: unknown = null, username = "") {
@@ -2565,6 +2856,17 @@ async function handleInventoryRead(
 
   const operation = String(payload.operation || "").trim().toLowerCase();
   try {
+    if (operation === "source_freshness") {
+      inventoryReadParams(payload, []);
+      const { data, error } = await inventoryReadQuery("ph_master_inventory", "filename,last_updated", actor)
+        .not("last_updated", "is", null)
+        .order("last_updated", { ascending: false, nullsFirst: false })
+        .limit(1);
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] || null : null;
+      return jsonResponse({ ok: true, data: { filename: row?.filename ?? null, last_updated: row?.last_updated ?? null } });
+    }
+
     if (operation === "schema_capabilities") {
       const params = inventoryReadParams(payload, []);
       const capabilities: Record<string, { available: boolean }> = {};
@@ -2945,6 +3247,8 @@ serve((req) => withObservedRequest("app-api", req, async () => {
   }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
+  if (action === "dataset_read") return await handleDatasetRead(session, payload);
+  if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);
   if (action === "av_read") {
     if (!session) return errorResponse("Unauthorized", 401);
     if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
