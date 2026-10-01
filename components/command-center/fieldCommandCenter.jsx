@@ -7,6 +7,22 @@ const newId = () => globalThis.crypto?.randomUUID?.() || `alpha-${Date.now()}-${
 const safeText = value => String(value == null ? '' : value);
 const errorText = error => safeText(error?.message || error || 'Request failed. Try again.');
 const when = value => { const date = new Date(value); return Number.isNaN(date.valueOf()) ? '' : date.toLocaleString(); };
+const records = value => Array.isArray(value) ? value.filter(row => row && typeof row === 'object' && !Array.isArray(row)) : [];
+
+class CommandCenterBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { failed: false }; }
+  static getDerivedStateFromError() { return { failed: true }; }
+  render() {
+    if (this.state.failed) return <section className="alpha-command-center" role="alert">
+      <div className="alpha-panel alpha-empty-state">
+        <h2>{this.props.mode === 'hr' ? 'HR & Labor could not display' : 'Communications could not display'}</h2>
+        <p>Reopen this view or try again.</p>
+        <button type="button" onClick={() => this.setState({ failed: false })}>Try again</button>
+      </div>
+    </section>;
+    return this.props.children;
+  }
+}
 
 function useAuthorizedApi(deps) {
   return useCallback(async (payload, signal) => {
@@ -169,13 +185,16 @@ function localDate(date) { return `${date.getFullYear()}-${String(date.getMonth(
 const weekDates = week => Array.from({ length: 7 }, (_, day) => { const date = new Date(week); date.setDate(date.getDate() + day); return localDate(date); });
 
 function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
+  const person = employee && typeof employee === 'object' ? employee : {};
+  const jobRows = records(jobs);
+  const savedRows = records(entries);
   const [localEntries, setLocalEntries] = useState([]);
   const localEntriesRef = useRef([]);
   const [state, setState] = useState('');
   const timers = useRef(new Map());
   const dates = useMemo(() => weekDates(week), [week]);
   useEffect(() => {
-    const saved = entries.filter(row => row.employee_id === employee.id && dates.includes(row.work_date));
+    const saved = savedRows.filter(row => row.employee_id === person.id && dates.includes(row.work_date));
     const grouped = new Map();
     for (const row of saved) {
       const code = safeText(row.job_code);
@@ -184,7 +203,7 @@ function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
     }
     localEntriesRef.current = [...grouped.values()];
     setLocalEntries(localEntriesRef.current);
-  }, [employee.emp_number, entries, dates]);
+  }, [person.id, entries, dates]);
   useEffect(() => () => { for (const timer of timers.current.values()) clearTimeout(timer); timers.current.clear(); }, []);
   const edit = (key, field, value) => {
     setLocalEntries(current => {
@@ -197,11 +216,11 @@ function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
     clearTimeout(timers.current.get(timerKey));
     timers.current.set(timerKey, setTimeout(async () => {
       const row = localEntriesRef.current.find(item => item.key === key);
-      if (!row?.job_code || !jobs.some(job => job.job_code === row.job_code)) { setState('Select a job code before saving.'); return; }
+      if (!row?.job_code || !jobRows.some(job => job.job_code === row.job_code)) { setState('Select a job code before saving.'); return; }
       if (value === '' || !Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > 24) { setState('Enter 0–24 hours.'); return; }
       setState('Saving…');
       try {
-        await onSave({ employee_id: employee.id, work_date: field, job_code: row.job_code, hours: Number(value) });
+        await onSave({ employee_id: person.id, work_date: field, job_code: row.job_code, hours: Number(value) });
         setLocalEntries(current => {
           const updated = current.map(item => item.key === key ? { ...item, persisted: true } : item);
           localEntriesRef.current = updated;
@@ -212,13 +231,13 @@ function EmployeeLaborCard({ employee, jobs, week, entries, onSave }) {
       catch (error) { setState(errorText(error)); }
     }, 550));
   };
-  return <article className="alpha-panel alpha-stack"><div className="alpha-row alpha-row-between"><div><h3>{safeText(employee.name)}</h3><span className="alpha-muted alpha-date">#{safeText(employee.emp_number)} · {safeText(employee.department)}</span></div><button type="button" onClick={() => setLocalEntries(current => {
+  return <article className="alpha-panel alpha-stack"><div className="alpha-row alpha-row-between"><div><h3>{safeText(person.name)}</h3><span className="alpha-muted alpha-date">#{safeText(person.emp_number)} · {safeText(person.department)}</span></div><button type="button" onClick={() => setLocalEntries(current => {
       const updated = [...current, { key: newId(), job_code: '', hours: {}, persisted: false }];
       localEntriesRef.current = updated;
       return updated;
-    })} disabled={!jobs.length}>Add job code</button></div>
-    {!jobs.length && <p className="alpha-muted">No job codes are configured yet.</p>}
-    {localEntries.map(row => <div className="alpha-entry" key={row.key}><label>Job code<select value={row.job_code} onChange={event => edit(row.key, 'job_code', event.target.value)} disabled={row.persisted}><option value="">Select job</option>{jobs.map(job => <option key={job.job_code} value={job.job_code}>{job.job_code} · {safeText(job.description)}</option>)}</select></label><div className="alpha-week">{dates.map((date, index) => <div className="alpha-day" key={date}><label htmlFor={`${row.key}-${date}`}>{['M','T','W','T','F','S','S'][index]}</label><input id={`${row.key}-${date}`} type="number" min="0" max="24" step="0.25" inputMode="decimal" aria-label={`${date} hours for ${employee.name}, ${row.job_code}`} value={row.hours[date] ?? ''} onChange={event => edit(row.key, date, event.target.value)}/></div>)}</div></div>)}
+    })} disabled={!jobRows.length}>Add job code</button></div>
+    {!jobRows.length && <p className="alpha-muted">No job codes are configured yet.</p>}
+    {localEntries.map(row => <div className="alpha-entry" key={row.key}><label>Job code<select value={row.job_code} onChange={event => edit(row.key, 'job_code', event.target.value)} disabled={row.persisted}><option value="">Select job</option>{jobRows.map(job => <option key={job.job_code} value={job.job_code}>{job.job_code} · {safeText(job.description)}</option>)}</select></label><div className="alpha-week">{dates.map((date, index) => <div className="alpha-day" key={date}><label htmlFor={`${row.key}-${date}`}>{['M','T','W','T','F','S','S'][index]}</label><input id={`${row.key}-${date}`} type="number" min="0" max="24" step="0.25" inputMode="decimal" aria-label={`${date} hours for ${safeText(person.name)}, ${row.job_code}`} value={row.hours?.[date] ?? ''} onChange={event => edit(row.key, date, event.target.value)}/></div>)}</div></div>)}
     {state && <div className={`alpha-status ${state === 'Saved' || state === 'Saving…' ? '' : 'alpha-error'}`} role="status">{state}</div>}
   </article>;
 }
@@ -247,8 +266,13 @@ function HrHub({ deps }) {
           deps.client.from('hr_job_codes').select('job_code,description').eq('enabled', true).order('job_code').limit(200),
           deps.client.from('labor_timesheets').select('id,employee_id,work_date,job_code,hours').gte('work_date', dates[0]).lte('work_date', dates[6]).limit(1000),
         ]);
-        for (const result of [staff,codes,hours]) if (result.error) throw result.error;
-        if (active && deps.isAuthorized()) { setEmployees(staff.data || []); setJobs(codes.data || []); setEntries(hours.data || []); setError(''); }
+        for (const result of [staff,codes,hours]) if (result?.error) throw result.error;
+        if (active && deps.isAuthorized()) {
+          setEmployees(records(staff?.data).filter(employee => employee.id != null));
+          setJobs(records(codes?.data).filter(job => job.job_code != null));
+          setEntries(records(hours?.data));
+          setError('');
+        }
       } catch (cause) { if (active) setError(errorText(cause)); }
       finally { if (active) setLoading(false); }
     };
@@ -283,7 +307,7 @@ function HrHub({ deps }) {
   return <section className="alpha-command-center alpha-stack" aria-label="HR and Labor Command Center">
     <div className="alpha-row alpha-row-between"><h2>HR & Labor</h2><div className="alpha-row"><button className={tab === 'labor' ? 'alpha-active' : ''} onClick={() => setTab('labor')}>Weekly labor</button><button className={tab === 'timeoff' ? 'alpha-active' : ''} onClick={() => setTab('timeoff')}>Time off</button></div></div>
     {error && <div role="alert" className="alpha-error">{error}</div>}
-    {tab === 'labor' ? <><div className="alpha-toolbar alpha-row alpha-row-between"><button onClick={() => changeWeek(-1)} aria-label="Previous week">‹</button><strong className="alpha-date">{dates[0]} – {dates[6]}</strong><button onClick={() => changeWeek(1)} aria-label="Next week">›</button></div>{loading && <p role="status">Loading labor…</p>}{!loading && !employees.length && <div className="alpha-panel alpha-muted">No employee records yet. Add employees and job codes through the approved HR data process.</div>}{employees.map(employee => <EmployeeLaborCard key={`${employee.emp_number}:${dates[0]}`} employee={employee} jobs={jobs} entries={entries} week={week} onSave={save}/>)}</> : <><div className="alpha-row alpha-row-between"><span className="alpha-muted">Requested time off appears as Pending.</span><button className="alpha-primary" onClick={() => setRequestOpen(true)}>Request time off</button></div><div className="alpha-stack">{timeoff.length ? timeoff.map(event => <article className="alpha-panel alpha-row alpha-row-between" key={event.id}><div><strong>{safeText(event.title)}</strong><div className="alpha-muted alpha-date">{when(event.startAt)} – {when(event.endAt)}</div><div>{event.status === 'requested' ? 'Pending' : safeText(event.status)}</div></div>{event.status === 'requested' && <div className="alpha-row"><button onClick={() => void updateRequest(event.id, 'approved')}>Approve</button><button onClick={() => void updateRequest(event.id, 'denied')}>Deny</button></div>}{event.status === 'approved' && <button onClick={() => void updateRequest(event.id, 'cancelled')}>Cancel</button>}</article>) : <p className="alpha-panel alpha-muted">No time-off requests yet.</p>}</div></>}
+    {tab === 'labor' ? <><div className="alpha-toolbar alpha-row alpha-row-between"><button onClick={() => changeWeek(-1)} aria-label="Previous week">‹</button><strong className="alpha-date">{dates[0]} – {dates[6]}</strong><button onClick={() => changeWeek(1)} aria-label="Next week">›</button></div>{loading && <p role="status">Loading labor…</p>}{!loading && !employees.length && <div className="alpha-panel alpha-empty-state" role="status"><h3>No employees found in this department.</h3><p>Awaiting roster import.</p></div>}{employees.map(employee => <EmployeeLaborCard key={`${employee.id}:${dates[0]}`} employee={employee} jobs={jobs} entries={entries} week={week} onSave={save}/>)}</> : <><div className="alpha-row alpha-row-between"><span className="alpha-muted">Requested time off appears as Pending.</span><button className="alpha-primary" onClick={() => setRequestOpen(true)}>Request time off</button></div><div className="alpha-stack">{timeoff.length ? timeoff.map(event => <article className="alpha-panel alpha-row alpha-row-between" key={event.id}><div><strong>{safeText(event.title)}</strong><div className="alpha-muted alpha-date">{when(event.startAt)} – {when(event.endAt)}</div><div>{event.status === 'requested' ? 'Pending' : safeText(event.status)}</div></div>{event.status === 'requested' && <div className="alpha-row"><button onClick={() => void updateRequest(event.id, 'approved')}>Approve</button><button onClick={() => void updateRequest(event.id, 'denied')}>Deny</button></div>}{event.status === 'approved' && <button onClick={() => void updateRequest(event.id, 'cancelled')}>Cancel</button>}</article>) : <p className="alpha-panel alpha-muted">No time-off requests yet.</p>}</div></>}
     {requestOpen && <div className="alpha-dialog" role="presentation" onClick={event => { if (event.target === event.currentTarget) setRequestOpen(false); }}><form className="alpha-panel alpha-stack" role="dialog" aria-modal="true" aria-label="Request time off" onSubmit={submitRequest}><h3>Request time off</h3><label>Title<input value={request.title} onChange={event => setRequest(current => ({ ...current, title: event.target.value }))} required/></label><label>Start<input type="date" value={request.start} onChange={event => setRequest(current => ({ ...current, start: event.target.value }))} required/></label><label>End<input type="date" value={request.end} onChange={event => setRequest(current => ({ ...current, end: event.target.value }))} required/></label><div className="alpha-row"><button type="button" onClick={() => setRequestOpen(false)}>Cancel</button><button className="alpha-primary" type="submit">Send request</button></div></form></div>}
   </section>;
 }
@@ -294,7 +318,7 @@ export function mountCommandCenter(host, mode, deps) {
   const previous = mounted.get(host);
   if (previous) return previous;
   const root = createRoot(host);
-  root.render(mode === 'communications' ? h(Communications, { deps }) : h(HrHub, { deps }));
+  root.render(h(CommandCenterBoundary, { mode }, mode === 'communications' ? h(Communications, { deps }) : h(HrHub, { deps })));
   const handle = { destroy() { root.unmount(); mounted.delete(host); } };
   mounted.set(host, handle);
   return handle;

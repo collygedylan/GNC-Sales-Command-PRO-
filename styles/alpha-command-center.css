@@ -26,6 +26,8 @@
 .alpha-command-center .alpha-bubble small{display:block;font-size:11px;color:var(--alpha-muted)}
 .alpha-command-center .alpha-status{font-size:12px;color:var(--alpha-muted);min-height:18px}
 .alpha-command-center .alpha-error{color:#fb7185}
+.alpha-command-center .alpha-empty-state{display:flex;min-height:176px;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--alpha-text)}
+.alpha-command-center .alpha-empty-state p{color:var(--alpha-muted)}
 .alpha-command-center .alpha-week{display:grid;grid-template-columns:repeat(7,minmax(44px,1fr));gap:4px;overflow-x:auto;max-width:100%;padding-bottom:3px}
 .alpha-command-center .alpha-day{min-width:0}
 .alpha-command-center .alpha-day label{display:block;text-align:center;font-size:11px;color:var(--alpha-muted)}
