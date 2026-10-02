@@ -1,6 +1,7 @@
 const RECOGNITION_LANGUAGES = ["en-US"];
 const LOCAL_VOICE_PREFERENCE = /neural|google us english|samantha|ava|allison|karen|siri/i;
 const RESTART_DELAYS_MS = [700, 1400, 2800, 5600, 10000];
+const LOCAL_CAPABILITY_TIMEOUT_MS = 2000;
 
 function recognitionConstructor() {
   if (typeof window === "undefined") return null;
@@ -12,15 +13,20 @@ function isVisible() {
 }
 
 /**
- * AURA's recognition session is inert until start() or startIfAllowed().
- * Recognition is always local-only and is suspended whenever the document is hidden.
+ * AURA recognition is inert until start() or startIfAllowed(). It prefers a
+ * verified on-device recognizer, then uses the browser recognizer when local
+ * recognition is unavailable. The selected mode is retained through restarts.
  */
 export function createAuraVoiceSession({
   onState = () => {},
   onTranscript = () => {},
   onRecognition = () => {},
   minimumConfidence = 0.55,
+  localCapabilityTimeoutMs = LOCAL_CAPABILITY_TIMEOUT_MS,
 } = {}) {
+  const capabilityTimeout = Number.isFinite(localCapabilityTimeoutMs)
+    ? Math.min(LOCAL_CAPABILITY_TIMEOUT_MS, Math.max(0, localCapabilityTimeoutMs))
+    : LOCAL_CAPABILITY_TIMEOUT_MS;
   let recognition = null;
   let listening = false;
   let destroyed = false;
@@ -36,9 +42,10 @@ export function createAuraVoiceSession({
   let restartFailures = 0;
   let visibilityListening = false;
   let lastFinalTranscriptAt = 0;
+  let activeRecognitionMode = null;
 
   function emitState(status, message = "") {
-    if (!destroyed) onState({ status, message });
+    if (!destroyed) onState({ status, message, recognitionMode: activeRecognitionMode });
   }
 
   function clearRestart() {
@@ -78,17 +85,61 @@ export function createAuraVoiceSession({
   }
 
   async function localCapability(Constructor) {
-    if (!Constructor || typeof Constructor.available !== "function") {
-      return { ok: false, message: "On-device voice recognition is unavailable here. Type a command instead." };
-    }
+    if (!Constructor || typeof Constructor.available !== "function") return false;
+    let timeoutId = null;
     try {
-      const result = await Constructor.available({ langs: RECOGNITION_LANGUAGES, processLocally: true });
-      return result === "available"
-        ? { ok: true }
-        : { ok: false, message: "This browser has no on-device English speech pack ready. Voice input stayed off; type a command instead." };
+      const available = Promise.resolve().then(() => Constructor.available({
+        langs: RECOGNITION_LANGUAGES,
+        processLocally: true,
+      }));
+      const result = await Promise.race([
+        available,
+        new Promise(resolve => { timeoutId = setTimeout(() => resolve("timeout"), capabilityTimeout); }),
+      ]);
+      return result === "available";
     } catch {
-      return { ok: false, message: "AURA could not verify local speech processing. Voice input stayed off; type a command instead." };
+      return false;
+    } finally {
+      if (timeoutId != null) clearTimeout(timeoutId);
     }
+  }
+
+  async function selectRecognitionMode(Constructor, { allowBrowserFallback }) {
+    if (!Constructor) return { mode: null, message: "Browser speech recognition is unavailable here. Type a command instead." };
+    const localAvailable = await localCapability(Constructor);
+    if (localAvailable) return { mode: "local", message: "On-device English recognition is ready." };
+    if (!allowBrowserFallback) {
+      return {
+        mode: null,
+        message: "On-device English recognition is unavailable. Tap the microphone to use browser recognition; your browser may process audio online, or type a command.",
+      };
+    }
+    return {
+      mode: "browser",
+      message: "Using browser speech recognition. Your browser may process microphone audio through its provider.",
+    };
+  }
+
+  function configureRecognitionMode(engine, mode) {
+    if (mode === "local") {
+      if (!("processLocally" in engine)) return false;
+      try { engine.processLocally = true; } catch { return false; }
+      return engine.processLocally === true;
+    }
+    if (mode !== "browser") return false;
+    if ("processLocally" in engine) {
+      try { engine.processLocally = false; } catch { return false; }
+      return engine.processLocally === false;
+    }
+    // Older implementations do not expose processLocally and use their
+    // browser-provided recognition service when start() is called.
+    return true;
+  }
+
+  function recognitionModeIsValid(engine, mode) {
+    if (mode === "local") return "processLocally" in engine && engine.processLocally === true;
+    if (mode === "browser") return !("processLocally" in engine) || engine.processLocally === false;
+    return false;
   }
 
   async function microphoneAlreadyGranted() {
@@ -103,23 +154,31 @@ export function createAuraVoiceSession({
 
   async function startIfAllowed() {
     if (destroyed) return false;
+    if (busy || speaking) return false;
+    if (desiredListening && (listening || restartTimer != null || recognition)) return true;
+    activeRecognitionMode = null;
+    restartFailures = 0;
     const attempt = ++startAttempt;
     if (!(await microphoneAlreadyGranted())) {
       if (destroyed || attempt !== startAttempt || !isVisible()) return false;
-      emitState("idle", "Tap the microphone to enable on-device voice input, or type a command.");
+      emitState("idle", "Tap the microphone to enable voice input, or type a command.");
       return false;
     }
     if (destroyed || attempt !== startAttempt || !isVisible() || speaking || busy) return false;
-    return beginListening({ allowPermissionPrompt: false, attempt });
+    return beginListening({ allowPermissionPrompt: false, allowBrowserFallback: true, attempt });
   }
 
   async function start() {
     if (destroyed) return false;
+    if (busy || speaking) return false;
+    if (desiredListening && (listening || restartTimer != null || recognition)) return true;
+    activeRecognitionMode = null;
+    restartFailures = 0;
     const attempt = ++startAttempt;
-    return beginListening({ allowPermissionPrompt: true, attempt });
+    return beginListening({ allowPermissionPrompt: true, allowBrowserFallback: true, attempt });
   }
 
-  async function beginListening({ allowPermissionPrompt, attempt }) {
+  async function beginListening({ allowPermissionPrompt, allowBrowserFallback = true, attempt, recognitionMode = activeRecognitionMode }) {
     if (destroyed || attempt !== startAttempt || speaking || busy) return false;
     if (desiredListening && (listening || restartTimer != null || recognition)) return true;
     if (!isVisible()) {
@@ -129,21 +188,37 @@ export function createAuraVoiceSession({
     }
     desiredListening = true;
     attachVisibility();
-    emitState("starting");
+    emitState("starting", recognitionMode === "local"
+      ? "Starting on-device English recognition…"
+      : recognitionMode === "browser"
+        ? "Starting browser speech recognition…"
+        : "Checking speech recognition availability…");
     const Constructor = recognitionConstructor();
-    const capability = await localCapability(Constructor);
+    let selectedMode = recognitionMode;
+    let selectionMessage = "";
+    if (!selectedMode) {
+      const selection = await selectRecognitionMode(Constructor, { allowBrowserFallback });
+      if (destroyed || attempt !== startAttempt || !desiredListening || !isVisible()) return false;
+      selectedMode = selection.mode;
+      selectionMessage = selection.message;
+      activeRecognitionMode = selectedMode;
+    }
     if (destroyed || attempt !== startAttempt || !desiredListening || !isVisible() || speaking || busy) return false;
-    if (!capability.ok) {
+    if (!selectedMode) {
       desiredListening = false;
       detachVisibility();
-      emitState("unavailable", capability.message);
+      emitState("unavailable", selectionMessage || "Speech recognition is unavailable. Type a command instead.");
       return false;
     }
+    activeRecognitionMode = selectedMode;
+    emitState("starting", selectionMessage || (selectedMode === "local"
+      ? "On-device English recognition is ready."
+      : "Using browser speech recognition; your browser may process audio online."));
     if (!allowPermissionPrompt && !(await microphoneAlreadyGranted())) {
       if (destroyed || attempt !== startAttempt || !desiredListening || !isVisible() || speaking || busy) return false;
       desiredListening = false;
       detachVisibility();
-      emitState("idle", "Tap the microphone to enable on-device voice input.");
+      emitState("idle", "Tap the microphone to enable voice input.");
       return false;
     }
     if (destroyed || attempt !== startAttempt || !desiredListening || !isVisible() || speaking || busy) return false;
@@ -153,19 +228,23 @@ export function createAuraVoiceSession({
     const sessionGeneration = ++generation;
     try {
       const engine = new Constructor();
-      if (!("processLocally" in engine)) {
+      let configured = configureRecognitionMode(engine, selectedMode);
+      if (!configured && selectedMode === "local" && allowBrowserFallback) {
+        selectedMode = "browser";
+        activeRecognitionMode = selectedMode;
+        selectionMessage = "On-device recognition is unavailable. Using browser recognition; your browser may process microphone audio through its provider.";
+        emitState("starting", selectionMessage);
+        configured = configureRecognitionMode(engine, selectedMode);
+      }
+      if (!configured) {
         desiredListening = false;
         detachVisibility();
-        emitState("unavailable", "This browser cannot guarantee on-device recognition. Voice input stayed off; type a command instead.");
+        emitState("unavailable", selectedMode === "local"
+          ? "On-device recognition could not be selected. Tap the microphone to retry, or type a command."
+          : "Browser recognition could not be selected. Type a command instead.");
         return false;
       }
-      engine.processLocally = true;
-      if (engine.processLocally !== true) {
-        desiredListening = false;
-        detachVisibility();
-        emitState("unavailable", "This browser refused on-device recognition. Voice input stayed off; type a command instead.");
-        return false;
-      }
+      activeRecognitionMode = selectedMode;
       engine.lang = RECOGNITION_LANGUAGES[0];
       engine.continuous = true;
       engine.interimResults = true;
@@ -173,22 +252,23 @@ export function createAuraVoiceSession({
       recognition = engine;
       engine.onstart = () => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
-        if (engine.processLocally !== true) {
+        if (!recognitionModeIsValid(engine, selectedMode)) {
           stop();
-          emitState("unavailable", "Local-only recognition could not be guaranteed. Voice input stopped; type a command instead.");
+          emitState("unavailable", "The selected recognition mode changed unexpectedly. Voice input stopped; tap the microphone to retry or type a command.");
           return;
         }
         listening = true;
-        emitState("listening");
+        emitState("listening", selectedMode === "local"
+          ? "Listening on this device."
+          : "Browser recognition is active; your browser may process audio online.");
       };
       engine.onresult = (event) => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
-        if (engine.processLocally !== true) {
+        if (!recognitionModeIsValid(engine, selectedMode)) {
           stop();
-          emitState("unavailable", "Local-only recognition could not be guaranteed. Voice input stopped; type a command instead.");
+          emitState("unavailable", "The selected recognition mode changed unexpectedly. Voice input stopped; tap the microphone to retry or type a command.");
           return;
         }
-        restartFailures = 0;
         const results = Array.from(event.results || []).map((result) => {
           const alternative = result?.[0];
           return {
@@ -207,14 +287,18 @@ export function createAuraVoiceSession({
           emitState("hearing", "I didn’t get a clean read. Keep going or type a command.");
           return;
         }
+        // A usable result is a healthy session signal. The bounded restart
+        // budget applies to consecutive failures, not an otherwise working mic.
+        restartFailures = 0;
         emitState("hearing", text);
-        onRecognition({ results, text, resultIndex, epoch: sessionGeneration, recognitionId: sessionGeneration, processLocally: engine.processLocally === true });
+        const processLocally = selectedMode === "local" && engine.processLocally === true;
+        onRecognition({ results, text, resultIndex, epoch: sessionGeneration, recognitionId: sessionGeneration, recognitionMode: selectedMode, processLocally });
         const hasNewFinal = changed.some((result) => result.isFinal);
         if (hasNewFinal && changedText) {
           const now = Date.now();
           if (now - lastFinalTranscriptAt >= 250) {
             lastFinalTranscriptAt = now;
-            onTranscript(changedText, { confidence: finalConfidence, isFinal: true, processLocally: true });
+            onTranscript(changedText, { confidence: finalConfidence, isFinal: true, recognitionMode: selectedMode, processLocally });
           }
         }
       };
@@ -226,14 +310,18 @@ export function createAuraVoiceSession({
           detachVisibility();
           emitState("error", event.error === "not-allowed"
             ? "Microphone access is blocked. Tap to allow it or type a command."
-            : "The local speech service is unavailable. Voice input stayed off.");
+            : selectedMode === "local"
+              ? "The on-device speech service is unavailable. Tap the microphone to retry, or type a command."
+              : "The browser speech service is unavailable. Voice input stayed off; type a command instead.");
           return;
         }
         if (event.error === "language-not-supported") {
           desiredListening = false;
           stopRecognition();
           detachVisibility();
-          emitState("unavailable", "On-device English recognition is unavailable. Type a command instead.");
+          emitState("unavailable", selectedMode === "local"
+            ? "On-device English recognition is unavailable. Tap the microphone to retry, or type a command."
+            : "English recognition is unavailable in this browser. Type a command instead.");
           return;
         }
         if (event.error === "audio-capture") {
@@ -243,7 +331,7 @@ export function createAuraVoiceSession({
           emitState("error", "No microphone was available. Type a command instead.");
           return;
         }
-        emitState("hearing", "Voice recognition paused. AURA will make a limited local restart.");
+        emitState("hearing", "Voice recognition paused. AURA will make a limited restart.");
       };
       engine.onend = () => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
@@ -265,17 +353,17 @@ export function createAuraVoiceSession({
         if (restartFailures >= RESTART_DELAYS_MS.length) {
           desiredListening = false;
           detachVisibility();
-          emitState("error", "On-device listening stopped after repeated browser interruptions. Tap the microphone to restart.");
+          emitState("error", "Voice input stopped after repeated interruptions. Tap the microphone to restart.");
           return;
         }
         const delay = RESTART_DELAYS_MS[restartFailures];
         restartFailures += 1;
-        emitState("restarting", "Reconnecting to on-device speech…");
+        emitState("restarting", selectedMode === "local" ? "Reconnecting to on-device speech…" : "Reconnecting to browser speech…");
         restartTimer = setTimeout(() => {
           restartTimer = null;
           if (destroyed || !desiredListening || !isVisible() || speaking || busy) return;
           const attempt = ++startAttempt;
-          void beginListening({ allowPermissionPrompt: false, attempt });
+          void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, recognitionMode: selectedMode, attempt });
         }, delay);
       };
       emitState("starting");
@@ -284,13 +372,14 @@ export function createAuraVoiceSession({
     } catch (error) {
       clearRecognition();
       listening = false;
-      if (error?.name === "NotAllowedError" || error?.name === "SecurityError") {
-        desiredListening = false;
-        detachVisibility();
-      }
+      desiredListening = false;
+      activeRecognitionMode = null;
+      detachVisibility();
       emitState("error", error?.name === "NotAllowedError"
         ? "Microphone access is blocked. Tap to allow it or type a command."
-        : "AURA could not start local voice input. Type a command instead.");
+        : selectedMode === "local"
+          ? "AURA could not start on-device voice input. Tap the microphone to retry, or type a command."
+          : "AURA could not start browser voice input. Type a command instead.");
       return false;
     }
   }
@@ -320,6 +409,7 @@ export function createAuraVoiceSession({
     startAttempt += 1;
     generation += 1;
     restartFailures = 0;
+    activeRecognitionMode = null;
     stopRecognition();
     detachVisibility();
     emitState("idle");
@@ -336,7 +426,7 @@ export function createAuraVoiceSession({
     }
     if (desiredListening && !speaking && isVisible() && !recognition && restartTimer == null) {
       const attempt = ++startAttempt;
-      void beginListening({ allowPermissionPrompt: false, attempt });
+      void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, recognitionMode: activeRecognitionMode, attempt });
     }
   }
 
@@ -365,9 +455,8 @@ export function createAuraVoiceSession({
         emitState("paused", "AURA listens only while the app is visible.");
         return;
       }
-      restartFailures = 0;
       const attempt = ++startAttempt;
-      void beginListening({ allowPermissionPrompt: false, attempt });
+      void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, recognitionMode: activeRecognitionMode, attempt });
     };
     utterance.onend = resume;
     utterance.onerror = resume;

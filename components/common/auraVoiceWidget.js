@@ -1,7 +1,7 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.01.007";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.01.007";
-import { matchAuraProduct, canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.01.007";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.01.007";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.01.008";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.01.008";
+import { matchAuraProduct, canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.01.008";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.01.008";
 
 const STYLE_ID = "aura-voice-widget-styles";
 const FALLBACK = "I didn’t quite catch that, Dylan. Run that by me again?";
@@ -28,8 +28,12 @@ const CSS = `
 [data-aura-root] .aura-panel{position:fixed;z-index:10041;right:max(12px,env(safe-area-inset-right));bottom:calc(160px + env(safe-area-inset-bottom));width:min(420px,calc(100vw - 24px));max-height:min(72dvh,calc(100dvh - 176px - env(safe-area-inset-bottom)),720px);display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--aura-border);border-radius:20px;color:var(--aura-text);background:var(--aura-bg);background:linear-gradient(145deg,color-mix(in srgb,var(--aura-bg) 94%,white 6%),var(--aura-bg) 58%,color-mix(in srgb,var(--aura-bg) 94%,#16a34a 6%));box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 18px 54px rgba(0,0,0,.5),0 0 22px -8px rgba(34,197,94,.2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 [data-aura-root] .aura-panel[hidden]{display:none}
 [data-aura-root] .aura-head{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--aura-border);background:linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0))}
+[data-aura-root] .aura-head>div:nth-child(2){flex:1 1 auto;min-width:0}
 [data-aura-root] .aura-mark{display:grid;place-items:center;width:36px;height:36px;border:1px solid rgba(74,222,128,.55);border-radius:12px;color:#4ade80;font-weight:800;box-shadow:0 0 14px -5px rgba(34,197,94,.55)}
 [data-aura-root] .aura-title{font-size:15px;font-weight:800;letter-spacing:.12em}[data-aura-root] .aura-status{display:block;color:var(--aura-muted);font-size:12px;letter-spacing:0;font-weight:500}
+[data-aura-root] .aura-mode{display:inline-block;max-width:100%;margin-top:4px;padding:3px 7px;border:1px solid var(--aura-border);border-radius:999px;color:var(--aura-muted);font-size:11px;line-height:1.3;letter-spacing:0;font-weight:650;white-space:normal;overflow-wrap:anywhere}
+[data-aura-root] .aura-mode[data-mode="local"]{color:var(--aura-text);border-color:rgba(34,197,94,.38)}
+[data-aura-root] .aura-mode[data-mode="browser"]{color:var(--aura-text);border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.08)}
 [data-aura-root] .aura-close{margin-left:auto;flex:0 0 44px;min-width:44px;width:44px;height:44px;border:1px solid var(--aura-border);border-radius:12px;color:var(--aura-text);background:transparent;cursor:pointer;font-size:20px}
 [data-aura-root] .aura-content{min-height:0;padding:14px;overflow:auto;overscroll-behavior:contain}
 [data-aura-root] .aura-message{margin:0 0 12px;padding:11px 12px;border:1px solid var(--aura-border);border-radius:12px;background:rgba(255,255,255,.035);color:var(--aura-muted);white-space:pre-wrap}
@@ -74,6 +78,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   let operationEpoch = 0;
   let inactivityTimer = null;
   let voiceStatus = { status: "idle", message: "" };
+  let recognitionMode = null;
   const root = make("div");
   root.dataset.auraRoot = "";
   const fab = make("button", "aura-fab");
@@ -94,7 +99,15 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   }
 
   const session = createAuraVoiceSession({
-    onState: (next) => { voiceStatus = next; renderStatus(); },
+    onState: (next) => {
+      voiceStatus = next;
+      if (Object.prototype.hasOwnProperty.call(next || {}, "recognitionMode")) {
+        recognitionMode = next.recognitionMode === "local" || next.recognitionMode === "browser"
+          ? next.recognitionMode : null;
+      }
+      renderVoiceMode();
+      renderStatus();
+    },
     onRecognition: handleRecognition,
   });
 
@@ -107,6 +120,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   heading.append(make("div", "aura-title", "AURA"));
   const status = make("small", "aura-status", "Ready when you are.");
   heading.append(status);
+  const voiceMode = make("small", "aura-mode", "Voice input mode not selected");
+  voiceMode.setAttribute("aria-live", "polite");
+  voiceMode.setAttribute("aria-atomic", "true");
+  heading.append(voiceMode);
   head.append(heading);
   const closeButton = make("button", "aura-close", "×");
   closeButton.type = "button";
@@ -123,7 +140,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   input.setAttribute("aria-label", "Type a command for AURA");
   const micButton = make("button", "aura-mic");
   micButton.type = "button";
-  micButton.setAttribute("aria-label", "Start on-device voice input");
+  micButton.setAttribute("aria-label", "Start voice input");
   micButton.setAttribute("aria-pressed", "false");
   micButton.append(document.createTextNode("🎙"));
   const wave = make("span", "aura-wave");
@@ -141,14 +158,28 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     content.scrollTop = content.scrollHeight;
   }
 
+  function renderVoiceMode() {
+    if (recognitionMode === "local") {
+      voiceMode.textContent = "On-device speech";
+      voiceMode.dataset.mode = "local";
+    } else if (recognitionMode === "browser") {
+      voiceMode.textContent = "Browser speech — may use network";
+      voiceMode.dataset.mode = "browser";
+    } else {
+      voiceMode.textContent = "Voice input mode not selected";
+      voiceMode.dataset.mode = "unknown";
+    }
+  }
+
   function renderStatus() {
     micButton.setAttribute("aria-pressed", voiceStatus.status === "listening" || voiceStatus.status === "hearing" ? "true" : "false");
-    micButton.setAttribute("aria-label", voiceStatus.status === "paused" || conversation.auraMode === "PAUSED" ? "Resume on-device voice input" : session.enabled ? "Pause on-device voice input" : "Start on-device voice input");
+    const paused = voiceStatus.status === "paused" || conversation.auraMode === "PAUSED";
+    micButton.setAttribute("aria-label", paused ? "Resume voice input" : session.enabled ? "Pause voice input" : "Start voice input");
     if (voiceStatus.message) status.textContent = voiceStatus.message;
-    else if (voiceStatus.status === "listening") status.textContent = "Listening on this device…";
-    else if (voiceStatus.status === "hearing") status.textContent = "Parsing locally…";
-    else if (voiceStatus.status === "starting") status.textContent = "Starting local recognition…";
-    else if (voiceStatus.status === "restarting") status.textContent = "Reconnecting to local speech…";
+    else if (voiceStatus.status === "listening") status.textContent = recognitionMode === "local" ? "Listening on this device…" : recognitionMode === "browser" ? "Listening with browser speech…" : "Listening…";
+    else if (voiceStatus.status === "hearing") status.textContent = "Processing speech…";
+    else if (voiceStatus.status === "starting") status.textContent = recognitionMode === "local" ? "Starting on-device speech…" : recognitionMode === "browser" ? "Starting browser speech…" : "Starting voice input…";
+    else if (voiceStatus.status === "restarting") status.textContent = recognitionMode === "local" ? "Reconnecting to on-device speech…" : recognitionMode === "browser" ? "Reconnecting to browser speech…" : "Reconnecting to speech…";
     else if (voiceStatus.status === "speaking") status.textContent = "AURA is responding…";
     else if (voiceStatus.status === "paused") status.textContent = "Paused while the app is hidden.";
     else if (wakeArmed) status.textContent = "AURA heard you. Say the command.";
@@ -764,6 +795,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   inputbar.addEventListener("submit", onSubmit);
   micButton.addEventListener("click", onMicClick);
   document.addEventListener("visibilitychange", onWidgetVisibilityChange);
+  renderVoiceMode();
+  renderStatus();
 
   function destroy() {
     if (destroyed) return;
