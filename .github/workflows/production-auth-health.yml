@@ -53,7 +53,7 @@ jobs:
               return;
             }
             const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRunAttempt, {
-              ...context.repo, run_id: run.id, run_attempt: run.run_attempt, per_page: 100
+              ...context.repo, run_id: run.id, attempt_number: run.run_attempt, per_page: 100
             });
             const deployJobs = jobs.filter(job => job.name === 'deploy' && job.run_id === run.id &&
               job.head_sha === run.head_sha && job.status === 'completed' && job.conclusion === 'success' &&

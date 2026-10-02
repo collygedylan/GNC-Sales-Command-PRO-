@@ -129,6 +129,7 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/hl-tags-email.test.mjs',
     'tests/eval-review-assignedto-api.test.mjs',
     'tests/production-probe-read-only.test.mjs',
+    'tests/wait-for-live-release.test.mjs',
     'tests/prepare-ci-playwright-apt.test.mjs',
   ]);
   const priorFiles = releaseUnitScriptNames.flatMap(name =>

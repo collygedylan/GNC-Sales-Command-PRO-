@@ -118,6 +118,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     '20261001222228_handover_assignment_transfer_005.sql',
     '20261002014421_index_request_history_assigned_rep_006.sql',
     '20261002121446_aura_inventory_v2_007.sql',
+      '20261002134138_nelly_access_audit_baseline_repair_007.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
@@ -185,6 +186,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
   assert.deepEqual([...sqlTests].sort(), [
     'production_schedule_cards_006_test.sql',
     'aura_inventory_v2_007_test.sql',
+    'nelly_access_audit_baseline_repair_007_test.sql',
     'password_change_profile_reconciliation_test.sql',
     'perennial_zone_assignment_test.sql',
     'eval_item_low_stock_targets_test.sql',
@@ -229,6 +231,16 @@ test('handover cron is disabled inside the disposable migration transaction only
   assert.match(workflow, /source\[:-len\("commit;"\)\] \+ isolation \+ "\\ncommit;\\n"/);
   const productionRunner = fs.readFileSync(new URL('../scripts/apply-item-low-stock-migration.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(productionRunner, /scheduled_handover_isolation/);
+});
+
+test('audit baseline repair checks both historical-row preservation and missing-row insertion in isolation', () => {
+  const snapshot = workflow.indexOf('cp supabase/ci/nelly_access_audit_baseline_snapshot_fixture.sql');
+  const repair = workflow.indexOf('cp supabase/migrations/20261002134138_nelly_access_audit_baseline_repair_007.sql');
+  assert.ok(snapshot > workflow.indexOf('cp supabase/ci/scheduled_handover_fixture.sql') && repair > snapshot);
+  assert.match(workflow, /20261002134137_ci_nelly_baseline_snapshot\.sql/);
+  assert.match(workflow, /node supabase\/ci\/nelly_access_audit_baseline_pglite\.mjs --pglite-root "\$pglite_root"/);
+  const runner = fs.readFileSync(new URL('../scripts/apply-item-low-stock-migration.mjs', import.meta.url), 'utf8');
+  assert.doesNotMatch(runner, /nelly_access_audit_baseline_snapshot_fixture|ci_nelly_baseline_snapshot/);
 });
 
 test('database migration, pgTAP, concurrency, browser, and Edge checks stay serialized', () => {

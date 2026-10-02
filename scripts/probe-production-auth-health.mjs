@@ -331,20 +331,45 @@ if (serviceRoleKey) {
   if (!accessControlHealthResponse.ok || !accessControlHealth || typeof accessControlHealth !== 'object') {
     throw new Error(`production_access_control_health_unavailable_HTTP_${accessControlHealthResponse.status}`);
   }
-  const accessControlContractHealthy = accessControlHealth.contract_version === 'app-access-v1'
-    && accessControlHealth.enforcement_mode === 'audit'
-    && Number(accessControlHealth.permission_count) >= 50
-    && Number(accessControlHealth.maintainer_count) === 3
-    && Number(accessControlHealth.baseline_missing_count) === 0
-    && Number(accessControlHealth.unknown_permission_count) === 0
-    && Number(accessControlHealth.unmapped_legacy_check_count) === 0;
-  if (!accessControlContractHealthy) throw new Error('production_access_control_audit_contract_unhealthy');
+  const accessScalar = value => {
+    if (typeof value === 'number' && Number.isSafeInteger(value)) return value;
+    if (typeof value === 'string' && /^-?\d+$/.test(value.trim())) {
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) ? parsed : null;
+    }
+    return null;
+  };
+  const accessPredicates = [
+    ['contract_version', accessControlHealth.contract_version === 'app-access-v1', 'app-access-v1'],
+    ['enforcement_mode', accessControlHealth.enforcement_mode === 'audit', 'audit'],
+    ['permission_count', accessScalar(accessControlHealth.permission_count) >= 50, '>=50'],
+    ['maintainer_count', accessScalar(accessControlHealth.maintainer_count) === 3, '3'],
+    ['baseline_missing_count', accessScalar(accessControlHealth.baseline_missing_count) === 0, '0'],
+    ['unknown_permission_count', accessScalar(accessControlHealth.unknown_permission_count) === 0, '0'],
+    ['unmapped_legacy_check_count', accessScalar(accessControlHealth.unmapped_legacy_check_count) === 0, '0']
+  ];
+  const accessControlFailures = accessPredicates.filter(([, passed]) => !passed).map(([name]) => name);
+  const accessControlContractHealthy = accessControlFailures.length === 0;
+  if (!accessControlContractHealthy) {
+    // Log predicate names and safe scalar values only; snapshot payloads may
+    // contain identifiers and must never be copied into the Actions log.
+    const scalarDiagnostics = ['permission_count', 'maintainer_count', 'baseline_missing_count',
+      'unknown_permission_count', 'unmapped_legacy_check_count']
+      .filter(name => accessControlFailures.includes(name))
+      .map(name => `${name}:${accessScalar(accessControlHealth[name]) ?? 'invalid'}`);
+    throw new Error(`production_access_control_audit_contract_unhealthy_failed=${accessControlFailures.join(',')}` +
+      (scalarDiagnostics.length ? `_values=${scalarDiagnostics.join(',')}` : ''));
+  }
   checks.push({
     name: 'access_control',
     status: accessControlHealthResponse.status,
     contractVersion: accessControlHealth.contract_version,
     enforcementMode: accessControlHealth.enforcement_mode,
     permissionCount: Math.max(0, Number(accessControlHealth.permission_count) || 0),
+    maintainerCount: accessScalar(accessControlHealth.maintainer_count),
+    baselineMissingCount: accessScalar(accessControlHealth.baseline_missing_count),
+    unknownPermissionCount: accessScalar(accessControlHealth.unknown_permission_count),
+    unmappedLegacyCheckCount: accessScalar(accessControlHealth.unmapped_legacy_check_count),
     legacyCheckCount: Math.max(0, Number(accessControlHealth.legacy_check_count) || 0),
     legacyMismatchCount: Math.max(0, Number(accessControlHealth.legacy_mismatch_count) || 0),
     unknownRoleCount: Math.max(0, Number(accessControlHealth.unknown_role_count) || 0)
