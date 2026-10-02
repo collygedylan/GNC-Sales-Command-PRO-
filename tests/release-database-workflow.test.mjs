@@ -120,6 +120,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     '20261002121446_aura_inventory_v2_007.sql',
       '20261002134138_nelly_access_audit_baseline_repair_007.sql',
     '20261002155017_eval_delivery_archive_health_007.sql',
+    '20261002204108_aura_inventory_match_010.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
@@ -187,6 +188,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
   assert.deepEqual([...sqlTests].sort(), [
     'production_schedule_cards_006_test.sql',
     'aura_inventory_v2_007_test.sql',
+    'aura_inventory_match_010_test.sql',
     'nelly_access_audit_baseline_repair_007_test.sql',
     'password_change_profile_reconciliation_test.sql',
     'perennial_zone_assignment_test.sql',

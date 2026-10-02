@@ -13,6 +13,10 @@ Deno.test("AURA V2 accepts bounded catalog and current-setting scoped queries", 
   }
   const lots = parseAuraInventoryV2Request({ operation: "lots", itemcode: "003955.030.1", quantity: 50, limit: 25 });
   if (lots.quantity !== 50 || lots.limit !== 25) throw new Error("Lots request was not normalized.");
+  const match = parseAuraInventoryV2Request({ operation: "match", commonName: "  Baby Gem   Boxwood ", contSize: "3DP", openStockOnly: true, season: "F1" });
+  if (match.commonName !== "Baby Gem Boxwood" || match.contSize !== "3DP" || !match.openStockOnly || match.season !== "F1") {
+    throw new Error("Match search name and inventory scope were not normalized.");
+  }
 });
 
 Deno.test("AURA V2 rejects caller sales-year authority, arbitrary metrics and malformed cursors", () => {
@@ -21,6 +25,9 @@ Deno.test("AURA V2 rejects caller sales-year authority, arbitrary metrics and ma
     { operation: "maximum", metric: "priority" },
     { operation: "count", itemcode: "x", cursor: [] },
     { operation: "count", itemcode: "x", season: "SPRING" },
+    { operation: "match", commonName: "" },
+    { operation: "match", commonName: "x", cursor: { itemcode: "x" } },
+    { operation: "match", commonName: "x", salesYear: 27 },
     { operation: "lots", itemcode: "x", quantity: 0 },
     { operation: "mystery" },
   ]) {

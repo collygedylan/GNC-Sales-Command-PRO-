@@ -10,9 +10,12 @@ import assert from 'node:assert/strict';
 const args = process.argv.slice(2);
 const dependencyRoot = args[args.indexOf('--pglite-root') + 1];
 if (!args.includes('--pglite-root') || !dependencyRoot) throw Error('Pass --pglite-root');
-const { PGlite } = createRequire(path.join(path.resolve(dependencyRoot), 'package.json'))('@electric-sql/pglite');
-const db = new PGlite();
+const requireFromDependencies = createRequire(path.join(path.resolve(dependencyRoot), 'package.json'));
+const { PGlite } = requireFromDependencies('@electric-sql/pglite');
+const { pg_trgm } = requireFromDependencies(path.join(path.resolve(dependencyRoot), 'node_modules/@electric-sql/pglite/dist/contrib/pg_trgm.cjs'));
+const db = new PGlite({ extensions: { pg_trgm } });
 const migration = fs.readFileSync(new URL('../migrations/20261002121446_aura_inventory_v2_007.sql', import.meta.url), 'utf8');
+const matchMigration = fs.readFileSync(new URL('../migrations/20261002204108_aura_inventory_match_010.sql', import.meta.url), 'utf8');
 const query = async (sql, params = []) => (await db.query(sql, params)).rows;
 
 try {
@@ -21,6 +24,7 @@ try {
     create role anon;
     create role authenticated;
     create role service_role bypassrls;
+    create schema extensions;
     create table public.ph_app_settings(key text primary key,value jsonb);
     insert into public.ph_app_settings values('current_season_salesyear','{"seasonCode":"F1","salesYear":"27"}'::jsonb);
     create table public.ph_master_inventory(
@@ -44,14 +48,52 @@ try {
       ('tie-a','TIEA','Tie A','#1','U1','26.U3','100','100','10','2','U3','27','',''),
       ('denied','3DP','Little Hotties','#3','U3','26.F1','999','999','999','0','F1','26','','not_on_inventory_denied'),
       ('shift','3DP','Little Hotties','#3','U3','26.F1','999','999','999','0','F1','26','SHFT',''),
+      ('aura-gem-1','BABYGEM01','Baby Gem Boxwood','3DP','AURA-U1','27.U3','14','18','2','1','U3','27','',''),
+      ('aura-gem-2','BABYGEM01','Baby Gem Boxwood','3DP','AURA-U2','27.U3','20','22','3','1','U3','27','',''),
+      ('aura-gem-compact','BABYGEM02','Baby Gem Boxwood Compact','3DP','AURA-U1','27.U3','6','9','1','2','U3','27','',''),
+      ('aura-gem-wrong-size','BABYGEM03','Baby Gem Boxwood','5DP','AURA-U1','27.U3','6','9','1','2','U3','27','',''),
+      ('aura-oak','OAK001','Northern Heritage Oak','3DP','AURA-OAK','27.U3','11','13','2','1','U3','27','',''),
       ('other','5DP','Annabelle','#3','U1','26.F1','500','700','400','1','F1','26','','');
   `);
   await db.exec(migration);
+  await db.exec(matchMigration);
 
   const call = async params => (await query(`select public.aura_inventory_v2_read_v1(
     $1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11::jsonb
   ) data`, params))[0].data;
   await db.exec('set role service_role');
+  const exactBabyGem = await query(`select public.aura_inventory_v2_match_v1('Baby Gem Boxwood','3DP','AURA-U2','ptravailable',true,'U3') data`);
+  assert.equal(exactBabyGem[0].data.complete, true);
+  assert.equal(exactBabyGem[0].data.exactMatch, true);
+  assert.equal(exactBabyGem[0].data.rows.length, 1);
+  assert.equal(exactBabyGem[0].data.rows[0].itemcode, 'BABYGEM01');
+  assert.equal(exactBabyGem[0].data.rows[0].contsize, '3DP');
+  const keywordBabyGem = await query(`select public.aura_inventory_v2_match_v1('Baby Gem Boxwood','3DP','AURA-U1','ptravailable',true,'U3') data`);
+  assert.equal(keywordBabyGem[0].data.exactMatch, false, 'competing keyword candidate requires explicit choice');
+  assert.equal(keywordBabyGem[0].data.rows.length, 2);
+  assert.equal(keywordBabyGem[0].data.rows[0].matchKind, 'exact');
+  assert.equal(keywordBabyGem[0].data.rows[1].matchKind, 'keyword');
+  const fuzzyBabyGem = await query(`select public.aura_inventory_v2_match_v1('Baby Gen Boxwood','3DP','AURA-U2','ptravailable',true,'U3') data`);
+  assert.equal(fuzzyBabyGem[0].data.rows[0].matchKind, 'fuzzy');
+  const shortKeyword = await query(`select public.aura_inventory_v2_match_v1('Oak','3DP','AURA-OAK','ptravailable',true,'U3') data`);
+  assert.equal(shortKeyword[0].data.rows.length, 1, 'a short word can match a long cultivar name');
+  assert.equal(shortKeyword[0].data.rows[0].itemcode, 'OAK001');
+  assert.equal(shortKeyword[0].data.rows[0].matchKind, 'keyword');
+  const noBabyGem = await query(`select public.aura_inventory_v2_match_v1('Baby Gem Boxwood','4DP','AURA-U2','ptravailable',true,'U3') data`);
+  assert.deepEqual(noBabyGem[0].data.rows, []);
+  assert.equal(noBabyGem[0].data.complete, true);
+  await db.exec(`reset role; insert into public.ph_master_inventory values('aura-gem-unknown-year','BABYGEM04','Baby Gem Boxwood','3DP','AURA-UNKNOWN','27.U3','6','9','1','2','U3','unknown','',''); set role service_role`);
+  const incompleteBabyGem = await query(`select public.aura_inventory_v2_match_v1('Baby Gem Boxwood','3DP','AURA-UNKNOWN','ptravailable',true,'U3') data`);
+  assert.equal(incompleteBabyGem[0].data.complete, false, 'unknown sales-year candidates make matching incomplete');
+  assert.equal(incompleteBabyGem[0].data.exactMatch, false, 'incomplete scope cannot auto-select');
+  await db.exec(`reset role; delete from public.ph_master_inventory where unique_id='aura-gem-unknown-year'; set role service_role`);
+  await db.exec(`reset role; insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,ptronhand,s_lts,priority,season,saleyear,desigitem,app_tab_assignment)
+    select 'aura-cap-'||n,'AURACAP'||lpad(n::text,2,'0'),'AURA Cap Test Plant','3DP','AURA-MATCH-CAP','27.U3','1','1','1','1','U3','27','',''
+    from generate_series(1,8) n; set role service_role`);
+  const boundedMatches = await query(`select public.aura_inventory_v2_match_v1('AURA Cap Test Plant','3DP','AURA-MATCH-CAP','ptravailable',true,'U3') data`);
+  assert.equal(boundedMatches[0].data.rows.length, 5, 'at most five choices are returned');
+  assert.equal(boundedMatches[0].data.additionalMatches, true, 'truncated candidate list flags additional matches');
+  assert.equal(boundedMatches[0].data.complete, true, 'additional results are distinguished from incomplete source data');
   const firstCatalog = await call(['catalog',null,null,null,'ptravailable',false,null,null,null,1,'[]']);
   assert.equal(firstCatalog.complete, true);
   assert.equal(firstCatalog.hasMore, true);
@@ -168,6 +210,26 @@ try {
   assert.equal(cappedCatalog.complete,false,'catalogs over 10,000 distinct identities must be marked incomplete');
   assert.equal(cappedCatalog.rows.length,500);
   assert.equal(cappedCatalog.hasMore,true);
+
+  await db.exec('set enable_seqscan = off');
+  const seasonSizePlan = (await query(`explain select unique_id from public.ph_master_inventory
+    where upper(btrim(coalesce(season,'')))='U3'
+      and public.aura_inventory_v2_size_v1(contsize)='3dp'`))
+    .map(row => row['QUERY PLAN']).join('\n');
+  assert.match(seasonSizePlan, /idx_ph_master_inventory_aura_season_size/,
+    'the exact COALESCE season and canonical size expressions can use the scope index');
+  const exactNamePlan = (await query(`explain select unique_id from public.ph_master_inventory
+    where public.aura_inventory_v2_name_v1(commonname)='baby gem boxwood'`))
+    .map(row => row['QUERY PLAN']).join('\n');
+  assert.match(exactNamePlan, /idx_ph_master_inventory_aura_name_exact/,
+    'normalized exact-name equality can use the B-tree index');
+  await db.exec('set search_path = public, extensions');
+  const trigramPlan = (await query(`explain select unique_id from public.ph_master_inventory
+    where public.aura_inventory_v2_name_v1(commonname) %> 'oak'::text`))
+    .map(row => row['QUERY PLAN']).join('\n');
+  assert.match(trigramPlan, /idx_ph_master_inventory_aura_name_trgm/,
+    'word-similarity matching can use the trigram GIN index');
+  await db.exec('reset enable_seqscan; reset search_path');
 
   await db.exec('reset role; set role anon');
   await assert.rejects(() => query(`select public.aura_inventory_v2_read_v1('catalog')`), /permission denied/);

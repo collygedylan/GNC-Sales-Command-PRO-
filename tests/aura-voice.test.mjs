@@ -27,6 +27,7 @@ function fakeRecognitionEnvironment({
       engines.push(this);
     }
     start() { this.started = true; this.onstart?.(); }
+    stop() { this.stopped = true; }
     abort() { this.aborted = true; }
   }
   Object.defineProperty(dom.window, "SpeechRecognition", { configurable: true, value: FakeRecognition });
@@ -205,8 +206,10 @@ test("browser fallback is selected when local capability probing times out and l
     assert.equal(recognitions[0].recognitionMode, "browser");
     assert.equal(recognitions[0].processLocally, false);
     assert.equal(recognitions[0].recognitionId, recognitions[0].epoch);
+    browser.engines[0].onend();
     assert.equal(transcripts[0].metadata.recognitionMode, "browser");
     assert.equal(transcripts[0].metadata.processLocally, false);
+    assert.equal(transcripts[0].metadata.completionSource, "final");
     session.destroy();
   } finally { await browser.restore(); }
 });
@@ -428,9 +431,13 @@ test("browser recognition is a one-shot final turn and fences duplicate and late
     const result = { results: [speechResult("check inventory", true)], resultIndex: 0 };
     finalHandler(result);
     finalHandler(result);
-    assert.equal(recognitions.length, 2, "the final result is delivered once");
+    assert.equal(recognitions.length, 3, "all transcript events are previewed");
+    assert.equal(transcripts.length, 0, "preview events do not submit commands");
+    assert.equal(enabledDuringCallback, true, "the recognizer remains active until it ends");
+    browser.engines[0].onend();
     assert.equal(transcripts.length, 1);
-    assert.equal(enabledDuringCallback, false, "listening is stopped before command callbacks run");
+    assert.equal(transcripts[0].text, "check inventory");
+    assert.equal(transcripts[0].meta.completionSource, "final");
     assert.equal(session.enabled, false);
     assert.equal(session.listening, false);
     assert.equal(states.at(-1).recognitionMode, "browser", "the provider label remains after the turn");
@@ -450,7 +457,7 @@ test("browser recognition is a one-shot final turn and fences duplicate and late
     }
     fakeNow = targetTime;
     assert.equal(browser.engines.length, 1, "no browser restart is scheduled within eleven seconds");
-    assert.equal(recognitions.length, 2);
+    assert.equal(recognitions.length, 3);
     assert.equal(transcripts.length, 1);
     assert.equal(await session.startIfAllowed(), false, "the automatic path remains local-only");
     assert.equal(browser.engines.length, 1);
@@ -469,10 +476,11 @@ test("an empty browser final result ends the turn without delivering a transcrip
   try {
     const session = createAuraVoiceSession({
       onState: state => states.push(state),
-      onTranscript: text => transcripts.push(text),
+      onTranscript: (text, metadata) => transcripts.push({ text, metadata }),
     });
     assert.equal(await session.start(), true);
     browser.engines[0].onresult({ results: [speechResult("", true)], resultIndex: 0 });
+    browser.engines[0].onend();
     assert.equal(session.enabled, false);
     assert.equal(browser.engines.length, 1);
     assert.deepEqual(transcripts, []);
@@ -482,7 +490,7 @@ test("an empty browser final result ends the turn without delivering a transcrip
   } finally { await browser.restore(); }
 });
 
-test("browser no-speech, network, and low-confidence final results end without retry", async () => {
+test("browser errors cancel turns; low-confidence final text remains available with diagnostic metadata", async () => {
   for (const errorName of ["no-speech", "network"]) {
     const browser = fakeRecognitionEnvironment({ available: "downloadable" });
     const states = [];
@@ -507,18 +515,155 @@ test("browser no-speech, network, and low-confidence final results end without r
     const session = createAuraVoiceSession({
       minimumConfidence: 0.8,
       onState: state => states.push(state),
-      onTranscript: text => transcripts.push(text),
+      onTranscript: (text, metadata) => transcripts.push({ text, metadata }),
     });
     assert.equal(await session.start(), true);
     browser.engines[0].onresult({ results: [speechResult("maybe", true, 0.2)], resultIndex: 0 });
-    assert.equal(session.enabled, false);
+    assert.equal(session.enabled, true, "the provider end event completes the turn");
     assert.equal(browser.engines.length, 1);
     assert.equal(transcripts.length, 0);
-    assert.equal(states.at(-1).status, "error");
+    browser.engines[0].onend();
+    assert.equal(transcripts[0].text, "maybe", "captured speech is retained regardless of confidence");
+    assert.equal(transcripts[0].metadata.lowConfidence, true);
+    assert.equal(transcripts[0].metadata.completionSource, "final");
+    assert.equal(states.at(-1).status, "idle");
     assert.equal(states.at(-1).recognitionMode, "browser");
-    assert.match(states.at(-1).message, /unclear/i);
     session.destroy();
   } finally { await browser.restore(); }
+});
+
+test("low-confidence local results retain the existing noise gate", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "available" });
+  const recognitions = [];
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({
+      minimumConfidence: 0.8,
+      onRecognition: event => recognitions.push(event),
+      onTranscript: text => transcripts.push(text),
+    });
+    await session.startIfAllowed();
+    browser.engines[0].onresult({ results: [speechResult("unclear local words", true, 0.2)], resultIndex: 0 });
+    assert.equal(recognitions.length, 0);
+    assert.deepEqual(transcripts, []);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("browser transcript preview replaces interim text, preserves final segments, and submits once on end", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  const previews = [];
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({
+      onRecognition: event => previews.push(event),
+      onTranscript: (text, metadata) => transcripts.push({ text, metadata }),
+    });
+    await session.start();
+    const engine = browser.engines[0];
+    engine.onresult({ results: [speechResult("baby gem", false, 0), speechResult("box", false, 0)], resultIndex: 0 });
+    engine.onresult({ results: [speechResult("baby gem boxwood", false, 0)], resultIndex: 0 });
+    assert.equal(previews[0].previewText, "baby gem box");
+    assert.equal(previews[1].previewText, "baby gem boxwood", "replacement interim supersedes old and removed interim segments");
+    assert.equal(previews[0].phase, "preview");
+    assert.equal(previews[1].lowConfidence, true);
+    assert.equal(transcripts.length, 0, "previewing never submits a command");
+
+    engine.onresult({ results: [
+      speechResult("How many", true, 0),
+      speechResult("3DP baby gem boxwood", true, 0),
+    ], resultIndex: 0 });
+    assert.equal(previews.at(-1).previewText, "How many 3DP baby gem boxwood");
+    const endHandler = engine.onend;
+    endHandler();
+    endHandler();
+    assert.equal(transcripts.length, 1);
+    assert.equal(transcripts[0].text, "How many 3DP baby gem boxwood");
+    assert.equal(transcripts[0].metadata.completionSource, "final");
+    assert.equal(transcripts[0].metadata.isFinal, true);
+    assert.equal(transcripts[0].metadata.confidence, 0);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("browser speechend stops recognition and submits interim-only text after its one-second deadline", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const timers = [];
+  globalThis.setTimeout = (callback, delay) => {
+    const timer = { callback, delay, cancelled: false };
+    timers.push(timer);
+    return timer;
+  };
+  globalThis.clearTimeout = timer => { if (timer) timer.cancelled = true; };
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({ onTranscript: (text, metadata) => transcripts.push({ text, metadata }) });
+    await session.start();
+    const engine = browser.engines[0];
+    engine.onresult({ results: [speechResult("How many 3DP baby gem boxwood are in open stock", false, 0)], resultIndex: 0 });
+    engine.onspeechend();
+    assert.equal(engine.stopped, true, "speech end requests final results with stop(), not abort()");
+    assert.equal(engine.aborted, false);
+    assert.equal(transcripts.length, 0);
+    const deadline = timers.find(timer => timer.delay === 1000);
+    assert.ok(deadline);
+    deadline.callback();
+    assert.equal(engine.aborted, true, "the safety deadline releases a recognizer that ignored stop()");
+    assert.equal(transcripts.length, 1);
+    assert.equal(transcripts[0].text, "How many 3DP baby gem boxwood are in open stock");
+    assert.equal(transcripts[0].metadata.completionSource, "interim_end");
+    assert.equal(transcripts[0].metadata.isFinal, false);
+    const lateEnd = engine.onend;
+    lateEnd?.();
+    assert.equal(transcripts.length, 1, "late onend cannot submit a second command");
+    assert.equal(browser.engines.length, 1, "browser mode never auto-restarts");
+    session.destroy();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+    await browser.restore();
+  }
+});
+
+test("Stop and page hide cancel pending browser finalization without submitting preview text", async () => {
+  for (const cancel of ["stop", "hide"]) {
+    const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+    const originalSetTimeout = globalThis.setTimeout;
+    const originalClearTimeout = globalThis.clearTimeout;
+    const timers = [];
+    globalThis.setTimeout = (callback, delay) => {
+      const timer = { callback, delay, cancelled: false };
+      timers.push(timer);
+      return timer;
+    };
+    globalThis.clearTimeout = timer => { if (timer) timer.cancelled = true; };
+    const transcripts = [];
+    try {
+      const session = createAuraVoiceSession({ onTranscript: text => transcripts.push(text) });
+      await session.start();
+      const engine = browser.engines[0];
+      engine.onresult({ results: [speechResult("do not submit", false)], resultIndex: 0 });
+      engine.onspeechend();
+      const deadline = timers.find(timer => timer.delay === 1000);
+      assert.ok(deadline);
+      if (cancel === "stop") session.stop();
+      else {
+        Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+        document.dispatchEvent(new window.Event("visibilitychange"));
+      }
+      deadline.callback();
+      engine.onend?.();
+      assert.deepEqual(transcripts, []);
+      assert.equal(engine.aborted, true, "cancellation aborts rather than gracefully finalizing");
+      session.destroy();
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+      await browser.restore();
+    }
+  }
 });
 
 test("browser end without a final utterance terminates instead of restarting", async () => {
@@ -531,7 +676,7 @@ test("browser end without a final utterance terminates instead of restarting", a
     assert.equal(session.enabled, false);
     assert.equal(browser.engines.length, 1);
     assert.equal(states.at(-1).recognitionMode, "browser");
-    assert.match(states.at(-1).message, /browser speech ended/i);
+    assert.match(states.at(-1).message, /no command was captured/i);
     session.destroy();
   } finally { await browser.restore(); }
 });
@@ -664,7 +809,7 @@ test("AURA V2 builds a multi-turn draft and opens review without submitting", as
     resolveOrderParty: async (name) => ({ items: [{ key: "party-1", customerName: name, label: name }], hasMore: false }),
     requestV2: async (body) => {
       calls.push(body);
-      if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false, season: "U2", salesYear: 27 };
+      if (body.operation === "match") return { ok: true, rows: [{ itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP", matchKind: "exact" }], complete: true, exactMatch: true, additionalMatches: false, hasMore: false, season: "U2", salesYear: 27 };
       if (body.operation === "lots") return { ok: true, rows: [{ unique_id: "uid-1", itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP", locationcode: "U2", lotcode: "27.U2", ptravailable: 80 }], complete: true, hasMore: false };
       throw new Error(`Unexpected operation ${body.operation}`);
     },
@@ -677,7 +822,7 @@ test("AURA V2 builds a multi-turn draft and opens review without submitting", as
     input.value = "start a request for Megan"; submit.click(); await flush();
     assert.match(document.querySelector(".aura-message").textContent, /request started for Megan/i);
     input.value = "50 three deep pee Limelight"; submit.click(); await flush();
-    assert.equal(calls.filter((call) => call.operation === "catalog").length, 1);
+    assert.equal(calls.filter((call) => call.operation === "match").length, 1);
     assert.equal(calls.at(-1).operation, "lots", document.querySelector(".aura-message").textContent);
     assert.equal(calls.at(-1).itemcode, "SKU-1");
     assert.equal(calls.at(-1).quantity, 50);
@@ -699,7 +844,7 @@ test("AURA V2 rechecks cumulative SKU quantities and handles zero counts without
     resolveOrderParty: async (name) => ({ items: [{ key: "party-2", customerName: name, label: name }], hasMore: false }),
     requestV2: async (body) => {
       calls.push(body);
-      if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false };
+      if (body.operation === "match") return { ok: true, rows: [{ itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP", matchKind: "exact" }], complete: true, exactMatch: true, additionalMatches: false, hasMore: false };
       if (body.operation === "lots") return { ok: true, rows: [{ unique_id: "lot-u", itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP", locationcode: "A.01", lotcode: "27.U2", ptravailable: 70 }], complete: true, hasMore: false };
       if (body.operation === "count") return { ok: true, total: 0, complete: true, rows: [], metric: "ptravailable" };
       throw new Error(`Unexpected operation ${body.operation}`);
@@ -722,7 +867,7 @@ test("AURA V2 rechecks cumulative SKU quantities and handles zero counts without
     const queryWidget = mountAuraWidget({
       isAuthorized: () => true,
       requestV2: async (body) => {
-        if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false };
+        if (body.operation === "match") return { ok: true, rows: [{ itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP", matchKind: "exact" }], complete: true, exactMatch: true, additionalMatches: false, hasMore: false };
         if (body.operation === "count") return { ok: true, total: 0, complete: true, rows: [], metric: "ptravailable" };
         if (body.operation === "maximum") return { ok: true, complete: true, winner: { commonname: "Limelight", contsize: "3DP", total: 12 } };
         throw new Error(`Unexpected operation ${body.operation}`);
@@ -746,7 +891,7 @@ test("AURA V2 accepts follow-up items without another wake word and consumes fin
     resolveOrderParty: async (name) => ({ items: [{ key: "party-v", customerName: name, label: name }], hasMore: false }),
     requestV2: async (body) => {
       calls.push(body);
-      if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "V1", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false };
+      if (body.operation === "match") return { ok: true, rows: [{ itemcode: "V1", commonname: "Limelight", contsize: "3DP", matchKind: "exact" }], complete: true, exactMatch: true, additionalMatches: false, hasMore: false };
       if (body.operation === "lots") return { ok: true, rows: [{ unique_id: "v-lot", itemcode: "V1", commonname: "Limelight", contsize: "3DP", ptravailable: 150 }], complete: true, hasMore: false };
       throw new Error(`Unexpected operation ${body.operation}`);
     },
@@ -778,9 +923,9 @@ test("AURA V2 exposes explicit ambiguity choices and accepts a one-digit choice"
     isAuthorized: () => true,
     resolveOrderParty: async (name) => ({ items: [{ key: "party-choice", customerName: name, label: name }], hasMore: false }),
     requestV2: async (body) => {
-      if (body.operation === "catalog") return { ok: true, complete: true, hasMore: false, rows: [
-        { itemcode: "SKU-A", commonname: "Limelight", contsize: "3DP" },
-        { itemcode: "SKU-B", commonname: "Limelight", contsize: "3DP" },
+      if (body.operation === "match") return { ok: true, complete: true, exactMatch: false, additionalMatches: false, hasMore: false, rows: [
+        { itemcode: "SKU-A", commonname: "Limelight", contsize: "3DP", matchKind: "exact" },
+        { itemcode: "SKU-B", commonname: "Limelight", contsize: "3DP", matchKind: "exact" },
       ] };
       if (body.operation === "lots") {
         lotCalls.push(body.itemcode);

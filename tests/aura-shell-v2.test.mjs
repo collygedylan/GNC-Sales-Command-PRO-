@@ -143,6 +143,111 @@ test('AURA reads enter the shared read boundary and retain error status metadata
   assert.match(api, /error\.code = String\(payload\?\.code/);
 });
 
+test('AURA inventory deadline aborts a stalled native-auth lookup at the five-second budget', async () => {
+  const start = html.indexOf('        function awaitAuraRead(');
+  const end = html.indexOf('        async function requestAuraInventory(', start + 1);
+  assert.ok(start >= 0 && end > start);
+  let resolveHeaders;
+  let headerCalls = 0;
+  let postCalls = 0;
+  const timers = [];
+  const context = vm.createContext({
+    AbortController,
+    nativeAuthSessionActive: true,
+    nativeAuthProfile: { id: 'profile', username: 'dylan_collyge' },
+    currentUser: 'dylan_collyge',
+    auraVerifiedProfileId: 'profile',
+    auraPendingRequests: new Set(),
+    APP_API_FUNCTION_URL: 'https://api.example.test/functions/v1/app-api',
+    getSupabaseReadIdentityScope: () => 'dylan:session',
+    isAuraWidgetAuthorized: () => true,
+    getNativeAuthRequestHeaders: () => {
+      headerCalls += 1;
+      return new Promise(resolve => { resolveHeaders = resolve; });
+    },
+    postAppFunctionJson: async () => { postCalls += 1; return { ok: true }; },
+    setTimeout: (callback, delay) => { const timer = { callback, delay, cleared: false }; timers.push(timer); return timer; },
+    clearTimeout: timer => { if (timer) timer.cleared = true; },
+    console,
+  });
+  vm.runInContext(`${html.slice(start, end)}\nglobalThis.invokeAuraApi = callAuraAppApi;`, context);
+
+  const deadlineAt = Date.now() + 5000;
+  const pending = context.invokeAuraApi({ action: 'aura_inventory_v2', operation: 'match' }, {
+    deadlineAt, requestId: 'request-010', onStage() {},
+  });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(headerCalls, 1, 'native headers are resolved once for the operation');
+  assert.equal(postCalls, 0, 'the API request waits for authentication');
+  assert.ok(timers[0].delay <= 5000 && timers[0].delay >= 4900, 'the forwarded deadline starts at five seconds');
+  timers[0].callback();
+  await assert.rejects(pending, error => error.code === 'AURA_DEADLINE_EXCEEDED');
+  assert.equal(context.auraPendingRequests.size, 0, 'the aborted request is removed from lifecycle tracking');
+  resolveHeaders({ Authorization: 'Bearer stale' });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(postCalls, 0, 'late authentication cannot start a request after timeout');
+});
+
+test('AURA forwards one verified header set, deadline, request metadata, and cancellation; stale replies are ignored', async () => {
+  const start = html.indexOf('        function awaitAuraRead(');
+  const end = html.indexOf('        async function requestAuraInventory(', start + 1);
+  assert.ok(start >= 0 && end > start);
+  const postStart = html.indexOf('        async function postAppFunctionJson(');
+  const postEnd = html.indexOf('        function getAvReadDataset(', postStart + 1);
+  assert.ok(postStart >= 0 && postEnd > postStart);
+  const external = new AbortController();
+  const headers = { Authorization: 'Bearer verified' };
+  let headerCalls = 0;
+  let releaseResponse;
+  let fetchOptions;
+  const context = vm.createContext({
+    AbortController,
+    nativeAuthSessionActive: true,
+    nativeAuthProfile: { id: 'profile', username: 'dylan_collyge' },
+    currentUser: 'dylan_collyge',
+    auraVerifiedProfileId: 'profile',
+    auraPendingRequests: new Set(),
+    APP_API_FUNCTION_URL: 'https://api.example.test/functions/v1/app-api',
+    SUPABASE_KEY: 'project-anon-key',
+    getSupabaseReadIdentityScope: () => 'dylan:session',
+    isAuraWidgetAuthorized: () => true,
+    getNativeAuthRequestHeaders: async () => { headerCalls += 1; return headers; },
+    getCurrentAppSessionToken: () => 'legacy-session-token',
+    fetchWithTimeout: async (_url, init, timeoutMs, label) => {
+      fetchOptions = { init, timeoutMs, label };
+      return new Promise(resolve => { releaseResponse = resolve; });
+    },
+    setTimeout,
+    clearTimeout,
+    console,
+  });
+  vm.runInContext(`${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraApi = callAuraAppApi;`, context);
+
+  const deadlineAt = Date.now() + 5000;
+  const pending = context.invokeAuraApi({ action: 'aura_inventory_v2', operation: 'match' }, {
+    signal: external.signal, deadlineAt, requestId: 'request-010', idempotencyKey: 'read-key',
+  });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(headerCalls, 1);
+  assert.ok(fetchOptions, 'the request starts after native authentication resolves');
+  assert.equal(fetchOptions.label, 'AURA');
+  assert.ok(fetchOptions.timeoutMs > 0 && fetchOptions.timeoutMs <= 5000);
+  assert.equal(fetchOptions.init.headers.Authorization, 'Bearer verified', 'safeOptions.nativeHeaders are used by the request wrapper');
+  assert.equal(fetchOptions.init.headers['x-request-id'], 'request-010');
+  assert.equal(fetchOptions.init.headers['Idempotency-Key'], 'read-key');
+  assert.equal(fetchOptions.init.headers['x-gnc-session'], undefined, 'the native session is used without a second legacy session');
+  assert.ok(fetchOptions.init.signal instanceof AbortSignal);
+  external.abort(Object.assign(new Error('Superseded command.'), { name: 'AbortError', code: 'REQUEST_ABORTED' }));
+  await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
+  assert.equal(fetchOptions.init.signal.aborted, true, 'the caller signal reaches the in-flight fetch');
+  releaseResponse({ ok: true, headers: { get: () => 'request-010' }, text: async () => JSON.stringify({ ok: true, rows: [{ itemcode: 'stale' }] }) });
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(context.auraPendingRequests.size, 0);
+});
+
 test('the real shell loader never imports AURA for another account or an unverified profile', async () => {
   const candidate = html.slice(html.indexOf('        function isAuraProfileCandidate()'), html.indexOf('        function disposeAuraWidget()'));
   const loader = html.slice(html.indexOf('        async function syncAuraWidgetForSession()'), html.indexOf('        let bloomscapesPendingState'));
