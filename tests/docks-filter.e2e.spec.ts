@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
 const moduleHashes = new Map(['registry', 'adapters', 'coordinator'].map(name => {
@@ -261,6 +262,7 @@ test('two sessions retain local choices, converge after clear, and keep All incl
 });
 
 async function enableNativeCoordinator(page: Page, rows: Row[]) {
+  await installInventoryReadFixture(page);
   await page.evaluate(data => {
     (window as any).__nativeSyncFixture = { rows: data, revision: '1', state: 'ready', readFailure: false, reads: [], revisionReads: 0 };
     window.eval(`(() => {
@@ -293,10 +295,9 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
         }
         fixture.reads.push('ph_master_inventory');
         if (fixture.gate) await fixture.gate;
-        const limit = Math.max(1, Math.min(500, Number(params.limit) || 500));
-        const offset = Math.max(0, Number(params.offset) || 0);
-        const rows = structuredClone(fixture.rows).map(row => ({ ...row, unique_id: row.unique_id || row.UNIQUE_ID || row.id || '' }));
-        return { rows: rows.slice(offset, offset + limit), total: rows.length, hasMore: offset + limit < rows.length };
+        const inventoryFixture = window.__inventoryReadFixture;
+        const physicalRows = fixture.rows.map(row => inventoryFixture.fromFixtureShape(row));
+        return inventoryFixture.readMasterPage(physicalRows, params);
       };
       supabaseRpc = async (name, payload) => {
         if (name !== 'get_my_dataset_revisions_v1') throw new Error('UNEXPECTED_FIXTURE_RPC:' + name);

@@ -19,9 +19,11 @@ export type InventoryRow = Record<string, unknown> & {
   saleyear?: number | string;
   blockalpha?: string;
   blocknumber?: number | string;
-  ptravailable?: number;
-  ptronhand?: number;
-  ptrreviewed?: number;
+  // These database columns are stored as text in the inventory table; retain
+  // numeric support for sandbox fixtures that provide normalized quantities.
+  ptravailable?: number | string;
+  ptronhand?: number | string;
+  ptrreviewed?: number | string;
   holdstopcode?: string;
   source_payload?: Record<string, unknown>;
 };

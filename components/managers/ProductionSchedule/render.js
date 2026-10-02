@@ -36,12 +36,20 @@ export function renderScheduleFilters(sheet, selected = {}, open = false) {
   }).join('')}<button type="button" class="ps-clear" data-ps-action="clear-filters">Clear filters</button></div>`;
 }
 
-export function renderScheduleCards(sheet, rows) {
+export function renderScheduleDetails(sheet, row) {
+  const details = getScheduleRowDetails(sheet, row);
+  return `<dl>${details.map((field) => `<div><dt>${escapeScheduleHtml(field.label)} <small>${escapeScheduleHtml(columnName(field.index))}</small></dt><dd>${escapeScheduleHtml(field.value)}</dd></div>`).join('')}</dl>`;
+}
+
+export function renderScheduleCards(sheet, rows, expandedRows = new Set(), getDetailedRow = () => null) {
   if (!rows.length) return '<div class="ps-empty">No rows match this sheet’s search and filters.</div>';
-  return rows.map((row) => {
+  return rows.map((row, rowIndex) => {
     const card = getScheduleCard(sheet, row);
-    const details = getScheduleRowDetails(sheet, row);
-    return `<article class="ps-card"><div class="ps-card-heading"><strong>${escapeScheduleHtml(card.title)}</strong><span class="ps-source-row">Row ${escapeScheduleHtml(card.sourceRow)}</span></div>${card.fields.length ? `<dl class="ps-card-fields">${card.fields.map((field) => `<div><dt>${escapeScheduleHtml(field.label)}</dt><dd>${escapeScheduleHtml(field.value)}</dd></div>`).join('')}</dl>` : ''}<details class="ps-details"><summary>All source fields <span>${details.length}</span></summary><dl>${details.map((field) => `<div><dt>${escapeScheduleHtml(field.label)} <small>${escapeScheduleHtml(columnName(field.index))}</small></dt><dd>${escapeScheduleHtml(field.value)}</dd></div>`).join('')}</dl></details></article>`;
+    const sourceKey = String(row?.sourceRow ?? rowIndex);
+    const expanded = expandedRows.has(sourceKey);
+    const detailedRow = expanded ? getDetailedRow(row) : null;
+    const detailCount = Number(row?.fieldCount || 0);
+    return `<article class="ps-card"><div class="ps-card-heading"><strong>${escapeScheduleHtml(card.title)}</strong><span class="ps-source-row">Row ${escapeScheduleHtml(card.sourceRow)}</span></div>${card.fields.length ? `<dl class="ps-card-fields">${card.fields.map((field) => `<div><dt>${escapeScheduleHtml(field.label)}</dt><dd>${escapeScheduleHtml(field.value)}</dd></div>`).join('')}</dl>` : ''}<details class="ps-details" data-ps-detail="${rowIndex}" ${expanded ? 'open' : ''}><summary>All source fields${detailCount ? ` <span>${detailCount}</span>` : ''}</summary><div data-ps-detail-body>${expanded ? (detailedRow ? renderScheduleDetails(sheet, detailedRow) : '<p class="ps-progress">Loading source fields…</p>') : ''}</div></details></article>`;
   }).join('');
 }
 

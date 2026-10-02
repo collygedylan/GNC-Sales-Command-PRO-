@@ -33,6 +33,7 @@ function fixture() {
         set revision(value) { revision = value; }, set state(value) { state = value; }, set rows(value) { rows = value; },
         set fault(value) { fault = value; }, set loadHook(value) { loadHook = value; }, set metadataHook(value) { metadataHook = value; },
         set permission(value) { permission = value; },
+        set clock(value) { clock = value; },
         get reads() { return reads; }, get metadataReads() { return metadataReads; }, get subscriptions() { return subscriptions; }, get closes() { return closes; },
         notify: () => notify?.(),
         advance: async (milliseconds) => {
@@ -53,6 +54,19 @@ test('unchanged revisions perform no full downloads; a healthy socket never stop
     const f = fixture(); await f.coordinator.check(); const first = f.metadataReads;
     await f.advance(30000);
     assert.equal(f.subscriptions, 1); assert.equal(f.metadataReads, first + 1); assert.equal(f.reads, 1);
+});
+test('an applied snapshot is served immediately while a snapshot older than 30 seconds revalidates', async () => {
+    const f = fixture();
+    assert.equal(await f.coordinator.check(), true);
+    const initialReads = f.reads;
+    const initialMetadataReads = f.metadataReads;
+    assert.equal(await f.coordinator.ensure(f.adapter), true, 'a fresh complete snapshot is immediately reusable');
+    assert.equal(f.metadataReads, initialMetadataReads);
+    f.clock = 31001;
+    assert.equal(await f.coordinator.ensure(f.adapter), true, 'stale-while-revalidate must not block the view');
+    await f.advance(0);
+    assert.equal(f.metadataReads, initialMetadataReads + 2, 'revalidation brackets a conditional read');
+    assert.equal(f.reads, initialReads, 'unchanged source revisions do not redownload the dataset');
 });
 test('same row count updates and deletions replace the old snapshot', async () => {
     const f = fixture(); await f.coordinator.check();

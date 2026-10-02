@@ -59,7 +59,7 @@ function hlFixture() {
   vm.runInNewContext(read('assets/live-sync-coordinator.js'), library);
   for (const key of ['master', 'soc']) {
     context.adapters.push({ id: `core:${key}`, cacheKey: key, sourceKeys: [key === 'master' ? 'ph_master_inventory' : 'ph_soc_master'],
-      stage: async () => ({ key, rows: key === 'master' ? state.rows : [], owner: ctx.captureHlOrderOwnership() }) });
+      stage: async () => ({ key, rows: key === 'master' ? state.rows : [], rowCompleteness: 'complete', owner: ctx.captureHlOrderOwnership() }) });
   }
   const coordinator = library.AgMetricLiveSync.createCoordinator({
     getContext: () => ctx.observeHlOrderVerificationContext(context),
@@ -68,7 +68,7 @@ function hlFixture() {
       sources: keys.map(key => ({ key, revision: state.revision, state: state.sourceStates[key] || 'ready' })) }),
     commitSnapshots: (staged, current, metadata) => {
       for (const { value } of staged) {
-        Object.assign(datasets[value.key], { fullLoaded: true, liveVerifiedScope: current.scope,
+        Object.assign(datasets[value.key], { fullLoaded: true, rowCompleteness: value.rowCompleteness, fieldCoverage: 'full', liveVerifiedScope: current.scope,
           liveVerifiedPermission: metadata.permissionVersion, liveVerifiedRevision: state.revision });
         if (value.key === 'master') {
           ctx.captureHlOrderInventorySnapshot(value, current, metadata);
@@ -105,6 +105,8 @@ for (const [name, mutate] of [
   ['scope replacement', f => { f.context.scope = 'another-scope'; }],
   ['permission replacement', f => { f.datasets.master.liveVerifiedPermission = 'permission-2'; }],
   ['master revision replacement', f => { f.datasets.master.liveVerifiedRevision = '2'; }],
+  ['partial master rows', f => { f.datasets.master.rowCompleteness = 'partial'; }],
+  ['unknown master field coverage', f => { f.datasets.master.fieldCoverage = ''; }],
   ['missing joined SOC data', f => { f.context.adapters = f.context.adapters.filter(adapter => adapter.id !== 'core:soc'); }],
   ['an unrelated view', f => { f.context.adapters = []; }],
   ['going offline', f => { f.ctx.navigator.onLine = false; }],

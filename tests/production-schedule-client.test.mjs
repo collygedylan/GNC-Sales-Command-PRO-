@@ -39,10 +39,21 @@ test('client uses the bounded native-session API contract', async () => {
     return { ok: true, rows: [], nextCursor: null, total: 0 };
   });
   const abort = new AbortController();
-  await client.rows({ sheetId: 12, q: 'rose', filters: { '39': 'N' }, cursor: '12:44', limit: 999 }, abort.signal);
+  await client.rows({ sheet: { columns: [{ index: 39, header: 'NoSale' }] }, sheetId: 12,
+    q: 'rose', filters: { '39': 'N' }, cursor: '12:44', limit: 999 }, abort.signal);
   assert.deepEqual(calls[0].body, {
     action: 'production_schedule', operation: 'rows', sheetId: 12, q: 'rose',
-    filters: { '39': 'N' }, cursor: '12:44', limit: 500,
+    filters: { '39': 'N' }, cursor: '12:44', limit: 500, projection: 'cards', columnIndexes: [39],
   });
   assert.equal(calls[0].signal, abort.signal);
+});
+
+test('card projection handles a worksheet with no metadata columns', async () => {
+  const calls = [];
+  const client = createProductionScheduleClient(async (body) => {
+    calls.push(body);
+    return { ok: true, rows: [{ sourceRow: 9, cells: {}, fieldCount: 12 }] };
+  });
+  await client.rows({ sheet: { title: 'Empty headers', columns: [] }, sheetId: 6 });
+  assert.deepEqual(calls[0].columnIndexes, []);
 });

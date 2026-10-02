@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 type VisitPhase = 'cold' | 'repeat-settled-home' | 'repeat-rapid-home';
 type CoordinatorStats = { revisionReads: number; adapterReads: number; discardedLoads: number; commits: number; signals: number; cacheHits: number };
@@ -196,6 +197,10 @@ async function installPendingRequestFixture(page: Page, baseURL: string, initial
         reads.push('ph_master_inventory');
         if (mode === 'failed') return route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Synthetic inventory read failure' }) });
         await unrelatedGate;
+        if (body.operation === 'master_page') {
+          return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true,
+            data: inventoryReadFixture.readMasterPage([], body.params || {}) }) });
+        }
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, data: {
           rows: [], total: 0, offset: body.params?.offset || 0, limit: body.params?.limit || 500, hasMore: false
         } }) });

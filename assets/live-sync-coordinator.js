@@ -23,6 +23,7 @@
         const now = options.now || Date.now;
         const later = options.setTimeout || setTimeout;
         const cancel = options.clearTimeout || clearTimeout;
+        const cacheFreshnessMs = Math.max(1000, Number(options.cacheFreshnessMs) || 30000);
         const applied = new Map();
         const requested = new Map();
         let epoch = 0, scope = '', permission = '', running = null, queued = false;
@@ -388,7 +389,15 @@
             const ctx = context();
             if (!ctx?.scope || ctx.visible === false || ctx.online === false) return Promise.resolve(false);
             const wasApplied = applied.get(adapter.id)?.cacheKey === adapter.cacheKey;
-            if (!force && wasApplied) return Promise.resolve(true);
+            if (!force && wasApplied) {
+                const contextKey = identity(ctx);
+                const verifiedAt = verifiedAtByIdentity.get(contextKey);
+                if (verifiedAt != null && now() - verifiedAt < cacheFreshnessMs) return Promise.resolve(true);
+                // Keep the last complete snapshot on screen, but refresh its
+                // revision in the background once the 30s freshness window ends.
+                signal('cache-expired', 0);
+                return Promise.resolve(true);
+            }
             if (force) applied.delete(adapter.id);
             if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)
                 && (!force || !wasApplied) && activeRun.adapters?.some(item => item.id === adapter.id && item.cacheKey === adapter.cacheKey)) {

@@ -11,7 +11,8 @@ export const auraHrCommandCenterMigrationName = '20261001025638_aura_hr_command_
 export const scheduledHandoverMigrationName = '20261001215508_scheduled_handover_005.sql';
 export const requestArchiveMigrationName = '20261001215511_request_archive_005.sql';
 export const handoverAssignmentMigrationName = '20261001222228_handover_assignment_transfer_005.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName]);
+export const readOptimizationMigrationName = '20261002014421_index_request_history_assigned_rep_006.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -173,6 +174,7 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === readOptimizationMigrationName) return "select exists(select 1 from pg_index where indexrelid=to_regclass('public.idx_ph_request_history_assigned_rep_id') and indisvalid) and to_regprocedure('public.production_schedule_read_cards_v1(integer,uuid,integer,integer,text,jsonb,integer[])') is not null and has_function_privilege('service_role','public.production_schedule_read_cards_v1(integer,uuid,integer,integer,text,jsonb,integer[])','execute') and not has_function_privilege('anon','public.production_schedule_read_cards_v1(integer,uuid,integer,integer,text,jsonb,integer[])','execute') and not has_function_privilege('authenticated','public.production_schedule_read_cards_v1(integer,uuid,integer,integer,text,jsonb,integer[])','execute') as installed";
   if (name === scheduledHandoverMigrationName) return "select to_regprocedure('public.app_account_active_v1(uuid,text)') is not null and to_regprocedure('public.resolve_operational_recipients_v1(text[],text)') is not null and to_regprocedure('public.scheduled_handover_tick_v1()') is not null and exists(select 1 from private.scheduled_account_handover_v1 where departing_profile_id='e2584b32-472c-4888-b592-394235050b5b'::uuid and successor_profile_id='961b0a0f-11a6-4db5-b066-582f772ab8e7'::uuid and effective_at='2026-10-03 04:00:00+00'::timestamptz and ((completed_at is not null and auth_banned_at is not null) or exists(select 1 from cron.job where jobname='scheduled_handover_kayla_nelly_20261002' and active and schedule='* * * * *' and command='select private.scheduled_handover_dispatch_v1();'))) as installed";
   if (name === handoverAssignmentMigrationName) return "select to_regprocedure('private.transfer_remaining_handover_assignments_v1(text,integer)') is not null and to_regprocedure('private.handover_normalize_assignment_v1()') is not null as installed";
   if (name === requestArchiveMigrationName) return "select to_regprocedure('public.request_archive_command_v1(uuid,text,text,uuid)') is not null and to_regprocedure('public.request_archive_list_v1(uuid,integer,integer)') is not null as installed";

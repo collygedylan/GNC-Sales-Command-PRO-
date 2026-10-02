@@ -430,6 +430,7 @@ test('every registered physical source has a database revision contract', () => 
         '20261001215508_scheduled_handover_005.sql',
         '20261001215511_request_archive_005.sql',
         '20261001222228_handover_assignment_transfer_005.sql',
+        '20261002014421_index_request_history_assigned_rep_006.sql',
     ], 'active migrations contain the baseline, Grower fields, conflict fix, Production Schedule, and HR command center');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

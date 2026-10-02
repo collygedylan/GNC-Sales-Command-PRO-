@@ -50,6 +50,25 @@ export function findScheduleColumn(sheet, names) {
   return null;
 }
 
+export function getScheduleCardColumnIndexes(sheet) {
+  const namedFields = [
+    ...(TITLE_FIELDS[sheet?.title] || []),
+    ...(COMPACT_FIELDS[sheet?.title] || []),
+  ];
+  const indexes = [];
+  for (const name of namedFields) {
+    const column = findScheduleColumn(sheet, [name]);
+    if (column && Number.isInteger(Number(column.index)) && Number(column.index) > 0) indexes.push(Number(column.index));
+  }
+  const columns = Array.isArray(sheet?.columns) ? sheet.columns : [];
+  // Keep a small source-order fallback so cards still have a useful title when
+  // a sheet has unexpected or blank headers.
+  for (const column of columns.slice(0, 4)) {
+    if (Number.isInteger(Number(column?.index)) && Number(column.index) > 0) indexes.push(Number(column.index));
+  }
+  return [...new Set(indexes)].slice(0, 32);
+}
+
 function findField(sheet, row, name) {
   const column = findScheduleColumn(sheet, [name]);
   if (!column) return null;
@@ -61,7 +80,9 @@ export function getScheduleCard(sheet, row) {
   const titleNames = TITLE_FIELDS[sheet?.title] || [];
   const columns = Array.isArray(sheet?.columns) ? sheet.columns : [];
   const titleField = titleNames.map((name) => findField(sheet, row, name)).find(Boolean);
-  const firstPopulated = columns.map((column) => ({ column, value: getScheduleCell(row, column.index).trim() }))
+  const requestedIndexes = new Set(getScheduleCardColumnIndexes(sheet));
+  const firstPopulated = columns.filter((column) => requestedIndexes.has(Number(column.index)))
+    .map((column) => ({ column, value: getScheduleCell(row, column.index).trim() }))
     .find((entry) => entry.value);
   const title = titleField?.value || firstPopulated?.value || `Source row ${row?.sourceRow ?? '?'}`;
   const compactNames = COMPACT_FIELDS[sheet?.title] || [];
