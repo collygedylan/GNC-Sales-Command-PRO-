@@ -80,6 +80,17 @@ function request(path, extra = {}) {
   return { url: absolute(path), method: 'GET', mode: 'cors', destination: '', referrer: `${origin}/index.html`, ...extra };
 }
 
+test('all split AURA modules bypass shared service-worker storage', async () => {
+  const h = harness();
+  for (const file of ['components/common/auraVoiceWidget', 'services/auraVoiceService', 'services/auraConversation', 'utils/auraIntentParser', 'utils/auraLingo']) {
+    const path = `/${file}.js?v=V2026.10.01.007`;
+    assert.equal(h.evaluate(`shouldBypassServiceWorkerCache({url:${JSON.stringify(absolute(path))}})`), true);
+    const result = await h.dispatch('fetch', { request: request(path) });
+    assert.equal(result.intercepted, false, `${file} remains a browser network request`);
+  }
+  assert.equal(h.calls.put.length, 0);
+});
+
 test('production shell ownership is exact, same-origin, and independent of query/hash', () => {
   const h = harness();
   for (const path of ['/', '/index.html', '/?shellv=old', '/index.html?app=ag-data-solutions#request']) {

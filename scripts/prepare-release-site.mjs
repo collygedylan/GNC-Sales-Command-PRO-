@@ -1,4 +1,4 @@
-import { copyFile, lstat, mkdir, readFile, readdir, realpath, stat } from 'node:fs/promises';
+import { copyFile, lstat, mkdir, readFile, readdir, realpath, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -47,8 +47,19 @@ try {
   // the same directory layout in the static site.
   for (const directory of ['services', 'utils', 'components/common']) await mkdir(path.join(site, directory), { recursive: true });
   await copyTree(path.join(root, 'services', 'auraVoiceService.js'), path.join(site, 'services', 'auraVoiceService.js'));
+  await copyTree(path.join(root, 'services', 'auraConversation.js'), path.join(site, 'services', 'auraConversation.js'));
   await copyTree(path.join(root, 'utils', 'auraIntentParser.js'), path.join(site, 'utils', 'auraIntentParser.js'));
+  await copyTree(path.join(root, 'utils', 'auraLingo.js'), path.join(site, 'utils', 'auraLingo.js'));
   await copyTree(path.join(root, 'components', 'common', 'auraVoiceWidget.js'), path.join(site, 'components', 'common', 'auraVoiceWidget.js'));
+  // The top-level widget URL is versioned by the shell. Version its relative
+  // imports too: bypassing a service worker alone does not bypass HTTP caches.
+  const auraRelease = `V${JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version}`;
+  for (const file of ['components/common/auraVoiceWidget.js', 'utils/auraIntentParser.js']) {
+    const target = path.join(site, file);
+    const source = await readFile(target, 'utf8');
+    await writeFile(target, source.replace(/from\s+(["'])(\.\.?\/[^"']+\.js)\1/g,
+      (_match, quote, specifier) => `from ${quote}${specifier}?v=${encodeURIComponent(auraRelease)}${quote}`), 'utf8');
+  }
   await copyTree(path.join(root, 'reports'), path.join(site, 'reports'));
   await copyTree(path.join(root, 'v2', 'dist'), path.join(site, 'v2'));
   for (const script of ['build-live-shell.mjs', 'write-deployment-fingerprint.mjs']) {

@@ -195,7 +195,7 @@ test('productivity history writes are role gated, validated, bounded, and idempo
 
 test('inventory source_freshness uses only the authorized minimal metadata projection', async () => {
   const handlerStart = source.indexOf('async function handleInventoryRead(');
-  const handlerEnd = source.indexOf('async function handlePhotoUpload(', handlerStart);
+  const handlerEnd = source.indexOf('const AURA_V2_OPERATIONS', handlerStart);
   assert.ok(handlerStart >= 0 && handlerEnd > handlerStart);
   const inventoryHandler = source.slice(handlerStart, handlerEnd);
   const transpiled = ts.transpileModule(`${inventoryHandler}\nthis.inventoryReadTest = handleInventoryRead;`, {

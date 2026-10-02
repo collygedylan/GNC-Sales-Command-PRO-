@@ -107,7 +107,7 @@ test('availability refresh preserves verified cached tuples on RPC failure and c
 
 function appApiHarness({ moduleAllowed = true } = {}) {
   const start = edgeSource.indexOf('const INVENTORY_MASTER_INITIAL_FIELDS');
-  const end = edgeSource.indexOf('async function handlePhotoUpload', start);
+  const end = edgeSource.indexOf('const AURA_V2_OPERATIONS', start);
   assert.ok(start >= 0 && end > start, 'inventory read handler block should exist');
   const transpiled = ts.transpileModule(`${edgeSource.slice(start, end)}\nthis.inventoryReadTest = handleInventoryRead;`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }

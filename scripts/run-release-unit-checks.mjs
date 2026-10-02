@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 export const releaseUnitScriptNames = Object.freeze(['test:photo', 'test:pilot', 'test:live-sync']);
 export const explicitReleaseUnitTests = Object.freeze([
   'tests/aura-voice.test.mjs',
+  'tests/aura-lingo-v2.test.mjs',
+  'tests/aura-shell-v2.test.mjs',
   'tests/alpha-command-center.test.mjs',
   'tests/floor-startup-hotfix.test.mjs',
   'tests/dataset-read-hotfix.test.mjs',

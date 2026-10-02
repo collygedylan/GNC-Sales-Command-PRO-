@@ -1,6 +1,62 @@
 import { expect, test } from '@playwright/test';
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 
+for (const width of [320, 390, 430]) {
+  test(`AURA V2 split widget keeps draft choices and review usable at ${width}px`, async ({ page, baseURL }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.route('**/aura-v2-fixture', route => route.fulfill({ contentType: 'text/html', body:
+      '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#050806"></body>' }));
+    await page.goto(`${baseURL}/aura-v2-fixture`);
+    await page.evaluate(async (moduleUrl) => {
+      const { mountAuraWidget } = await import(moduleUrl);
+      const globals = window as any;
+      globals.auraCalls = [];
+      const product = { itemcode: 'SKU-L', commonname: 'Limelight', contsize: '3DP' };
+      globals.auraHandle = mountAuraWidget({ isAuthorized: () => true,
+        resolveOrderParty: async () => ({ items: [
+          { key: 'acme-north', customerName: 'Acme', consigneeName: 'North', label: 'Acme – North' },
+          { key: 'acme-south', customerName: 'Acme', consigneeName: 'South', label: 'Acme – South' },
+        ], hasMore: false }),
+        requestV2: async (body: any) => {
+          globals.auraCalls.push(body);
+          if (body.operation === 'catalog') return { rows: [product], complete: true, hasMore: false, season: 'F1', salesYear: 27 };
+          if (body.operation === 'lots') return { rows: [{ ...product, unique_id: 'lot-1', locationcode: 'A.07.000', lotcode: '27.F1', ptravailable: 120, ptronhand: 140 }], complete: true, hasMore: false };
+          throw new Error('Unexpected fixture operation');
+        },
+        openDraft: async (draft: any) => { globals.auraDraft = draft; return { ok: true, message: 'Ready for manual review.' }; },
+      });
+    }, `${baseURL}/components/common/auraVoiceWidget.js`);
+    await page.getByRole('button', { name: 'Open AURA voice assistant' }).click();
+    const input = page.getByRole('textbox', { name: 'Type a command for AURA' });
+    const submit = async (text: string) => { await input.fill(text); await page.getByRole('button', { name: 'Go', exact: true }).click(); };
+    await submit('Start a request for Acme');
+    await expect(page.getByRole('button', { name: '1. Acme – North' })).toBeVisible();
+    await submit('two');
+    await expect(page.locator('.aura-content > .aura-message')).toContainText('Acme – South');
+    await submit('fifty three deep pee Limelight');
+    await expect(page.locator('.aura-content > .aura-message')).toContainText('Added 50');
+    await submit('twenty five three deep pee Limelight');
+    await expect(page.locator('.aura-content > .aura-message')).toContainText('75');
+    const geometry = await page.evaluate(() => ({
+      overflow: document.documentElement.scrollWidth > innerWidth,
+      buttons: Array.from(document.querySelectorAll('.aura-panel button')).filter(button => (button as HTMLElement).offsetParent !== null).map(button => {
+        const rect = button.getBoundingClientRect(); return { width: rect.width, height: rect.height };
+      }),
+      panel: document.querySelector('.aura-panel')!.getBoundingClientRect().toJSON(),
+    }));
+    expect(geometry.overflow).toBe(false);
+    expect(geometry.panel.x).toBeGreaterThanOrEqual(0);
+    expect(geometry.panel.right).toBeLessThanOrEqual(width);
+    for (const button of geometry.buttons) { expect(button.width).toBeGreaterThanOrEqual(44); expect(button.height).toBeGreaterThanOrEqual(44); }
+    await page.getByRole('button', { name: 'Review request', exact: true }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).auraDraft?.lines?.[0]?.quantity)).toBe(75);
+    expect(await page.evaluate(() => (window as any).auraDraft.party.key)).toBe('acme-south');
+    expect(await page.evaluate(() => (window as any).auraCalls.filter((call: any) => call.operation === 'catalog').length)).toBe(1);
+    await page.evaluate(() => (window as any).auraHandle.destroy());
+    await expect(page.locator('[data-aura-root]')).toHaveCount(0);
+  });
+}
+
 test('compiled bootstrap owns lifecycle before a failed runtime and Reload aborts the old document', async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, {
     username: 'lifecycle_start_admin',

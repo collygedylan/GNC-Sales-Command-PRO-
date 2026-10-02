@@ -7,6 +7,23 @@
   ],
   "modules": [
     {
+      "id": "aura",
+      "paths": [
+        "components/common/auraVoiceWidget.js",
+        "services/auraVoiceService.js",
+        "services/auraConversation.js",
+        "utils/auraIntentParser.js",
+        "utils/auraLingo.js",
+        "tests/aura-voice.test.mjs",
+        "tests/aura-lingo-v2.test.mjs",
+        "tests/aura-shell-v2.test.mjs"
+      ],
+      "commands": [
+        "node --test tests/aura-voice.test.mjs tests/aura-lingo-v2.test.mjs tests/aura-shell-v2.test.mjs",
+        "npm run check:foundation"
+      ]
+    },
+    {
       "id": "codex-workflow",
       "paths": [
         ".codex/**",
