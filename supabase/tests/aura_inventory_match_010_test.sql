@@ -1,6 +1,13 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
+-- The disposable replay uses reduced historical fixtures, not the production
+-- baseline ACLs. Reproduce the existing service reader grants only inside this
+-- rolled-back test transaction; browser roles remain unable to call the RPC.
+grant select on public.ph_app_settings, public.ph_master_inventory to service_role;
+insert into public.ph_app_settings(key,value)
+values ('current_season_salesyear','{"seasonCode":"F1","salesYear":"27"}'::jsonb)
+on conflict (key) do update set value=excluded.value;
 select plan(10);
 
 select has_function('public','aura_inventory_v2_match_v1',
