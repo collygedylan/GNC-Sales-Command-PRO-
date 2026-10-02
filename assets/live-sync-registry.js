@@ -101,6 +101,9 @@
         // Pending rows are fully expanded by the requests dataset. History,
         // credits and edit-request joins belong to their consuming subviews.
         'request:pending': data([]),
+        // Archived rows come from the capability-checked app-api snapshot RPC;
+        // they do not subscribe to or refresh the broad live Request datasets.
+        'request:archived': data([]),
         'request:reps': data(['requests', 'requestHistory', 'salesCredits']),
         'request:suspend-tag': data(['soc', 'master']),
         'request:eval-work': data(['master'], ['evalWork']),
@@ -166,8 +169,10 @@
         if (!view) throw new Error(`Unregistered live-sync view: ${viewId}`);
         const requestedSurfaces = context.surfaces || [];
         const requestBunchNotes = viewId === 'request' && requestedSurfaces.includes('request:bunch-notes');
+        const requestArchived = viewId === 'request' && requestedSurfaces.includes('request:archived');
         const requestPending = viewId === 'request' && requestedSurfaces.includes('request:pending');
         const entries = [requestBunchNotes ? data([], ['bunchNotes'])
+            : requestArchived ? data([], [])
             : requestPending ? data(['requests'])
             : viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
         if ((viewId === 'drive' || viewId === 'detail' && context.driveDetail) && context.driveAssignmentsRequired) {
