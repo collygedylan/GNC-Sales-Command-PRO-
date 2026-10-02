@@ -129,6 +129,7 @@ async function harness(page: Page, baseURL: string) {
         Object.keys(DATASET_DEFINITIONS).forEach(key => {
           const state = getDatasetState(key);
           state.initialLoaded = state.fullLoaded = true;
+          if (key === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
           state.lastLoadedAt = new Date().toISOString();
         });
         document.getElementById('view-login').style.setProperty('display', 'none', 'important');

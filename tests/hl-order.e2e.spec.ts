@@ -285,6 +285,9 @@ test('Open Orders waits for an importing revision and cannot commit an obsolete 
   });
   await openHl(page); await openDetails(page);
   await navigateHl(page, page.locator('#hl-order-detail [data-hl-drive-location="C.12.001"] .app-drive-compact-card'));
+  // Compact cards verify their exact full row asynchronously before opening.
+  // Begin the SOC import only after that separate inventory fence completes.
+  await expect(page.locator('#view-detail')).toBeVisible();
   const openReadsBeforeImport = fixture.demandReads.openOrders;
   fixture.setDatasetSourceState('ph_soc_master', 'importing');
   // Reproduce a delayed detail hydration landing between a real press and release.

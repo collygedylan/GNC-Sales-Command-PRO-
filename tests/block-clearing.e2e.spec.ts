@@ -77,7 +77,8 @@ async function setupBlockClearing(page: Page, width: number, options: { realShel
     managersSearchTerm = '';
     const fixtureRows = ${JSON.stringify([...sourceRows, ...destinationRows])};
     processAndLoadData({ data: fixtureRows, _fromCache: true });
-    getDatasetState('master').initialLoaded = getDatasetState('master').fullLoaded = true;
+    const masterState = getDatasetState('master');
+    masterState.initialLoaded = masterState.fullLoaded = true; masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
     // Duplicate transport rows must not double count an inventory identity.
     fullInventory.push({ ...fullInventory.find(row => row.UNIQUE_ID === 'bc-source-27') });
     managerBlockClearingCache = null;

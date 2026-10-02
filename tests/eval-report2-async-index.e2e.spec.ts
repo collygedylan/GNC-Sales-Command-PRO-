@@ -45,6 +45,7 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
     }));
     for (const dataset of ['master', 'warehouseAssignedItems']) {
       const state = getDatasetState(dataset); state.initialLoaded = state.fullLoaded = true;
+      if (dataset === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
     }
     managerEvalReport2LoadState = { loading: false, error: '', promise: null };
     managerEvalReport2Cache = null;

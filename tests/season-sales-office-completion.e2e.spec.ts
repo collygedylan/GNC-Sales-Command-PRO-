@@ -162,6 +162,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         Object.keys(DATASET_DEFINITIONS).forEach((key) => {
           const state = getDatasetState(key);
           state.initialLoaded = state.fullLoaded = true;
+          if (key === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
           state.lastLoadedAt = new Date().toISOString();
         });
         fullInventory = window.__seasonCompletionFixtureRows.map((row, index) => ({
