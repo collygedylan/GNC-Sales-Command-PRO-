@@ -29,11 +29,12 @@ function healthyPayloads() {
 }
 
 async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, withCronSecret = false,
-  groupedHealth = {}, itemcodeHealth = {}, accessControlHealth = {}, groupedStatus = 200, groupedResponseText } = {}) {
+  groupedHealth = {}, itemcodeHealth = {}, accessControlHealth = {}, evalRequestHealth = {}, groupedStatus = 200, groupedResponseText } = {}) {
   const calls = [], output = [], payloads = healthyPayloads();
   Object.assign(payloads.get_eval_work_assignment_batch_health_v1, groupedHealth);
   Object.assign(payloads.get_eval_itemcode_work_health_snapshot_v2, itemcodeHealth);
   Object.assign(payloads.get_access_control_health_snapshot_v1, accessControlHealth);
+  Object.assign(payloads.get_eval_request_delivery_health_snapshot_v2, evalRequestHealth);
   if (mismatch) payloads.get_request_drive_evidence_health_snapshot_v1.evidence_mismatch_count = 1;
   if (mismatch) payloads.get_request_drive_evidence_health_snapshot_v1.mismatch_request_ids = ['fixture-request'];
   if (unhealthy) payloads.get_drive_evidence_save_health_v2.lockWaits = 1;
@@ -115,6 +116,38 @@ test('access audit accepts exactly three maintainers and a complete zero-missing
   assert.equal(check.baselineMissingCount, 0);
   assert.equal(check.unknownPermissionCount, 0);
   assert.equal(check.unmappedLegacyCheckCount, 0);
+});
+
+test('Eval delivery health names every failed assertion without exposing payload details', async (t) => {
+  for (const field of ['required_manager_recipient_count', 'creation_order_violation_count',
+    'completion_membership_mismatch_count', 'missing_completion_event_count',
+    'eval_origin_scope_mismatch_count', 'eval_required_recipient_violation_count']) {
+    await t.test(field, async () => {
+      const value = field === 'required_manager_recipient_count' ? 3 : 1;
+      const f = await runProbe({ evalRequestHealth: { [field]: value,
+        recipients: ['private@example.test'], request_id: 'private-request' } });
+      assert.equal(f.error?.message,
+        `production_eval_request_delivery_contract_unhealthy_failed=${field}_values=${field}:${value}`);
+      assert.ok(!f.calls.some(call => /request-delivery-worker|run_request_integrity_maintenance|repair_request_drive_evidence/.test(call.path)));
+    });
+  }
+  const f = await runProbe({ evalRequestHealth: { contract_version: 'private-contract',
+    missing_completion_event_count: 1, eval_required_recipient_violation_count: 2 } });
+  assert.match(f.error?.message || '', /failed=contract_version,missing_completion_event_count,eval_required_recipient_violation_count/);
+  assert.doesNotMatch(f.error?.message || '', /private-contract/);
+});
+
+test('Eval delivery health rejects missing or malformed counts instead of converting them to zero', async (t) => {
+  for (const value of [null, undefined, '', false, [], {}, -1, 0.5, 'private@example.test']) {
+    await t.test(String(value), async () => {
+      const f = await runProbe({ evalRequestHealth: { missing_completion_event_count: value } });
+      assert.match(f.error?.message || '', /failed=missing_completion_event_count/);
+      assert.doesNotMatch(f.error?.message || '', /private@example/);
+    });
+  }
+  const f = await runProbe({ evalRequestHealth: { required_manager_recipient_count: '2',
+    missing_completion_event_count: '0' } });
+  assert.equal(f.error, null);
 });
 
 test('read-only probe fails closed for grouped delivery contract violations', async (t) => {

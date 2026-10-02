@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -139,7 +139,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -170,8 +170,34 @@ test('HR migration contract verifies partitioned labor tables and the scheduled 
   assert.equal(calls.find(({ sql }) => sql.startsWith('insert into supabase_migrations')).params[1], 'aura_hr_command_center_v1');
 });
 
+test('archive-only health repair remains private and fails closed before publication', async () => {
+  assert.equal(releaseDatabaseMigrations.at(-1), evalDeliveryArchiveHealthMigrationName);
+  const contract = migrationContractQuery(evalDeliveryArchiveHealthMigrationName);
+  assert.match(contract, /request_folder_archive_only_completed_v1/);
+  assert.match(contract, /not prosecdef and provolatile='s'/);
+  assert.match(contract, /archive_only_completed_folder_count/);
+  assert.match(contract, /not has_function_privilege\('anon'/);
+  assert.match(contract, /not has_function_privilege\('authenticated'/);
+  for (const installed of [true, false]) {
+    const calls = [];
+    const client = { query: async (sql) => {
+      calls.push(sql);
+      return { rows: sql === contract ? [{ installed }] : [] };
+    } };
+    const operation = applyItemLowStockMigration({ client, source: 'begin; select health_repair; commit;',
+      targetMigrationName: evalDeliveryArchiveHealthMigrationName });
+    if (installed) {
+      assert.equal((await operation).status, 'applied');
+      assert.equal(calls.at(-1), 'commit');
+    } else {
+      await assert.rejects(operation, /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+      assert.equal(calls.at(-1), 'rollback');
+    }
+  }
+});
+
 test('audit repair is registered after the AURA migration and verifies identity and baseline completeness', async () => {
-  assert.equal(releaseDatabaseMigrations.at(-1), nellyAccessAuditMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(nellyAccessAuditMigrationName) > releaseDatabaseMigrations.indexOf(auraInventoryV2MigrationName));
   const contract = migrationContractQuery(nellyAccessAuditMigrationName);
   assert.match(contract, /961b0a0f-11a6-4db5-b066-582f772ab8e7/);
   assert.match(contract, /nelly_aguilar/);
