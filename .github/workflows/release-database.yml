@@ -192,6 +192,7 @@ jobs:
           cp supabase/migrations/20261002121446_aura_inventory_v2_007.sql "$ci_root/supabase/migrations/"
           cp supabase/ci/nelly_access_audit_baseline_snapshot_fixture.sql "$ci_root/supabase/migrations/20261002134137_ci_nelly_baseline_snapshot.sql"
           cp supabase/migrations/20261002134138_nelly_access_audit_baseline_repair_007.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261002155017_eval_delivery_archive_health_007.sql "$ci_root/supabase/migrations/"
           # Deactivate the external worker before the disposable replay commits,
           # so CI remains deterministic after the production cutoff date.
           python3 - "$ci_root" <<'PY'
@@ -287,6 +288,7 @@ jobs:
           node supabase/ci/production_schedule_cards_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/aura_inventory_v2_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/nelly_access_audit_baseline_pglite.mjs --pglite-root "$pglite_root"
+          node supabase/ci/eval_delivery_archive_health_pglite.mjs --pglite-root "$pglite_root"
       - id: browser_setup
         run: |
           node --test tests/prepare-ci-playwright-apt.test.mjs

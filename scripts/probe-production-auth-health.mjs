@@ -382,23 +382,34 @@ if (serviceRoleKey) {
   }, 60000);
   const evalRequestHealthText = await evalRequestHealthResponse.text();
   try { evalRequestDeliveryHealth = evalRequestHealthText ? JSON.parse(evalRequestHealthText) : null; } catch {}
-  if (!evalRequestHealthResponse.ok || !evalRequestDeliveryHealth || typeof evalRequestDeliveryHealth !== 'object') {
+  if (!evalRequestHealthResponse.ok || !evalRequestDeliveryHealth || typeof evalRequestDeliveryHealth !== 'object' || Array.isArray(evalRequestDeliveryHealth)) {
     throw new Error(`production_eval_request_delivery_health_unavailable_HTTP_${evalRequestHealthResponse.status}`);
   }
-  const evalRequestContractHealthy = evalRequestDeliveryHealth.contract_version === 'eval-request-delivery-health-v2'
-    && Number(evalRequestDeliveryHealth.required_manager_recipient_count) === 2
-    && Number(evalRequestDeliveryHealth.creation_order_violation_count) === 0
-    && Number(evalRequestDeliveryHealth.completion_membership_mismatch_count) === 0
-    && Number(evalRequestDeliveryHealth.missing_completion_event_count) === 0
-    && Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) === 0
-    && Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) === 0;
-  if (!evalRequestContractHealthy) throw new Error('production_eval_request_delivery_contract_unhealthy');
+  const evalRequestPredicates = [
+    ['contract_version', evalRequestDeliveryHealth.contract_version === 'eval-request-delivery-health-v2'],
+    ['required_manager_recipient_count', accessScalar(evalRequestDeliveryHealth.required_manager_recipient_count) === 2],
+    ['creation_order_violation_count', accessScalar(evalRequestDeliveryHealth.creation_order_violation_count) === 0],
+    ['completion_membership_mismatch_count', accessScalar(evalRequestDeliveryHealth.completion_membership_mismatch_count) === 0],
+    ['missing_completion_event_count', accessScalar(evalRequestDeliveryHealth.missing_completion_event_count) === 0],
+    ['eval_origin_scope_mismatch_count', accessScalar(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) === 0],
+    ['eval_required_recipient_violation_count', accessScalar(evalRequestDeliveryHealth.eval_required_recipient_violation_count) === 0]
+  ];
+  const evalRequestFailures = evalRequestPredicates.filter(([, passed]) => !passed).map(([name]) => name);
+  if (evalRequestFailures.length) {
+    // Emit only allowlisted predicate names and integer counts, never outbox
+    // payloads, request IDs, or recipient addresses.
+    const scalarDiagnostics = evalRequestFailures.filter(name => name !== 'contract_version')
+      .map(name => `${name}:${accessScalar(evalRequestDeliveryHealth[name]) ?? 'invalid'}`);
+    throw new Error(`production_eval_request_delivery_contract_unhealthy_failed=${evalRequestFailures.join(',')}` +
+      (scalarDiagnostics.length ? `_values=${scalarDiagnostics.join(',')}` : ''));
+  }
   checks.push({
     name: 'eval_request_delivery_v2',
     status: evalRequestHealthResponse.status,
     contractVersion: evalRequestDeliveryHealth.contract_version,
     requiredManagerRecipientCount: Number(evalRequestDeliveryHealth.required_manager_recipient_count),
-    missingCompletionEventCount: Number(evalRequestDeliveryHealth.missing_completion_event_count)
+    missingCompletionEventCount: Number(evalRequestDeliveryHealth.missing_completion_event_count),
+    archiveOnlyCompletedFolderCount: accessScalar(evalRequestDeliveryHealth.archive_only_completed_folder_count)
   });
 
   const evalWorkCreationHealthResponse = await checkedFetch(`${supabaseUrl}/rest/v1/rpc/get_eval_work_creation_health_snapshot_v1`, {
@@ -707,6 +718,7 @@ const result = {
     creationOrderViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.creation_order_violation_count) || 0),
     completionMembershipMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.completion_membership_mismatch_count) || 0),
     missingCompletionEventCount: Math.max(0, Number(evalRequestDeliveryHealth.missing_completion_event_count) || 0),
+    archiveOnlyCompletedFolderCount: Math.max(0, Number(evalRequestDeliveryHealth.archive_only_completed_folder_count) || 0),
     evalOriginScopeMismatchCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_origin_scope_mismatch_count) || 0),
     evalRequiredRecipientViolationCount: Math.max(0, Number(evalRequestDeliveryHealth.eval_required_recipient_violation_count) || 0)
   } : null,
