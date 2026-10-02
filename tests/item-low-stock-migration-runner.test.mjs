@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -139,7 +139,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -168,6 +168,31 @@ test('HR migration contract verifies partitioned labor tables and the scheduled 
   assert.equal(result.status, 'applied');
   assert.ok(calls.some(({ sql }) => sql === 'select hr_schema;'));
   assert.equal(calls.find(({ sql }) => sql.startsWith('insert into supabase_migrations')).params[1], 'aura_hr_command_center_v1');
+});
+
+test('audit repair is registered after the AURA migration and verifies identity and baseline completeness', async () => {
+  assert.equal(releaseDatabaseMigrations.at(-1), nellyAccessAuditMigrationName);
+  const contract = migrationContractQuery(nellyAccessAuditMigrationName);
+  assert.match(contract, /961b0a0f-11a6-4db5-b066-582f772ab8e7/);
+  assert.match(contract, /nelly_aguilar/);
+  assert.match(contract, /get_effective_app_permissions_v1/);
+  assert.match(contract, /b\.permission_key is null/);
+  for (const installed of [true, false]) {
+    const calls = [];
+    const client = { query: async (sql, params) => {
+      calls.push({ sql, params });
+      return { rows: sql === contract ? [{ installed }] : [] };
+    } };
+    const operation = applyItemLowStockMigration({ client, source: 'begin; select audit_repair; commit;',
+      targetMigrationName: nellyAccessAuditMigrationName });
+    if (installed) {
+      assert.equal((await operation).status, 'applied');
+      assert.equal(calls.at(-1).sql, 'commit');
+    } else {
+      await assert.rejects(operation, /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+      assert.equal(calls.at(-1).sql, 'rollback');
+    }
+  }
 });
 
 test('HR migration lets pg_cron and pg_net create their own schemas', () => {
@@ -349,7 +374,7 @@ test('cloud rollout verifies the existing release proof before schema and import
   assert.equal(migrationStep.if,undefined,'failed preview must prevent schema and importer deployment');
   for (const name of releaseDatabaseMigrations) {
     const directory = [migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName].includes(name) ? 'archive_migrations' : 'migrations';
-    assert.ok(workflow.includes(`supabase/${directory}/${name}`), `${name} is tracked in its canonical migration directory`);
+    assert.ok(fs.existsSync(new URL(`../supabase/${directory}/${name}`, import.meta.url)), `${name} is tracked in its canonical migration directory`);
   }
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
   assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);

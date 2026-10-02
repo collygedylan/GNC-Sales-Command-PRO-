@@ -121,8 +121,9 @@ test('every build consumer verifies the original manifest, never rebuilds or res
   assert.equal(validation.jobs.build.steps.find(s=>s.uses?.startsWith('actions/upload-artifact@')).with['include-hidden-files'], true);
 });
 
-test('main runs validation once and a feature benchmark cannot publish or change production health', () => {
-  assert.ok(pages.on.push.branches.includes('main'));
+test('manual Pages recovery retains guarded validation while candidate dispatch owns automatic publication', () => {
+  assert.equal(pages.on.push, undefined);
+  assert.ok('workflow_dispatch' in pages.on);
   assert.equal(performance.on.push, undefined);
   assert.ok('pull_request' in performance.on);
   assert.ok('schedule' in performance.on);
@@ -214,6 +215,9 @@ test('production health recovery follows actual publication and the published bu
       core: {setOutput(key,value) { outputs[key] = value; }, notice() {}},
       github: {
         paginate:async(method, params)=> { calls.push({method,params});
+          if (method === jobsApi && !Object.hasOwn(params, 'attempt_number')) {
+            throw new Error('listJobsForWorkflowRunAttempt requires attempt_number');
+          }
           return method === jobsApi ? jobs : method === artifactsApi ? descriptorRows : []; },
         rest:{actions:{getWorkflowRun: async params => { calls.push({method:getRunApi,params}); return {data:pageRun}; },
           listJobsForWorkflowRunAttempt:jobsApi,listWorkflowRunArtifacts:artifactsApi}},
@@ -227,9 +231,14 @@ test('production health recovery follows actual publication and the published bu
   assert.equal(published.outputs['expected-commit'], runSha);
   assert.equal(published.outputs['descriptor-id'], '17');
   const jobRequest = published.calls.find(call => call.method.name === 'jobsApi');
-  assert.equal(jobRequest.params.run_attempt, 2);
+  assert.equal(jobRequest.params.attempt_number, 2);
+  assert.equal(Object.hasOwn(jobRequest.params, 'run_attempt'), false,
+    'the Octokit endpoint uses attempt_number, not run_attempt');
   const notDeployed = await run({deployed:false});
   assert.equal(notDeployed.outputs['should-probe'], 'false');
+  assert.equal((await run({jobsOverride:[{name:'deploy',run_id:1,head_sha:runSha,status:'completed',conclusion:'failure',
+    steps:[{name:'Deploy verified artifact to Pages',status:'completed',conclusion:'failure'}]}]})).outputs['should-probe'], 'false',
+  'a failed deployment is not publication');
   assert.equal((await run({runOverrides:{conclusion:'failure'}})).outputs['should-probe'], 'true',
     'a failed later canary does not hide a successful Pages deployment');
   for (const runOverrides of [
@@ -239,6 +248,8 @@ test('production health recovery follows actual publication and the published bu
   ]) assert.equal((await run({runOverrides})).outputs['should-probe'], 'false', JSON.stringify(runOverrides));
   assert.equal((await run({branch:'fix/benchmark'})).outputs['should-probe'], 'false');
   assert.equal((await run({event:'schedule'})).outputs['should-probe'], 'true');
+  assert.equal((await run({eventOverrides:{run_attempt:3}})).outputs['should-probe'], 'false',
+    'a stale event for an earlier attempt cannot trigger a publication probe');
   assert.equal((await run({descriptor:'missing'})).outputs['descriptor-id'], undefined, 'legacy publication keeps the fallback path');
   for (const descriptor of ['duplicate','expired']) await assert.rejects(run({descriptor}), /PAGES_PUBLICATION_DESCRIPTOR_/);
   await assert.rejects(run({descriptorOverride:[{id:17,name:'pages-publication-2',expired:false,

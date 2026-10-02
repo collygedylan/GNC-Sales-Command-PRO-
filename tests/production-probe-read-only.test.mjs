@@ -29,10 +29,11 @@ function healthyPayloads() {
 }
 
 async function runProbe({ readOnly = true, mismatch = false, unhealthy = false, withCronSecret = false,
-  groupedHealth = {}, itemcodeHealth = {}, groupedStatus = 200, groupedResponseText } = {}) {
+  groupedHealth = {}, itemcodeHealth = {}, accessControlHealth = {}, groupedStatus = 200, groupedResponseText } = {}) {
   const calls = [], output = [], payloads = healthyPayloads();
   Object.assign(payloads.get_eval_work_assignment_batch_health_v1, groupedHealth);
   Object.assign(payloads.get_eval_itemcode_work_health_snapshot_v2, itemcodeHealth);
+  Object.assign(payloads.get_access_control_health_snapshot_v1, accessControlHealth);
   if (mismatch) payloads.get_request_drive_evidence_health_snapshot_v1.evidence_mismatch_count = 1;
   if (mismatch) payloads.get_request_drive_evidence_health_snapshot_v1.mismatch_request_ids = ['fixture-request'];
   if (unhealthy) payloads.get_drive_evidence_save_health_v2.lockWaits = 1;
@@ -88,6 +89,32 @@ test('read-only mismatch fails visibly without attempting evidence repair', asyn
 test('read-only mode still rejects unhealthy production metrics', async () => {
   const f = await runProbe({ readOnly: true, unhealthy: true });
   assert.match(f.error?.message || '', /production_drive_evidence_retry_storm_detected/);
+});
+
+test('access audit reports only failed predicate names and sanitized scalar values', async (t) => {
+  for (const [accessControlHealth, expected] of [
+    [{ baseline_missing_count: 80 }, /failed=baseline_missing_count_values=baseline_missing_count:80/],
+    [{ maintainer_count: 2, baseline_missing_count: 80 }, /failed=maintainer_count,baseline_missing_count_values=maintainer_count:2,baseline_missing_count:80/],
+    [{ permission_count: 'invalid', unknown_permission_count: null }, /permission_count,unknown_permission_count/],
+    [{ contract_version: 'sensitive-profile-name', enforcement_mode: 'sensitive-mode' }, /contract_version,enforcement_mode/],
+  ]) {
+    await t.test(JSON.stringify(accessControlHealth), async () => {
+      const f = await runProbe({ accessControlHealth });
+      assert.match(f.error?.message || '', /production_access_control_audit_contract_unhealthy_/);
+      assert.match(f.error?.message || '', expected);
+      assert.doesNotMatch(f.error?.message || '', /sensitive-profile-name|sensitive-mode/);
+    });
+  }
+});
+
+test('access audit accepts exactly three maintainers and a complete zero-missing baseline', async () => {
+  const f = await runProbe();
+  assert.equal(f.error, null);
+  const check = f.result.checks.find(item => item.name === 'access_control');
+  assert.equal(check.maintainerCount, 3);
+  assert.equal(check.baselineMissingCount, 0);
+  assert.equal(check.unknownPermissionCount, 0);
+  assert.equal(check.unmappedLegacyCheckCount, 0);
 });
 
 test('read-only probe fails closed for grouped delivery contract violations', async (t) => {

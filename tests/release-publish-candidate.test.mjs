@@ -140,12 +140,14 @@ test('the dispatcher is trusted, least-scoped, and cannot recursively dispatch i
   assert.match(script, /workflow_id: 'apps-script-sync\.yml'[\s\S]*ref: 'main'/);
   assert.doesNotMatch(script, /workflow_id: 'pages-static\.yml'/);
   assert.ok(Object.hasOwn(backend.on, 'workflow_dispatch'));
+  assert.equal(Object.hasOwn(backend.on, 'push'), false, 'only a validated candidate or guarded recovery starts backend publication');
   assert.equal(diagnostic.name, 'Diagnose low-stock database connection');
   assert.ok(Object.hasOwn(diagnostic.on, 'workflow_dispatch'));
   assert.equal(diagnostic.jobs['diagnose-database'].if, "github.ref == 'refs/heads/main'");
   assert.match(script, /workflow_id: 'apps-script-sync\.yml'/);
   assert.doesNotMatch(script, /apps-script-database-diagnostic\.yml/);
   assert.ok(Object.hasOwn(pages.on, 'workflow_dispatch'));
+  assert.equal(Object.hasOwn(pages.on, 'push'), false, 'main pushes cannot race the backend-first release');
   assert.doesNotMatch(workflow.on.workflow_run.workflows.join(' '), /Publish validated candidate|Deploy static app to Pages/);
 });
 
@@ -166,6 +168,15 @@ test('backend schema and functions deploy before guarded Pages publication', () 
   assert.ok(migration >= 0 && functions > migration, 'migration and backend deployment precede the Pages dependency');
   assert.match(backendSteps[functions].run, /supabase functions deploy app-api/);
   assert.match(backendSteps[functions].run, /supabase functions deploy calendar-reminder-sweep/);
+  const deploys = backendSteps[functions].run.split('\n').filter(line => /supabase functions deploy/.test(line));
+  assert.equal(deploys.length, 6);
+  assert.deepEqual(deploys.map(line => line.match(/deploy ([\w-]+)/)[1]),
+    ['app-api', 'send-push-alert', 'calendar-reminder-sweep', 'scheduled-offboarding', 'auth-admin', 'inventory-assistant']);
+  for (const line of deploys) {
+    assert.match(line, /--use-api\b/, 'server-side bundling avoids Docker registry throttling');
+    assert.match(line, /--project-ref "\$project_ref"/);
+    assert.doesNotMatch(line, /--no-verify-jwt|--prune/);
+  }
   assert.equal(backendSteps.some(step => step['continue-on-error']), false);
   assert.match(read('scripts/sync-codegs-to-apps-script.js'), /await createAppsScriptRecoveryEvidence/);
   assert.match(read('.github/workflows/pages-static.yml'), /node scripts\/check-compatible-apps-script\.mjs/);
@@ -188,4 +199,24 @@ test('Pages publication rebuilds from guarded main without importing workbook da
   assert.match(steps[guardAfter].run, /production-release-guard/);
   assert.equal(publish.permissions.contents, 'write');
   assert.doesNotMatch(JSON.stringify(publish), /actions\/github-script@v7/);
+});
+
+test('backend success must pass read-only production health before publishing, then verify the exact live descriptor', () => {
+  const steps = publish.steps;
+  const health = steps.findIndex(step => step.run === 'node scripts/probe-production-auth-health.mjs');
+  const guard = steps.findIndex(step => step.name === 'Recheck current main and release proof before publication');
+  const push = steps.findIndex(step => step.name === 'Push the verified static site to gh-pages without force');
+  const live = steps.findIndex(step => step.run === 'node scripts/wait-for-live-release.mjs');
+  assert.ok(health >= 0 && guard > health && push > guard && live > push);
+  assert.equal(steps[health].env.PRODUCTION_PROBE_READ_ONLY, '1');
+  assert.equal(steps[health].env.REQUIRE_APPS_SCRIPT_HEALTH, '1');
+  assert.equal(steps[health].env.REQUIRE_BOUNDED_MAINTENANCE, '1');
+  assert.equal(steps[health].env.APPS_SCRIPT_DEPLOYMENT_ID, '${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}');
+  assert.equal(steps[live].env.EXPECTED_COMMIT, '${{ github.sha }}');
+  assert.equal(steps[live].env.REQUIRE_CURRENT_LIVE_DESCRIPTOR, '1');
+  assert.equal(steps[live].env.CANARY_BASE_URL, 'https://agmetricapp.com');
+  assert.equal(steps[live].env.CANARY_WAIT_TIMEOUT_MS, '600000');
+  assert.equal(steps.some(step => step['continue-on-error']), false);
+  assert.doesNotMatch(JSON.stringify(steps[health]), /REQUIRE_LIVE_RELEASE_MATCH/,
+    'the previous frontend remains live until the backend has passed health');
 });

@@ -32,6 +32,7 @@ async function readDescriptor({ runId, name }) {
 const baseUrl = String(process.env.CANARY_BASE_URL || 'https://agmetricapp.com').trim().replace(/\/+$/, '');
 const timeoutMs = Math.max(1_000, Math.min(10 * 60_000, Number(process.env.CANARY_WAIT_TIMEOUT_MS || 180_000)));
 const intervalMs = Math.max(250, Math.min(30_000, Number(process.env.CANARY_WAIT_INTERVAL_MS || 5_000)));
+const requireCurrentLiveDescriptor = String(process.env.REQUIRE_CURRENT_LIVE_DESCRIPTOR || '').trim() === '1';
 const deadline = Date.now() + timeoutMs;
 let lastCode = 'DEPLOYMENT_MANIFEST_UNAVAILABLE';
 let attempts = 0;
@@ -69,8 +70,38 @@ while (Date.now() <= deadline) {
       const verification = verifyDeploymentFingerprint(payload, { release: expectedRelease, commit: expectedCommit });
       lastCode = verification.code;
       if (verification.ok) {
-        console.log(JSON.stringify({ ok: true, code: verification.code, release: expectedRelease, commit: expectedCommit.slice(0, 7), attempts }));
-        process.exit(0);
+        if (requireCurrentLiveDescriptor) {
+          try {
+            const rootResponse = await fetch(`${baseUrl}/deployment.json?canary=${encodeURIComponent(nonce)}`, {
+              cache: 'no-store',
+              headers: { 'cache-control': 'no-cache, no-store, must-revalidate', pragma: 'no-cache' },
+              redirect: 'follow',
+              signal: AbortSignal.timeout(15_000)
+            });
+            if (!rootResponse.ok) {
+              lastCode = rootResponse.status === 404
+                ? 'CURRENT_DEPLOYMENT_DESCRIPTOR_NOT_FOUND'
+                : `CURRENT_DEPLOYMENT_DESCRIPTOR_HTTP_${rootResponse.status}`;
+            } else {
+              const rootPayload = await rootResponse.json().catch(() => null);
+              const rootVerification = verifyDeploymentFingerprint(rootPayload, {
+                release: expectedRelease, commit: expectedCommit
+              });
+              if (rootVerification.ok) {
+                console.log(JSON.stringify({ ok: true, code: verification.code, release: expectedRelease,
+                  commit: expectedCommit.slice(0, 7), attempts }));
+                process.exit(0);
+              }
+              lastCode = `CURRENT_${rootVerification.code}`;
+            }
+          } catch {
+            lastCode = 'CURRENT_DEPLOYMENT_DESCRIPTOR_UNAVAILABLE';
+          }
+        } else {
+          console.log(JSON.stringify({ ok: true, code: verification.code, release: expectedRelease,
+            commit: expectedCommit.slice(0, 7), attempts }));
+          process.exit(0);
+        }
       }
     } else {
       lastCode = response.status === 404 ? 'DEPLOYMENT_MANIFEST_NOT_FOUND' : `DEPLOYMENT_MANIFEST_HTTP_${response.status}`;
