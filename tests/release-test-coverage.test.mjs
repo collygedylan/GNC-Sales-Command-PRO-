@@ -89,6 +89,8 @@ test('release unit union preserves every existing script and explicit gate exact
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
     'tests/aura-voice.test.mjs',
+    'tests/aura-lingo-v2.test.mjs',
+    'tests/aura-shell-v2.test.mjs',
     'tests/alpha-command-center.test.mjs',
     'tests/floor-startup-hotfix.test.mjs',
     'tests/dataset-read-hotfix.test.mjs',

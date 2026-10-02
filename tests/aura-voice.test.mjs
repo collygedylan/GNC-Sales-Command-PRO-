@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { createAuraVoiceSession } from "../services/auraVoiceService.js";
 import { parseAuraIntent } from "../utils/auraIntentParser.js";
+import { cleanseAuraInventoryText, matchAuraProduct } from "../utils/auraLingo.js";
+import { createAuraConversation, reduceAuraConversation } from "../services/auraConversation.js";
 import { mountAuraWidget } from "../components/common/auraVoiceWidget.js";
 
 function fakeRecognitionEnvironment({ permission = "granted", available = "available" } = {}) {
@@ -68,6 +70,44 @@ test("chat parser extracts named recipients and blocks department sending", () =
   });
 });
 
+test("AURA V2 cleans common phonetics and keeps size matching exact", () => {
+  assert.equal(cleanseAuraInventoryText("three deep pee Limelight"), "3DP Limelight");
+  assert.equal(cleanseAuraInventoryText("hash three Annabelle"), "#3 Annabelle");
+  assert.equal(cleanseAuraInventoryText("you one Little Hotties"), "U1 Little Hotties");
+  assert.deepEqual(parseAuraIntent("How many three deep pee Little Hotties in U2?"), {
+    type: "CHECK_INVENTORY_COUNT", commonName: "Little Hotties", contSize: "3DP", season: "U2", locationCode: null, metric: "ptravailable", openStockOnly: false,
+  });
+  assert.equal(parseAuraIntent("What item has largest U1 value?").type, "CHECK_INVENTORY_MAX");
+  assert.deepEqual(parseAuraIntent("50 three deep pee Limelight", { auraMode: "BUILDING_REQUEST" }), {
+    type: "ADD_REQUEST_ITEM", quantity: 50, commonName: "Limelight", contSize: "3DP",
+  });
+  assert.equal(parseAuraIntent("50 three deep pee Limelight").type, "unknown");
+  const catalog = [
+    { itemcode: "A", contsize: "3DP", commonname: "Little Hotties" },
+    { itemcode: "A", contsize: "#3", commonname: "Little Hotties" },
+  ];
+  assert.equal(matchAuraProduct({ commonName: "Little Hotties", contSize: "3DP" }, { rows: catalog, complete: true }).kind, "match");
+  assert.equal(matchAuraProduct({ commonName: "Little Hotties" }, { rows: [
+    ...catalog,
+    { itemcode: "B", contsize: "3DP", commonname: "Little Hotties" },
+  ], complete: true }).kind, "choose");
+});
+
+test("AURA conversation reducer builds, undoes, reviews, and cancels request drafts", () => {
+  let state = createAuraConversation();
+  state = reduceAuraConversation(state, { type: "STARTED", party: { key: "party-1", customerName: "Megan", label: "Megan" } });
+  assert.equal(state.auraMode, "BUILDING_REQUEST");
+  state = reduceAuraConversation(state, { type: "LINE_VERIFIED", line: { unique_id: "u1", itemcode: "SKU1", contsize: "3DP", quantity: 50, ptravailable: 50 } });
+  assert.equal(state.lines.length, 1);
+  state = reduceAuraConversation(state, { type: "UNDO" });
+  assert.equal(state.lines.length, 0);
+  state = reduceAuraConversation(state, { type: "LINE_VERIFIED", line: { unique_id: "u1", itemcode: "SKU1", contsize: "3DP", quantity: 50, ptravailable: 50 } });
+  state = reduceAuraConversation(state, { type: "REVIEW" });
+  assert.equal(state.auraMode, "REVIEWING_REQUEST");
+  state = reduceAuraConversation(state, { type: "CANCEL" });
+  assert.equal(state.auraMode, "IDLE");
+});
+
 test("AURA starts only with existing permission and forces continuous local recognition", async () => {
   const browser = fakeRecognitionEnvironment();
   try {
@@ -101,7 +141,7 @@ test("permission denial and missing local recognition fail closed without a reco
   } finally { await unavailable.restore(); }
 });
 
-test("AURA pauses while hidden and resumes only while visible", async () => {
+test("AURA pauses while hidden and requires an explicit foreground resume", async () => {
   const browser = fakeRecognitionEnvironment();
   try {
     const session = createAuraVoiceSession();
@@ -110,11 +150,93 @@ test("AURA pauses while hidden and resumes only while visible", async () => {
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
     document.dispatchEvent(new window.Event("visibilitychange"));
     assert.equal(first.aborted, true);
-    assert.equal(session.enabled, true);
+    assert.equal(session.enabled, false);
     Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
     document.dispatchEvent(new window.Event("visibilitychange"));
     await flush();
+    assert.equal(browser.engines.length, 1);
+    assert.equal(await session.startIfAllowed(), true);
     assert.equal(browser.engines.length, 2);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("a late local capability result cannot restart recognition after Stop", async () => {
+  const browser = fakeRecognitionEnvironment();
+  let resolveCapability;
+  class DeferredRecognition extends browser.dom.window.SpeechRecognition {
+    static available() { return new Promise(resolve => { resolveCapability = resolve; }); }
+  }
+  Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: DeferredRecognition });
+  try {
+    const session = createAuraVoiceSession();
+    const starting = session.start();
+    await flush();
+    session.stop();
+    resolveCapability("available");
+    assert.equal(await starting, false);
+    assert.equal(browser.engines.length, 0);
+    assert.equal(session.enabled, false);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("a visibility change while local capability is pending fences the stale start", async () => {
+  const browser = fakeRecognitionEnvironment();
+  let resolveCapability;
+  class DeferredRecognition extends browser.dom.window.SpeechRecognition {
+    static available() { return new Promise(resolve => { resolveCapability = resolve; }); }
+  }
+  Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: DeferredRecognition });
+  try {
+    const session = createAuraVoiceSession();
+    const starting = session.start();
+    await flush();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    document.dispatchEvent(new window.Event("visibilitychange"));
+    resolveCapability("available");
+    assert.equal(await starting, false);
+    assert.equal(browser.engines.length, 0);
+    assert.equal(session.enabled, false);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("busy work suppresses recognition restart until the operation releases it", async () => {
+  const browser = fakeRecognitionEnvironment();
+  try {
+    const session = createAuraVoiceSession();
+    await session.start();
+    session.setBusy(true);
+    assert.equal(browser.engines[0].aborted, true);
+    assert.equal(browser.engines.length, 1);
+    session.setBusy(false);
+    await flush();
+    assert.equal(browser.engines.length, 2);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("Stop fences a late synthesis completion from restarting the microphone", async () => {
+  const browser = fakeRecognitionEnvironment();
+  try {
+    const utterances = [];
+    class FakeUtterance { constructor(text) { this.text = text; } }
+    const synthesis = {
+      getVoices: () => [{ name: "Google US English", lang: "en-US", localService: true }],
+      cancel() {},
+      speak(utterance) { utterances.push(utterance); },
+    };
+    Object.defineProperty(window, "speechSynthesis", { configurable: true, value: synthesis });
+    Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
+    const session = createAuraVoiceSession();
+    await session.start();
+    assert.equal(session.speak("Working."), true);
+    session.stop();
+    utterances[0].onend();
+    await flush();
+    assert.equal(browser.engines.length, 1);
+    assert.equal(session.enabled, false);
     session.destroy();
   } finally { await browser.restore(); }
 });
@@ -168,9 +290,10 @@ test("wake-word widget waits for a final command and sends a named chat exactly 
     document.querySelector(".aura-mic").click();
     await flush();
     const engine = browser.engines[0];
-    engine.onresult({ results: [speechResult("Hey Aura", false)], resultIndex: 0 });
-    engine.onresult({ results: [speechResult("Hey Aura", true)], resultIndex: 0 });
-    engine.onresult({ results: [
+    const onresult = engine.onresult;
+    onresult({ results: [speechResult("Hey Aura", false)], resultIndex: 0 });
+    onresult({ results: [speechResult("Hey Aura", true)], resultIndex: 0 });
+    onresult({ results: [
       speechResult("Hey Aura", true),
       speechResult("send a message to Megan Kelly saying The order is staged", false),
     ], resultIndex: 1 });
@@ -179,9 +302,9 @@ test("wake-word widget waits for a final command and sends a named chat exactly 
       speechResult("Hey Aura", true),
       speechResult("send a message to Megan Kelly saying The order is staged", true),
     ];
-    engine.onresult({ results: finalResults, resultIndex: 1 });
+    onresult({ results: finalResults, resultIndex: 1 });
     await flush();
-    engine.onresult({ results: finalResults, resultIndex: 1 });
+    onresult({ results: finalResults, resultIndex: 1 });
     assert.equal(sent.length, 1);
     assert.equal(sent[0].intent.recipientName, "Megan Kelly");
     assert.equal(sent[0].intent.message, "The order is staged");
@@ -207,6 +330,214 @@ test("department chat intent returns a no-send response", async () => {
     assert.match(document.querySelector(".aura-message").textContent, /didn’t send anything/i);
     widget.destroy();
   } finally { await browser.restore(); }
+});
+
+test("AURA V2 builds a multi-turn draft and opens review without submitting", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const calls = [];
+  let staged = null;
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async (name) => ({ items: [{ key: "party-1", customerName: name, label: name }], hasMore: false }),
+    requestV2: async (body) => {
+      calls.push(body);
+      if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false, season: "U2", salesYear: 27 };
+      if (body.operation === "lots") return { ok: true, rows: [{ unique_id: "uid-1", itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP", locationcode: "U2", lotcode: "27.U2", ptravailable: 80 }], complete: true, hasMore: false };
+      throw new Error(`Unexpected operation ${body.operation}`);
+    },
+    openDraft: async (draft) => { staged = draft; return { ok: true, message: "Draft is open for review." }; },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    const submit = document.querySelector(".aura-inputbar button[type=submit]");
+    input.value = "start a request for Megan"; submit.click(); await flush();
+    assert.match(document.querySelector(".aura-message").textContent, /request started for Megan/i);
+    input.value = "50 three deep pee Limelight"; submit.click(); await flush();
+    assert.equal(calls.filter((call) => call.operation === "catalog").length, 1);
+    assert.equal(calls.at(-1).operation, "lots", document.querySelector(".aura-message").textContent);
+    assert.equal(calls.at(-1).itemcode, "SKU-1");
+    assert.equal(calls.at(-1).quantity, 50);
+    assert.match(document.querySelector(".aura-message").textContent, /added 50 3DP Limelight/i);
+    input.value = "review request"; submit.click(); await flush();
+    assert.equal(staged.party.key, "party-1");
+    assert.equal(staged.lines[0].unique_id, "uid-1");
+    assert.equal(staged.lines[0].quantity, 50);
+    assert.match(document.querySelector(".aura-message").textContent, /open for review/i);
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("AURA V2 rechecks cumulative SKU quantities and handles zero counts without inventing values", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const calls = [];
+  let handedOff;
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async (name) => ({ items: [{ key: "party-2", customerName: name, label: name }], hasMore: false }),
+    requestV2: async (body) => {
+      calls.push(body);
+      if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false };
+      if (body.operation === "lots") return { ok: true, rows: [{ unique_id: "lot-u", itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP", locationcode: "A.01", lotcode: "27.U2", ptravailable: 70 }], complete: true, hasMore: false };
+      if (body.operation === "count") return { ok: true, total: 0, complete: true, rows: [], metric: "ptravailable" };
+      throw new Error(`Unexpected operation ${body.operation}`);
+    },
+    openDraft: async (draft) => { handedOff = draft; return { ok: true, message: "Draft ready." }; },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    const submit = document.querySelector(".aura-inputbar button[type=submit]");
+    input.value = "start a request for Megan"; submit.click(); await flush();
+    input.value = "30 3DP Limelight"; submit.click(); await flush();
+    input.value = "20 3DP Limelight"; submit.click(); await flush();
+    assert.deepEqual(calls.filter(call => call.operation === "lots").map(call => call.quantity), [30, 50]);
+    input.value = "review request"; submit.click(); await flush();
+    assert.equal(handedOff.lines.length, 1);
+    assert.equal(handedOff.lines[0].quantity, 50);
+    widget.destroy();
+
+    const queryWidget = mountAuraWidget({
+      isAuthorized: () => true,
+      requestV2: async (body) => {
+        if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "SKU-2", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false };
+        if (body.operation === "count") return { ok: true, total: 0, complete: true, rows: [], metric: "ptravailable" };
+        if (body.operation === "maximum") return { ok: true, complete: true, winner: { commonname: "Limelight", contsize: "3DP", total: 12 } };
+        throw new Error(`Unexpected operation ${body.operation}`);
+      },
+    });
+    const queryInput = document.querySelector(".aura-inputbar input");
+    const querySubmit = document.querySelector(".aura-inputbar button[type=submit]");
+    queryInput.value = "How many 3DP Limelight in U2"; querySubmit.click(); await flush();
+    assert.match(document.querySelector(".aura-message").textContent, /^0 3DP Limelight for U2 available\.$/i);
+    queryInput.value = "What item has largest U1 value"; querySubmit.click(); await flush();
+    assert.match(document.querySelector(".aura-message").textContent, /largest U1 available value is Limelight/i);
+    queryWidget.destroy();
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("AURA V2 accepts follow-up items without another wake word and consumes final results once", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const calls = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async (name) => ({ items: [{ key: "party-v", customerName: name, label: name }], hasMore: false }),
+    requestV2: async (body) => {
+      calls.push(body);
+      if (body.operation === "catalog") return { ok: true, rows: [{ itemcode: "V1", commonname: "Limelight", contsize: "3DP" }], complete: true, hasMore: false };
+      if (body.operation === "lots") return { ok: true, rows: [{ unique_id: "v-lot", itemcode: "V1", commonname: "Limelight", contsize: "3DP", ptravailable: 150 }], complete: true, hasMore: false };
+      throw new Error(`Unexpected operation ${body.operation}`);
+    },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    document.querySelector(".aura-mic").click(); await flush();
+    const engine = browser.engines[0];
+    const onresult = engine.onresult;
+    onresult({ results: [speechResult("Hey Aura, start a request for Megan", true)], resultIndex: 0 });
+    await flush();
+    const followupEngine = browser.engines.at(-1);
+    followupEngine.onresult({ results: [speechResult("50 three deep pee Limelight", true)], resultIndex: 0 });
+    await flush();
+    assert.deepEqual(calls.filter(call => call.operation === "lots").map(call => call.quantity), [50], document.querySelector(".aura-message")?.textContent);
+    assert.match(document.querySelector(".aura-message").textContent, /added 50 3DP Limelight/i);
+    const repeatedIntentEngine = browser.engines.at(-1);
+    repeatedIntentEngine.onresult({ results: [speechResult("50 three deep pee Limelight", true)], resultIndex: 0 });
+    await flush();
+    assert.deepEqual(calls.filter(call => call.operation === "lots").map(call => call.quantity), [50, 100]);
+    assert.match(document.querySelector(".aura-message").textContent, /updated the request to 100 3DP Limelight/i);
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("AURA V2 exposes explicit ambiguity choices and accepts a one-digit choice", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const lotCalls = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async (name) => ({ items: [{ key: "party-choice", customerName: name, label: name }], hasMore: false }),
+    requestV2: async (body) => {
+      if (body.operation === "catalog") return { ok: true, complete: true, hasMore: false, rows: [
+        { itemcode: "SKU-A", commonname: "Limelight", contsize: "3DP" },
+        { itemcode: "SKU-B", commonname: "Limelight", contsize: "3DP" },
+      ] };
+      if (body.operation === "lots") {
+        lotCalls.push(body.itemcode);
+        return { ok: true, complete: true, hasMore: false, rows: [{ unique_id: "lot-b", itemcode: body.itemcode, commonname: "Limelight", contsize: "3DP", ptravailable: 60 }] };
+      }
+      throw new Error(`Unexpected operation ${body.operation}`);
+    },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    const submit = document.querySelector('.aura-inputbar button[type="submit"]');
+    input.value = "start a request for Megan"; submit.click(); await flush();
+    input.value = "50 3DP Limelight"; submit.click(); await flush();
+    assert.equal(document.querySelectorAll(".aura-choice").length, 2);
+    input.value = "2"; submit.click(); await flush();
+    assert.deepEqual(lotCalls, ["SKU-B"]);
+    assert.match(document.querySelector(".aura-message").textContent, /added 50 3DP Limelight/i);
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("typed request drafts pause after two quiet minutes and expose Resume", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const timers = [];
+  globalThis.setTimeout = (callback, delay) => {
+    const timer = { callback, delay, cancelled: false };
+    timers.push(timer);
+    return timer;
+  };
+  globalThis.clearTimeout = (timer) => { if (timer) timer.cancelled = true; };
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async (name) => ({ items: [{ key: "party-idle", customerName: name, label: name }], hasMore: false }),
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    input.value = "start a request for Megan";
+    document.querySelector('.aura-inputbar button[type="submit"]').click();
+    await flush();
+    const idleTimer = timers.find(timer => timer.delay === 120_000 && !timer.cancelled);
+    assert.ok(idleTimer, "typed interaction must arm the inactivity timer");
+    idleTimer.callback();
+    assert.match(document.querySelector(".aura-message").textContent, /paused after two quiet minutes/i);
+    assert.equal(document.querySelectorAll(".aura-action").length > 0, true);
+    assert.match(document.body.textContent, /Resume request/);
+  } finally {
+    widget.destroy();
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+    await browser.restore();
+  }
+});
+
+test("Resume restores ambiguous choices and local voice without a new wake phrase", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async () => ({ items: [
+      { key: "north", customerName: "Acme", label: "Acme North" },
+      { key: "south", customerName: "Acme", label: "Acme South" },
+    ], hasMore: false }),
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    document.querySelector(".aura-inputbar input").value = "start a request for Acme";
+    document.querySelector('.aura-inputbar button[type="submit"]').click(); await flush();
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    document.dispatchEvent(new window.Event("visibilitychange"));
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new window.Event("visibilitychange"));
+    [...document.querySelectorAll("button")].find(button => button.textContent === "Resume request").click();
+    await flush();
+    assert.equal(document.querySelectorAll(".aura-choice").length, 2);
+    assert.equal(browser.engines.at(-1)?.started, true);
+    browser.engines.at(-1).onresult({ results: [speechResult("2", true)], resultIndex: 0 }); await flush();
+    assert.match(document.querySelector(".aura-message").textContent, /Acme South/);
+  } finally { widget.destroy(); await browser.restore(); }
 });
 
 test("AURA speech pauses local recognition and resumes after the response", async () => {
