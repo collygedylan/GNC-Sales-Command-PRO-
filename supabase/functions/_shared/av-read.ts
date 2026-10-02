@@ -1,7 +1,32 @@
+const RESERVE_FULL_SELECT_FIELDS = [
+  "unique_id", "concat", "last_updated", "assigned_to", "assignedto", "spec", "caliper",
+  "pic_note", "sales_note", "av_note", "photo_link", "photo_name", "dock_spec", "dock_caliper",
+  "dock_note", "dock_photo_link", "dock_photo_name", "date_completed", "flyer_cat", "flyer_title", "flyer_inst",
+  "flyer_assigned", "flyer_notes", "flyer_photo_link", "flyer_photo_name", "flyer_completed", "initial_ptr", "loc_match_qty",
+  "end_cap_folder", "end_cap_qty", "end_cap_level", "match", "item", "size", "container",
+  "location", "lot", "warehouseid", "warehousename", "isreserve", "salesrepid", "salesrepname",
+  "nationalaccountidgroup", "national_account_idgroup", "idgroup", "customeridentityid", "customername", "consigneeidentityid", "consigneename",
+  "consigneecity", "consigneestate", "consigneezip", "tripnumber", "stopnumber", "zonecode", "tagcode",
+  "transactionnumber", "purchaseordernumber", "extunitprice", "ordertotal", "requestdate", "stagename", "step",
+  "customersku", "formattedupc", "printedcontainercode", "lotcode", "locationcode", "descriptorcode", "itemcode",
+  "plantgroupcode", "sortname", "variety", "containersort", "qualitycode", "commonname", "quantityordered",
+  "quantityshipped", "listprice", "unitprice", "handlingchargeperitem", "taggingchargeperitem", "combinedprice", "freightrateperitem",
+  "landedretailprice", "holdstopcode", "holdstopreason", "salesnote", "fnsalesnote", "picknote", "planstart",
+  "generalloadinstr", "invoicedate", "consigneeaddress_1", "consigneeaddress_2", "altshipcomment", "shiptotelephone_1", "okloadinstructions",
+  "txloadinstructions", "ncloadinstructions", "hlloadinstructions", "dock", "equiv_unit", "equiv_uom", "wingdingunits",
+  "dropweight", "internalinvnote", "hardinesszone", "brand", "tagdeptnote", "ext_unit", "merch_shipped",
+  "ext_unit_merch_shipped", "ext_eunit_shipped", "avg_price_eunit_shipped", "requestdateweek", "carrier", "suspend", "suspend_to",
+  "qa_code", "grower", "nationalaccount", "sortnamevariety", "landed", "retailprice", "dock_num",
+  "priority", "ptronhand", "ptrreviewed", "ptravailable", "season_supply", "s_lts", "itemspec",
+  "season", "mcstatus", "hz", "intercopo", "insurancegroup", "si_lts", "a_lts",
+  "ai_lts", "si_available", "holdstopenddate", "salesnote_1", "contsize", "source", "desigitem",
+  "desigcust", "desigloc", "filename",
+].join(",");
+
 // Service-role reads for AV dependencies whose browser SELECT grants are revoked.
 // Only these datasets and simple same-table filters can cross this boundary.
 const SOURCES: Record<string, { table: string; permission: string; key: string; fields: string }> = {
-  reserves: { table: "ph_reserves", permission: "ph_reserves", key: "unique_id", fields: "*" },
+  reserves: { table: "ph_reserves", permission: "ph_reserves", key: "unique_id", fields: RESERVE_FULL_SELECT_FIELDS },
   notes: { table: "ph_av_notes", permission: "ph_av_notes", key: "unique_id", fields: "unique_id,commonname,salesnote" },
   hot_prices: { table: "ph_view_av_hot_price_keys", permission: "ph_cav_import", key: "itemcode_key", fields: "itemcode_key,cav_itemcode,hot_price,cav_filename,cav_last_updated" },
   settings: { table: "ph_app_settings", permission: "ph_app_settings", key: "key", fields: "key,value,updated_by,updated_at" },

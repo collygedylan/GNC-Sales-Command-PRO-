@@ -1,6 +1,7 @@
 // Shared Home/session behavior coverage; preserved complete tests/home-role-visibility.e2e.spec.ts fixture.
 // Intentional navigation changes retain all role, access, theme, and account-transition assertions.
 import { expect, test, type Page } from '@playwright/test';
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 const salesViews = ['drive', 'sales', 'av', 'request', 'tasks', 'weather-hold', 'department-calendar', 'chat', 'sales-office', 'office'];
 const adminViews = ['drive', 'av', 'sales-office', 'sales', 'managers', 'qc', 'office', 'sales-inventory', 'production'];
@@ -94,7 +95,9 @@ async function harness(page: Page, baseURL: string) {
           ? { status: 'checked', capabilities: {} }
           : body.operation === 'verify_row'
             ? { status: 'missing', matches: false }
-            : { rows: [], total: 0, offset: Math.max(0, Number(params.offset) || 0), limit: Math.max(1, Number(params.limit) || 500), hasMore: false };
+            : body.operation === 'master_page'
+              ? inventoryReadFixture.readMasterPage([], params)
+              : { rows: [], total: 0, offset: Math.max(0, Number(params.offset) || 0), limit: Math.max(1, Number(params.limit) || 500), hasMore: false };
         return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
           body: JSON.stringify({ ok: true, data }) });
       }

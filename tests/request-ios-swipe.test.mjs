@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
@@ -241,4 +242,62 @@ test('archive commands are capability-gated, account-scoped, reversible, and nev
   assert.match(requestArchiveMigration, /drop policy if exists ph_active_request_manager_delete/);
   assert.doesNotMatch(requestArchiveMigration, /delete from public\.ph_active_request/i);
   assert.doesNotMatch(requestArchiveMigration, /send.*(?:email|completion)/i);
+});
+
+test('restoring an archived last-page row clamps to the last valid offset while preserving the current page when possible', async () => {
+  const helperStart = html.indexOf('function getRequestArchiveClampedPageOffset(');
+  const helperEnd = html.indexOf('\n        async function loadRequestArchivePage(', helperStart);
+  const restoreStart = html.indexOf('async function restoreArchivedRequestRow(');
+  const restoreEnd = html.indexOf('\n        async function undoRequestArchive(', restoreStart);
+  assert.ok(helperStart > 0 && helperEnd > helperStart && restoreStart > 0 && restoreEnd > restoreStart);
+  const restoreFunction = html.slice(restoreStart, restoreEnd);
+  const helperFunction = html.slice(helperStart, helperEnd);
+  const archiveRenderer = html.slice(html.indexOf('function renderRequestArchivePageHtml('), helperStart);
+  assert.match(archiveRenderer, /Number\(state\.total\) > limit \|\| offset > 0/);
+  assert.match(archiveRenderer, /Number\(state\.total\) > 0[\s\S]*\$\{pager\}/);
+
+  async function runRestore({ total, offset, success }) {
+    const row = { UNIQUE_ID: 'archived-row', COMMONNAME: 'Test Hosta', REQ_ARCHIVED: true };
+    const calls = [];
+    const ctx = vm.createContext({
+      String, Number, Math, Promise, Map,
+      getSupabaseReadIdentityScope: () => 'scope-a',
+      requestArchiveListState: { rows: [row], total, offset, limit: 100, hasMore: false, loaded: true, controller: null },
+      canCurrentUserArchiveRequestRow: () => true,
+      makeRequestArchiveIdempotencyKey: () => 'request-key',
+      queuePendingRequestArchive: () => {},
+      refreshRequestViewAfterArchive: () => {},
+      isViewVisible: () => true,
+      activeReqTab: 'archived',
+      renderRequest: () => {},
+      syncRequestArchive: async (...args) => { calls.push({ kind: 'sync', args }); return success ? { ok: true } : { ok: false, error: { message: 'denied' } }; },
+      requestArchiveInFlightByUid: new Map(),
+      clearPendingRequestArchive: () => {},
+      clearRequestArchiveUndo: () => {},
+      loadRequestArchivePage: (nextOffset) => { calls.push({ kind: 'load', offset: nextOffset }); return Promise.resolve(true); },
+      showToast: () => {},
+      findRequestInventoryRowByUniqueId: () => row
+    });
+    vm.runInContext(helperFunction, ctx);
+    vm.runInContext(restoreFunction, ctx);
+    await ctx.restoreArchivedRequestRow('archived-row', true);
+    return { state: ctx.requestArchiveListState, calls, row };
+  }
+
+  const lastPage = await runRestore({ total: 201, offset: 200, success: true });
+  assert.equal(lastPage.state.total, 200);
+  assert.equal(lastPage.state.offset, 100);
+  assert.deepEqual(lastPage.calls.filter(call => call.kind === 'load').map(call => call.offset), [100]);
+
+  const firstPage = await runRestore({ total: 101, offset: 0, success: true });
+  assert.equal(firstPage.state.total, 100);
+  assert.equal(firstPage.state.offset, 0);
+  assert.deepEqual(firstPage.calls.filter(call => call.kind === 'load').map(call => call.offset), [0]);
+
+  const rollback = await runRestore({ total: 201, offset: 200, success: false });
+  assert.equal(rollback.state.total, 201);
+  assert.equal(rollback.state.offset, 200);
+  assert.equal(rollback.state.rows.length, 1);
+  assert.equal(rollback.row.REQ_ARCHIVED, true);
+  assert.equal(rollback.calls.some(call => call.kind === 'load'), false);
 });

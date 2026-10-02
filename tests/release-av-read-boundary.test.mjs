@@ -8,6 +8,7 @@ import { createClient } from '@supabase/supabase-js';
 const source = fs.readFileSync(new URL('../supabase/functions/_shared/av-read.ts', import.meta.url), 'utf8');
 const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
 const { readAvPage } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+const reserveColumns = [...source.matchAll(/const RESERVE_FULL_SELECT_FIELDS = \[([\s\S]*?)\].join/g)].flatMap(match => [...match[1].matchAll(/"([a-z0-9_]+)"/g)].map(item => item[1])).join(',');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const edge = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 
@@ -26,7 +27,7 @@ test('AV pages use the fixed source, exact totals, stable ordering and a 500-row
   const f = fixture();
   const page = await f.read({ query: 'select=*&limit=7000&offset=500' });
   assert.deepEqual(page, { rows: [{ unique_id: 'one' }], total: 1, offset: 500, limit: 500, hasMore: false });
-  assert.deepEqual(f.calls, [['from', 'ph_reserves'], ['select', '*', { count: 'exact' }], ['order', 'unique_id', { ascending: true }], ['range', 500, 999]]);
+  assert.deepEqual(f.calls, [['from', 'ph_reserves'], ['select', reserveColumns, { count: 'exact' }], ['order', 'unique_id', { ascending: true }], ['range', 500, 999]]);
 });
 
 test('AV denies unauthorized datasets, relation embedding, arbitrary operators and invalid paging', async () => {

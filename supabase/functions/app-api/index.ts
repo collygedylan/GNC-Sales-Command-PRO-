@@ -721,15 +721,33 @@ function productionScheduleBase64Url(bytes: Uint8Array) {
 
 export function parseProductionScheduleRequest(payload: Record<string, unknown>) {
   const operation = String(payload.operation || "").trim().toLowerCase();
-  if (!["metadata", "rows", "status", "refresh"].includes(operation)) throw new Error("PRODUCTION_SCHEDULE_OPERATION_INVALID");
-  const allowed = new Set(["action", "operation", "sheetId", "q", "filters", "cursor", "limit", "snapshotId", "runId"]);
+  if (!["metadata", "rows", "row_detail", "status", "refresh"].includes(operation)) throw new Error("PRODUCTION_SCHEDULE_OPERATION_INVALID");
+  const allowed = new Set(["action", "operation", "sheetId", "q", "filters", "cursor", "limit", "snapshotId", "runId", "projection", "columnIndexes", "sourceRow"]);
   if (Object.keys(payload).some((key) => !allowed.has(key))) throw new Error("PRODUCTION_SCHEDULE_PAYLOAD_INVALID");
-  if (operation !== "rows") return { operation } as const;
+  if (operation !== "rows" && operation !== "row_detail") return { operation } as const;
   if (payload.sheetId === null || payload.sheetId === undefined || !(typeof payload.sheetId === "number" || typeof payload.sheetId === "string")) {
     throw new Error("PRODUCTION_SCHEDULE_SHEET_INVALID");
   }
   const sheetId = Number(payload.sheetId);
   if (!Number.isInteger(sheetId) || sheetId < 0 || sheetId > 6) throw new Error("PRODUCTION_SCHEDULE_SHEET_INVALID");
+  const snapshotId = String(payload.snapshotId || "").trim();
+  if (snapshotId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(snapshotId)) {
+    throw new Error("PRODUCTION_SCHEDULE_SNAPSHOT_INVALID");
+  }
+  if (operation === "row_detail") {
+    const sourceRow = Number(payload.sourceRow);
+    if (!snapshotId || !Number.isSafeInteger(sourceRow) || sourceRow < 1 || sourceRow > 999999999) {
+      throw new Error("PRODUCTION_SCHEDULE_ROW_INVALID");
+    }
+    return { operation, sheetId, snapshotId, sourceRow } as const;
+  }
+  const projection = payload.projection === undefined ? "full" : String(payload.projection);
+  if (!["full", "cards"].includes(projection)) throw new Error("PRODUCTION_SCHEDULE_PROJECTION_INVALID");
+  const columnIndexes = payload.columnIndexes === undefined ? [] : payload.columnIndexes;
+  if (!Array.isArray(columnIndexes) || columnIndexes.length > 32
+    || columnIndexes.some((column) => !Number.isInteger(column) || column < 1 || column > 10000)) {
+    throw new Error("PRODUCTION_SCHEDULE_COLUMNS_INVALID");
+  }
   const rawLimit = payload.limit === undefined ? 100 : Number(payload.limit);
   if (!Number.isInteger(rawLimit) || rawLimit < 1) throw new Error("PRODUCTION_SCHEDULE_LIMIT_INVALID");
   const limit = Math.min(500, rawLimit);
@@ -753,11 +771,7 @@ export function parseProductionScheduleRequest(payload: Record<string, unknown>)
   if (payload.q !== undefined && typeof payload.q !== "string") throw new Error("PRODUCTION_SCHEDULE_SEARCH_INVALID");
   const query = String(payload.q || "").trim();
   if (query.length > 200) throw new Error("PRODUCTION_SCHEDULE_SEARCH_INVALID");
-  const snapshotId = String(payload.snapshotId || "").trim();
-  if (snapshotId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(snapshotId)) {
-    throw new Error("PRODUCTION_SCHEDULE_SNAPSHOT_INVALID");
-  }
-  return { operation, sheetId, limit, cursor: rawCursor ? Number(rawCursor) : 0, q: query, filters, snapshotId: snapshotId || null } as const;
+  return { operation, sheetId, limit, cursor: rawCursor ? Number(rawCursor) : 0, q: query, filters, snapshotId: snapshotId || null, projection, columnIndexes: [...new Set(columnIndexes)] } as const;
 }
 
 export function isProductionScheduleUser(value: unknown) {
@@ -799,16 +813,30 @@ async function handleProductionScheduleAction(
     return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { snapshot: null, sheets: [] }) });
   }
   if (parsed.operation === "rows") {
-    const { data, error } = await supabase.rpc("production_schedule_read_rows_v1", {
+    const { data, error } = await supabase.rpc(parsed.projection === "cards" ? "production_schedule_read_cards_v1" : "production_schedule_read_rows_v1", {
       p_sheet_index: parsed.sheetId,
       p_snapshot_id: parsed.snapshotId,
       p_cursor: parsed.cursor,
       p_limit: parsed.limit,
       p_search: parsed.q,
       p_filters: parsed.filters,
+      ...(parsed.projection === "cards" ? { p_column_indexes: parsed.columnIndexes } : {}),
     });
     if (error) return databaseFailureResponse("Production Schedule rows are unavailable.", error, "PRODUCTION_SCHEDULE_ROWS_UNAVAILABLE");
     return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { rows: [], nextCursor: null, total: 0, snapshotId: null, hasMore: false }) });
+  }
+  if (parsed.operation === "row_detail") {
+    // Pin the detail to the same published snapshot as its card. A staged or
+    // failed import must never leak into an otherwise complete page.
+    const snapshot = await supabase.from("production_schedule_snapshots").select("id")
+      .eq("id", parsed.snapshotId).in("status", ["ready", "superseded"]).maybeSingle();
+    if (snapshot.error) return databaseFailureResponse("Production Schedule snapshot is unavailable.", snapshot.error, "PRODUCTION_SCHEDULE_SNAPSHOT_UNAVAILABLE");
+    if (!snapshot.data) return errorResponse("This schedule snapshot is unavailable. Refresh the sheet.", 409, { code: "PRODUCTION_SCHEDULE_SNAPSHOT_UNAVAILABLE" });
+    const { data, error } = await supabase.from("production_schedule_rows").select("source_row,cells")
+      .eq("snapshot_id", parsed.snapshotId).eq("sheet_index", parsed.sheetId).eq("source_row", parsed.sourceRow).maybeSingle();
+    if (error) return databaseFailureResponse("Production Schedule row is unavailable.", error, "PRODUCTION_SCHEDULE_ROW_UNAVAILABLE");
+    if (!data) return errorResponse("This source row is unavailable. Refresh the sheet.", 404, { code: "PRODUCTION_SCHEDULE_ROW_UNAVAILABLE" });
+    return jsonResponse({ ok: true, snapshotId: parsed.snapshotId, row: { sourceRow: data.source_row, cells: data.cells } });
   }
   if (parsed.operation === "status") {
     const runId = String(payload.runId || "").trim();
@@ -2986,6 +3014,67 @@ const INVENTORY_MASTER_INITIAL_FIELDS = [
 const INVENTORY_MASTER_INITIAL_BASE_FIELDS = INVENTORY_MASTER_INITIAL_FIELDS.split(",").filter((field) =>
   !field.startsWith("hold_release_") && !field.startsWith("av_rule_")
 ).join(",");
+// Explicit full contracts preserve existing detail/export fields without exposing
+// future schema additions automatically. Browse includes every current Drive filter.
+const INVENTORY_MASTER_FULL_FIELDS = [
+  "unique_id", "itemcode", "commonname", "contsize", "locationcode", "lotcode", "ptravailable",
+  "season_supply", "priority", "qualitycode", "field_tag_color", "s_lts", "season", "plantgroupcode",
+  "listprice", "concat", "last_updated", "assignedto", "date_completed", "end_cap_folder", "end_cap_qty",
+  "end_cap_level", "match", "spec", "caliper", "pic_note", "sales_note", "av_note",
+  "photo_link", "photo_name", "dock_spec", "dock_caliper", "dock_note", "dock_photo_link", "dock_photo_name",
+  "flyer_cat", "flyer_title", "flyer_inst", "flyer_assigned", "flyer_notes", "flyer_photo_link", "flyer_photo_name",
+  "flyer_completed", "initial_ptr", "loc_match_qty", "warehousei", "desigitem", "desigcust", "desigloc",
+  "ptronhand", "ptrreviewed", "holdstopcode", "holdstopbegindate", "holdstopreason", "hsreasonbegin", "season_oh",
+  "season_demand", "oversellpercentage", "itemspec", "locationnote", "locationnotedate", "suspend", "suspendto",
+  "specialpuller", "pulltagnote1", "pulltagnote2", "fieldtagcolor", "salesnote", "inventorynote", "locationptn1",
+  "locationptn2", "prisetby", "priupdated", "bypassloc", "largeptrqty", "maxorderquantity", "lochold",
+  "ext_ptronhand", "varietycode", "genusname", "botanicalname", "reversecommon", "sortnamevariety", "containersort",
+  "saleyear", "blockalpha", "blocknumber", "bay", "pullerresponsibility", "grower", "si_lts",
+  "a_lts", "ai_lts", "season_available", "holdstopenddate", "salesnote_1", "fnsalesnote", "warehousename",
+  "mcstatus", "hz", "intercopo", "insurancegroup", "brand", "printedcontainercode", "warehouseid",
+  "isreserve", "salesrepid", "salesrepname", "nationalaccount", "idgroup", "customeridentityid", "customername",
+  "consigneeidentityid", "consigneename", "consigneecity", "consigneestate", "consigneezip", "tripnumber", "stopnumber",
+  "zonecode", "tagcode", "transactionnumber", "purchaseordernumber", "extunitprice", "ordertotal", "requestdate",
+  "stagename", "step", "customersku", "formattedupc", "descriptorcode", "quantityordered", "quantityshipped",
+  "unitprice", "handlingchargeperitem", "taggingchargeperitem", "combinedprice", "freightrateperitem", "landed", "retailprice",
+  "picknote", "planstart", "generalloadinstr", "invoicedate", "consigneeaddress_1", "consigneeaddress_2", "altshipcomment",
+  "shiptotelephone_1", "okloadinstructions", "txloadinstructions", "ncloadinstructions", "hlloadinstructions", "dock", "dock_num",
+  "equiv_unit", "equiv_uom", "wingdingunits", "dropweight", "internalinvnote", "hardinesszone", "tagdeptnote",
+  "ext_unit_merch_shipped", "ext_eunit_shipped", "avg_price_eunit_shipped", "requestdateweek", "carrier", "suspend_to", "qa_code",
+  "si_available", "source", "filename", "app_tab_assignment", "salesnotebegindate", "ncr_approval_type", "ncr_requested_by_username",
+  "ncr_requested_by_display", "ncr_requested_by_email", "ncr_requested_at", "ncr_approval_message", "hold_release_approved_at", "hold_release_approved_by", "hold_release_approved_by_display",
+  "hold_release_approved_holdstopbegindate", "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec", "flyer_caliper", "flyer_pick",
+  "flyer_initial_ptr", "eval_task_type", "eval_task_status", "eval_task_instructions", "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by",
+  "eval_task_completed_at", "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action", "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note",
+  "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at", "av_rule_priority_snapshot",
+  "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at",
+].join(",");
+const INVENTORY_MASTER_BROWSE_FIELDS = [
+  "unique_id", "warehouseid", "plantgroupcode", "itemcode", "qualitycode", "contsize", "commonname",
+  "lotcode", "locationcode", "source", "desigitem", "desigcust", "desigloc", "priority",
+  "ptravailable", "s_lts", "season_supply", "saleyear", "itemspec", "locationnote", "locationnotedate",
+  "fieldtagcolor", "holdstopcode", "holdstopreason", "holdstopbegindate", "season", "blockalpha", "blocknumber",
+  "hold_release_approved_at", "hold_release_approved_by", "hold_release_approved_by_display", "hold_release_approved_holdstopbegindate", "app_tab_assignment", "assignedto", "date_completed",
+  "av_note", "sales_note", "salesnote", "match", "loc_match_qty", "initial_ptr", "spec",
+  "caliper", "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at",
+  "av_rule_priority_snapshot", "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at", "eval_task_type", "eval_task_status", "eval_task_instructions",
+  "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by", "eval_task_completed_at", "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action",
+  "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note", "photo_link", "photo_name", "dock_photo_link", "dock_photo_name",
+  "flyer_photo_link", "flyer_photo_name", "flyer_completed", "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec",
+  "flyer_caliper", "flyer_pick", "flyer_initial_ptr", "warehousei", "ptronhand", "ptrreviewed", "hsreasonbegin",
+  "season_oh", "season_demand", "oversellpercentage", "suspend", "suspendto", "specialpuller", "pulltagnote1",
+  "pulltagnote2", "inventorynote", "locationptn1", "locationptn2", "prisetby", "priupdated", "bypassloc",
+  "largeptrqty", "maxorderquantity", "lochold", "listprice", "ext_ptronhand", "varietycode", "genusname",
+  "botanicalname", "reversecommon", "sortnamevariety", "containersort", "bay", "pullerresponsibility", "grower",
+  "si_lts", "a_lts", "ai_lts", "season_available", "holdstopenddate", "fnsalesnote", "warehousename",
+  "mcstatus", "hz", "intercopo", "insurancegroup", "brand", "printedcontainercode", "salesnotebegindate",
+  "equiv_unit", "last_updated", "filename", "ncr_approval_type", "ncr_requested_by_username", "ncr_requested_by_display", "ncr_requested_by_email",
+  "ncr_requested_at", "ncr_approval_message", "end_cap_folder", "end_cap_qty", "end_cap_level", "flyer_cat", "flyer_title",
+  "flyer_inst", "flyer_assigned", "flyer_notes", "pic_note",
+  "consigneename", "customername", "dock", "dock_caliper", "dock_note", "dock_num", "dock_spec",
+  "field_tag_color", "picknote", "planstart", "qa_code", "salesnote_1", "salesrepid", "salesrepname",
+  "stopnumber", "suspend_to", "tripnumber",
+].join(",");
 const INVENTORY_PO_DETAIL_FIELDS = "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,app_tab_assignment,priority,season";
 const INVENTORY_NCR_QUEUE_FIELDS = "unique_id,warehouseid,plantgroupcode,itemcode,qualitycode,contsize,commonname,itemspec,locationcode,lotcode,source,desigitem,desigcust,desigloc,priority,ptronhand,ptravailable,s_lts,saleyear,season,locationnote,locationnotedate,locationptn1,fieldtagcolor,holdstopcode,holdstopreason,holdstopbegindate,last_updated,photo_link,photo_name,dock_photo_link,dock_photo_name,flyer_photo_link,flyer_photo_name,flyer_completed,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,av_note,sales_note,salesnote,match,loc_match_qty,initial_ptr,spec,caliper,ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at,ncr_approval_message,hold_release_approved_at,hold_release_approved_by,hold_release_approved_by_display,hold_release_approved_holdstopbegindate,app_tab_assignment,assignedto,eval_task_type,eval_task_status,eval_task_instructions,eval_task_assigned_by,eval_task_assigned_at,eval_task_completed_by,eval_task_completed_at,eval_task_recount_qty,eval_task_moved_up_qty,eval_task_hold_action,eval_task_hold_code,eval_task_hold_reason,eval_task_result_note";
 const INVENTORY_NOT_ON_INVENTORY_FIELDS = "unique_id,warehouseid,plantgroupcode,itemcode,qualitycode,contsize,commonname,itemspec,locationcode,lotcode,source,desigitem,desigcust,desigloc,priority,ptronhand,ptravailable,s_lts,saleyear,season,locationnote,locationnotedate,locationptn1,fieldtagcolor,holdstopcode,holdstopreason,holdstopbegindate,last_updated,photo_link,photo_name,dock_photo_link,dock_photo_name,flyer_photo_link,flyer_photo_name,flyer_completed,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,av_note,sales_note,salesnote,match,loc_match_qty,initial_ptr,spec,caliper,app_tab_assignment,assignedto";
@@ -3035,8 +3124,8 @@ function inventoryActorQueueAssignments(username: string) {
   return allowed;
 }
 
-function inventoryReadQuery(table: string, fields: string, actor: Record<string, unknown>) {
-  let query: any = supabase.from(table).select(fields, { count: "exact" });
+function inventoryReadQuery(table: string, fields: string, actor: Record<string, unknown>, includeCount = true) {
+  let query: any = supabase.from(table).select(fields, includeCount ? { count: "exact" } : {});
   const role = String(actor.role || "").trim();
   const access = getRoleAccessState(role);
   const compactRole = role.toUpperCase().replace(/[^A-Z0-9]+/g, "");
@@ -3069,7 +3158,7 @@ async function handleInventoryRead(
   try {
     if (operation === "source_freshness") {
       inventoryReadParams(payload, []);
-      const { data, error } = await inventoryReadQuery("ph_master_inventory", "filename,last_updated", actor)
+      const { data, error } = await inventoryReadQuery("ph_master_inventory", "filename,last_updated", actor, false)
         .not("last_updated", "is", null)
         .order("last_updated", { ascending: false, nullsFirst: false })
         .limit(1);
@@ -3093,7 +3182,7 @@ async function handleInventoryRead(
       const { limit, offset } = inventoryReadPageBounds(params);
       const dataset = String(params.dataset || "").trim();
       const projection = String(params.projection || "initial").trim();
-      if (!["master", "avOpen", "lookup"].includes(dataset) || !["initial", "initial_base", "full"].includes(projection)) throw new Error("INVENTORY_READ_OPERATION_INVALID");
+      if (!["master", "avOpen", "lookup"].includes(dataset) || !["initial", "initial_base", "browse", "full"].includes(projection)) throw new Error("INVENTORY_READ_OPERATION_INVALID");
       const uniqueId = String(params.uniqueId || "").trim();
       const itemCode = String(params.itemCode || "").trim();
       const locationCode = String(params.locationCode || "").trim();
@@ -3105,7 +3194,8 @@ async function handleInventoryRead(
       if (dataset !== "lookup" && (uniqueId || itemCode || locationCode || lotCode || source || season)) throw new Error("INVENTORY_READ_FILTER_INVALID");
       if (dataset === "avOpen" && projection === "initial") throw new Error("INVENTORY_READ_PROJECTION_INVALID");
       if (dataset === "avOpen" && season) throw new Error("INVENTORY_READ_FILTER_INVALID");
-      const fields = dataset === "avOpen" || projection === "full" ? "*"
+      const fields = projection === "browse" ? INVENTORY_MASTER_BROWSE_FIELDS
+        : dataset === "avOpen" || projection === "full" ? INVENTORY_MASTER_FULL_FIELDS
         : projection === "initial_base" ? INVENTORY_MASTER_INITIAL_BASE_FIELDS : INVENTORY_MASTER_INITIAL_FIELDS;
       let response = inventoryReadQuery("ph_master_inventory", fields, actor);
       if (dataset === "avOpen") response.in("season", ["F1", "S1", "U1", "U2"]);
@@ -3121,7 +3211,8 @@ async function handleInventoryRead(
       const { data, error, count } = await response;
       if (error) throw error;
       const rows = Array.isArray(data) ? data : [];
-      return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
+      return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count,
+        projection, fieldCoverage: projection === "browse" ? "browse" : dataset === "avOpen" || projection === "full" ? "full" : "initial", columns: fields.split(",") } });
     }
 
     if (operation === "master_delta") {
@@ -3129,7 +3220,7 @@ async function handleInventoryRead(
       const { limit, offset } = inventoryReadPageBounds(params);
       const since = String(params.since || "").trim();
       if (!since || !Number.isFinite(Date.parse(since))) throw new Error("INVENTORY_READ_SINCE_INVALID");
-      const response = inventoryReadQuery("ph_master_inventory", "*", actor);
+      const response = inventoryReadQuery("ph_master_inventory", INVENTORY_MASTER_FULL_FIELDS, actor);
       response.gt("last_updated", since);
       response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;

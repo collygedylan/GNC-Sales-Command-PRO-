@@ -5,11 +5,28 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
+const inventoryContractContext = {};
+vm.runInNewContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), inventoryContractContext);
+const inventoryContract = inventoryContractContext.AgMetricInventoryList;
+test('the inventory list contract script loads before inline live-sync consumers', () => {
+    const contractScript = html.indexOf('src="./assets/inventory-list-contract.js');
+    const coordinatorScript = html.indexOf('src="./assets/live-sync-coordinator.js');
+    assert.ok(contractScript >= 0, 'inventory list contract must be loaded by the production shell');
+    assert.ok(coordinatorScript > contractScript, 'inventory list contract must execute before live-sync coordinator consumers');
+    assert.ok(inventoryContract && Array.isArray(inventoryContract.physicalColumns));
+});
 const start = html.indexOf('const supabaseReadInFlight = new Map();');
 const end = html.indexOf('async function getResponseError(', start);
 assert.ok(start > 0 && end > start);
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
+function extractAppFunction(name) {
+    const match = html.match(new RegExp(`(?:async )?function ${name}\\(`));
+    assert.ok(match, name);
+    const end = html.indexOf('\n        function ', match.index + match[0].length);
+    assert.ok(end > match.index, `${name} boundary`);
+    return html.slice(match.index, end);
+}
 
 function dashboardMetadataFixture() {
     const calls = [];
@@ -240,7 +257,9 @@ test('a revision read cancelled during auth preparation never starts its RPC', a
         getNativeAuthRequestHeaders: () => gate.promise,
         fetchWithTimeout: async () => { calls++; return { ok: true, text: async () => '{}' }; }
     };
-    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
+    vm.runInContext(html.slice(from, to), ctx);
     const pending = ctx.supabaseRpc('get_my_dataset_revisions_v1', {}, { signal: controller.signal });
     controller.abort(); gate.resolve({ Authorization: 'synthetic' });
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
@@ -257,7 +276,7 @@ test('cancellation during proxy preparation prevents a native fetch', async () =
         fetchSupabaseRestViaAppApiIfNeeded: () => gate.promise,
         fetch: async () => { calls++; return {}; }
     };
-    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx); vm.runInContext(html.slice(from, to), ctx);
     const pending = ctx.fetchWithTimeout('https://fixture.invalid', { signal: controller.signal });
     controller.abort(); gate.resolve(null);
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
@@ -491,7 +510,7 @@ test('settings-only updates rebuild current-season collections from verified inv
     assert.ok(from > 0 && to > from);
     const callback = html.slice(from + 'commitSnapshots: '.length, to).trim().replace(/,$/, '');
     const previous = [{ UNIQUE_ID: 'spring', SEASON: 'S1' }, { UNIQUE_ID: 'fall', SEASON: 'F1' }];
-    const calls = [], state = { fullLoaded: true, liveVerifiedScope: 'actor-a', liveVerifiedPermission: 'policy-a', liveVerifiedRevision: '10' };
+    const calls = [], state = { fullLoaded: false, fieldCoverage: 'browse', rowCompleteness: 'complete', liveVerifiedScope: 'actor-a', liveVerifiedPermission: 'policy-a', liveVerifiedRevision: '10' };
     const context = { scope: 'actor-a' }, metadata = { permissionVersion: 'policy-a', sources: new Map([['ph_master_inventory', { state: 'ready', revision: '10' }]]) };
     const ctx = { Object, Array, Date, fullInventory: previous, season: 'S1', calls,
         getProductionLiveSyncContext: () => ({ adapters: [{ id: 'side:settings' }] }),
@@ -504,10 +523,10 @@ test('settings-only updates rebuild current-season collections from verified inv
     assert.equal(calls[0]._verifiedLiveSync, true);
     assert.notEqual(calls[0].data[0], previous[0]);
     assert.deepEqual(previous.map((row) => row.SEASON), ['S1', 'F1']);
-    calls.length = 0; state.fullLoaded = false;
+    calls.length = 0; state.rowCompleteness = 'unknown';
     ctx.commit([{ adapter: { id: 'side:settings', commit() {} }, value: {} }], context, metadata);
     assert.equal(calls.length, 0, 'an incomplete master cache is not promoted to a verified source');
-    state.fullLoaded = true;
+    state.rowCompleteness = 'complete';
     for (const field of ['liveVerifiedScope', 'liveVerifiedPermission', 'liveVerifiedRevision']) {
         const saved = state[field]; state[field] = 'stale';
         ctx.commit([{ adapter: { id: 'side:settings', commit() {} }, value: {} }], context, metadata);
@@ -522,20 +541,158 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
     const ctx = { JSON, Error, Array, AbortController, productionLiveSyncNavigation: new AbortController(), DATASET_DEFINITIONS: {
         master: { table: 'ph_master_inventory', fullQuery: 'select=*&order=unique_id.asc' },
         avOpen: { table: 'ph_master_inventory', fullQuery: 'select=*&season=in.(F1,S1,U1,U2)' }
-    }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
+    }, window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] }, AgMetricInventoryList: inventoryContract },
         season: { seasonCode: 'S1', salesYear: 27 }, getCurrentAppSeasonSettings: () => ctx.season,
-        fetchAllSupabaseRows: async () => [], fetchAllInventoryReadRows: async (operation, params) => { ctx.inventoryRead = { operation, params }; return []; }, buildDatasetPayload: (key, rows) => ({ key, rows }),
+        fetchAllSupabaseRows: async () => [], fetchInventoryReadPage: async (operation, params) => {
+            ctx.inventoryRead = { operation, params };
+            return { rows: [], total: 0, projection: params.projection, fieldCoverage: params.projection, columns: params.projection === 'full' ? inventoryContract.physicalColumns : inventoryContract.columns };
+        }, yieldToUiFrame: async () => {}, buildDatasetPayload: (key, rows) => ({ key, rows }),
         canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
-    vm.createContext(ctx); vm.runInContext(html.slice(from, to), ctx);
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx); vm.runInContext(html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
     assert.equal(av.id, 'core:master'); assert.equal(av.cacheKey, master.cacheKey);
     const staged = await av.stage();
     assert.equal(staged.key, 'master');
+    assert.equal(staged.rowCompleteness, 'complete', 'browse rows become complete only after requireComplete pagination succeeds');
     assert.equal(staged.hlOrderInventory, null, 'ordinary AV staging does not acquire an HL snapshot');
-    assert.deepEqual(JSON.parse(JSON.stringify(ctx.inventoryRead)), { operation: 'master_page', params: { dataset: 'master', projection: 'full' } });
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.inventoryRead)), { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } });
     ctx.season = { seasonCode: 'F1', salesYear: 27 };
     assert.notEqual(ctx.createProductionCoreLiveAdapter('master').cacheKey, master.cacheKey,
         'season changed off-screen cannot retain old derived inventory under unchanged stock revisions');
+    assert.equal(ctx.createProductionCoreLiveAdapter('master').projection, 'browse', 'ordinary tab entry stays on the compact browse contract');
+    const full = ctx.createProductionCoreLiveAdapter('master', 'full');
+    assert.equal(full.projection, 'full');
+    assert.notEqual(ctx.createProductionCoreLiveAdapter('master', 'browse').cacheKey, full.cacheKey,
+        'an explicit full-read adapter does not change the ordinary browse descriptor');
+    assert.equal(ctx.createProductionCoreLiveAdapter('master', 'browse').projection, 'browse');
+});
+
+test('inventory read metadata must exactly match the requested browse or full contract', () => {
+    const ctx = { String, Array, window: { AgMetricInventoryList: inventoryContract } };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
+    assert.equal(ctx.validateInventoryReadProjection({ projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns }, { projection: 'full' }), true);
+    assert.equal(ctx.validateInventoryReadProjection({ projection: 'browse', fieldCoverage: 'browse', columns: inventoryContract.columns }, { projection: 'browse' }), true);
+    for (const response of [
+        { fieldCoverage: 'full', columns: inventoryContract.physicalColumns },
+        { projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns.slice(0, -1) },
+        { projection: 'browse', fieldCoverage: 'full', columns: inventoryContract.physicalColumns }
+    ]) assert.throws(() => ctx.validateInventoryReadProjection(response, { projection: 'full' }), /missing or invalid/i);
+});
+
+test('a master snapshot without proven full coverage is not usable as a full dataset', () => {
+    let state = { fullLoaded: true };
+    const ctx = { getDatasetState: () => state };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('isDatasetLoaded'), ctx);
+    assert.equal(ctx.isDatasetLoaded('master', 'full'), false);
+    state = { fullLoaded: true, fieldCoverage: 'browse' };
+    assert.equal(ctx.isDatasetLoaded('master', 'full'), false);
+    state = { fullLoaded: true, fieldCoverage: 'full' };
+    assert.equal(ctx.isDatasetLoaded('master', 'full'), true);
+});
+
+test('HL cards accept a complete verified browse snapshot without treating browse fields as full coverage', () => {
+    const owner = { readIdentity: 'native:dylan' };
+    const context = { scope: 'scope-a', viewKey: 'hl-order', adapters: [{ id: 'core:master' }, { id: 'core:soc' }] };
+    const status = { state: 'Up to date', lastVerifiedAt: 'verified-1' };
+    const states = {
+        master: { rowCompleteness: 'complete', fieldCoverage: 'browse', fullLoaded: false, liveVerifiedScope: 'scope-a', liveVerifiedPermission: 'policy-a', liveVerifiedRevision: '7' },
+        soc: { fullLoaded: true, liveVerifiedScope: 'scope-a', liveVerifiedPermission: 'policy-a', liveVerifiedRevision: '3' }
+    };
+    const ctx = {
+        document: { hidden: false }, navigator: { onLine: true },
+        hlOrderInventorySnapshot: { owner, scope: 'scope-a', permission: 'policy-a', revision: '7', rows: new Map() },
+        hlOrderVerificationContext: { key: 'hl-context', owner, lastVerifiedAt: 'verified-1' },
+        canUseHlOrder: () => true, isHlOrderOwnershipCurrent: candidate => candidate === owner,
+        canUseProductionLiveSync: () => true, getProductionLiveSyncContext: () => context,
+        getProductionLiveSyncCoordinator: () => ({ getStatus: () => status }),
+        getHlOrderVerificationContextKey: () => 'hl-context', getDatasetState: key => states[key]
+    };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('canUseHlOrderVerifiedData'), ctx);
+    vm.runInContext(extractAppFunction('isDatasetLoaded'), ctx);
+    assert.equal(ctx.canUseHlOrderVerifiedData(['master']), true);
+    assert.equal(ctx.isDatasetLoaded('master', 'full'), false, 'browse rows do not satisfy full-projection consumers');
+    states.master.rowCompleteness = 'partial';
+    assert.equal(ctx.canUseHlOrderVerifiedData(['master']), false, 'a partial browse set cannot authorize HL display');
+    states.master.rowCompleteness = 'complete'; states.master.fieldCoverage = 'initial';
+    assert.equal(ctx.canUseHlOrderVerifiedData(['master']), false, 'unknown field coverage cannot authorize HL display');
+});
+
+test('an explicit full coordinator read does not turn later ordinary refreshes into full downloads', async () => {
+    const projections = [];
+    const adapterStart = html.indexOf('const productionLiveSyncReadSignalIds');
+    const adapterEnd = html.indexOf('function getProductionLiveSyncContext()', adapterStart);
+    const ctx = {
+        JSON, Error, Array, AbortController, Promise, Set, Map,
+        productionLiveSyncNavigation: new AbortController(),
+        DATASET_DEFINITIONS: { master: { table: 'ph_master_inventory', initialQuery: 'select=browse', fullQuery: 'select=full' } },
+        window: { AgMetricLiveSyncRegistry: { getSourceKeys: () => ['ph_master_inventory'] } },
+        getCurrentAppSeasonSettings: () => ({ seasonCode: 'F1', salesYear: 27 }),
+        getProductionLiveSyncCoordinator: () => ({ ensure: async adapter => { projections.push(adapter.projection); return true; } }),
+        canUseProductionLiveSync: () => true, RETIRED_DATASET_KEYS: new Set()
+    };
+    vm.createContext(ctx);
+    vm.runInContext(html.slice(adapterStart, adapterEnd), ctx);
+    vm.runInContext(extractAppFunction('ensureDatasetLoaded'), ctx);
+    await ctx.ensureDatasetLoaded('master', 'full', { force: true });
+    await ctx.ensureDatasetLoaded('master', 'initial', { force: true });
+    assert.deepEqual(projections, ['full', 'browse']);
+});
+
+test('master detail hydration selects exactly one full row inside a stable permission and revision fence', async () => {
+    const revisions = ['revision-8', 'revision-8'];
+    const calls = [];
+    const identity = { value: 'account-a' };
+    const context = { scope: identity.value, dataPermissionVersion: 'access-v1' };
+    const revisionResponse = revision => ({ permissionVersion: 'access-v1', sources: new Map([['ph_master_inventory', { state: 'ready', revision }]]) });
+    const ctx = {
+        String, Error, Object, Set, Map, Array, AbortController,
+        firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') || '',
+        getSupabaseReadIdentityScope: () => identity.value,
+        withProductionLiveSyncSignal: async (_signal, operation) => operation(new AbortController().signal),
+        canUseProductionLiveSync: () => true,
+        getProductionLiveSyncContext: () => context,
+        supabaseRpc: async (name, params, options) => { calls.push({ name, params, options }); return revisionResponse(revisions.shift()); },
+        fetchInventoryReadPage: async (...args) => {
+            calls.push(args);
+            return { total: 1, rows: [{ unique_id: 'uid-1', itemcode: '003955.030.1', ptravailable: 12 }], projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns };
+        },
+        formatFetchedRows: rows => rows.map(row => ({ UNIQUE_ID: row.unique_id, ITEMCODE: row.itemcode, PTRAVAILABLE: row.ptravailable })),
+        window: { AgMetricLiveSync: { snapshot: (value, keys) => {
+            assert.equal(JSON.stringify(keys), '["ph_master_inventory"]');
+            assert.equal(value.permissionVersion, 'access-v1');
+            return value;
+        } }, AgMetricInventoryList: inventoryContract },
+        staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' })
+    };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
+    vm.runInContext(extractAppFunction('loadExactMasterDetailRow'), ctx);
+    const row = await ctx.loadExactMasterDetailRow('uid-1');
+    assert.deepEqual(JSON.parse(JSON.stringify(row)), { UNIQUE_ID: 'uid-1', ITEMCODE: '003955.030.1', PTRAVAILABLE: 12 });
+    assert.equal(JSON.stringify(calls[1].slice(0, 4)), '["master_page",{"dataset":"lookup","projection":"full","uniqueId":"uid-1"},1,0]');
+    assert.ok(calls[1][4]?.signal);
+    assert.equal(calls[1][4]?.label, 'Inventory row details');
+    assert.equal(calls.length, 3, 'the exact row is bracketed by two revision reads');
+});
+
+test('master detail hydration discards a lookup when its source revision changes mid-read', async () => {
+    let revision = 8;
+    const ctx = {
+        String, Error, Object, Set, Map, Array, AbortController,
+        firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') || '',
+        getSupabaseReadIdentityScope: () => 'account-a',
+        withProductionLiveSyncSignal: async (_signal, operation) => operation(new AbortController().signal),
+        canUseProductionLiveSync: () => true,
+        getProductionLiveSyncContext: () => ({ scope: 'account-a', dataPermissionVersion: 'access-v1' }),
+        supabaseRpc: async () => ({ permissionVersion: 'access-v1', sources: new Map([['ph_master_inventory', { state: 'ready', revision: String(revision++) }]]) }),
+        fetchInventoryReadPage: async () => ({ total: 1, rows: [{ unique_id: 'uid-1' }], projection: 'full', fieldCoverage: 'full', columns: inventoryContract.physicalColumns }),
+        formatFetchedRows: rows => rows.map(row => ({ UNIQUE_ID: row.unique_id })),
+        window: { AgMetricLiveSync: { snapshot: value => value }, AgMetricInventoryList: inventoryContract },
+        staleSupabaseReadScopeError: () => Object.assign(new Error('scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' })
+    };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx); vm.runInContext(extractAppFunction('loadExactMasterDetailRow'), ctx);
+    await assert.rejects(ctx.loadExactMasterDetailRow('uid-1'), /changed while opening/i);
 });
 
 function permissionFixture(options = {}) {
@@ -817,14 +974,17 @@ test('native database helpers never fall through to the prohibited legacy proxy'
 
 test('progressive disk display accepts an older revision only with the same account, query and permissions', async () => {
     const meta = { contractVersion: 1, scope: 'account-a', adapterId: 'core:master', cacheKey: 'master/all', dataPermissionVersion: 'permission-a', signature: JSON.stringify(['permission-a', ['master', '2', 'ready']]) };
-    let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) }, rawRows: [{ id: 'old-row' }], rowCount: 1 };
+    let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) }, rawRows: [{ id: 'old-row' }], rowCount: 1,
+        projection: 'browse', fieldCoverage: 'browse', columns: inventoryContract.columns };
     const ctx = { JSON, Array, Map, getSupabaseReadIdentityScope: () => 'account-a', productionDisplaySnapshotTimes: new Map(),
         productionDisplayGroupKey: () => 'cohort', loadCacheValue: async () => saved,
-        verifiedSnapshotCacheKey: () => 'scope-key', buildDatasetPayload: (_, rows) => ({ data: rows }) };
+        verifiedSnapshotCacheKey: () => 'scope-key', buildDatasetPayload: (_, rows) => ({ data: rows }),
+        window: { AgMetricInventoryList: inventoryContract } };
     vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
     const from = html.indexOf('async function readProductionDisplaySnapshot(');
     vm.runInContext(html.slice(from, html.indexOf('function previewProductionSnapshots(', from)), ctx);
-    const read = () => ctx.readProductionDisplaySnapshot({ id: 'core:master' }, meta);
+    const read = () => ctx.readProductionDisplaySnapshot({ id: 'core:master', projection: 'browse' }, meta);
     assert.equal((await read()).cached, true);
     const original = saved;
     for (const change of [
@@ -833,6 +993,7 @@ test('progressive disk display accepts an older revision only with the same acco
         { meta: { ...saved.meta, dataPermissionVersion: 'permission-b' } },
         { meta: { ...saved.meta, contractVersion: 2 } },
         { meta: { ...saved.meta, dataPermissionVersion: undefined } },
+        { columns: undefined }, { fieldCoverage: 'full' }, { projection: 'full' },
         { format: 'legacy-unscoped' }, { rowCount: 2 }
     ]) { saved = { ...original, ...change }; assert.equal(await read(), null); }
 });

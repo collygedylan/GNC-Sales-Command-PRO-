@@ -756,6 +756,14 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           }
           const pageRows = rows.slice(offset, offset + limit);
           if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
+          if (operation === 'master_page') {
+            const projected = inventoryReadFixture.readMasterPage(rows, {
+              dataset, projection: params.projection, uniqueId: params.uniqueId, itemCode: params.itemCode,
+              locationCode: params.locationCode, lotCode: params.lotCode, source: params.source,
+              season: params.season, offset, limit
+            });
+            return json(route, { ok: true, data: projected });
+          }
           return json(route, { ok: true, data: { rows: pageRows, total, offset, limit, hasMore: offset + pageRows.length < total } });
         }
         if (operation === 'verify_row') return json(route, { ok: true, data: { status: 'matched', matches: true } });

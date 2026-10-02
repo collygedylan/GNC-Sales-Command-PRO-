@@ -147,6 +147,43 @@ function appApiHarness({ moduleAllowed = true } = {}) {
   return { handler: context.inventoryReadTest, queries };
 }
 
+test('browse inventory preserves filters and readouts with explicit field coverage and bounded pages', async () => {
+  const { handler, queries } = appApiHarness();
+  const actor = { actor: { username: 'riley_sales', role: 'rep' } };
+  const page = await handler(actor, { operation: 'master_page', params: { dataset: 'avOpen', projection: 'browse', limit: 1000 } });
+  assert.equal(page.status, 200);
+  assert.equal(page.body.data.projection, 'browse');
+  assert.equal(page.body.data.fieldCoverage, 'browse');
+  const fields = page.body.data.columns;
+  assert.equal(fields.length, 161);
+  const contractContext = vm.createContext({});
+  vm.runInContext(fs.readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), contractContext);
+  assert.deepEqual(Array.from(fields).sort(), Array.from(contractContext.AgMetricInventoryList.columns).sort());
+  assert.equal(new Set(fields).size, fields.length);
+  for (const field of ['unique_id', 'ptronhand', 'ptrreviewed', 'ptravailable', 'season_oh', 'listprice', 'locationptn1', 'locationptn2', 'saleyear', 'filename', 'last_updated', 'hold_release_approved_at', 'eval_task_status', 'ncr_approval_type']) {
+    assert.ok(fields.includes(field), field);
+  }
+  assert.ok(!fields.includes('shiptotelephone_1'));
+  assert.ok(queries[0].calls.some(([method, value]) => method === 'or' && value === 'season.is.null,season.not.ilike.U3'));
+  assert.ok(queries[0].calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 499));
+  const full = await handler(actor, { operation: 'master_page', params: { dataset: 'lookup', projection: 'full', uniqueId: 'row-1' } });
+  assert.equal(full.body.data.fieldCoverage, 'full');
+  assert.equal(full.body.data.columns.length, 213);
+  assert.ok(full.body.data.columns.includes('shiptotelephone_1'));
+  assert.ok(queries[1].calls.some(([method, field, value]) => method === 'eq' && field === 'unique_id' && value === 'row-1'));
+  assert.ok(queries.every(query => query.calls.filter(([method]) => method === 'select').every(([, fields]) => !fields.includes('*'))));
+});
+
+test('inventory freshness does not count all matching rows', async () => {
+  const { handler, queries } = appApiHarness();
+  const response = await handler({ actor: { username: 'reader', role: 'admin' } }, { operation: 'source_freshness' });
+  assert.equal(response.status, 200);
+  const select = queries[0].calls.find(([method]) => method === 'select');
+  assert.equal(select[1], 'filename,last_updated');
+  assert.equal(select[2].count, undefined);
+  assert.ok(queries[0].calls.some(([method, size]) => method === 'limit' && size === 1));
+});
+
 test('legacy app-api database proxy cannot read ph_master_inventory around the operation allowlist', async () => {
   const start = edgeSource.indexOf('async function handleDb(');
   const end = edgeSource.indexOf('const INVENTORY_MASTER_INITIAL_FIELDS', start);

@@ -1,10 +1,23 @@
 import { readFileSync } from 'node:fs';
 
 const inventorySchema = JSON.parse(readFileSync(new URL('./inventory-list-schema.json', import.meta.url), 'utf8'));
+const appApiSource = readFileSync(new URL('../../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+
+function extractApiFieldList(name) {
+  const match = appApiSource.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\]\\.join\\(\",\"\\);`));
+  if (!match) throw new Error(`Missing inventory projection fixture source: ${name}`);
+  return [...match[1].matchAll(/\"([a-z0-9_]+)\"/g)].map((field) => field[1]);
+}
+const apiProjections = {
+  initial: extractApiFieldList('INVENTORY_MASTER_INITIAL_FIELDS'),
+  full: extractApiFieldList('INVENTORY_MASTER_FULL_FIELDS'),
+  browse: extractApiFieldList('INVENTORY_MASTER_BROWSE_FIELDS')
+};
+apiProjections.initial_base = apiProjections.initial.filter((field) => !field.startsWith('hold_release_') && !field.startsWith('av_rule_'));
 
 /** The function is self-contained so the same strict read boundary can be
  * installed in a browser fixture or used by a Node-side route handler. */
-export function createInventoryReadFixture(schema) {
+export function createInventoryReadFixture(schema, projections = apiProjections) {
   const columns = new Map(schema.map(column => [column.name, column]));
   const fail = message => { throw new Error(`INVENTORY_READ_FIXTURE_INVALID: ${message}`); };
   const immutableRows = new WeakMap();
@@ -147,13 +160,66 @@ export function createInventoryReadFixture(schema) {
     const rows = selected ? page.map(item => Object.fromEntries(selected.map(field => [field.alias, item[field.name]]))) : page;
     return { rows, offset, total: matching.length, select, exact: !!filter, uniqueIds: page.map(item => item.unique_id) };
   }
-  return Object.freeze({ row, read, physicalColumns: Object.freeze(schema.map(column => column.name)) });
+  function readMasterPage(source, options = {}) {
+    const dataset = String(options.dataset || 'master');
+    const requestedProjection = String(options.projection || 'initial');
+    if (!['master', 'avOpen', 'lookup'].includes(dataset) || !['initial', 'initial_base', 'browse', 'full'].includes(requestedProjection)) {
+      fail('unsupported master projection');
+    }
+    const projection = dataset === 'avOpen' && requestedProjection !== 'browse' ? 'full' : requestedProjection;
+    const selectedColumns = projections[projection];
+    if (!selectedColumns || selectedColumns.some(field => !columns.has(field))) fail(`projection ${projection} is not physical`);
+    const selectedRows = source.map(row);
+    let matching = selectedRows;
+    if (dataset === 'avOpen') matching = matching.filter(item => ['F1', 'S1', 'U1', 'U2'].includes(String(item.season || '').toUpperCase()));
+    if (dataset === 'lookup') {
+      const uniqueId = String(options.uniqueId || '').trim();
+      const itemCode = String(options.itemCode || '').trim();
+      if (!uniqueId && !itemCode) fail('lookup requires a unique ID or item code');
+      matching = matching.filter(item => uniqueId ? item.unique_id === uniqueId : item.itemcode === itemCode);
+      for (const [optionKey, column] of [['locationCode', 'locationcode'], ['lotCode', 'lotcode'], ['source', 'source']]) {
+        const value = String(options[optionKey] || '').trim();
+        if (value) matching = matching.filter(item => item[column] === value);
+      }
+    }
+    if (options.season) matching = matching.filter(item => item.season === options.season);
+    matching.sort((a, b) => String(a.unique_id).localeCompare(String(b.unique_id)));
+    const params = new URLSearchParams({
+      select: selectedColumns.join(','), order: 'unique_id.asc',
+      offset: String(Math.max(0, Number(options.offset) || 0)),
+      limit: String(Math.min(500, Math.max(1, Number(options.limit) || 500)))
+    });
+    const result = read(matching, params.toString());
+    return {
+      rows: result.rows,
+      total: result.total,
+      offset: result.offset,
+      limit: Math.min(500, Math.max(1, Number(options.limit) || 500)),
+      hasMore: result.offset + result.rows.length < result.total,
+      projection,
+      fieldCoverage: projection === 'browse' ? 'browse' : dataset === 'avOpen' || projection === 'full' ? 'full' : 'initial',
+      columns: selectedColumns.slice()
+    };
+  }
+  // Dock/Drive browser fixtures sometimes reuse order-shaped input records.
+  // Convert only their known physical inventory keys, and pass that projection
+  // through `row` so the schema/type/identity checks remain authoritative.
+  function fromFixtureShape(values = {}) {
+    const physical = {};
+    for (const column of columns.keys()) {
+      if (Object.prototype.hasOwnProperty.call(values, column)) physical[column] = values[column];
+      else if (Object.prototype.hasOwnProperty.call(values, column.toUpperCase())) physical[column] = values[column.toUpperCase()];
+    }
+    return row(physical);
+  }
+  return Object.freeze({ row, read, readMasterPage, fromFixtureShape, projections,
+    physicalColumns: Object.freeze(schema.map(column => column.name)) });
 }
 
 export const inventoryReadFixture = createInventoryReadFixture(inventorySchema.schema);
 
 export async function installInventoryReadFixture(page) {
-  await page.evaluate(({ factory, schema }) => {
-    window.__inventoryReadFixture = window.eval(`(${factory})`)(schema);
-  }, { factory: createInventoryReadFixture.toString(), schema: inventorySchema.schema });
+  await page.evaluate(({ factory, schema, projections }) => {
+    window.__inventoryReadFixture = window.eval(`(${factory})`)(schema, projections);
+  }, { factory: createInventoryReadFixture.toString(), schema: inventorySchema.schema, projections: apiProjections });
 }

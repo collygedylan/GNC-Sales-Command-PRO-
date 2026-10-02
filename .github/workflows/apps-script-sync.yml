@@ -27,6 +27,7 @@ on:
       - supabase/migrations/20261001215508_scheduled_handover_005.sql
       - supabase/migrations/20261001215511_request_archive_005.sql
       - supabase/migrations/20261001222228_handover_assignment_transfer_005.sql
+      - supabase/migrations/20261002014421_index_request_history_assigned_rep_006.sql
       - supabase/config.toml
       - .github/workflows/release-database.yml
       - scripts/preview-perennial-assignment.mjs

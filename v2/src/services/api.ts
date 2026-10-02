@@ -11,11 +11,25 @@ import type {
   WorkflowRow
 } from '../types';
 
-export const APP_VERSION = 'V2026.10.01.005';
+export const APP_VERSION = 'V2026.10.01.006';
 export const REQUEST_TABLE = 'ph_active_request';
 export const REQUEST_LIVE_TABLE = REQUEST_TABLE;
 export const INVENTORY_TABLE = 'ph_master_inventory';
 export const SANDBOX_UPLOAD_BUCKET = 'sandbox-request-uploads';
+// Keep this projection aligned with the sandbox ph_master_inventory table
+// contract (supabase/migrations/20260929200000_production_baseline.sql).
+// The UI needs photo_link/photo_name; the production `photo_url` alias is not
+// a physical column on this table.
+export const INVENTORY_CARD_COLUMN_NAMES = [
+  'unique_id', 'itemcode', 'commonname', 'contsize', 'locationcode', 'lotcode',
+  'ptravailable', 'ptronhand', 'ptrreviewed', 'priority', 'season', 'season_supply',
+  'saleyear', 'blockalpha', 'blocknumber', 'holdstopcode', 'photo_link', 'photo_name'
+] as const;
+const INVENTORY_CARD_COLUMNS = INVENTORY_CARD_COLUMN_NAMES.join(',');
+const AV_OPTION_COLUMNS = [
+  'unique_id', 'itemcode', 'contsize', 'locationcode', 'lotcode', 'ptravailable',
+  'ptronhand', 'ptrreviewed', 'priority', 'season', 'saleyear', 'blockalpha', 'blocknumber'
+].join(',');
 
 export type RequestRow = RequestRecord;
 
@@ -56,6 +70,7 @@ const ALLOWED_TABLES = new Set([
 ]);
 
 let clientPromise: Promise<SupabaseClient> | null = null;
+let sandboxSessionRevision = 0;
 
 async function sandboxClient() {
   if (!clientPromise) {
@@ -100,6 +115,8 @@ export function readStoredSession(): Session | null {
 }
 
 export function storeSession(session: Session | null) {
+  sandboxSessionRevision += 1;
+  if (typeof localStorage === 'undefined') return;
   if (!session) localStorage.removeItem(SESSION_KEY);
   else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
@@ -233,41 +250,82 @@ export async function fetchRequestRows(_session: Session, options: PageOptions =
 export async function fetchInventoryPage(options: PageOptions = {}): Promise<PageResult<InventoryRow>> {
   const page = Math.max(0, options.page || 0);
   const pageSize = Math.min(250, Math.max(25, options.pageSize || 100));
+  const search = options.search?.trim().replace(/[,%()]/g, ' ') || '';
+  const session = readStoredSession();
+  const sessionToken = session?.token ?? '';
+  const revision = sandboxSessionRevision;
+  const sessionKey = sessionToken ? await opaqueSessionCacheKey(sessionToken) : null;
+  const scope = [sessionKey ?? '', session?.username?.trim().toLowerCase() ?? '', session?.role?.trim().toLowerCase() ?? ''];
+  const scopeKey = JSON.stringify(scope);
+  const isCurrentScope = () => {
+    const current = readStoredSession();
+    return revision === sandboxSessionRevision && sessionToken === (current?.token ?? '') &&
+      session?.username?.trim().toLowerCase() === current?.username?.trim().toLowerCase() &&
+      session?.role?.trim().toLowerCase() === current?.role?.trim().toLowerCase();
+  };
+  // Cache only the exact sandbox identity/query/page/projection. Never serve a
+  // different search or page as a fallback when an inventory request fails.
+  const cacheKey = sessionKey && scope[1]
+    ? `${scopeKey}|${JSON.stringify([search, page, pageSize, INVENTORY_CARD_COLUMNS])}`
+    : null;
+  // Configuration and production-project guards must succeed even when a
+  // matching offline page exists. Only data-read failures may use that page.
+  const client = await sandboxClient();
   try {
-    const client = await sandboxClient();
     let query = client
       .from(INVENTORY_TABLE)
-      .select('*', { count: 'exact' })
+      .select(INVENTORY_CARD_COLUMNS, { count: 'exact' })
       .order('commonname', { ascending: true })
       .order('unique_id', { ascending: true })
       .range(page * pageSize, page * pageSize + pageSize - 1);
-    if (options.search?.trim()) {
-      const search = options.search.trim().replace(/[,%()]/g, ' ');
+    if (search) {
       query = query.or(`commonname.ilike.%${search}%,itemcode.ilike.%${search}%,locationcode.ilike.%${search}%`);
     }
     if (options.signal) query = query.abortSignal(options.signal);
     const { data, error, count } = await query;
     if (error) throw error;
-    const rows = (data || []) as InventoryRow[];
-    await cacheInventoryPage(page, pageSize, rows);
-    return { rows, page, pageSize, total: count || rows.length, source: 'sandbox' };
+    if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
+    const rows = (data || []) as unknown as InventoryRow[];
+    if (cacheKey) await cacheInventoryPage(cacheKey, scopeKey, rows);
+    if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
+    return { rows, page, pageSize, total: count ?? rows.length, source: 'sandbox' };
   } catch (error) {
     if (options.signal?.aborted || (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')) throw error;
-    const rows = await readCachedInventoryPage(page, pageSize);
-    if (!rows.length) throw error;
+    if (!isCurrentScope() || isTerminalInventoryError(error)) throw error;
+    const rows = cacheKey ? await readCachedInventoryPage(cacheKey) : null;
+    if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
+    if (rows === null) throw error;
     return { rows, page, pageSize, total: rows.length, source: 'cache' };
   }
+}
+
+async function opaqueSessionCacheKey(token: string): Promise<string | null> {
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) return null;
+  try {
+    const digest = await subtle.digest('SHA-256', new TextEncoder().encode(token));
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return null;
+  }
+}
+
+function isTerminalInventoryError(error: unknown) {
+  if (!error || typeof error !== 'object') return false;
+  const value = error as { status?: number; code?: string; message?: string };
+  return value.status === 401 || value.status === 403 || value.code === '42501' ||
+    /blocked sandbox|not authorized|permission denied/i.test(value.message ?? '');
 }
 
 export async function fetchAvOptions(itemcode: unknown, selectedYear = 27, signal?: AbortSignal): Promise<AvOptionRow[]> {
   const normalized = String(itemcode || '').trim();
   if (!normalized) return [];
   const client = await sandboxClient();
-  let query = client.from(INVENTORY_TABLE).select('*').eq('itemcode', normalized).limit(500);
+  let query = client.from(INVENTORY_TABLE).select(AV_OPTION_COLUMNS).eq('itemcode', normalized).limit(500);
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
-  return selectAndSortAvRows((data || []) as InventoryRow[], normalized, selectedYear);
+  return selectAndSortAvRows((data || []) as unknown as InventoryRow[], normalized, selectedYear);
 }
 
 export async function fetchWorkflowRows(moduleKey: string, signal?: AbortSignal): Promise<WorkflowRow[]> {
