@@ -14,6 +14,31 @@ on conflict(id) do nothing;
 
 -- Current tables/columns absent from the selected historical CI replay.
 -- DDL copied from the checked-in production baseline; disposable CI only.
+CREATE TABLE IF NOT EXISTS public.ph_eval_assignment_rules (
+    id bigint NOT NULL,
+    sheet_id text DEFAULT ''::text NOT NULL,
+    sheet_name text DEFAULT ''::text NOT NULL,
+    sheet_row_number integer NOT NULL,
+    assigned_to_raw text,
+    assignedto text NOT NULL,
+    warehousei text,
+    itemcode text,
+    contsize text,
+    commonname text,
+    locationcode text,
+    source text,
+    genusname text,
+    normalized jsonb DEFAULT '{}'::jsonb NOT NULL,
+    active boolean DEFAULT true NOT NULL,
+    imported_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ci_handover_eval_rule_id ON public.ph_eval_assignment_rules(id);
+ALTER TABLE public.ph_eval_assignment_rules ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.ph_eval_assignment_rules FROM public, anon, authenticated;
+GRANT ALL ON public.ph_eval_assignment_rules TO service_role;
+
 CREATE TABLE IF NOT EXISTS public.ph_inventory_edit_requests (
     id text NOT NULL,
     status text DEFAULT 'Eval Update Needed'::text NOT NULL,

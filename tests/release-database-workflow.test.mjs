@@ -26,6 +26,24 @@ test('handover CI includes the production flyer row type before compiling the wo
   assert.ok(workflow.indexOf('20261001215507_ci_scheduled_handover_fixture.sql') < workflow.indexOf('cp supabase/migrations/20261001215508_scheduled_handover_005.sql'));
 });
 
+test('handover CI includes every assignment target and the production Eval rule schema', () => {
+  const fixture = fs.readFileSync(new URL('../supabase/ci/scheduled_handover_fixture.sql', import.meta.url), 'utf8');
+  const baseline = fs.readFileSync(new URL('../supabase/migrations/20260929200000_production_baseline.sql', import.meta.url), 'utf8');
+  const expected = baseline.match(/CREATE TABLE public\.ph_eval_assignment_rules \([\s\S]*?\n\);/)[0]
+    .replace('CREATE TABLE public.', 'CREATE TABLE IF NOT EXISTS public.').replace(/\r\n/g, '\n');
+  assert.ok(fixture.replace(/\r\n/g, '\n').includes(expected));
+  assert.match(fixture, /ALTER TABLE public\.ph_eval_assignment_rules ENABLE ROW LEVEL SECURITY/);
+  assert.match(fixture, /REVOKE ALL ON public\.ph_eval_assignment_rules FROM public, anon, authenticated/);
+  const sources = [...workflow.matchAll(/cp (supabase\/(?:ci|archive_migrations|migrations)\/\S+\.sql) /g)]
+    .map(match => fs.readFileSync(new URL(`../${match[1]}`, import.meta.url), 'utf8')).join('\n');
+  const migration = fs.readFileSync(new URL('../supabase/migrations/20261001222228_handover_assignment_transfer_005.sql', import.meta.url), 'utf8');
+  const targets = [...migration.matchAll(/\('(ph_\w+)','\w+',array\[/g)].map(match => match[1]);
+  assert.ok(targets.length >= 7);
+  for (const table of new Set(targets)) {
+    assert.match(sources, new RegExp(`create table (?:if not exists )?public\\.${table}\\s*\\(`, 'i'), `${table} must exist in the isolated replay`);
+  }
+});
+
 test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', () => {
   // Assertion names are checked against pgTAP's public API documentation:
   // https://pgtap.org/documentation.html (plan, ok, is, isnt, throws_ok,

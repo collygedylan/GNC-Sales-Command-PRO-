@@ -97,6 +97,9 @@ async function prepareArchiveRow(page: Page, uid: string, requestResult: 'succes
 }
 
 async function swipe(page: Page, uid: string, direction: 'left' | 'right') {
+  // Each fixture represents a separate gesture. Let the real duplicate-event
+  // guard expire after the previous archive instead of racing it on fast CI.
+  await page.waitForFunction(() => (window as any).__requestArchiveTestEval('!shouldIgnoreDuplicateRequestTouchEvent()'));
   const debug = await page.evaluate(({ uid, direction }) => {
     const row = document.querySelector(`[data-request-uid="${uid}"]`)!;
     const endX = direction === 'left' ? 30 : 270;

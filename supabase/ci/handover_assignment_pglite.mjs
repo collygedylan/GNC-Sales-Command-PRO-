@@ -13,6 +13,8 @@ const transition = 'kayla_knepp_to_nelly_aguilar_20261002';
 const kayla = 'e2584b32-472c-4888-b592-394235050b5b';
 const nelly = '961b0a0f-11a6-4db5-b066-582f772ab8e7';
 const query = async sql => (await db.query(sql)).rows;
+const ciFixture = fs.readFileSync(new URL('./scheduled_handover_fixture.sql', import.meta.url), 'utf8');
+const evalRuleSchema = ciFixture.match(/CREATE TABLE IF NOT EXISTS public\.ph_eval_assignment_rules \([\s\S]*?\n\);/)[0];
 try {
   await db.exec(`
     create role anon; create role authenticated; create role service_role;
@@ -26,7 +28,7 @@ try {
     insert into private.scheduled_account_handover_v1 values('${transition}',now()+interval '1 day','${kayla}','${nelly}');
     insert into profiles(id,username,display_name) values('${nelly}','nelly_aguilar','Nelly Aguilar');
     insert into auth.users values('${nelly}','nelly_aguilar@greenleafnursery.com');
-    create table ph_eval_assignment_rules(id bigint primary key,assignedto text,active boolean);
+    ${evalRuleSchema}
     create table ph_warehouse_assigned_items(id bigint primary key,assignedto text,present_in_drive boolean);
     create table ph_inventory_edit_requests(id bigint primary key,assignedto text,status text,inventory_edit_completed_at timestamptz,photo_data_completed_at timestamptz);
     create table ph_master_inventory(unique_id text primary key,assignedto text,flyer_assigned text,date_completed timestamptz,eval_task_completed_at timestamptz,flyer_completed timestamptz);
@@ -48,7 +50,7 @@ try {
     assert.equal(rows[0].value,output);
   }
   await db.exec(`
-    insert into ph_eval_assignment_rules values(1,'kayla_knepp, dylan_collyge',true),(2,'kayla_knepp',false);
+    insert into ph_eval_assignment_rules(id,sheet_row_number,assignedto,active) values(1,1,'kayla_knepp, dylan_collyge',true),(2,2,'kayla_knepp',false);
     insert into ph_master_inventory values('open','Kayla Knepp','kayla_knepp',null,null,null),('done','kayla_knepp','kayla_knepp',now(),now(),now());
     insert into ph_reserves values('open','kayla_knepp','kayla_knepp',null,'',null),('done','kayla_knepp','kayla_knepp',null,'2026-09-30',null);
     insert into ph_master_inventory_user_assignments(master_unique_id,assignedto,assignment_source,source_assignedto)
@@ -87,7 +89,7 @@ try {
   assert.equal(shear.recipient_profiles.some(profile=>profile.profileId===kayla),false);
   assert.deepEqual(shear.recipient_usernames,['nelly_aguilar','dylan_collyge']);
   assert.deepEqual(shear.recipient_emails,['nelly_aguilar@greenleafnursery.com','dylan_collyge@greenleafnursery.com']);
-  await db.exec("insert into ph_eval_assignment_rules values(3,'kayla_knepp',true)");
+  await db.exec("insert into ph_eval_assignment_rules(id,sheet_row_number,assignedto,active) values(3,3,'kayla_knepp',true)");
   assert.equal((await query('select assignedto from ph_eval_assignment_rules where id=3'))[0].assignedto,'nelly_aguilar');
   assert.equal((await query("select count(*)::int n from private.scheduled_account_handover_audit_v1 where metadata->>'table'='ph_master_inventory' and metadata->>'id'='done'"))[0].n,0);
   console.log('Assignment SQL passed: exact identities, cutoff, bounded resume, idempotency, completed history, co-assignees, location and shear routing, future rules.');
