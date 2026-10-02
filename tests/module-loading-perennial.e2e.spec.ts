@@ -53,6 +53,7 @@ test('10,000-row reports reuse the index and local filters without low-stock req
     }));
     for (const key of ['master','warehouseAssignedItems']) {
       const state = getDatasetState(key); state.fullLoaded = state.initialLoaded = true; state.lastLoadedAt = 'fixture-1';
+      if (key === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
     }
     managerEvalReport2SelectedReportIds = ['not-in-f1']; activeManagerEvalReport2 = 'not-in-f1';
     let lowStockReads = 0, fullReads = 0;
@@ -199,7 +200,10 @@ test('cooperative fallback preserves exact report parity and drops obsolete work
     window.Worker = undefined;
     fullInventory = Array.from({length:10000}, (_,i)=>({ UNIQUE_ID:'fallback-'+i, ITEMCODE:'000'+(i%1000), GENUSNAME:'Acer', SEASON:i%2?'U1':'F1', SALEYEAR:27, S_LTS:10 }));
     warehouseAssignedItemsInventory = [];
-    for (const key of ['master','warehouseAssignedItems']) { const state = getDatasetState(key); state.fullLoaded = state.initialLoaded = true; }
+    for (const key of ['master','warehouseAssignedItems']) {
+      const state = getDatasetState(key); state.fullLoaded = state.initialLoaded = true;
+      if (key === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
+    }
     let ticks = 0;
     const timer = setInterval(()=>ticks++,1);
     const result = await buildManagerEvalReport2IndexAsync();
@@ -228,7 +232,7 @@ test('perennial assignment controls, exact pairs and explicit Unassigned survive
       { itemcode:'0002', genusname:'Acer', assignedto:null, zone_override_active:false, commonname:'Moved outside', locationcode:'E.01.001' }
     ].map(normalizeWarehouseAssignedItemRow);
     getDatasetState('warehouseAssignedItems').fullLoaded = true;
-    getDatasetState('master').fullLoaded = true;
+    const masterState = getDatasetState('master'); masterState.fullLoaded = true; masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
     canManageEvalItemcodeAssignments = () => true;
     canManageItemLowStockTargets = () => false;
     activeHomeTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;

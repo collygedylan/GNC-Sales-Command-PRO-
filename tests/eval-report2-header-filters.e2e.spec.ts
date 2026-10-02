@@ -23,6 +23,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
+    masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
@@ -128,6 +129,7 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
       masterState.initialLoaded = masterState.fullLoaded = true;
+      masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
       setManagerEvalReport2Filter('assignedto', 'dylan_collyge');

@@ -44,7 +44,10 @@ for (const username of ['madison_austin', 'madelyn_gray']) {
         { ITEMCODE: 'SM.003', SEASON: season, HOLDSTOPREASON: 'READY' }
       ], _fromCache: true };
       w.processAndLoadData(w.__marketingFixture);
-      w.hydrateDatasetLoadState(Object.fromEntries(['master', 'warehouseAssignedItems', 'cavAvBlankKeys'].map(key => [key, { initialLoaded: true, fullLoaded: true }])));
+      w.hydrateDatasetLoadState(Object.fromEntries(['master', 'warehouseAssignedItems', 'cavAvBlankKeys'].map(key => [key, {
+        initialLoaded: true, fullLoaded: true,
+        ...(key === 'master' ? { fieldCoverage: 'full', rowCompleteness: 'complete' } : {})
+      }])));
       w.applyRolePermissions();
       w.syncTaskSelectorState();
       const state = w.buildResolvedTaskState();

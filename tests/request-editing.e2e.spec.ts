@@ -111,8 +111,8 @@ test('Request input and save timing with a complete inventory', async ({ page, b
   await page.waitForTimeout(1500);
   if (await page.locator('#request-open-info-modal').isVisible()) await page.locator('#request-open-info-ok').click();
   await expect(page.locator('#req-comments')).toBeVisible();
-  await page.waitForFunction(() => window.eval("getDatasetState('master').fullLoaded && fullInventory.length === 9366"));
-  // fullLoaded can precede metadata verification and its display commit. Finish
+  await page.waitForFunction(() => window.eval("getDatasetState('master').rowCompleteness === 'complete' && fullInventory.length === 9366"));
+  // Complete compact rows can precede metadata verification and its display commit. Finish
   // that startup work before measuring a continuous typing burst: otherwise the
   // fixture transport pauses between early keys long enough to trigger valid
   // idle autosaves, despite pressSequentially requesting a 30ms cadence.

@@ -567,6 +567,25 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
     assert.equal(ctx.createProductionCoreLiveAdapter('master', 'browse').projection, 'browse');
 });
 
+test('foreground full-master consumers keep live refreshes full without widening ordinary browse views', () => {
+    const ctx = { Array };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'production-workflow'), 'full');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'managers', { surfaces: ['managers:eval-reports-2'] }), 'full');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'managers', { surfaces: ['managers:eval-reports'] }), 'full');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'drive'), 'browse');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'av'), 'browse');
+    assert.equal(ctx.getProductionCoreLiveProjection('requests', 'production-workflow'), 'browse');
+    for (const view of ['sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up', 'advertisement', 'grower', 'shear-list', 'weather-hold', 'reports']) {
+        assert.equal(ctx.getProductionCoreLiveProjection('master', view), 'full', `${view} retains its full snapshot during live refresh`);
+    }
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'sales-inventory'), 'browse');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'sales-inventory', { surfaces: ['sales-inventory:counting'] }), 'full');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'request', { surfaces: ['request:pending'] }), 'browse');
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'request', { surfaces: ['request:eval-work'] }), 'full');
+});
+
 test('inventory read metadata must exactly match the requested browse or full contract', () => {
     const ctx = { String, Array, window: { AgMetricInventoryList: inventoryContract } };
     vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
@@ -637,6 +656,24 @@ test('an explicit full coordinator read does not turn later ordinary refreshes i
     await ctx.ensureDatasetLoaded('master', 'full', { force: true });
     await ctx.ensureDatasetLoaded('master', 'initial', { force: true });
     assert.deepEqual(projections, ['full', 'browse']);
+});
+
+test('detail hydration applies only to compact master rows, never Request or other source identities', () => {
+    let full = false;
+    const ctx = { String, isMasterFullProjectionReady: () => full };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('needsMasterDetailHydration'), ctx);
+    assert.equal(ctx.needsMasterDetailHydration({ SOURCE_TABLE: 'ph_master_inventory', UNIQUE_ID: 'shared-id' }), true);
+    assert.equal(ctx.needsMasterDetailHydration({ source_table: 'ph_master_inventory', unique_id: 'shared-id' }), true);
+    for (const table of ['ph_active_request', 'ph_request_history', 'ph_reserves', 'ph_soc_master', 'ph_cav_inventory']) {
+        assert.equal(ctx.needsMasterDetailHydration({ SOURCE_TABLE: table, UNIQUE_ID: 'shared-id' }), false, table);
+    }
+    assert.equal(ctx.needsMasterDetailHydration(null), false);
+    assert.equal(ctx.needsMasterDetailHydration({ UNIQUE_ID: 'unknown-source' }), false);
+    full = true;
+    assert.equal(ctx.needsMasterDetailHydration({ SOURCE_TABLE: 'ph_master_inventory' }), false);
+    assert.match(extractAppFunction('openDetail'), /needsMasterDetailHydration\(resolveDetailItemBySource\(uid, resolvedSourceView, openOptions\)\)/);
+    assert.match(extractAppFunction('openInventoryEditRequestModal'), /needsMasterDetailHydration\(findInventoryEditMockItemByUid\(uid\)\)/);
 });
 
 test('master detail hydration selects exactly one full row inside a stable permission and revision fence', async () => {

@@ -12,7 +12,8 @@ for (const width of [320, 390, 460]) {
         { UNIQUE_ID:'grower-row-b', ITEMCODE:'GROWER.1', COMMONNAME:'Test Rose', CONTSIZE:'#3', LOCATIONCODE:'A.01', LOTCODE:'27.F2', SEASON:'F1', SALEYEAR:27, PTRAVAILABLE:7, PTRONHAND:9 },
         { UNIQUE_ID:'grower-row-c', ITEMCODE:'GROWER.1', COMMONNAME:'Test Rose', CONTSIZE:'#3', LOCATIONCODE:'B.02', LOTCODE:'27.F1', SEASON:'F1', SALEYEAR:27, PTRAVAILABLE:3, PTRONHAND:4 }
       ], _fromCache: true });
-      getDatasetState('master').initialLoaded = getDatasetState('master').fullLoaded = true;
+      const masterState = getDatasetState('master');
+      masterState.initialLoaded = masterState.fullLoaded = true; masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
       canUseGrowerScoutView = () => true;
       const host = document.createElement('div'); host.id='grower-density-host';
       host.style.cssText='position:fixed;inset:0;z-index:2147483647;box-sizing:border-box;padding:8px;overflow:auto;background:#061b13';

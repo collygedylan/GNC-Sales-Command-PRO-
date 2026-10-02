@@ -34974,6 +34974,31 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
         }
 
+        function getProductionCoreLiveProjection(key, viewId, context = {}) {
+            if (key !== 'master') return 'browse';
+            const surfaces = Array.isArray(context.surfaces) ? context.surfaces : [];
+            // These foreground workflows consume full source rows while open.
+            // Keep ordinary list browsing compact; returning to Drive must not
+            // make a wider snapshot request sticky across navigation.
+            const fullViewIds = new Set([
+                'reports', 'sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up',
+                'advertisement', 'grower', 'shear-list', 'weather-hold', 'production-workflow'
+            ]);
+            const fullSurfaces = new Set([
+                'sales-inventory:counting', 'request:eval-work', 'request:av-check', 'request:moves',
+                'request:recount', 'request:shear-list', 'request:shear-test', 'dialog:item-inquiry',
+                'dialog:shear', 'managers:eval-reports', 'managers:eval-reports-2',
+                'managers:assigned-items-export', 'managers:moves', 'managers:inventory-checks',
+                'managers:approval', 'managers:inventory-checks-approvals', 'managers:move-up-approvals',
+                'managers:move-down-approvals', 'managers:hold-release-approvals', 'managers:recount-approvals',
+                'managers:ncr-approvals', 'managers:not-on-inventory-approvals', 'managers:shear-approvals',
+                'managers:season-settings', 'managers:av-blanks-photo-bypass', 'managers:shortage-cancel',
+                'managers:block-clearing', 'managers:sales-reps', 'managers:season-priority', 'managers:crop-roll'
+            ]);
+            if (fullViewIds.has(viewId) || surfaces.some((surface) => fullSurfaces.has(surface))) return 'full';
+            return 'browse';
+        }
+
         function getProductionLiveSyncContext() {
             const accessReady = appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale
                 && appAccessSnapshotState.username === getRequestCapabilityUsernameKey(currentUser);
@@ -34988,7 +35013,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!productionLiveSyncSideAdapters) productionLiveSyncSideAdapters = createProductionLiveSyncSideAdapters();
             const foregroundContext = { ...context, surfaces: context.surfaces.filter(id => !id.startsWith('badge:')) };
             const descriptors = (targetView, targetContext) => [
-                ...registry.getCoreKeys(targetView, targetContext).filter((key) => !RETIRED_DATASET_KEYS.has(key)).map((key) => createProductionCoreLiveAdapter(key, 'browse')),
+                ...registry.getCoreKeys(targetView, targetContext).filter((key) => !RETIRED_DATASET_KEYS.has(key))
+                    .map((key) => createProductionCoreLiveAdapter(key, getProductionCoreLiveProjection(key, targetView, targetContext))),
                 ...productionLiveSyncSideAdapters.getViewAdapters(targetView, targetContext)
             ];
             const adapters = descriptors(view, foregroundContext);
@@ -40240,6 +40266,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function isMasterFullProjectionReady() {
             const state = getDatasetState('master');
             return !!(state.fullLoaded && state.fieldCoverage === 'full');
+        }
+
+        function needsMasterDetailHydration(item) {
+            return !!item && !isMasterFullProjectionReady()
+                && String(item.SOURCE_TABLE || item.source_table || '').trim().toLowerCase() === 'ph_master_inventory';
         }
 
         async function ensureMasterFullProjection(actionLabel = 'opening full row details') {
@@ -51108,7 +51139,7 @@ let avTopControlsRenderToken = 0;
         function openInventoryEditRequestModal(uid = '', options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             const editRecordId = String(safeOptions.existingRecordId || '').trim();
-            if (!editRecordId && uid && !safeOptions.__masterDetailRow && !isMasterFullProjectionReady() && findItemByUniqueId(uid)) {
+            if (!editRecordId && uid && !safeOptions.__masterDetailRow && needsMasterDetailHydration(findInventoryEditMockItemByUid(uid))) {
                 const owner = getSupabaseReadIdentityScope();
                 const sourceView = getCurrentVisibleViewId();
                 showToast('Loading Row Details', 'Verifying complete inventory fields before opening the editor.');
@@ -107134,7 +107165,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 lastView ||
                 'drive'
             ).trim();
-            if (!openOptions.__masterDetailRow && !isMasterFullProjectionReady() && findItemByUniqueId(uid)) {
+            if (!openOptions.__masterDetailRow && needsMasterDetailHydration(resolveDetailItemBySource(uid, resolvedSourceView, openOptions))) {
                 const owner = getSupabaseReadIdentityScope();
                 const sourceViewAtRequest = currentViewBeforeOpen;
                 void loadExactMasterDetailRow(uid).then((row) => {

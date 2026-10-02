@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 test('deployed shell footer opens cold and warm views and returns from Menu with native input', async ({ page, baseURL, isMobile }) => {
   const appOrigin = new URL(baseURL!).origin;
@@ -51,7 +52,7 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
           && Object.keys(body).sort().join(',') === 'action,operation,params'
           && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
           && Object.keys(body.params).length === 0)
-          || (body?.action === 'dataset_read' && ['request_queue', 'dock_item', 'dock_issue', 'dock_allocations'].includes(body.dataset)
+          || (body?.action === 'dataset_read' && ['request_queue', 'dock_item', 'dock_issue', 'dock_allocations', 'soc', 'reserves', 'cav'].includes(body.dataset)
             && Object.keys(body).sort().join(',') === 'action,dataset,params'
             && body.params && typeof body.params === 'object' && !Array.isArray(body.params)
             && Number.isInteger(body.params.limit) && body.params.limit >= 1 && body.params.limit <= 500
@@ -59,6 +60,25 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
             && (!body.params.projection || ['default', 'signature', 'ids'].includes(body.params.projection))
             && Array.isArray(body.params.filters || []) && Array.isArray(body.params.anyOf || []) && Array.isArray(body.params.order || [])
             && Object.keys(body.params).every((key) => ['limit', 'offset', 'projection', 'filters', 'anyOf', 'order'].includes(key))));
+      const inventoryParams = body?.params;
+      const knownMasterPageRead = request.method() === 'POST'
+        && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && url.pathname === '/functions/v1/app-api'
+        && !request.headers()['idempotency-key']
+        && body?.action === 'inventory_read' && body.operation === 'master_page'
+        && Object.keys(body).sort().join(',') === 'action,operation,params'
+        && inventoryParams && typeof inventoryParams === 'object' && !Array.isArray(inventoryParams)
+        && inventoryParams.dataset === 'master'
+        && ['browse', 'full', 'initial', 'initial_base'].includes(inventoryParams.projection)
+        && Number.isInteger(inventoryParams.limit) && inventoryParams.limit >= 1 && inventoryParams.limit <= 500
+        && Number.isInteger(inventoryParams.offset) && inventoryParams.offset >= 0
+        && Object.keys(inventoryParams).every((key) => ['dataset', 'projection', 'limit', 'offset'].includes(key));
+      if (knownMasterPageRead) {
+        blockedReadOnlyAppApiCalls.push('inventory_read:master_page');
+        const result = inventoryReadFixture.readMasterPage([], inventoryParams);
+        return route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ ok: true, data: result }) });
+      }
       if (knownReadOnlyAppApiCall) {
         blockedReadOnlyAppApiCalls.push(`${body.action}:${body.operation || body.dataset}`);
         if (body.action === 'dataset_read') {
@@ -70,7 +90,7 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
           body: JSON.stringify({ ok: true, data: { filename: null, last_updated: null } }) });
       }
       const actionSummary = url.pathname === '/functions/v1/app-api'
-        ? `:${body?.action || 'unclassified'}${body?.dataset ? `:${body.dataset}` : ''}` : '';
+        ? `:${body?.action || 'unclassified'}${body?.operation ? `:${body.operation}` : ''}${body?.dataset ? `:${body.dataset}` : ''}` : '';
       attemptedMutations.push(`${request.method()}:${url.pathname}${actionSummary}`);
       await route.abort('blockedbyclient');
     } else if (new URL(request.url()).origin !== appOrigin) {
@@ -105,6 +125,10 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
       const state = getDatasetState(key);
       state.initialLoaded = state.fullLoaded = true;
       state.lastLoadedAt = new Date().toISOString();
+      if (key === 'master') {
+        state.fieldCoverage = 'full';
+        state.rowCompleteness = 'complete';
+      }
     });
     document.getElementById('view-login').style.setProperty('display', 'none', 'important');
     document.getElementById('app-wrapper').classList.remove('hidden');
@@ -178,5 +202,5 @@ test('deployed shell footer opens cold and warm views and returns from Menu with
   ]);
   expect(attemptedMutations.filter((request) => !expectedBlockedBackgroundRequests.has(request)),
     'navigation must not attempt a business-data mutation').toEqual([]);
-  expect(blockedReadOnlyAppApiCalls.filter((call) => !['inventory_read:source_freshness', 'dataset_read:request_queue', 'dataset_read:dock_item', 'dataset_read:dock_issue', 'dataset_read:dock_allocations'].includes(call))).toEqual([]);
+  expect(blockedReadOnlyAppApiCalls.filter((call) => !['inventory_read:source_freshness', 'inventory_read:master_page', 'dataset_read:request_queue', 'dataset_read:dock_item', 'dataset_read:dock_issue', 'dataset_read:dock_allocations', 'dataset_read:soc', 'dataset_read:reserves', 'dataset_read:cav'].includes(call))).toEqual([]);
 });

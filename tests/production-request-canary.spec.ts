@@ -245,6 +245,10 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
+    // These three canary rows are the complete inventory snapshot for this
+    // isolated fixture; edit actions now require explicit full field coverage.
+    masterState.fieldCoverage = 'full';
+    masterState.rowCompleteness = 'complete';
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};

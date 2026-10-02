@@ -220,6 +220,7 @@ test('Assigned Items preserves the real navigation state and a focused editor du
     managerEvalAssignmentSelection = new Set([buildManagerEvalAssignmentKey('000239', 'Rosa')]);
     Object.keys(DATASET_DEFINITIONS).forEach(key => {
       const state = getDatasetState(key); state.initialLoaded = state.fullLoaded = true; state.lastLoadedAt = new Date().toISOString();
+      if (key === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
     });
     evalAssignableUsersDirectoryResolved = true;
     canAccessView = () => true;

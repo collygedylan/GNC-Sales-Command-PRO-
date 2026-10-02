@@ -16,7 +16,10 @@ for (const width of [390, 1280]) {
         { UNIQUE_ID: 'multi-b1', ITEMCODE: 'MULTI.B', GENUSNAME: 'Rosa', COMMONNAME: 'Beta Multi', CONTSIZE: '#3', SEASON: 'U2', SALEYEAR: 27, LOTCODE: '27.U2', PRIORITY: '', LOCATIONCODE: 'C.01.001', PTRONHAND: 30, PTRAVAILABLE: 25 },
         { UNIQUE_ID: 'multi-c1', ITEMCODE: 'MULTI.C', GENUSNAME: 'Rosa', COMMONNAME: 'Excluded Multi', CONTSIZE: '#3', SEASON: 'U3', SALEYEAR: 27, LOTCODE: '27.U3', DESIGITEM: 'SHFT', LOCATIONCODE: 'D.01.001', PTRONHAND: 30 }
       ], warehouseAssignedItemsData: ['MULTI.A','MULTI.B','MULTI.C'].map((item, i) => ({ UNIQUE_ID: 'multi-assigned-' + i, ITEMCODE: item, GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' })), _fromCache: true });
-      for (const name of ['master', 'warehouseAssignedItems']) { getDatasetState(name).initialLoaded = getDatasetState(name).fullLoaded = true; }
+      for (const name of ['master', 'warehouseAssignedItems']) {
+        const state = getDatasetState(name); state.initialLoaded = state.fullLoaded = true;
+        if (name === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
+      }
       invalidateManagerEvalReport2Cache();
       managersSearchTerm = '';
       managerEvalReport2AssignedToFilter = 'all';
@@ -147,7 +150,10 @@ for (const width of [390, 1280]) {
         { UNIQUE_ID:'shift-f1', ITEMCODE:'SHIFT.U3', GENUSNAME:'Miscanthus', COMMONNAME:'Shift Excluded', CONTSIZE:'#3', SEASON:'F1', SALEYEAR:27, S_LTS:5, LOCATIONCODE:'F.01.001', LOTCODE:'27.F1', PTRONHAND:14, PTRAVAILABLE:14 },
         { UNIQUE_ID:'shift-u3', ITEMCODE:'SHIFT.U3', GENUSNAME:'Miscanthus', COMMONNAME:'Shift Excluded', CONTSIZE:'#3', SEASON:'U3', SALEYEAR:27, DESIGITEM:'SHFT', S_LTS:999, LOCATIONCODE:'F.01.002', LOTCODE:'27.U3', PTRONHAND:6, PTRAVAILABLE:6 }
       ], warehouseAssignedItemsData: ['LOW.A','LOW.B','LOW.C','LOW.D','NOT.LOW','SHIFT.U3'].map((item, index) => ({ UNIQUE_ID:'low-assign-' + index, ITEMCODE:item, GENUSNAME:['Rosa','Acer','Thuja','Panicum','Ilex','Miscanthus'][index], ASSIGNEDTO:'dylan_collyge' })), _fromCache:true });
-      for (const name of ['master','warehouseAssignedItems']) { getDatasetState(name).initialLoaded = getDatasetState(name).fullLoaded = true; }
+      for (const name of ['master','warehouseAssignedItems']) {
+        const state = getDatasetState(name); state.initialLoaded = state.fullLoaded = true;
+        if (name === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
+      }
       managersSearchTerm = '';
       managerEvalReport2AssignedToFilter = 'all';
       managerEvalReport2SeasonFilters = new Set();
@@ -338,7 +344,10 @@ test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to Locatio
       { UNIQUE_ID:'assign-drill-a1', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
       { UNIQUE_ID:'assign-drill-b1', ITEMCODE:'DRILL.B1', GENUSNAME:'Thuja', ASSIGNEDTO:'dylan_collyge' }
     ], _fromCache:true });
-    for (const name of ['master','warehouseAssignedItems']) { getDatasetState(name).initialLoaded = getDatasetState(name).fullLoaded = true; }
+    for (const name of ['master','warehouseAssignedItems']) {
+      const state = getDatasetState(name); state.initialLoaded = state.fullLoaded = true;
+      if (name === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
+    }
     invalidateManagerEvalReport2Cache();
     setManagerEvalReport2Reports(['u1','u2']);
     setManagerEvalReport2BrowseMode('plant');

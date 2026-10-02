@@ -722,7 +722,12 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           control.backgroundMasterReads++;
           const requestMasterRows = holdNextBackgroundMasterRead && heldMasterRows ? heldMasterRows : control.master;
           const dataset = String(params.dataset || ''), limit = Math.min(500, Math.max(1, Number(params.limit) || 250)), offset = Math.max(0, Number(params.offset) || 0);
-          let rows = requestMasterRows.map(row => ({ ...row }));
+          // Inventory browse fixtures can contain thousands of rows. Copy the
+          // array before sorting, but keep immutable row values shared; cloning
+          // every wide row for every 500-row page made browser-load checks
+          // spend their timeout constructing fixture data instead of testing
+          // the app's paged read behavior.
+          let rows = requestMasterRows.slice();
           if (operation === 'master_page' && dataset === 'avOpen') rows = rows.filter(row => ['F1', 'S1', 'U1', 'U2'].includes(String(row.season || '').toUpperCase()));
           if (operation === 'master_page' && dataset === 'lookup') {
             if (params.uniqueId) rows = rows.filter(row => row.unique_id === params.uniqueId);
@@ -731,11 +736,16 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
             if (params.lotCode) rows = rows.filter(row => String(row.lotcode || '') === params.lotCode);
             if (params.source) rows = rows.filter(row => String(row.source || '') === params.source);
           }
+          if (operation === 'master_page' && params.season) rows = rows.filter(row => String(row.season || '') === String(params.season));
           if (operation === 'master_delta') rows = rows.filter(row => String(row.last_updated || '') > String(params.since || ''));
           if (operation === 'po_detail') rows = rows.filter(row => String(row.itemcode || '') === params.itemCode && String(row.contsize || '') === params.contSize);
           if (operation === 'recount_queue') rows = [];
           if (operation === 'ncr_queue' || operation === 'not_on_inventory_queue') rows = rows.filter(row => String(row.app_tab_assignment || '').toLowerCase() === String(params.assignment || '').toLowerCase());
-          rows.sort((a, b) => String(a.unique_id || '').localeCompare(String(b.unique_id || '')));
+          let sorted = true;
+          for (let index = 1; index < rows.length; index++) {
+            if (String(rows[index - 1].unique_id || '').localeCompare(String(rows[index].unique_id || '')) > 0) { sorted = false; break; }
+          }
+          if (!sorted) rows.sort((a, b) => String(a.unique_id || '').localeCompare(String(b.unique_id || '')));
           const total = rows.length;
           if (holdNextBackgroundMasterRead) {
             holdNextBackgroundMasterRead = false;
@@ -757,12 +767,13 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
           const pageRows = rows.slice(offset, offset + limit);
           if (Number(options.holdBackgroundMasterMs) > 0) await new Promise(resolve => setTimeout(resolve, Number(options.holdBackgroundMasterMs)));
           if (operation === 'master_page') {
-            const projected = inventoryReadFixture.readMasterPage(rows, {
+            const projected = inventoryReadFixture.readMasterPage(pageRows, {
               dataset, projection: params.projection, uniqueId: params.uniqueId, itemCode: params.itemCode,
               locationCode: params.locationCode, lotCode: params.lotCode, source: params.source,
-              season: params.season, offset, limit
+              season: params.season, offset: 0, limit
             });
-            return json(route, { ok: true, data: projected });
+            return json(route, { ok: true, data: { ...projected, total, offset, limit,
+              hasMore: offset + projected.rows.length < total } });
           }
           return json(route, { ok: true, data: { rows: pageRows, total, offset, limit, hasMore: offset + pageRows.length < total } });
         }

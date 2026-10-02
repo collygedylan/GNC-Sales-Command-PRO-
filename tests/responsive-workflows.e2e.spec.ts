@@ -294,6 +294,8 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     const assignmentState = getDatasetState('warehouseAssignedItems');
     state.initialLoaded = true;
     state.fullLoaded = true;
+    state.fieldCoverage = 'full';
+    state.rowCompleteness = 'complete';
     assignmentState.initialLoaded = true;
     assignmentState.fullLoaded = false;
     invalidateManagerEvalReport2Cache();
@@ -404,6 +406,8 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
+    masterState.fieldCoverage = 'full';
+    masterState.rowCompleteness = 'complete';
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
@@ -520,6 +524,8 @@ test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Lo
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
+    masterState.fieldCoverage = 'full';
+    masterState.rowCompleteness = 'complete';
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
@@ -602,6 +608,8 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
       const assignmentState = getDatasetState('warehouseAssignedItems');
       masterState.initialLoaded = true;
       masterState.fullLoaded = true;
+      masterState.fieldCoverage = 'full';
+      masterState.rowCompleteness = 'complete';
       assignmentState.initialLoaded = true;
       assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
@@ -945,6 +953,8 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
       masterState.initialLoaded = masterState.fullLoaded = true;
+      masterState.fieldCoverage = 'full';
+      masterState.rowCompleteness = 'complete';
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       managerEvalReport2LoadState = { loading: false, error: '', promise: null, lastLoadedAt: new Date().toISOString(), lastSourceUpdatedAt: new Date().toISOString() };
       invalidateManagerEvalReport2Cache();
@@ -1089,6 +1099,8 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
       masterState.initialLoaded = masterState.fullLoaded = true;
+      masterState.fieldCoverage = 'full';
+      masterState.rowCompleteness = 'complete';
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
       setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
