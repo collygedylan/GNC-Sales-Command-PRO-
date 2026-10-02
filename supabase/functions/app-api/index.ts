@@ -20,7 +20,7 @@ import {
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-gnc-session, x-app-session",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-gnc-session, x-app-session, x-request-id",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
   "Cache-Control": "private, no-store",
@@ -3314,7 +3314,7 @@ async function handleInventoryRead(
   }
 }
 
-const AURA_V2_OPERATIONS = new Set(["catalog", "count", "maximum", "lots", "validate_draft"]);
+const AURA_V2_OPERATIONS = new Set(["catalog", "count", "maximum", "lots", "validate_draft", "match"]);
 const AURA_V2_METRICS = new Set(["ptravailable", "ptronhand"]);
 const AURA_V2_SEASONS = new Set(["S1", "F1", "U1", "U2", "U3", "X", "Y", "Z"]);
 
@@ -3329,10 +3329,11 @@ export function auraInventoryV2ProfileMatches(
 }
 
 export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
-  const allowed = new Set(["action", "operation", "itemcode", "contSize", "locationCode", "metric", "openStockOnly", "quantity", "season", "cursor", "limit", "lines"]);
+  const allowed = new Set(["action", "operation", "itemcode", "commonName", "contSize", "locationCode", "metric", "openStockOnly", "quantity", "season", "cursor", "limit", "lines"]);
   if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("AURA_V2_REQUEST_INVALID");
   const operation = String(payload.operation || "").trim().toLowerCase();
   const itemcode = String(payload.itemcode || "").trim();
+  const commonName = String(payload.commonName || "").normalize("NFKC").trim().replace(/\s+/g, " ");
   const contSize = String(payload.contSize || "").trim();
   const locationCode = String(payload.locationCode || "").trim();
   const metric = String(payload.metric || "ptravailable").trim().toLowerCase();
@@ -3346,7 +3347,7 @@ export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
   if (!AURA_V2_OPERATIONS.has(operation) || !AURA_V2_METRICS.has(metric)
     || typeof openStockOnly !== "boolean"
     || (season !== null && !AURA_V2_SEASONS.has(season))
-    || itemcode.length > 100 || contSize.length > 48 || locationCode.length > 64
+    || itemcode.length > 100 || commonName.length > 160 || contSize.length > 48 || locationCode.length > 64
     || !Number.isInteger(limit) || limit < 1 || limit > 500
     || (cursor !== null && (!cursor || typeof cursor !== "object" || Array.isArray(cursor)))) {
     throw new Error("AURA_V2_REQUEST_INVALID");
@@ -3355,10 +3356,11 @@ export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
   if ((operation === "catalog" && cursor !== null && cursorKeys !== "contsize,itemcode")
     || (operation === "count" && cursor !== null && cursorKeys !== "unique_id")
     || (operation === "lots" && cursor !== null && cursorKeys !== "priority,unique_id")
-    || (["maximum", "validate_draft"].includes(operation) && cursor !== null)) {
+    || (["maximum", "validate_draft", "match"].includes(operation) && cursor !== null)) {
     throw new Error("AURA_V2_CURSOR_INVALID");
   }
   if (["count", "lots"].includes(operation) && !itemcode) throw new Error("AURA_V2_ITEMCODE_REQUIRED");
+  if (operation === "match" && !commonName) throw new Error("AURA_V2_NAME_REQUIRED");
   if (operation === "lots" && (quantity == null || !Number.isInteger(quantity) || quantity < 1 || quantity > 999_999)) throw new Error("AURA_V2_QUANTITY_INVALID");
   if (operation !== "lots" && quantity != null && (quantity <= 0 || quantity > 999_999)) throw new Error("AURA_V2_QUANTITY_INVALID");
   if (operation === "validate_draft") {
@@ -3373,7 +3375,7 @@ export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
   } else if (Array.isArray(lines) && lines.length) {
     throw new Error("AURA_V2_REQUEST_INVALID");
   }
-  return { operation, itemcode, contSize, locationCode, metric, openStockOnly, quantity, season, cursor, limit, lines };
+  return { operation, itemcode, commonName, contSize, locationCode, metric, openStockOnly, quantity, season, cursor, limit, lines };
 }
 
 const AURA_INVENTORY_FIELDS = "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,ptronhand,s_lts,season,saleyear,desigitem,app_tab_assignment";
@@ -3383,7 +3385,9 @@ const AURA_INVENTORY_PAGE_SIZE = 500;
 export async function handleAuraInventoryV2(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
+  options: { signal?: AbortSignal; requestId?: string } = {},
 ) {
+  const requestId = String(options.requestId || crypto.randomUUID()).slice(0, 96);
   if (!session) return errorResponse("Sign in with Dylan’s active account to use AURA.", 401, { code: "AURA_AUTH_REQUIRED" });
   if (session.mustChangePassword) return errorResponse("Complete the password change before using AURA.", 403, { code: "AURA_PROFILE_INACTIVE" });
   if (!session.authUserId || normalizeUsername(session.username || "") !== "dylan_collyge") {
@@ -3392,6 +3396,7 @@ export async function handleAuraInventoryV2(
   let actor: Record<string, unknown>;
   try { actor = await resolveActiveSessionProfile(session); }
   catch { return errorResponse("Dylan’s active account profile could not be verified.", 403, { code: "AURA_PROFILE_INACTIVE" }); }
+  if (options.signal?.aborted) return errorResponse("AURA inventory lookup was cancelled.", 499, { code: "AURA_REQUEST_CANCELLED", requestId });
   if (!auraInventoryV2ProfileMatches(session, actor)) {
     return errorResponse("AURA is available only to Dylan’s active account.", 403, { code: "AURA_FORBIDDEN" });
   }
@@ -3403,20 +3408,37 @@ export async function handleAuraInventoryV2(
     return errorResponse("AURA inventory request is invalid.", 400, { code });
   }
 
+  const startedAt = performance.now();
+  let timeoutStage = "database";
+  const deadline = input.operation === "match" ? AbortSignal.timeout(4_500) : null;
+  const rpcSignal = deadline && options.signal
+    ? AbortSignal.any([options.signal, deadline])
+    : deadline || options.signal;
   try {
-    const { data, error } = await supabase.rpc("aura_inventory_v2_read_v1", {
-      p_operation: input.operation,
-      p_itemcode: input.itemcode || null,
-      p_contsize: input.contSize || null,
-      p_locationcode: input.locationCode || null,
-      p_metric: input.metric,
-      p_open_stock_only: input.openStockOnly,
-      p_quantity: input.quantity,
-      p_expected_season: input.season,
-      p_cursor: input.cursor,
-      p_limit: input.limit,
-      p_lines: input.lines,
-    });
+    timeoutStage = "database";
+    const rpc = input.operation === "match"
+      ? supabase.rpc("aura_inventory_v2_match_v1", {
+        p_common_name: input.commonName,
+        p_contsize: input.contSize || null,
+        p_locationcode: input.locationCode || null,
+        p_metric: input.metric,
+        p_open_stock_only: input.openStockOnly,
+        p_expected_season: input.season,
+      })
+      : supabase.rpc("aura_inventory_v2_read_v1", {
+        p_operation: input.operation,
+        p_itemcode: input.itemcode || null,
+        p_contsize: input.contSize || null,
+        p_locationcode: input.locationCode || null,
+        p_metric: input.metric,
+        p_open_stock_only: input.openStockOnly,
+        p_quantity: input.quantity,
+        p_expected_season: input.season,
+        p_cursor: input.cursor,
+        p_limit: input.limit,
+        p_lines: input.lines,
+      });
+    const { data, error } = await (rpcSignal ? rpc.abortSignal(rpcSignal) : rpc);
     if (error) throw error;
     if (!data || typeof data !== "object" || data.ok !== true) {
       return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: String(data?.code || "AURA_V2_RESULT_INVALID"), data });
@@ -3444,8 +3466,11 @@ export async function handleAuraInventoryV2(
     if (selectedIds.length !== data.rows.length || selectedIds.length > 50) {
       return errorResponse("AURA could not safely prepare those inventory rows. Review the selection again.", 409, { code: "AURA_V2_DRAFT_RESULT_INVALID" });
     }
-    const { data: fullRows, error: fullRowsError } = await supabase.from("ph_master_inventory")
+    const fullRowsQuery = supabase.from("ph_master_inventory")
       .select(INVENTORY_MASTER_FULL_FIELDS).in("unique_id", selectedIds).limit(50);
+    const { data: fullRows, error: fullRowsError } = await (options.signal
+      ? fullRowsQuery.abortSignal(options.signal)
+      : fullRowsQuery);
     if (fullRowsError) throw fullRowsError;
     const fullInventoryRows = (Array.isArray(fullRows) ? fullRows : []) as unknown as Record<string, unknown>[];
     const freshById = new Map(fullInventoryRows.map(row => [String(row.unique_id || ""), row]));
@@ -3482,12 +3507,27 @@ export async function handleAuraInventoryV2(
     } });
   } catch (error) {
     const failure = error as { code?: string; message?: string };
-    recordHandledError("app-api", "aura_inventory_v2", error, 503);
-    if (failure.code === "42501") return errorResponse("AURA cannot read the selected inventory with the active account permissions.", 403, { code: "AURA_DATA_FORBIDDEN" });
-    const code = String(failure.message || failure.code || "AURA_V2_UNAVAILABLE");
-    const invalid = failure.code === "22023" || code.startsWith("AURA_V2_");
+    const durationMs = Math.round(performance.now() - startedAt);
+    const cancelled = options.signal?.aborted === true;
+    const statementTimedOut = failure.code === "57014";
+    const timedOut = (deadline?.aborted === true || statementTimedOut) && !cancelled;
+    const invalid = failure.code === "22023" || String(failure.message || "").startsWith("AURA_V2_");
+    const status = cancelled ? 499 : timedOut ? 504 : failure.code === "42501" ? 403 : invalid ? 400 : 503;
+    const sqlState = /^[0-9A-Z]{5}$/.test(String(failure.code || "")) ? String(failure.code) : null;
+    if (!cancelled) {
+      recordHandledError("app-api", `aura_inventory_${input.operation}`, timedOut ? { code: "aura_match_timeout" } : error, status, {
+        requestId,
+        durationMs,
+        sqlState,
+        timeoutStage: timedOut ? (statementTimedOut ? "database_statement" : timeoutStage) : null,
+      });
+    }
+    if (cancelled) return errorResponse("AURA inventory lookup was cancelled.", 499, { code: "AURA_REQUEST_CANCELLED", requestId });
+    if (timedOut) return errorResponse("Inventory matching took too long. Your command is ready to retry.", 504, { code: "AURA_V2_TIMEOUT", requestId, sqlState: sqlState || null, retryable: false });
+    if (failure.code === "42501") return errorResponse("AURA cannot read the selected inventory with the active account permissions.", 403, { code: "AURA_DATA_FORBIDDEN", requestId, sqlState });
+    const code = sqlState || (String(failure.message || "").startsWith("AURA_V2_") ? String(failure.message) : "AURA_V2_UNAVAILABLE");
     return errorResponse(invalid ? "AURA inventory request is invalid or no longer current." : "AURA inventory is temporarily unavailable.", invalid ? 400 : 503, {
-      code: code.slice(0, 120), ...(invalid ? {} : { retryable: true }),
+      code: code.slice(0, 120), requestId, sqlState, ...(invalid ? {} : { retryable: true }),
     });
   }
 }
@@ -4503,7 +4543,10 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
-  if (action === "aura_inventory_v2") return await handleAuraInventoryV2(session, payload);
+  if (action === "aura_inventory_v2") return await handleAuraInventoryV2(session, payload, {
+    signal: req.signal,
+    requestId: req.headers.get("x-request-id") || undefined,
+  });
   if (action === "aura_inventory_search") return await handleAuraInventorySearch(session, payload);
   if (action === "aura_scout_log") return await handleAuraScoutLog(session, payload);
   if (["aura_chat_send", "alpha_chat_list", "alpha_chat_page", "alpha_chat_mark_read", "alpha_timeoff_list", "alpha_timeoff_request", "alpha_timeoff_approve"].includes(action)) {

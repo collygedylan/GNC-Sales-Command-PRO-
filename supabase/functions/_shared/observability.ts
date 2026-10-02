@@ -24,22 +24,32 @@ function emitLog(level: "info" | "error", value: Record<string, unknown>) {
       duration_ms: value.duration_ms,
       release: value.release,
       error_code: value.error_code,
+      sqlstate: value.sqlstate,
+      timeout_stage: value.timeout_stage,
       truncated: true,
     });
   }
   (level === "error" ? console.error : console.info)(serialized);
 }
 
-export function recordHandledError(functionName: string, action: string, error: unknown, status = 500) {
+export function recordHandledError(
+  functionName: string,
+  action: string,
+  error: unknown,
+  status = 500,
+  diagnostics: { requestId?: string; durationMs?: number; sqlState?: string | null; timeoutStage?: string | null } = {},
+) {
   emitLog("error", {
-    request_id: crypto.randomUUID(),
+    request_id: String(diagnostics.requestId || crypto.randomUUID()).slice(0, 96),
     function: String(functionName || "unknown").slice(0, 64),
     action: String(action || "request").slice(0, 64),
     status,
-    duration_ms: 0,
+    duration_ms: Number.isFinite(diagnostics.durationMs) ? Math.max(0, Math.round(diagnostics.durationMs!)) : 0,
     retry_count: 0,
     release: "V2026.08.16.14",
     error_code: normalizeErrorCode(error),
+    sqlstate: /^[0-9A-Z]{5}$/.test(String(diagnostics.sqlState || "")) ? diagnostics.sqlState : null,
+    timeout_stage: String(diagnostics.timeoutStage || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || null,
     handled: true,
   });
 }

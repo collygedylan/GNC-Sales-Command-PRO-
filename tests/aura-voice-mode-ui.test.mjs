@@ -22,6 +22,7 @@ function browserEnvironment({ available = "available", includeRecognition = true
     }
     start() { this.started = true; this.onstart?.(); }
     abort() { this.aborted = true; }
+    stop() { this.stopped = true; }
   }
   if (includeRecognition) {
     Object.defineProperty(dom.window, "SpeechRecognition", { configurable: true, value: FakeRecognition });
@@ -145,9 +146,9 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
       return { items: [{ key: "party-1", customerName, label: customerName }], hasMore: false };
     },
     requestV2: async body => {
-      if (body.operation === "catalog") {
+      if (body.operation === "match") {
         catalogCalls.push(body);
-        return { complete: true, hasMore: false, rows: [{ itemcode: "SKU1", commonname: "Limelight", contsize: "3DP" }] };
+        return { complete: true, exactMatch: true, additionalMatches: false, rows: [{ matchKind: "exact", itemcode: "SKU1", commonname: "Limelight", contsize: "3DP" }] };
       }
       if (body.operation === "lots") {
         lotCalls.push(body);
@@ -168,6 +169,7 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
     const startEvent = result("Start a request for Megan");
     duplicate(startEvent);
     duplicate(startEvent);
+    first.onend();
     await flush();
     assert.deepEqual(resolvedCustomers, ["Megan"]);
     assert.match(panel.querySelector(".aura-message").textContent, /Request started for Megan/i);
@@ -178,6 +180,7 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
     await flush();
     assert.equal(env.engines.length, 2, "the next utterance requires a fresh mic tap");
     env.engines[1].onresult(result("50 three deep pee Limelight"));
+    env.engines[1].onend();
     await flush();
     assert.deepEqual(lotCalls.map(call => call.quantity), [50]);
     assert.match(panel.querySelector(".aura-message").textContent, /Added 50 3DP Limelight/i);
@@ -188,6 +191,7 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
     await flush();
     assert.equal(env.engines.length, 3, "each additional item requires another mic tap");
     env.engines[2].onresult(result("25 three deep pee Limelight"));
+    env.engines[2].onend();
     await flush();
     assert.deepEqual(lotCalls.map(call => call.quantity), [50, 75]);
     assert.match(panel.querySelector(".aura-message").textContent, /Updated the request to 75 3DP Limelight/i);
@@ -211,6 +215,7 @@ test("resuming a browser-mode request draft does not start the microphone", asyn
     mic.click();
     await flush();
     env.engines[0].onresult(result("Start a request for Megan"));
+    env.engines[0].onend();
     await flush();
 
     // Simulate the app hiding and returning: the request remains paused, and
@@ -256,6 +261,7 @@ test("browser busy state reports a closed mic and completion does not hide activ
     mic.click();
     await flush();
     env.engines[0].onresult(result("send a message to Megan saying The bay is ready"));
+    env.engines[0].onend();
     await flush();
 
     assert.equal(mic.getAttribute("aria-pressed"), "false", "a query may be processing, but browser capture is closed");
@@ -362,5 +368,110 @@ test("voice controls retain neutral accessible labels and 44px minimum targets",
   } finally {
     widget.destroy();
     void env.restore();
+  }
+});
+
+function enter(command) {
+  document.querySelector('.aura-inputbar input').value = command;
+  document.querySelector('.aura-inputbar').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+}
+const babyGem = { itemcode: 'BG', commonname: 'Baby Gem® Boxwood', contsize: '3DP', matchKind: 'exact' };
+const exactBabyGem = { complete: true, exactMatch: true, additionalMatches: false, rows: [babyGem] };
+
+test('browser previews every correction, then submits interim-only text once on normal end', async () => {
+  const env = browserEnvironment({ available: 'unavailable' });
+  const sent = [];
+  const widget = mountAuraWidget({ isAuthorized: () => true, sendMessage: async intent => { sent.push(intent); return { ok: true, recipientName: 'Megan' }; } });
+  try {
+    const panel = openPanel(); panel.querySelector('.aura-mic').click(); await flush();
+    const engine = env.engines[0];
+    engine.onresult(result('send a message to Megan saying Bay one', false));
+    assert.equal(panel.querySelector('input').value, 'send a message to Megan saying Bay one');
+    engine.onresult(result('send a message to Megan saying Bay two', false));
+    assert.equal(panel.querySelector('input').value, 'send a message to Megan saying Bay two');
+    assert.equal(sent.length, 0);
+    engine.onspeechend(); assert.equal(engine.stopped, true);
+    const end = engine.onend; end(); end(); await flush();
+    assert.equal(sent.length, 1); assert.equal(sent[0].message, 'Bay two');
+    assert.equal(env.engines.length, 1);
+  } finally { widget.destroy(); await env.restore(); }
+});
+
+test('bounded matching uses one lookup, authoritative count, and scoped 30-second metadata cache', async () => {
+  const env = browserEnvironment(); const calls = [];
+  const widget = mountAuraWidget({ isAuthorized: () => true, requestV2: async body => {
+    calls.push(body); return body.operation === 'match' ? exactBabyGem : { complete: true, total: 450, season: 'U2', rows: [] };
+  } });
+  try {
+    openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+    assert.deepEqual(calls.map(x => x.operation), ['match', 'count']);
+    assert.equal(calls[0].commonName, 'baby gem boxwood'); assert.equal(calls[0].contSize, '3DP'); assert.equal(calls[0].openStockOnly, true);
+    assert.match(document.querySelector('.aura-message').textContent, /450/);
+    enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+    assert.deepEqual(calls.map(x => x.operation), ['match', 'count', 'count']);
+    enter('How many 3DP baby gem boxwood in U1'); await flush();
+    assert.equal(calls.filter(x => x.operation === 'match').length, 2);
+  } finally { widget.destroy(); await env.restore(); }
+});
+
+test('fuzzy matches require selection and wrong sizes or incomplete matches never assert quantities', async () => {
+  for (const data of [
+    { ...exactBabyGem, exactMatch: false, rows: [{ ...babyGem, matchKind: 'fuzzy' }] },
+    { ...exactBabyGem, rows: [{ ...babyGem, contsize: '#3' }] },
+    { ...exactBabyGem, complete: false },
+    { ...exactBabyGem, rows: [] },
+  ]) {
+    const env = browserEnvironment(); const calls = [];
+    const widget = mountAuraWidget({ isAuthorized: () => true, requestV2: async body => { calls.push(body); return data; } });
+    try {
+      openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+      assert.deepEqual(calls.map(x => x.operation), ['match']);
+      if (data.rows[0]?.matchKind === 'fuzzy') assert.equal(document.querySelectorAll('.aura-choice').length, 1);
+      else assert.ok(document.querySelector('.aura-retry'));
+    } finally { widget.destroy(); await env.restore(); }
+  }
+});
+
+test('five-second command budget spans matching and quantity, rejects late results, and offers Retry', async t => {
+  const env = browserEnvironment();
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
+  const calls = []; let resolveMatch, resolveCount;
+  const widget = mountAuraWidget({ isAuthorized: () => true, requestV2: (body, options) => {
+    calls.push({ body, options });
+    if (calls.length > 2) return Promise.resolve(body.operation === 'match' ? exactBabyGem : { complete: true, total: 450, rows: [] });
+    return new Promise(resolve => { if (body.operation === 'match') resolveMatch = resolve; else resolveCount = resolve; });
+  } });
+  try {
+    openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+    t.mock.timers.tick(3000); resolveMatch(exactBabyGem); await flush();
+    assert.equal(calls.length, 2); assert.equal(calls[0].options.deadlineAt, calls[1].options.deadlineAt);
+    t.mock.timers.tick(2000); await flush();
+    assert.equal(calls[1].options.signal.aborted, true);
+    assert.match(document.querySelector('.aura-message').textContent, /five seconds/);
+    assert.equal(document.querySelector('input').value, 'How many 3DP baby gem boxwood are in open stock');
+    resolveCount({ complete: true, total: 999, rows: [] }); await flush();
+    assert.doesNotMatch(document.querySelector('.aura-message').textContent, /999/);
+    document.querySelector('.aura-retry').click(); await flush();
+    assert.equal(calls[2].options.explicitRetry, true);
+    assert.match(document.querySelector('.aura-message').textContent, /450/);
+  } finally { widget.destroy(); t.mock.timers.reset(); await env.restore(); }
+});
+
+test('hide and sign-out cancel stalled matching without Retry or late UI mutation', async () => {
+  for (const reason of ['hide', 'signout']) {
+    const env = browserEnvironment(); let authorized = true, resolveRead; let signal;
+    const widget = mountAuraWidget({ isAuthorized: () => authorized, requestV2: (_, options) => {
+      signal = options.signal; return new Promise(resolve => { resolveRead = resolve; });
+    } });
+    try {
+      openPanel(); enter('How many 3DP baby gem boxwood'); await flush();
+      if (reason === 'hide') {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+        document.dispatchEvent(new window.Event('visibilitychange'));
+      } else { authorized = false; widget.destroy(); }
+      await flush(); assert.equal(signal.aborted, true);
+      resolveRead(exactBabyGem); await flush();
+      assert.equal(document.querySelectorAll('.aura-retry').length, 0);
+    } finally { widget.destroy(); await env.restore(); }
   }
 });

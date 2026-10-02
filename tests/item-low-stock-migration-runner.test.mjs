@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -139,7 +139,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -171,7 +171,7 @@ test('HR migration contract verifies partitioned labor tables and the scheduled 
 });
 
 test('archive-only health repair remains private and fails closed before publication', async () => {
-  assert.equal(releaseDatabaseMigrations.at(-1), evalDeliveryArchiveHealthMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-2), evalDeliveryArchiveHealthMigrationName);
   const contract = migrationContractQuery(evalDeliveryArchiveHealthMigrationName);
   assert.match(contract, /request_folder_archive_only_completed_v1/);
   assert.match(contract, /not prosecdef and provolatile='s'/);
@@ -194,6 +194,15 @@ test('archive-only health repair remains private and fails closed before publica
       assert.equal(calls.at(-1), 'rollback');
     }
   }
+});
+
+test('AURA name-match migration requires the private bounded RPC, four-second limit, and indexes', () => {
+  const contract = migrationContractQuery(auraInventoryMatchMigrationName);
+  assert.match(contract, /aura_inventory_v2_match_v1/);
+  assert.match(contract, /statement_timeout=4s/);
+  assert.match(contract, /idx_ph_master_inventory_aura_name_trgm/);
+  assert.match(contract, /idx_ph_master_inventory_aura_season_size/);
+  assert.ok(releaseDatabaseMigrations.indexOf(auraInventoryMatchMigrationName) > releaseDatabaseMigrations.indexOf(auraInventoryV2MigrationName));
 });
 
 test('audit repair is registered after the AURA migration and verifies identity and baseline completeness', async () => {

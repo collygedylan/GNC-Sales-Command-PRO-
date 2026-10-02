@@ -176,3 +176,17 @@ test('Eval Work realtime channel has teardown on hidden state, identity change, 
   assert.match(html.slice(scopeStart, scopeEnd), /evalWorkRealtimeScope === scope[\s\S]*unsubscribeEvalWorkRealtime\(/,
     'changing the authenticated scope removes the old channel before subscribing again');
 });
+
+test('AURA uses one attempt while shared cooldown and terminal-denial suppression remain intact', async () => {
+  const ctx = makeGuardHarness(); let attempts = 0;
+  const key = 'aura_inventory_v2:match-test';
+  const read = () => { attempts++; throw Object.assign(new Error('unavailable'), { status: 503 }); };
+  await assert.rejects(ctx.runDedupeSupabaseRead(key, read, { maxAttempts: 1 })); assert.equal(attempts, 1);
+  await assert.rejects(ctx.runDedupeSupabaseRead(key, read, { maxAttempts: 1 })); assert.equal(attempts, 1);
+  await assert.rejects(ctx.runDedupeSupabaseRead(key, read, { maxAttempts: 1, explicitRetry: true })); assert.equal(attempts, 2);
+  const denied = 'aura_inventory_v2:denied';
+  const deny = () => { attempts++; throw Object.assign(new Error('denied'), { code: '42501', status: 403 }); };
+  await assert.rejects(ctx.runDedupeSupabaseRead(denied, deny, { maxAttempts: 1 }));
+  await assert.rejects(ctx.runDedupeSupabaseRead(denied, deny, { maxAttempts: 1 })); assert.equal(attempts, 3);
+  await assert.rejects(ctx.runDedupeSupabaseRead(denied, deny, { maxAttempts: 1, explicitRetry: true })); assert.equal(attempts, 4);
+});

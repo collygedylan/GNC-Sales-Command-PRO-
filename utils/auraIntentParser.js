@@ -15,6 +15,7 @@ function readInventoryScope(input) {
   if (metric === "ptronhand" && /\b(?:PTRAVAILABLE|available)\b/i.test(text)) return null;
   const openStockOnly = /\bopen\s+stock\b/i.test(text);
   text = text
+    .replace(/\b(?:are|is)\s+(?=(?:in|at)\s+(?:open\s+stock|stock|season\b|location\b|U[123]\b|[FS]1\b|[A-Z]\.\d))/gi, " ")
     .replace(/\b(?:(?:in|at|for)\s+)?(?:season\s+)?(?:U1|U2|U3|F1|S1)\b/gi, " ")
     .replace(/\b(?:(?:in|at|for)\s+)?season\s+[XYZ]\b/gi, " ")
     .replace(/\b(?:(?:in|at|for)\s+)?(?:location\s+)?[A-Z]\.\d{1,3}(?:\.\d{1,3}){0,2}\b/gi, " ")

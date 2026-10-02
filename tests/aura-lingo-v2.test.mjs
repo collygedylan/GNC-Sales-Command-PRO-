@@ -104,3 +104,11 @@ test('drafts are limited to 50 distinct SKU lines',()=>{
   for(let i=0;i<50;i++)state=reduceAuraConversation(state,{type:'LINE_VERIFIED',line:{...line,itemcode:String(i),unique_id:String(i)}});
   assert.throws(()=>reduceAuraConversation(state,{type:'LINE_VERIFIED',line:{...line,itemcode:'51'}}),/50/);
 });
+
+test('Baby Gem inventory grammar strips the question verb without touching customer or chat text', () => {
+  const intent = parseAuraIntent('How many 3DP baby gem boxwood are in open stock');
+  assert.equal(intent.commonName, 'baby gem boxwood'); assert.equal(intent.contSize, '3DP'); assert.equal(intent.openStockOnly, true);
+  assert.equal(parseAuraIntent('How many 3DP Baby Gem® Boxwood are in U2').commonName, 'Baby Gem® Boxwood');
+  assert.equal(parseAuraIntent('Start a request for We Are In Stock').customerName, 'We Are In Stock');
+  assert.equal(parseAuraIntent('send a message to Megan saying We are in open stock').message, 'We are in open stock');
+});

@@ -19,7 +19,7 @@ for (const width of [320, 390, 430]) {
         ], hasMore: false }),
         requestV2: async (body: any) => {
           globals.auraCalls.push(body);
-          if (body.operation === 'catalog') return { rows: [product], complete: true, hasMore: false, season: 'F1', salesYear: 27 };
+          if (body.operation === 'match') return { rows: [{ ...product, matchKind: 'exact' }], complete: true, exactMatch: true, additionalMatches: false, season: 'F1', salesYear: 27 };
           if (body.operation === 'lots') return { rows: [{ ...product, unique_id: 'lot-1', locationcode: 'A.07.000', lotcode: '27.F1', ptravailable: 120, ptronhand: 140 }], complete: true, hasMore: false };
           throw new Error('Unexpected fixture operation');
         },
@@ -51,7 +51,7 @@ for (const width of [320, 390, 430]) {
     await page.getByRole('button', { name: 'Review request', exact: true }).click();
     await expect.poll(() => page.evaluate(() => (window as any).auraDraft?.lines?.[0]?.quantity)).toBe(75);
     expect(await page.evaluate(() => (window as any).auraDraft.party.key)).toBe('acme-south');
-    expect(await page.evaluate(() => (window as any).auraCalls.filter((call: any) => call.operation === 'catalog').length)).toBe(1);
+    expect(await page.evaluate(() => (window as any).auraCalls.filter((call: any) => call.operation === 'match').length)).toBe(1);
     await page.evaluate(() => (window as any).auraHandle.destroy());
     await expect(page.locator('[data-aura-root]')).toHaveCount(0);
   });
