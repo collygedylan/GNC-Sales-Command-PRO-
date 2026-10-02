@@ -1,7 +1,7 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.01.009";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.01.009";
-import { matchAuraProduct, canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.01.009";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.01.009";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.01.010";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.01.010";
+import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.01.010";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.01.010";
 
 const STYLE_ID = "aura-voice-widget-styles";
 const FALLBACK = "I didn’t quite catch that, Dylan. Run that by me again?";
@@ -72,8 +72,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   let recognitionEpoch = null;
   let lastConsumedResultIndex = -1;
   let conversation = createAuraConversation();
-  let catalogCache = null;
-  let catalogCacheAt = 0;
+  const matchCache = new Map();
+  const commandBudgets = new WeakMap();
+  let explicitReadRetry = false;
+  let completedBrowserRecognitionId = null;
   let busy = false;
   let operationEpoch = 0;
   let inactivityTimer = null;
@@ -110,6 +112,14 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       renderStatus();
     },
     onRecognition: handleRecognition,
+    onTranscript: (text, metadata = {}) => {
+      if (metadata.recognitionMode !== "browser" || !current()) return;
+      if (completedBrowserRecognitionId === metadata.recognitionId) return;
+      completedBrowserRecognitionId = metadata.recognitionId;
+      const command = String(text || "").replace(/^.*?\bhey\s+aura\b[\s,:-]*/i, "").trim();
+      input.value = command;
+      if (command && !busy) void submitCommand(command, { source: "voice" });
+    },
   });
 
   const panel = make("section", "aura-panel");
@@ -225,7 +235,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     return { text, spans };
   }
 
-  function handleRecognition({ results = [], text = "", resultIndex = 0, epoch = null, recognitionId = null, recognitionMode: resultMode = null } = {}) {
+  function handleRecognition({ results = [], text = "", previewText = null, resultIndex = 0, epoch = null, recognitionId = null, recognitionMode: resultMode = null } = {}) {
     if (!current()) return;
     epoch = recognitionId ?? epoch;
     if (recognitionEpoch !== epoch) {
@@ -239,7 +249,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     const freshResults = results.slice(freshStart);
     if (results.length && !freshResults.length) return;
     const stream = joinedResults(freshResults);
-    const fullText = stream.text || String(text ?? "").trim();
+    const fullText = resultMode === "browser" ? String(previewText ?? text).trim() : stream.text || String(text ?? "").trim();
+    if (resultMode === "browser") input.value = fullText.replace(/^.*?\bhey\s+aura\b[\s,:-]*/i, "").trim();
     if (!fullText) return;
 
     let commandText = "";
@@ -273,6 +284,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     }
 
     const numericChoice = conversation.auraMode === "CHOOSING" && /^[1-5]$/.test(commandText);
+    input.value = commandText;
+    // Browser results are previews. The service completes the whole turn on
+    // speech end, including an explicitly marked interim-only fallback.
+    if (resultMode === "browser") return;
     if (!commandText || (commandText.length < 2 && !numericChoice)) return;
     const commandSpans = stream.spans.filter((span) => span.end > commandStart);
     if (!commandSpans.length || !commandSpans.every((span) => span.isFinal)) return;
@@ -317,16 +332,70 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     return true;
   }
 
-  function newSignal() {
+  function newSignal({ inventory = false } = {}) {
     commandController?.abort();
     commandController = new AbortController();
+    const signal = commandController.signal;
+    if (inventory) {
+      const controller = commandController;
+      const budget = { explicitRetry: explicitReadRetry, deadlineAt: Date.now() + 5000, stage: "preparation", operation: "inventory",
+        requestId: globalThis.crypto?.randomUUID?.() || `aura-${Date.now().toString(36)}` };
+      budget.timer = setTimeout(() => {
+        controller.abort(Object.assign(new Error("Inventory search exceeded five seconds. Your command and draft are still here. Tap Retry."),
+          { name: "TimeoutError", code: "AURA_DEADLINE_EXCEEDED", stage: budget.stage }));
+      }, 5000);
+      signal.addEventListener("abort", () => clearTimeout(budget.timer), { once: true });
+      commandBudgets.set(signal, budget);
+      explicitReadRetry = false;
+    }
     operationEpoch += 1;
     busy = true;
     session.setBusy(true);
-    return commandController.signal;
+    return signal;
+  }
+
+  // Settle even if a provider ignores cancellation; forward the signal as well.
+  function awaitCommand(work, signal) {
+    return new Promise((resolve, reject) => {
+      const abort = () => reject(signal.reason || new DOMException("Cancelled", "AbortError"));
+      if (signal.aborted) { abort(); return; }
+      signal.addEventListener("abort", abort, { once: true });
+      Promise.resolve().then(() => {
+        if (signal.aborted) throw signal.reason || new DOMException("Cancelled", "AbortError");
+        return work();
+      }).then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+    });
+  }
+
+  function readOptions(signal) {
+    const budget = commandBudgets.get(signal);
+    return { signal, explicitRetry: budget?.explicitRetry === true, deadlineAt: budget?.deadlineAt, requestId: budget?.requestId,
+      onStage: stage => { if (budget) budget.stage = stage; } };
+  }
+
+  function showCommandError(error, signal, retry = () => submitCommand(currentCommandText, { source: "retry" })) {
+    if (!current() || commandController?.signal !== signal) return;
+    const timeout = signal.reason?.code === "AURA_DEADLINE_EXCEEDED";
+    if (signal.aborted && !timeout) return;
+    const failure = timeout ? signal.reason : error;
+    const budget = commandBudgets.get(signal);
+    const diagnostic = { operation: budget?.operation || "inventory", requestId: failure?.requestId || budget?.requestId || "",
+      durationMs: budget ? Math.max(0, Date.now() - (budget.deadlineAt - 5000)) : 0,
+      status: Number(failure?.status || 0), sqlState: /^[0-9A-Z]{5}$/.test(String(failure?.sqlState || failure?.code || "")) ? (failure.sqlState || failure.code) : null,
+      timeoutStage: timeout || failure?.name === "TimeoutError" || failure?.code === "57014" || Number(failure?.status) === 504 ? budget?.stage : null };
+    console.warn("AURA read failed", diagnostic);
+    window.__gncOpsPilot?.captureFailure?.("aura_read", new Error(JSON.stringify(diagnostic)));
+    input.value = currentCommandText;
+    setMessage(failure?.message || "The inventory lookup failed. Your draft is still here. Retry when ready.");
+    content.querySelectorAll(".aura-retry").forEach(node => node.remove());
+    const button = make("button", "aura-action aura-retry", "Retry");
+    button.type = "button";
+    button.addEventListener("click", () => { if (!busy && current()) { button.remove(); explicitReadRetry = true; void retry(); } });
+    content.append(button);
   }
 
   function finishSignal(signal) {
+    clearTimeout(commandBudgets.get(signal)?.timer);
     if (commandController?.signal !== signal) return;
     busy = false;
     session.setBusy(false);
@@ -335,43 +404,6 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       renderStatus();
     }
     renderCartControls();
-  }
-
-  async function loadAuraCatalog(signal) {
-    if (catalogCache && Date.now() - catalogCacheAt < 30_000) return catalogCache;
-    if (typeof requestV2 !== "function") throw new Error("The inventory intelligence service is not connected.");
-    const rows = [];
-    let cursor = null;
-    const seenCursors = new Set();
-    let complete = true;
-    let season = null, salesYear = null;
-    do {
-      if (rows.length >= 10_000) { complete = false; break; }
-      const page = await requestData({ operation: "catalog", cursor, limit: Math.min(500, 10_000 - rows.length) }, signal);
-      if (!current() || signal.aborted) throw new DOMException("Aborted", "AbortError");
-      if (page?.ok === false) throw new Error(page?.error?.message || page?.message || "The inventory catalog could not be loaded.");
-      const data = page?.data ?? page;
-      if (!Array.isArray(data?.rows)) throw new Error("The inventory catalog response was incomplete.");
-      if (data.rows.length > 500 || (data.hasMore === true && data.rows.length === 0)) complete = false;
-      rows.push(...data.rows);
-      complete = complete && data.complete === true;
-      if (season != null && data.season != null && season !== data.season) complete = false;
-      if (salesYear != null && data.salesYear != null && salesYear !== data.salesYear) complete = false;
-      season = data.season ?? season;
-      salesYear = data.salesYear ?? salesYear;
-      if (!complete) break;
-      if (!data.hasMore) break;
-      if (rows.length >= 10_000) { complete = false; break; }
-      cursor = data.nextCursor;
-      if (!cursor) { complete = false; break; }
-      const cursorKey = JSON.stringify(cursor);
-      if (seenCursors.has(cursorKey)) { complete = false; break; }
-      seenCursors.add(cursorKey);
-    } while (rows.length < 10_000);
-    if (!complete) throw new Error("The inventory catalog is incomplete. I’m not guessing at a match; narrow the item name or retry.");
-    catalogCache = { rows, complete: true, season, salesYear };
-    catalogCacheAt = Date.now();
-    return catalogCache;
   }
 
   function renderChoiceButtons(items, onChoose) {
@@ -427,12 +459,29 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   }
 
   async function matchProduct(intent, signal) {
-    const catalog = await loadAuraCatalog(signal);
-    const result = matchAuraProduct({ commonName: intent.commonName, contSize: intent.contSize }, catalog);
+    const query = { operation: "match", commonName: intent.commonName, contSize: intent.contSize ? canonicalAuraSize(intent.contSize) : null,
+      season: intent.season || undefined, locationCode: intent.locationCode || undefined,
+      metric: metricFor(intent), openStockOnly: intent.type === "ADD_REQUEST_ITEM" || intent.openStockOnly === true };
+    const key = JSON.stringify(query);
+    const cached = matchCache.get(key);
+    const response = cached && cached.expires > Date.now() ? cached.data : await requestData(query, signal);
+    const data = response?.data ?? response;
+    if (data?.complete !== true || !Array.isArray(data.rows) || data.rows.length > 5) {
+      throw new Error("Matching data is incomplete. Narrow the plant name or retry; no quantity has been assumed.");
+    }
+    const candidates = data.rows;
+    if (candidates.some(row => !row?.itemcode || !row.commonname || !row.contsize ||
+        (query.contSize && canonicalAuraSize(row.contsize) !== query.contSize))) {
+      throw new Error("Matching returned an invalid item identity. No item was selected.");
+    }
+    matchCache.set(key, { data: response, expires: Date.now() + 30_000 });
+    if (matchCache.size > 50) matchCache.delete(matchCache.keys().next().value);
+    const exact = data.exactMatch === true && candidates.length === 1 && candidates[0].matchKind === "exact" && !data.additionalMatches;
+    const result = { kind: exact ? "match" : candidates.length ? "choose" : "none", item: candidates[0], candidates };
     if (result.kind === "choose") {
       pendingChoice = { intent };
       conversation = reduceAuraConversation(conversation, { type: "CHOICES", kind: "product", intent, items: result.candidates });
-      setMessage("I found a few close plant names. Choose the exact item and size, or say a number:");
+      setMessage(`${data.additionalMatches ? "More matches exist; narrow the name if yours is not shown. " : ""}Choose the exact item and size, or say a number:`);
       renderChoiceButtons(result.candidates, (index) => selectChoice(index));
       renderCartControls();
       return null;
@@ -480,14 +529,14 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     setMessage(reply); session.speak(reply);
   }
 
-  async function continueMatchedIntent(intent, match) {
-    const signal = newSignal();
+  async function continueMatchedIntent(intent, match, parentSignal = null) {
+    const signal = parentSignal || newSignal({ inventory: true });
     try {
       if (intent.type === "ADD_REQUEST_ITEM") await addVerifiedLine(intent, match, signal);
       else {
         const response = await requestData({ operation: "count", itemcode: match.itemcode, contSize: match.contsize,
           locationCode: intent.locationCode || undefined, season: intent.season || undefined,
-          metric: metricFor(intent), openStockOnly: intent.openStockOnly !== false, limit: 500 }, signal);
+          metric: metricFor(intent), openStockOnly: intent.openStockOnly === true, limit: 500 }, signal);
         const data = response?.data ?? response;
         if (response?.ok === false || data?.complete !== true || data.total == null || String(data.total).trim() === "" || !Number.isFinite(Number(data.total))) throw new Error(response?.error?.message || "The inventory count is incomplete, so I won’t guess.");
         const scope = `${intent.locationCode ? ` in ${intent.locationCode}` : ""} for ${intent.season || data.season || "the current season"}`;
@@ -496,17 +545,17 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         setMessage(reply); session.speak(reply);
         if (Array.isArray(data.rows) && data.rows.length) { showRows(data.rows); renderCartControls(); }
       }
-    } catch (error) { if (!signal.aborted) setMessage(error?.message || "AURA could not complete that request."); }
-    finally { finishSignal(signal); }
+    } catch (error) { showCommandError(error, signal, () => continueMatchedIntent(intent, match)); }
+    finally { if (!parentSignal) finishSignal(signal); }
   }
 
   async function reviewRequest() {
     if (busy || conversation.auraMode !== "BUILDING_REQUEST" || !conversation.party || !conversation.lines.length || typeof openDraft !== "function") { setMessage("Add an item before reviewing the request."); return; }
-    const signal = newSignal();
+    const signal = newSignal({ inventory: true });
     try {
       conversation = reduceAuraConversation(conversation, { type: "REVIEW" });
       renderCartControls();
-      const staged = await openDraft({ party: conversation.party, lines: conversation.lines }, { signal });
+      const staged = await awaitCommand(() => openDraft({ party: conversation.party, lines: conversation.lines }, readOptions(signal)), signal);
       if (!current() || signal.aborted) return;
       if (staged?.ok === false) throw new Error(staged.message || "The request could not be staged for review.");
       const message = staged?.message || (typeof staged === "string" ? staged : "Draft opened in Bloom Picker. Review it there before submitting.");
@@ -514,8 +563,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       conversation = reduceAuraConversation(conversation, { type: "HANDED_OFF" }); renderCartControls();
       togglePanel(false);
     } catch (error) {
-      if (!signal.aborted && current()) conversation = reduceAuraConversation(conversation, { type: "REVIEW_FAILED" });
-      if (!signal.aborted) setMessage(error?.message || "Draft review failed. Your request is still here.");
+      if (current() && commandController?.signal === signal && (!signal.aborted || signal.reason?.code === "AURA_DEADLINE_EXCEEDED")) conversation = reduceAuraConversation(conversation, { type: "REVIEW_FAILED" });
+      showCommandError(error, signal, reviewRequest);
     } finally { finishSignal(signal); }
   }
 
@@ -523,15 +572,17 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     if (typeof requestV2 !== "function") throw new Error("The inventory intelligence service is not connected.");
     const ownerSignal = signal || commandController?.signal;
     try {
-      const result = await requestV2(body, { signal: ownerSignal });
+      const budget = commandBudgets.get(ownerSignal);
+      if (budget) { budget.operation = body.operation; budget.stage = "queue"; }
+      const result = await awaitCommand(() => requestV2(body, readOptions(ownerSignal)), ownerSignal);
       if (ownerSignal?.aborted || !current() || commandController?.signal !== ownerSignal) throw new DOMException("AURA request is no longer current.", "AbortError");
       const status = Number(result?.status ?? result?.error?.status);
       const code = String(result?.code ?? result?.error?.code ?? "");
-      if ([401, 403].includes(status) || code === "42501") catalogCache = null;
+      if ([401, 403].includes(status) || code === "42501") matchCache.clear();
       return result;
     } catch (error) {
       const status = Number(error?.status ?? error?.statusCode ?? error?.context?.status);
-      if ([401, 403].includes(status) || String(error?.code ?? "") === "42501") catalogCache = null;
+      if ([401, 403].includes(status) || String(error?.code ?? "") === "42501") matchCache.clear();
       throw error;
     }
   }
@@ -540,9 +591,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   async function submitCommand(rawText, { source = "typed" } = {}) {
     if (!current()) return;
-    currentCommandText = String(rawText ?? "");
     const intent = parseAuraIntent(rawText, { auraMode: conversation.auraMode });
     if (busy && intent.type !== "CANCEL_REQUEST") return;
+    currentCommandText = String(rawText ?? "");
+    content.querySelectorAll(".aura-retry").forEach(node => node.remove());
     if (intent.type === "RESUME_REQUEST") {
       conversation = reduceAuraConversation(conversation, { type: "RESUME" });
       if (conversation.auraMode === "CHOOSING" && conversation.choice) renderChoiceButtons(conversation.choice.items, selectChoice);
@@ -634,17 +686,17 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       return;
     }
     if (intent.type === "ADD_REQUEST_ITEM" && acceptsAuraFollowUp(conversation)) {
-      const signal = newSignal();
+      const signal = newSignal({ inventory: true });
       setMessage("Matching the item and checking eligible lots…");
       try {
         const match = await matchProduct(intent, signal);
-        if (match && current() && !signal.aborted) await continueMatchedIntent(intent, match);
-      } catch (error) { if (!signal.aborted) setMessage(error?.message || "I couldn’t add that item."); }
+        if (match && current() && !signal.aborted) await continueMatchedIntent(intent, match, signal);
+      } catch (error) { showCommandError(error, signal); }
       finally { finishSignal(signal); }
       return;
     }
     if (intent.type === "CHECK_INVENTORY_MAX") {
-      const signal = newSignal();
+      const signal = newSignal({ inventory: true });
       const metric = metricFor(intent);
       setMessage(`Checking the largest ${intent.season || "current season"} ${metric === "ptronhand" ? "on-hand" : "available"} value…`);
       try {
@@ -658,17 +710,17 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         const scope = intent.locationCode ? ` in ${intent.locationCode}` : "";
         const reply = winner ? `The largest ${season}${scope} ${metricLabel} value is ${winner.commonname}, ${winner.contsize}: ${formatQuantity(winner.total)}${Number(data.tieCount) > 1 ? `, tied with ${Number(data.tieCount) - 1} other item${Number(data.tieCount) === 2 ? "" : "s"}` : ""}.` : `No complete inventory result was available for ${season}${scope}.`;
         setMessage(reply); session.speak(reply);
-      } catch (error) { if (!signal.aborted) setMessage(error?.message || "I couldn’t verify the maximum."); }
+      } catch (error) { showCommandError(error, signal); }
       finally { finishSignal(signal); }
       return;
     }
     if (intent.type === "CHECK_INVENTORY_COUNT" && requestV2) {
-      const signal = newSignal();
-      setMessage("Matching the item against the live catalog…");
+      const signal = newSignal({ inventory: true });
+      setMessage("Matching the item in live inventory…");
       try {
         const match = await matchProduct(intent, signal);
-        if (match && current() && !signal.aborted) await continueMatchedIntent(intent, match);
-      } catch (error) { if (!signal.aborted) setMessage(error?.message || "The inventory check failed."); }
+        if (match && current() && !signal.aborted) await continueMatchedIntent(intent, match, signal);
+      } catch (error) { showCommandError(error, signal); }
       finally { finishSignal(signal); }
       return;
     }
@@ -676,10 +728,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       setMessage("The inventory service is not connected yet. Your command is ready, but no data was requested.");
       return;
     }
-    const signal = newSignal();
+    const signal = newSignal({ inventory: true });
     setMessage("Checking the live inventory…");
     try {
-      const response = await requestInventory(intent, { signal });
+      const response = await awaitCommand(() => requestInventory(intent, readOptions(signal)), signal);
       if (!current() || signal.aborted) return;
       const data = response?.data ?? response;
       if (response?.ok === false || data?.ok === false) throw new Error(response?.error?.message || data?.error || "AURA could not verify this inventory request.");
@@ -712,8 +764,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       setMessage(rows.length === 1 ? `I found one ${noun}. Review the exact row below.` : `I found ${rows.length} ${noun}s. Choose the exact row before we continue.`);
       showRows(rows, intent.type === "order" ? "Review order" : "Select row", (row) => chooseRow(row));
     } catch (error) {
-      if (!current() || signal.aborted) return;
-      setMessage(error?.message || "The inventory check failed. No changes were made.");
+      showCommandError(error, signal);
     } finally { finishSignal(signal); }
   }
 
@@ -783,7 +834,6 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     event.preventDefault();
     const value = input.value.trim();
     if (!value) return;
-    input.value = "";
     submitCommand(value);
   }
   function onMicClick() {
@@ -832,7 +882,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     pendingIntent = null;
     pendingRows = [];
     selectedRow = null;
-    catalogCache = null;
+    matchCache.clear();
     idempotencyKeys.clear();
     conversation = createAuraConversation();
     input.value = "";

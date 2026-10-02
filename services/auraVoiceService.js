@@ -43,6 +43,7 @@ export function createAuraVoiceSession({
   let visibilityListening = false;
   let lastFinalTranscriptAt = 0;
   let activeRecognitionMode = null;
+  let browserFinalizationTimer = null;
 
   function emitState(status, message = "") {
     if (!destroyed) onState({ status, message, recognitionMode: activeRecognitionMode });
@@ -51,6 +52,11 @@ export function createAuraVoiceSession({
   function clearRestart() {
     if (restartTimer != null) clearTimeout(restartTimer);
     restartTimer = null;
+  }
+
+  function clearBrowserFinalization() {
+    if (browserFinalizationTimer != null) clearTimeout(browserFinalizationTimer);
+    browserFinalizationTimer = null;
   }
 
   function detachVisibility() {
@@ -73,6 +79,7 @@ export function createAuraVoiceSession({
     active.onresult = null;
     active.onerror = null;
     active.onend = null;
+    active.onspeechend = null;
     if (abort) {
       try { active.abort(); } catch { /* The browser may have ended the recognizer already. */ }
     }
@@ -80,17 +87,19 @@ export function createAuraVoiceSession({
 
   function stopRecognition() {
     clearRestart();
+    clearBrowserFinalization();
     listening = false;
     clearRecognition();
   }
 
-  function finishBrowserTurn(status = "idle", message = "") {
+  function finishBrowserTurn(status = "idle", message = "", { abort = true } = {}) {
     desiredListening = false;
     startAttempt += 1;
     generation += 1;
     clearRestart();
+    clearBrowserFinalization();
     listening = false;
-    clearRecognition();
+    clearRecognition({ abort });
     detachVisibility();
     emitState(status, message);
   }
@@ -261,6 +270,39 @@ export function createAuraVoiceSession({
       engine.interimResults = true;
       engine.maxAlternatives = 1;
       recognition = engine;
+      let browserFinalSegments = [];
+      let browserInterimSegments = [];
+      let browserSpeechEnded = false;
+      let browserTurnCompleted = false;
+
+      const completeBrowserTurn = (status = "idle", { abort = false } = {}) => {
+        if (browserTurnCompleted || selectedMode !== "browser" || destroyed || sessionGeneration !== generation || recognition !== engine) return;
+        browserTurnCompleted = true;
+        clearBrowserFinalization();
+        const finalText = browserFinalSegments.filter(Boolean).join(" ").trim();
+        const interimText = browserInterimSegments.filter(Boolean).join(" ").trim();
+        const text = finalText || interimText;
+        const completionSource = finalText ? "final" : text ? "interim_end" : null;
+        finishBrowserTurn(text ? "idle" : status, text
+          ? "One browser-recognized command captured. Tap the microphone to speak again."
+          : "No command was captured. Tap the microphone to try again, or type a command.", { abort });
+        if (!text) return;
+        const confidences = browserResultConfidences
+          .filter((value, index) => Boolean(browserFinalSegments[index]) && Number.isFinite(value));
+        const confidence = confidences.length ? Math.min(...confidences) : null;
+        lastFinalTranscriptAt = Date.now();
+        onTranscript(text, {
+          confidence,
+          isFinal: completionSource === "final",
+          completionSource,
+          recognitionMode: "browser",
+          lowConfidence: confidence != null && confidence < minimumConfidence,
+          recognitionId: sessionGeneration,
+          epoch: sessionGeneration,
+          processLocally: false,
+        });
+      };
+      let browserResultConfidences = [];
       engine.onstart = () => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
         if (!recognitionModeIsValid(engine, selectedMode)) {
@@ -280,55 +322,68 @@ export function createAuraVoiceSession({
           emitState("unavailable", "The selected recognition mode changed unexpectedly. Voice input stopped; tap the microphone to retry or type a command.");
           return;
         }
-        const results = Array.from(event.results || []).map((result) => {
+        const results = Array.from(event.results || []).map((result, index) => {
+          // Explicitly read the first alternative, including index zero. Some
+          // native SpeechRecognitionResult objects are only array-like.
           const alternative = result?.[0];
           return {
+            index,
             transcript: String(alternative?.transcript ?? "").trim(),
             isFinal: result?.isFinal === true,
-            confidence: Number.isFinite(alternative?.confidence) ? alternative.confidence : 1,
+            confidence: Number.isFinite(alternative?.confidence) ? alternative.confidence : null,
           };
         });
         const text = results.map((result) => result.transcript).filter(Boolean).join(" ").trim();
         const resultIndex = Number.isInteger(event.resultIndex) ? event.resultIndex : Math.max(0, results.length - 1);
         const changed = results.slice(resultIndex);
         const changedText = changed.map((result) => result.transcript).filter(Boolean).join(" ").trim();
-        const browserFinal = selectedMode === "browser" ? changed.find(result => result.isFinal) : null;
-        if (!text && !browserFinal) return;
-        const finalConfidence = browserFinal?.confidence ?? changed.filter((result) => result.isFinal).reduce((value, result) => Math.min(value, result.confidence), 1);
-        if (finalConfidence < minimumConfidence) {
-          if (browserFinal) {
-            finishBrowserTurn("error", "That browser-recognized command was unclear. Tap the microphone and try again, or type it.");
-            return;
-          }
+        if (!results.length) return;
+        const finiteConfidence = changed.map(result => result.confidence).filter(Number.isFinite);
+        const finalConfidence = selectedMode === "local"
+          ? changed.filter(result => result.isFinal)
+            .reduce((value, result) => Math.min(value, Number.isFinite(result.confidence) ? result.confidence : 1), 1)
+          : finiteConfidence.length ? Math.min(...finiteConfidence) : null;
+        if (selectedMode === "local" && finalConfidence < minimumConfidence) {
           emitState("hearing", "I didn’t get a clean read. Keep going or type a command.");
           return;
         }
         // A usable result is a healthy session signal. The bounded restart
         // budget applies to consecutive failures, not an otherwise working mic.
         restartFailures = 0;
-        if (browserFinal) {
-          const finalText = browserFinal.transcript.trim();
-          if (!finalText) {
-            finishBrowserTurn("idle", "No command was captured. Tap the microphone to try again, or type a command.");
-            return;
-          }
-          finishBrowserTurn("idle", "One browser-recognized command captured. Tap the microphone to speak again.");
-          const processLocally = false;
-          onRecognition({
-            results: [{ ...browserFinal, isFinal: true }],
-            text: finalText,
-            resultIndex: 0,
-            epoch: sessionGeneration,
-            recognitionId: sessionGeneration,
-            recognitionMode: selectedMode,
-            processLocally,
-          });
-          lastFinalTranscriptAt = Date.now();
-          onTranscript(finalText, { confidence: finalConfidence, isFinal: true, recognitionMode: selectedMode, processLocally });
-          return;
-        }
         emitState("hearing", text);
         const processLocally = selectedMode === "local" && engine.processLocally === true;
+        if (selectedMode === "browser") {
+          // Interim entries may be removed or shortened when a browser
+          // revises its result list. Rebuild that snapshot on every event,
+          // while keeping finalized segments stable across events.
+          browserInterimSegments = [];
+          for (const result of results) {
+            if (result.isFinal) {
+              browserFinalSegments[result.index] = result.transcript;
+              browserResultConfidences[result.index] = result.confidence;
+              delete browserInterimSegments[result.index];
+            } else if (!browserFinalSegments[result.index]) {
+              browserInterimSegments[result.index] = result.transcript;
+            }
+          }
+          const assembledFinal = browserFinalSegments.filter(Boolean).join(" ").trim();
+          const assembledInterim = browserInterimSegments.filter(Boolean).join(" ").trim();
+          const previewText = [assembledFinal, assembledInterim].filter(Boolean).join(" ").trim();
+          onRecognition({
+            results,
+            text: previewText,
+            previewText,
+            resultIndex,
+            epoch: sessionGeneration,
+            recognitionId: sessionGeneration,
+            recognitionMode: "browser",
+            processLocally: false,
+            phase: "preview",
+            confidence: finalConfidence,
+            lowConfidence: finalConfidence != null && finalConfidence < minimumConfidence,
+          });
+          return;
+        }
         onRecognition({ results, text, resultIndex, epoch: sessionGeneration, recognitionId: sessionGeneration, recognitionMode: selectedMode, processLocally });
         const hasNewFinal = changed.some((result) => result.isFinal);
         if (hasNewFinal && changedText) {
@@ -341,12 +396,14 @@ export function createAuraVoiceSession({
       };
       engine.onerror = (event) => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
-        if (selectedMode === "browser" && event.error !== "not-allowed" && event.error !== "service-not-allowed") {
+        if (selectedMode === "browser") {
           const detail = event.error === "no-speech"
             ? "No speech was captured. Tap the microphone to try again, or type a command."
             : event.error === "network"
               ? "Browser speech recognition had a network problem. Tap the microphone to retry, or type a command."
-              : "Browser speech recognition ended. Tap the microphone to try again, or type a command.";
+              : event.error === "not-allowed" || event.error === "service-not-allowed"
+                ? "Microphone or browser speech access is blocked. Tap to allow it or type a command."
+                : "Browser speech recognition ended. Tap the microphone to try again, or type a command.";
           finishBrowserTurn(event.error === "no-speech" ? "idle" : "error", detail);
           return;
         }
@@ -379,10 +436,20 @@ export function createAuraVoiceSession({
         }
         emitState("hearing", "Voice recognition paused. AURA will make a limited restart.");
       };
+      engine.onspeechend = () => {
+        if (selectedMode !== "browser" || destroyed || sessionGeneration !== generation || recognition !== engine || browserSpeechEnded) return;
+        browserSpeechEnded = true;
+        clearBrowserFinalization();
+        browserFinalizationTimer = setTimeout(() => {
+          browserFinalizationTimer = null;
+          completeBrowserTurn("idle", { abort: true });
+        }, 1000);
+        try { engine.stop(); } catch { /* onend or the finalization deadline closes the turn. */ }
+      };
       engine.onend = () => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
         if (selectedMode === "browser") {
-          finishBrowserTurn("idle", "Browser speech ended. Tap the microphone to speak again.");
+          completeBrowserTurn("idle");
           return;
         }
         recognition = null;
@@ -391,6 +458,7 @@ export function createAuraVoiceSession({
         engine.onresult = null;
         engine.onerror = null;
         engine.onend = null;
+        engine.onspeechend = null;
         if (!desiredListening) {
           emitState("idle");
           return;
