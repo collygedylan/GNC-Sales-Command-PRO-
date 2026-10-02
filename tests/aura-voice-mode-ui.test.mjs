@@ -113,20 +113,162 @@ test("browser recognition is clearly disclosed and status never claims on-device
 
     assert.equal(env.engines.length, 1);
     assert.equal(env.engines[0].processLocally, false);
-    assert.equal(badge.textContent, "Browser speech — may use network");
+    assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
     assert.match(panel.querySelector(".aura-status").textContent, /browser/i);
     assert.doesNotMatch(panel.querySelector(".aura-status").textContent, /on-device|locally/i);
     assert.equal(mic.getAttribute("aria-label"), "Pause voice input");
 
-    env.engines[0].onresult(result("Hey Aura, cloud locally remote"));
+    env.engines[0].onresult(result("Hey Aura, cloud locally remote", false));
     await flush();
-    assert.equal(badge.textContent, "Browser speech — may use network");
+    assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
     assert.match(panel.querySelector(".aura-status").textContent, /cloud locally remote/i);
     assert.doesNotMatch(panel.querySelector(".aura-status").textContent, /in the browser network/i);
     env.engines[0].onerror({ error: "audio-capture" });
-    assert.equal(badge.textContent, "Browser speech — may use network");
+    assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
     assert.doesNotMatch(panel.querySelector(".aura-status").textContent, /on-device|locally/i);
     assert.equal(mic.getAttribute("aria-label"), "Start voice input");
+  } finally {
+    widget.destroy();
+    await env.restore();
+  }
+});
+
+test("browser push-to-talk accepts no-wake commands, deduplicates results, and keeps draft across taps", async () => {
+  const env = browserEnvironment({ available: "unavailable" });
+  const catalogCalls = [];
+  const lotCalls = [];
+  const resolvedCustomers = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async customerName => {
+      resolvedCustomers.push(customerName);
+      return { items: [{ key: "party-1", customerName, label: customerName }], hasMore: false };
+    },
+    requestV2: async body => {
+      if (body.operation === "catalog") {
+        catalogCalls.push(body);
+        return { complete: true, hasMore: false, rows: [{ itemcode: "SKU1", commonname: "Limelight", contsize: "3DP" }] };
+      }
+      if (body.operation === "lots") {
+        lotCalls.push(body);
+        return { complete: true, hasMore: false, rows: [{ unique_id: "lot-1", itemcode: "SKU1", commonname: "Limelight", contsize: "3DP", ptravailable: 200 }] };
+      }
+      throw new Error(`Unexpected operation ${body.operation}`);
+    },
+  });
+  try {
+    const panel = openPanel();
+    const mic = panel.querySelector(".aura-mic");
+    mic.click();
+    await flush();
+    assert.equal(panel.querySelector(".aura-mode").textContent, "Browser speech — tap per command · may use network");
+
+    const first = env.engines[0];
+    const duplicate = first.onresult;
+    const startEvent = result("Start a request for Megan");
+    duplicate(startEvent);
+    duplicate(startEvent);
+    await flush();
+    assert.deepEqual(resolvedCustomers, ["Megan"]);
+    assert.match(panel.querySelector(".aura-message").textContent, /Request started for Megan/i);
+    assert.equal(panel.querySelector(".aura-status").textContent, "Tap the microphone for your next command. Your current draft is still here.");
+    assert.equal(mic.getAttribute("aria-label"), "Start voice input");
+
+    mic.click();
+    await flush();
+    assert.equal(env.engines.length, 2, "the next utterance requires a fresh mic tap");
+    env.engines[1].onresult(result("50 three deep pee Limelight"));
+    await flush();
+    assert.deepEqual(lotCalls.map(call => call.quantity), [50]);
+    assert.match(panel.querySelector(".aura-message").textContent, /Added 50 3DP Limelight/i);
+    assert.equal(panel.querySelector(".aura-status").textContent, "Tap the microphone for your next command. Your current draft is still here.");
+    assert.equal(mic.getAttribute("aria-label"), "Start voice input");
+
+    mic.click();
+    await flush();
+    assert.equal(env.engines.length, 3, "each additional item requires another mic tap");
+    env.engines[2].onresult(result("25 three deep pee Limelight"));
+    await flush();
+    assert.deepEqual(lotCalls.map(call => call.quantity), [50, 75]);
+    assert.match(panel.querySelector(".aura-message").textContent, /Updated the request to 75 3DP Limelight/i);
+    assert.equal(catalogCalls.length, 1, "the verified catalog is reused across the short draft session");
+    assert.match(panel.querySelector(".aura-mode").textContent, /tap per command/);
+  } finally {
+    widget.destroy();
+    await env.restore();
+  }
+});
+
+test("resuming a browser-mode request draft does not start the microphone", async () => {
+  const env = browserEnvironment({ available: "unavailable" });
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async customerName => ({ items: [{ key: "party-1", customerName }], hasMore: false }),
+  });
+  try {
+    const panel = openPanel();
+    const mic = panel.querySelector(".aura-mic");
+    mic.click();
+    await flush();
+    env.engines[0].onresult(result("Start a request for Megan"));
+    await flush();
+
+    // Simulate the app hiding and returning: the request remains paused, and
+    // resuming its draft must not silently open browser speech input.
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    document.dispatchEvent(new window.Event("visibilitychange"));
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new window.Event("visibilitychange"));
+    await flush();
+    [...panel.querySelectorAll(".aura-cart-controls .aura-action")]
+      .find(button => button.textContent === "Resume request")?.click();
+    await flush();
+    assert.equal(env.engines.length, 1);
+    assert.equal(panel.querySelector(".aura-mode").textContent, "Browser speech — tap per command · may use network");
+    assert.match(panel.querySelector(".aura-message").textContent, /request resumed/i);
+  } finally {
+    widget.destroy();
+    await env.restore();
+  }
+});
+
+test("browser busy state reports a closed mic and completion does not hide active speech", async () => {
+  const env = browserEnvironment({ available: "unavailable" });
+  const utterances = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  Object.defineProperty(window, "speechSynthesis", {
+    configurable: true,
+    value: {
+      getVoices: () => [{ name: "Local English", lang: "en-US", localService: true }],
+      cancel() {},
+      speak(utterance) { utterances.push(utterance); },
+    },
+  });
+  Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
+  let resolveSend;
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    sendMessage: () => new Promise(resolve => { resolveSend = resolve; }),
+  });
+  try {
+    const panel = openPanel();
+    const mic = panel.querySelector(".aura-mic");
+    mic.click();
+    await flush();
+    env.engines[0].onresult(result("send a message to Megan saying The bay is ready"));
+    await flush();
+
+    assert.equal(mic.getAttribute("aria-pressed"), "false", "a query may be processing, but browser capture is closed");
+    assert.equal(panel.querySelector(".aura-status").textContent, "AURA is checking that request…");
+    resolveSend({ ok: true, recipientName: "Megan" });
+    await flush();
+
+    assert.equal(utterances.length, 1);
+    assert.equal(panel.querySelector(".aura-status").textContent, "AURA is responding…");
+    assert.equal(mic.getAttribute("aria-pressed"), "false");
+
+    utterances[0].onend();
+    assert.equal(panel.querySelector(".aura-status").textContent, "Tap the microphone for your next command.");
   } finally {
     widget.destroy();
     await env.restore();
