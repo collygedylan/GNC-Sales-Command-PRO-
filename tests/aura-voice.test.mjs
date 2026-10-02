@@ -137,7 +137,7 @@ test("AURA starts only with existing permission and prefers continuous local rec
   } finally { await browser.restore(); }
 });
 
-test("permission denial stays terminal while unavailable local recognition uses disclosed browser mode", async () => {
+test("permission denial stays terminal and startIfAllowed never opens browser recognition", async () => {
   const denied = fakeRecognitionEnvironment({ permission: "prompt" });
   try {
     const states = [];
@@ -152,9 +152,15 @@ test("permission denial stays terminal while unavailable local recognition uses 
   try {
     const states = [];
     const session = createAuraVoiceSession({ onState: (state) => states.push(state) });
-    assert.equal(await session.startIfAllowed(), true);
+    assert.equal(await session.startIfAllowed(), false);
+    assert.equal(unavailable.engines.length, 0);
+    assert.equal(states.at(-1).recognitionMode, null);
+    assert.match(states.at(-1).message, /tap the microphone for one browser-recognized command/i);
+    assert.equal(await session.start(), true, "browser recognition requires the explicit microphone start");
     assert.equal(unavailable.engines.length, 1);
     assert.equal(unavailable.engines[0].processLocally, false);
+    assert.equal(unavailable.engines[0].continuous, false);
+    assert.equal(unavailable.engines[0].interimResults, true);
     assert.equal(states.at(-1).recognitionMode, "browser");
     assert.match(states.find(state => /using browser speech/i.test(state.message)).message, /may process microphone audio through its provider/i);
     session.destroy();
@@ -190,7 +196,7 @@ test("browser fallback is selected when local capability probing times out and l
       onRecognition: event => recognitions.push(event),
       onTranscript: (text, metadata) => transcripts.push({ text, metadata }),
     });
-    assert.equal(await session.startIfAllowed(), true);
+    assert.equal(await session.start(), true);
     assert.equal(browser.engines.length, 1);
     assert.equal(browser.engines[0].processLocally, false);
     assert.equal(states.at(-1).recognitionMode, "browser");
@@ -341,24 +347,26 @@ test("busy work suppresses recognition restart until the operation releases it",
   } finally { await browser.restore(); }
 });
 
-test("start calls during busy work do not clear the selected browser mode", async () => {
+test("busy browser turns end and do not automatically restart", async () => {
   const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  const states = [];
   try {
-    const session = createAuraVoiceSession();
-    assert.equal(await session.startIfAllowed(), true);
+    const session = createAuraVoiceSession({ onState: state => states.push(state) });
+    assert.equal(await session.start(), true);
     assert.equal(browser.engines[0].processLocally, false);
     session.setBusy(true);
     assert.equal(await session.start(), false);
     assert.equal(await session.startIfAllowed(), false);
     session.setBusy(false);
     await flush();
-    assert.equal(browser.engines.length, 2);
-    assert.equal(browser.engines[1].processLocally, false);
+    assert.equal(browser.engines.length, 1);
+    assert.equal(session.enabled, false);
+    assert.equal(states.at(-1).recognitionMode, "browser");
     session.destroy();
   } finally { await browser.restore(); }
 });
 
-test("busy during a pending capability probe fences the old result and starts only one engine", async () => {
+test("busy during a pending capability probe fences it without a late engine start", async () => {
   const browser = fakeRecognitionEnvironment();
   const resolvers = [];
   class DeferredRecognition extends browser.dom.window.SpeechRecognition {
@@ -375,48 +383,157 @@ test("busy during a pending capability probe fences the old result and starts on
     session.setBusy(true);
     session.setBusy(false);
     await flush();
-    assert.equal(resolvers.length, 2);
     resolvers[0]("available");
-    resolvers[1]("available");
     await firstStart;
     await flush();
-    assert.equal(browser.engines.length, 1);
-    assert.equal(browser.engines[0].processLocally, true);
+    assert.equal(browser.engines.length, 0);
+    assert.equal(session.enabled, false);
     session.destroy();
   } finally { await browser.restore(); }
 });
 
-test("browser provider stays selected through busy suspension and recognizer restart", async () => {
+test("browser recognition is a one-shot final turn and fences duplicate and late results", async () => {
   const browser = fakeRecognitionEnvironment({ available: "downloadable" });
   const originalSetTimeout = globalThis.setTimeout;
   const originalClearTimeout = globalThis.clearTimeout;
   const timers = [];
+  let fakeNow = 0;
   globalThis.setTimeout = (callback, delay) => {
-    const timer = { callback, delay, cancelled: false };
+    const timer = { callback, due: fakeNow + delay, cancelled: false };
     timers.push(timer);
     return timer;
   };
   globalThis.clearTimeout = timer => { if (timer) timer.cancelled = true; };
+  const states = [];
+  const recognitions = [];
+  const transcripts = [];
+  let session;
+  let enabledDuringCallback = true;
   try {
-    const session = createAuraVoiceSession();
-    assert.equal(await session.startIfAllowed(), true);
+    session = createAuraVoiceSession({
+      onState: state => states.push(state),
+      onRecognition: event => { recognitions.push(event); enabledDuringCallback = session.enabled; },
+      onTranscript: (text, meta) => transcripts.push({ text, meta }),
+    });
+    assert.equal(await session.start(), true);
     assert.equal(browser.engines[0].processLocally, false);
-    session.setBusy(true);
-    session.setBusy(false);
-    await flush();
-    assert.equal(browser.engines[1].processLocally, false);
-    browser.engines[1].onend();
-    const restart = timers.find(timer => timer.delay === 700 && !timer.cancelled);
-    assert.ok(restart);
-    restart.callback();
-    await flush();
-    assert.equal(browser.engines[2].processLocally, false);
+    assert.equal(browser.engines[0].continuous, false);
+    assert.equal(browser.engines[0].interimResults, true);
+    browser.engines[0].onresult({ results: [speechResult("check inventory", false)], resultIndex: 0 });
+    assert.equal(recognitions.length, 1, "interim output may be shown but is not a final command");
+    const lateResult = browser.engines[0].onresult;
+    const lateEnd = browser.engines[0].onend;
+    const lateError = browser.engines[0].onerror;
+    const finalHandler = browser.engines[0].onresult;
+    const result = { results: [speechResult("check inventory", true)], resultIndex: 0 };
+    finalHandler(result);
+    finalHandler(result);
+    assert.equal(recognitions.length, 2, "the final result is delivered once");
+    assert.equal(transcripts.length, 1);
+    assert.equal(enabledDuringCallback, false, "listening is stopped before command callbacks run");
+    assert.equal(session.enabled, false);
+    assert.equal(session.listening, false);
+    assert.equal(states.at(-1).recognitionMode, "browser", "the provider label remains after the turn");
+    assert.match(states.at(-1).message, /one browser-recognized command captured/i);
+    assert.equal(browser.engines.length, 1, "duplicate final and onend events cannot restart");
+    lateResult(result);
+    lateEnd();
+    lateError({ error: "network" });
+    const targetTime = fakeNow + 11_000;
+    while (true) {
+      const next = timers.filter(timer => !timer.cancelled && timer.due <= targetTime).sort((a, b) => a.due - b.due)[0];
+      if (!next) break;
+      next.cancelled = true;
+      fakeNow = next.due;
+      next.callback();
+      await flush();
+    }
+    fakeNow = targetTime;
+    assert.equal(browser.engines.length, 1, "no browser restart is scheduled within eleven seconds");
+    assert.equal(recognitions.length, 2);
+    assert.equal(transcripts.length, 1);
+    assert.equal(await session.startIfAllowed(), false, "the automatic path remains local-only");
+    assert.equal(browser.engines.length, 1);
     session.destroy();
   } finally {
     globalThis.setTimeout = originalSetTimeout;
     globalThis.clearTimeout = originalClearTimeout;
     await browser.restore();
   }
+});
+
+test("an empty browser final result ends the turn without delivering a transcript", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  const states = [];
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({
+      onState: state => states.push(state),
+      onTranscript: text => transcripts.push(text),
+    });
+    assert.equal(await session.start(), true);
+    browser.engines[0].onresult({ results: [speechResult("", true)], resultIndex: 0 });
+    assert.equal(session.enabled, false);
+    assert.equal(browser.engines.length, 1);
+    assert.deepEqual(transcripts, []);
+    assert.equal(states.at(-1).status, "idle");
+    assert.match(states.at(-1).message, /no command was captured/i);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("browser no-speech, network, and low-confidence final results end without retry", async () => {
+  for (const errorName of ["no-speech", "network"]) {
+    const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+    const states = [];
+    try {
+      const session = createAuraVoiceSession({ onState: state => states.push(state) });
+      assert.equal(await session.start(), true);
+      browser.engines[0].onerror({ error: errorName });
+      browser.engines[0].onend?.();
+      await flush();
+      assert.equal(session.enabled, false);
+      assert.equal(browser.engines.length, 1);
+      assert.equal(states.at(-1).recognitionMode, "browser");
+      assert.match(states.at(-1).message, errorName === "no-speech" ? /no speech was captured/i : /network problem/i);
+      session.destroy();
+    } finally { await browser.restore(); }
+  }
+
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  const states = [];
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({
+      minimumConfidence: 0.8,
+      onState: state => states.push(state),
+      onTranscript: text => transcripts.push(text),
+    });
+    assert.equal(await session.start(), true);
+    browser.engines[0].onresult({ results: [speechResult("maybe", true, 0.2)], resultIndex: 0 });
+    assert.equal(session.enabled, false);
+    assert.equal(browser.engines.length, 1);
+    assert.equal(transcripts.length, 0);
+    assert.equal(states.at(-1).status, "error");
+    assert.equal(states.at(-1).recognitionMode, "browser");
+    assert.match(states.at(-1).message, /unclear/i);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("browser end without a final utterance terminates instead of restarting", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  const states = [];
+  try {
+    const session = createAuraVoiceSession({ onState: state => states.push(state) });
+    assert.equal(await session.start(), true);
+    browser.engines[0].onend();
+    assert.equal(session.enabled, false);
+    assert.equal(browser.engines.length, 1);
+    assert.equal(states.at(-1).recognitionMode, "browser");
+    assert.match(states.at(-1).message, /browser speech ended/i);
+    session.destroy();
+  } finally { await browser.restore(); }
 });
 
 test("Stop fences a late synthesis completion from restarting the microphone", async () => {
@@ -765,6 +882,33 @@ test("AURA speech pauses local recognition and resumes after the response", asyn
     spoken.onend();
     await flush();
     assert.equal(browser.engines.length, 2);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("AURA speech does not restart a browser one-shot after TTS completes", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  let spoken;
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  const synthesis = {
+    getVoices: () => [{ name: "Google US English", lang: "en-US", localService: true }],
+    cancel() {},
+    speak(utterance) { spoken = utterance; },
+  };
+  Object.defineProperty(window, "speechSynthesis", { configurable: true, value: synthesis });
+  Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
+  try {
+    const states = [];
+    const session = createAuraVoiceSession({ onState: state => states.push(state) });
+    assert.equal(await session.start(), true);
+    assert.equal(session.speak("Ready."), true);
+    assert.equal(session.enabled, false);
+    spoken.onend();
+    await flush();
+    assert.equal(browser.engines.length, 1);
+    assert.equal(session.enabled, false);
+    assert.equal(states.at(-1).recognitionMode, "browser");
+    assert.match(states.at(-1).message, /one-shot/i);
     session.destroy();
   } finally { await browser.restore(); }
 });

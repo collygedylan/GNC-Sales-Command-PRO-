@@ -14,8 +14,8 @@ function isVisible() {
 
 /**
  * AURA recognition is inert until start() or startIfAllowed(). It prefers a
- * verified on-device recognizer, then uses the browser recognizer when local
- * recognition is unavailable. The selected mode is retained through restarts.
+ * verified on-device recognizer. Browser-provided recognition is available
+ * only after an explicit microphone start and runs for one utterance.
  */
 export function createAuraVoiceSession({
   onState = () => {},
@@ -84,6 +84,17 @@ export function createAuraVoiceSession({
     clearRecognition();
   }
 
+  function finishBrowserTurn(status = "idle", message = "") {
+    desiredListening = false;
+    startAttempt += 1;
+    generation += 1;
+    clearRestart();
+    listening = false;
+    clearRecognition();
+    detachVisibility();
+    emitState(status, message);
+  }
+
   async function localCapability(Constructor) {
     if (!Constructor || typeof Constructor.available !== "function") return false;
     let timeoutId = null;
@@ -111,7 +122,7 @@ export function createAuraVoiceSession({
     if (!allowBrowserFallback) {
       return {
         mode: null,
-        message: "On-device English recognition is unavailable. Tap the microphone to use browser recognition; your browser may process audio online, or type a command.",
+        message: "On-device English recognition is unavailable. Tap the microphone for one browser-recognized command; your browser may process audio online, or type a command.",
       };
     }
     return {
@@ -165,7 +176,7 @@ export function createAuraVoiceSession({
       return false;
     }
     if (destroyed || attempt !== startAttempt || !isVisible() || speaking || busy) return false;
-    return beginListening({ allowPermissionPrompt: false, allowBrowserFallback: true, attempt });
+    return beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, attempt });
   }
 
   async function start() {
@@ -246,7 +257,7 @@ export function createAuraVoiceSession({
       }
       activeRecognitionMode = selectedMode;
       engine.lang = RECOGNITION_LANGUAGES[0];
-      engine.continuous = true;
+      engine.continuous = selectedMode === "local";
       engine.interimResults = true;
       engine.maxAlternatives = 1;
       recognition = engine;
@@ -278,18 +289,44 @@ export function createAuraVoiceSession({
           };
         });
         const text = results.map((result) => result.transcript).filter(Boolean).join(" ").trim();
-        if (!text) return;
         const resultIndex = Number.isInteger(event.resultIndex) ? event.resultIndex : Math.max(0, results.length - 1);
         const changed = results.slice(resultIndex);
         const changedText = changed.map((result) => result.transcript).filter(Boolean).join(" ").trim();
-        const finalConfidence = changed.filter((result) => result.isFinal).reduce((value, result) => Math.min(value, result.confidence), 1);
+        const browserFinal = selectedMode === "browser" ? changed.find(result => result.isFinal) : null;
+        if (!text && !browserFinal) return;
+        const finalConfidence = browserFinal?.confidence ?? changed.filter((result) => result.isFinal).reduce((value, result) => Math.min(value, result.confidence), 1);
         if (finalConfidence < minimumConfidence) {
+          if (browserFinal) {
+            finishBrowserTurn("error", "That browser-recognized command was unclear. Tap the microphone and try again, or type it.");
+            return;
+          }
           emitState("hearing", "I didn’t get a clean read. Keep going or type a command.");
           return;
         }
         // A usable result is a healthy session signal. The bounded restart
         // budget applies to consecutive failures, not an otherwise working mic.
         restartFailures = 0;
+        if (browserFinal) {
+          const finalText = browserFinal.transcript.trim();
+          if (!finalText) {
+            finishBrowserTurn("idle", "No command was captured. Tap the microphone to try again, or type a command.");
+            return;
+          }
+          finishBrowserTurn("idle", "One browser-recognized command captured. Tap the microphone to speak again.");
+          const processLocally = false;
+          onRecognition({
+            results: [{ ...browserFinal, isFinal: true }],
+            text: finalText,
+            resultIndex: 0,
+            epoch: sessionGeneration,
+            recognitionId: sessionGeneration,
+            recognitionMode: selectedMode,
+            processLocally,
+          });
+          lastFinalTranscriptAt = Date.now();
+          onTranscript(finalText, { confidence: finalConfidence, isFinal: true, recognitionMode: selectedMode, processLocally });
+          return;
+        }
         emitState("hearing", text);
         const processLocally = selectedMode === "local" && engine.processLocally === true;
         onRecognition({ results, text, resultIndex, epoch: sessionGeneration, recognitionId: sessionGeneration, recognitionMode: selectedMode, processLocally });
@@ -304,6 +341,15 @@ export function createAuraVoiceSession({
       };
       engine.onerror = (event) => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
+        if (selectedMode === "browser" && event.error !== "not-allowed" && event.error !== "service-not-allowed") {
+          const detail = event.error === "no-speech"
+            ? "No speech was captured. Tap the microphone to try again, or type a command."
+            : event.error === "network"
+              ? "Browser speech recognition had a network problem. Tap the microphone to retry, or type a command."
+              : "Browser speech recognition ended. Tap the microphone to try again, or type a command.";
+          finishBrowserTurn(event.error === "no-speech" ? "idle" : "error", detail);
+          return;
+        }
         if (event.error === "not-allowed" || event.error === "service-not-allowed") {
           desiredListening = false;
           stopRecognition();
@@ -335,6 +381,10 @@ export function createAuraVoiceSession({
       };
       engine.onend = () => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
+        if (selectedMode === "browser") {
+          finishBrowserTurn("idle", "Browser speech ended. Tap the microphone to speak again.");
+          return;
+        }
         recognition = null;
         listening = false;
         engine.onstart = null;
@@ -419,12 +469,17 @@ export function createAuraVoiceSession({
     if (destroyed) return;
     busy = Boolean(value);
     if (busy) {
+      startAttempt += 1;
+      if (activeRecognitionMode === "browser" || (activeRecognitionMode == null && !recognition)) {
+        desiredListening = false;
+        detachVisibility();
+      }
       clearRestart();
       stopRecognition();
       emitState("hearing", "AURA is checking that request…");
       return;
     }
-    if (desiredListening && !speaking && isVisible() && !recognition && restartTimer == null) {
+    if (activeRecognitionMode === "local" && desiredListening && !speaking && isVisible() && !recognition && restartTimer == null) {
       const attempt = ++startAttempt;
       void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, recognitionMode: activeRecognitionMode, attempt });
     }
@@ -439,6 +494,11 @@ export function createAuraVoiceSession({
 
     const utteranceGeneration = ++speechGeneration;
     speaking = true;
+    if (activeRecognitionMode === "browser" || (activeRecognitionMode == null && !recognition)) {
+      desiredListening = false;
+      startAttempt += 1;
+      detachVisibility();
+    }
     clearRestart();
     stopRecognition();
     const utterance = new window.SpeechSynthesisUtterance(String(text ?? ""));
@@ -449,7 +509,13 @@ export function createAuraVoiceSession({
     const resume = () => {
       if (utteranceGeneration !== speechGeneration || !speaking) return;
       speaking = false;
-      if (destroyed || !desiredListening || busy) return;
+      if (destroyed || busy) return;
+      if (!desiredListening || activeRecognitionMode !== "local") {
+        emitState("idle", activeRecognitionMode === "browser"
+          ? "Browser speech is one-shot. Tap the microphone to speak again."
+          : "");
+        return;
+      }
       if (!isVisible()) {
         startAttempt += 1;
         emitState("paused", "AURA listens only while the app is visible.");

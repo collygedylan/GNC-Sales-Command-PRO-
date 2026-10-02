@@ -102,8 +102,9 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     onState: (next) => {
       voiceStatus = next;
       if (Object.prototype.hasOwnProperty.call(next || {}, "recognitionMode")) {
-        recognitionMode = next.recognitionMode === "local" || next.recognitionMode === "browser"
-          ? next.recognitionMode : null;
+        if (next.recognitionMode === "local" || next.recognitionMode === "browser") {
+          recognitionMode = next.recognitionMode;
+        }
       }
       renderVoiceMode();
       renderStatus();
@@ -163,7 +164,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       voiceMode.textContent = "On-device speech";
       voiceMode.dataset.mode = "local";
     } else if (recognitionMode === "browser") {
-      voiceMode.textContent = "Browser speech — may use network";
+      voiceMode.textContent = "Browser speech — tap per command · may use network";
       voiceMode.dataset.mode = "browser";
     } else {
       voiceMode.textContent = "Voice input mode not selected";
@@ -172,10 +173,13 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   }
 
   function renderStatus() {
-    micButton.setAttribute("aria-pressed", voiceStatus.status === "listening" || voiceStatus.status === "hearing" ? "true" : "false");
+    const micOpen = session.enabled && (voiceStatus.status === "listening" || voiceStatus.status === "hearing");
+    micButton.setAttribute("aria-pressed", micOpen ? "true" : "false");
     const paused = voiceStatus.status === "paused" || conversation.auraMode === "PAUSED";
     micButton.setAttribute("aria-label", paused ? "Resume voice input" : session.enabled ? "Pause voice input" : "Start voice input");
-    if (voiceStatus.message) status.textContent = voiceStatus.message;
+    if (voiceStatus.status === "idle" && recognitionMode === "browser") {
+      status.textContent = `Tap the microphone for your next command.${conversation.party ? " Your current draft is still here." : ""}`;
+    } else if (voiceStatus.message) status.textContent = voiceStatus.message;
     else if (voiceStatus.status === "listening") status.textContent = recognitionMode === "local" ? "Listening on this device…" : recognitionMode === "browser" ? "Listening with browser speech…" : "Listening…";
     else if (voiceStatus.status === "hearing") status.textContent = "Processing speech…";
     else if (voiceStatus.status === "starting") status.textContent = recognitionMode === "local" ? "Starting on-device speech…" : recognitionMode === "browser" ? "Starting browser speech…" : "Starting voice input…";
@@ -221,7 +225,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     return { text, spans };
   }
 
-  function handleRecognition({ results = [], text = "", resultIndex = 0, epoch = null, recognitionId = null } = {}) {
+  function handleRecognition({ results = [], text = "", resultIndex = 0, epoch = null, recognitionId = null, recognitionMode: resultMode = null } = {}) {
     if (!current()) return;
     epoch = recognitionId ?? epoch;
     if (recognitionEpoch !== epoch) {
@@ -241,7 +245,18 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     let commandText = "";
     let commandStart = 0;
     const wakeMatch = fullText.match(/\bhey\s+aura\b[\s,:-]*/i);
-    if (wakeMatch) {
+    if (resultMode === "browser") {
+      // A browser-mode microphone tap is the activation. Wake words are
+      // optional because browser speech is one utterance per explicit tap.
+      if (wakeMatch) {
+        commandStart = wakeMatch.index + wakeMatch[0].length;
+        commandText = fullText.slice(commandStart).trim();
+      } else {
+        commandText = fullText;
+      }
+      wakeArmed = false;
+      if (!panelOpen) togglePanel(true);
+    } else if (wakeMatch) {
       wakeArmed = true;
       commandStart = wakeMatch.index + wakeMatch[0].length;
       commandText = fullText.slice(commandStart).trim();
@@ -315,6 +330,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     if (commandController?.signal !== signal) return;
     busy = false;
     session.setBusy(false);
+    if (recognitionMode === "browser" && !session.enabled && voiceStatus.status !== "speaking") {
+      voiceStatus = { status: "idle", message: "" };
+      renderStatus();
+    }
     renderCartControls();
   }
 
@@ -395,12 +414,16 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         if (!current() || busy) return;
         conversation = reduceAuraConversation(conversation, { type: "RESUME" });
         if (conversation.auraMode === "CHOOSING" && conversation.choice) renderChoiceButtons(conversation.choice.items, selectChoice);
-        if (acceptsAuraFollowUp(conversation)) { void session.start(); armInactivityPause(); }
+        if (acceptsAuraFollowUp(conversation)) {
+          void session.startIfAllowed();
+          armInactivityPause();
+        }
         renderCartControls();
         setMessage(conversation.auraMode === "CHOOSING" ? "Choose an option or say its number." : "Request resumed. Add another item or review it.");
       });
       controls.append(resume);
     }
+    renderStatus();
   }
 
   async function matchProduct(intent, signal) {
@@ -525,7 +548,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       if (conversation.auraMode === "CHOOSING" && conversation.choice) renderChoiceButtons(conversation.choice.items, selectChoice);
       renderCartControls();
       armInactivityPause();
-      if (acceptsAuraFollowUp(conversation)) void session.start();
+      if (acceptsAuraFollowUp(conversation)) void session.startIfAllowed();
       setMessage(conversation.auraMode === "CHOOSING" ? "Choose an option or say its number." : conversation.auraMode === "BUILDING_REQUEST" ? "Request resumed. Add another item or say review request." : "There’s no paused request to resume.");
       return;
     }
