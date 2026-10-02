@@ -44,6 +44,15 @@ test('handover CI includes every assignment target and the production Eval rule 
   }
 });
 
+test('handover fixture accounts retain sequence and historical permission-audit contracts', () => {
+  const fixture = fs.readFileSync(new URL('../supabase/ci/scheduled_handover_fixture.sql', import.meta.url), 'utf8');
+  assert.match(fixture, /setval\(pg_get_serial_sequence\('public\.ph_app_users','id'\),\s+greatest\(\(select max\(id\) from public\.ph_app_users\), 74\), true\)/);
+  assert.match(fixture, /insert into private\.app_access_legacy_baseline\(profile_id,permission_key,allowed,access_scope\)/);
+  assert.match(fixture, /private\.get_effective_app_permissions_v1\(p\.id,private\.resolve_app_access_policy_id_v1\(true\)\)/);
+  assert.match(fixture, /e\.permission_key in \('drive\.reclass\.submit','manager\.orders\.view'\)/);
+  assert.match(fixture, /on conflict\(profile_id,permission_key\) do nothing/);
+});
+
 test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', () => {
   // Assertion names are checked against pgTAP's public API documentation:
   // https://pgtap.org/documentation.html (plan, ok, is, isnt, throws_ok,

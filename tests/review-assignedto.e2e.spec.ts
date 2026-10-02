@@ -78,6 +78,7 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
     'megan_kelly',
     'kayla_knepp',
     'jd_jones',
+    'nelly_aguilar',
   ]);
   expect(result.labels).toEqual(result.values.map((value) => value || 'Unassigned'));
   expect(result.key).toBe('001668.030.1|buddleia');

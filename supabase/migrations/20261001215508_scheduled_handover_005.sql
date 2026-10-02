@@ -370,8 +370,18 @@ begin
 end
 $$;
 revoke all on function private.guard_active_app_session_v1() from public, anon;
-grant execute on function private.guard_active_app_session_v1() to anon, authenticator, authenticated, service_role;
-grant usage on schema private to anon, authenticated, authenticator, service_role;
+grant execute on function private.guard_active_app_session_v1() to authenticator, authenticated, service_role;
+grant usage on schema private to authenticated, authenticator, service_role;
+
+-- PostgREST runs its pre-request hook under the caller's role. A narrow
+-- no-argument wrapper lets anonymous login requests proceed without granting
+-- that role access to the private schema or any of its other helpers.
+create or replace function public.guard_active_app_session_v1()
+returns void language sql security definer set search_path = '' as $$
+  select private.guard_active_app_session_v1()
+$$;
+revoke all on function public.guard_active_app_session_v1() from public, anon, authenticated;
+grant execute on function public.guard_active_app_session_v1() to anon, authenticator, authenticated, service_role;
 
 -- Restrictive policy means pre-existing permissive policies remain in place
 -- for active staff but cannot keep an offboarded account connected.
@@ -409,10 +419,10 @@ begin
     and rs.setrole in (0,(select oid from pg_roles where rolname='authenticator'))
     and cfg.setting like 'pgrst.db_pre_request=%'
   limit 1;
-  if hook is not null and hook <> 'private.guard_active_app_session_v1' then
+  if hook is not null and hook <> 'public.guard_active_app_session_v1' then
     raise exception 'existing pgrst.db_pre_request hook must be composed explicitly, found %', hook;
   end if;
-  execute 'alter role authenticator set pgrst.db_pre_request = ''private.guard_active_app_session_v1''';
+  execute 'alter role authenticator set pgrst.db_pre_request = ''public.guard_active_app_session_v1''';
   perform pg_notify('pgrst','reload config');
 end
 $pre_request$;

@@ -97,7 +97,7 @@ try {
   await db.exec("set role authenticated; select set_config('request.jwt.claim.role','authenticated',false); select set_config('request.jwt.claim.sub','e2584b32-472c-4888-b592-394235050b5b',false)");
   const kaylaBefore=await db.query("select count(*)::int rows from public.test_protected_data");
   if (kaylaBefore.rows[0].rows!==1) throw new Error('active Kayla lost permitted data before cutoff');
-  await db.query('select private.guard_active_app_session_v1()');
+  await db.query('select public.guard_active_app_session_v1()');
   await db.exec('reset role');
   console.log('PASS: active authenticated Kayla keeps existing RLS access before cutoff');
   await db.exec("alter table private.scheduled_account_handover_v1 drop constraint scheduled_account_handover_v1_effective_at_check; update private.scheduled_account_handover_v1 set effective_at=now()-interval '1 minute';");
@@ -107,7 +107,7 @@ try {
   const kaylaUpdate=await db.query("update public.test_protected_data set value='denied' where id=1 returning id");
   if (kaylaAfter.rows[0].rows!==0 || kaylaStorage.rows[0].rows!==0 || kaylaUpdate.rows.length!==0) throw new Error('Kayla retained public-table or Storage RLS access after cutoff');
   let guardDenied=false;
-  try { await db.query('select private.guard_active_app_session_v1()'); } catch (error) { guardDenied=String(error.message).includes('APP_ACCOUNT_INACTIVE'); }
+  try { await db.query('select public.guard_active_app_session_v1()'); } catch (error) { guardDenied=String(error.message).includes('APP_ACCOUNT_INACTIVE'); }
   if (!guardDenied) throw new Error('pre-request guard did not deny the cut-off Kayla JWT');
   await db.exec('reset role');
   await db.exec("set role authenticated; select set_config('request.jwt.claim.role','authenticated',false); select set_config('request.jwt.claim.sub','961b0a0f-11a6-4db5-b066-582f772ab8e7',false)");
@@ -117,8 +117,10 @@ try {
   if (nellyAfter.rows[0].rows!==1 || nellyStorage.rows[0].rows!==1 || nellyUpdate.rows.length!==1) throw new Error('active Nelly lost existing table or Storage permissions');
   await db.exec('reset role');
   await db.exec("set role anon; select set_config('request.jwt.claim.role','anon',false); select set_config('request.jwt.claim.sub','',false)");
-  await db.query('select private.guard_active_app_session_v1()');
+  await db.query('select public.guard_active_app_session_v1()');
   await db.exec('reset role');
+  const anonScope = await db.query("select has_schema_privilege('anon','private','usage') access, has_function_privilege('anon','private.guard_active_app_session_v1()','execute') helper");
+  if (anonScope.rows[0].access || anonScope.rows[0].helper) throw new Error('anonymous role gained access to private schema or helper');
   console.log('PASS: Kayla loses Data API/Storage access at cutoff; Nelly remains authorized; anon pre-request is harmless');
   await db.exec("update public.test_handover_companion set fail=true");
   const tick=await db.query('select public.scheduled_handover_tick_v1() result');
