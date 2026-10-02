@@ -7,17 +7,23 @@ import { cleanseAuraInventoryText, matchAuraProduct } from "../utils/auraLingo.j
 import { createAuraConversation, reduceAuraConversation } from "../services/auraConversation.js";
 import { mountAuraWidget } from "../components/common/auraVoiceWidget.js";
 
-function fakeRecognitionEnvironment({ permission = "granted", available = "available" } = {}) {
+function fakeRecognitionEnvironment({
+  permission = "granted",
+  available = "available",
+  supportsProcessLocally = true,
+} = {}) {
   const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", { url: "https://field.example.test/" });
   Object.defineProperty(dom.window.document, "visibilityState", { configurable: true, value: "visible" });
   const previous = new Map();
   for (const name of ["window", "document", "navigator"]) previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
   const engines = [];
   class FakeRecognition {
-    static async available() { return available; }
+    static async available(options) {
+      return typeof available === "function" ? available(options) : available;
+    }
     constructor() {
       this.aborted = false;
-      this.processLocally = false;
+      if (supportsProcessLocally) this.processLocally = false;
       engines.push(this);
     }
     start() { this.started = true; this.onstart?.(); }
@@ -108,20 +114,30 @@ test("AURA conversation reducer builds, undoes, reviews, and cancels request dra
   assert.equal(state.auraMode, "IDLE");
 });
 
-test("AURA starts only with existing permission and forces continuous local recognition", async () => {
+test("AURA starts only with existing permission and prefers continuous local recognition", async () => {
   const browser = fakeRecognitionEnvironment();
+  const recognitions = [];
+  const transcripts = [];
   try {
-    const session = createAuraVoiceSession();
+    const session = createAuraVoiceSession({
+      onRecognition: event => recognitions.push(event),
+      onTranscript: (text, metadata) => transcripts.push({ text, metadata }),
+    });
     assert.equal(await session.startIfAllowed(), true);
     assert.equal(browser.engines.length, 1);
     assert.equal(browser.engines[0].continuous, true);
     assert.equal(browser.engines[0].interimResults, true);
     assert.equal(browser.engines[0].processLocally, true);
+    browser.engines[0].onresult({ results: [speechResult("hey aura", true)], resultIndex: 0 });
+    assert.equal(recognitions[0].recognitionMode, "local");
+    assert.equal(recognitions[0].processLocally, true);
+    assert.equal(transcripts[0].metadata.recognitionMode, "local");
+    assert.equal(transcripts[0].metadata.processLocally, true);
     session.destroy();
   } finally { await browser.restore(); }
 });
 
-test("permission denial and missing local recognition fail closed without a recognizer", async () => {
+test("permission denial stays terminal while unavailable local recognition uses disclosed browser mode", async () => {
   const denied = fakeRecognitionEnvironment({ permission: "prompt" });
   try {
     const states = [];
@@ -134,11 +150,119 @@ test("permission denial and missing local recognition fail closed without a reco
 
   const unavailable = fakeRecognitionEnvironment({ available: "downloadable" });
   try {
-    const session = createAuraVoiceSession();
-    assert.equal(await session.startIfAllowed(), false);
-    assert.equal(unavailable.engines.length, 0);
+    const states = [];
+    const session = createAuraVoiceSession({ onState: (state) => states.push(state) });
+    assert.equal(await session.startIfAllowed(), true);
+    assert.equal(unavailable.engines.length, 1);
+    assert.equal(unavailable.engines[0].processLocally, false);
+    assert.equal(states.at(-1).recognitionMode, "browser");
+    assert.match(states.find(state => /using browser speech/i.test(state.message)).message, /may process microphone audio through its provider/i);
     session.destroy();
   } finally { await unavailable.restore(); }
+});
+
+test("local-first selection falls back when the engine lacks processLocally support", async () => {
+  const browser = fakeRecognitionEnvironment({ supportsProcessLocally: false });
+  const states = [];
+  try {
+    const session = createAuraVoiceSession({ onState: state => states.push(state) });
+    assert.equal(await session.start(), true);
+    assert.equal(browser.engines.length, 1);
+    assert.equal("processLocally" in browser.engines[0], false);
+    assert.equal(states.at(-1).recognitionMode, "browser");
+    assert.match(states.find(state => /using browser recognition/i.test(state.message)).message, /provider/i);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("browser fallback is selected when local capability probing times out and late completion cannot switch modes", async () => {
+  let resolveCapability;
+  const browser = fakeRecognitionEnvironment({
+    available: () => new Promise(resolve => { resolveCapability = resolve; }),
+  });
+  const states = [];
+  const recognitions = [];
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({
+      localCapabilityTimeoutMs: 5,
+      onState: state => states.push(state),
+      onRecognition: event => recognitions.push(event),
+      onTranscript: (text, metadata) => transcripts.push({ text, metadata }),
+    });
+    assert.equal(await session.startIfAllowed(), true);
+    assert.equal(browser.engines.length, 1);
+    assert.equal(browser.engines[0].processLocally, false);
+    assert.equal(states.at(-1).recognitionMode, "browser");
+    resolveCapability("available");
+    browser.engines[0].onresult({ results: [speechResult("hey aura", true)], resultIndex: 0 });
+    assert.equal(recognitions[0].recognitionMode, "browser");
+    assert.equal(recognitions[0].processLocally, false);
+    assert.equal(recognitions[0].recognitionId, recognitions[0].epoch);
+    assert.equal(transcripts[0].metadata.recognitionMode, "browser");
+    assert.equal(transcripts[0].metadata.processLocally, false);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("missing local capability API selects browser mode without attempting pack installation", async () => {
+  const browser = fakeRecognitionEnvironment();
+  class NoLocalProbe extends browser.dom.window.SpeechRecognition {
+    static available = undefined;
+  }
+  Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: NoLocalProbe });
+  try {
+    const session = createAuraVoiceSession();
+    assert.equal(await session.start(), true);
+    assert.equal(browser.engines.length, 1);
+    assert.equal(browser.engines[0].processLocally, false);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("prefixed browser recognition constructor remains supported", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const prefixed = browser.dom.window.SpeechRecognition;
+  Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: undefined });
+  Object.defineProperty(window, "webkitSpeechRecognition", { configurable: true, value: prefixed });
+  try {
+    const session = createAuraVoiceSession();
+    assert.equal(await session.start(), true);
+    assert.equal(browser.engines.length, 1);
+    assert.equal(browser.engines[0].processLocally, true);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("a runtime local-mode change stops input without switching providers", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const states = [];
+  try {
+    const session = createAuraVoiceSession({ onState: state => states.push(state) });
+    assert.equal(await session.start(), true);
+    const engine = browser.engines[0];
+    engine.processLocally = false;
+    engine.onresult({ results: [speechResult("hey aura", true)], resultIndex: 0 });
+    assert.equal(browser.engines.length, 1);
+    assert.equal(session.enabled, false);
+    assert.equal(states.at(-1).status, "unavailable");
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("a deliberate new start reselects recognition mode after stop", async () => {
+  let available = "downloadable";
+  const browser = fakeRecognitionEnvironment({ available: () => available });
+  try {
+    const session = createAuraVoiceSession();
+    assert.equal(await session.start(), true);
+    assert.equal(browser.engines[0].processLocally, false);
+    session.stop();
+    available = "available";
+    assert.equal(await session.start(), true);
+    assert.equal(browser.engines[1].processLocally, true);
+    session.destroy();
+  } finally { await browser.restore(); }
 });
 
 test("AURA pauses while hidden and requires an explicit foreground resume", async () => {
@@ -217,6 +341,84 @@ test("busy work suppresses recognition restart until the operation releases it",
   } finally { await browser.restore(); }
 });
 
+test("start calls during busy work do not clear the selected browser mode", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  try {
+    const session = createAuraVoiceSession();
+    assert.equal(await session.startIfAllowed(), true);
+    assert.equal(browser.engines[0].processLocally, false);
+    session.setBusy(true);
+    assert.equal(await session.start(), false);
+    assert.equal(await session.startIfAllowed(), false);
+    session.setBusy(false);
+    await flush();
+    assert.equal(browser.engines.length, 2);
+    assert.equal(browser.engines[1].processLocally, false);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("busy during a pending capability probe fences the old result and starts only one engine", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const resolvers = [];
+  class DeferredRecognition extends browser.dom.window.SpeechRecognition {
+    static available() {
+      return new Promise(resolve => resolvers.push(resolve));
+    }
+  }
+  Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: DeferredRecognition });
+  try {
+    const session = createAuraVoiceSession({ localCapabilityTimeoutMs: 1000 });
+    const firstStart = session.start();
+    await flush();
+    assert.equal(resolvers.length, 1);
+    session.setBusy(true);
+    session.setBusy(false);
+    await flush();
+    assert.equal(resolvers.length, 2);
+    resolvers[0]("available");
+    resolvers[1]("available");
+    await firstStart;
+    await flush();
+    assert.equal(browser.engines.length, 1);
+    assert.equal(browser.engines[0].processLocally, true);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("browser provider stays selected through busy suspension and recognizer restart", async () => {
+  const browser = fakeRecognitionEnvironment({ available: "downloadable" });
+  const originalSetTimeout = globalThis.setTimeout;
+  const originalClearTimeout = globalThis.clearTimeout;
+  const timers = [];
+  globalThis.setTimeout = (callback, delay) => {
+    const timer = { callback, delay, cancelled: false };
+    timers.push(timer);
+    return timer;
+  };
+  globalThis.clearTimeout = timer => { if (timer) timer.cancelled = true; };
+  try {
+    const session = createAuraVoiceSession();
+    assert.equal(await session.startIfAllowed(), true);
+    assert.equal(browser.engines[0].processLocally, false);
+    session.setBusy(true);
+    session.setBusy(false);
+    await flush();
+    assert.equal(browser.engines[1].processLocally, false);
+    browser.engines[1].onend();
+    const restart = timers.find(timer => timer.delay === 700 && !timer.cancelled);
+    assert.ok(restart);
+    restart.callback();
+    await flush();
+    assert.equal(browser.engines[2].processLocally, false);
+    session.destroy();
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+    globalThis.clearTimeout = originalClearTimeout;
+    await browser.restore();
+  }
+});
+
 test("Stop fences a late synthesis completion from restarting the microphone", async () => {
   const browser = fakeRecognitionEnvironment();
   try {
@@ -265,8 +467,12 @@ test("onend restart uses capped exponential delay and stops after repeated failu
     }
     browser.engines.at(-1).onend();
     assert.equal(session.enabled, false);
-    assert.match(states.at(-1).message, /repeated browser interruptions/i);
-    assert.deepEqual(scheduled.map((timer) => timer.delay), [700, 1400, 2800, 5600, 10000]);
+    assert.match(states.at(-1).message, /repeated interruptions/i);
+    assert.equal(scheduled[0].delay, 2000, "local capability probing is bounded at two seconds");
+    assert.equal(scheduled[0].cancelled, true, "successful capability probes clear the timeout");
+    assert.deepEqual(scheduled.slice(1).map((timer) => timer.delay), [700, 1400, 2800, 5600, 10000]);
+    assert.equal(await session.start(), true, "an explicit new start resets the restart budget");
+    assert.equal(browser.engines.length, 7);
     session.destroy();
   } finally {
     globalThis.setTimeout = originalSetTimeout;
