@@ -12,6 +12,18 @@ values ('e2584b32-472c-4888-b592-394235050b5b',17,'kayla_knepp','Kayla Knepp','A
        ('961b0a0f-11a6-4db5-b066-582f772ab8e7',74,'nelly_aguilar','Nelly Aguilar','admin',false)
 on conflict(id) do nothing;
 
+-- Explicit legacy IDs must not collide with later tests using the sequence.
+select setval(pg_get_serial_sequence('public.ph_app_users','id'),
+  greatest((select max(id) from public.ph_app_users), 74), true);
+-- These accounts were added after the historical permission-baseline replay.
+-- Capture their effective decisions using the same observational contract.
+insert into private.app_access_legacy_baseline(profile_id,permission_key,allowed,access_scope)
+select p.id,e.permission_key,e.allowed,e.access_scope from public.profiles p
+cross join lateral private.get_effective_app_permissions_v1(p.id,private.resolve_app_access_policy_id_v1(true)) e
+where p.id in ('e2584b32-472c-4888-b592-394235050b5b','961b0a0f-11a6-4db5-b066-582f772ab8e7')
+  and e.permission_key in ('drive.reclass.submit','manager.orders.view')
+on conflict(profile_id,permission_key) do nothing;
+
 -- Current tables/columns absent from the selected historical CI replay.
 -- DDL copied from the checked-in production baseline; disposable CI only.
 CREATE TABLE IF NOT EXISTS public.ph_eval_assignment_rules (

@@ -6,6 +6,14 @@ import ts from 'typescript';
 
 const authSource = fs.readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
 const code = fs.readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+
+test('anonymous pre-request access uses a narrow wrapper without opening the private schema', () => {
+  const migration = fs.readFileSync(new URL('../supabase/migrations/20261001215508_scheduled_handover_005.sql', import.meta.url), 'utf8');
+  assert.doesNotMatch(migration, /grant usage on schema private to[^;]*\banon\b/i);
+  assert.doesNotMatch(migration, /grant execute on function private\.guard_active_app_session_v1\(\) to[^;]*\banon\b/i);
+  assert.match(migration, /function public\.guard_active_app_session_v1\(\)\s+returns void language sql security definer set search_path = '' as \$\$\s+select private\.guard_active_app_session_v1\(\)/);
+  assert.match(migration, /pgrst\.db_pre_request = ''public\.guard_active_app_session_v1''/);
+});
 globalThis.Deno = { env: { get: key => key === 'APP_SESSION_SECRET' ? 'unit-test-only-secret-005' : undefined } };
 const loadTs = async path => {
   const source = fs.readFileSync(new URL(path, import.meta.url), 'utf8');
