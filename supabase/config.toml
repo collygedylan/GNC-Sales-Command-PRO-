@@ -395,6 +395,12 @@ enabled = true
 verify_jwt = false
 entrypoint = "./functions/app-api/index.ts"
 
+[functions.aura-llm-router]
+enabled = true
+# Native-session and active Dylan profile checks run inside the function.
+verify_jwt = false
+entrypoint = "./functions/aura-llm-router/index.ts"
+
 [functions.calendar-reminder-sweep]
 enabled = true
 # The function verifies the service-role bearer itself because pg_cron invokes

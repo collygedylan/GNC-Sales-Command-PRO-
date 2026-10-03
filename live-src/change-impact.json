@@ -14,12 +14,21 @@
         "services/auraConversation.js",
         "utils/auraIntentParser.js",
         "utils/auraLingo.js",
+        "supabase/functions/aura-llm-router/**",
+        "supabase/functions/_shared/aura-auth.ts",
+        "supabase/functions/_shared/aura-inventory.ts",
+        "supabase/migrations/20261003025749_aura_llm_free_tier_011.sql",
+        "supabase/tests/aura_llm_011_test.sql",
+        "supabase/ci/aura_llm_pglite.mjs",
+        "scripts/test-aura-llm-quota-concurrency.mjs",
+        "tests/aura-llm-release.test.mjs",
+        "docs/aura-llm-proposal.md",
         "tests/aura-voice.test.mjs",
         "tests/aura-lingo-v2.test.mjs",
         "tests/aura-shell-v2.test.mjs"
       ],
       "commands": [
-        "node --test tests/aura-voice.test.mjs tests/aura-lingo-v2.test.mjs tests/aura-shell-v2.test.mjs",
+        "node --test tests/aura-voice.test.mjs tests/aura-lingo-v2.test.mjs tests/aura-shell-v2.test.mjs tests/aura-llm-release.test.mjs",
         "npm run check:foundation"
       ]
     },

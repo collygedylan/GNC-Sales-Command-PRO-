@@ -435,6 +435,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261002134138_nelly_access_audit_baseline_repair_007.sql',
       '20261002155017_eval_delivery_archive_health_007.sql',
       '20261002204108_aura_inventory_match_010.sql',
+      '20261003025749_aura_llm_free_tier_011.sql',
     ], 'active migrations contain the baseline, Grower fields, conflict fix, Production Schedule, and HR command center');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

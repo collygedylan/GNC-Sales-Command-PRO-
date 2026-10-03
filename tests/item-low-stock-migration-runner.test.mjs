@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -139,7 +139,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -171,7 +171,7 @@ test('HR migration contract verifies partitioned labor tables and the scheduled 
 });
 
 test('archive-only health repair remains private and fails closed before publication', async () => {
-  assert.equal(releaseDatabaseMigrations.at(-2), evalDeliveryArchiveHealthMigrationName);
+  assert.ok(releaseDatabaseMigrations.indexOf(evalDeliveryArchiveHealthMigrationName) < releaseDatabaseMigrations.indexOf(auraInventoryMatchMigrationName));
   const contract = migrationContractQuery(evalDeliveryArchiveHealthMigrationName);
   assert.match(contract, /request_folder_archive_only_completed_v1/);
   assert.match(contract, /not prosecdef and provolatile='s'/);

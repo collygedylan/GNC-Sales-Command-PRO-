@@ -69,10 +69,15 @@ export async function withObservedRequest(
   functionName: string,
   req: Request,
   handler: () => Promise<Response>,
+  options: { action?: string } = {},
 ) {
   const requestId = String(req.headers.get("x-request-id") || crypto.randomUUID()).slice(0, 96);
   const startedAt = performance.now();
-  const action = await readAction(req);
+  // Bounded body handlers provide a fixed action so instrumentation does not
+  // consume an unbounded cloned stream before their request deadline starts.
+  const action = options.action
+    ? String(options.action).trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').slice(0, 64)
+    : await readAction(req);
   try {
     const response = await handler();
     const status = response.status;

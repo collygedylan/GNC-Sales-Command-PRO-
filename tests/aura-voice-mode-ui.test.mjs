@@ -52,8 +52,15 @@ async function flush() {
   await new Promise(resolve => setImmediate(resolve));
 }
 
-function mount() {
-  return mountAuraWidget({ isAuthorized: () => true });
+async function useStandardLookup() {
+  const fallback = [...document.querySelectorAll(".aura-retry")].find(button => button.textContent === "Use standard lookup");
+  assert.ok(fallback, "router failures offer an explicit standard-lookup fallback");
+  fallback.click();
+  await flush();
+}
+
+function mount(options = {}) {
+  return mountAuraWidget({ isAuthorized: () => true, ...options });
 }
 
 function openPanel() {
@@ -86,16 +93,20 @@ test("recognition mode badge persists through transcript and error status update
     assert.equal(badge.textContent, "On-device speech");
     assert.equal(mic.getAttribute("aria-label"), "Pause voice input");
 
-    engine.onresult(result("Hey Aura, florp"));
-    await flush();
-    assert.equal(badge.textContent, "On-device speech");
-    assert.match(panel.querySelector(".aura-status").textContent, /Hey Aura, florp/i);
-    assert.match(panel.querySelector(".aura-message").textContent, /didn’t quite catch/i);
-
     engine.onerror({ error: "audio-capture" });
     assert.equal(badge.textContent, "On-device speech");
     assert.match(panel.querySelector(".aura-status").textContent, /microphone|type a command/i);
     assert.equal(mic.getAttribute("aria-label"), "Start voice input");
+    mic.click();
+    await flush();
+    const activeEngine = env.engines.at(-1);
+    activeEngine.onresult(result("Hey Aura, florp"));
+    await flush();
+    assert.equal(badge.textContent, "On-device speech");
+    assert.match(panel.querySelector(".aura-status").textContent, /Listening on this device/i);
+    assert.match(panel.querySelector(".aura-message").textContent, /not configured/i);
+    assert.ok([...panel.querySelectorAll(".aura-retry")].some(button => button.textContent === "Retry AURA"));
+
   } finally {
     widget.destroy();
     await env.restore();
@@ -182,6 +193,7 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
     env.engines[1].onresult(result("50 three deep pee Limelight"));
     env.engines[1].onend();
     await flush();
+    await useStandardLookup();
     assert.deepEqual(lotCalls.map(call => call.quantity), [50]);
     assert.match(panel.querySelector(".aura-message").textContent, /Added 50 3DP Limelight/i);
     assert.equal(panel.querySelector(".aura-status").textContent, "Tap the microphone for your next command. Your current draft is still here.");
@@ -193,6 +205,7 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
     env.engines[2].onresult(result("25 three deep pee Limelight"));
     env.engines[2].onend();
     await flush();
+    await useStandardLookup();
     assert.deepEqual(lotCalls.map(call => call.quantity), [50, 75]);
     assert.match(panel.querySelector(".aura-message").textContent, /Updated the request to 75 3DP Limelight/i);
     assert.equal(catalogCalls.length, 1, "the verified catalog is reused across the short draft session");
@@ -294,7 +307,7 @@ test("selected local mode survives AURA speech and recognizer restart", async ()
     },
   });
   Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
-  const widget = mount();
+  const widget = mount({ requestV2: async () => ({ complete: true, winner: { commonname: "Limelight", contsize: "3DP", total: 12 }, tieCount: 1 }) });
   try {
     const panel = openPanel();
     panel.querySelector(".aura-mic").click();
@@ -302,7 +315,7 @@ test("selected local mode survives AURA speech and recognizer restart", async ()
     assert.equal(panel.querySelector(".aura-mode").textContent, "On-device speech");
 
     const input = panel.querySelector("input");
-    input.value = "an unrecognized command";
+    input.value = "What item has largest U1 value?";
     panel.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
     await flush();
     assert.equal(panel.querySelector(".aura-status").textContent, "AURA is responding…");
@@ -403,13 +416,13 @@ test('bounded matching uses one lookup, authoritative count, and scoped 30-secon
     calls.push(body); return body.operation === 'match' ? exactBabyGem : { complete: true, total: 450, season: 'U2', rows: [] };
   } });
   try {
-    openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+    openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush(); await useStandardLookup();
     assert.deepEqual(calls.map(x => x.operation), ['match', 'count']);
     assert.equal(calls[0].commonName, 'baby gem boxwood'); assert.equal(calls[0].contSize, '3DP'); assert.equal(calls[0].openStockOnly, true);
     assert.match(document.querySelector('.aura-message').textContent, /450/);
-    enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+    enter('How many 3DP baby gem boxwood are in open stock'); await flush(); await useStandardLookup();
     assert.deepEqual(calls.map(x => x.operation), ['match', 'count', 'count']);
-    enter('How many 3DP baby gem boxwood in U1'); await flush();
+    enter('How many 3DP baby gem boxwood in U1'); await flush(); await useStandardLookup();
     assert.equal(calls.filter(x => x.operation === 'match').length, 2);
   } finally { widget.destroy(); await env.restore(); }
 });
@@ -424,7 +437,7 @@ test('fuzzy matches require selection and wrong sizes or incomplete matches neve
     const env = browserEnvironment(); const calls = [];
     const widget = mountAuraWidget({ isAuthorized: () => true, requestV2: async body => { calls.push(body); return data; } });
     try {
-      openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+      openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush(); await useStandardLookup();
       assert.deepEqual(calls.map(x => x.operation), ['match']);
       if (data.rows[0]?.matchKind === 'fuzzy') assert.equal(document.querySelectorAll('.aura-choice').length, 1);
       else assert.ok(document.querySelector('.aura-retry'));
@@ -442,7 +455,7 @@ test('five-second command budget spans matching and quantity, rejects late resul
     return new Promise(resolve => { if (body.operation === 'match') resolveMatch = resolve; else resolveCount = resolve; });
   } });
   try {
-    openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush();
+    openPanel(); enter('How many 3DP baby gem boxwood are in open stock'); await flush(); await useStandardLookup();
     t.mock.timers.tick(3000); resolveMatch(exactBabyGem); await flush();
     assert.equal(calls.length, 2); assert.equal(calls[0].options.deadlineAt, calls[1].options.deadlineAt);
     t.mock.timers.tick(2000); await flush();
@@ -464,7 +477,7 @@ test('hide and sign-out cancel stalled matching without Retry or late UI mutatio
       signal = options.signal; return new Promise(resolve => { resolveRead = resolve; });
     } });
     try {
-      openPanel(); enter('How many 3DP baby gem boxwood'); await flush();
+      openPanel(); enter('How many 3DP baby gem boxwood'); await flush(); await useStandardLookup();
       if (reason === 'hide') {
         Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
         document.dispatchEvent(new window.Event('visibilitychange'));

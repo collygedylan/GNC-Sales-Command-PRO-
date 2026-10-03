@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import yaml from 'js-yaml';
+import { migrationBody, migrationContractQuery, auraLlmFreeTierMigrationName, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
+const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
+
+test('AURA quota migration is atomic, private, and checked before release', () => {
+  const sql = migrationBody(read(`supabase/migrations/${auraLlmFreeTierMigrationName}`));
+  assert.equal(releaseDatabaseMigrations.at(-1), auraLlmFreeTierMigrationName);
+  assert.match(sql, /pg_advisory_xact_lock\(110011011\)/);
+  assert.match(sql, /primary key \(request_id, round\)/);
+  assert.match(sql, /alter table aura_private\.llm_provider_calls enable row level security/);
+  assert.match(sql, /revoke all on schema aura_private from public, anon, authenticated/);
+  assert.match(sql, /America\/Los_Angeles/);
+  assert.match(sql, /p_rpm not between 1 and 15/);
+  assert.doesNotMatch(sql, /security definer|grant .+ to (?:anon|authenticated)/i);
+  const contract = migrationContractQuery(auraLlmFreeTierMigrationName);
+  assert.match(contract, /relrowsecurity/);
+  assert.match(contract, /not has_schema_privilege\('authenticated'/);
+  assert.match(contract, /aura_llm_reserve_call_v1/);
+  assert.match(contract, /statement_timeout=4s/);
+});
+
+test('AURA router deploy follows migration and remains a prerequisite of Pages', () => {
+  const workflow = yaml.safeLoad(read('.github/workflows/apps-script-sync.yml'));
+  const steps = workflow.jobs['sync-codegs'].steps;
+  const schema = steps.findIndex(step => step.name?.includes('Apply backend release migrations'));
+  const router = steps.findIndex(step => step.run?.includes('supabase functions deploy aura-llm-router'));
+  assert.ok(schema >= 0 && router > schema);
+  assert.ok(workflow.jobs['publish-pages'].needs.includes('sync-codegs'));
+  assert.match(steps[router].run, /deploy aura-llm-router --use-api --project-ref/);
+  assert.doesNotMatch(steps[router].run, /GEMINI_API_KEY\s*=/);
+  assert.match(read('supabase/config.toml'), /\[functions\.aura-llm-router\][\s\S]*?verify_jwt = false/);
+});
+
+test('database CI checks quota contention and permissions in an isolated database', () => {
+  const workflow = read('.github/workflows/release-database.yml');
+  assert.ok(workflow.includes(`cp supabase/migrations/${auraLlmFreeTierMigrationName}`));
+  assert.match(workflow, /cp supabase\/tests\/aura_llm_011_test.sql/);
+  assert.match(workflow, /AURA_LLM_TEST_DB_URL="\$DB_URL" node scripts\/test-aura-llm-quota-concurrency.mjs/);
+  assert.match(workflow, /deno check[^\n]*aura-llm-router\/index.ts/);
+  const concurrency = read('scripts/test-aura-llm-quota-concurrency.mjs');
+  assert.match(concurrency, /LOCAL_DATABASE_ONLY/);
+  assert.match(concurrency, /results\.filter\(r=>r\.allowed\)\.length,15/);
+});
+
+test('router deduplication does not put utterances or customer sidecars in diagnostic keys', () => {
+  const source = read('index.html');
+  const adapter = source.slice(source.indexOf('        async function requestAuraLlm('), source.indexOf('        async function resolveAuraOrderParty('));
+  assert.match(adapter, /payload\.turnId \|\| options\.requestId/);
+  assert.doesNotMatch(adapter, /JSON\.stringify\(payload\)/);
+  assert.match(adapter, /maxAttempts: 1/);
+});
