@@ -191,6 +191,7 @@ jobs:
           cp supabase/migrations/20261002014421_index_request_history_assigned_rep_006.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261002121446_aura_inventory_v2_007.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261002204108_aura_inventory_match_010.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261003025749_aura_llm_free_tier_011.sql "$ci_root/supabase/migrations/"
           cp supabase/ci/nelly_access_audit_baseline_snapshot_fixture.sql "$ci_root/supabase/migrations/20261002134137_ci_nelly_baseline_snapshot.sql"
           cp supabase/migrations/20261002134138_nelly_access_audit_baseline_repair_007.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261002155017_eval_delivery_archive_health_007.sql "$ci_root/supabase/migrations/"
@@ -250,6 +251,7 @@ jobs:
           cp supabase/tests/production_schedule_cards_006_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/aura_inventory_v2_007_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/aura_inventory_match_010_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/aura_llm_011_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/nelly_access_audit_baseline_repair_007_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/function_search_path_pinning_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/season_sales_done_lifecycle_test.sql "$ci_root/supabase/tests/"
@@ -289,6 +291,7 @@ jobs:
           node supabase/ci/request_archive_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/production_schedule_cards_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/aura_inventory_v2_pglite.mjs --pglite-root "$pglite_root"
+          node supabase/ci/aura_llm_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/nelly_access_audit_baseline_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/eval_delivery_archive_health_pglite.mjs --pglite-root "$pglite_root"
       - id: browser_setup
@@ -315,6 +318,7 @@ jobs:
           CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs
           CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs
           CI=true REQUEST_HISTORY_TEST_DB_URL="$DB_URL" node scripts/test-request-history-scale.mjs
+          CI=true AURA_LLM_TEST_DB_URL="$DB_URL" node scripts/test-aura-llm-quota-concurrency.mjs
           SUPABASE_LOCAL_URL="$API_URL" \
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
@@ -326,6 +330,7 @@ jobs:
           deno check --node-modules-dir=auto supabase/functions/calendar-reminder-sweep/index.ts supabase/functions/send-push-alert/index.ts
           deno check --node-modules-dir=auto supabase/functions/scheduled-offboarding/index.ts supabase/functions/auth-admin/index.ts supabase/functions/inventory-assistant/index.ts
           deno check --node-modules-dir=auto supabase/functions/hl-po-pdf-import/index.ts
+          deno check --node-modules-dir=auto supabase/functions/aura-llm-router/index.ts
           deno test --node-modules-dir=auto --allow-env --allow-net supabase/functions
       - name: Save relation-size report query
         run: |

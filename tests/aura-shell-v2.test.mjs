@@ -138,9 +138,59 @@ test('AURA reads enter the shared read boundary and retain error status metadata
   const source = extract('requestAuraV2Inventory', 'resolveAuraOrderParty');
   assert.match(source, /withProductionLiveSyncSignal/);
   assert.match(source, /runDedupeSupabaseRead/);
+  assert.match(source, /maxAttempts: 1/);
+  assert.match(source, /AURA_LLM_ROUTER_URL/);
   const api = extract('callAuraAppApi', 'requestAuraInventory');
   assert.match(api, /error\.status = Number\(payload\?\.status/);
   assert.match(api, /error\.code = String\(payload\?\.code/);
+});
+
+test('AURA router calls use the verified native session, bounded deadline, and separate party-bind idempotency', async () => {
+  const start = html.indexOf('        function awaitAuraRead(');
+  const end = html.indexOf('        async function resolveAuraOrderParty(', start + 1);
+  const postStart = html.indexOf('        async function postAppFunctionJson(');
+  const postEnd = html.indexOf('        function getAvReadDataset(', postStart + 1);
+  assert.ok(start >= 0 && end > start && postStart >= 0 && postEnd > postStart);
+  const calls = [];
+  const context = vm.createContext({
+    AbortController, Date, setTimeout, clearTimeout,
+    nativeAuthSessionActive: true,
+    nativeAuthProfile: { id: 'profile', username: 'dylan_collyge' },
+    currentUser: 'dylan_collyge', auraVerifiedProfileId: 'profile',
+    auraPendingRequests: new Set(), AURA_LLM_ROUTER_URL: 'https://api.example.test/functions/v1/aura-llm-router',
+    SUPABASE_KEY: 'project-anon-key',
+    getSupabaseReadIdentityScope: () => 'dylan:session',
+    isAuraWidgetAuthorized: () => true,
+    getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer native-dylan' }),
+    getCurrentAppSessionToken: () => 'legacy-token',
+    fetchWithTimeout: async (url, init, timeoutMs, label) => {
+      calls.push({ url, init, timeoutMs, label });
+      const request = JSON.parse(init.body);
+      const response = request.mode === 'bind_party' ? { ok: true, partyRef: 'opaque-ref' } : { ok: true, requestId: 'turn-1' };
+      return { ok: true, headers: { get: () => 'turn-1' }, text: async () => JSON.stringify(response) };
+    },
+    console,
+  });
+  vm.runInContext(`${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraRouter = callAuraLlmRouter;`, context);
+  const bind = await context.invokeAuraRouter({ mode: 'bind_party', party: { customerIdentityId: 'cust-1', consigneeIdentityId: 'cons-1', customerName: 'Acme', consigneeName: 'North' } }, { deadlineAt: Date.now() + 15000, requestId: 'turn-1' });
+  const command = { mode: 'command', text: 'check open stock for SKU-1', source: 'typed', turnId: 'turn-1', context: { mode: 'inventory', lines: [] }, partyRef: bind.partyRef,
+    partySidecar: { customerIdentityId: 'cust-1', consigneeIdentityId: 'cons-1', customerName: 'Acme', consigneeName: 'North' } };
+  const result = await context.invokeAuraRouter(command, { deadlineAt: Date.now() + 15000, requestId: 'turn-1' });
+  assert.equal(result.ok, true);
+  assert.equal(calls.length, 2);
+  for (const call of calls) {
+    assert.equal(call.url, 'https://api.example.test/functions/v1/aura-llm-router');
+    assert.ok(call.timeoutMs > 0 && call.timeoutMs <= 15000);
+    assert.equal(call.init.headers.Authorization, 'Bearer native-dylan');
+    assert.equal(call.init.headers['x-request-id'], 'turn-1');
+    assert.equal(call.init.headers['x-gnc-session'], undefined);
+  }
+  assert.equal(calls[0].label, 'AURA command');
+  assert.equal(calls[0].init.headers['Idempotency-Key'], 'turn-1:bind_party');
+  assert.equal(calls[1].init.headers['Idempotency-Key'], 'turn-1:command');
+  assert.deepEqual(JSON.parse(calls[1].init.body), command);
+  assert.doesNotMatch(JSON.stringify({ text: command.text, context: command.context }), /Acme|North/);
+  assert.equal(context.auraPendingRequests.size, 0);
 });
 
 test('AURA inventory deadline aborts a stalled native-auth lookup at the five-second budget', async () => {

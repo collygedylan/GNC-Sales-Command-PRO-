@@ -124,6 +124,7 @@ jobs:
           supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
           supabase functions deploy auth-admin --use-api --project-ref "$project_ref"
           supabase functions deploy inventory-assistant --use-api --project-ref "$project_ref"
+          supabase functions deploy aura-llm-router --use-api --project-ref "$project_ref"
 
       - name: Check whether deployed Apps Script already has identical code
         id: compatibility

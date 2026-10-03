@@ -56,6 +56,14 @@ async function flush() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
+async function chooseAuraStandardFallback() {
+  await flush();
+  const button = [...document.querySelectorAll(".aura-retry")].find(node => node.textContent === "Use standard lookup");
+  assert.ok(button, "the user must explicitly choose the deterministic fallback");
+  button.click();
+  await flush();
+}
+
 function speechResult(transcript, isFinal, confidence = 0.99) {
   const result = [{ transcript, confidence }];
   result.isFinal = isFinal;
@@ -822,6 +830,7 @@ test("AURA V2 builds a multi-turn draft and opens review without submitting", as
     input.value = "start a request for Megan"; submit.click(); await flush();
     assert.match(document.querySelector(".aura-message").textContent, /request started for Megan/i);
     input.value = "50 three deep pee Limelight"; submit.click(); await flush();
+    await chooseAuraStandardFallback();
     assert.equal(calls.filter((call) => call.operation === "match").length, 1);
     assert.equal(calls.at(-1).operation, "lots", document.querySelector(".aura-message").textContent);
     assert.equal(calls.at(-1).itemcode, "SKU-1");
@@ -857,7 +866,9 @@ test("AURA V2 rechecks cumulative SKU quantities and handles zero counts without
     const submit = document.querySelector(".aura-inputbar button[type=submit]");
     input.value = "start a request for Megan"; submit.click(); await flush();
     input.value = "30 3DP Limelight"; submit.click(); await flush();
+    await chooseAuraStandardFallback();
     input.value = "20 3DP Limelight"; submit.click(); await flush();
+    await chooseAuraStandardFallback();
     assert.deepEqual(calls.filter(call => call.operation === "lots").map(call => call.quantity), [30, 50]);
     input.value = "review request"; submit.click(); await flush();
     assert.equal(handedOff.lines.length, 1);
@@ -876,6 +887,7 @@ test("AURA V2 rechecks cumulative SKU quantities and handles zero counts without
     const queryInput = document.querySelector(".aura-inputbar input");
     const querySubmit = document.querySelector(".aura-inputbar button[type=submit]");
     queryInput.value = "How many 3DP Limelight in U2"; querySubmit.click(); await flush();
+    await chooseAuraStandardFallback();
     assert.match(document.querySelector(".aura-message").textContent, /^0 3DP Limelight for U2 available\.$/i);
     queryInput.value = "What item has largest U1 value"; querySubmit.click(); await flush();
     assert.match(document.querySelector(".aura-message").textContent, /largest U1 available value is Limelight/i);
@@ -906,11 +918,13 @@ test("AURA V2 accepts follow-up items without another wake word and consumes fin
     const followupEngine = browser.engines.at(-1);
     followupEngine.onresult({ results: [speechResult("50 three deep pee Limelight", true)], resultIndex: 0 });
     await flush();
+    await chooseAuraStandardFallback();
     assert.deepEqual(calls.filter(call => call.operation === "lots").map(call => call.quantity), [50], document.querySelector(".aura-message")?.textContent);
     assert.match(document.querySelector(".aura-message").textContent, /added 50 3DP Limelight/i);
     const repeatedIntentEngine = browser.engines.at(-1);
     repeatedIntentEngine.onresult({ results: [speechResult("50 three deep pee Limelight", true)], resultIndex: 0 });
     await flush();
+    await chooseAuraStandardFallback();
     assert.deepEqual(calls.filter(call => call.operation === "lots").map(call => call.quantity), [50, 100]);
     assert.match(document.querySelector(".aura-message").textContent, /updated the request to 100 3DP Limelight/i);
   } finally { widget.destroy(); await browser.restore(); }
@@ -940,6 +954,7 @@ test("AURA V2 exposes explicit ambiguity choices and accepts a one-digit choice"
     const submit = document.querySelector('.aura-inputbar button[type="submit"]');
     input.value = "start a request for Megan"; submit.click(); await flush();
     input.value = "50 3DP Limelight"; submit.click(); await flush();
+    await chooseAuraStandardFallback();
     assert.equal(document.querySelectorAll(".aura-choice").length, 2);
     input.value = "2"; submit.click(); await flush();
     assert.deepEqual(lotCalls, ["SKU-B"]);
@@ -1056,4 +1071,175 @@ test("AURA speech does not restart a browser one-shot after TTS completes", asyn
     assert.match(states.at(-1).message, /one-shot/i);
     session.destroy();
   } finally { await browser.restore(); }
+});
+
+test("AURA sends typed inventory language to the authenticated router and renders verified results", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const calls = [];
+  const row = { unique_id: "lot-1", itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP", locationcode: "U2", lotcode: "27.U2", ptravailable: 80, ptronhand: 90 };
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    requestLlm: async body => {
+      calls.push(body);
+      return { ok: true, requestId: body.turnId, reply: "I found Limelight.", actions: [{ type: "inventory_result", operation: "open_stock", data: { complete: true, total: 80, rows: [row] } }] };
+    },
+    requestV2: async () => { throw new Error("The legacy inventory path must not run automatically."); },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    input.value = "How many Limelight three deep pee do we have in open stock?";
+    document.querySelector('.aura-inputbar button[type="submit"]').click();
+    await flush();
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].mode, "command");
+    assert.equal(calls[0].text, input.value);
+    assert.equal(calls[0].source, "typed");
+    assert.deepEqual(calls[0].context.draftLines, []);
+    assert.deepEqual(calls[0].context.selectedRows, []);
+    assert.equal(Object.hasOwn(calls[0].context, "mode"), false);
+    assert.equal(document.querySelectorAll(".aura-row").length, 1, document.querySelector(".aura-message").textContent);
+    assert.match(document.querySelector(".aura-message").textContent, /found Limelight/i);
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("AURA sends selected SKU and cumulative draft context using only router-approved fields", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const calls = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    requestLlm: async body => {
+      calls.push(body);
+      return calls.length === 1
+        ? { ok: true, requestId: body.turnId, reply: "Choose the exact product.", actions: [{ type: "choices", kind: "inventory", complete: true, items: [{ itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP" }] }] }
+        : { ok: true, requestId: body.turnId, reply: "The inventory result is incomplete.", actions: [] };
+    },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    const submit = document.querySelector('.aura-inputbar button[type="submit"]');
+    input.value = "Find Limelight 3DP"; submit.click(); await flush();
+    document.querySelector(".aura-choice").click();
+    input.value = "How many of the selected plant do we have?"; submit.click(); await flush();
+    assert.equal(calls.length, 2);
+    assert.deepEqual(calls[1].context.selectedRows, [{ unique_id: "", itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP", locationcode: "", lotcode: "", quantity: null }]);
+    assert.equal(calls[1].context.sku, "SKU-1");
+    assert.equal(calls[1].context.size, "3DP");
+    assert.deepEqual(calls[1].context.draftLines, []);
+    assert.deepEqual(Object.keys(calls[1].context).sort(), ["draftLines", "locationCode", "selectedRows", "size", "sku"].sort());
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("AURA binds the locally selected party out of band and strips its names from draft utterances", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const binds = [];
+  const commands = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async name => ({ items: [{ key: "acme-key", customerName: "Acme", consigneeName: "North", label: "Acme North", customerIdentityId: "cust-1", consigneeIdentityId: "cons-1" }], hasMore: false }),
+    bindParty: async party => { binds.push(party); return { partyRef: `${Date.now() + 60_000}.opaque-party-ref` }; },
+    requestLlm: async body => {
+      commands.push(body);
+      const line = { unique_id: "lot-1", itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP", locationcode: "U2", lotcode: "27.U2", ptravailable: 90, quantity: commands.length === 1 ? 10 : 15 };
+      return { ok: true, requestId: body.turnId, reply: "Ready to prepare that draft.", actions: [{ type: "draft_update", lines: [line] }] };
+    },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    const submit = document.querySelector('.aura-inputbar button[type="submit"]');
+    input.value = "start a request for Acme North"; submit.click(); await flush();
+    input.value = "add 10 three deep pee Limelight for Acme North"; submit.click(); await flush();
+    assert.equal(binds.length, 1);
+    assert.equal(binds[0].customerIdentityId, "cust-1");
+    assert.equal(binds[0].consigneeIdentityId, "cons-1");
+    assert.equal(commands.length, 1);
+    assert.match(commands[0].partyRef, /^\d{13}\.opaque-party-ref$/);
+    assert.deepEqual(commands[0].partySidecar, { customerIdentityId: "cust-1", consigneeIdentityId: "cons-1", customerName: "Acme", consigneeName: "North" });
+    assert.doesNotMatch(commands[0].text, /Acme|North/i);
+    assert.deepEqual(commands[0].context.draftLines, []);
+    assert.deepEqual(commands[0].context.selectedRows, []);
+    assert.equal(Object.hasOwn(commands[0].context, "mode"), false);
+    assert.equal(JSON.stringify(commands[0].context).includes("Acme"), false);
+    input.value = "add 5 three deep pee Limelight for Acme North"; submit.click(); await flush();
+    assert.equal(commands.length, 2);
+    assert.deepEqual(commands[1].context.draftLines, [{ itemcode: "SKU-1", commonname: "Limelight", contsize: "3DP", locationcode: "U2", quantity: 10 }]);
+    assert.deepEqual(Object.keys(commands[1].context.draftLines[0]).sort(), ["itemcode", "commonname", "contsize", "locationcode", "quantity"].sort());
+    assert.doesNotMatch(commands[1].text, /Acme|North/i);
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("AURA rebinds the selected party before a cached signed reference expires", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const originalNow = Date.now;
+  const binds = [];
+  const commands = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async name => ({ items: [{ key: "party", customerName: name, label: name, customerIdentityId: "c1", consigneeIdentityId: "d1" }] }),
+    bindParty: async () => { binds.push(true); return { partyRef: `${Date.now() + 60_000}.ref-${binds.length}` }; },
+    requestLlm: async body => { commands.push(body); return { ok: true, requestId: body.turnId, reply: "Ready.", actions: [] }; },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    const submit = document.querySelector('.aura-inputbar button[type="submit"]');
+    input.value = "start a request for Megan"; submit.click(); await flush();
+    input.value = "add 10 three deep pee Limelight"; submit.click(); await flush();
+    assert.equal(binds.length, 1);
+    Date.now = () => originalNow() + 50_000;
+    input.value = "add 5 three deep pee Limelight"; submit.click(); await flush();
+    assert.equal(binds.length, 2);
+    assert.equal(commands.length, 2);
+    assert.match(commands[1].partyRef, /\.ref-2$/);
+  } finally { Date.now = originalNow; widget.destroy(); await browser.restore(); }
+});
+
+test("AURA keeps paraphrased customer account questions in the local customer picker", async () => {
+  const browser = fakeRecognitionEnvironment();
+  let resolverCalls = 0;
+  const routed = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    resolveOrderParty: async name => {
+      resolverCalls += 1;
+      assert.equal(name, "Acme North");
+      return { items: [{ key: "acme-key", customerName: "Acme", consigneeName: "North", label: "Acme North" }], hasMore: false };
+    },
+    requestLlm: async body => { routed.push(body); return { ok: true, requestId: body.turnId, reply: "No tool selected.", actions: [] }; },
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    const submit = document.querySelector('.aura-inputbar button[type="submit"]');
+    input.value = "What is the account balance for Acme North?"; submit.click(); await flush();
+    assert.equal(resolverCalls, 1);
+    assert.equal(routed.length, 0);
+    assert.equal(document.querySelectorAll(".aura-choice").length, 1);
+    assert.match(document.querySelector(".aura-message").textContent, /choose the exact customer locally/i);
+    input.value = "Can you tell me what Acme North owes?"; submit.click(); await flush();
+    assert.equal(routed.length, 0, "paraphrased customer details must never reach the provider");
+    assert.match(document.querySelector(".aura-message").textContent, /stay local/i);
+  } finally { widget.destroy(); await browser.restore(); }
+});
+
+test("AURA exposes explicit legacy and retry controls for router configuration failures", async () => {
+  const browser = fakeRecognitionEnvironment();
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    requestLlm: async () => { throw Object.assign(new Error("Gemini is not configured."), { status: 503 }); },
+    requestV2: async () => ({ ok: true, rows: [], complete: true }),
+  });
+  try {
+    document.querySelector(".aura-fab").click();
+    const input = document.querySelector(".aura-inputbar input");
+    input.value = "How many Limelight three deep pee do we have?";
+    document.querySelector('.aura-inputbar button[type="submit"]').click();
+    await flush();
+    assert.equal(input.value, "How many Limelight three deep pee do we have?");
+    assert.ok([...document.querySelectorAll(".aura-retry")].some(button => button.textContent === "Retry AURA"));
+    assert.ok([...document.querySelectorAll(".aura-retry")].some(button => button.textContent === "Use standard lookup"));
+    assert.match(document.querySelector(".aura-message").textContent, /not configured/i);
+  } finally { widget.destroy(); await browser.restore(); }
 });

@@ -6,6 +6,8 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
+import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
+import { auraInventoryV2Rpc } from "../_shared/aura-inventory.ts";
 import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail, isPhotoHistoryUsernameAllowed } from "../_shared/photo-history.ts";
 import {
   PHOTO_LEGACY_MAX_BYTES,
@@ -3318,15 +3320,7 @@ const AURA_V2_OPERATIONS = new Set(["catalog", "count", "maximum", "lots", "vali
 const AURA_V2_METRICS = new Set(["ptravailable", "ptronhand"]);
 const AURA_V2_SEASONS = new Set(["S1", "F1", "U1", "U2", "U3", "X", "Y", "Z"]);
 
-export function auraInventoryV2ProfileMatches(
-  session: { authUserId?: string | null; username?: string | null } | null | undefined,
-  profile: Record<string, unknown> | null | undefined,
-) {
-  return Boolean(session?.authUserId && normalizeUsername(session.username || "") === "dylan_collyge"
-    && profile?.id && String(profile.id) === String(session.authUserId)
-    && !profile.disabled_at && profile.is_active !== false && profile.must_change_password !== true
-    && normalizeUsername(String(profile.username || "")) === "dylan_collyge");
-}
+export { auraInventoryV2ProfileMatches };
 
 export function parseAuraInventoryV2Request(payload: Record<string, unknown>) {
   const allowed = new Set(["action", "operation", "itemcode", "commonName", "contSize", "locationCode", "metric", "openStockOnly", "quantity", "season", "cursor", "limit", "lines"]);
@@ -3416,29 +3410,7 @@ export async function handleAuraInventoryV2(
     : deadline || options.signal;
   try {
     timeoutStage = "database";
-    const rpc = input.operation === "match"
-      ? supabase.rpc("aura_inventory_v2_match_v1", {
-        p_common_name: input.commonName,
-        p_contsize: input.contSize || null,
-        p_locationcode: input.locationCode || null,
-        p_metric: input.metric,
-        p_open_stock_only: input.openStockOnly,
-        p_expected_season: input.season,
-      })
-      : supabase.rpc("aura_inventory_v2_read_v1", {
-        p_operation: input.operation,
-        p_itemcode: input.itemcode || null,
-        p_contsize: input.contSize || null,
-        p_locationcode: input.locationCode || null,
-        p_metric: input.metric,
-        p_open_stock_only: input.openStockOnly,
-        p_quantity: input.quantity,
-        p_expected_season: input.season,
-        p_cursor: input.cursor,
-        p_limit: input.limit,
-        p_lines: input.lines,
-      });
-    const { data, error } = await (rpcSignal ? rpc.abortSignal(rpcSignal) : rpc);
+    const { data, error } = await auraInventoryV2Rpc(supabase, input, rpcSignal);
     if (error) throw error;
     if (!data || typeof data !== "object" || data.ok !== true) {
       return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: String(data?.code || "AURA_V2_RESULT_INVALID"), data });
