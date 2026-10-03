@@ -11,17 +11,22 @@ for (const width of [320, 390, 430]) {
       const { mountAuraWidget } = await import(moduleUrl);
       const globals = window as any;
       globals.auraCalls = [];
-      const product = { itemcode: 'SKU-L', commonname: 'Limelight', contsize: '3DP' };
+      globals.auraBinds = [];
+      const verifiedLine = (quantity: number) => ({ unique_id: 'lot-1', itemcode: 'SKU-L', commonname: 'Limelight',
+        contsize: '3DP', locationcode: 'A.07.000', lotcode: '27.F1', ptravailable: 120, ptronhand: 140, quantity });
       globals.auraHandle = mountAuraWidget({ isAuthorized: () => true,
         resolveOrderParty: async () => ({ items: [
-          { key: 'acme-north', customerName: 'Acme', consigneeName: 'North', label: 'Acme – North' },
-          { key: 'acme-south', customerName: 'Acme', consigneeName: 'South', label: 'Acme – South' },
+          { key: 'acme-north', customerName: 'Acme', consigneeName: 'North', label: 'Acme – North', customerIdentityId: 'cust-acme', consigneeIdentityId: 'cons-north' },
+          { key: 'acme-south', customerName: 'Acme', consigneeName: 'South', label: 'Acme – South', customerIdentityId: 'cust-acme', consigneeIdentityId: 'cons-south' },
         ], hasMore: false }),
-        requestV2: async (body: any) => {
+        bindParty: async (party: any) => {
+          globals.auraBinds.push(party);
+          return { partyRef: `${Date.now() + 5 * 60_000}.mock-party-signature` };
+        },
+        requestLlm: async (body: any) => {
           globals.auraCalls.push(body);
-          if (body.operation === 'match') return { rows: [{ ...product, matchKind: 'exact' }], complete: true, exactMatch: true, additionalMatches: false, season: 'F1', salesYear: 27 };
-          if (body.operation === 'lots') return { rows: [{ ...product, unique_id: 'lot-1', locationcode: 'A.07.000', lotcode: '27.F1', ptravailable: 120, ptronhand: 140 }], complete: true, hasMore: false };
-          throw new Error('Unexpected fixture operation');
+          return { ok: true, requestId: body.turnId, reply: 'The verified draft is ready for review.', speech: 'The verified draft is ready for review.',
+            actions: [{ type: 'draft_update', lines: [verifiedLine(globals.auraCalls.length === 1 ? 50 : 75)] }] };
         },
         openDraft: async (draft: any) => { globals.auraDraft = draft; return { ok: true, message: 'Ready for manual review.' }; },
       });
@@ -33,10 +38,23 @@ for (const width of [320, 390, 430]) {
     await expect(page.getByRole('button', { name: '1. Acme – North' })).toBeVisible();
     await submit('two');
     await expect(page.locator('.aura-content > .aura-message')).toContainText('Acme – South');
-    await submit('fifty three deep pee Limelight');
-    await expect(page.locator('.aura-content > .aura-message')).toContainText('Added 50');
-    await submit('twenty five three deep pee Limelight');
-    await expect(page.locator('.aura-content > .aura-message')).toContainText('75');
+    await submit('fifty three deep pee Limelight for Acme South');
+    await expect(page.locator('.aura-content > .aura-message')).toContainText('Nothing has been submitted');
+    await submit('twenty five three deep pee Limelight for Acme South');
+    await expect(page.locator('.aura-content > .aura-message')).toContainText('Draft updated');
+    const privacy = await page.evaluate(() => ({
+      calls: (window as any).auraCalls,
+      binds: (window as any).auraBinds,
+    }));
+    expect(privacy.binds).toHaveLength(1);
+    expect(privacy.binds[0]).toMatchObject({ customerIdentityId: 'cust-acme', consigneeIdentityId: 'cons-south', customerName: 'Acme', consigneeName: 'South' });
+    expect(privacy.calls).toHaveLength(2);
+    for (const call of privacy.calls) {
+      expect(call.text).not.toMatch(/Acme|South/i);
+      expect(JSON.stringify(call.context)).not.toMatch(/Acme|South/i);
+      expect(call.partyRef).toMatch(/^\d{13}\.mock-party-signature$/);
+    }
+    expect(privacy.calls[1].context.draftLines).toEqual([{ itemcode: 'SKU-L', commonname: 'Limelight', contsize: '3DP', locationcode: 'A.07.000', quantity: 50 }]);
     const geometry = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth > innerWidth,
       buttons: Array.from(document.querySelectorAll('.aura-panel button')).filter(button => (button as HTMLElement).offsetParent !== null).map(button => {
@@ -51,7 +69,7 @@ for (const width of [320, 390, 430]) {
     await page.getByRole('button', { name: 'Review request', exact: true }).click();
     await expect.poll(() => page.evaluate(() => (window as any).auraDraft?.lines?.[0]?.quantity)).toBe(75);
     expect(await page.evaluate(() => (window as any).auraDraft.party.key)).toBe('acme-south');
-    expect(await page.evaluate(() => (window as any).auraCalls.filter((call: any) => call.operation === 'match').length)).toBe(1);
+    expect(await page.evaluate(() => (window as any).auraCalls.length)).toBe(2);
     await page.evaluate(() => (window as any).auraHandle.destroy());
     await expect(page.locator('[data-aura-root]')).toHaveCount(0);
   });
