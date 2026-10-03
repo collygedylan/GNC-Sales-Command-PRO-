@@ -1,10 +1,9 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.01.010";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.01.010";
-import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.01.010";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.01.010";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.01.011";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.01.011";
+import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.01.011";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.01.011";
 
 const STYLE_ID = "aura-voice-widget-styles";
-const FALLBACK = "I didn’t quite catch that, Dylan. Run that by me again?";
 
 function formatQuantity(value) {
   if (value == null || String(value).trim() === "") return "—";
@@ -57,7 +56,7 @@ const CSS = `
 `;
 
 /** Mount after the shell has verified Dylan's native session; this module never authenticates users itself. */
-export function mountAuraWidget({ host = document.body, requestInventory, requestV2, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false } = {}) {
+export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false } = {}) {
   if (typeof document === "undefined" || !host || !isAuthorized()) return { destroy() {} };
   let destroyed = false;
   let panelOpen = false;
@@ -72,6 +71,9 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   let recognitionEpoch = null;
   let lastConsumedResultIndex = -1;
   let conversation = createAuraConversation();
+  let partyRef = null;
+  let selectedPrivacyParty = null;
+  let routerSelection = null;
   const matchCache = new Map();
   const commandBudgets = new WeakMap();
   let explicitReadRetry = false;
@@ -332,18 +334,19 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     return true;
   }
 
-  function newSignal({ inventory = false } = {}) {
+  function newSignal({ inventory = false, deadlineMs = inventory ? 5000 : null, operation = "inventory" } = {}) {
     commandController?.abort();
     commandController = new AbortController();
     const signal = commandController.signal;
-    if (inventory) {
+    if (inventory || deadlineMs) {
       const controller = commandController;
-      const budget = { explicitRetry: explicitReadRetry, deadlineAt: Date.now() + 5000, stage: "preparation", operation: "inventory",
+      const budgetMs = Number.isFinite(deadlineMs) && deadlineMs > 0 ? deadlineMs : 5000;
+      const budget = { explicitRetry: explicitReadRetry, deadlineAt: Date.now() + budgetMs, budgetMs, stage: "preparation", operation,
         requestId: globalThis.crypto?.randomUUID?.() || `aura-${Date.now().toString(36)}` };
       budget.timer = setTimeout(() => {
-        controller.abort(Object.assign(new Error("Inventory search exceeded five seconds. Your command and draft are still here. Tap Retry."),
+        controller.abort(Object.assign(new Error(operation === "llm" ? "AURA command exceeded fifteen seconds. Your command and draft are still here. Tap Retry." : "Inventory search exceeded five seconds. Your command and draft are still here. Tap Retry."),
           { name: "TimeoutError", code: "AURA_DEADLINE_EXCEEDED", stage: budget.stage }));
-      }, 5000);
+      }, budgetMs);
       signal.addEventListener("abort", () => clearTimeout(budget.timer), { once: true });
       commandBudgets.set(signal, budget);
       explicitReadRetry = false;
@@ -373,6 +376,194 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       onStage: stage => { if (budget) budget.stage = stage; } };
   }
 
+  function stripSelectedParty(text, party) {
+    let safeText = String(text || "").slice(0, 2000);
+    const names = [party?.customerName, party?.consigneeName, party?.label]
+      .map(value => String(value || "").trim()).filter(value => value.length >= 2)
+      .sort((a, b) => b.length - a.length);
+    for (const name of names) {
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      safeText = safeText.replace(new RegExp(escaped, "ig"), "selected customer");
+    }
+    return safeText.trim();
+  }
+
+  function findCustomerReference(text) {
+    const raw = String(text || "");
+    const explicit = raw.match(/\b(?:customer|client|consignee)\s+(?:named\s+)?([A-Z][A-Za-z0-9&.'’-]*(?:\s+[A-Z][A-Za-z0-9&.'’-]*){0,3})/i);
+    const possessive = raw.match(/\b([A-Z][A-Za-z0-9&.'’-]*(?:\s+[A-Z][A-Za-z0-9&.'’-]*){0,2})['’]s\b/);
+    const relation = raw.match(/\b(?:for|to)\s+([A-Z][A-Za-z0-9&.'’-]*(?:\s+[A-Z][A-Za-z0-9&.'’-]*){1,3})\s*[?.!,]*$/);
+    const marker = /\b(?:account|balance|credit|invoice|payment|owes?|owed|terms|order\s+(?:for|to)|request\s+(?:for|to))\b/i.test(raw);
+    const candidate = String(explicit?.[1] || possessive?.[1] || relation?.[1] || "").trim();
+    const generic = new Set(["open stock", "current season", "this season", "the largest", "on hand", "available stock"]);
+    return { candidate: candidate && !generic.has(candidate.toLowerCase()) ? candidate : "", marker };
+  }
+
+  function privatePartySidecar(party) {
+    if (!party) return null;
+    return {
+      customerIdentityId: String(party.customerIdentityId || ""),
+      consigneeIdentityId: String(party.consigneeIdentityId || ""),
+      customerName: String(party.customerName || ""),
+      consigneeName: String(party.consigneeName || ""),
+    };
+  }
+
+  function partyRefIsUsable(ref) {
+    const expiry = String(ref || "").split(".", 1)[0];
+    const expiresAt = /^\d{13}$/.test(expiry) ? Number(expiry) : 0;
+    return Number.isSafeInteger(expiresAt) && expiresAt > Date.now() + 15_000;
+  }
+
+  function routerContext() {
+    return {
+      draftLines: conversation.lines.slice(0, 50).map(line => ({
+        itemcode: String(line.itemcode || ""), commonname: String(line.commonname || ""),
+        contsize: String(line.contsize || ""), locationcode: String(line.locationcode || ""), quantity: Number(line.quantity),
+      })),
+      selectedRows: routerSelection ? [{
+        unique_id: String(routerSelection.unique_id || ""), itemcode: String(routerSelection.itemcode || ""),
+        commonname: String(routerSelection.commonname || ""), contsize: String(routerSelection.contsize || ""),
+        locationcode: String(routerSelection.locationcode || ""), lotcode: String(routerSelection.lotcode || ""), quantity: null,
+      }] : [],
+      ...(routerSelection ? {
+        sku: String(routerSelection.itemcode || ""), size: String(routerSelection.contsize || ""),
+        locationCode: String(routerSelection.locationcode || ""),
+      } : {}),
+    };
+  }
+
+  function validProductChoice(row) {
+    return !!row && typeof row === "object" && !!String(row.itemcode || "").trim()
+      && !!String(row.commonname || "").trim() && !!String(row.contsize || "").trim();
+  }
+
+  function validInventoryRow(row) {
+    if (!validProductChoice(row)) return false;
+    for (const field of ["ptravailable", "ptronhand"]) {
+      if (row[field] != null && String(row[field]).trim() !== "" && !Number.isFinite(Number(row[field]))) return false;
+    }
+    return true;
+  }
+
+  function validLotRow(row) {
+    return validInventoryRow(row) && !!String(row.unique_id || "").trim()
+      && !!String(row.itemcode || "").trim();
+  }
+
+  function validVerifiedDraftLine(line) {
+    return validProductChoice(line) && !!String(line.unique_id || "").trim()
+      && Number.isSafeInteger(line.quantity) && line.quantity > 0
+      && typeof line.ptravailable === "number" && Number.isFinite(line.ptravailable) && line.ptravailable >= line.quantity;
+  }
+
+  async function runRouterCommand(rawText, source, { legacy = false } = {}) {
+    if (typeof requestLlm !== "function") throw Object.assign(new Error("AURA’s language service is not configured."), { status: 503, code: "AURA_LLM_UNAVAILABLE" });
+    const activeParty = conversation.party || selectedPrivacyParty;
+    if (activeParty && partyRef && !partyRefIsUsable(partyRef)) partyRef = null;
+    if (activeParty && !partyRef && typeof bindParty === "function") {
+      const bindingSignal = commandController?.signal;
+      setMessage("Verifying the selected customer for this request…");
+      const binding = await awaitCommand(() => bindParty(activeParty, readOptions(bindingSignal)), bindingSignal);
+      if (!current() || bindingSignal?.aborted) return;
+      if (!binding?.partyRef || !partyRefIsUsable(binding.partyRef)) throw new Error("The selected customer could not be verified. Reopen the request and choose the customer again.");
+      partyRef = String(binding.partyRef);
+    }
+    if (activeParty && !partyRef) throw new Error("Choose a customer before adding request items.");
+    const signal = commandController?.signal;
+    const requestId = commandBudgets.get(signal)?.requestId;
+    const textValue = activeParty ? stripSelectedParty(rawText, activeParty) : String(rawText || "").slice(0, 2000).trim();
+    const body = {
+      mode: "command", text: textValue, source: source === "voice" ? "voice" : "typed", turnId: requestId,
+      context: routerContext(), ...(partyRef ? { partyRef, partySidecar: privatePartySidecar(activeParty) } : {}),
+    };
+    setMessage("AURA is checking that request…");
+    const response = await awaitCommand(() => requestLlm(body, readOptions(signal)), signal);
+    if (!current() || signal?.aborted) return;
+    if (response?.ok !== true || response.requestId && response.requestId !== requestId) {
+      throw new Error(response?.error?.message || "AURA returned an invalid command response.");
+    }
+    const actions = Array.isArray(response.actions) ? response.actions : [];
+    if (actions.length > 5) throw new Error("AURA returned too many actions. Please narrow the request.");
+    const prepared = actions.map(action => {
+      if (action?.type === "choices") {
+        if (!new Set(["inventory", "lot"]).has(action.kind) || !Array.isArray(action.items) || action.items.length > 100
+            || action.items.length === 0 && action.complete === true
+            || !action.items.every(action.kind === "inventory" ? validProductChoice : validLotRow)) {
+          throw new Error("AURA returned invalid choices. No draft changed.");
+        }
+        return { type: "choices", kind: action.kind, items: action.items.slice(0, 5), complete: action.complete === true, hasMore: action.hasMore === true };
+      }
+      if (action?.type === "inventory_result") {
+        const data = action.data;
+        if (!new Set(["open_stock", "count", "maximum", "lot_lookup"]).has(action.operation) || !data || typeof data !== "object") {
+          throw new Error("AURA returned an unsupported inventory result. No draft changed.");
+        }
+        if (data.rows != null && (!Array.isArray(data.rows) || data.rows.length > 100 || !data.rows.every(validInventoryRow))) {
+          throw new Error("AURA returned invalid inventory rows. No draft changed.");
+        }
+        const total = action.operation === "maximum" ? data.winner?.total : data.total ?? data.totalAvailable;
+        const trustedTotal = data.complete === true && (total != null && String(total).trim() !== "" && Number.isFinite(Number(total))
+          || action.operation === "maximum" && data.winner == null);
+        if (action.operation === "maximum" && data.winner != null && (!validProductChoice(data.winner)
+            || data.complete === true && !Number.isFinite(Number(data.winner.total)))) {
+          throw new Error("AURA returned an invalid maximum result. No draft changed.");
+        }
+        return { type: "inventory_result", operation: action.operation, data, trustedTotal };
+      }
+      if (action?.type === "draft_update" || action?.type === "draft_review") {
+        const lines = action.type === "draft_update" ? action.lines : action.draft?.lines;
+        if (!conversation.party || !partyRef || !Array.isArray(lines) || lines.length < 1 || lines.length > 50
+            || !lines.every(validVerifiedDraftLine)) throw new Error("AURA could not verify the proposed draft lines. Your current draft is unchanged.");
+        const uniqueLines = new Set(lines.map(line => `${line.itemcode}\u0000${canonicalAuraSize(line.contsize)}`));
+        if (uniqueLines.size !== lines.length) throw new Error("AURA returned duplicate product lines. Your current draft is unchanged.");
+        return { type: "draft_update", lines };
+      }
+      throw new Error("AURA returned an unsupported action. No draft changed.");
+    });
+
+    let nextConversation = conversation;
+    for (const action of prepared) {
+      if (action.type === "choices" && action.items.length) nextConversation = reduceAuraConversation(nextConversation, { type: "CHOICES", kind: "router", intent: { kind: action.kind }, items: action.items });
+      if (action.type === "draft_update") {
+        for (const line of action.lines) nextConversation = reduceAuraConversation(nextConversation, { type: "LINE_VERIFIED", line });
+      }
+    }
+    conversation = nextConversation;
+    routerSelection = null;
+    const incompleteData = prepared.some(action => action.type === "choices" && !action.complete
+      || action.type === "inventory_result" && action.operation !== "lot_lookup" && !action.trustedTotal);
+    const reply = incompleteData
+      ? "Some inventory details are incomplete, so I won’t report a total. Narrow the search or ask about an exact SKU and size."
+      : String(response.reply || "I checked the current inventory.").slice(0, 1200);
+    setMessage(reply);
+    const numericActions = prepared.filter(action => action.type === "inventory_result" && action.operation !== "lot_lookup");
+    if (!incompleteData && !numericActions.some(action => !action.trustedTotal) && response.speech) session.speak(String(response.speech).slice(0, 600));
+    for (const action of prepared) {
+      if (action.type === "inventory_result") {
+        const data = action.data;
+        pendingRows = Array.isArray(data.rows) ? data.rows.slice(0, 50) : [];
+        if (pendingRows.length) showRows(pendingRows);
+        if (action.operation === "maximum" && data.complete === true && data.winner && Number.isFinite(Number(data.winner.total))) {
+          const winner = data.winner;
+          content.append(make("p", "aura-message", `Maximum: ${winner.commonname}, ${winner.contsize}: ${formatQuantity(winner.total)}.`));
+        }
+        if (data.hasMore === true || data.rows?.length > 50) content.append(make("p", "aura-message", "Showing the first 50 verified rows. More matches are available in the inventory view."));
+      } else if (action.type === "choices") {
+        if (action.items.length) {
+          pendingChoice = { kind: "router" };
+          if (conversation.auraMode !== "CHOOSING") conversation = reduceAuraConversation(conversation, { type: "CHOICES", kind: "router", intent: { kind: action.kind }, items: action.items });
+          renderChoiceButtons(action.items, selectChoice);
+        } else setMessage("I couldn’t verify an eligible match. Your current draft is unchanged; try a more exact SKU, size, or lot code.");
+        if (!action.complete) content.append(make("p", "aura-message", "These choices may be incomplete. Refine the product name or lot code before preparing a draft."));
+        if (action.hasMore) content.append(make("p", "aura-message", "More matches exist. Narrow the request if your item is not shown."));
+      } else if (action.type === "draft_update") {
+        renderCartControls();
+        setMessage(`Draft updated for ${conversation.party.label || conversation.party.customerName}. Review it when you’re ready. Nothing has been submitted.`);
+      }
+    }
+  }
+
   function showCommandError(error, signal, retry = () => submitCommand(currentCommandText, { source: "retry" })) {
     if (!current() || commandController?.signal !== signal) return;
     const timeout = signal.reason?.code === "AURA_DEADLINE_EXCEEDED";
@@ -380,7 +571,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     const failure = timeout ? signal.reason : error;
     const budget = commandBudgets.get(signal);
     const diagnostic = { operation: budget?.operation || "inventory", requestId: failure?.requestId || budget?.requestId || "",
-      durationMs: budget ? Math.max(0, Date.now() - (budget.deadlineAt - 5000)) : 0,
+      durationMs: budget ? Math.max(0, Date.now() - (budget.deadlineAt - budget.budgetMs)) : 0,
       status: Number(failure?.status || 0), sqlState: /^[0-9A-Z]{5}$/.test(String(failure?.sqlState || failure?.code || "")) ? (failure.sqlState || failure.code) : null,
       timeoutStage: timeout || failure?.name === "TimeoutError" || failure?.code === "57014" || Number(failure?.status) === 504 ? budget?.stage : null };
     console.warn("AURA read failed", diagnostic);
@@ -497,10 +688,28 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     const pending = pendingChoice;
     pendingChoice = null;
     if (choice.kind === "party") {
+      selectedPrivacyParty = null;
+      partyRef = null;
       conversation = reduceAuraConversation(conversation, { type: "STARTED", party: selected });
       setMessage(`Request started for ${selected.label || selected.customerName}. What items would you like?`);
       renderCartControls();
       session.speak("Request started. What items would you like?");
+      return;
+    }
+    if (choice.kind === "privacy-party") {
+      conversation = reduceAuraConversation(conversation, { type: "CHOICE_CANCELLED" });
+      selectedPrivacyParty = selected;
+      partyRef = null;
+      setMessage(`Selected ${selected.label || selected.customerName} locally. Repeat your inventory question; the selected name will be kept out of the AURA request.`);
+      renderCartControls();
+      return;
+    }
+    if (choice.kind === "router") {
+      conversation = reduceAuraConversation(conversation, { type: "CHOICE_CANCELLED" });
+      routerSelection = selected;
+      const kind = choice.intent?.kind === "lot" ? `lot ${selected.lotcode || selected.unique_id}` : `${selected.commonname}, ${selected.contsize}`;
+      setMessage(`Selected ${kind}. Tell AURA what you’d like to do next.`);
+      renderCartControls();
       return;
     }
     conversation = reduceAuraConversation(conversation, { type: "CHOICE_CANCELLED" });
@@ -561,6 +770,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       const message = staged?.message || (typeof staged === "string" ? staged : "Draft opened in Bloom Picker. Review it there before submitting.");
       setMessage(message); session.speak("Draft is ready for your review. Nothing has been submitted.");
       conversation = reduceAuraConversation(conversation, { type: "HANDED_OFF" }); renderCartControls();
+      partyRef = null;
       togglePanel(false);
     } catch (error) {
       if (current() && commandController?.signal === signal && (!signal.aborted || signal.reason?.code === "AURA_DEADLINE_EXCEEDED")) conversation = reduceAuraConversation(conversation, { type: "REVIEW_FAILED" });
@@ -591,6 +801,11 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   async function submitCommand(rawText, { source = "typed" } = {}) {
     if (!current()) return;
+    if (String(rawText || "").length > 2000) {
+      setMessage("AURA commands can be up to 2,000 characters. Shorten the command and try again.");
+      input.value = String(rawText || "").slice(0, 2000);
+      return;
+    }
     const intent = parseAuraIntent(rawText, { auraMode: conversation.auraMode });
     if (busy && intent.type !== "CANCEL_REQUEST") return;
     currentCommandText = String(rawText ?? "");
@@ -613,6 +828,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     if (intent.type === "CANCEL_REQUEST") {
       commandController?.abort(); commandController = null; busy = false; operationEpoch += 1; session.setBusy(false); pendingChoice = null;
       conversation = reduceAuraConversation(conversation, { type: "CANCEL" }); renderCartControls();
+      partyRef = null;
+      selectedPrivacyParty = null;
       content.querySelectorAll(".aura-choice,.aura-row,.aura-actions").forEach((node) => node.remove());
       setMessage("Request cancelled. Nothing was submitted."); return;
     }
@@ -628,11 +845,6 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     selectedRow = null;
     idempotencyKeys = new Map();
     content.querySelectorAll(".aura-row,.aura-actions").forEach((node) => node.remove());
-    if (intent.type === "unknown") {
-      setMessage(FALLBACK);
-      session.speak(FALLBACK);
-      return;
-    }
     if (intent.type === "chat") {
       if (intent.recipientType === "department") {
         const unavailable = "Department recipients aren’t configured yet, so I didn’t send anything.";
@@ -673,6 +885,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         if (result?.hasMore || parties.length > 5) throw new Error("That customer search has more than five possible matches. Add more of the name.");
         if (!parties.length) throw new Error(`I couldn’t find an active Bloom Picker customer named ${intent.customerName}.`);
         if (parties.length === 1) {
+          selectedPrivacyParty = null;
+          partyRef = null;
           conversation = reduceAuraConversation(conversation, { type: "STARTED", party: parties[0] });
           const reply = `Request started for ${parties[0].label || parties[0].customerName}. What items would you like?`;
           setMessage(reply); session.speak(reply); return;
@@ -683,6 +897,71 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         renderChoiceButtons(parties, selectChoice);
       } catch (error) { if (!signal.aborted) setMessage(error?.message || "Customer lookup failed."); }
       finally { finishSignal(signal); }
+      return;
+    }
+    const draftUtterance = intent.type === "ADD_REQUEST_ITEM" || /^(?:add|put|draft|request|order)\b/i.test(String(rawText || "").trim());
+    if (source !== "fallback" && draftUtterance && !conversation.party) {
+      setMessage("Start a Bloom Picker request and choose the customer before adding items.");
+      return;
+    }
+    const customerReference = findCustomerReference(rawText);
+    if (source !== "fallback" && customerReference.marker && (conversation.party || selectedPrivacyParty)) {
+      setMessage("AURA can check inventory, but customer account, payment, invoice, and order-status details stay in the local customer workflows.");
+      return;
+    }
+    if (source !== "fallback" && !conversation.party && !selectedPrivacyParty
+        && (customerReference.marker || customerReference.candidate)) {
+      if (!customerReference.candidate || typeof resolveOrderParty !== "function") {
+        setMessage("Customer-related details stay local. Choose a customer with “start a request for…” before asking AURA about customer-specific inventory.");
+        return;
+      }
+      const lookupSignal = newSignal();
+      setMessage("Checking the customer picker locally. No customer details are being sent to AURA.");
+      try {
+        const result = await resolveOrderParty(customerReference.candidate, { signal: lookupSignal });
+        if (!current() || lookupSignal.aborted) return;
+        const parties = Array.isArray(result?.items) ? result.items : [];
+        if (result?.hasMore || parties.length > 5) {
+          setMessage("That customer name has several matches. Add more of the customer or consignee name.");
+        } else if (parties.length) {
+          pendingChoice = { kind: "privacy-party" };
+          conversation = reduceAuraConversation(conversation, { type: "CHOICES", kind: "privacy-party", intent: {}, items: parties });
+          setMessage("Choose the exact customer locally, then repeat the inventory question. No customer details have been sent to AURA.");
+          renderChoiceButtons(parties, selectChoice);
+        } else {
+          setMessage("I couldn’t match that customer locally, so I didn’t send this customer-related request to AURA. Start a request and choose a customer first.");
+        }
+      } catch (error) { if (!lookupSignal.aborted) setMessage(error?.message || "The customer picker could not verify that name. No customer details were sent."); }
+      finally { finishSignal(lookupSignal); }
+      return;
+    }
+    const shouldRoute = source !== "fallback" && (intent.type === "unknown" || intent.type === "inventory"
+      || intent.type === "CHECK_INVENTORY_COUNT" || intent.type === "ADD_REQUEST_ITEM" && !!conversation.party);
+    if (shouldRoute) {
+      const signal = newSignal({ deadlineMs: 15000, operation: "llm" });
+      try {
+        await runRouterCommand(rawText, source);
+      } catch (error) {
+        if (!signal.aborted && current() && commandController?.signal === signal) {
+          if (Number(error?.status) === 503) {
+            input.value = currentCommandText;
+            setMessage(error?.message || "AURA’s language service is unavailable. You can use the standard inventory lookup instead.");
+            const retry = make("button", "aura-action aura-retry", "Retry AURA");
+            retry.type = "button";
+            retry.addEventListener("click", () => {
+              if (!busy && current()) { retry.remove(); void submitCommand(currentCommandText, { source: "retry" }); }
+            }, { once: true });
+            const fallback = make("button", "aura-action aura-retry", "Use standard lookup");
+            fallback.type = "button";
+            fallback.addEventListener("click", () => {
+              if (busy || !current()) return;
+              fallback.remove();
+              void submitCommand(currentCommandText, { source: "fallback" });
+            }, { once: true });
+            content.append(retry, fallback);
+          } else showCommandError(error, signal);
+        }
+      } finally { finishSignal(signal); }
       return;
     }
     if (intent.type === "ADD_REQUEST_ITEM" && acceptsAuraFollowUp(conversation)) {
@@ -885,6 +1164,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     matchCache.clear();
     idempotencyKeys.clear();
     conversation = createAuraConversation();
+    partyRef = null;
     input.value = "";
     message.textContent = "";
     if (inactivityTimer != null) clearTimeout(inactivityTimer);
