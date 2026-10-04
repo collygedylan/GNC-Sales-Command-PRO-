@@ -55,6 +55,7 @@ import {
 import type { AvOptionRow } from '../types';
 import { PartnerWorkspace } from '../components/PartnerWorkspace';
 import { DriveInventory } from '../components/DriveInventory';
+import { CompanyDirectory } from '../components/CompanyDirectory';
 
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'partner-av' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
@@ -456,6 +457,7 @@ export function App() {
             <ModuleDetail
               view={moduleDetail.view}
               row={moduleDetail.row}
+              session={session}
               demoMode={SANDBOX_ONLY || demoMode}
               onBack={() => { setModuleDetail(null); scrollerRef.current?.scrollTo({ top: 0 }); }}
               onToast={setToast}
@@ -1335,11 +1337,11 @@ type DetailTabId =
   | 'items' | 'assignment' | 'photos' | 'history' | 'stops' | 'team'
   | 'mistakes' | 'modules' | 'approval' | 'shortage' | 'materials'
   | 'findings' | 'queue' | 'reports' | 'columns' | 'blocks' | 'moves'
-  | 'po' | 'recounts' | 'availability' | 'crop-roll' | 'stock';
+  | 'po' | 'recounts' | 'availability' | 'crop-roll' | 'stock' | 'company-directory';
 
 type DetailTabDefinition = { id: DetailTabId; label: string };
 
-function detailTabsForView(view: ViewId): DetailTabDefinition[] {
+function detailTabsForView(view: ViewId, session: Session | null): DetailTabDefinition[] {
   switch (view) {
     case 'drive':
       return [
@@ -1378,6 +1380,7 @@ function detailTabsForView(view: ViewId): DetailTabDefinition[] {
         { id: 'approval', label: 'Approval' },
         { id: 'shortage', label: 'Shortage / Cancel' },
         { id: 'history', label: 'History' },
+        ...(session?.username?.toLowerCase() === 'dylan_collyge' ? [{ id: 'company-directory' as const, label: 'Company Directory' }] : []),
       ];
     case 'bloom':
       return [
@@ -1436,9 +1439,10 @@ function detailTabsForView(view: ViewId): DetailTabDefinition[] {
   }
 }
 
-function ModuleDetail({ view, row, demoMode, onBack, onToast }: {
+function ModuleDetail({ view, row, session, demoMode, onBack, onToast }: {
   view: ViewId;
   row: ModulePreviewRow;
+  session: Session | null;
   demoMode: boolean;
   onBack: () => void;
   onToast: (message: string) => void;
@@ -1448,7 +1452,7 @@ function ModuleDetail({ view, row, demoMode, onBack, onToast }: {
   const [quantity, setQuantity] = useState(row.quantity);
   const [note, setNote] = useState(details.notes[0] || '');
   const [decision, setDecision] = useState(details.actions[0] || 'Review');
-  const tabs = useMemo(() => detailTabsForView(view), [view]);
+  const tabs = useMemo(() => detailTabsForView(view, session), [view, session?.username]);
   const [activeTab, setActiveTab] = useState<DetailTabId>(tabs[0].id);
 
   useEffect(() => {
@@ -1509,6 +1513,7 @@ function ModuleDetail({ view, row, demoMode, onBack, onToast }: {
   );
 
   const renderTabContent = () => {
+    if (activeTab === 'company-directory' && view === 'managers') return <CompanyDirectory />;
     if (activeTab === 'inquiry') return renderInquiry();
     if (activeTab === 'photos') {
       return (
