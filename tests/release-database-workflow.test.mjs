@@ -122,12 +122,15 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     '20261002155017_eval_delivery_archive_health_007.sql',
     '20261002204108_aura_inventory_match_010.sql',
     '20261003025749_aura_llm_free_tier_011.sql',
+    '20261004010000_company_directory.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
   assert.ok(workflow.indexOf(pt409Fixture) > workflow.lastIndexOf('cp supabase/archive_migrations/'),
     'the PT409 migration applies after historical fixtures install the legacy Season Sales RPC definitions');
   assert.ok(workflow.includes('archive_migrations in this disposable project only'));
+  assert.ok(workflow.includes('cp supabase/migrations/20261004010000_company_directory.sql "$ci_root/supabase/migrations/"'),
+    'the Company Directory migration is staged for the isolated database fixture');
   for (const filename of [
     '20260928145055_item_low_stock_targets.sql',
     '20260929013125_perennial_zone_assignment_override.sql',
