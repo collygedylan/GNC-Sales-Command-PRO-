@@ -40840,8 +40840,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const key = ['drive', 'av'].includes(viewId) ? viewId : 'av';
             const label = key === 'drive' ? 'Drive inventory' : 'Available inventory';
             const terminalAccess = isSupabaseReadTerminalDenial(error);
+            const recoveryMessage = nativeSessionRecoveryError().message;
+            // The live-sync coordinator retains the message but may omit the error code.
+            const sessionRecovery = error?.code === 'NATIVE_SESSION_RECOVERY_REQUIRED' || error?.message === recoveryMessage;
             const identityScope = getSupabaseReadIdentityScope();
-            const noticeKey = `${identityScope}:${key}:${terminalAccess ? 'access' : 'transient'}`;
+            const noticeKey = `${identityScope}:${key}:${sessionRecovery ? 'session' : terminalAccess ? 'access' : 'transient'}`;
             const now = Date.now();
             if (terminalAccess) {
                 viewTerminalReadDenials.set(key, identityScope);
@@ -40851,7 +40854,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
             } else {
                 if (now - Number(avReadNoticeTimes.get(noticeKey) || 0) >= 10000) {
-                    showToast(label, hasSnapshot ? 'Refresh failed. The last verified rows are still shown. Open Menu → Data status to retry.' : 'Data could not be verified. Retry when the service is available.', true);
+                    showToast(label, sessionRecovery
+                        ? `${recoveryMessage}${hasSnapshot ? ' The last verified rows are still shown.' : ''}`
+                        : hasSnapshot ? 'Refresh failed. The last verified rows are still shown. Open Menu → Data status to retry.' : 'Data could not be verified. Retry when the service is available.', true);
                     avReadNoticeTimes.set(noticeKey, now);
                 }
             }
@@ -40862,7 +40867,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const ui = VIEW_LOAD_UI[key];
             const container = document.getElementById(ui?.container || (key === 'drive' ? 'drive-content' : 'av-content'));
             if (!container) return true;
-            const message = terminalAccess
+            const message = sessionRecovery ? recoveryMessage : terminalAccess
                 ? `${label} access is unavailable for this account. Contact an administrator to review access.`
                 : `${label} could not be verified right now. Try again when the connection or data service is available.`;
             setContainerHtml(container, `<div role="status" class="m-3 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-center"><div class="font-black text-amber-950">${escapeHtml(label)} unavailable</div><p class="mt-2 text-sm font-semibold text-amber-900">${escapeHtml(message)}</p><button type="button" class="mt-4 min-h-[44px] rounded-xl bg-[#007a4d] px-5 py-3 font-black text-white" onclick="return retryVerifiedViewData('${key}', true, true)">Retry</button></div>`);
