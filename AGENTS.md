@@ -1,6 +1,14 @@
 # Repository Agent Workflow
 
-This file is the authoritative repository workflow for candidate delivery, CI monitoring, remediation, and cleanup. Apply the sequence below in order. Supporting guidance in instructions.md must remain consistent with it.
+This file is the authoritative repository workflow for local development, candidate delivery, CI monitoring, remediation, and cleanup. Apply the sequence below in order. Supporting guidance in instructions.md must remain consistent with it.
+
+## Local Development and Early Delivery
+
+- Run only targeted unit tests or specific test files directly related to the current changes locally. Leave the full E2E suite and mobile/browser matrices to GitHub Actions.
+- Prefer fast local dev-server verification for affected UI behavior. Do not rebuild full release artifacts or compile heavy production stylesheets merely to support local tests; send tests that require those artifacts to cloud CI.
+- Run a local production build only when strictly necessary to diagnose or verify a potentially build-breaking configuration change. Explain why the build is required and run the smallest build that can verify that change.
+- Once core changes, applicable migration checks, and focused local tests pass, commit and push the candidate immediately, then follow the Auto-PR sequence below. Do not delay the PR for exhaustive local regression testing.
+- Let the parallel GitHub Actions pipeline perform exhaustive regression and E2E validation. On a cloud failure, inspect the failed job and make targeted corrections using the Monitor and Fail Fast and Autonomous Remediation rules below.
 
 ## 1. Auto-PR
 
