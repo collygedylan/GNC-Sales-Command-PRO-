@@ -169,9 +169,9 @@ test('backend schema and functions deploy before guarded Pages publication', () 
   assert.match(backendSteps[functions].run, /supabase functions deploy app-api/);
   assert.match(backendSteps[functions].run, /supabase functions deploy calendar-reminder-sweep/);
   const deploys = backendSteps[functions].run.split('\n').filter(line => /supabase functions deploy/.test(line));
-  assert.equal(deploys.length, 7);
+  assert.equal(deploys.length, 8);
   assert.deepEqual(deploys.map(line => line.match(/deploy ([\w-]+)/)[1]),
-    ['app-api', 'send-push-alert', 'calendar-reminder-sweep', 'scheduled-offboarding', 'auth-admin', 'inventory-assistant', 'aura-llm-router']);
+    ['app-api', 'send-push-alert', 'request-delivery-worker', 'calendar-reminder-sweep', 'scheduled-offboarding', 'auth-admin', 'inventory-assistant', 'aura-llm-router']);
   for (const line of deploys) {
     assert.match(line, /--use-api\b/, 'server-side bundling avoids Docker registry throttling');
     assert.match(line, /--project-ref "\$project_ref"/);

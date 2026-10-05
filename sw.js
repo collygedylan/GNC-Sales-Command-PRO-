@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.05.002';
+const APP_SHELL_BUILD = 'V2026.10.05.003';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -391,6 +391,7 @@ self.addEventListener('message', (event) => {
   const data = event && event.data ? event.data : {};
   if (!data || typeof data !== 'object') return;
   if (!event.source || !isProductionShellUrl(event.source.url)) return;
+  if (data.type === 'GNC_TAKE_SUSPEND_ACTION') { consumeSuspendNotificationAction(event); return; }
   if (data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {
@@ -561,7 +562,9 @@ self.addEventListener('push', (event) => {
     body: data.body || 'You have a new message.',
     icon: iconUrl,
     badge: iconUrl,
-    data: { url: targetUrl, viewId: data.viewId || 'request', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
+    data: { url: targetUrl, viewId: data.viewId || 'request', approvalId: data.approvalId || '', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
+    actions: data.viewId === 'suspend-tag-approval' && /^[0-9a-f-]{36}$/i.test(data.approvalId || '')
+      ? [{ action: 'approve', title: 'Approve' }, { action: 'deny', title: 'Deny' }] : [],
     vibrate: [200, 100, 200],
     silent: false,
     requireInteraction: true,
@@ -580,17 +583,22 @@ self.addEventListener('notificationclick', (event) => {
   const targetView = payload.viewId || 'request';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientList) => {
+      if (targetView === 'suspend-tag-approval' && /^[0-9a-f-]{36}$/i.test(payload.approvalId || '') && ['approve','deny'].includes(event.action)) {
+        const cache = await caches.open('gnc-suspend-notification-actions');
+        await cache.put(new URL('./__suspend_action/' + payload.approvalId, self.registration.scope).href,
+          new Response(JSON.stringify({ decision: event.action, expiresAt: Date.now() + 10 * 60 * 1000 })));
+      }
       for (const client of clientList) {
         if (isProductionShellUrl(client.url) && 'focus' in client) {
           await client.focus();
-          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
+          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
           return client;
         }
       }
       if (clients.openWindow) {
         const opened = await clients.openWindow(targetUrl);
         if (opened) {
-          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
+          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
         }
         return opened;
       }
@@ -598,6 +606,28 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// A URL can open a review, but only a real notificationclick creates an action.
+// Consume once through a same-origin app client; never store auth credentials.
+function consumeSuspendNotificationAction(event) {
+  if (event.data?.type !== 'GNC_TAKE_SUSPEND_ACTION' || !event.ports?.[0]) return;
+  event.waitUntil((async () => {
+    let decision = '';
+    const client = event.source?.id ? await clients.get(event.source.id) : null;
+    const id = String(event.data.approvalId || '');
+    if (client && isProductionShellUrl(client.url) && /^[0-9a-f-]{36}$/i.test(id)) {
+      const cache = await caches.open('gnc-suspend-notification-actions');
+      const key = new URL('./__suspend_action/' + id, self.registration.scope).href;
+      const response = await cache.match(key);
+      if (response) {
+        await cache.delete(key);
+        const saved = await response.json();
+        if (saved.expiresAt > Date.now() && ['approve','deny'].includes(saved.decision)) decision = saved.decision;
+      }
+    }
+    event.ports[0].postMessage({ decision });
+  })());
+}
 
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(

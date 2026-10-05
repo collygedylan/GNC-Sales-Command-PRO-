@@ -1,4 +1,5 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
 import { readAvPage } from "../_shared/av-read.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
@@ -627,6 +628,7 @@ function datasetReadOrCondition(filter: { field: string; op: string; value: unkn
 async function handleDatasetRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
+  request?: Request,
 ) {
   if (!session) return errorResponse("Unauthorized", 401, { code: "DATASET_READ_UNAUTHORIZED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -638,7 +640,11 @@ async function handleDatasetRead(
   const dataset = String(payload.dataset || "").trim().toLowerCase();
   const source = DATASET_READ_SOURCES[dataset];
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
-  if (!hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  if (dataset === "suspend_tag" ? !SUSPEND_TAG_EDITORS.has(username) : !hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  if (dataset === "suspend_tag") {
+    try { actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, request); }
+    catch { return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" }); }
+  }
   let parsed: ReturnType<typeof validateDatasetReadParams>;
   try { parsed = validateDatasetReadParams(payload); }
   catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
@@ -660,8 +666,7 @@ async function handleDatasetRead(
       // enforce it in PostgREST before exact count/paging so callers cannot
       // widen the result or receive inconsistent page totals.
       query = query.filter("suspend", "imatch", "^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$")
-        .filter("suspend_to", "imatch", "^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$")
-        .is("date_completed", null);
+        .filter("suspend_to", "imatch", "^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$");
     }
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
@@ -699,9 +704,21 @@ async function handleDatasetRead(
     const { data, error, count } = await query.range(parsed.offset, parsed.offset + parsed.limit - 1);
     if (error) return databaseFailureResponse("Dataset read failed.", error, "DATASET_READ_UNAVAILABLE");
     if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    if (dataset === "suspend_tag") {
+      const state = await handleSuspendTag(supabase, actor, { operation: "rows", payload: { ids: data.map((row: Record<string, unknown>) => row.unique_id) } }) as { rows: Record<string, unknown>[] };
+      const byId = new Map(state.rows.map(row => [row.unique_id, row]));
+      for (const row of data) {
+        const current = byId.get(row.unique_id);
+        if (current) for (const [key, value] of Object.entries(current)) if (key.startsWith("suspend_tag_") || key in row) row[key] = value;
+      }
+    }
     return jsonResponse({ ok: true, data: { rows: data, total: count, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < count } });
   } catch (error) {
     const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
+    if (dataset === "suspend_tag" && code.includes("SUSPEND_TAG_")) {
+      const failure = suspendTagError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
     return errorResponse("Dataset read parameters are invalid.", 400, { code });
   }
 }
@@ -988,6 +1005,7 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   // database authorization boundaries.
   if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
   if (table === "ph_dock_team_status") return false;
+  if (table === "ph_soc_master") return false; // Native column grants / protected Suspend Tag command own SOC writes.
   if (table === "ph_active_request" && access.isRep) return false;
   if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
@@ -4495,6 +4513,17 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       return jsonResponse(failure.body, failure.status);
     }
   }
+  if (action === "suspend_tag") {
+    if (!session?.authUserId || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" });
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
+      return jsonResponse({ ok: true, data: await handleSuspendTag(supabase, actor, payload) });
+    } catch (error) {
+      const failure = suspendTagError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
+  }
   if (action === "login") return await handleLogin(payload);
   if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
@@ -4554,7 +4583,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       });
     }
   }
-  if (action === "dataset_read") return await handleDatasetRead(session, payload);
+  if (action === "dataset_read") return await handleDatasetRead(session, payload, req);
   if (action === "request_archive") return await handleRequestArchive(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);

@@ -15757,6 +15757,11 @@ function buildMimeEmail_(options) {
   if (options.ccList) lines.push('Cc: ' + String(options.ccList));
   if (options.bccList) lines.push('Bcc: ' + String(options.bccList));
   if (fromHeader) lines.push('From: ' + fromHeader);
+  if (options.replyTo) {
+    const replyTo = String(options.replyTo).trim();
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(replyTo)) throw new Error('EMAIL_REPLY_TO_INVALID');
+    lines.push('Reply-To: ' + replyTo);
+  }
   const messageIdHeader = String(options.messageIdHeader || '').trim();
   if (messageIdHeader) lines.push('Message-ID: ' + messageIdHeader);
   lines.push('Subject: ' + String(options.subject || ''));
@@ -17852,9 +17857,82 @@ function handleSignedBunchNoteDelivery_(delivery) {
   } finally { if(lock) { try { lock.releaseLock(); } catch(ignored) {} } }
 }
 
+function buildSuspendTagApprovalEmail_(delivery) {
+  const approval = delivery.payload.approval;
+  const row = approval.snapshot;
+  const decision = delivery.eventType === 'suspend_tag_approval_decided';
+  const value = function(v) { return v === null || typeof v === 'undefined' ? '' : String(v); };
+  const fields = [
+    ['Customer', value(row.customername)], ['Consignee', value(row.consigneename)],
+    ['Item Description', [row.commonname, row.contsize].filter(Boolean).join(' ')],
+    ['Location Code', value(row.locationcode)], ['Qty', value(row.quantityordered)],
+    ['Spec', value(row.dock_spec)], ['Caliper', value(row.dock_caliper)],
+    ['LOC MATCH %', value(row.match)], ['Match Qty', value(row.loc_match_qty)], ['Initial PTR', value(row.initial_ptr)],
+    ['AV Note', value(row.av_note)], ['Notes', value(row.dock_note)]
+  ];
+  const appUrl = 'https://agmetricapp.com/' + '?suspendApproval=' + encodeURIComponent(approval.id);
+  const title = decision ? value(row.rep_display) + ' ' + (approval.status === 'approved' ? 'approved' : 'denied') + ' this Suspend Tag row.'
+    : approval.status !== 'pending' ? 'Saved Suspend Tag review. The Sales Rep has already ' + value(approval.status) + ' this round.' : 'Please review this completed Suspend Tag row.';
+  const subject = ('GNC PH Suspend Tag - ' + value(row.customername || row.consigneename) + ' - ' + value(row.commonname) + ' - ' + approval.id).replace(/[\r\n]+/g, ' ');
+  const item = Object.assign({}, row, { req_qty: row.quantityordered, req_spec: row.dock_spec, req_caliper: row.dock_caliper,
+    req_photo_link: row.dock_photo_link, req_photo_name: row.dock_photo_name, req_customer: [row.customername,row.consigneename].filter(Boolean).join(' | ') });
+  return {
+    subject: subject, to: decision ? approval.submitter_email : approval.rep_email,
+    replyTo: decision ? approval.rep_email : approval.submitter_email,
+    textBody: ['GNC PH Suspend Tag', title].concat(fields.map(function(f) { return f[0] + ': ' + f[1]; }),
+      ['Photos: ' + value(row.dock_photo_link), 'Open approval: ' + appUrl]).join('\n'),
+    htmlBody: '<div style="font-family:Arial,sans-serif"><h2>GNC PH Suspend Tag</h2><p>' + escapeEmailHtml_(title) + '</p>'
+      + fields.map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(f[1]) + '</p>'; }).join('')
+      + buildRequestEmailTableItemsHtml_({ requestItems: [item], folderId: 'suspend-tag-' + approval.id }, { title: 'Suspend Tag Row' })
+      + '<p><a href="' + escapeEmailHtml_(appUrl) + '">Open approval in the app</a></p></div>'
+  };
+}
+
+function handleSignedSuspendTagDelivery_(delivery) {
+  const approval = delivery.payload && delivery.payload.approval;
+  if (!approval || !approval.id || !approval.snapshot || !delivery.messageIdHeader) throw new Error('SUSPEND_TAG_DELIVERY_INVALID');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('REQUEST_DELIVERY_BUSY');
+  try {
+    const messageId = String(delivery.messageIdHeader);
+    const saved = getRequestDeliveryReceipt_(messageId) || findSentRequestDeliveryByMessageId_(messageId);
+    if (saved) return Object.assign({ ok: true, mode: 'gmail_api_idempotent_recovery', recipients: [] }, saved, { messageIdHeader: messageId });
+    const model = buildSuspendTagApprovalEmail_(delivery);
+    const thread = delivery.thread || {};
+    const isDecision = delivery.eventType === 'suspend_tag_approval_decided';
+    if (isDecision && (!thread.threadId || !thread.messageId)) throw new Error('SUSPEND_TAG_ORIGINAL_EMAIL_PENDING');
+    const props = PropertiesService.getScriptProperties();
+    const intentKey = 'suspend_tag_send:' + messageId;
+    if (props.getProperty(intentKey)) throw new Error('SUSPEND_TAG_EMAIL_RECONCILIATION_REQUIRED');
+    // Validate delivery-time routing before recording a potentially sent message.
+    const routed = resolveOperationalEmailHeaders_([model.to], [], []).to;
+    if (routed.length !== 1 || routed[0].toLowerCase() !== String(model.to).toLowerCase()) throw new Error('SUSPEND_TAG_RECIPIENT_CHANGED');
+    props.setProperty(intentKey, new Date().toISOString());
+    let result;
+    try { result = sendGmailApiMessage_({ toList: model.to, toArray: [model.to], replyTo: model.replyTo,
+      fromName: 'GNC PH Suspend Tag', fromAddress: resolveAutomatedEmailSenderAddress_(), subject: model.subject,
+      textBody: model.textBody, htmlBody: model.htmlBody, messageIdHeader: messageId,
+      threadId: isDecision ? thread.threadId : '', inReplyTo: isDecision ? thread.messageId : '', references: isDecision ? thread.messageId : '' });
+    } catch (error) {
+      // A definite Gmail rejection is safe to retry. A timeout or lost response
+      // retains intent until the stable Message-ID can be reconciled.
+      const status = Number(error && (error.code || (error.details && error.details.code)));
+      if ([400,401,403,404,429].indexOf(status) >= 0) props.deleteProperty(intentKey);
+      throw error;
+    }
+    if (!result.gmailMessageId || !result.threadId) throw new Error('SUSPEND_TAG_EMAIL_RECONCILIATION_REQUIRED');
+    result.messageIdHeader = messageId;
+    result.replyToMessageId = isDecision ? thread.messageId : '';
+    saveRequestDeliveryReceipt_(messageId, result);
+    props.deleteProperty(intentKey);
+    return result;
+  } finally { lock.releaseLock(); }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
+  if (eventType === 'suspend_tag_approval_requested' || eventType === 'suspend_tag_approval_decided') return handleSignedSuspendTagDelivery_(delivery);
   if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
   if (eventType === 'bunch_note_submission') return handleSignedBunchNoteDelivery_(delivery);
   if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);

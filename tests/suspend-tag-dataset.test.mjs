@@ -41,7 +41,7 @@ function actualAccessFunctions() {
   return context;
 }
 
-test('Suspend Tag uses the actual active-role SOC read boundary without broadening other permissions', () => {
+test('Suspend Tag has an exact editor allowlist without broadening ordinary SOC permissions', () => {
   const auth = actualAccessFunctions();
   const matrix = [
     ['QC Supervisor', 'dan_mccuistion', true],
@@ -68,5 +68,7 @@ test('Suspend Tag uses the actual active-role SOC read boundary without broadeni
     }
   }
   assert.match(appApi, /suspend_tag:\s*\{\s*table: "ph_soc_master", permission: "ph_soc_master"/);
-  assert.match(appApi, /if \(!hasTableReadAccess\(role, source\.permission, username\)\)/);
+  assert.match(appApi, /dataset === "suspend_tag" \? !SUSPEND_TAG_EDITORS.has\(username\) : !hasTableReadAccess\(role, source.permission, username\)/);
+  const policy=readFileSync(new URL("../supabase/functions/_shared/suspend-tag.ts",import.meta.url),"utf8");
+  assert.match(policy,/new Set\(\['dylan_collyge', 'megan_kelly', 'dan_mccuistion'\]\)/);
 });
