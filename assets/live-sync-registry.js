@@ -11,7 +11,8 @@
         requestHistory: ['ph_request_history'], salesCredits: ['ph_sales_credit_requests'],
         inventoryEditRequests: ['ph_inventory_edit_requests', 'ph_inventory_edit_request_events'],
         reserves: ['ph_reserves', 'ph_master_inventory'], customerRepMap: ['ph_customer_consignee_sales_reps'],
-        soc: ['ph_soc_master', 'ph_master_inventory'], salesOffice: ['ph_sales_office'],
+        // Raw SOC caches do not change when inventory enrichment changes.
+        soc: ['ph_soc_master'], suspendTag: ['ph_soc_master'], salesOffice: ['ph_sales_office'],
         flyerRows: ['ph_flyer_folder_rows'], flyerHistory: ['ph_flyer_folder_history'],
         growerScoutReports: ['ph_grower_scout_reports'], growerScoutAssets: ['ph_grower_scout_assets'],
         warehouseAssignedItems: ['ph_warehouse_assigned_items'], cav: ['ph_cav_import'], cavAvBlankKeys: ['ph_cav_import'],
@@ -105,7 +106,7 @@
         // they do not subscribe to or refresh the broad live Request datasets.
         'request:archived': data([]),
         'request:reps': data(['requests', 'requestHistory', 'salesCredits']),
-        'request:suspend-tag': data(['soc', 'master']),
+        'request:suspend-tag': data(['suspendTag', 'master', 'customerRepMap']),
         'request:eval-work': data(['master'], ['evalWork']),
         'request:av-check': data(['master'], ['avOptionEval']),
         'request:moves': data(['master', 'inventoryEditRequests'], ['locationWork']),
@@ -157,7 +158,7 @@
         'dialog:request': data(['master', 'reserves', 'customerRepMap', 'requests']),
         'dialog:item-inquiry': data(['master', 'reserves', 'avNotes'], ['coverage']),
         'dialog:shear': data(['master', 'reserves'], ['shear']),
-        'badge:queue': data(['requests', 'salesCredits', 'inventoryEditRequests', 'soc', 'salesOffice'], ['shear', 'evalWork']),
+        'badge:queue': data(['requests', 'salesCredits', 'inventoryEditRequests', 'suspendTag', 'salesOffice'], ['shear', 'evalWork']),
         'badge:communications': data([], ['chat', 'calendar'])
     };
     const evalRowViews = new Set(['drive', 'crop-roll', 'av', 'docks', 'sales-inventory', 'weather-hold', 'reserves', 'sales-office', 'moves', 'tasks', 'low-stock', 'review', 'move-up']);
@@ -171,9 +172,11 @@
         const requestBunchNotes = viewId === 'request' && requestedSurfaces.includes('request:bunch-notes');
         const requestArchived = viewId === 'request' && requestedSurfaces.includes('request:archived');
         const requestPending = viewId === 'request' && requestedSurfaces.includes('request:pending');
+        const requestSuspendTag = viewId === 'request' && requestedSurfaces.includes('request:suspend-tag');
         const entries = [requestBunchNotes ? data([], ['bunchNotes'])
             : requestArchived ? data([], [])
             : requestPending ? data(['requests'])
+            : requestSuspendTag ? data([])
             : viewId === 'detail' && context.driveDetail ? data(['master'], ['settings']) : view];
         if ((viewId === 'drive' || viewId === 'detail' && context.driveDetail) && context.driveAssignmentsRequired) {
             entries.push(data(['warehouseAssignedItems']));

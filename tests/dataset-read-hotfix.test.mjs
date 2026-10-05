@@ -116,12 +116,60 @@ test('default projections are explicit current columns and Request signatures ar
   for (const match of projectionBlock[1].matchAll(/^\s*([a-z_]+): ("[^"]*"),$/gm)) {
     projections.set(match[1], JSON.parse(match[2]).split(','));
   }
-  assert.equal(projections.size, 13);
+  assert.equal(projections.size, 14);
   assert.ok([...projections.values()].every((fields) => fields.length > 1 && fields.every((field) => /^[a-z][a-z0-9_]*$/.test(field))));
   assert.doesNotMatch(projectionBlock[1], /:\s*"\*"/);
   const request = source.match(/request_queue:\s*\{[\s\S]*?signatures:\s*"([^"]+)"/);
   assert.ok(request, 'Request signature projection should exist');
   assert.ok(request[1].split(',').every((field) => projections.get('ph_request_queue_live_rows').includes(field)));
+});
+
+test('suspend_tag uses a narrow fixed SOC projection and server-forced normalized eligibility before exact paging', async () => {
+  const h = harness({ rows: [{ unique_id: 'soc-1', suspend: ' suspend ', suspend_to: 'D.C', date_completed: null }], count: 31 });
+  const response = await h.context.datasetReadTest(h.session('qc supervisor', 'qc_user'), {
+    dataset: 'suspend_tag', params: { limit: 20, offset: 10, order: [{ field: 'unique_id', ascending: true }] },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(h.tables[0], 'ph_soc_master');
+  assert.equal(response.body.data.total, 31);
+  assert.equal(response.body.data.offset, 10);
+  assert.equal(response.body.data.limit, 20);
+  assert.equal(response.body.data.hasMore, true);
+  const calls = h.queries[0].calls;
+  const projection = calls.find(([method]) => method === 'select')?.[1];
+  assert.equal(projection, 'unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode');
+  assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend' && op === 'imatch' && pattern === '^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$'));
+  assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend_to' && op === 'imatch' && pattern === '^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$'));
+  assert.ok(calls.some(([method, field, value]) => method === 'is' && field === 'date_completed' && value === null));
+  assert.ok(calls.some(([method, start, end]) => method === 'range' && start === 10 && end === 29));
+  assert.ok(calls.some(([method, field]) => method === 'order' && field === 'unique_id'));
+
+  const widened = await h.context.datasetReadTest(h.session(), {
+    dataset: 'suspend_tag', params: { filters: [{ field: 'suspend', op: 'eq', value: 'NO' }] },
+  });
+  assert.equal(widened.status, 400, 'client filters cannot override the fixed eligibility predicates');
+});
+
+test('suspend_tag SQL match patterns preserve ASCII and Unicode client eligibility normalization', () => {
+  const normalizeSuspend = (value) => String(value || '').trim().toUpperCase().replace(/[\s_-]+/g, ' ');
+  const normalizeSuspendTo = (value) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const trimChars = '\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+  const suspendSqlMatch = new RegExp(`^[\\s${trimChars}]*[s\u017f]uspend[\\s${trimChars}]*$`, 'i');
+  const suspendToSqlMatch = /^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$/i;
+  for (const value of ['', 'SUSPEND', ' suspend ', '\u00a0SUSPEND\u00a0', '\uFEFFSUSPEND\uFEFF', '\u017FSUSPEND', 'SUS PEND', 'SUSPEND_', 'SUSPEND-DC']) {
+    assert.equal(suspendSqlMatch.test(value), normalizeSuspend(value) === 'SUSPEND', `suspend=${JSON.stringify(value)}`);
+  }
+  for (const value of ['', 'DC', 'D.C', 'D-C', 'D C!', 'XDC', 'DCX', 'D-X-C']) {
+    assert.equal(suspendToSqlMatch.test(value), normalizeSuspendTo(value) === 'dc', `suspend_to=${JSON.stringify(value)}`);
+  }
+});
+
+test('suspend_tag keeps the existing SOC access check and rejects reads before querying when denied', async () => {
+  const denied = harness({ readable: false, role: 'rep', username: 'rep_user' });
+  const response = await denied.context.datasetReadTest(denied.session(), { dataset: 'suspend_tag', params: {} });
+  assert.equal(response.status, 403);
+  assert.equal(response.body.code, 'DATASET_READ_FORBIDDEN');
+  assert.deepEqual(denied.tables, []);
 });
 
 test('Inventory edits and Shear use authorized bounded reads without changing role access', async () => {
