@@ -101,4 +101,3 @@ test('all npm CI installs use shared caching without changing caller Node versio
   const ops = yaml.load(read('.github/workflows/codex-ops.yml'));
   assert.equal(ops.jobs.repair.steps.find(s=>s.uses==='./.github/actions/setup-node-dependencies').if,"${{ steps.repair_gate.outputs.publish_allowed == 'true' }}");
 });
-
