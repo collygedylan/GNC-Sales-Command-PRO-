@@ -1,6 +1,6 @@
 # Engineering Guidance
 
-AGENTS.md is the authoritative workflow for candidate delivery, monitoring, autonomous CI remediation, and file hygiene. Follow its sequence after every candidate push.
+AGENTS.md is the authoritative workflow for local development, candidate delivery, monitoring, autonomous CI remediation, and file hygiene. Follow its Local Development and Early Delivery rules and its delivery sequence after every candidate push.
 
 ## Development
 
@@ -10,11 +10,12 @@ Check the impact of schema changes on Row Level Security and client queries. The
 
 ## Local Validation
 
-- UI, CSS, layout, and text: run focused checks for the changed behavior and relevant desktop/mobile browsers.
-- State, component logic, and API routes: run targeted unit and integration checks for affected modules.
-- Database, security, service worker, offline synchronization, or cross-module changes: run the relevant integration and regression checks for affected boundaries.
+- Run only targeted unit tests or specific test files directly related to the changed behavior, including focused migration checks when applicable. Leave full E2E suites, mobile/browser matrices, and exhaustive regression testing to GitHub Actions.
+- Prefer fast local dev-server verification for UI changes. Do not rebuild full release artifacts or compile heavy production stylesheets just to run a local test; let cloud CI run tests that require those artifacts.
+- A local production build is allowed only when strictly necessary to diagnose or verify a potentially build-breaking configuration change. Explain the need and use the smallest sufficient build, as required by AGENTS.md.
+- For documentation-only changes, review document consistency and whitespace; application tests and builds are unnecessary.
 
-These tiers guide local feedback; every candidate must still pass all required GitHub Actions release gates. Diagnose failures and repair their cause. Preserve test coverage and assertions; do not quarantine, skip, or bypass failing tests to publish a candidate. Follow the single CI failure counter and approval conditions in AGENTS.md.
+Once core changes, applicable migration checks, and focused local tests pass, commit and push immediately. Every candidate must still pass all required GitHub Actions release gates. Use fail-fast cloud feedback to diagnose failures and make targeted corrections. Preserve test coverage and assertions; do not quarantine, skip, or bypass failing tests to publish a candidate. Follow the single CI failure counter and approval conditions in AGENTS.md.
 
 ## Release Metadata and Delivery
 
