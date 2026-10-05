@@ -216,7 +216,9 @@ jobs:
           git add -N --all
           node scripts/validate-codex-mobile-patch.mjs --worktree
       - if: ${{ steps.repair_gate.outputs.publish_allowed == 'true' }}
-        run: npm ci
+        uses: ./.github/actions/setup-node-dependencies
+        with:
+          node-version: 24
       - if: ${{ steps.repair_gate.outputs.publish_allowed == 'true' }}
         run: npm run check:inline
       - if: ${{ steps.repair_gate.outputs.publish_allowed == 'true' }}
@@ -294,7 +296,9 @@ jobs:
           git apply --check "$RUNNER_TEMP/publisher-input/mobile.patch"
           git apply "$RUNNER_TEMP/publisher-input/mobile.patch"
           node scripts/validate-codex-mobile-patch.mjs --worktree
-      - run: npm ci
+      - uses: ./.github/actions/setup-node-dependencies
+        with:
+          node-version: 24
       - run: npm run check:inline
       - run: npm run test:pilot
       - run: npm run test:v2
@@ -395,11 +399,9 @@ jobs:
           ref: main
           fetch-depth: 1
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup-node-dependencies
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
       - name: Verify exact live release and production health
         env:
           EXPECTED_LIVE_COMMIT: ${{ github.sha }}
@@ -438,11 +440,9 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup-node-dependencies
         with:
           node-version: 24
-          cache: npm
-      - run: npm ci
       - name: Record failed verification and load approved release
         env:
           CODEX_OPS_RESULT_FILE: ${{ runner.temp }}/failed.json

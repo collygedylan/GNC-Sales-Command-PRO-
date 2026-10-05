@@ -254,23 +254,50 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     strategy:
-      fail-fast: false
-      max-parallel: 6
+      fail-fast: true
       matrix:
         include:
           - suite: foundation
-            command: npm run test:foundation -- --reporter=github
+            project: lifecycle-chromium
+            browsers: chromium
+            command: 'npm run test:foundation -- --reporter=github --project=lifecycle-chromium --workers=1 --max-failures=1'
+          - suite: foundation
+            project: lifecycle-iphone
+            browsers: webkit
+            command: 'npm run test:foundation -- --reporter=github --project=lifecycle-iphone --workers=1 --max-failures=1'
           - suite: requests
-            command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts
+            project: production-chromium
+            browsers: chromium
+            command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts --project=production-chromium --workers=1 --max-failures=1
+          - suite: requests
+            project: production-iphone-webkit
+            browsers: webkit
+            command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts --project=production-iphone-webkit --workers=1 --max-failures=1
           - suite: session
-            command: npm run test:session-recovery -- --workers=1
+            project: session-chromium
+            browsers: chromium
+            command: 'npm run test:session-recovery -- --project=session-chromium --workers=1 --max-failures=1'
+          - suite: session
+            project: session-iphone
+            browsers: webkit
+            command: 'npm run test:session-recovery -- --project=session-iphone --workers=1 --max-failures=1'
           - suite: login-photo
-            command: npx playwright test --config playwright.login-photo.config.ts --project=chromium --project=webkit --project=android --workers=1
+            project: chromium
+            browsers: chromium
+            command: npx playwright test --config playwright.login-photo.config.ts --project=chromium --workers=1 --max-failures=1
+          - suite: login-photo
+            project: webkit
+            browsers: webkit
+            command: npx playwright test --config playwright.login-photo.config.ts --project=webkit --workers=1 --max-failures=1
+          - suite: login-photo
+            project: android
+            browsers: chromium
+            command: npx playwright test --config playwright.login-photo.config.ts --project=android --workers=1 --max-failures=1
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
         with:
-          browsers: chromium webkit
+          browsers: ${{ matrix.browsers }}
       - name: Mutation-blocked live ${{ matrix.suite }} checks
         env:
           CANARY_BASE_URL: https://agmetricapp.com
@@ -282,7 +309,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: live-${{ matrix.suite }}-${{ github.run_attempt }}
+          name: live-${{ matrix.suite }}-${{ matrix.project }}-${{ github.run_attempt }}
           path: |
             playwright-report
             test-results
