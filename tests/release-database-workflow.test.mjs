@@ -124,6 +124,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     '20261003025749_aura_llm_free_tier_011.sql',
     '20261004010000_company_directory.sql',
     '20261005194158_suspend_tag_approval_loop.sql',
+    '20261005225759_structured_bunch_notes.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
