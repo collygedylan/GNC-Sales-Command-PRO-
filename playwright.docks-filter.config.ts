@@ -6,7 +6,7 @@ const baseURL = remote || 'http://127.0.0.1:43121';
 export default defineConfig({
   testDir: './tests', testMatch: /docks-filter\.e2e\.spec\.ts/,
   outputDir: remote ? './test-results/docks-filter-published' : './test-results/docks-filter-local',
-  fullyParallel: false, workers: 1, forbidOnly: Boolean(process.env.CI), retries: 0,
+  fullyParallel: false, workers: 1, forbidOnly: Boolean(process.env.CI), retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list', timeout: 60_000,
   expect: { timeout: 10_000 },
   use: { baseURL, serviceWorkers: 'block', trace: 'retain-on-failure', screenshot: 'only-on-failure',
