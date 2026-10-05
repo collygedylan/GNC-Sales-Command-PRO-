@@ -184,6 +184,7 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/manager-season-priority-protected.test.mjs',
     'tests/assigned-items-filters.test.mjs',
     'tests/bunch-note.test.mjs',
+    'tests/bunch-note-structured.test.mjs',
     'tests/sales-workflow.test.mjs',
     'tests/sales-history-context.test.mjs',
     'tests/request-metadata-notifications.test.mjs',

@@ -65,6 +65,70 @@ async function openBunchNotesFromInventory(page:any) {
  await expect(page.locator('#view-bunch-note')).toBeVisible();
 }
 
+test('structured worksheet saves ordered houses, custom crew tags and freeform routing without losing failed edits',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!);
+ await openBunchNotesFromInventory(page);
+ for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001'])await page.getByRole('button',{name,exact:true}).click();
+ await page.getByLabel('Purposes',{exact:true}).fill('Bunch for shipping');
+ await page.getByLabel('General instructions',{exact:true}).fill('Leave aisles at risers, remove drape. Red flags');
+ await page.getByLabel('Default direction',{exact:true}).fill('West to East');
+ await page.getByLabel('Target houses',{exact:true}).fill('South house only');
+ await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await page.getByRole('button',{name:'Add house section',exact:true}).click();
+ await page.getByLabel('House name',{exact:true}).fill('North House');
+ await page.getByLabel('House direction override',{exact:true}).fill('East to West');
+ await page.getByRole('button',{name:'Add freeform task to North House',exact:true}).click();
+ const north=page.getByRole('region',{name:'North House',exact:true});
+ await north.getByLabel('Crew tag',{exact:true}).fill('BOB');
+ await north.getByLabel('Quantity constraint',{exact:true}).fill('< 30');
+ await north.getByLabel('Action / routing instruction',{exact:true}).fill('Haul to G15 S-HS. Blue flags');
+ await page.getByRole('button',{name:'Add house section',exact:true}).click();
+ await page.getByLabel('House name',{exact:true}).last().fill('Center House');
+ await page.getByRole('button',{name:'Add freeform task to Center House',exact:true}).click();
+ const center=page.getByRole('region',{name:'Center House',exact:true});
+ await center.getByLabel('Crew tag',{exact:true}).fill('NIGHT CREW');
+ await center.getByLabel('Item size',{exact:true}).fill('3DP');
+ await center.getByLabel('Quantity constraint',{exact:true}).fill('all');
+ await center.getByLabel('Action / routing instruction',{exact:true}).fill('Stop and pickup from E.23.000. Pink Ribbon');
+ await page.getByRole('button',{name:'Move Center House up',exact:true}).click();
+ f.failNextSave();await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await expect(page.locator('#bunch-note-content').getByRole('alert')).toContainText('Save unavailable');
+ await expect(center.getByLabel('Quantity constraint',{exact:true})).toHaveValue('all');
+ await expect(north.getByLabel('Action / routing instruction',{exact:true})).toHaveValue('Haul to G15 S-HS. Blue flags');
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
+ const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body.locations[0];
+ expect(saved.direction).toBe('West to East');expect(saved.target_houses).toBe('South house only');
+ expect(saved.house_sections.map((s:any)=>s.name)).toEqual(['Center House','North House']);
+ expect(saved.actions.map((a:any)=>[a.sequence_order,a.margin_tag,a.quantity_constraint])).toEqual([[1,'NIGHT CREW','all'],[2,'BOB','< 30']]);
+ expect(saved.actions.every((a:any)=>a.freeform&&a.row_ids.length===0)).toBe(true);
+ await page.evaluate(()=>{(window as any).BunchNote.editSetup();});
+ await expect(page.getByLabel('Default direction',{exact:true})).toHaveValue('West to East');
+ await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await expect(center.locator('mark')).toHaveText('Pink Ribbon');
+ await page.screenshot({path:test.info().outputPath('structured-worksheet.png'),fullPage:true});
+ expect(f.control.blockedMutations).toEqual([]);
+});
+
+test('structured queue shows house directions and survives refresh before opening linked work',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!,true),j=f.jobs[0];
+ j.body.direction='West to East';j.body.target_houses='South house only';
+ j.body.house_sections=[{id:'north',name:'North House',direction:'East to West'}];
+ Object.assign(j.body.actions[1],{section_id:'north',margin_tag:'QC',quantity_constraint:'all',instructions:'TA all. Red flags and Yellow Ribbon'});
+ await page.evaluate(()=>{(window as any).switchView('request');(window as any).setReqTab('bunch-notes');});
+ for(const name of ['Open location C.12','Open location C.12.001','Open'])await page.getByRole('button',{name,exact:true}).click();
+ const worksheet=page.locator('[data-bn-structured="read"]');
+ await expect(worksheet).toContainText('North House · East to West');
+ await expect(worksheet).toContainText('South house only');
+ await expect(worksheet.locator('.bn-crew-badge')).toHaveText('QC');
+ await expect(worksheet.locator('mark')).toHaveText(['Red flags','Yellow Ribbon']);
+ await page.evaluate(()=>{(window as any).BunchNote.render();});
+ await expect(worksheet.locator('.bn-task-line')).toHaveCount(3);
+ await worksheet.locator('[data-action-id="ta"]').getByRole('button',{name:'Open work details'}).click();
+ await expect(page.locator('[data-bn-work-action="ta"]')).toBeVisible();
+ expect(f.control.blockedMutations).toEqual([]);
+});
+
 test('creator actions drill through themed block and location cards',async({page,baseURL},testInfo)=>{
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);

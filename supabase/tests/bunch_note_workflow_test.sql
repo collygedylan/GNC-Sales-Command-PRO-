@@ -274,6 +274,51 @@ begin
  perform pg_temp.bn_reject(d,'publish',jsonb_build_object('preview_id',preview->'id'),3,'BUNCH_NOTE_INSTRUCTIONS_REQUIRED');
 end $$;
 
+-- Structured headers and lines share the existing transaction/replay boundary.
+do $$
+declare d uuid:='98000000-0000-0000-0000-000000000001'; w uuid:='98000000-0000-0000-0000-000000000002';
+ body jsonb; draft jsonb; response jsonb; preview jsonb; note uuid; live_note uuid; job uuid; cmd uuid:=gen_random_uuid(); line_uuid uuid; frozen jsonb;
+begin
+ insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,blockalpha,locationcode,lotcode,ptronhand)
+ values('BN-STRUCT','SHRUB','Royal Red butterfly bush','#7','E','E.15.000','LOT','0');
+ body:='{"block":"E","recipient_ids":[],"locations":[{"location":"E.15.000","purposes":"Bunch for shipping","instructions":"Leave aisles at risers, remove drape","direction":"West to East","target_houses":"South house only","row_ids":[],"house_sections":[{"id":"north","name":"North House","direction":"East to West"},{"id":"center","name":"Center House","direction":""}],"actions":[{"id":"center","freeform":true,"group":"sequence","scope":"location","section_id":"center","instructions":"Stop and pickup from E.23.000. Pink Ribbon","margin_tag":"CUSTOM CREW","quantity_constraint":"all","item_size":"3DP"},{"id":"north","freeform":true,"group":"sequence","scope":"location","section_id":"north","instructions":"Haul to G15 S-HS. Red flags","margin_tag":"BOB","quantity_constraint":"< 30"},{"id":"north-2","freeform":true,"group":"sequence","scope":"location","section_id":"north","instructions":"Remove drape"}]}]}'::jsonb;
+ draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('body',body),cmd)->'draft';
+ perform pg_temp.bn_check(draft=public.bunch_note_command_v1(d,'save',jsonb_build_object('body',body),cmd)->'draft','structured command replay returns identical result');
+ select id into note from bunch_note_private.bunch_notes where batch_id=(draft->>'id')::uuid;
+ perform pg_temp.bn_check((select direction='West to East' and target_houses='South house only' and general_instructions='Leave aisles at risers, remove drape' from bunch_note_private.bunch_notes where id=note),'header persisted separately from lines');
+ perform pg_temp.bn_check((select array_agg(action_id order by sequence_order)=array['north','north-2','center'] from bunch_note_private.bunch_note_lines where bunch_note_id=note),'house order and line order persist exactly');
+ perform pg_temp.bn_check((select quantity_constraint='< 30' and sub_location='North House' and margin_tag='BOB' from bunch_note_private.bunch_note_lines where bunch_note_id=note and action_id='north'),'literal constraints and explicit labels preserved');
+ perform pg_temp.bn_check((select margin_tag='CUSTOM CREW' and item_size='3DP' and action_metadata->>'kind'='instruction' from bunch_note_private.bunch_note_lines where bunch_note_id=note and action_id='center'),'custom tags and freeform trusted instruction kind');
+ perform pg_temp.bn_reject(w,'save',jsonb_build_object('body',body),null,'BUNCH_NOTE_AUTHOR_ONLY');
+ perform pg_temp.bn_reject(d,'save',jsonb_build_object('body',jsonb_set(body,'{locations,0,actions,0,section_id}','"missing"')),null,'BUNCH_NOTE_SECTION_NOT_FOUND');
+ perform pg_temp.bn_reject(d,'save',jsonb_build_object('body',jsonb_set(body,'{locations,0,actions,0,quantity}','"3"')),null,'BUNCH_NOTE_FREEFORM_INVALID');
+ perform pg_temp.bn_reject(d,'save',jsonb_build_object('batch_id',draft->'id','body',body),0,'BUNCH_NOTE_REVISION_CONFLICT');
+ select id into line_uuid from bunch_note_private.bunch_note_lines where bunch_note_id=note and action_id='north';
+ body:=draft->'body';
+ body:=jsonb_set(body,'{locations,0,actions}',jsonb_build_array(body->'locations'->0->'actions'->1,body->'locations'->0->'actions'->0,body->'locations'->0->'actions'->2));
+ draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('batch_id',draft->'id','body',body),gen_random_uuid(),1)->'draft';
+ perform pg_temp.bn_check((select id=line_uuid and sequence_order=2 from bunch_note_private.bunch_note_lines where bunch_note_id=note and action_id='north'),'line reorder retains identity');
+ preview:=public.bunch_note_command_v1(d,'preview',jsonb_build_object('batch_id',draft->'id'),gen_random_uuid(),2)->'preview';
+ frozen:=preview->'reports'; job:=(frozen->0->>'job_id')::uuid;
+ perform public.bunch_note_freeze_pdfs_v1((preview->>'id')::uuid,jsonb_build_array(jsonb_build_object('job_id',job,'filename','structured.pdf','base64',encode(convert_to('%PDF-1.4'||repeat('s',200),'UTF8'),'base64'))));
+ perform public.bunch_note_command_v1(d,'publish',jsonb_build_object('preview_id',preview->'id'),gen_random_uuid(),2);
+ select id into live_note from bunch_note_private.bunch_notes where job_id=job;
+ perform pg_temp.bn_check(live_note<>note and (select count(*)=3 from bunch_note_private.bunch_note_lines where bunch_note_id=live_note),'published job has its own header and lines');
+ perform pg_temp.bn_check((select reports=frozen from bunch_note_private.previews where id=(preview->>'id')::uuid),'publishing does not rewrite frozen preview');
+ perform pg_temp.bn_do(w,job,'claim'); perform pg_temp.bn_do(w,job,'progress','{"action_id":"north","status":"done"}');
+ draft:=pg_temp.bn_do(d,job,'revise')->'draft';
+ body:=draft->'body';body:=jsonb_set(body,'{locations,0,actions}',jsonb_build_array(body->'locations'->0->'actions'->1,body->'locations'->0->'actions'->0,body->'locations'->0->'actions'->2));
+ draft:=public.bunch_note_command_v1(d,'save',jsonb_build_object('batch_id',draft->'id','body',body),gen_random_uuid(),1)->'draft';
+ preview:=public.bunch_note_command_v1(d,'preview',jsonb_build_object('batch_id',draft->'id'),gen_random_uuid(),2)->'preview';
+ perform public.bunch_note_freeze_pdfs_v1((preview->>'id')::uuid,jsonb_build_array(jsonb_build_object('job_id',job,'filename','structured2.pdf','base64',encode(convert_to('%PDF-1.4'||repeat('s',200),'UTF8'),'base64'))));
+ perform public.bunch_note_command_v1(d,'publish',jsonb_build_object('preview_id',preview->'id'),gen_random_uuid(),2);
+ perform pg_temp.bn_check((select progress->'north'->>'status'='done' from bunch_note_private.jobs where id=job),'pure reorder preserves completed work');
+ perform pg_temp.bn_check(not has_table_privilege('authenticated','bunch_note_private.bunch_notes','select') and not has_table_privilege('anon','bunch_note_private.bunch_note_lines','select') and not has_table_privilege('service_role','bunch_note_private.bunch_note_lines','update'),'structured tables cannot bypass command authorization');
+ update public.profiles set disabled_at=now() where id=d;
+ perform pg_temp.bn_reject(d,'save',jsonb_build_object('body',body),null,'BUNCH_NOTE_ACTOR_INACTIVE');
+ update public.profiles set disabled_at=null where id=d;
+end $$;
+
 select plan(1);
 select ok((select count(*) from bn_checks)>=20,'Bunch Note lifecycle, privacy, revisions, quantities and delivery assertions passed');
 select * from finish();
