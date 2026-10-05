@@ -226,7 +226,7 @@ test('Docks cached display layout and filters fit 320, 390 and 430 pixel phones'
     await page.setViewportSize({ width, height: 844 });
     await page.evaluate(() => window.eval('renderDocks();'));
     await expectDockCounts(page, 55, 117);
-    await openCompactFilters(page);
+    await openDockMobileFilters(page);
     await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   }

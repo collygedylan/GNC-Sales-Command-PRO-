@@ -129,7 +129,10 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
   expect(configs.query).not.toContain('date_completed=is.null');
   expect(configs.pending).toEqual({ required: ['requests:full'], background: [] });
   expect(configs.reps.required).toEqual(['requests:full', 'requestHistory:full', 'salesCredits:full']);
-  expect(configs.suspendTag.required).toEqual(['requests:full', 'soc:full']);
+  expect(configs.suspendTag).toEqual({
+    required: ['suspendTag:full', 'master:initial', 'customerRepMap:full'],
+    background: []
+  });
   expect(configs.recount).toEqual({ required: ['salesOffice:full'], background: ['requests:full'] });
   expect(configs.avCheck).toEqual({ required: [], background: ['requests:full'] });
 });
