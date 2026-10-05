@@ -32,6 +32,7 @@ function recoveryRuntime() {
     escapeHtml: value => String(value).replaceAll('<', '&lt;'),
     Date,
   });
+  vm.runInContext(functionSource('nativeSessionRecoveryError'), context);
   vm.runInContext(functionSource('showAvReadUnavailableState'), context);
   return { context, written, dirty, notices };
 }
@@ -53,6 +54,35 @@ test('cached Drive failure preserves same-identity content and marks its view di
   assert.equal(r.written.length, 0, 'cached content is not replaced by an error panel');
   assert.deepEqual(r.dirty, ['drive']);
   assert.match(String(r.notices[0]?.[1]), /last verified rows are still shown/);
+});
+
+test('Drive and AV retain native-session recovery guidance without exposing raw error details', () => {
+  for (const view of ['drive', 'av']) {
+    const r = recoveryRuntime();
+    const error = Object.assign(new Error('Untrusted transport details'), { code: 'NATIVE_SESSION_RECOVERY_REQUIRED' });
+    r.context.showAvReadUnavailableState(error, false, view);
+    assert.match(r.written[0][1], /Your session could not be restored\. Retry, or sign in again/);
+    assert.match(r.written[0][1], new RegExp(`retryVerifiedViewData\\('${view}', true, true\\)`));
+    assert.doesNotMatch(r.written[0][1], /Untrusted transport details|Contact an administrator/);
+    assert.match(r.notices[0][1], /session could not be restored/);
+  }
+});
+
+test('cached native-session failure keeps verified rows and supplies sign-in recovery guidance', () => {
+  const r = recoveryRuntime();
+  r.context.showAvReadUnavailableState(r.context.nativeSessionRecoveryError(), true, 'drive');
+  assert.equal(r.written.length, 0);
+  assert.deepEqual(r.dirty, ['drive']);
+  assert.match(r.notices[0][1], /session could not be restored/);
+  assert.match(r.notices[0][1], /last verified rows are still shown/);
+});
+
+test('coordinator message-only recovery errors retain the canonical session guidance', () => {
+  const r = recoveryRuntime();
+  const message = r.context.nativeSessionRecoveryError().message;
+  r.context.showAvReadUnavailableState(new Error(message), false, 'drive');
+  assert.match(r.written[0][1], /Your session could not be restored\. Retry, or sign in again/);
+  assert.equal(r.notices[0][1], message);
 });
 
 test('Drive retains the settings side adapter in the shared cohort', () => {
