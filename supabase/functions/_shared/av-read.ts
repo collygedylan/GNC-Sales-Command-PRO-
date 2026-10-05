@@ -70,7 +70,7 @@ export async function readAvPage({ supabase, actor, payload, canRead, restrictRe
   const dataset = String(payload.dataset || "");
   if (!Object.hasOwn(SOURCES, dataset)) throw invalid();
   const source = SOURCES[dataset];
-  if (!canRead(source.permission)) throw Object.assign(new Error("AV_READ_FORBIDDEN"), { status: 403 });
+  if (!canRead(source.permission)) throw Object.assign(new Error("AV_READ_FORBIDDEN"), { status: 403, stage: "authorization" });
   const raw = String(payload.query || "");
   if (raw.length > 16000) throw invalid();
   const params = new URLSearchParams(raw);
@@ -132,6 +132,7 @@ export async function readAvPage({ supabase, actor, payload, canRead, restrictRe
     throw Object.assign(new Error(code === "42501" ? "AV_READ_FORBIDDEN" : "AV_READ_UNAVAILABLE"), {
       status,
       code: code || (status === 503 ? "AV_READ_UNAVAILABLE" : ""),
+      stage: "database",
     });
   }
   if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 });

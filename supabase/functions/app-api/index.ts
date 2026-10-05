@@ -4554,15 +4554,27 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const role = String(actor.role || "");
       const access = getRoleAccessState(role);
       const data = await readAvPage({ supabase, actor, payload,
-        // readAvPage exposes only the single current-season setting here; do
-        // not grant rep-like accounts access to arbitrary app settings.
+        // Existing active master-inventory readers may read the single
+        // current-season dependency. readAvPage pins settings to that key.
         canRead: table => hasTableReadAccess(role, table, username)
-          || (table === "ph_app_settings" && access.isRepLike),
+          || (table === "ph_app_settings" && hasTableReadAccess(role, "ph_master_inventory", username)),
         restrictRep: access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username),
       });
       return jsonResponse({ ok: true, data });
     } catch (error) {
-      const failure = error as { message?: string; status?: number; code?: string };
+      const failure = error as { message?: string; status?: number; code?: string; stage?: string };
+      const status = Number(failure.status) || 503;
+      const sqlState = /^[0-9A-Z]{5}$/.test(String(failure.code || "")) ? String(failure.code) : null;
+      const dataset = ["reserves", "notes", "hot_prices", "settings"].includes(String(payload.dataset))
+        ? String(payload.dataset) : "unknown";
+      if (status === 403 || status >= 500) {
+        recordHandledError("app-api", "av_read", error, status, {
+          requestId: req.headers.get("x-request-id") || undefined,
+          sqlState,
+          dataset,
+          denialStage: failure.stage || (status === 403 ? "authorization" : "upstream"),
+        });
+      }
       return errorResponse(failure.message || "AV_READ_UNAVAILABLE", failure.status || 503, {
         code: failure.code || failure.message || "AV_READ_UNAVAILABLE",
       });
