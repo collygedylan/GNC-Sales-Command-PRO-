@@ -30,6 +30,7 @@ function harness(options = {}) {
     normalizeSessionIdentity: (value) => String(value || '').trim().toLowerCase(),
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim()) ?? '',
     canCurrentUserViewDockSuspendDcRequests: () => ctx.allowed,
+    requireCurrentSuspendTagWriteProof: () => options.proof !== false,
     getDockSuspendDcRequestSourceUid: (item) => item?.DOCK_SUSPEND_SOURCE_UID || item?.UNIQUE_ID?.replace(/^dock_suspend_dc_/, '') || '',
     findDockSuspendDcRequestSourceRow: () => ctx.currentSource,
     findDockSuspendDcRequestMirrorRowByUniqueId: () => mirror,
@@ -72,6 +73,15 @@ test('Done saves the exact source revision before removing zero-stock rows; reta
   assert.equal(h.ctx.isAcknowledgedDockSuspendCompletion(source()), true);
 });
 
+test('unverified Suspend Tag view never starts a completion write', async () => {
+  const h = harness({ proof: false });
+  const action = button();
+  await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, action);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.row.DATE_COMPLETED, '');
+  assert.equal(action.disabled, false);
+  assert.ok(h.toasts.length === 0);
+});
 test('cancel or unauthorized actor never submits a write', async () => {
   for (const denied of [false, true]) {
     const h = harness({ confirm: denied });

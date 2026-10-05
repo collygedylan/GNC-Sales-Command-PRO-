@@ -11,7 +11,7 @@ type Reply = {
 type CompletionRequest = { body: Record<string, any> };
 const sourceRevision = '2026-09-08T14:00:00.000Z';
 const completionTime = '2026-09-08T15:00:00.000Z';
-const safeDatasetReads = new Set(['request_queue', 'active_request', 'soc', 'cav', 'reserves', 'sales_office', 'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history']);
+const safeDatasetReads = new Set(['request_queue', 'active_request', 'soc', 'suspend_tag', 'cav', 'reserves', 'sales_office', 'dock_team', 'dock_item', 'dock_issue', 'dock_allocations', 'productivity_history']);
 const fixtures: FixtureRow[] = [1, 2].map((index) => ({
   UNIQUE_ID: `browser-suspend-${index}`,
   ITEMCODE: `BROWSER-ONLY-SUSPEND-${index}`,
@@ -179,10 +179,10 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
         loadDatasetTargetsWithLimit = async () => {
           const snapshot = structuredClone(window.__suspendCompletionFixtureRows);
           if (window.__suspendCompletionDatasetGate) await window.__suspendCompletionDatasetGate;
-          processAndLoadData({ socData: snapshot, _fromCache: true });
+          processAndLoadData({ suspendTagData: snapshot, _fromCache: true });
           return true;
         };
-        processAndLoadData({ socData: structuredClone(window.__suspendCompletionFixtureRows), requestsData: [], data: [], _fromCache: true });
+        processAndLoadData({ suspendTagData: structuredClone(window.__suspendCompletionFixtureRows), requestsData: [], data: [], _fromCache: true });
         document.getElementById('view-login').style.setProperty('display', 'none', 'important');
         document.getElementById('app-wrapper').classList.remove('hidden');
         activeReqTab = 'suspend-tag';
@@ -210,7 +210,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   const refresh = async (nextRows: FixtureRow[] = backendRows) => {
     await page.evaluate((data) => {
       (window as any).__suspendCompletionFixtureRows = data;
-      window.eval('processAndLoadData({socData:structuredClone(window.__suspendCompletionFixtureRows),_fromCache:true}); renderRequest();');
+      window.eval('processAndLoadData({suspendTagData:structuredClone(window.__suspendCompletionFixtureRows),_fromCache:true}); renderRequest();');
     }, nextRows);
   };
   const assertClean = () => {
@@ -329,6 +329,21 @@ test('Suspend filters stay in the view, preserve a restored choice across Queue 
   await expect(app.card()).toHaveCount(1);
   await expect(app.card(fixtures[1])).toHaveCount(1);
   await expect(page.locator('#request-suspend-tag-results')).not.toContainText('No suspend tag rows match these filters.');
+  app.assertClean();
+});
+
+test('bounded Suspend Tag cards and filters remain reachable at 320, 390 and 430 pixels', async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!);
+  for (const width of [320, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(() => window.eval('renderRequest();'));
+    const filters = page.locator('#request-suspend-tag-filter-shell .mobile-browse-filters');
+    await expect(app.card()).toBeVisible();
+    await filters.locator('summary').click();
+    await expect(filters.locator('.mobile-browse-filter-panel')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    await filters.locator('summary').click();
+  }
   app.assertClean();
 });
 

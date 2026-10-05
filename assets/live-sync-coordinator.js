@@ -256,7 +256,10 @@
             if (changed.length) {
                 emit('Syncing', 'Checking and loading changed data.');
                 options.onStageStart?.(ctx, before);
-                await Promise.all(Array.from({ length: Math.min(background ? options.backgroundConcurrency || 1 : options.concurrency || 2, changed.length) }, async () => {
+                const foregroundConcurrency = typeof options.getForegroundConcurrency === 'function'
+                    ? options.getForegroundConcurrency(ctx) : options.concurrency;
+                const stageConcurrency = background ? options.backgroundConcurrency || 1 : foregroundConcurrency || 2;
+                await Promise.all(Array.from({ length: Math.min(stageConcurrency, changed.length) }, async () => {
                     while (cursor < changed.length && !failure && current()) {
                         const adapter = changed[cursor++];
                         try {
