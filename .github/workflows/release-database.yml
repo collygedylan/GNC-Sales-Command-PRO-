@@ -219,6 +219,7 @@ jobs:
           cp supabase/migrations/20261004010000_company_directory.sql "$ci_root/supabase/migrations/"
           cp supabase/ci/suspend_tag_approval_baseline.sql "$ci_root/supabase/migrations/20261005194157_ci_suspend_tag_approval_baseline.sql"
           cp supabase/migrations/20261005194158_suspend_tag_approval_loop.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261005225759_structured_bunch_notes.sql "$ci_root/supabase/migrations/"
           # Deactivate the external worker before the disposable replay commits,
           # so CI remains deterministic after the production cutoff date.
           python3 - "$ci_root" <<'PY'
