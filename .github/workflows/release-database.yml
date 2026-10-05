@@ -7,6 +7,23 @@ permissions:
   contents: read
 
 jobs:
+  suspend-tag-approval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: disposable_ci_only
+          POSTGRES_DB: suspend_tag_test
+        ports: ['55439:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Verify Suspend Tag grants, completion, decisions, and delivery isolation
+        run: node supabase/ci/suspend_tag_approval.mjs
   database-and-functions:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -196,6 +213,8 @@ jobs:
           cp supabase/migrations/20261002134138_nelly_access_audit_baseline_repair_007.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261002155017_eval_delivery_archive_health_007.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261004010000_company_directory.sql "$ci_root/supabase/migrations/"
+          cp supabase/ci/suspend_tag_approval_baseline.sql "$ci_root/supabase/migrations/20261005194157_ci_suspend_tag_approval_baseline.sql"
+          cp supabase/migrations/20261005194158_suspend_tag_approval_loop.sql "$ci_root/supabase/migrations/"
           # Deactivate the external worker before the disposable replay commits,
           # so CI remains deterministic after the production cutoff date.
           python3 - "$ci_root" <<'PY'

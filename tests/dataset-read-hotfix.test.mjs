@@ -24,6 +24,9 @@ function harness({ readable = true, writable = true, role = 'admin', username = 
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
   const context = vm.createContext({
+    SUSPEND_TAG_EDITORS: new Set(['dylan_collyge','megan_kelly','dan_mccuistion']),
+    handleSuspendTag: async () => ({ rows: [] }),
+    verifySuspendTagSession: async () => 'verified-session',
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
     hasTableReadAccess: (_role, table) => readable && table !== 'ph_master_inventory',
@@ -126,7 +129,7 @@ test('default projections are explicit current columns and Request signatures ar
 
 test('suspend_tag uses a narrow fixed SOC projection and server-forced normalized eligibility before exact paging', async () => {
   const h = harness({ rows: [{ unique_id: 'soc-1', suspend: ' suspend ', suspend_to: 'D.C', date_completed: null }], count: 31 });
-  const response = await h.context.datasetReadTest(h.session('qc supervisor', 'qc_user'), {
+  const response = await h.context.datasetReadTest(h.session('qc supervisor', 'dan_mccuistion'), {
     dataset: 'suspend_tag', params: { limit: 20, offset: 10, order: [{ field: 'unique_id', ascending: true }] },
   });
   assert.equal(response.status, 200);
@@ -140,7 +143,7 @@ test('suspend_tag uses a narrow fixed SOC projection and server-forced normalize
   assert.equal(projection, 'unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode');
   assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend' && op === 'imatch' && pattern === '^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$'));
   assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend_to' && op === 'imatch' && pattern === '^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$'));
-  assert.ok(calls.some(([method, field, value]) => method === 'is' && field === 'date_completed' && value === null));
+  assert.ok(!calls.some(([method, field]) => method === 'is' && field === 'date_completed'), 'completed rows remain in the bounded subset');
   assert.ok(calls.some(([method, start, end]) => method === 'range' && start === 10 && end === 29));
   assert.ok(calls.some(([method, field]) => method === 'order' && field === 'unique_id'));
 
@@ -285,7 +288,7 @@ test('inventory source_freshness uses only the authorized minimal metadata proje
 });
 
 test('app-api dispatch exposes only the named dataset and productivity actions', () => {
-  assert.match(source, /action === "dataset_read"\) return await handleDatasetRead\(session, payload\)/);
+  assert.match(source, /action === "dataset_read"\) return await handleDatasetRead\(session, payload, req\)/);
   assert.match(source, /action === "append_productivity_history"\) return await handleAppendProductivityHistory\(session, payload\)/);
   assert.doesNotMatch(source, /dataset_read[\s\S]{0,500}payload\.query/);
 });

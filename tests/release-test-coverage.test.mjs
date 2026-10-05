@@ -98,6 +98,7 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/dataset-read-hotfix.test.mjs',
     'tests/docks-suspend-performance.test.mjs',
     'tests/suspend-tag-dataset.test.mjs',
+    'tests/suspend-tag-approval.test.mjs',
     'tests/suspend-tag-subset.test.mjs',
     'tests/soc-write-diagnostics.test.mjs',
     'tests/soc-order-history.test.mjs',

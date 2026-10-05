@@ -2,6 +2,7 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 
 type FixtureRow = Record<string, string | number>;
 type Reply = {
+  operation?: string;
   status?: number;
   body?: Record<string, unknown>;
   abort?: boolean;
@@ -24,7 +25,7 @@ const fixtures: FixtureRow[] = [1, 2].map((index) => ({
   SUSPEND: 'SUSPEND',
   SUSPENDTO: 'DC',
   LAST_UPDATED: sourceRevision,
-  DATE_COMPLETED: '',
+  DATE_COMPLETED: '', SUSPEND_TAG_VERSION: 0, SUSPEND_TAG_STATUS: 'pending', DOCK_PHOTO_LINK: 'https://example.test/photo.jpg', DOCK_PHOTO_NAME: 'photo.jpg', MATCH: '100', AV_NOTE: 'Verified stock',
   QUANTITYORDERED: '10',
   PTRONHAND: '40',
   PTRAVAILABLE: '30',
@@ -40,7 +41,7 @@ const fixtures: FixtureRow[] = [1, 2].map((index) => ({
  * Only identity/data-loading boundaries are supplied. Backend state lives in
  * this test process across refresh/reload; no customer record is ever changed.
  */
-async function harness(page: Page, baseURL: string, rows = fixtures) {
+async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean } = {}) {
   const origin = new URL(baseURL).origin;
   const backendRows = structuredClone(rows);
   const receipts = new Map<string, Record<string, unknown>>();
@@ -50,6 +51,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   const pageErrors: string[] = [];
   const runtimeResponses: string[] = [];
   const replies: Reply[] = [];
+  await page.addInitScript(expired => { (window as any).__suspendTestAuthReady = !expired; }, !!options.expired);
   const corsHeaders = {
     'access-control-allow-origin': '*',
     'access-control-allow-headers': '*',
@@ -65,32 +67,48 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
-    if (url.pathname === '/rest/v1/rpc/complete_suspend_tag_v1' && request.method() === 'POST') {
-      const body = request.postDataJSON() || {};
-      requests.push({ body });
-      const reply = replies.shift() || {};
-      if (reply.wait) await reply.wait;
-      if (reply.body) return fulfill(route, reply.body, reply.status || 200);
-      if (reply.abort && !reply.commitBeforeAbort) return route.abort('connectionfailed');
-      const source = backendRows.find((row) => row.UNIQUE_ID === body.p_source_uid);
-      if (!source) return fulfill(route, { message: 'Suspend Tag source row was not found.' }, 404);
-      const existing = receipts.get(body.p_request_id);
-      const acknowledgment = existing || {
-        ok: true,
-        sourceUid: body.p_source_uid,
-        sourceLastUpdated: sourceRevision,
-        completedAt: completionTime,
-        alreadyCompleted: Boolean(source.DATE_COMPLETED),
-      };
-      if (!existing) {
-        source.DATE_COMPLETED = String(acknowledgment.completedAt);
-        receipts.set(body.p_request_id, acknowledgment);
+    if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST' && request.postDataJSON()?.action === 'suspend_tag') {
+      const body=request.postDataJSON();
+      const input=body.payload || {};
+      requests.push({body});
+      const source=backendRows.find(row=>row.UNIQUE_ID===input.sourceUid || row.SUSPEND_TAG_APPROVAL_ID===input.approvalId);
+      if(!source) return fulfill(route,{message:'Suspend Tag source row was not found.'},404);
+      const canonical=()=>Object.fromEntries(Object.entries(source).map(([key,value])=>[key.toLowerCase(),value]));
+      if(body.operation==='approval') return fulfill(route,{ok:true,data:{approval:{id:input.approvalId,status:source.SUSPEND_TAG_STATUS==='awaiting_rep'?'pending':source.SUSPEND_TAG_STATUS,snapshot:canonical()},canDecide:source.SUSPEND_TAG_STATUS==='awaiting_rep'}});
+      if(body.operation==='decide') {
+        source.SUSPEND_TAG_STATUS=input.decision==='approve'?'approved':'denied'; source.SUSPEND_TAG_VERSION=Number(source.SUSPEND_TAG_VERSION)+1;
+        if(input.decision==='deny') source.DATE_COMPLETED='';
+        return fulfill(route,{ok:true,data:{ok:true,decision:source.SUSPEND_TAG_STATUS,approvalId:input.approvalId}});
       }
-      if (reply.abort) return route.abort('connectionfailed');
-      return fulfill(route, acknowledgment);
+      const reply=(!replies[0]?.operation || replies[0].operation===body.operation ? replies.shift() : null) || {};
+      if(reply.wait) await reply.wait;
+      if(reply.body) return fulfill(route,reply.body,reply.status || 200);
+      if(reply.abort && !reply.commitBeforeAbort) return route.abort('connectionfailed');
+      const existing=receipts.get(body.commandId);
+      if(existing) return fulfill(route,{ok:true,data:existing});
+      const wasDenied=source.SUSPEND_TAG_STATUS==='denied';
+      Object.entries(input.patch || {}).forEach(([key,value])=>{source[key.toUpperCase()]=value as string;});
+      if(body.operation==='complete') { source.DATE_COMPLETED=completionTime; source.SUSPEND_TAG_STATUS='completed'; }
+      if(body.operation==='send' || (body.operation==='complete' && wasDenied)) {
+        source.SUSPEND_TAG_STATUS='awaiting_rep'; source.SUSPEND_TAG_APPROVAL_ID='a0000000-0000-4000-8000-'+String(receipts.size+1).padStart(12,'0');
+      }
+      source.SUSPEND_TAG_VERSION=Number(source.SUSPEND_TAG_VERSION)+1;
+      const acknowledgment={ok:true,row:canonical()};
+      receipts.set(body.commandId,acknowledgment);
+      if(reply.abort) return route.abort('connectionfailed');
+      return fulfill(route,{ok:true,data:acknowledgment});
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      // The detail form looks up inventory for its AV choices. Keep this read
+      // synthetic and bounded, while all inventory mutations remain blocked.
+      if (url.hostname === 'kzrnyjsosryejjejliii.supabase.co' && body.action === 'inventory_read' && body.operation === 'master_page'
+        && Object.keys(body).sort().join(',') === 'action,operation,params'
+        && body.params?.dataset === 'lookup' && body.params.projection === 'initial'
+        && typeof body.params.itemCode === 'string' && body.params.limit === 100 && body.params.offset === 0
+        && Object.keys(body.params).sort().join(',') === 'dataset,itemCode,limit,offset,projection') {
+        return fulfill(route,{ok:true,data:{rows:[],total:0,offset:0,limit:100,hasMore:false}});
+      }
       if (url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'navigation_preferences' && body.operation === 'get'
         && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
@@ -161,7 +179,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
           throw new Error('SUSPEND_DONE_CANARY_IDENTITY_UNAVAILABLE');
         }
         // Synthetic identity only: real fetchWithTimeout/supabaseRpc still run.
-        getNativeAuthRequestHeaders = async () => ({ Authorization: 'Bearer browser-only-no-real-session', apikey: 'browser-only' });
+        getNativeAuthRequestHeaders = async () => window.__suspendTestAuthReady ? ({ Authorization: 'Bearer browser-only-no-real-session', apikey: 'browser-only' }) : null;
         requestCapabilityState = {
           status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: 'dylan_collyge',
           capabilities: { username: 'dylan_collyge', scope: 'global', canViewQueue: true, canTakePhoto: true, canEdit: true, canComplete: true, canArchive: true }
@@ -197,11 +215,11 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
     }, nextRows);
     await expect(page.locator('#view-request')).toBeVisible();
   };
-  await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1', { waitUntil: 'load' });
+  await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1' + (options.search || ''), { waitUntil: 'load' });
   await seed();
   expect(runtimeResponses, 'must exercise the deferred production-built runtime').toHaveLength(1);
   const card = (row: FixtureRow = rows[0]) => page.locator(`#request-content [data-request-uid="dock_suspend_dc_${row.UNIQUE_ID}"]`);
-  const done = (row: FixtureRow = rows[0]) => card(row).locator('button[onclick*="handleDockSuspendDcDonePress"]');
+  const done = (row: FixtureRow = rows[0]) => card(row).locator('button[onclick*="completeDockSuspendDcRequestFromCard"]');
   const complete = async (row: FixtureRow = rows[0]) => {
     await done(row).tap();
     await expect(page.locator('#app-prompt-dialog')).toContainText('Complete Suspend Tag');
@@ -221,7 +239,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   return { requests, replies, receipts, backendRows, card, done, complete, seed, refresh, assertClean };
 }
 
-test('Done waits for server acknowledgment, removes only that source, and survives refresh and app reload', async ({ page, baseURL }) => {
+test('Done waits for server acknowledgment, completes only that source and retains it, and survives refresh and app reload', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
@@ -231,17 +249,20 @@ test('Done waits for server acknowledgment, removes only that source, and surviv
   await expect(app.done()).toBeDisabled();
   await expect(page.locator('#toast-notification')).not.toContainText('Suspend Tag row completed.');
   expect(app.backendRows[0].DATE_COMPLETED).toBe('');
-  expect(app.requests[0].body.p_source_uid).toBe(fixtures[0].UNIQUE_ID);
-  expect(new Date(app.requests[0].body.p_expected_last_updated).toISOString()).toBe(sourceRevision);
-  expect(app.requests[0].body.p_request_id).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(app.requests[0].body.payload.sourceUid).toBe(fixtures[0].UNIQUE_ID);
+  expect(new Date(app.requests[0].body.payload.expectedLastUpdated).toISOString()).toBe(sourceRevision);
+  expect(app.requests[0].body.commandId).toMatch(/^[0-9a-f-]{36}$/i);
   release();
-  await expect(app.card()).toHaveCount(0);
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toContainText('Completed — Ready to Email');
   await expect(app.card(fixtures[1])).toHaveCount(1);
   await app.refresh();
-  await expect(app.card()).toHaveCount(0);
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toContainText('Completed — Ready to Email');
   await page.reload({ waitUntil: 'load' });
   await app.seed();
-  await expect(app.card()).toHaveCount(0);
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toContainText('Completed — Ready to Email');
   await expect(app.done(fixtures[1])).toBeVisible();
   expect(app.backendRows[0].PTRONHAND).toBe('40');
   expect(app.backendRows[0].PTRAVAILABLE).toBe('30');
@@ -358,7 +379,8 @@ test('double activation sends one completion even through a stale rerendered but
   await expect(app.card()).toHaveCount(1);
   expect(app.requests).toHaveLength(1);
   release();
-  await expect(app.card()).toHaveCount(0);
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toContainText('Completed — Ready to Email');
   expect(app.receipts.size).toBe(1);
   app.assertClean();
 });
@@ -370,14 +392,15 @@ test('lost response leaves row actionable and retry after reload reuses the pers
   await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind', 'error');
   await expect(app.done()).toBeEnabled();
   expect(app.requests).toHaveLength(1);
-  const token = app.requests[0].body.p_request_id;
+  const token = app.requests[0].body.commandId;
   // Simulate cached data after a lost response, while the backend retains Done.
   await page.reload({ waitUntil: 'load' });
   await app.seed(fixtures);
   await app.complete();
-  await expect(app.card()).toHaveCount(0);
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toContainText('Completed — Ready to Email');
   expect(app.requests).toHaveLength(2);
-  expect(app.requests[1].body.p_request_id).toBe(token);
+  expect(app.requests[1].body.commandId).toBe(token);
   expect(app.receipts.size).toBe(1);
   app.assertClean();
 });
@@ -402,7 +425,7 @@ for (const failure of [
   });
 }
 
-test('malformed or mismatched acknowledgment never removes the row', async ({ page, baseURL }) => {
+test('malformed or mismatched acknowledgment never marks the row completed', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   for (const body of [
     { ok: true, sourceUid: 'another-source', completedAt: completionTime, sourceLastUpdated: sourceRevision, alreadyCompleted: false },
@@ -424,9 +447,11 @@ test('malformed or mismatched acknowledgment never removes the row', async ({ pa
 test('a stale snapshot cannot restore Done, but a newer reopened source stays visible', async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.complete();
-  await expect(app.card()).toHaveCount(0);
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toContainText('Completed — Ready to Email');
   await app.refresh(fixtures);
-  await expect(app.card()).toHaveCount(0);
+  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toContainText('Completed — Ready to Email');
   const reopened = fixtures.map((row) => ({ ...row, LAST_UPDATED: '2026-09-08T16:00:00.000Z' }));
   await app.refresh(reopened);
   await expect(app.done()).toBeVisible();
@@ -445,5 +470,92 @@ test('an old completion response cannot hide a newer reopened version of the sou
   await expect.poll(() => app.receipts.size).toBe(1);
   await expect(app.done()).toBeVisible();
   await expect(app.done()).toBeEnabled();
+  app.assertClean();
+});
+
+
+test('detail Mark Done preserves failed form edits and only applies a confirmed save', async ({page,baseURL})=>{
+  test.setTimeout(120000);
+  const app=await harness(page,baseURL!);
+  await page.evaluate(()=>window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await page.locator('#request-open-info-ok').tap();
+  await expect(page.locator('#req-spec')).toBeVisible();
+  await page.waitForFunction(()=>!(window as any).isDetailTransitionActive());
+  for (const [id,value] of [['req-spec','24'],['req-match','80']]) {
+    const custom=await page.evaluate(id=>(window as any).shouldPreferDetailMeasurementKeyboard() && (window as any).isDetailMeasurementKeyboardInput(document.getElementById(id)),id);
+    if (custom) {
+      await page.locator('#'+id).tap();
+      await page.locator('#detail-measurement-keyboard').getByRole('button',{name:'Clear',exact:true}).first().tap({timeout:10000});
+      for (const digit of value) await page.locator('#detail-measurement-keyboard [data-key-token="'+digit+'"]').tap();
+      await page.locator('#detail-measurement-keyboard [data-key-token="__done"]').tap();
+    } else await page.locator('#'+id).fill(value);
+    await expect(page.locator('#'+id)).toHaveValue(value);
+  }
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+  app.replies.push({operation:'complete',status:403,body:{ok:false,code:'SUSPEND_TAG_FORBIDDEN'}});
+  await page.locator('#req-btn-save-complete').tap({timeout:10000});
+  await expect.poll(()=>app.requests.filter(r=>r.body.operation==='complete').length).toBeGreaterThan(0);
+  await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind','error');
+  await expect(page.locator('#req-spec')).toHaveValue('24');
+  expect(app.backendRows[0].DATE_COMPLETED).toBe('');
+  await page.locator('#req-btn-save-complete').tap();
+  await expect.poll(()=>app.backendRows[0].SUSPEND_TAG_STATUS).toBe('completed');
+  expect(app.backendRows[0].DOCK_SPEC).toBe('24');
+  expect(String(app.backendRows[0].MATCH)).toBe('80');
+  expect(app.requests.filter(r=>r.body.operation==='complete')).toHaveLength(2);
+  app.assertClean();
+});
+
+test('emailed approval opens after sign-in and URL decision text never records a decision',async({page,baseURL})=>{
+  test.setTimeout(120000);
+  const id='b0000000-0000-4000-8000-000000000001';
+  const row={...fixtures[0],DATE_COMPLETED:completionTime,SUSPEND_TAG_STATUS:'awaiting_rep',SUSPEND_TAG_APPROVAL_ID:id};
+  const app=await harness(page,baseURL!,[row],{search:'&suspendApproval='+id+'&decision=approve',expired:true});
+  await page.waitForTimeout(1800);
+  await expect(page.locator('#suspend-tag-approval-dialog')).toHaveCount(0);
+  expect(app.requests).toHaveLength(0);
+  await page.evaluate(()=>{(window as any).__suspendTestAuthReady=true;});
+  const dialog=page.locator('#suspend-tag-approval-dialog');
+  await expect(dialog).toContainText('Synthetic browser customer');
+  await expect(dialog.getByRole('button',{name:'Approve',exact:true})).toBeVisible();
+  expect(app.requests.map(r=>r.body.operation)).toEqual(['approval']);
+  await dialog.getByRole('button',{name:'Approve',exact:true}).tap();
+  await expect(dialog).toContainText('Your reply email is queued');
+  expect(app.requests.map(r=>r.body.operation)).toEqual(['approval','decide']);
+  app.assertClean();
+});
+
+test('manual first email, denial preserves work, and re-completion starts a fresh approval', async ({page,baseURL})=>{
+  test.setTimeout(120000); // Two complete mobile approval rounds.
+  const app=await harness(page,baseURL!);
+  await app.complete();
+  await expect(app.card()).toContainText('Completed — Ready to Email');
+  expect(app.requests.map(r=>r.body.operation)).toEqual(['complete']);
+  await app.card().getByRole('button',{name:'Email Rep for Approval',exact:true}).tap();
+  await page.locator('#app-prompt-dialog').getByRole('button',{name:'Send',exact:true}).tap();
+  await expect.poll(() => app.requests.map(r => r.body.operation)).toContain('send');
+  await expect(page.locator('#toast-notification')).toContainText('Approval Queued');
+  await expect(app.card()).toContainText('Awaiting Rep');
+  const firstId=String(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID);
+  await page.evaluate(id=>window.eval('void openSuspendTagApproval('+JSON.stringify(id)+')'),firstId);
+  const dialog=page.locator('#suspend-tag-approval-dialog');
+  await expect(dialog).toContainText('Synthetic browser customer');
+  await expect(dialog).toContainText('B.01.000');
+  await dialog.getByRole('button',{name:'Deny',exact:true}).tap();
+  await expect(dialog).toContainText('All data and photos are retained');
+  await dialog.getByRole('button',{name:'Close',exact:true}).tap();
+  await app.refresh();
+  await expect(app.card()).toContainText('Denied / Needs Changes');
+  expect(app.backendRows[0].DOCK_PHOTO_LINK).toBe(fixtures[0].DOCK_PHOTO_LINK);
+  expect(app.backendRows[0].AV_NOTE).toBe(fixtures[0].AV_NOTE);
+  await app.complete();
+  await expect(app.card()).toContainText('Awaiting Rep');
+  expect(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID).not.toBe(firstId);
+  await page.evaluate(id=>window.eval('void openSuspendTagApproval('+JSON.stringify(id)+',"approve")'),String(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID));
+  await expect(dialog).toContainText('Approved. Your reply email is queued.');
+  await dialog.getByRole('button',{name:'Close',exact:true}).tap();
+  await app.refresh();
+  await expect(app.card()).toContainText('Approved');
   app.assertClean();
 });
