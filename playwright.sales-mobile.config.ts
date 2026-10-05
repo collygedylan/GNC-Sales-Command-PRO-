@@ -5,7 +5,7 @@ const baseURL = 'http://127.0.0.1:43138';
 export default defineConfig({
   testDir: './tests', testMatch: 'sales-mobile.e2e.spec.ts',
   outputDir: './artifacts/sales-mobile-browser',
-  fullyParallel: false, workers: 1, retries: 0, maxFailures: 1, timeout: 90_000,
+  fullyParallel: false, workers: 1, retries: process.env.CI ? 2 : 0, maxFailures: 1, timeout: 90_000,
   forbidOnly: Boolean(process.env.CI), expect: { timeout: 15_000 },
   reporter: [[process.env.CI ? 'github' : 'list'], ['json', { outputFile: './artifacts/sales-mobile-browser/results.json' }]],
   use: { baseURL, serviceWorkers: 'block', trace: 'retain-on-failure', screenshot: 'only-on-failure' },

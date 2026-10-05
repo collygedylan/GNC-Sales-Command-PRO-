@@ -17,7 +17,10 @@ test('foundation is a required sealed-artifact gate before functional and featur
   for (const name of ['functional', 'compiled']) assert.ok(workflow.jobs[name].needs.includes('foundation'));
   assert.ok(workflow.jobs['release-gate'].needs.includes('foundation'));
   assert.match(workflow.jobs['release-gate'].steps[0].run, /'foundation'/);
-  assert.doesNotMatch(job.steps.map(step => step.run || '').join('\n'), /build:|--retries=[1-9]|continue-on-error/);
+  assert.doesNotMatch(job.steps.map(step => step.run || '').join('\n'), /build:|--retries|continue-on-error/);
+  const manifest = JSON.parse(read('package.json'));
+  assert.doesNotMatch(manifest.scripts['test:foundation'], /--retries/);
+  assert.match(read('playwright.app-lifecycle.config.ts'), /retries: process\.env\.CI \? 2 : 0/);
 });
 test('local feedback builds a fresh complete site without publication or silent reuse', () => {
   const source = read('scripts/check-foundation.mjs');

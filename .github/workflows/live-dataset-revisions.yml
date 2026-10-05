@@ -10,6 +10,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: live-dataset-revisions-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   isolated-native-revisions:
     runs-on: ubuntu-latest

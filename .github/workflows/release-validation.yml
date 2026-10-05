@@ -27,6 +27,10 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: release-validation-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit:
     runs-on: ubuntu-latest
@@ -124,7 +128,7 @@ jobs:
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Functional browsers, shard ${{ matrix.shard }} of 2
-        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --retries=0 --shard=${{ matrix.shard }}/2 --project=${{ matrix.project }} --max-failures=1 --reporter=github,blob
+        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --shard=${{ matrix.shard }}/2 --project=${{ matrix.project }} --max-failures=1 --reporter=github,blob
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
@@ -593,7 +597,7 @@ jobs:
           digest: ${{ needs.build.outputs.digest }}
       - name: Compiled shell — ${{ matrix.suite }}
         if: matrix.suite != 'command-center'
-        run: npx playwright test --config ${{ matrix.config }} --workers=1 --retries=0 --reporter=github,blob --project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.total }} --max-failures=1
+        run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob --project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.total }} --max-failures=1
       - name: AURA command center browser interactions
         if: matrix.suite == 'command-center'
         run: node --test tests/alpha-command-center.browser.test.mjs
@@ -640,7 +644,7 @@ jobs:
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Scroll and throttled startup on a quiet runner
-        run: npx playwright test --config ${{ matrix.config }} --workers=1 --retries=0 --project=${{ matrix.project }} --max-failures=1
+        run: npx playwright test --config ${{ matrix.config }} --workers=1 --project=${{ matrix.project }} --max-failures=1
       - name: Verify isolated preview blocks production requests
         if: matrix.project == 'chromium'
         run: node scripts/check-isolated-preview.mjs

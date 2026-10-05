@@ -13,6 +13,51 @@ const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
+test('superseded validation cancels only the matching workflow and PR or branch', () => {
+  const names = ['release-validation', 'release-database', 'bloomscapes-pending-tests',
+    'live-dataset-revisions', 'suspend-tag-tests', 'codex-mobile-path-policy'];
+  const workflows = [performance, ...names.map(name => {
+    const workflow = yaml.load(read(`.github/workflows/${name}.yml`));
+    assert.equal(workflow.concurrency.group,
+      name + '-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}');
+    return workflow;
+  })];
+  const group = (workflow, { pr = 42, ref = 'refs/pull/42/merge', caller = performance.name, sha = 'old' } = {}) =>
+    workflow.concurrency.group.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => String(vm.runInNewContext(expression,
+      { github: { workflow: caller, ref, sha, event: { pull_request: { number: pr } } } })));
+  assert.equal(performance.concurrency.group, 'performance-${{ github.event.pull_request.number || github.ref }}');
+  assert.equal(new Set(workflows.map(workflow => group(workflow))).size, workflows.length,
+    'Caller and reusable children must never cancel one another');
+  for (const workflow of workflows) {
+    assert.equal(workflow.concurrency['cancel-in-progress'], true, workflow.name);
+    assert.equal(group(workflow), group(workflow, { sha: 'new' }), 'New commits supersede the same group');
+    assert.notEqual(group(workflow), group(workflow, { pr: 43 }), 'Other PRs remain independent');
+    assert.notEqual(group(workflow, { pr: null, ref: 'refs/heads/main' }),
+      group(workflow, { pr: null, ref: 'refs/heads/other' }), 'Manual branches remain independent');
+  }
+  for (const workflow of workflows.slice(1, 3)) {
+    assert.notEqual(group(workflow), group(workflow, { caller: pages.name }), 'Publication callers have a distinct namespace');
+  }
+  for (const name of ['pages-static', 'publish-candidate', 'apps-script-sync', 'codex-ops',
+    'apps-script-lifecycle-canary', 'test-sandbox-setup', 'production-auth-health', 'photo-archive', 'weather-hold-learning']) {
+    assert.equal(yaml.load(read(`.github/workflows/${name}.yml`)).concurrency['cancel-in-progress'], false, name);
+  }
+});
+
+test('CI commands defer retries to their configs and retain exhausted-failure gates', () => {
+  const manifest = JSON.parse(read('package.json'));
+  assert.doesNotMatch(manifest.scripts['test:foundation'], /--retries/);
+  for (const name of ['release-validation', 'release-database', 'pages-static']) {
+    const source = read(`.github/workflows/${name}.yml`);
+    assert.doesNotMatch(source, /--retries[= ]0|--fail-on-flaky-tests/);
+  }
+  for (const name of ['foundation', 'functional', 'compiled', 'timing']) {
+    const job = validation.jobs[name];
+    assert.equal(job.strategy['fail-fast'], true);
+    assert.ok(job.steps.some(step => /--max-failures=1/.test(step.run || '')), name);
+  }
+});
+
 test('all safety lanes must succeed before the sealed release can deploy', () => {
   assert.equal(pages.permissions.actions, 'read');
   assert.equal(validation.jobs['release-gate'].outputs['proof-id'], '${{ steps.proof.outputs.artifact-id }}');

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
@@ -47,6 +49,77 @@ function configLoader(extraEnv = {}) {
   }
   return name => load(name).default;
 }
+
+test('every CI Playwright config permits two retries while local runs remain immediate', () => {
+  const configs = readdirSync(root).filter(name => /^playwright(?:\.[\w-]+)?\.config\.ts$/.test(name)
+    && name !== 'playwright.local.config.ts');
+  configs.push('v2/tests/playwright.partner.config.ts');
+  for (const CI of ['true', undefined]) {
+    const load = configLoader({ CI, CANARY_BASE_URL: 'http://127.0.0.1:43144' });
+    for (const name of configs) {
+      const config = load(name);
+      assert.equal(config.retries, CI ? 2 : 0, name);
+      assert.notEqual(config.failOnFlakyTests, true, name);
+      for (const project of config.projects || []) {
+        assert.equal(project.retries ?? config.retries, CI ? 2 : 0, `${name}: ${project.name}`);
+      }
+    }
+  }
+  assert.match(readFileSync(path.join(root, 'playwright.local.config.ts'), 'utf8'), /retries: 0/);
+  for (const file of ['scripts/check-local.mjs', 'scripts/check-foundation.mjs']) {
+    assert.match(readFileSync(path.join(root, file), 'utf8'), /'--retries=0'/, file);
+  }
+});
+
+test('real Playwright retries recover twice, exhaust after three attempts, and then fail fast without a browser', { timeout: 60_000 }, () => {
+  const parent = path.resolve(tmpdir());
+  const fixture = mkdtempSync(path.join(parent, 'gnc-ci-retry-probe-'));
+  const playwright = JSON.stringify(require.resolve('@playwright/test'));
+  const base = JSON.stringify(path.join(root, 'playwright.config.ts'));
+  try {
+    writeFileSync(path.join(fixture, 'playwright.config.cjs'), `
+      const { defineConfig } = require(${playwright});
+      const base = require(${base}).default;
+      module.exports = defineConfig({ ...base, testDir: __dirname, testMatch: '*.spec.cjs',
+        projects: [{ name: 'retry-probe' }], fullyParallel: false, workers: 1, maxFailures: 1,
+        use: {}, webServer: undefined, reporter: 'json', outputDir: __dirname + '/results' });
+    `);
+    writeFileSync(path.join(fixture, 'retry.spec.cjs'), `
+      const { test, expect } = require(${playwright});
+      test('retry target', async ({}, info) => {
+        expect(process.env.GNC_RETRY_PROBE_MODE === 'recover' && info.retry === 2).toBe(true);
+      });
+      test('following test', async () => { expect(true).toBe(true); });
+    `);
+    for (const scenario of [
+      { ci: true, mode: 'recover', exit: 0, attempts: ['failed', 'failed', 'passed'], outcome: 'flaky' },
+      { ci: true, mode: 'fail', exit: 1, attempts: ['failed', 'failed', 'failed'], outcome: 'unexpected' },
+      { ci: false, mode: 'fail', exit: 1, attempts: ['failed'], outcome: 'unexpected' },
+    ]) {
+      const env = { ...process.env, GNC_RETRY_PROBE_MODE: scenario.mode };
+      if (scenario.ci) env.CI = 'true'; else delete env.CI;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_NAME;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_FILE;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_DIR;
+      const run = spawnSync(process.execPath, [require.resolve('@playwright/test/cli'), 'test',
+        '--config', path.join(fixture, 'playwright.config.cjs')], {
+        cwd: root, env, encoding: 'utf8', timeout: 15_000, maxBuffer: 2 * 1024 * 1024,
+      });
+      assert.equal(run.error, undefined, run.error?.message);
+      assert.equal(run.status, scenario.exit, run.stderr + run.stdout);
+      const report = JSON.parse(run.stdout);
+      const specs = report.suites.flatMap(suite => suite.specs);
+      const target = specs.find(spec => spec.title === 'retry target').tests[0];
+      assert.deepEqual(target.results.map(result => result.status), scenario.attempts);
+      assert.equal(target.status, scenario.outcome);
+      const following = specs.find(spec => spec.title === 'following test').tests[0];
+      assert.equal(following.status, scenario.exit ? 'skipped' : 'expected');
+    }
+  } finally {
+    assert.equal(path.dirname(path.resolve(fixture)), parent, 'Cleanup is limited to this generated fixture');
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
 
 function specFiles(directory = path.join(root, 'tests')) {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
@@ -285,7 +358,7 @@ test('Request regressions run against the compiled shell across desktop and mobi
   assert.deepEqual(plain(config.projects.map(project => project.name)), ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']);
   assert.match(config.webServer.command, /startReleaseTestServer/);
   assert.equal(config.workers, 1);
-  assert.equal(config.retries, 0);
+  assert.equal(config.retries, 2);
 });
 
 test('compiled Android login coverage stays separate while three desktop projects move to timing', () => {

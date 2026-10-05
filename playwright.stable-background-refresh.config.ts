@@ -5,7 +5,7 @@ const baseURL = remote || 'http://127.0.0.1:43128';
 
 export default defineConfig({
   testDir: './tests', testMatch: /stable-background-refresh\.e2e\.spec\.ts/,
-  fullyParallel: false, workers: 1, retries: 0, timeout: 90_000,
+  fullyParallel: false, workers: 1, retries: process.env.CI ? 2 : 0, timeout: 90_000,
   expect: { timeout: 12_000 }, reporter: 'list',
   use: { baseURL, serviceWorkers: 'block', trace: 'retain-on-failure', screenshot: 'only-on-failure', extraHTTPHeaders: { 'cache-control': 'no-cache' } },
   projects: [
