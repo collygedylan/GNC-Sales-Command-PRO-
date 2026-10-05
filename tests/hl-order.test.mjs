@@ -143,6 +143,41 @@ test('HL cart refresh removes only committed rows and empty date groups while re
   } finally { dom.window.close(); }
 });
 
+test('HL order render refreshes locked-cart guidance after replacing or keeping identical markup', async () => {
+  const {JSDOM}=await import('jsdom');
+  const dom=new JSDOM('<div id="hl-order-content"></div>');
+  try {
+    const ctx=runtime();
+    ctx.document=dom.window.document;
+    ctx.canUseHlOrder=()=>true;
+    ctx.syncHlOrderCartCommittedRows=()=>{};
+    ctx.refreshHlOrderWarning=()=>{};
+    ctx.setSurfaceDisplayPending=()=>{};
+    ctx.rememberHlOrderDriveCards=()=>{};
+    ctx.hasHlOrderUnsavedInputs=()=>false;
+    ctx.buildFastInvokeAttrs=()=>'';
+    ctx.buildHlOrderCartHtml=()=>'<section id="hl-order-cart"><div id="hl-order-cart-status"></div><article data-hl-draft-source-id="locked">Waiting for delivery reconciliation</article></section>';
+    vm.runInContext("hlOrderTab='cart'; hlOrderStateData={revision:1,draft:[{source_id:'locked',status:'needs_review',can_remove:false}],orders:[],delivery_issues:[]};",ctx);
+    ctx.refreshHlBloomStatus=()=>{
+      const status=ctx.document.getElementById('hl-order-cart-status');
+      if (status && vm.runInContext('hlOrderStateData.draft.some(entry=>entry.can_remove===false)',ctx)) {
+        status.innerHTML='<button type="button">Open HL Orders</button>';
+      }
+    };
+    vm.runInContext(source('setHlOrderContent')+'\n'+source('renderHlOrder'),ctx);
+
+    ctx.renderHlOrder();
+    assert.equal(ctx.document.querySelector('#hl-order-cart-status button')?.textContent,'Open HL Orders',
+      'freshly committed markup gets the guidance for its locked row');
+
+    ctx.document.querySelector('#hl-order-cart-status').replaceChildren();
+    ctx.renderHlOrder();
+    assert.equal(ctx.document.querySelector('#hl-order-cart-status button')?.textContent,'Open HL Orders',
+      'guidance is restored even when the content setter keeps identical markup');
+    assert.match(ctx.document.querySelector('[data-hl-draft-source-id="locked"]').textContent,/Waiting for delivery reconciliation/);
+  } finally { dom.window.close(); }
+});
+
 test('HL drafts never enter the ordinary Bloom selection set', () => {
   const ctx=runtime();
   ctx.selectedItems.add('ordinary-a'); ctx.selectedItemSources.set('ordinary-a','drive');

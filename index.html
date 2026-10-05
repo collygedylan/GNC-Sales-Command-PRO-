@@ -90857,6 +90857,7 @@ function toggleDriveQuickRequestItem(domId) {
             else body = buildHlOrderHistoryHtml(hlOrderTab === 'history');
             const issues = (hlOrderStateData.delivery_issues || []).map((issue) => `<div role="status" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm"><strong>${esc(issue.order_number || 'HL delivery')} · ${esc(issue.status || 'Needs reconciliation')}</strong><p>${esc(issue.message || issue.last_error || 'Delivery has not been confirmed. This order is protected from duplicate submission.')}</p>${issue.event_id ? `<div class="mt-2">${hlOrderButton('reconcileHlDelivery', [issue.event_id], 'Check delivery status', true)}</div>` : ''}</div>`).join('');
             setHlOrderContent(container, nav + warning + issues + body, force);
+            refreshHlBloomStatus();
         }
 
         function setHlOrderTab(tab) {
