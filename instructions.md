@@ -1,28 +1,27 @@
-Role: You are an autonomous Principal Software Engineer managing a production-grade Progressive Web App built with React, Supabase, and PostgreSQL.
+# Engineering Guidance
 
-Core Directive (Hands-Off Execution):
-You are fully authorized to design, implement, test, and commit code without asking for step-by-step human permission. If a requested feature or fix requires new database tables, API routes, or UI components, you must build them entirely, link them together, and verify they work.
+AGENTS.md is the authoritative workflow for candidate delivery, monitoring, autonomous CI remediation, and file hygiene. Follow its sequence after every candidate push.
 
-Dynamic Testing & Validation Routing (Auto-Triage Risk Level):
-You must evaluate the scope of the requested change before execution and apply the corresponding validation tier. Do not over-test UI; do not under-test core systems.
-* Tier 1 (Fast-Track): UI, CSS, Layouts, and Text. Protocol: Run only focused local UI checks (e.g., desktop Chromium and mobile WebKit). Bypass bounded reviews and full multi-device E2E release pipelines. 
-* Tier 2 (Standard): State, Component Logic, and standard API routes. Protocol: Run targeted local unit and integration tests for the explicitly affected modules. Ensure UI hydration stability is maintained.
-* Tier 3 (Rigorous): Supabase DB changes, RLS policies, Service Workers, Offline Sync, and cross-module refactors. Protocol: Enforce maximum system stability. Run the full local multi-device E2E release pipeline (including HL Orders and Season Priority suites). Obtain a bounded review. 
+## Development
 
-Development & Speed Protocol:
-* Database Automation: If a new data structure is needed, automatically generate the Supabase migration SQL, apply it to the local/staging database, and update the TypeScript definitions. Do not wait for me to create tables manually.
-* Fix Forward & Circuit Breaker: If a local test fails, read the error output, diagnose autonomously, and apply the patch. You are strictly limited to a maximum of 3 fix attempts per task. If tests still fail after 3 attempts, halt the loop and proceed to the Quarantine Protocol.
-* Flaky Test Quarantine Protocol: If a test fails due to environment setup, fixture timing, browser-specific lifecycle quirks (e.g., iOS blank-view recovery timers), or race conditions, do not attempt to rewrite the test framework. You must apply a `.skip` to the failing test, log the skip in the commit message, and proceed immediately to the Deployment Handoff.
-* Tier 1 Fast-Track Enforcement: For Tier 1 changes, if an automated E2E test fails but visual/manual inspection or focused checks confirm the UI logic is correct, you are authorized to bypass the automated test suite entirely.
-* Versioning Protocol: Automatically execute the release version bump script before committing code for deployment. Adhere strictly to the date-based schema VYYYY.MM.DD.NNN. Increment the final three digits for same-day releases. If the local system date has rolled over, update the date and reset the counter to .001.
-* Deployment Handoff (Strict Fire-and-Forget): Once a feature passes local validation (or tests are quarantined), automatically commit the code, execute the version bump script, and push the branch. If instructed to "push live" or "deploy", run the GitHub Action dispatch or candidate release script. CRITICAL CI/CD UPDATE: This repository is now configured so that GitHub Actions will automatically merge passing candidates to `main` and deploy to production. You are NO LONGER responsible for promoting commits to `main` or verifying live hosted checks. Once your `push` or `dispatch` command succeeds, your job is done. You must terminate the session immediately. Do NOT wait for candidate validation results and do NOT monitor live canaries.
+Implement complete, connected solutions and verify the affected behavior. Keep diffs focused and preserve unrelated changes. Prioritize offline synchronization and UI hydration stability.
 
-Workspace Management & Post-Release Cleanup (Strict Hygiene):
-* Actively track any temporary files, test logs, screenshots, or local artifacts generated during the diagnosis and validation phases.
-* Immediately after a successful deployment, perform a mandatory clean-up routine: delete all obsolete screenshots, unused mockups, orphaned CSS/JS files, and temporary test logs.
-* Leave the local worktree completely clean, pristine, and organized before ending the session.
+Check the impact of schema changes on Row Level Security and client queries. The approval rules in AGENTS.md apply to CI failures involving migrations, credentials, or production data.
 
-System Architecture Rules:
-* Always prioritize offline-sync capabilities and UI hydration stability in the PWA.
-* Never modify the Supabase schema without checking the impact on Row Level Security (RLS) policies and client-side queries.
-* Keep diffs as small as possible to prevent regressions in unrelated modules.
+## Local Validation
+
+- UI, CSS, layout, and text: run focused checks for the changed behavior and relevant desktop/mobile browsers.
+- State, component logic, and API routes: run targeted unit and integration checks for affected modules.
+- Database, security, service worker, offline synchronization, or cross-module changes: run the relevant integration and regression checks for affected boundaries.
+
+These tiers guide local feedback; every candidate must still pass all required GitHub Actions release gates. Diagnose failures and repair their cause. Preserve test coverage and assertions; do not quarantine, skip, or bypass failing tests to publish a candidate. Follow the single CI failure counter and approval conditions in AGENTS.md.
+
+## Release Metadata and Delivery
+
+Keep release markers synchronized with package.json using the repository's release-version tooling when preparing an application release. Use the date-based VYYYY.MM.DD.NNN version scheme for application releases. CI-only and documentation-only changes retain the current application version and must pass its consistency check.
+
+After pushing a candidate, create or reuse its PR and monitor with the fail-fast workflow in AGENTS.md. GitHub Actions performs validated merging, production publication, and hosted verification.
+
+## Cleanup
+
+Follow AGENTS.md for task-scoped cleanup. Preserve unrelated work, shared resources, and diagnostics needed for unresolved failures. A pre-existing dirty worktree is not authorization to discard someone else's changes.

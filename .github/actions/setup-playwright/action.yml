@@ -1,0 +1,46 @@
+name: Prepare cached Playwright browsers
+description: Cache pinned browser binaries while installing runner system dependencies on every job.
+inputs:
+  browsers:
+    description: Space-separated Playwright browsers required by this job.
+    default: chromium firefox webkit
+runs:
+  using: composite
+  steps:
+    - name: Normalize browser cache identity
+      id: platform
+      shell: bash
+      env:
+        RELEASE_TEST_BROWSERS: ${{ inputs.browsers }}
+      run: |
+        set -euo pipefail
+        test -n "$RELEASE_TEST_BROWSERS"
+        for browser in $RELEASE_TEST_BROWSERS; do
+          case "$browser" in chromium|firefox|webkit) ;; *) echo 'Unsupported browser'; exit 1 ;; esac
+        done
+        browsers="$(printf '%s\n' $RELEASE_TEST_BROWSERS | sort -u | paste -sd ' ' -)"
+        echo "browsers=$browsers" >> "$GITHUB_OUTPUT"
+        echo "image=${ImageOS:-$RUNNER_OS}" >> "$GITHUB_OUTPUT"
+    - name: Restore pinned browser binaries
+      id: browsers
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-v1-${{ runner.os }}-${{ steps.platform.outputs.image }}-${{ runner.arch }}-${{ steps.platform.outputs.browsers }}-${{ hashFiles('package-lock.json') }}
+    - name: Ensure browser binaries and system dependencies
+      shell: bash
+      env:
+        RELEASE_TEST_BROWSERS: ${{ steps.platform.outputs.browsers }}
+      run: |
+        set -euo pipefail
+        node --test tests/prepare-ci-playwright-apt.test.mjs
+        PLAYWRIGHT_CI_NODE="$(command -v node)"
+        test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
+        sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
+        npx playwright install --with-deps $RELEASE_TEST_BROWSERS
+    - name: Save complete browser set
+      if: steps.browsers.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ steps.browsers.outputs.cache-primary-key }}

@@ -280,7 +280,7 @@ jobs:
         id: sql
         run: supabase --workdir "$SUPABASE_CI_ROOT" test db
       - id: dependencies
-        run: npm ci
+        uses: ./.github/actions/setup-node-dependencies
       - name: Isolated handover and archive SQL behavior
         shell: bash
         run: |
@@ -296,12 +296,9 @@ jobs:
           node supabase/ci/nelly_access_audit_baseline_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/eval_delivery_archive_health_pglite.mjs --pglite-root "$pglite_root"
       - id: browser_setup
-        run: |
-          node --test tests/prepare-ci-playwright-apt.test.mjs
-          PLAYWRIGHT_CI_NODE="$(command -v node)"
-          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
-          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
-          npx playwright install --with-deps chromium
+        uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
       - name: Run browser request transactions against local Supabase
         id: transactions
         shell: bash
@@ -323,7 +320,7 @@ jobs:
           SUPABASE_LOCAL_URL="$API_URL" \
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
-          npx playwright test --config playwright.database.config.ts --project=chromium
+          npx playwright test --config playwright.database.config.ts --project=chromium --workers=1 --max-failures=1
       - name: Run Edge Function unit tests
         id: edge
         run: |

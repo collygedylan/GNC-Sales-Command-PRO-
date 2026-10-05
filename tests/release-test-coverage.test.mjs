@@ -509,3 +509,23 @@ test('rollback browser lanes preserve baseline assertions and fixture implementa
   const replacements = new Set([...september9BrowserBodies, ...september9BrowserFixtures].map(([destination]) => destination));
   for (const file of replacements) assert.doesNotMatch(read(file), /\btest\.(?:skip|fixme|only)\s*\(/, file);
 });
+
+test('compiled matrix partitions preserve every declared browser project and suite', () => {
+  const workflow = require('js-yaml').load(readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8'));
+  const entries = workflow.jobs.compiled.strategy.matrix.include.filter(row => row.suite !== 'command-center');
+  const expected = ["playwright.release-canary.config.ts","playwright.footer.config.ts","playwright.home-role.config.ts","playwright.season-sales-office.config.ts","playwright.season-priority.config.ts","playwright.suspend-tag.config.ts","playwright.docks-filter.config.ts","playwright.task-av-blanks.config.ts","playwright.session-recovery.config.ts","playwright.review-assignedto.config.ts","playwright.verified-data-cache.config.ts","playwright.request-reliability.config.ts","playwright.request-photo.config.ts","playwright.bunch-note.config.ts","playwright.sales-mobile.config.ts","playwright.module-mobile.config.ts","playwright.production-schedule.config.ts","playwright.hl-order.config.ts","playwright.hl-restock.config.ts","playwright.stable-background-refresh.config.ts"];
+  assert.deepEqual([...new Set(entries.map(row => row.config))].sort(), expected.sort());
+  const load = configLoader();
+  for (const file of expected) {
+    const projects = load(file).projects;
+    const rows = entries.filter(row => row.config === file);
+    assert.deepEqual([...new Set(rows.map(row => row.project))].sort(), plain(projects.map(project => project.name)).sort(), file);
+    for (const project of projects) {
+      const group = rows.filter(row => row.project === project.name);
+      const total = file === 'playwright.home-role.config.ts' ? 2 : 1;
+      assert.equal(group.length, total, file + ': ' + project.name);
+      assert.deepEqual(group.map(row => row.shard).sort(), Array.from({length:total}, (_,i)=>i+1));
+      assert.ok(group.every(row => row.total === total && row.browsers === (project.use.browserName || project.use.defaultBrowserType || 'chromium')));
+    }
+  }
+});

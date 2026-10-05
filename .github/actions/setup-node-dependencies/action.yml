@@ -1,0 +1,50 @@
+name: Prepare cached Node dependencies
+description: Restore only an exact dependency tree and save clean installs before build or test mutation.
+inputs:
+  node-version:
+    description: Preserve the caller's existing Node major version.
+    default: '22'
+  install-mode:
+    description: normal or ignore-scripts; incompatible dependency trees never share a cache.
+    default: normal
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      id: node
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+    - name: Identify runner image and validate installation mode
+      id: platform
+      shell: bash
+      env:
+        INSTALL_MODE: ${{ inputs.install-mode }}
+      run: |
+        set -euo pipefail
+        case "$INSTALL_MODE" in normal|ignore-scripts) ;; *) echo 'Unsupported installation mode'; exit 1 ;; esac
+        echo "image=${ImageOS:-$RUNNER_OS}" >> "$GITHUB_OUTPUT"
+    - name: Restore exact node_modules
+      id: dependencies
+      uses: actions/cache/restore@v4
+      with:
+        path: node_modules
+        key: node-modules-v1-${{ runner.os }}-${{ steps.platform.outputs.image }}-${{ runner.arch }}-node-${{ steps.node.outputs.node-version }}-${{ inputs.install-mode }}-${{ hashFiles('package.json', 'package-lock.json') }}
+    - name: Install locked dependencies on cache miss
+      if: steps.dependencies.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        INSTALL_MODE: ${{ inputs.install-mode }}
+      run: |
+        set -euo pipefail
+        if [ "$INSTALL_MODE" = ignore-scripts ]; then
+          npm ci --ignore-scripts --no-audit --no-fund
+        else
+          npm ci --no-audit --no-fund
+        fi
+    - name: Save clean dependency tree
+      if: steps.dependencies.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: node_modules
+        key: ${{ steps.dependencies.outputs.cache-primary-key }}

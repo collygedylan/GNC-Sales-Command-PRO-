@@ -10,7 +10,9 @@ test('foundation is a required sealed-artifact gate before functional and featur
   assert.equal(job.needs, 'build');
   assert.equal(job['timeout-minutes'], 20);
   assert.ok(job.steps.some(step => step.uses === './.github/actions/download-release'));
-  assert.ok(job.steps.some(step => step.run === 'npm run test:foundation -- --reporter=github'));
+  assert.ok(job.steps.some(step => step.run === 'npm run test:foundation -- --project=${{ matrix.project }} --max-failures=1 --reporter=github'));
+  assert.deepEqual(job.strategy.matrix.include.map(row => row.project), ['lifecycle-chromium', 'lifecycle-iphone']);
+  assert.equal(job.strategy['fail-fast'], true);
   assert.ok(job.steps.some(step => step.run === 'node scripts/release-artifact.mjs verify'));
   for (const name of ['functional', 'compiled']) assert.ok(workflow.jobs[name].needs.includes('foundation'));
   assert.ok(workflow.jobs['release-gate'].needs.includes('foundation'));

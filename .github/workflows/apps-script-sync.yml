@@ -187,9 +187,10 @@ jobs:
 
       # Workbook imports are user-initiated in Managers > Production Schedule.
       # Code publication must neither start an import nor wait for one to finish.
+      - name: Install locked dependencies
+        uses: ./.github/actions/setup-node-dependencies
       - name: Install dependencies and build the complete site
         run: |
-          npm ci
           npm run build:pilot-monitoring
           npm run build:live:assets
           npm run build:v2
