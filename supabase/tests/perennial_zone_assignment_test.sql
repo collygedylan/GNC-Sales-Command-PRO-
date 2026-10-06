@@ -98,15 +98,6 @@ where unique_id='row-assignment-test-zone';
 select is((select assignedto from public.ph_inventory_row_assignments where master_unique_id='row-assignment-test-zone'),
   'zoe_green','a rose classification change restores the ordinary in-zone owner');
 
-update public.ph_master_inventory set locationcode='UNKNOWN'
-where unique_id='row-assignment-test-outside';
-select is((select assignedto from public.ph_inventory_row_assignments where master_unique_id='row-assignment-test-outside'),
-  'row_test_worker','same-identity unresolved rows preserve their last confirmed owner');
-select is((select assignment_reason from public.ph_inventory_row_assignments where master_unique_id='row-assignment-test-outside'),
-  'unresolved_preserved','preserved unresolved owners are marked for review');
-update public.ph_master_inventory set locationcode='A.01.001'
-where unique_id='row-assignment-test-outside';
-
 select is((private.reconcile_inventory_row_assignments_v1(null::uuid)->>'status'),'completed',
   'repeat reconciliation completes against a ready master snapshot');
 create temporary table row_assignment_audit_count(value bigint) on commit drop;
@@ -131,6 +122,14 @@ select is((select result->>'contractVersion' from row_assignment_first_command),
   'inventory-row-assignments-v1','default changes return the canonical row-ownership contract');
 select is((select assignedto from public.ph_inventory_row_assignments where master_unique_id='row-assignment-test-outside'),
   'row_test_worker','default applies to the outside row only');
+update public.ph_master_inventory set locationcode='UNKNOWN'
+where unique_id='row-assignment-test-outside';
+select is((select assignedto from public.ph_inventory_row_assignments where master_unique_id='row-assignment-test-outside'),
+  'row_test_worker','same-identity unresolved rows preserve their last confirmed owner');
+select is((select assignment_reason from public.ph_inventory_row_assignments where master_unique_id='row-assignment-test-outside'),
+  'unresolved_preserved','preserved unresolved owners are marked for review');
+update public.ph_master_inventory set locationcode='A.01.001'
+where unique_id='row-assignment-test-outside';
 select is((select assignedto from public.ph_inventory_row_assignments where master_unique_id='row-assignment-test-zone'),
   'zoe_green','default does not override the independent zone row');
 select ok(exists(select 1 from public.ph_itemcode_default_owners where itemcode_normalized='ROW-TEST-NULL'

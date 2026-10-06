@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(71);
+select plan(74);
 
 select has_table('public', 'ph_pikes_order_batches', 'Pikes batch ledger exists');
 select has_table('public', 'ph_pikes_order_source_rows', 'approved Pikes source rows exist');
@@ -69,6 +69,10 @@ insert into public.profiles (id, username, display_name, role, locked_until) val
   ('70000000-0000-0000-0000-000000000003', 'pikes_locked', 'Pikes Locked', 'MANAGER', now() + interval '1 day')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = excluded.locked_until;
 
+insert into public.ph_eval_assignment_users(username,display_name,active,source)
+values('pikes_user','Pikes assignment fixture',true,'pgtap_pikes_assignment')
+on conflict(username) do update set active=true,display_name=excluded.display_name;
+
 update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 insert into public.ph_master_inventory (
   unique_id, itemcode, genusname, commonname, contsize, locationcode, lotcode,
@@ -111,6 +115,9 @@ select lives_ok(
   )$q$,
   'service import can prepare a Drive file manifest'
 );
+update public.ph_pikes_order_batches set imported_at=null where drive_file_id='pikes-ci-drive-file';
+select ok((select imported_at is null from public.ph_pikes_order_batches where drive_file_id='pikes-ci-drive-file'),
+  'first-time Pikes imports exercise a null importing timestamp');
 
 select lives_ok(
   $q$select public.append_manager_order_source_rows_v1(
@@ -173,12 +180,14 @@ select is(
 set local role service_role;
 select is((public.get_pikes_order_assignment_health_v1()->>'falseUnassignedCount')::integer, 0, 'hosted Pikes health runs through the service-only private-helper wrapper');
 reset role;
+update public.app_dataset_revisions set state='importing' where key='ph_master_inventory';
 with scheduled_reconcile as materialized (select public.reconcile_eval_itemcodes() as result)
 select is(
   (result->>'status') || ':' || (result->>'errorCode'),
-  'deferred:PERENNIAL_POLICY_AWAITING_MASTER_IMPORT',
-  'scheduled assignment reconciliation waits for the complete canonical master import'
+  'deferred:MASTER_SNAPSHOT_NOT_READY',
+  'scheduled row-assignment reconciliation defers while the master snapshot is unavailable'
 ) from scheduled_reconcile;
+update public.app_dataset_revisions set state='ready' where key='ph_master_inventory';
 
 select lives_ok(
   $q$select public.prepare_manager_order_import_v2(
@@ -202,6 +211,23 @@ select lives_ok(
 );
 reset role;
 select matches((select display_name from public.ph_pikes_order_batches where drive_file_id = 'stine-ci-drive-file'), '^Stine Lumber [0-9]{2}-[0-9]{2}-[0-9]{4}$', 'Stine history receives its own dated label');
+create temporary table stine_finalized_snapshot on commit drop as
+select b.display_name,b.imported_at,b.inventory_row_count,
+  coalesce((select jsonb_agg(to_jsonb(i) order by i.master_unique_id)
+    from public.ph_pikes_order_inventory_rows i where i.batch_id=b.batch_id),'[]'::jsonb) snapshot_rows
+from public.ph_pikes_order_batches b where b.drive_file_id='stine-ci-drive-file';
+grant select on stine_finalized_snapshot to service_role;
+set local role service_role;
+select is(public.finalize_pikes_order_import('stine-ci-drive-file',repeat('c',64),'Sheet1',1,1)->>'displayName',
+  (select display_name from stine_finalized_snapshot),'replayed Stine finalization returns the original frozen label');
+reset role;
+select is((select jsonb_build_object('displayName',b.display_name,'importedAt',b.imported_at,
+  'inventoryRowCount',b.inventory_row_count,'snapshotRows',coalesce((select jsonb_agg(to_jsonb(i) order by i.master_unique_id)
+    from public.ph_pikes_order_inventory_rows i where i.batch_id=b.batch_id),'[]'::jsonb))
+  from public.ph_pikes_order_batches b where b.drive_file_id='stine-ci-drive-file'),
+  (select jsonb_build_object('displayName',display_name,'importedAt',imported_at,
+    'inventoryRowCount',inventory_row_count,'snapshotRows',snapshot_rows) from stine_finalized_snapshot),
+  'replayed Stine finalization leaves its published snapshot immutable');
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '70000000-0000-0000-0000-000000000001', true);

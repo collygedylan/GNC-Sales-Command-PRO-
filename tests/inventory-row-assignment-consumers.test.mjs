@@ -65,12 +65,19 @@ test('new Eval Work uses exact recipients and issued work preserves its saved au
 });
 
 test('future Pikes snapshots use exact row authority and leave finalized snapshots frozen', () => {
-  const finalizer = future.slice(future.indexOf('create or replace function public.finalize_pikes_order_import'), future.indexOf('-- Include the new default table'));
-  assert.match(finalizer, /if target\.status in \('archive_pending', 'processed'\) then[\s\S]*?return jsonb_build_object/);
-  assert.match(finalizer, /left join public\.ph_inventory_row_assignments a\s+on a\.master_unique_id = m\.unique_id/);
-  assert.match(finalizer, /a\.assigned_at <= target\.imported_at/);
-  assert.match(finalizer, /'inventory-row:' \|\| a\.master_unique_id/);
-  assert.doesNotMatch(finalizer, /ph_warehouse_assigned_items/);
+  const patch = future.slice(future.indexOf('-- Preserve the production finalizer'), future.indexOf('-- Include the new default table'));
+  assert.match(patch, /pg_get_functiondef\('public\.finalize_pikes_order_import\(text,text,text,integer,integer\)'::regprocedure\)/);
+  assert.match(patch, /PIKES_FINALIZER_SECURITY_DEFINER_REQUIRED/);
+  assert.match(patch, /target\.source_key not in \(''pikes'', ''stine_lumber''\)/);
+  assert.match(patch, /effective_label := case target\.source_key/);
+  assert.match(patch, /position\('if target\.status in \(''archive_pending'', ''processed''\) then' in definition\)/);
+  assert.match(patch, /snapshot_cutoff := coalesce\(target\.imported_at, clock_timestamp\(\)\)/);
+  assert.match(patch, /a\.assigned_at <= snapshot_cutoff/);
+  assert.match(patch, /imported_at = snapshot_cutoff/);
+  assert.match(patch, /'inventory-row:' \|\| a\.master_unique_id/);
+  assert.match(patch, /sourceKey/);
+  assert.match(patch, /PIKES_EXACT_ROW_PATCH_SOURCE_MISMATCH/);
+  assert.doesNotMatch(patch, /language plpgsql security invoker/);
 });
 
 test('scheduled handover transfers defaults, advances revisions, then recomputes derived rows', () => {
