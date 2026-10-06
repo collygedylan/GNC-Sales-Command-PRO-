@@ -134378,8 +134378,11 @@ C.14.043 C.15.000
             const panel = document.getElementById('manager-assigned-filter-panel');
             if (!panel) return;
             const viewport = window.visualViewport;
-            const left = viewport ? viewport.offsetLeft : 0, top = viewport ? viewport.offsetTop : 0;
-            const width = viewport ? viewport.width : window.innerWidth, height = viewport ? viewport.height : window.innerHeight;
+            const layoutWidth = Math.max(280, document.documentElement.clientWidth || window.innerWidth);
+            const visualLeft = viewport ? viewport.offsetLeft : 0;
+            const visualWidth = viewport ? viewport.width : layoutWidth;
+            const left = Math.min(visualLeft, Math.max(0, layoutWidth - visualWidth)), top = viewport ? viewport.offsetTop : 0;
+            const width = Math.min(visualWidth, layoutWidth - left), height = viewport ? viewport.height : window.innerHeight;
             const footer = document.getElementById('bottom-nav');
             const footerTop = footer && footer.getClientRects().length ? footer.getBoundingClientRect().top : top + height;
             const bottom = Math.min(top + height - 8, footerTop - 8);
