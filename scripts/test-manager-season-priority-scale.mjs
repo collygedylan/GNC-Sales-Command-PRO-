@@ -117,7 +117,7 @@ export async function runSeasonPriorityScaleFixture(db) {
     const final=(await db.query(`select (select count(*)::int from private.manager_season_priority_receipts) receipts,(select count(*)::int from public.ph_request_delivery_outbox) deliveries`)).rows[0];
     assert.deepEqual(final,{receipts:initial.receipts,deliveries:initial.deliveries},'List must not create inquiries or delivery');
     console.log(JSON.stringify({ok:true,fixture:'season-priority-production-scale',inventoryRows:seeded.inventory,
-      baselineAssignmentRows:initial.assignments,syntheticAssignmentRows:4055,totalAssignmentRows:seeded.assignments,assignmentsUnchanged:true,
+      baselineAssignmentRows:initial.assignments,syntheticAssignmentRows:9364,totalAssignmentRows:seeded.assignments,assignmentsUnchanged:true,
       eligibleRows:50,coldMs,scopeProducerLoops:1,planExecutionMs:explained['Execution Time'],fingerprintParity:true,filters:true,inventoryUnchanged:true,deliveryUnchanged:true}));
   } finally { await db.query('rollback'); }
 }
