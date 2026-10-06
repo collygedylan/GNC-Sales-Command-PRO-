@@ -161,6 +161,8 @@ const originalBrowserFiles = [
 test('release unit union preserves every existing script and explicit gate exactly once', () => {
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
+    'tests/reclass-split-client.test.mjs',
+    'tests/reclass-split-move-v4.test.mjs',
     'tests/aura-voice.test.mjs',
     'tests/aura-voice-mode-ui.test.mjs',
     'tests/aura-lingo-v2.test.mjs',
@@ -308,6 +310,7 @@ test('functional and timing lanes retain all original browser projects and asser
 });
 
 const compiledSuites = [
+  ['reclass-splits', 'reclass-splits', ['cache-chromium', 'cache-android', 'cache-iphone']],
   ['bunch-note', 'bunch-note', ['cache-chromium', 'cache-android', 'cache-iphone']],
   ['sales-mobile', 'sales-mobile', ['sales-desktop', 'sales-android', 'sales-iphone', 'sales-narrow']],
   ['module-mobile', 'module-mobile-smoke', ['module-320', 'module-iphone']],
@@ -349,7 +352,7 @@ for (const [name, spec, projects] of compiledSuites) {
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
-    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'sales-mobile', 'module-mobile', 'task-av-blanks'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
+    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'reclass-splits', 'sales-mobile', 'module-mobile', 'task-av-blanks'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
     else assert.match(config.webServer.command, /startReleaseTestServer/);
   });
@@ -591,7 +594,7 @@ test('rollback browser lanes preserve baseline assertions and fixture implementa
 test('compiled matrix partitions preserve every declared browser project and suite', () => {
   const workflow = require('js-yaml').load(readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8'));
   const entries = workflow.jobs.compiled.strategy.matrix.include.filter(row => row.suite !== 'command-center');
-  const expected = ["playwright.release-canary.config.ts","playwright.footer.config.ts","playwright.home-role.config.ts","playwright.season-sales-office.config.ts","playwright.season-priority.config.ts","playwright.suspend-tag.config.ts","playwright.docks-filter.config.ts","playwright.task-av-blanks.config.ts","playwright.session-recovery.config.ts","playwright.review-assignedto.config.ts","playwright.verified-data-cache.config.ts","playwright.request-reliability.config.ts","playwright.request-photo.config.ts","playwright.bunch-note.config.ts","playwright.sales-mobile.config.ts","playwright.module-mobile.config.ts","playwright.production-schedule.config.ts","playwright.hl-order.config.ts","playwright.hl-restock.config.ts","playwright.stable-background-refresh.config.ts"];
+  const expected = ["playwright.release-canary.config.ts","playwright.footer.config.ts","playwright.home-role.config.ts","playwright.season-sales-office.config.ts","playwright.season-priority.config.ts","playwright.suspend-tag.config.ts","playwright.docks-filter.config.ts","playwright.task-av-blanks.config.ts","playwright.session-recovery.config.ts","playwright.review-assignedto.config.ts","playwright.verified-data-cache.config.ts","playwright.request-reliability.config.ts","playwright.request-photo.config.ts","playwright.bunch-note.config.ts","playwright.reclass-splits.config.ts","playwright.sales-mobile.config.ts","playwright.module-mobile.config.ts","playwright.production-schedule.config.ts","playwright.hl-order.config.ts","playwright.hl-restock.config.ts","playwright.stable-background-refresh.config.ts"];
   assert.deepEqual([...new Set(entries.map(row => row.config))].sort(), expected.sort());
   const load = configLoader();
   for (const file of expected) {

@@ -222,6 +222,8 @@ jobs:
           cp supabase/migrations/20261005225759_structured_bunch_notes.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261006110751_bunch_note_per_card_work.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261006111244_bunch_note_card_commands.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006145333_reclass_split_move_inquiries_v4.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006150745_reclass_split_move_eval_submit_guards.sql "$ci_root/supabase/migrations/"
           # Deactivate the external worker before the disposable replay commits,
           # so CI remains deterministic after the production cutoff date.
           python3 - "$ci_root" <<'PY'
@@ -269,6 +271,7 @@ jobs:
           cp supabase/tests/sep09_eval_review_compatibility_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_option_append_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/drive_reclass_protected_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/reclass_split_move_v4_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/drive_evidence_retry_storm_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/shear_location_inquiry_v1_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/photo_delivery_health_rls_test.sql "$ci_root/supabase/tests/"

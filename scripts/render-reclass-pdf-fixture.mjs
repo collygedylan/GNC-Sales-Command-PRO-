@@ -47,8 +47,12 @@ const model = {
     {
       unique_id: 'origin',
       values: { lotcode: '27.S1', locationcode: 'C.16.000', source: 'LD', priority: '1', ptronhand: '800', ptrreviewed: '12', locationnotedate: '8/26/2026', locationnote: 'Originating synthetic row.', holdstopcode: 'H', holdstopreason: 'sheared' },
-      actionValues: { moveupquantity: '40', moveupseason: 'F1', movedownquantity: '20', movedownseason: 'S1' },
-      changedFields: ['holdstopcode', 'holdstopreason', 'priority', 'moveupquantity', 'moveupseason', 'movedownquantity', 'movedownseason'],
+      actionValues: {
+        moveupsplits: Array.from({ length: 75 }, (_, index) => ({ quantity: 1, destinationSeason: ['F1', 'U1', 'X'][index % 3] })),
+        moveupapplyhold: true, moveupholdreason: 'inspect after transfer',
+        movedownsplits: [{ quantity: 20, destinationSeason: 'Y' }], movedownapplyhold: false, movedownholdreason: '',
+      },
+      changedFields: ['holdstopcode', 'holdstopreason', 'priority', 'moveupsplits', 'moveupapplyhold', 'moveupholdreason', 'movedownsplits'],
     },
     {
       unique_id: 'context',
