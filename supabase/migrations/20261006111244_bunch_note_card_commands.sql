@@ -51,7 +51,7 @@ create function bunch_note_private.card_safe_job(p_job bunch_note_private.jobs,p
 language plpgsql stable security definer set search_path='' as $$
 declare author boolean; note_id uuid; cards jsonb:='[]'; definitions jsonb:='[]'; actions jsonb:='[]'; all_actions jsonb:='[]'; source jsonb:='[]'; progress_json jsonb:='{}';
  worker_actions_json jsonb:='[]'; actuals_json jsonb:='[]'; audit_json jsonb:='[]'; card_ids uuid[]:='{}'; action_ids text[]:='{}'; row_ids text[]:='{}';
- c record; a jsonb; entry_row record; base jsonb; body_json jsonb; card_value jsonb; current_owner uuid; shared_id uuid;
+ c record; entry_row record; base jsonb; body_json jsonb; card_value jsonb;
 begin
  author:=exists(select 1 from public.profiles p where p.id=p_actor and p.username='dylan_collyge');
  select n.id into note_id from bunch_note_private.bunch_notes n where n.job_id=(p_job).id;
@@ -59,7 +59,6 @@ begin
   if coalesce(((p_job).body->>'format_version')::integer,0)>=5 then raise exception 'BUNCH_NOTE_CARD_STATE_INVALID' using errcode='42501'; end if;
   return bunch_note_private.job_json(p_job);
  end if;
- select wc.card_id into shared_id from bunch_note_private.bunch_note_work_cards wc where wc.bunch_note_id=note_id and wc.kind='shared' and wc.active limit 1;
  for c in select wc.*,p.display_name owner_name from bunch_note_private.bunch_note_work_cards wc
   left join public.profiles p on p.id=wc.owner_id
   where wc.bunch_note_id=note_id and (wc.active or (author and (p_job).status='cancelled'))
@@ -74,13 +73,13 @@ begin
    'status',c.status,'revision',c.revision));
  end loop;
  if not author and cardinality(card_ids)=0 then raise exception 'BUNCH_NOTE_NOT_FOUND' using errcode='42501'; end if;
- select coalesce(jsonb_agg(a order by ord),'[]') into all_actions from (
+ select coalesce(jsonb_agg(q.a order by q.ord),'[]') into all_actions from (
   select value a,ordinality ord from jsonb_array_elements(bunch_note_private.card_actions(p_job)) with ordinality
- ) q where author or a->>'card_id'=any(array(select unnest(card_ids)::text));
-  select coalesce(jsonb_agg(a order by ord),'[]') into actions from (
+ ) q where author or q.a->>'card_id'=any(array(select unnest(card_ids)::text));
+  select coalesce(jsonb_agg(q.a order by q.ord),'[]') into actions from (
    select value a,ordinality ord from jsonb_array_elements(all_actions) with ordinality
-  ) q where not coalesce((a->>'worker_added')::boolean,false);
- select coalesce(array_agg(a->>'id'),'{}') into action_ids from jsonb_array_elements(all_actions) a;
+  ) q where not coalesce((q.a->>'worker_added')::boolean,false);
+ select coalesce(array_agg(action_items.value->>'id'),'{}') into action_ids from jsonb_array_elements(all_actions) as action_items(value);
  select coalesce(jsonb_agg(d.value order by d.ordinality),'[]') into definitions from jsonb_array_elements(coalesce((p_job).body->'cards','[]')) with ordinality d(value,ordinality)
   where author or d.value->>'id'=any(array(select unnest(card_ids)::text));
  select coalesce(jsonb_agg(r order by r->>'unique_id'),'[]') into source from jsonb_array_elements(bunch_note_private.work_source(p_job)) r

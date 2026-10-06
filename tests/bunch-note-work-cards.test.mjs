@@ -5,6 +5,17 @@ import vm from 'node:vm';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 const row=(id,size='#3')=>({unique_id:id,blockalpha:'E',locationcode:'E.15.000',itemcode:'RED',commonname:'Royal Red',contsize:size,lotcode:id,salesyear:'27',stock:0,available:0});
+test('card-safe SQL qualifies action aliases without conflicting local variables',()=>{
+ const sql=read('supabase/migrations/20261006111244_bunch_note_card_commands.sql');
+ const body=sql.slice(sql.indexOf('create function bunch_note_private.card_safe_job'),sql.indexOf('create function bunch_note_private.guard_card_job_write'));
+ const declarations=body.slice(body.indexOf('declare'),body.indexOf('\nbegin'));
+ assert.doesNotMatch(declarations,/\ba\s+jsonb\b|\bcurrent_owner\b|\bshared_id\b/);
+ assert.equal((body.match(/jsonb_agg\(q\.a order by q\.ord\)/g)||[]).length,2);
+ assert.match(body,/q where author or q\.a->>'card_id'/);
+ assert.match(body,/q where not coalesce\(\(q\.a->>'worker_added'\)/);
+ assert.match(body,/array_agg\(action_items\.value->>'id'\)/);
+ assert.match(body,/jsonb_array_elements\(all_actions\) as action_items\(value\)/);
+});
 function harness(extra={}) {
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,crypto:globalThis.crypto,
