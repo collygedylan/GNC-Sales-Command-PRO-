@@ -112,6 +112,21 @@ language sql immutable set search_path = '' as $function$
   ('ph_soc_master','unique_id',array['flyer_assigned'], 'nullif(btrim(r.flyer_completed),'''') is null')
 $function$;
 
+-- Default owners use an Itemcode natural key, while existing work uses IDs.
+-- Keep the existing audit format and add only that new identity fallback.
+do $migration$
+declare definition text;
+  needle text := 'coalesce(doc->>''unique_id'',doc->>''id'')';
+begin
+  definition := pg_get_functiondef('private.handover_normalize_assignment_v1()'::regprocedure);
+  if (length(definition) - length(replace(definition, needle, ''))) / length(needle) <> 2 then
+    raise exception 'INVENTORY_ROW_ASSIGNMENT_HANDOVER_AUDIT_KEY_PATCH_FAILED';
+  end if;
+  execute replace(definition, needle,
+    'coalesce(doc->>''unique_id'',doc->>''id'',doc->>''itemcode_normalized'')');
+end
+$migration$;
+
 -- Mark the exact scheduled transfer statement. Do not infer a handover from
 -- updated_by equality: an ordinary RPC edit by the same manager must remain a
 -- normal assignment change.

@@ -76,6 +76,16 @@ test('request workflow baseline provides the text hold start date consumed by Ev
   assert.match(evalReport2Migration, /eval_report2_inventory_date_v1\(m\.holdstopbegindate\)/i);
 });
 
+test('isolated master warehousei matches the production text column used by row ownership', () => {
+  const production = fs.readFileSync(new URL('../supabase/migrations/20260929200000_production_baseline.sql', import.meta.url), 'utf8');
+  const master = production.match(/CREATE TABLE public\.ph_master_inventory\s*\(([\s\S]*?)\n\);/i);
+  const fixture = requestWorkflowBaseline.match(/create table if not exists public\.ph_master_inventory\s*\(([\s\S]*?)\n\);/i);
+  assert.ok(master && fixture, 'both inventory definitions exist');
+  for (const [label, definition] of [['production', master[1]], ['CI', fixture[1]]]) {
+    assert.match(definition, /^\s*warehousei text,?\s*$/m, `${label} has nullable text warehousei without a default`);
+  }
+});
+
 test('isolated database stages the existing calendar before the HR migration', () => {
   assert.match(departmentCalendarBaseline, /create table public\.ph_department_calendar_events\s*\(/i);
   assert.match(departmentCalendarBaseline, /unique_id text primary key/i);

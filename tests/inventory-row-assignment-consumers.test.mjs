@@ -20,6 +20,13 @@ const consumers = read('../supabase/migrations/20261006210200_inventory_row_assi
 const engine = read('../assets/eval-reports-engine.js');
 const appScript = read('../Code.gs');
 const responsiveE2E = read('../tests/responsive-workflows.e2e.spec.ts');
+
+test('handover audits support Itemcode identities and cannot silently rewrite a default acknowledgment', () => {
+  assert.match(future, /coalesce\(doc->>''unique_id'',doc->>''id'',doc->>''itemcode_normalized''\)/);
+  assert.match(future, /HANDOVER_AUDIT_KEY_PATCH_FAILED/);
+  assert.match(defaults, /private\.handover_replace_identity_v1\(e\.value->>'assignedto'\)/);
+  assert.match(defaults, /ITEMCODE_DEFAULT_OWNER_REPLACED_REFRESH_REQUIRED/);
+});
 const defaultOwnerConcurrency = read('../scripts/test-itemcode-default-owner-concurrency.mjs');
 
 test('release migration order applies exact-row authority before every consumer', () => {
