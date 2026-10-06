@@ -139,10 +139,10 @@ test('author includes one location card explicitly, assigns it, and limits plann
  await inventoryCards.nth(0).getByRole('button',{name:'Assign Worker Name',exact:true}).click();
  await inventoryCards.nth(0).getByLabel('Assign worker',{exact:true}).selectOption(hlUserId);
  await inventoryCards.nth(0).getByRole('button',{name:'House to work in',exact:true}).click();
- await inventoryCards.nth(0).getByLabel('House to work in',{exact:true}).selectOption('Custom');
+ await inventoryCards.nth(0).getByRole('combobox',{name:'House to work in',exact:true}).selectOption('Custom');
  await inventoryCards.nth(0).getByLabel('Custom house to work in',{exact:true}).fill('North House');
  await inventoryCards.nth(0).getByRole('button',{name:'Direction',exact:true}).click();
- await inventoryCards.nth(0).getByLabel('Direction',{exact:true}).selectOption('East to West');
+ await inventoryCards.nth(0).getByRole('combobox',{name:'Direction',exact:true}).selectOption('East to West');
  await inventoryCards.nth(0).getByRole('button',{name:'Save card',exact:true}).click();
  await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
  const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body.locations[0];
