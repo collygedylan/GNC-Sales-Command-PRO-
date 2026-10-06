@@ -16,6 +16,10 @@ test('card-safe SQL qualifies action aliases without conflicting local variables
  assert.match(body,/array_agg\(action_items\.value->>'id'\)/);
  assert.match(body,/jsonb_array_elements\(all_actions\) as action_items\(value\)/);
 });
+test('card cancellation increments the card revision explicitly across its header join',()=>{
+ const sql=read('supabase/migrations/20261006111244_bunch_note_card_commands.sql');
+ assert.match(sql,/update bunch_note_private\.bunch_note_work_cards wc set status='retired',active=false,revision=wc\.revision\+1,updated_at=now\(\)\s+from bunch_note_private\.bunch_notes n/);
+});
 function harness(extra={}) {
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};
  const ctx=vm.createContext({console,Date,Map,Set,URL,Blob,Uint8Array,structuredClone,crypto:globalThis.crypto,
