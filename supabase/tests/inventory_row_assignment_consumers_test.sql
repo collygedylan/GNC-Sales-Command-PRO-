@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(13);
+select plan(16);
 
 select ok(to_regprocedure('private.inventory_effective_owner_v1(text)') is not null,
   'exact-row effective owner resolver is installed');
@@ -30,6 +30,20 @@ select ok(position('ph_itemcode_default_owners' in pg_get_functiondef('private.h
 select ok(to_regprocedure('private.handover_recompute_default_owner_rows_v1()') is not null
   and exists(select 1 from pg_trigger where tgname='trg_handover_recompute_default_owner_rows' and not tgisinternal),
   'scheduled default transfers recompute row owners via the resolver');
+select ok(position('ITEMCODE_DEFAULT_OWNER_REPLACED_REFRESH_REQUIRED' in
+  pg_get_functiondef('public.set_itemcode_default_owners_v1(jsonb,uuid)'::regprocedure)) > 0,
+  'manager RPC rejects an owner rewritten by the handover instead of acknowledging the wrong owner');
+update private.scheduled_account_handover_v1
+set effective_at=now()-interval '1 second'
+where transition_key='kayla_knepp_to_nelly_aguilar_20261002';
+insert into public.ph_itemcode_default_owners(itemcode_normalized,assignedto,assigned_at,revision)
+values('ROW-HANDOVER-AUDIT','kayla_knepp',now(),1);
+select is((select assignedto from public.ph_itemcode_default_owners where itemcode_normalized='ROW-HANDOVER-AUDIT'),
+  'nelly_aguilar','future default-owner inserts normalize departing owners');
+select ok(exists(select 1 from private.scheduled_account_handover_audit_v1
+  where event_key like 'future:ph_itemcode_default_owners:ROW-HANDOVER-AUDIT:%'
+    and metadata->>'id'='ROW-HANDOVER-AUDIT'),
+  'natural-key default-owner handover is recorded with a non-null audit identity');
 select ok((select relrowsecurity from pg_class where oid='public.ph_inventory_row_assignments'::regclass)
   and not has_table_privilege('authenticated','public.ph_inventory_row_assignments','update'),
   'row authority stays protected from direct authenticated writes');

@@ -200,6 +200,15 @@ begin
   ) then
     raise exception using errcode = '22023', message = 'ASSIGNEE_NOT_IN_EVAL_ROSTER_OR_ACTIVE_PROFILE';
   end if;
+  -- A scheduled handover must not silently rewrite a manager's selection in
+  -- a BEFORE trigger and return an acknowledgment naming the previous owner.
+  if exists (
+    select 1 from jsonb_array_elements(normalized) e(value)
+    where private.handover_replace_identity_v1(e.value->>'assignedto')
+      is distinct from e.value->>'assignedto'
+  ) then
+    raise exception using errcode = '40001', message = 'ITEMCODE_DEFAULT_OWNER_REPLACED_REFRESH_REQUIRED';
+  end if;
 
   select r.revision into source_revision from public.app_dataset_revisions r
     where r.key = 'ph_master_inventory' and r.state = 'ready' for share;

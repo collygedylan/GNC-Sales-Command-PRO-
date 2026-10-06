@@ -10,6 +10,7 @@ create table if not exists public.ph_master_inventory (
   contsize text,
   locationcode text,
   lotcode text,
+  warehousei text,
   ptronhand text,
   ptrreviewed text,
   ptravailable text,
