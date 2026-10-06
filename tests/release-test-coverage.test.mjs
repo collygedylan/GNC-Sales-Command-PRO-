@@ -491,7 +491,7 @@ const september9BrowserBodies = [
   [
     "tests/review-assignedto.e2e.spec.ts",
     "tests/responsive-workflows.e2e.spec.ts",
-    "Eval assignment dropdown exposes the full managed roster and composite key"
+    "Eval assignment dropdown exposes the full managed roster and Itemcode default key"
   ],
   [
     "tests/review-assignedto.e2e.spec.ts",
