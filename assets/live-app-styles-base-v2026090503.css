@@ -713,6 +713,17 @@ body .app-av-catalog-card .app-av-photo-slide{min-width:100%;height:100%}
 .argos-reclass-action-btn[aria-pressed="true"]{border-color:#34a879;background:#ecfdf5;color:#065f46;box-shadow:0 0 0 2px rgba(5,150,105,.1)}
 .argos-reclass-action-btn:disabled{border-color:#e2e8f0;background:#f8fafc;color:#94a3b8;box-shadow:none}
 .argos-reclass-action-proposal-grid{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.48rem}
+.argos-reclass-move-editor{grid-column:1/-1;min-width:0;border:1px solid #cbd5e1;border-radius:.75rem;padding:.65rem;display:grid;gap:.6rem}
+.argos-reclass-move-editor legend{font-weight:800;padding:0 .3rem}
+.argos-reclass-move-editor [data-reclass-move-balance]{font-size:.78rem;font-weight:700;overflow-wrap:anywhere}
+.argos-reclass-move-editor [data-over-limit="true"]{color:#b91c1c}
+.argos-reclass-move-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:.4rem;align-items:end}
+.argos-reclass-move-split>*{min-width:0}
+.argos-reclass-move-editor button{min-width:44px;min-height:44px}
+.argos-reclass-move-hold{display:flex;align-items:center;gap:.65rem;min-height:44px;font-weight:750;font-size:.85rem}
+.argos-reclass-move-hold input{width:22px;height:22px;flex-shrink:0;accent-color:#007a4d}
+.argos-reclass-move-editor [hidden]{display:none!important}
+@media(max-width:380px){.argos-reclass-move-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.argos-reclass-move-split button{grid-column:1/-1}}
 .argos-reclass-action-proposal{border:1px solid #e2e8f0;border-radius:.7rem;background:#f8fafc;padding:.58rem}
 .argos-reclass-action-proposal>span{display:block;margin-bottom:.28rem;color:#475569;font-size:.7rem;font-weight:750}
 .argos-reclass-action-proposal small{display:block;margin-top:.3rem;color:#64748b;font-size:.68rem;font-weight:600;line-height:1.35}
