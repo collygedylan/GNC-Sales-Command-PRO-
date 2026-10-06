@@ -1104,10 +1104,13 @@ function driveReclassErrorResponse(message: string) {
   if (/SOURCE_CHANGED|SOURCE_MISSING|TOKEN_CONFLICT/.test(raw)) {
     return errorResponse("Inventory or inquiry state changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
   }
+  if (/EVAL_WORK_(ORIGINAL_OH|VERSION|SUBMISSION_TOKEN)_.*CONFLICT|EVAL_WORK_SUBMISSION_TOKEN_CONFLICT/.test(raw)) {
+    return errorResponse("The inventory or saved inquiry changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
   if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
     return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
   }
-  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|STATUS_INVALID|RETRY_INVALID/.test(raw)) {
+  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
   return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
@@ -1221,7 +1224,10 @@ async function handleDriveReclassAction(
         ...sanitizeDriveReclassPayload(payload),
         actorUsername,
       };
-      const { data, error } = await supabase.rpc("enqueue_drive_reclass_inquiry_v1", { p_payload: protectedPayload });
+      const enqueueRpc = protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
+        ? "enqueue_drive_reclass_inquiry_v4"
+        : "enqueue_drive_reclass_inquiry_v1";
+      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: protectedPayload });
       if (error) return driveReclassErrorResponse(error.message || "");
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
     }

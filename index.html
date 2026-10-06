@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#f4fbf7">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=V2026.10.06.001">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=V2026.10.06.002">
     <link rel="icon" type="image/png" sizes="32x32" href="./ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./ag-data-solutions-icon-v2026080925-180.png">
@@ -53,7 +53,7 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#050806' : '#f4fbf7');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.06.001">
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.06.002">
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2">
     <link rel="stylesheet" href="./assets/vendor/phosphor/duotone/style.css?v=2.1.2">
@@ -63,7 +63,7 @@
     <script>
       // Public release label; increment independently of the shell cache/build ID.
       window.__APP_RELEASE_VERSION__ = 'GNC.001';
-      window.__APP_SHELL_VERSION__ = 'V2026.10.06.001';
+      window.__APP_SHELL_VERSION__ = 'V2026.10.06.002';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -899,6 +899,17 @@ body .app-av-catalog-card .app-av-photo-slide{min-width:100%;height:100%}
 .argos-reclass-action-btn[aria-pressed="true"]{border-color:#34a879;background:#ecfdf5;color:#065f46;box-shadow:0 0 0 2px rgba(5,150,105,.1)}
 .argos-reclass-action-btn:disabled{border-color:#e2e8f0;background:#f8fafc;color:#94a3b8;box-shadow:none}
 .argos-reclass-action-proposal-grid{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.48rem}
+.argos-reclass-move-editor{grid-column:1/-1;min-width:0;border:1px solid #cbd5e1;border-radius:.75rem;padding:.65rem;display:grid;gap:.6rem}
+.argos-reclass-move-editor legend{font-weight:800;padding:0 .3rem}
+.argos-reclass-move-editor [data-reclass-move-balance]{font-size:.78rem;font-weight:700;overflow-wrap:anywhere}
+.argos-reclass-move-editor [data-over-limit="true"]{color:#b91c1c}
+.argos-reclass-move-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:.4rem;align-items:end}
+.argos-reclass-move-split>*{min-width:0}
+.argos-reclass-move-editor button{min-width:44px;min-height:44px}
+.argos-reclass-move-hold{display:flex;align-items:center;gap:.65rem;min-height:44px;font-weight:750;font-size:.85rem}
+.argos-reclass-move-hold input{width:22px;height:22px;flex-shrink:0;accent-color:#007a4d}
+.argos-reclass-move-editor [hidden]{display:none!important}
+@media(max-width:380px){.argos-reclass-move-split{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.argos-reclass-move-split button{grid-column:1/-1}}
 .argos-reclass-action-proposal{border:1px solid #e2e8f0;border-radius:.7rem;background:#f8fafc;padding:.58rem}
 .argos-reclass-action-proposal>span{display:block;margin-bottom:.28rem;color:#475569;font-size:.7rem;font-weight:750}
 .argos-reclass-action-proposal small{display:block;margin-top:.3rem;color:#64748b;font-size:.68rem;font-weight:600;line-height:1.35}
@@ -6852,8 +6863,8 @@ a,button,[role="button"],input,select,textarea,label,.task-tab,.detail-tab,.draw
         body.dark-mode .manager-eval2-drive-group-card :is(.text-slate-500,.text-slate-400),body.dark-mode .manager-eval2-item-card :is(.text-slate-500,.text-slate-400){color:#b8d7c8!important}
         @media(max-width:520px){.manager-eval2-drive-filter-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:.36rem}.manager-eval2-drive-filter-grid select,.manager-eval2-drive-filter-grid button{padding-left:.62rem!important;padding-right:.62rem!important;font-size:11px!important}.manager-eval2-drive-group-card{min-height:76px;padding:.82rem .9rem}.manager-eval2-drive-more>div{padding:.75rem!important}}
     </style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.06.001">
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=V2026.10.06.001">
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.06.002">
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=V2026.10.06.002">
     <style id="live-data-menu-status">
         #live-data-freshness{margin:12px;padding:14px;border:1px solid #bbd8c8;border-radius:12px;background:#f0fdf4;color:#14532d;overflow-wrap:anywhere}
         #live-data-freshness[hidden],#live-data-warning-dot[hidden]{display:none!important}
@@ -7058,16 +7069,16 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.10.06.001"></script>
-    <script src="./assets/inventory-list-contract.js?v=V2026.10.06.001"></script>
-    <script src="./assets/login-network-trace.js?v=V2026.10.06.001"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.10.06.001"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.10.06.001"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.10.06.001"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.10.06.001"></script>
-    <script src="./assets/production-schedule.js?v=V2026.10.06.001"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.10.06.001"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.10.06.001"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.10.06.002"></script>
+    <script src="./assets/inventory-list-contract.js?v=V2026.10.06.002"></script>
+    <script src="./assets/login-network-trace.js?v=V2026.10.06.002"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.10.06.002"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.10.06.002"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.10.06.002"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.10.06.002"></script>
+    <script src="./assets/production-schedule.js?v=V2026.10.06.002"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.10.06.002"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.10.06.002"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -7835,7 +7846,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                     <div class="nav-header-meta">
                         <div class="nav-header-meta-row">
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.10.06.001').trim() || 'V2026.10.06.001';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.10.06.002').trim() || 'V2026.10.06.002';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -9346,7 +9357,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
-        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.10.06.001';
+        const APP_SHELL_VERSION = String(window.__APP_SHELL_VERSION__ || '').trim() || 'V2026.10.06.002';
         const APP_SHELL_BUILD = String(window.__APP_SHELL_BUILD__ || APP_SHELL_VERSION || '').trim() || APP_SHELL_VERSION;
         const APP_SHELL_BUILD_STORAGE_KEY = 'gnc_app_shell_build_v1';
         const APP_SHELL_REFRESH_STORAGE_KEY = 'gnc_app_shell_refresh_v1';
@@ -33373,7 +33384,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let avBlanksPhotoBypassRemoteLoading = false;
         let avBlanksPhotoBypassDraftUsers = null;
         let avBlanksPhotoBypassAccessCache = null;
-        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.10.06.001').trim() || 'V2026.10.06.001';
+        const APP_VERSION = String(APP_SHELL_VERSION || window.__APP_SHELL_VERSION__ || 'V2026.10.06.002').trim() || 'V2026.10.06.002';
         const OUTDOOR_MODE_STORAGE_KEY = 'gnc_outdoor_mode_v1';
         let outdoorModeEnabled = false;
 
@@ -37524,7 +37535,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const rowOverlays = rows.map((entry) => {
                 const uid = String(entry && entry.unique_id || '').trim();
                 const rowMap = getArgosReclassRowProposalMap(uid, false) || {};
-                const proposals = RECLASS_ACTION_WORKFLOW_V3_ORDER.filter((action) => !RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)).map((action) => rowMap[action]).filter(Boolean).map((proposal) => ({ ...proposal }));
+                const proposals = RECLASS_ACTION_WORKFLOW_V3_ORDER.filter((action) => !RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)).map((action) => rowMap[action]).filter(Boolean).map(cloneArgosReclassProposal);
                 proposals.forEach((proposal) => actionSet.add(String(proposal.action || '').trim().toLowerCase()));
                 const temporary = evalWorkTemporaryRowOverlays.get(uid) || {};
                 return {
@@ -37537,7 +37548,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 };
             });
             return {
-                type: 'reclass_inquiry_email', action: 'reclass', workflowPolicyVersion: RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION,
+                type: 'reclass_inquiry_email', action: 'reclass', workflowPolicyVersion: RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION,
                 idempotencyToken: `eval-work-${safeWork.id || 'local'}`,
                 actor: { username: String(currentUser || ''), display: String(currentUserDisplay || currentUser || ''), email: getArgosInventoryTransactionActorEmail(), role: getCurrentRoleAccessValue() },
                 source: { unique_id: String(safeWork.origin_unique_id || ''), source_table: 'ph_master_inventory', itemcode: String(safeWork.itemcode || ''), lotcode: String(safeWork.origin_lotcode || ''), locationcode: String(safeWork.origin_locationcode || '') },
@@ -37682,7 +37693,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                                 [action]: { action, reason: rule && rule.kind === 'hold_on' ? String(proposal.holdstopreason || '').trim().toLowerCase() : '', sourceUid: uid }
                             };
                         }
-                    } else if (action) rowMap[action] = { ...proposal };
+                    } else if (action) rowMap[action] = cloneArgosReclassProposal(proposal);
                 });
                 if (Object.keys(rowMap).length) argosReclassMultiActionState.rowProposals.set(uid, rowMap);
                 const resolution = String(overlay && overlay.resolution || '').trim().toLowerCase();
@@ -37738,7 +37749,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 };
             });
             return {
-                type: 'reclass_inquiry_email', action: 'reclass', workflowPolicyVersion: RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION,
+                type: 'reclass_inquiry_email', action: 'reclass', workflowPolicyVersion: RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION,
                 idempotencyToken: `eval-work-${safeWork.id || generateArgosInventoryTransactionId('draft')}`,
                 actor: { username: String(currentUser || ''), display: String(currentUserDisplay || currentUser || ''), email: getArgosInventoryTransactionActorEmail(), role: getCurrentRoleAccessValue() },
                 source: { unique_id: String(safeWork.origin_unique_id || ''), source_table: 'ph_master_inventory', itemcode: String(safeWork.itemcode || ''), lotcode: String(safeWork.origin_lotcode || ''), locationcode: String(safeWork.origin_locationcode || '') },
@@ -46977,6 +46988,7 @@ let avTopControlsRenderToken = 0;
         const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION = 'reclass-action-workflow-v2-live-20260826';
         const RECLASS_ACTION_WORKFLOW_V3_ENABLED = true;
         const RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION = 'reclass-action-workflow-v3-row-actions-20260826';
+        const RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION = 'reclass-action-workflow-v4-split-moves-20261006';
         const RECLASS_ACTION_WORKFLOW_V2_SEASONS = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
         const RECLASS_ACTION_WORKFLOW_V2_CONFIG = Object.freeze({
             hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request', valueFields: Object.freeze(['holdstopcode', 'holdstopreason']), actionFields: Object.freeze(['included']) }),
@@ -47558,6 +47570,88 @@ let avTopControlsRenderToken = 0;
             return action ? proposals[action] : null;
         }
 
+        function cloneArgosReclassProposal(proposal = {}) {
+            const copy = { ...proposal };
+            if (['move_up', 'move_down'].includes(copy.action)) {
+                copy.splits = Array.isArray(copy.splits)
+                    ? copy.splits.map((split) => ({ ...split }))
+                    : [{ quantity: copy.moveQuantity ?? '', destinationSeason: copy.destinationSeason || '' }];
+                copy.applyHold = copy.applyHold === true;
+                copy.holdReason = String(copy.holdReason || '');
+                delete copy.moveQuantity;
+                delete copy.destinationSeason;
+            }
+            return copy;
+        }
+
+        function getArgosReclassMoveBalance(entry = null) {
+            const rawOh = String(entry && entry.values && entry.values.ptronhand != null ? entry.values.ptronhand : '').trim().replace(/,/g, '');
+            const onHand = rawOh ? Number(rawOh) : NaN;
+            const rowMap = getArgosReclassRowProposalMap(String(entry && entry.unique_id || ''), false) || {};
+            let requested = 0;
+            let incomplete = false;
+            ['move_up', 'move_down'].forEach((action) => {
+                if (!rowMap[action]) return;
+                const proposal = cloneArgosReclassProposal(rowMap[action]);
+                if (!proposal.splits.length) incomplete = true;
+                proposal.splits.forEach((split) => {
+                    const quantity = Number(String(split.quantity ?? '').trim());
+                    if (!Number.isSafeInteger(quantity) || quantity < 1) incomplete = true;
+                    else requested += quantity;
+                    if (!String(split.destinationSeason || '').trim()) incomplete = true;
+                });
+            });
+            return { onHand, requested, remaining: onHand - requested, incomplete };
+        }
+
+        function getArgosReclassMoveBalanceText(entry = null) {
+            const balance = getArgosReclassMoveBalance(entry);
+            return `On Hand: ${Number.isFinite(balance.onHand) ? balance.onHand : 'Unknown'} · Requested (Up + Down): ${balance.requested} · Remaining: ${Number.isFinite(balance.remaining) ? balance.remaining : 'Unknown'}${balance.incomplete ? ' · Finish all split rows' : ''}`;
+        }
+
+        function markArgosReclassProposalEdited(uid = '') {
+            if (argosReclassMultiActionState.rowResolutions instanceof Map) argosReclassMultiActionState.rowResolutions.delete(uid);
+            if (argosInventoryTransactionState) argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
+            captureEvalWorkLocalDraftSoon();
+        }
+
+        function changeArgosReclassMoveSplit(button = null, action = '', splitIndex = -1) {
+            const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
+            const uid = String(card && card.getAttribute('data-reclass-row-card') || '');
+            const proposal = getArgosReclassV3Proposal(uid, action);
+            if (!proposal || !['move_up', 'move_down'].includes(action)) return false;
+            Object.assign(proposal, cloneArgosReclassProposal(proposal));
+            if (splitIndex < 0) {
+                if (proposal.splits.length >= 100) return false;
+                proposal.splits.push({ quantity: '', destinationSeason: '' });
+            } else if (Number.isInteger(splitIndex) && splitIndex < proposal.splits.length && proposal.splits.length > 1) {
+                proposal.splits.splice(splitIndex, 1);
+            } else return false;
+            markArgosReclassProposalEdited(uid);
+            refreshArgosReclassMultiActionUi();
+            const nextIndex = splitIndex < 0 ? proposal.splits.length - 1 : Math.min(splitIndex, proposal.splits.length - 1);
+            const nextInput = card.querySelector(`[data-reclass-move-action="${action}"] [data-reclass-split-index="${nextIndex}"][data-reclass-v3-proposal-field="quantity"]`);
+            if (nextInput) nextInput.focus({ preventScroll: true });
+            return false;
+        }
+
+        function collectArgosReclassMoveProposal(proposal, entry, rule) {
+            const draft = cloneArgosReclassProposal(proposal);
+            const originalOh = Number(String(entry.values.ptronhand ?? '').trim().replace(/,/g, ''));
+            if (!draft.splits.length || draft.splits.length > 100) throw new Error(`${rule.label} requires between 1 and 100 destination rows.`);
+            const splits = draft.splits.map((split) => {
+                const quantity = Number(String(split.quantity ?? '').trim());
+                if (!Number.isSafeInteger(quantity) || quantity < 1 || !Number.isFinite(originalOh) || quantity > originalOh) throw new Error(`${rule.label} Qty must be a whole number from 1 through original OH.`);
+                const destinationSeason = String(split.destinationSeason || '').trim().toUpperCase();
+                if (!RECLASS_ACTION_WORKFLOW_V2_SEASONS.includes(destinationSeason)) throw new Error(`${rule.label} requires a configured destination season for every split.`);
+                if (destinationSeason === getArgosReclassRowCurrentSeason(entry)) throw new Error(`${rule.label} destination season must differ from the current season.`);
+                return { quantity, destinationSeason };
+            });
+            const holdReason = draft.applyHold ? draft.holdReason.trim().toLowerCase() : '';
+            if (draft.applyHold && (!holdReason || holdReason.length > 1000)) throw new Error(`${rule.label} requires a Hold reason of 1–1,000 characters for moved quantities.`);
+            return { action: draft.action, splits, applyHold: draft.applyHold, holdReason };
+        }
+
         function getArgosReclassV3ScopeActionsForEntry(entry = null) {
             const proposal = getArgosReclassV3HoldProposal();
             if (!proposal) return [];
@@ -47664,7 +47758,7 @@ let avTopControlsRenderToken = 0;
                 } else {
                     const rowMap = getArgosReclassRowProposalMap(uid, true);
                     if (rule.kind === 'priority') rowMap[normalized] = { action: normalized, priority: String(values.priority == null ? '' : values.priority) };
-                    else if (rule.kind === 'move') rowMap[normalized] = { action: normalized, moveQuantity: '', destinationSeason: '' };
+                    else if (rule.kind === 'move') rowMap[normalized] = { action: normalized, splits: [{ quantity: '', destinationSeason: '' }], applyHold: false, holdReason: '' };
                     else rowMap[normalized] = { action: normalized };
                 }
             }
@@ -47681,6 +47775,22 @@ let avTopControlsRenderToken = 0;
             const field = String(input && input.getAttribute('data-reclass-v3-proposal-field') || '').trim();
             const proposal = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassV3HoldProposal() : getArgosReclassV3Proposal(uid, action);
             if (!proposal || !field) return false;
+            if (['move_up', 'move_down'].includes(action)) {
+                const splitIndex = Number(input.getAttribute('data-reclass-split-index'));
+                if (field === 'applyHold') proposal.applyHold = input.checked === true;
+                else if (field === 'holdReason') proposal.holdReason = String(input.value ?? '');
+                else if (['quantity', 'destinationSeason'].includes(field) && Number.isInteger(splitIndex) && proposal.splits && proposal.splits[splitIndex]) proposal.splits[splitIndex][field] = String(input.value ?? '');
+                else return false;
+                const entry = getArgosReclassRowEditorEntry(uid);
+                card.querySelectorAll('[data-reclass-move-balance]').forEach((node) => {
+                    node.textContent = getArgosReclassMoveBalanceText(entry);
+                    node.setAttribute('data-over-limit', String(getArgosReclassMoveBalance(entry).remaining < 0));
+                });
+                const reasonLabel = input.closest('[data-reclass-move-action]').querySelector('[data-reclass-move-hold-reason]');
+                if (reasonLabel) reasonLabel.hidden = !proposal.applyHold;
+                markArgosReclassProposalEdited(uid);
+                return true;
+            }
             const value = field === 'holdstopreason' || field === 'reason'
                 ? String(input.value == null ? '' : input.value).toLowerCase()
                 : String(input.value == null ? '' : input.value);
@@ -47691,7 +47801,7 @@ let avTopControlsRenderToken = 0;
                     if (other !== input && other.getAttribute('data-reclass-v3-proposal-action') === action) other.value = value;
                 });
             }
-            captureEvalWorkLocalDraftSoon();
+            markArgosReclassProposalEdited(uid);
             return true;
         }
 
@@ -47716,8 +47826,14 @@ let avTopControlsRenderToken = 0;
             if (rule.kind === 'move') {
                 const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
                 const currentSeason = getArgosReclassRowCurrentSeason(entry);
-                const seasonOptions = RECLASS_ACTION_WORKFLOW_V2_SEASONS.filter((season) => season !== currentSeason).map((season) => `<option value="${escapeHtml(season)}" ${String(proposal.destinationSeason || '').toUpperCase() === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('');
-                return `<label class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)} · Qty</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(originalOh) ? Math.trunc(originalOh) : ''))}" value="${escapeHtml(proposal.moveQuantity || '')}" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="moveQuantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)} · To Season</span><select class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Choose season</option>${seasonOptions}</select><small>Move Up + Move Down quantities together cannot exceed original OH.</small></label>`;
+                Object.assign(proposal, cloneArgosReclassProposal(proposal));
+                const label = normalized === 'move_up' ? 'Move Up' : 'Move Down';
+                const splitRows = proposal.splits.map((split, index) => {
+                    const options = RECLASS_ACTION_WORKFLOW_V2_SEASONS.filter((season) => season !== currentSeason).map((season) => `<option value="${escapeHtml(season)}" ${String(split.destinationSeason || '').toUpperCase() === season ? 'selected' : ''}>${escapeHtml(season)}</option>`).join('');
+                    const attrs = `data-reclass-v3-proposal-action="${normalized}" data-reclass-split-index="${index}"`;
+                    return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Quantity ${index + 1}</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(originalOh) ? originalOh : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination ${index + 1}</span><select class="argos-reclass-row-input" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Choose season</option>${options}</select></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>Remove</button></div>`;
+                }).join('');
+                return `<fieldset class="argos-reclass-move-editor" data-reclass-move-action="${normalized}"><legend>${escapeHtml(rule.label)}</legend><p data-reclass-move-balance data-over-limit="${getArgosReclassMoveBalance(entry).remaining < 0}" role="status">${escapeHtml(getArgosReclassMoveBalanceText(entry))}</p>${splitRows}<button type="button" class="argos-reclass-action-btn" onclick="return changeArgosReclassMoveSplit(this,'${normalized}')" ${proposal.splits.length >= 100 ? 'disabled' : ''}>Add destination</button><label class="argos-reclass-move-hold"><input type="checkbox" data-reclass-v3-proposal-action="${normalized}" data-reclass-v3-proposal-field="applyHold" onchange="return handleArgosReclassV3ProposalInput(this)" ${proposal.applyHold ? 'checked' : ''}><span>Place moved quantities On Hold</span></label><label class="argos-reclass-action-proposal" data-reclass-move-hold-reason ${proposal.applyHold ? '' : 'hidden'}><span>Hold reason</span><textarea class="argos-reclass-row-input" aria-label="${label} Hold reason" maxlength="1000" data-reclass-v3-proposal-action="${normalized}" data-reclass-v3-proposal-field="holdReason" oninput="return handleArgosReclassV3ProposalInput(this)">${escapeHtml(proposal.holdReason)}</textarea></label><small>Requested changes only. Hold applies to all quantities in this ${label} request, not to the source row or other inventory.</small></fieldset>`;
             }
             return `<div class="argos-reclass-action-proposal"><span>Re-Count Request</span><strong>Read-only Item Inquiry</strong><small>No proposed value boxes are added.</small></div>`;
         }
@@ -47932,15 +48048,8 @@ let avTopControlsRenderToken = 0;
                         const originalPriority = Number.isInteger(originalNumber) ? String(originalNumber) : originalRaw;
                         if (outgoing.priority === originalPriority) throw new Error('Priority Change must add, replace, or remove the selected row Priority.');
                     } else if (rule.kind === 'move') {
-                        const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
-                        const moveQuantity = Number(String(proposal.moveQuantity == null ? '' : proposal.moveQuantity).trim());
-                        if (!Number.isInteger(moveQuantity) || moveQuantity < 1 || !Number.isFinite(originalOh) || moveQuantity > originalOh) throw new Error(`${rule.label} Qty must be a whole number from 1 through original OH.`);
-                        const destinationSeason = String(proposal.destinationSeason || '').trim().toUpperCase();
-                        if (!RECLASS_ACTION_WORKFLOW_V2_SEASONS.includes(destinationSeason)) throw new Error(`${rule.label} requires a configured destination season.`);
-                        if (destinationSeason === getArgosReclassRowCurrentSeason(entry)) throw new Error(`${rule.label} destination season must differ from the current season.`);
-                        outgoing.moveQuantity = moveQuantity;
-                        outgoing.destinationSeason = destinationSeason;
-                        combinedMoveQuantity += moveQuantity;
+                        Object.assign(outgoing, collectArgosReclassMoveProposal(proposal, entry, rule));
+                        combinedMoveQuantity += outgoing.splits.reduce((sum, split) => sum + split.quantity, 0);
                     }
                     requestActions.add(action);
                     proposals.push(outgoing);
@@ -48858,7 +48967,7 @@ let avTopControlsRenderToken = 0;
                     return {
                         type: 'reclass_inquiry_email',
                         action: 'reclass',
-                        workflowPolicyVersion: RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION,
+                        workflowPolicyVersion: RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION,
                         idempotencyToken: String(state.idempotencyToken || generateArgosInventoryTransactionId('reclass_inquiry')).trim(),
                         actor: {
                             username: String(currentUser || '').trim(),
@@ -49292,7 +49401,7 @@ let avTopControlsRenderToken = 0;
                                 [action]: { action, reason: rule && rule.kind === 'hold_on' ? String(proposal.holdstopreason || '').trim().toLowerCase() : '', sourceUid: uid }
                             };
                         }
-                    } else if (RECLASS_ACTION_WORKFLOW_V3_ORDER.includes(action)) proposalMap[action] = Object.assign({}, proposal);
+                    } else if (RECLASS_ACTION_WORKFLOW_V3_ORDER.includes(action)) proposalMap[action] = cloneArgosReclassProposal(proposal);
                 });
                 if (Object.keys(proposalMap).length) argosReclassMultiActionState.rowProposals.set(uid, proposalMap);
                 const temporaryValues = overlay && overlay.temporaryValues && typeof overlay.temporaryValues === 'object' && !Array.isArray(overlay.temporaryValues)

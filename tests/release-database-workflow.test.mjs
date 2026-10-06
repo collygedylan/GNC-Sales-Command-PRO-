@@ -127,6 +127,8 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     '20261005225759_structured_bunch_notes.sql',
     '20261006110751_bunch_note_per_card_work.sql',
     '20261006111244_bunch_note_card_commands.sql',
+    '20261006145333_reclass_split_move_inquiries_v4.sql',
+    '20261006150745_reclass_split_move_eval_submit_guards.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
@@ -207,7 +209,7 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     'bunch_note_workflow_test.sql', 'bunch_note_per_card_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
     'pikes_orders_rls_test.sql', 'request_eval_drive_reliability_test.sql',
     'reclass_review_assignedto_test.sql', 'request_option_append_test.sql',
-    'drive_reclass_protected_test.sql', 'drive_evidence_retry_storm_test.sql',
+    'drive_reclass_protected_test.sql', 'reclass_split_move_v4_test.sql', 'drive_evidence_retry_storm_test.sql',
     'shear_location_inquiry_v1_test.sql',
     'photo_delivery_health_rls_test.sql', 'photo_history_rls_test.sql',
     'function_search_path_pinning_test.sql', 'season_sales_done_lifecycle_test.sql',

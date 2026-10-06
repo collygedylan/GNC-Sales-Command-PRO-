@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -139,7 +139,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -181,6 +181,28 @@ test('Bunch card release contracts require private RLS storage and a service-onl
     assert.equal((await applyItemLowStockMigration({client,source:'begin; select 1; commit;',targetMigrationName:name})).status,'applied');
     assert.ok(calls.some(c=>c.sql===contract));
   }
+});
+
+test('Reclass split-move V4 release contract is service-only and preserves legacy validation', async () => {
+  const contract = migrationContractQuery(reclassSplitMoveMigrationName);
+  assert.match(contract, /enqueue_drive_reclass_inquiry_v4/);
+  assert.match(contract, /not has_function_privilege\('authenticated'/);
+  assert.match(contract, /validate_eval_work_inquiry_legacy_v1/);
+  const calls = [];
+  const client = { query: async (sql) => { calls.push(sql); return { rows: sql === contract ? [{ installed: true }] : [] }; } };
+  assert.equal((await applyItemLowStockMigration({ client, source: 'begin; select v4; commit;', targetMigrationName: reclassSplitMoveMigrationName })).status, 'applied');
+  assert.ok(calls.includes(contract));
+});
+
+test('Reclass EvalWork submit guards retain service-only entry points and V4 content binding', async () => {
+  const contract = migrationContractQuery(reclassEvalSubmitGuardsMigrationName);
+  assert.match(contract,/submission_request_fingerprint/);
+  assert.match(contract,/submit_eval_work_legacy_v1/);
+  assert.match(contract,/not has_function_privilege\('service_role'/);
+  const calls=[];
+  const client={query:async(sql)=>{calls.push(sql);return {rows:sql===contract?[{installed:true}]:[]};}};
+  assert.equal((await applyItemLowStockMigration({client,source:'begin; select eval_submit_guard; commit;',targetMigrationName:reclassEvalSubmitGuardsMigrationName})).status,'applied');
+  assert.ok(calls.includes(contract));
 });
 
 test('archive-only health repair remains private and fails closed before publication', async () => {

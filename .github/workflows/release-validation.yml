@@ -426,6 +426,24 @@ jobs:
             browsers: webkit
             shard: 1
             total: 1
+          - suite: reclass-splits
+            config: playwright.reclass-splits.config.ts
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: reclass-splits
+            config: playwright.reclass-splits.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: reclass-splits
+            config: playwright.reclass-splits.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: bunch-note
             config: playwright.bunch-note.config.ts
             project: cache-chromium

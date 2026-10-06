@@ -12283,6 +12283,8 @@ const RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = 'reclass-action-workflow-v2-live-20260826';
 const RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = 'reclass-action-workflow-v3-row-actions-20260826';
+const RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = true;
+const RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = 'reclass-action-workflow-v4-split-moves-20261006';
 const RECLASS_INQUIRY_DESTINATION_SEASONS_V2_ = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
 const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request' }),
@@ -12850,6 +12852,7 @@ function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authorit
 
 function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overlays, authoritativeScope, options) {
   const safeOptions = options && typeof options === 'object' ? options : {};
+  const isV4 = safeOptions.policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
   const allowEmptyActions = safeOptions.allowEmptyActions === true;
   const now = safeOptions.now instanceof Date ? safeOptions.now : new Date();
   const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope', 'seasonPriority'], 'The Reclass transaction');
@@ -12990,6 +12993,10 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
       const expectedOh = String(expected.ptronhand == null ? '' : expected.ptronhand).trim().replace(/,/g, '');
       if (currentOh !== expectedOh) return { ok: false, status: 'conflict', message: 'OH changed for an Item Inquiry row. Sync and review it before sending.' };
     }
+    if (isV4 && overlay.proposals.some(function(proposal) { return proposal && ['move_up', 'move_down'].indexOf(String(proposal.action || '').trim().toLowerCase()) !== -1; })
+        && !Object.prototype.hasOwnProperty.call(expected, 'ptronhand')) {
+      throw new Error('Split Move proposals require the expected original OH. Refresh and review the row before sending.');
+    }
     const values = {};
     RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) { values[field.key] = getReclassInquiryExactValue_(row, field.aliases, ''); });
     const actionValues = {};
@@ -13041,18 +13048,44 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
         values.priority = requestedPriority;
         changedFields.push('priority');
       } else if (rule.kind === 'move') {
-        const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'moveQuantity', 'destinationSeason'], 'A Move proposal');
         const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
-        const quantity = Number(proposal.moveQuantity);
-        if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1 || quantity > originalOh) throw new Error(rule.label + ' Qty must be a whole number from 1 through original OH.');
-        const destination = String(proposal.destinationSeason || '').trim().toUpperCase();
-        if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
-        if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
-        combinedMoveQuantity += quantity;
         const prefix = action === 'move_up' ? 'moveup' : 'movedown';
-        actionValues[prefix + 'quantity'] = String(quantity);
-        actionValues[prefix + 'season'] = destination;
-        changedFields.push(prefix + 'quantity', prefix + 'season');
+        if (isV4) {
+          const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'splits', 'applyHold', 'holdReason'], 'A Move proposal');
+          if (!Array.isArray(proposal.splits) || !proposal.splits.length || proposal.splits.length > 100) throw new Error(rule.label + ' requires between 1 and 100 destination splits.');
+          const applyHold = proposal.applyHold === true;
+          if (proposal.applyHold !== undefined && typeof proposal.applyHold !== 'boolean') throw new Error(rule.label + ' Place on Hold must be a boolean.');
+          const holdReason = String(proposal.holdReason == null ? '' : proposal.holdReason).trim().toLowerCase();
+          if (applyHold && !holdReason) throw new Error(rule.label + ' Place on Hold requires a reason.');
+          if (holdReason.length > 1000) throw new Error(rule.label + ' hold reason must be 1000 characters or fewer.');
+          if (!applyHold && holdReason) throw new Error(rule.label + ' hold reason must be blank unless Place on Hold is selected.');
+          const splits = proposal.splits.map(function(rawSplit) {
+            const split = assertReclassInquiryObjectKeysV2_(rawSplit, ['quantity', 'destinationSeason'], 'A Move split');
+            const quantity = Number(split.quantity);
+            if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1) throw new Error(rule.label + ' split quantity must be a positive whole number.');
+            const destination = String(split.destinationSeason || '').trim().toUpperCase();
+            if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
+            if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
+            combinedMoveQuantity += quantity;
+            return { quantity: quantity, destinationSeason: destination };
+          });
+          actionValues[prefix + 'splits'] = splits;
+          actionValues[prefix + 'applyhold'] = applyHold;
+          actionValues[prefix + 'holdreason'] = applyHold ? holdReason : '';
+          changedFields.push(prefix + 'splits');
+          if (applyHold) changedFields.push(prefix + 'applyhold', prefix + 'holdreason');
+        } else {
+          const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'moveQuantity', 'destinationSeason'], 'A Move proposal');
+          const quantity = Number(proposal.moveQuantity);
+          if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1 || quantity > originalOh) throw new Error(rule.label + ' Qty must be a whole number from 1 through original OH.');
+          const destination = String(proposal.destinationSeason || '').trim().toUpperCase();
+          if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
+          if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
+          combinedMoveQuantity += quantity;
+          actionValues[prefix + 'quantity'] = String(quantity);
+          actionValues[prefix + 'season'] = destination;
+          changedFields.push(prefix + 'quantity', prefix + 'season');
+        }
       } else if (rule.kind === 'recount') {
         assertReclassInquiryObjectKeysV2_(baseProposal, ['action'], 'A Re-Count proposal');
       }
@@ -13228,7 +13261,7 @@ function buildReclassInquiryReportText_(model) {
   const safeModel = model || {};
   const identity = safeModel.identity || {};
   const editSummary = safeModel.editSummary || {};
-  return [
+  const body = [
     'GNC PH Reclass Item Inquiry',
     'Submitted: ' + String(safeModel.submittedAt || ''),
     'Submitted By: ' + String(safeModel.actorDisplay || ''),
@@ -13238,10 +13271,12 @@ function buildReclassInquiryReportText_(model) {
     'Container: ' + String(identity.contsize || ''),
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
-    buildSeasonPriorityDecisionText_(safeModel),
-    '',
-    'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.'
-  ].join('\n');
+    buildSeasonPriorityDecisionText_(safeModel)
+  ];
+  const splitMoveText = buildReclassInquirySplitMoveText_(safeModel);
+  if (splitMoveText) body.push(splitMoveText);
+  body.push('', 'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.');
+  return body.join('\n');
 }
 
 function buildSeasonPriorityDecisionText_(model) {
@@ -13265,10 +13300,87 @@ function buildReclassInquiryEmailHtml_(model) {
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
+    buildReclassInquirySplitMoveHtml_(safeModel),
     safeModel.transaction && safeModel.transaction.seasonPriority ? '<p style="white-space:pre-line;overflow-wrap:anywhere;">' + escapeEmailHtml_(buildSeasonPriorityDecisionText_(safeModel)) + '</p>' : '',
     '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.</p>',
     '</div>'
   ].join(''));
+}
+
+function getReclassInquirySplitMoveEntries_(model) {
+  const entries = [];
+  (Array.isArray(model && model.rows) ? model.rows : []).forEach(function(row) {
+    const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+    const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
+    [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
+      const prefix = pair[0];
+      const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
+      splits.forEach(function(split) {
+        entries.push({
+          direction: pair[1], quantity: String(split && split.quantity != null ? split.quantity : ''),
+          destinationSeason: String(split && split.destinationSeason || '').toUpperCase(),
+          applyHold: actionValues[prefix + 'applyhold'] === true,
+          holdReason: String(actionValues[prefix + 'holdreason'] || '').trim().toLowerCase(),
+          location: String(values.locationcode || ''), lot: String(values.lotcode || '')
+        });
+      });
+    });
+  });
+  return entries;
+}
+
+function getReclassInquirySplitMoveSummaries_(model) {
+  return (Array.isArray(model && model.rows) ? model.rows : []).map(function(row) {
+    const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+    const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
+    let combinedTotal = 0;
+    let hasMoves = false;
+    const directions = [['moveup', 'UP'], ['movedown', 'DOWN']].map(function(pair) {
+      const splits = Array.isArray(actionValues[pair[0] + 'splits']) ? actionValues[pair[0] + 'splits'] : [];
+      if (!splits.length) return null;
+      const total = splits.reduce(function(sum, split) { return sum + Number(split && split.quantity || 0); }, 0);
+      combinedTotal += total;
+      hasMoves = true;
+      return { direction: pair[1], splits: splits, total: total };
+    }).filter(Boolean);
+    return hasMoves ? { location: String(values.locationcode || ''), lot: String(values.lotcode || ''), directions: directions, combinedTotal: combinedTotal } : null;
+  }).filter(Boolean);
+}
+
+function buildReclassInquirySplitMoveText_(model) {
+  const entries = getReclassInquirySplitMoveEntries_(model);
+  if (!entries.length) return '';
+  const lines = ['Move split instructions (request only; inventory was not changed):'].concat(entries.map(function(entry) {
+    return [entry.location, entry.lot, entry.direction + ' ' + entry.quantity + ' to ' + entry.destinationSeason,
+      entry.applyHold ? 'Place on Hold requested' + (entry.holdReason ? ': ' + entry.holdReason : '') : ''].filter(Boolean).join(' / ');
+  }));
+  const summaries = getReclassInquirySplitMoveSummaries_(model);
+  if (summaries.length) {
+    lines.push('Requested totals by source row:');
+    summaries.forEach(function(group) {
+      const directionText = group.directions.map(function(direction) {
+        return direction.direction + ' total requested: ' + String(direction.total);
+      }).join(' / ');
+      lines.push([group.location, group.lot, directionText, 'UP + DOWN total requested: ' + String(group.combinedTotal)].filter(Boolean).join(' / '));
+    });
+  }
+  return lines.join('\n');
+}
+
+function buildReclassInquirySplitMoveHtml_(model) {
+  const entries = getReclassInquirySplitMoveEntries_(model);
+  if (!entries.length) return '';
+  const esc = escapeEmailHtml_;
+  const summaries = getReclassInquirySplitMoveSummaries_(model);
+  const summaryHtml = summaries.length ? '<p><strong>Requested totals by source row</strong><br>' + summaries.map(function(group) {
+    const directionText = group.directions.map(function(direction) { return direction.direction + ' total requested: ' + String(direction.total); }).join(' · ');
+    return esc(group.location) + ' / ' + esc(group.lot) + ' — ' + esc(directionText) + ' · UP + DOWN total requested: ' + esc(String(group.combinedTotal));
+  }).join('<br>') + '</p>' : '';
+  return '<section style="margin:14px 0;padding:12px;border:1px solid #94a3b8;border-radius:8px;overflow-wrap:anywhere;"><strong>Move split instructions (request only; inventory was not changed)</strong>' + summaryHtml + '<ul>'
+    + entries.map(function(entry) {
+      return '<li>' + esc(entry.location) + ' / ' + esc(entry.lot) + ' — ' + esc(entry.direction + ' ' + entry.quantity + ' to ' + entry.destinationSeason)
+        + (entry.applyHold ? ' — Place on Hold requested' + (entry.holdReason ? ': ' + esc(entry.holdReason) : '') : '') + '</li>';
+    }).join('') + '</ul></section>';
 }
 
 function sortReclassInquiryCompactRows_(rows) {
@@ -13340,6 +13452,31 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       if (field.key === 'ptronhand') {
         const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
         const movementLines = [];
+        const v4MovementDetails = [];
+        const v4MovementSummaries = [];
+        let combinedSplitTotal = 0;
+        let hasV4Splits = false;
+        [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
+          const prefix = pair[0];
+          const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
+          if (splits.length) {
+            const directionTotal = splits.reduce(function(sum, split) { return sum + Number(split && split.quantity || 0); }, 0);
+            combinedSplitTotal += directionTotal;
+            hasV4Splits = true;
+            const sourceLabel = String(row && row.values && row.values.locationcode || 'Unknown Location') + ' / ' + String(row && row.values && row.values.lotcode || 'Unknown Lot') + ' · ';
+            v4MovementSummaries.push(buildReclassInquiryProposalBoxHtml_(sourceLabel + pair[1] + ' split total requested: ' + String(directionTotal), 'proposal-box-movement'));
+          }
+          splits.forEach(function(split) {
+            const hold = actionValues[prefix + 'applyhold'] === true
+              ? ' · PLACE ON HOLD REQUESTED' + (actionValues[prefix + 'holdreason'] ? ': ' + actionValues[prefix + 'holdreason'] : '')
+              : '';
+            const sourceLabel = String(row && row.values && row.values.locationcode || 'Unknown Location') + ' / ' + String(row && row.values && row.values.lotcode || 'Unknown Lot') + ' · ';
+            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(sourceLabel + pair[1] + ' ' + String(split && split.quantity != null ? split.quantity : '')
+              + ' TO ' + String(split && split.destinationSeason || '').toUpperCase() + hold, 'proposal-box-movement'));
+          });
+        });
+        if (hasV4Splits) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP + DOWN total requested: ' + String(combinedSplitTotal), 'proposal-box-movement'));
+        movementLines.push.apply(movementLines, v4MovementSummaries.concat(v4MovementDetails));
         if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.moveupquantity).trim() + ' TO ' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('DOWN ' + String(actionValues.movedownquantity).trim() + ' TO ' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         if (!movementLines.length && String(actionValues.movequantity || '').trim()) {
@@ -13396,7 +13533,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       }).join('')
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
     '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span>Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
     '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + supplementalTemporaryHtml + '</body></html>';
 }
@@ -13622,7 +13759,7 @@ function enqueueReclassInquiryEmail_(payload) {
     return { ok: false, status: 'unauthorized', message: 'Refresh the app and sign in before sending this Drive Mode inquiry.' };
   }
   const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
-  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
+  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
     return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app and review the current rows.' };
   }
   const recipients = getReclassInquiryEmailRecipients_(safePayload);
@@ -13670,7 +13807,8 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
     const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
     const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
-    const isV3 = RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_;
+    const isV4 = RECLASS_ACTION_WORKFLOW_V4_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
+    const isV3 = (RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_) || isV4;
     const isV2 = RECLASS_ACTION_WORKFLOW_V2_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
     if (!isV3 && !isV2) {
       throw new Error('RECLASS_CONFLICT:WORKFLOW_POLICY_CHANGED');
@@ -13687,7 +13825,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     let overlayResult;
     try {
       overlayResult = isV3
-        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now })
+        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now, policyVersion: isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '' })
         : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
     } catch (validationError) {
       throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
@@ -13735,7 +13873,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
       });
       result.subject = subject;
       result.submittedAt = now.toISOString();
-      result.policyVersion = isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
+      result.policyVersion = isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : (isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_);
       result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Requested changes are highlighted yellow; no inventory data was changed.';
       return result;
     } catch (emailError) {
@@ -16546,6 +16684,8 @@ function buildEvalWorkReportModel_(eventPayload) {
     return current;
   }) : allCurrentItemRows;
   const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
+  const inquiryPolicyVersion = normalizeInventoryTransactionText_(inquiry.workflowPolicyVersion);
+  const isV4Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
   const requestActions = Array.isArray(transaction.requestActions)
     ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
     : [];
@@ -16559,7 +16699,10 @@ function buildEvalWorkReportModel_(eventPayload) {
       const authoritativeScope = hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)
         ? fetchReclassInquiryScopeSettingsV3_()
         : null;
-      proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, { allowEmptyActions: true });
+      proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, {
+        allowEmptyActions: true,
+        policyVersion: isV4Inquiry ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : ''
+      });
     } catch (error) {
       throw new Error('EVAL_WORK_VALIDATION:' + String(error && error.message || 'PROPOSAL_INVALID'));
     }
