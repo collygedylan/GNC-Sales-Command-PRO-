@@ -177,12 +177,22 @@ test('stage builder consumes a compiled shell, rewrites only its output and requ
     await writeFile(path.join(site, 'sw.js'), 'self.addEventListener("fetch",()=>{});');
     await writeFile(path.join(site, 'manifest.json'), '{"start_url":"/"}');
     await writeFile(path.join(site, 'Code.gs'), 'function doGet() {}');
+    await mkdir(path.join(site, 'v2', 'assets'), { recursive: true });
+    await mkdir(path.join(site, 'reports'), { recursive: true });
+    await writeFile(path.join(site, 'v2', 'index.html'), '<html><script src="/v2/app.js"></script></html>');
+    await writeFile(path.join(site, 'v2', 'runtime-config.json'), '{"backend":"https://kzrnyjsosryejjejliii.supabase.co"}');
+    await writeFile(path.join(site, 'v2', 'assets', 'app.js'), 'fetch("https://kzrnyjsosryejjejliii.supabase.co/rest/v1/profiles")');
+    await writeFile(path.join(site, 'reports', 'index.html'), '<html><script>fetch("https://kzrnyjsosryejjejliii.supabase.co")</script></html>');
+    await mkdir(path.join(site, 'deployments'), { recursive: true });
+    await writeFile(path.join(site, 'deployments', 'unexpected.html'), '<html></html>');
     await writeFile(path.join(site, 'CNAME'), 'agmetricapp.com');
     await writeFile(path.join(site, 'OneSignalSDKWorker.js'), 'self.addEventListener("push",()=>{});');
     await writeFile(path.join(site, 'OneSignalSDKUpdaterWorker.js'), 'self.addEventListener("push",()=>{});');
     await writeFile(path.join(site, 'assets', runtimeName), `const SUPABASE_URL='https://old.supabase.co';const SUPABASE_KEY='old';const GOOGLE_SCRIPT_URL='https://script.google.com/';const APP_API_FUNCTION_URL=SUPABASE_URL+'/functions/v1/app-api';const NATIVE_AUTH_ALIAS_DOMAIN='production.example';let supabaseClient;function getSupabaseBrowserClient(){return window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{global:{fetch:(input,init)=>window.fetch(input,init)},auth:{storageKey:'gnc_supabase_auth_v1'}})}async function fetchWithTimeout(url,options={}){try{return await (window.GncLoginTrace?.fetch(url,options)??fetch(url,options))}finally{}}async function postGoogleScriptRawJsonPayload(payload={},timeoutMs=1000,label='Email'){return fetchWithTimeout(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)},timeoutMs,label)}`);
     const configPath = path.join(repo, 'config.json');
     await writeFile(configPath, JSON.stringify(config));
+    await assert.rejects(buildStagingSite({ siteDir: site, outputDir: out, configPath, commitSha: '0123456789abcdef0123456789abcdef01234567', repoRoot: repo }), /unexpected HTML entrypoint.*deployments\/unexpected\.html/);
+    await rm(path.join(site, 'deployments', 'unexpected.html'));
     await assert.rejects(buildStagingSite({ siteDir: site, outputDir: out, configPath, repoRoot: repo }), /full 40-character commit SHA/);
     const result = await buildStagingSite({ siteDir: site, outputDir: out, configPath, commitSha: '0123456789abcdef0123456789abcdef01234567', repoRoot: repo });
     const stagedHtml = await readFile(path.join(out, 'index.html'), 'utf8');
@@ -196,11 +206,20 @@ test('stage builder consumes a compiled shell, rewrites only its output and requ
     assert.doesNotMatch(stagedHtml, /connect-src[^;]*wss:|connect-src 'self' https:\/\/apztnscvagayslumnalr\.supabase\.co;/);
     assert.match(stagedRuntime, /apztnscvagayslumnalr/);
     assert.doesNotMatch(stagedRuntime, /old\.supabase\.co|script\.google\.com/);
+    assert.doesNotMatch(stagedHtml, /kzrnyjsosryejjejliii\.supabase\.co|script\.google\.com|agmetricapp\.com/i);
+    for (const relative of ['v2/index.html', 'v2/runtime-config.json', 'v2/assets/app.js', 'reports/index.html', 'Code.gs', 'CNAME', 'manifest.json']) {
+      await assert.rejects(readFile(path.join(out, relative)), /ENOENT/);
+    }
     await assert.rejects(readFile(path.join(out, 'sw.js')));
     await assert.rejects(readFile(path.join(out, 'manifest.json')));
     await assert.rejects(readFile(path.join(out, 'Code.gs')));
     await assert.rejects(readFile(path.join(out, 'CNAME')));
     await assert.rejects(readFile(path.join(out, 'OneSignalSDKWorker.js')));
     await assert.rejects(readFile(path.join(out, 'OneSignalSDKUpdaterWorker.js')));
+    await rm(out, { recursive: true });
+    await mkdir(path.join(site, 'assets', 'vendor'), { recursive: true });
+    await writeFile(path.join(site, 'assets', 'vendor', 'endpoint.json'), '{"url":"https://kzrnyjsosryejjejliii.supabase.co"}');
+    await assert.rejects(buildStagingSite({ siteDir: site, outputDir: out, configPath,
+      commitSha: '0123456789abcdef0123456789abcdef01234567', repoRoot: repo }), /unapproved production endpoint/);
   } finally { await rm(repo, { recursive: true, force: true }); }
 });

@@ -310,6 +310,53 @@ async function removeProductionPwaArtifacts(directory) {
   await visit(directory);
 }
 
+async function validateSourceEntrypoints(directory) {
+  async function visit(current, relative = '') {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const childRelative = path.posix.join(relative, entry.name);
+      if (entry.isDirectory()) {
+        await visit(path.join(current, entry.name), childRelative);
+      } else if (/\.html?$/i.test(entry.name)) {
+        const excludedLegacyTree = /^(?:v2|reports)\//i.test(childRelative);
+        invariant(childRelative === 'index.html' || excludedLegacyTree,
+          `unexpected HTML entrypoint in release artifact: ${childRelative}`);
+      }
+    }
+  }
+  await visit(directory);
+}
+
+async function copyReviewedShell(sourceSite, outputDir) {
+  await cp(path.join(sourceSite, 'index.html'), path.join(outputDir, 'index.html'));
+  const assets = path.join(sourceSite, 'assets');
+  const assetEntries = await readdir(assets);
+  invariant(assetEntries.length > 0, 'compiled shell assets directory is empty');
+  await cp(assets, path.join(outputDir, 'assets'), { recursive: true });
+  // The shell references root-level brand images. Keep those static pixels,
+  // while excluding additional app entrypoints and deployment metadata.
+  for (const entry of await readdir(sourceSite, { withFileTypes: true })) {
+    if (entry.isFile() && /\.(?:png|jpe?g|webp|gif|svg|ico)$/i.test(entry.name)) {
+      await cp(path.join(sourceSite, entry.name), path.join(outputDir, entry.name));
+    }
+  }
+}
+
+async function rejectProductionReferences(directory) {
+  const endpoint = /kzrnyjsosryejjejliii\.supabase\.co|script\.google\.com|agmetricapp\.com/i;
+  async function visit(current) {
+    for (const entry of await readdir(current, { withFileTypes: true })) {
+      const target = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        await visit(target);
+      } else if (/\.(?:html?|m?js|json|css|webmanifest|svg|map)$/i.test(entry.name)) {
+        const contents = await readFile(target, 'utf8');
+        invariant(!endpoint.test(contents), `unapproved production endpoint remained in staged executable/config file ${path.relative(directory, target)}`);
+      }
+    }
+  }
+  await visit(directory);
+}
+
 function injectStagingMarkup(html, config) {
   invariant((html.match(/<\/head>/gi) || []).length === 1, 'compiled shell must have one head close tag');
   const pathPrefix = config.basePath;
@@ -327,8 +374,10 @@ export async function buildStagingSite({ siteDir, outputDir, configPath = DEFAUL
   const sourceSite = path.resolve(siteDir);
   invariant(sourceSite !== path.resolve(outputDir) && sourceSite.startsWith(path.resolve(repoRoot)), 'input must be a repository site artifact');
   await readdir(sourceSite);
+  await validateSourceEntrypoints(sourceSite);
   await mkdir(path.dirname(outputDir), { recursive: true });
-  await cp(sourceSite, outputDir, { recursive: true, errorOnExist: true, force: false });
+  await mkdir(outputDir, { recursive: false });
+  await copyReviewedShell(sourceSite, outputDir);
   await removeProductionPwaArtifacts(outputDir);
   const htmlPath = path.join(outputDir, 'index.html');
   let html = await readFile(htmlPath, 'utf8');
@@ -346,6 +395,7 @@ export async function buildStagingSite({ siteDir, outputDir, configPath = DEFAUL
   await cp(path.join(repoRoot, 'scripts/staging/adapter.mjs'), path.join(outputDir, 'assets/staging-adapter.mjs'));
   await cp(path.join(repoRoot, 'scripts/staging/entry.mjs'), path.join(outputDir, 'assets/staging-entry.mjs'));
   await cp(path.join(repoRoot, 'scripts/staging/staging.css'), path.join(outputDir, 'assets/staging.css'));
+  await rejectProductionReferences(outputDir);
   return { outputDir: path.resolve(outputDir), runtimeName, commitSha: config.commitSha };
 }
 
