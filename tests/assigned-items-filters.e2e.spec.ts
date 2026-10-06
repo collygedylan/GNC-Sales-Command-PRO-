@@ -567,14 +567,16 @@ test('hybrid default owner edits retain failed choices and preserve independent 
     canManageEvalItemcodeAssignments = () => true;
     canManageItemLowStockTargets = () => false;
     managerAssignedItemsAssignedToFilter = 'all';
-    window.__hybridCalls = []; window.__hybridFail = true;
+    window.__hybridCalls = []; window.__hybridHealthEvents = []; window.__hybridFail = true;
     const host = document.createElement('div'); host.id = 'hybrid-fixture';
     host.style.cssText = 'position:fixed;inset:0 0 64px;overflow:auto;z-index:12000;background:white;padding:8px';
     document.body.appendChild(host);
     scheduleManagersRender = () => { host.innerHTML = renderManagerAssignedItemsPreviewTable(warehouseAssignedItemsInventory); };
     reloadWarehouseAssignmentsAfterMutation = async () => true;
     supabaseRpc = async (name,args) => {
+      if(name === 'report_app_health_event') { window.__hybridHealthEvents.push({name,args}); return true; }
       window.__hybridCalls.push({name,args:JSON.parse(JSON.stringify(args))});
+      if(name !== 'set_itemcode_default_owners_v1') throw new Error('Unexpected RPC in assignment fixture: ' + name);
       if(window.__hybridFail) throw new Error('Temporary network failure');
       return { contractVersion:'inventory-row-assignments-v1', defaults:[{itemcode:'HYBRID',assignedto:'megan_kelly',revision:3}],
         assignments:warehouseAssignedItemsInventory.map(row => ({ ...row, default_assignedto:'megan_kelly',default_revision:3,
@@ -593,6 +595,8 @@ test('hybrid default owner edits retain failed choices and preserve independent 
   await page.evaluate(() => window.eval('scheduleManagersRender()'));
   await expect(select).toHaveValue('megan_kelly');
   await expect(host.getByRole('alert')).toContainText('Temporary network failure');
+  await expect.poll(() => page.evaluate(() => (window as any).__hybridHealthEvents.length)).toBe(1);
+  expect(await page.evaluate(() => (window as any).__hybridHealthEvents[0].args.event_name)).toBe('eval_assignment_failed');
   expect(await page.evaluate(() => window.eval("warehouseAssignedItemsInventory.find(row=>row.master_unique_id==='outside').assignedto"))).toBe('dylan_collyge');
   await page.evaluate(() => { (window as any).__hybridFail = false; });
   await select.selectOption('megan_kelly');
@@ -600,7 +604,7 @@ test('hybrid default owner edits retain failed choices and preserve independent 
   const result = await page.evaluate(() => ({ calls:(window as any).__hybridCalls,
     rows:window.eval("warehouseAssignedItemsInventory.map(row=>({id:row.master_unique_id,owner:row.assignedto,defaultOwner:row.default_assignedto}))") }));
   expect(result.calls).toHaveLength(2);
-  expect(result.calls[0].name).toBe('set_itemcode_default_owners_v1');
+  expect(result.calls.map(call => call.name)).toEqual(['set_itemcode_default_owners_v1', 'set_itemcode_default_owners_v1']);
   expect(result.calls[0].args).toEqual(result.calls[1].args);
   expect(result.calls[0].args.p_changes).toEqual([{ itemcode:'HYBRID', assignedto:'megan_kelly', expectedRevision:2 }]);
   expect(result.rows).toEqual([
