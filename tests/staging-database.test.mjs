@@ -106,6 +106,26 @@ test('isolated SQL authorization, revisions, idempotency and delivery capture', 
     assert.deepEqual(await rpc('commit_photo',photoCommand),photoSaved);
     await assert.rejects(rpc('commit_photo',{...photoCommand,photo:{...photoCommand.photo,name:'Different'}}), /REQUEST_ID_REUSED/);
 
+    // Reapplying the staging seed must backfill only the missing assignment;
+    // previously saved review text and uploaded-photo metadata remain intact.
+    await db.query('reset role');
+    await db.query(`update teardown.rows
+      set data = data - 'app_tab_assignment', updated_at = clock_timestamp()
+      where collection = 'inventory' and id = 'staging-inventory-001'`);
+    const beforeBackfill = (await db.query(`select data, revision, updated_at
+      from teardown.rows where collection = 'inventory' and id = 'staging-inventory-001'`)).rows[0];
+    assert.equal(beforeBackfill.data.note, 'Saved staging note');
+    assert.equal(beforeBackfill.data.photos.length, 1);
+    await db.query(schema);
+    const afterBackfill = (await db.query(`select data, revision, updated_at
+      from teardown.rows where collection = 'inventory' and id = 'staging-inventory-001'`)).rows[0];
+    assert.equal(afterBackfill.data.app_tab_assignment, 'season');
+    assert.equal(afterBackfill.data.note, beforeBackfill.data.note);
+    assert.deepEqual(afterBackfill.data.photos, beforeBackfill.data.photos);
+    assert.equal(Number(afterBackfill.revision), Number(beforeBackfill.revision) + 1);
+    assert.ok(new Date(afterBackfill.updated_at) >= new Date(beforeBackfill.updated_at));
+    await db.query('set role authenticated');
+
     await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:actor,session_id:'40000000-0000-4000-8000-000000000099'})]);
     await assert.rejects(db.query('select public.teardown_bootstrap()'), /ACCESS_DENIED/);
     await db.query('reset role');

@@ -14,7 +14,7 @@ async function signIn(page) {
 }
 
 async function openSyntheticDriveRow(page) {
-  await page.locator('#footer-drive-btn').tap();
+  await page.locator('#bottom-nav [data-footer-view="drive"]').tap();
   await expect(page.locator('#view-drive')).toBeVisible();
   const card = page.locator('#drive-content [role="button"]').filter({ hasText: 'GNC Staging Red Maple' }).first();
   await expect(card).toBeVisible({ timeout: 45_000 });

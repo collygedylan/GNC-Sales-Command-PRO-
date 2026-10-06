@@ -215,7 +215,14 @@ begin
 end $$;
 
 insert into teardown.rows(collection,id,data) values
-('inventory','staging-inventory-001','{"unique_id":"staging-inventory-001","itemcode":"STAGING-001","commonname":"GNC Staging Red Maple","contsize":"#3","locationcode":"E.99.001","season":"F1","saleyear":"27","salesyear":"27","warehouseid":"10","warehousei":"10","ptravailable":"25","ptronhand":"25","lotcode":"27.F1","note":"Synthetic inventory for staging review","photos":[]}'),
+('inventory','staging-inventory-001','{"unique_id":"staging-inventory-001","itemcode":"STAGING-001","commonname":"GNC Staging Red Maple","contsize":"#3","locationcode":"E.99.001","season":"F1","saleyear":"27","salesyear":"27","app_tab_assignment":"season","warehouseid":"10","warehousei":"10","ptravailable":"25","ptronhand":"25","lotcode":"27.F1","note":"Synthetic inventory for staging review","photos":[]}'),
 ('requests','staging-request-001','{"unique_id":"staging-request-001","itemcode":"STAGING-001","commonname":"GNC Staging Red Maple","contsize":"#3","locationcode":"E.99.001","qty":"4","quantityordered":"4","customername":"GNC Staging Test Customer","consigneename":"GNC Staging Test Customer","completed":false,"assignedto":"dylan_collyge","request_source":"Request","note":"Synthetic request for staging review","photos":[]}')
 on conflict (collection,id) do nothing;
+update teardown.rows
+set data = data || jsonb_build_object('app_tab_assignment','season'),
+    revision = revision + 1,
+    updated_at = clock_timestamp()
+where collection = 'inventory'
+  and id = 'staging-inventory-001'
+  and coalesce(data->>'app_tab_assignment', data->>'APP_TAB_ASSIGNMENT', '') = '';
 commit;
