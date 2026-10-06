@@ -1,10 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
-import { installDriveCardLayoutFixture, renderDriveLayoutCard, settleDriveLayoutShell } from './fixtures/drive-card-layout';
+import { renderDriveLayoutCard, settleDriveLayoutShell } from './fixtures/drive-card-layout';
+import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
 // The real editor/submit handlers run against intercepted requests. Unknown
 // writes remain rejected by the existing fixture; no real inventory/email is used.
 async function fixture(page: Page, baseURL: string, project: string) {
-  const control = await installDriveCardLayoutFixture(page, baseURL);
+  // The backend fixture must return the same row as the mounted Drive card.
+  // Background inventory hydration can replace manually mounted rows.
+  const control = await installHlOrderFixture(page, baseURL, { role: 'ADMIN', username: 'dylan_collyge',
+    master: [hlMaster('drive-layout-synthetic-1-no-photo', { itemcode: 'LAYOUT.001-NO-PHOTO',
+      commonname: 'Synthetic Drive Card', contsize: '#3', locationcode: 'A.01.001', lotcode: '27.F1',
+      ptronhand: '25', ptrreviewed: '2', ptravailable: '13', priority: '2', holdstopcode: '' })],
+  });
   await settleDriveLayoutShell(page, project);
   const calls: any[] = [];
   let rejectNext = false;
@@ -78,7 +85,7 @@ test('split move holds require a reason and failed submissions retain all destin
   expect(f.calls[1].rowOverlays[0].proposals).toEqual([{ action: 'move_up', splits: [
     { quantity: 15, destinationSeason: 'X' }, { quantity: 5, destinationSeason: 'S1' }, { quantity: 5, destinationSeason: 'U1' },
   ], applyHold: true, holdReason: 'quality review' }]);
-  expect(await page.evaluate(() => window.eval(`({oh:fullInventory[0].PTRONHAND,season:fullInventory[0].SEASON,hold:fullInventory[0].HOLDSTOPCODE})`)))
+  expect(await page.evaluate(() => window.eval(`({oh:Number(fullInventory[0].PTRONHAND),season:fullInventory[0].SEASON,hold:fullInventory[0].HOLDSTOPCODE})`)))
     .toEqual({ oh: 25, season: 'F1', hold: '' });
   expect(f.control.blockedMutations).toEqual([]);
 });

@@ -47199,7 +47199,7 @@ let avTopControlsRenderToken = 0;
                         <button type="button" class="argos-tx-close active:scale-95" onclick="return closeArgosInventoryTransactionModal()" aria-label="Close inventory transaction"><i class="ph-bold ph-x text-xl"></i></button>
                     </div>
                     <div class="argos-tx-body">
-                        <div id="argos-inventory-transaction-notice" class="argos-tx-notice"><span class="font-black">Email Only</span> - Sending creates a printable inquiry. No inventory, History, audit, cache, or live-event data is changed.</div>
+                        <div id="argos-inventory-transaction-notice" class="argos-tx-notice"><span class="font-black">Email Only</span> - Sending creates a printable inquiry and a Requested history entry containing your instructions. Live inventory quantities and status remain unchanged.</div>
                         <div class="argos-tx-tabs" aria-label="Inventory transaction type">
                             <span class="argos-transaction-tab active" data-argos-transaction-tab="reclass"><i class="ph ph-arrows-clockwise"></i>Reclass</span>
                         </div>
@@ -48429,7 +48429,7 @@ let avTopControlsRenderToken = 0;
                 if (globalActionField) globalActionField.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V3_ENABLED);
                 if (globalQuickActions) globalQuickActions.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V3_ENABLED);
                 if (notice) {
-                    notice.innerHTML = '<span class="font-black">Email Only</span> - Sending creates a printable inquiry. No inventory, History, audit, cache, or live-event data is changed.';
+                    notice.innerHTML = '<span class="font-black">Email Only</span> - Sending creates a printable inquiry and a Requested history entry containing your instructions. Live inventory quantities and status remain unchanged.';
                     notice.classList.add('bg-emerald-50', 'text-emerald-800');
                 }
                 if (note) {
