@@ -232,7 +232,7 @@ begin
   if coalesce((job.body->>'format_version')::integer,0)>=5 and not author then raise exception 'BUNCH_NOTE_AUTHOR_ONLY' using errcode='42501'; end if;
   return bunch_note_private.bunch_note_command_legacy(p_actor,p_operation,p_payload,p_command_id,p_expected_revision);
  elsif p_operation='destination_lookup' then
-  if not author then
+  if not author and nullif(p_payload->>'job_id','') is not null then
    v_card_id:=nullif(p_payload->>'card_id','')::uuid;
    select * into job from bunch_note_private.jobs where id=(p_payload->>'job_id')::uuid;
    if not found then raise exception 'BUNCH_NOTE_NOT_FOUND' using errcode='42501'; end if;
