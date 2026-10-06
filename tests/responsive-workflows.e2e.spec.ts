@@ -521,8 +521,9 @@ test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Lo
       PTRONHAND: 25,
       PTRAVAILABLE: 25
     }));
-    const assignments = rows.map((row, index) => ({
-      UNIQUE_ID: 'eval2-auto-assignment-' + String(index + 1),
+    const assignments = rows.map((row) => ({
+      master_unique_id: row.UNIQUE_ID,
+      UNIQUE_ID: row.UNIQUE_ID,
       ITEMCODE: row.ITEMCODE,
       GENUSNAME: row.GENUSNAME,
       ASSIGNEDTO: 'dylan_collyge'
@@ -606,10 +607,12 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
         { UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', COMMONNAME: 'Delta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '4', S_LTS: 10, LOCATIONCODE: 'D.01.001', LOTCODE: '27.F1', PTRONHAND: 10, PTRREVIEWED: 0, PTRAVAILABLE: 10 },
         { UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', COMMONNAME: 'Gamma', CONTSIZE: '#7', SEASON: 'X', SALEYEAR: 27, PRIORITY: '3', S_LTS: 40, LOCATIONCODE: 'C.01.001' }
       ], warehouseAssignedItemsData: [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-a-other', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', ASSIGNEDTO: 'megan_kelly' },
-        { UNIQUE_ID: 'assign-d', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
+        { master_unique_id: 'mail-a', UNIQUE_ID: 'mail-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-b', UNIQUE_ID: 'mail-b', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-other-user', UNIQUE_ID: 'mail-other-user', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', ASSIGNEDTO: 'megan_kelly' },
+        { master_unique_id: 'mail-d1', UNIQUE_ID: 'mail-d1', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-d2', UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-c', UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
       ], _fromCache: true });
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -945,8 +948,9 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         { UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 15, ASSIGNEDTO: 'stale', LOCATIONCODE: 'C.03.001', BLOCKALPHA: 'C', BLOCKNUMBER: '03', LOTCODE: '27.X2', SOURCE: 'LD' },
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ], warehouseAssignedItemsData: [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
+        { master_unique_id: 'batch-a', UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-a2', UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-b', UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ], _fromCache: true });
       fullInventory = [
         { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
@@ -954,8 +958,9 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
+        { master_unique_id: 'batch-a', UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-a2', UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-b', UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');

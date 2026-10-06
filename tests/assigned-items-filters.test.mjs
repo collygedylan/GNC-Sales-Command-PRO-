@@ -280,3 +280,8 @@ test('Assigned Items filter panel clamps wide visual viewports to the layout vie
   assert.ok(left >= 0);
   assert.ok(left + width <= 412);
 });
+
+test('Assigned Items fixed dialog opts out of the generic non-fixed modal width rule', () => {
+  const source = helper('openManagerAssignedColumnFilter');
+  assert.match(source, /class="excel-filter-panel assigned-column-panel fixed"/);
+});
