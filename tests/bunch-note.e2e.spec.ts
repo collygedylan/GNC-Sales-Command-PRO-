@@ -360,6 +360,7 @@ test('combined move keeps its full destination and opens destination instruction
  await openAuthorLocation(page,'C.12.001');
  await page.getByLabel('Purposes',{exact:true}).fill('Grade and move');
  await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).check();
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
  const grading=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:/^Grading$/})});
  await grading.locator('summary').click();
@@ -522,6 +523,7 @@ test('phone steps retain failed saves and make mixed-year and unknown-year desti
  await page.getByRole('button',{name:'Inventory action editor',exact:true}).evaluate((el:HTMLButtonElement)=>{el.click();el.click();});
  await expect(page.getByRole('button',{name:'Open item BN-I',exact:true})).toBeVisible();
  expect(f.commands.filter(c=>c.operation==='save')).toHaveLength(2);
+ await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).check();
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
  await page.locator('.bn-action-choices').getByText('Inventory',{exact:true}).click();
  await page.getByRole('button',{name:'Move',exact:true}).click();
