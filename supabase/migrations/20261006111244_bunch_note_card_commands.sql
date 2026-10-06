@@ -393,7 +393,7 @@ declare a jsonb; card_aware boolean;
 begin
  card_aware:=coalesce((entry->>'format_version')::integer,0)>=5;
  if nullif(btrim(entry->>'purposes'),'') is null or jsonb_typeof(entry->'actions') is distinct from 'array'
-  or jsonb_array_length(entry->'actions') not between case when card_aware then 0 else 1 end and 200 then
+  or jsonb_array_length(entry->'actions')>200 or (not card_aware and jsonb_array_length(entry->'actions')=0) then
   raise exception 'BUNCH_NOTE_INSTRUCTIONS_REQUIRED';
  end if;
  if card_aware and (jsonb_typeof(entry->'cards') is distinct from 'array' or jsonb_array_length(entry->'cards')=0) then
