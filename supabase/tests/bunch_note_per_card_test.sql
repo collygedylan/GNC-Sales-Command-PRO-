@@ -103,13 +103,18 @@ begin
   from jsonb_array_elements(result->'jobs') j where j->>'id'=job_a::text),'worker list returns only the eligible card and its source row');
  result:=pg_temp.bn_card_call(w1,'get',jsonb_build_object('job_id',job_a));
  perform pg_temp.bn_card_check(jsonb_array_length(result->'job'->'cards')=1 and result->'job'->'cards'->0->>'id'=card_a::text,'unassigned card can be safely reviewed before claim');
- perform pg_temp.bn_card_reject(other,'get',jsonb_build_object('job_id',job_a),null,gen_random_uuid(),'BUNCH_NOTE_NOT_FOUND');
+ result:=pg_temp.bn_card_call(other,'get',jsonb_build_object('job_id',job_a));
+ perform pg_temp.bn_card_check(jsonb_array_length(result->'job'->'cards')=1 and result->'job'->'cards'->0->>'id'=card_a::text
+  and jsonb_array_length(result->'job'->'body'->'source')=1 and result->'job'->'body'->'source'->0->>'unique_id'='BN-CARD-A'
+  and jsonb_array_length(result->'job'->'body'->'actions')=1 and result->'job'->'body'->'actions'->0->>'id'='card-action-a',
+  'another eligible worker can review only the unassigned card before claim');
  perform pg_temp.bn_card_reject(w1,'claim_card',jsonb_build_object('job_id',job_a,'card_id',card_b),1,gen_random_uuid(),'BUNCH_NOTE_ALREADY_CLAIMED');
 
  command_id:=gen_random_uuid();
  result:=pg_temp.bn_card_call(w1,'claim_card',jsonb_build_object('job_id',job_a,'card_id',card_a),1,command_id);
  replay:=pg_temp.bn_card_call(w1,'claim_card',jsonb_build_object('job_id',job_a,'card_id',card_a),1,command_id);
  perform pg_temp.bn_card_check(result=replay and (select revision=2 and owner_id=w1 from bunch_note_private.bunch_note_work_cards where bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_a) and card_id=card_a),'claim retry is idempotent and increments only the selected card revision');
+ perform pg_temp.bn_card_reject(other,'get',jsonb_build_object('job_id',job_a),null,gen_random_uuid(),'BUNCH_NOTE_NOT_FOUND');
  perform pg_temp.bn_card_reject(w1,'progress',jsonb_build_object('job_id',job_a,'card_id',card_a,'action_id','card-action-a','status','done'),1,gen_random_uuid(),'BUNCH_NOTE_REVISION_CONFLICT');
  perform pg_temp.bn_card_reject(w1,'progress',jsonb_build_object('job_id',job_a,'card_id',card_a,'action_id','card-action-b','status','done'),2,gen_random_uuid(),'BUNCH_NOTE_ACTION_CARD_INVALID');
  perform pg_temp.bn_card_reject(w1,'actual',jsonb_build_object('job_id',job_a,'card_id',card_a,'action_id','card-action-a','source_id','BN-CARD-B','quantity','1'),2,gen_random_uuid(),'BUNCH_NOTE_CARD_SOURCE_INVALID');
