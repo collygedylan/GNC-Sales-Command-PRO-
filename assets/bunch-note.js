@@ -63,7 +63,33 @@
  const author = () => account() === 'dylan_collyge' && typeof nativeAuthSessionActive !== 'undefined' && nativeAuthSessionActive === true && typeof nativeAuthProfile !== 'undefined' && nativeAuthProfile?.username === 'dylan_collyge'
   && !nativeAuthProfile.disabled_at && nativeAuthProfile.must_change_password === false
   && (!nativeAuthProfile.locked_until || Date.parse(nativeAuthProfile.locked_until) <= Date.now());
- function reset() { state.urls.forEach(url => URL.revokeObjectURL(url)); state = fresh(); state.account = account(); }
+ const structuredHandles = new Map();
+ let structuredModule;
+ let structuredGeneration = 0;
+ function disposeView() { structuredGeneration++; structuredHandles.forEach(h => h.destroy()); structuredHandles.clear(); }
+ function reset() { disposeView(); state.urls.forEach(url => URL.revokeObjectURL(url)); state = fresh(); state.account = account(); }
+ function structuredProps(host) {
+  const mode=host.dataset.bnStructured, index=Number(host.dataset.index);
+  const j=state.detail?.job;
+  return {mode,disabled:state.busy,
+   value:mode==='read'?{...j.body,location:j.location,actions:allActions(j)}:state.draft.body.locations[index],
+   progress:j?.progress||{},
+   onChange:value=>{if(state.busy||!author())return;invalidate();const current=state.draft.body.locations[index];state.draft.body.locations[index]={...current,...(mode==='header'?{direction:value.direction,target_houses:value.target_houses}:{house_sections:value.house_sections,actions:value.actions})};structuredHandles.get(host)?.update(structuredProps(host));},
+   onDetails:id=>root.BunchNote.editPlanned(index,id),
+   onWork:id=>{const action=allActions(j).find(a=>a.id===id);const row=j.body.source.find(r=>action?.row_ids?.includes(r.unique_id));state.item=action?.scope==='rows'&&row?groupItems([row])[0].key:'';state.workAction=id;render();document.querySelector('[data-bn-work-action="'+CSS.escape(id)+'"]')?.scrollIntoView({block:'start',behavior:'smooth'});}
+  };
+ }
+ async function mountStructured(container) {
+  const hosts=Array.from(container.querySelectorAll('[data-bn-structured]'));
+  if(!hosts.length)return;
+  const generation=structuredGeneration, owner=state;
+  try {
+   structuredModule ||= import(new URL('./assets/bunch-note-structured.js?v='+encodeURIComponent(typeof APP_SHELL_BUILD==='undefined'?'dev':APP_SHELL_BUILD),document.baseURI).href);
+   const module=await structuredModule;
+   if(owner!==state||generation!==structuredGeneration||!account())return;
+   for(const host of hosts){if(!host.isConnected)continue;const props=structuredProps(host);if(structuredHandles.has(host))structuredHandles.get(host).update(props);else structuredHandles.set(host,module.mountStructuredBunchNote(host,props));}
+  } catch(error){structuredModule=null;for(const host of hosts)if(host.isConnected)host.textContent='The crew worksheet could not load. Reopen Bunch Notes to retry.';}
+ }
  function ensureAccount() { if (state.account !== account()) reset(); }
  async function api(operation, payload = {}, revision = null, commandId = null, signal) {
   ensureAccount(); const owner = state.account, ownerState = state;
@@ -87,7 +113,8 @@
    if (/BATCH_TOO_LARGE/.test(code)) state.error = 'This PDF batch is too large. Select fewer locations and preview again.';
    if (/RECIPIENT|DYLAN_EMAIL/.test(code)) state.error = 'The email mapping changed or is missing. Review the selected users; Dylan must have a mapped address.';
    if (/PREVIEW_REQUIRED|PREVIEW_EXPIRED/.test(code)) state.error = 'Preview the current PDFs again before publishing.';
-   if (/CONFLICT|CLAIMED|NOT_FOUND/.test(code)) { state.detail = null; state.jobs = []; state.loaded = false; await load(); state.error='This work changed in another session. The Queue has refreshed; open the current work before continuing.'; }
+   if (/CONFLICT|CLAIMED|NOT_FOUND/.test(code)) { if(state.draft){state.error='This draft changed in another session. Your edits are still here. Reopen the saved draft in another view to compare before retrying.';}else{state.detail = null; state.jobs = []; state.loaded = false; await load(); state.error='This work changed in another session. The Queue has refreshed; open the current work before continuing.';} }
+   if (/STRUCTURE|SECTIONS|SECTION_NOT_FOUND|LINE_INVALID|FREEFORM_INVALID/.test(code)) state.error='Review the house names and task instructions. Keep crew tags under 80 characters and quantity notes under 200; freeform tasks cannot record inventory quantities. Your edits have been kept.';
    if (/SHIFT_ROWS/.test(code)) state.error='Shift/Hauling can only use lots whose Season contains Y or U3, or DesigItem contains SHFT.';
    if (/ACTUAL_REQUIRED/.test(code)) state.error='Record the actual quantity, lot and size before marking this action Done.';
    if (/DESTINATION_REQUIRED/.test(code)) state.error='Enter where this stock moved.';
@@ -234,9 +261,10 @@
     +field('Priority / work order',loc.priority,`BunchNote.edit(${i},'priority',this.value)`)
     +textfield('General instructions',loc.instructions,`BunchNote.edit(${i},'instructions',this.value)`)
     +textfield('Prerequisites / wait instructions',loc.prerequisites,`BunchNote.edit(${i},'prerequisites',this.value)`)
+    +`<div data-bn-structured="header" data-index="${i}"></div>`
     +`<label class="bn-field">Assigned user (separate from email recipients)<select ${loc.job_id?'disabled':''} onchange="BunchNote.edit(${i},'owner_id',this.value)">${userOptions(loc.owner_id)}</select></label></section><div class="bn-step-actions">${button('Next: Items','BunchNote.nextItems()',state.busy)}</div>`;
    if(loc) html+=`<section class="bn-location-editor"><div class="bn-location-heading"><h3>${esc(loc.location)}</h3>${button('Edit location setup','BunchNote.editSetup()',state.busy)}</div><p>${esc(loc.purposes)}</p><h3>Items at this location</h3>`
-    +plants(loc.source_all||loc.source||[],loc.row_ids,i)
+    +`<div data-bn-structured="edit" data-index="${i}"></div>`+plants(loc.source_all||loc.source||[],loc.row_ids,i)
     +`<details class="bn-options" ${panelAttrs('actions:'+loc.location)}><summary>Whole-location actions<i class="ph-bold ph-caret-down"></i></summary>${draftActions(loc,i)}${actionChoices('location:'+i,loc.source_all||[],{index:i,worker:false,scope:'location'})}</details>`
     +button('Remove location from batch',`BunchNote.removeLocation(${arg(loc.location)})`,state.busy||!!draft.id&&draft.body.locations.length===1)+'</section>';
   }
@@ -266,16 +294,17 @@
   const {job: j, versions, audit} = state.detail;
   const uid = typeof nativeAuthProfile === 'undefined' ? '' : nativeAuthProfile?.id || '';
   const owner = j.owner_id === uid, open = j.status === 'open';
-  let html = `<h2>${esc(j.block)} → ${esc(j.location)}</h2><p><b>${esc(j.note_number)} · Instruction revision ${j.instruction_revision}</b></p><p>${esc(j.body.purposes)} · Priority ${esc(j.body.priority || '—')}</p><h3>General instructions</h3><p class="bn-pre">${esc(j.body.instructions)}</p><h3>Prerequisites</h3><p class="bn-pre">${esc(j.body.prerequisites || 'None written')}</p>`;
+  let html = `<h2>${esc(j.block)} → ${esc(j.location)}</h2><p><b>${esc(j.note_number)} · Instruction revision ${j.instruction_revision}</b></p><p>${esc(j.body.purposes)} · Priority ${esc(j.body.priority || '—')}</p>`;
   if(state.item)html=`<h2>${esc(j.location)}</h2><p>${esc(j.note_number)} · ${esc(j.body.purposes)}</p>`;
   if (open && !j.owner_id) html += button('Claim work', `BunchNote.command('claim')`, state.busy);
   if (open && owner) html += button('Release to available work', `BunchNote.command('release')`, state.busy);
   if (open && author() && !state.item) html += `<label class="bn-field">Assign / reassign<select id="bn-owner">${userOptions(j.owner_id)}</select></label>` + button('Apply assignment', `BunchNote.assign()`) + button('Revise instructions', `BunchNote.revise()`) + button('Cancel work', `BunchNote.cancel()`);
-  html += plants(j.body.source || [],null,'work',j) + allActions(j).filter(a=>state.item ? a.scope!=='location' && actionApplies(a,(j.body.source||[]).filter(r=>groupItems([r])[0]?.key===state.item)) : a.scope==='location').map(a => {
+  if(!state.item)html += '<div data-bn-structured="read"></div>';
+  html += plants(j.body.source || [],null,'work',j) + allActions(j).filter(a=>state.workAction ? a.id===state.workAction : state.item ? a.scope!=='location' && actionApplies(a,(j.body.source||[]).filter(r=>groupItems([r])[0]?.key===state.item)) : a.scope==='location').map(a => {
    const done=j.progress[a.id], actuals=currentActuals(j).filter(x=>x.action_id===a.id), key=j.id+':'+a.id, form=state.workForms[key]||{}, kind=actionKind(a);
    const lots=(j.body.source||[]).filter(r=>(a.scope==='location'||(a.row_ids||[]).includes(r.unique_id))&&(a.group!=='hauling'||shiftEligible(r)));
    const mayCorrect=(open&&owner)||(author()&&j.status==='complete');
-   return `<article class="bn-card"><h3>${esc(a.label || a.crew || a.group)}${a.worker_added?' · Added by worker':''}</h3><p class="bn-pre">${esc(a.instructions)}</p><p>${esc(a.scope==='location'?'Whole location':(a.row_ids||[]).map(id=>{const r=(j.body.source||[]).find(r=>r.unique_id===id);return r?[r.itemcode,r.contsize,r.lotcode].join(' / '):id;}).join('; '))}</p><p>Planned quantity ${esc(a.quantity || '—')} · % ${esc(a.percentage || '—')} · ${esc(a.stage || '')} · ${esc(a.destination || '')} · ${esc(a.marking || '')}</p>
+   return `<article class="bn-card" data-bn-work-action="${esc(a.id)}"><h3>${esc(a.label || a.crew || a.group)}${a.worker_added?' · Added by worker':''}</h3><p class="bn-pre">${esc(a.instructions)}</p><p>${esc(a.scope==='location'?'Whole location':(a.row_ids||[]).map(id=>{const r=(j.body.source||[]).find(r=>r.unique_id===id);return r?[r.itemcode,r.contsize,r.lotcode].join(' / '):id;}).join('; '))}</p><p>Planned quantity ${esc(a.quantity || '—')} · % ${esc(a.percentage || '—')} · ${esc(a.stage || '')} · ${esc(a.destination || '')} · ${esc(a.marking || '')}</p>
     <p><b>Recorded ${actuals.length?actuals.reduce((sum,x)=>sum+Number(x.quantity),0):'Not recorded'} ${esc(kind==='instruction'?'':kind.toUpperCase())}</b></p>${actuals.map(x=>`<div class="bn-lot"><b>${esc(x.quantity)} · ${esc(x.source_snapshot.contsize)} · Lot ${esc(x.source_snapshot.lotcode)}</b><p>${esc(x.destination ? 'To '+x.destination : '')}</p><p>${esc(x.explanation)}</p>${x.review_flags.length?'<strong class="bn-review">Review: '+esc(reviewText(x.review_flags))+'</strong>':''}${x.replaces_id?'<small>Audited correction</small>':''}${mayCorrect?button('Correct entry',`BunchNote.correctActual(${arg(x.id)})`,state.busy):''}</div>`).join('')}
     ${open&&owner&&['ta','move','hauling'].includes(kind)?`<details class="bn-options" ${panelAttrs('actual:'+a.id)}><summary>Record ${esc(kind.toUpperCase())} / partial work</summary><div class="bn-options-body"><label class="bn-field">Container size and lot<select onchange="BunchNote.workField(${arg(key)},'source_id',this.value)"><option value="">Choose size and lot</option>${lots.map(r=>`<option value="${esc(r.unique_id)}" ${form.source_id===r.unique_id?'selected':''}>${esc([r.contsize,r.lotcode,r.salesyear||'Unknown sales year',r.season,r.unique_id].join(' · '))}</option>`).join('')}</select></label>${field('Actual quantity',form.quantity||'',`BunchNote.workField(${arg(key)},'quantity',this.value)`,'number')}${kind!=='ta'?field('Moved to',form.destination||'',`BunchNote.workField(${arg(key)},'destination',this.value)`)+button('Choose destination',`BunchNote.chooseDestination('actual',${arg(key)})`,state.busy||!form.source_id):''}${textfield('Explanation / review note',form.explanation||'',`BunchNote.workField(${arg(key)},'explanation',this.value)`)}${button('Record entry',`BunchNote.recordActual(${arg(a.id)})`,state.busy)}</div></details>`:''}
     <b>${esc(done?.status || 'Pending')}</b><p>${esc(done?.reason || '')}</p>${done?.review_flags?.length?'<p class="bn-review">Review: '+esc(reviewText(done.review_flags))+'</p>':''}${open&&owner?textfield('Completion / variance reason',form.reason||'',`BunchNote.workField(${arg(key)},'reason',this.value)`)+button('Done',`BunchNote.progress(${arg(a.id)},'done')`,state.busy)+button('Not needed',`BunchNote.progress(${arg(a.id)},'not_needed')`,state.busy):''}</article>`;
@@ -320,7 +349,7 @@
   else if(state.screen==='destinations'){if(state.destinationLocation){state.destinationLocation='';state.destinationData=null;}else if(state.destinationBase)state.destinationBase='';else state.screen='source';}
   else if(state.customEdit)state.customEdit=null;
   else if(state.actionEdit)state.actionEdit=null;
-  else if(state.item)state.item='';
+  else if(state.item||state.workAction){state.item='';state.workAction='';}
   else if(state.detail)state.detail=null;
   else if(typeof getCurrentVisibleViewId==='function'&&getCurrentVisibleViewId()==='request'){if(state.queueLocation)state.queueLocation='';else if(state.queueBase)state.queueBase='';else return false;}
   else if(state.location&&state.locationStep==='items')state.locationStep='setup';
@@ -357,11 +386,13 @@
   const previous = renderedQueues.get(container);
   if (previous?.markup === markup && previous.busy === busy
     && previous.nodes.length === container.childNodes.length
-    && previous.nodes.every((node, index) => node === container.childNodes[index])) return;
+    && previous.nodes.every((node, index) => node === container.childNodes[index])) { void mountStructured(container); return; }
+  disposeView();
   container.innerHTML = markup;
   container.setAttribute('aria-busy', busy);
   if (state.busy) container.querySelectorAll('input,select,textarea,button').forEach(control => { control.disabled = true; });
   renderedQueues.set(container, {markup, nodes: Array.from(container.childNodes), busy});
+  void mountStructured(container);
 }
  const invalidate = () => { state.preview = null; state.urls.forEach(url => URL.revokeObjectURL(url)); state.urls = []; };
  async function saveDraft() {
@@ -378,7 +409,7 @@
   });
  }
  root.BunchNote = {
-  actionProblem, templates, normalize, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, api, render, reset, open, author, back,
+  actionProblem, templates, normalize, baseLocation, locationGroups, salesYear, sourceGroups, quantity, groupInventory, groupItems, shiftEligible, actionKind, recipientEmails, api, render, reset, open, author, back, disposeView,
   queueBase: value => {rememberScroll();state.queueBase=value;render();restoreScroll();},
   queueLocation: value => {rememberScroll();state.queueLocation=value;render();restoreScroll();},
   hasBack: () => !!(state.actionEdit||state.customEdit||state.picker||state.preview||state.item||state.detail||state.draft||state.queueBase||state.screen==='destinations'),
@@ -386,7 +417,7 @@
   editSetup: () => {rememberScroll();state.locationStep='setup';render();restoreScroll();},
   startAction: (key,id) => {if(state.busy||state.actionEdit)return;try{beginAction(key,id);state.error='';render();restoreScroll();}catch(e){state.error=e.message;render();}},
   editPlanned: (i,id) => {if(state.busy)return;const l=state.draft.body.locations[i],a=l.actions.find(a=>a.id===id),source=l.source_all||l.source,items=new Set(source.filter(r=>a.row_ids?.includes(r.unique_id)).map(r=>normalize(r.itemcode)));rememberScroll();state.actionEdit={i,id,worker:false,availableIds:source.filter(r=>(a.scope==='location'||items.has(normalize(r.itemcode)))&&(a.group!=='hauling'||shiftEligible(r))).map(r=>r.unique_id)};render();restoreScroll();},
-  actionField: (key,value) => {const {a}=actionContext();invalidate();a[key]=value;if(key==='quantity'&&value)a.percentage='';if(key==='percentage'&&value)a.quantity='';},
+  actionField: (key,value) => {const {a}=actionContext();invalidate();a[key]=value;if(key==='crew')a.margin_tag=value;if(key==='instructions')a.action_instruction=value;if(key==='quantity'&&value)a.percentage='';if(key==='percentage'&&value)a.quantity='';},
   actionSource: key => {const rows=sourceGroups(actionContext().rows).get(key);if(!rows)return;changeActionRows(rows.map(r=>r.unique_id));render();},
   actionLot: (id,on) => {const {a,rows}=actionContext(),ids=a.scope==='location'?rows.map(r=>r.unique_id):a.row_ids;changeActionRows(on?[...new Set([...ids,id])]:ids.filter(v=>v!==id));render();},
   finishAction: () => run(async()=>{const {e,a}=actionContext(),problem=actionProblem(a);if(problem)throw new Error(problem);if(e.worker){const j=state.detail.job;await api('add_action',{job_id:j.id,action:a},j.revision,crypto.randomUUID());delete state.pendingActions[e.pendingKey];state.detail=await api('get',{job_id:j.id});}else await saveDraft();state.actionEdit=null;restoreScroll();}),
@@ -395,7 +426,7 @@
   finishCustom: () => run(async()=>{const {key,category}=state.customEdit,c=state.custom[key+':'+category]||{},j=state.detail?.job;const {option}=await api('option_add',{category,label:c.label||'',kind:c.kind||'instruction',...(!author()?{job_id:j.id}:{})},author()?null:j.revision,crypto.randomUUID());await refreshCatalog();state.customEdit=null;beginAction(key,option.id);restoreScroll();}),
   chooseActionDestination: () => root.BunchNote.chooseDestination('editor'),
   openBase: base => {rememberScroll();state.base=base;render();restoreScroll();},
-  openItem: key => {rememberScroll();state.item=key;render();restoreScroll();},
+  openItem: key => {rememberScroll();state.workAction='';state.item=key;render();restoreScroll();},
   view: screen => run(async()=>{rememberScroll();state.screen=screen;if(screen==='destinations'){const d=await api('destinations');state.destinationNames=d.locations;}restoreScroll();}),
   openDestinationBase: base => {rememberScroll();state.destinationBase=base;render();restoreScroll();},
   openDestination: location => run(async()=>{rememberScroll();const data=await api('destination_detail',{location});state.destinationLocation=location;state.destinationData=data;restoreScroll();}),
@@ -429,7 +460,7 @@
   removeLocation: location => run(async () => { if(state.draft.id && state.draft.body.locations.length === 1)return; if(!await showAppConfirm('Remove this location and its draft instructions from this batch?',{title:'Bunch Note'}))return; invalidate(); state.draft.body.locations=state.draft.body.locations.filter(l=>l.location!==location); state.location=''; }),
   selectRow: (i,id,on) => { invalidate(); const l=state.draft.body.locations[i]; l.row_ids=on?[...new Set([...l.row_ids,id])]:l.row_ids.filter(v=>v!==id); const add=document.getElementById('bn-add-selected-'+i); if(add)add.disabled=state.busy || !l.row_ids.length; },
   edit: (i,key,value) => { invalidate(); state.draft.body.locations[i][key]=value; },
-  editAction: (i,j,key,value) => { invalidate(); const a=state.draft.body.locations[i].actions[j];a[key]=value;if(key==='destination'){if(value.trim())a.destination_mode='typed';else delete a.destination_mode;} },
+  editAction: (i,j,key,value) => { invalidate(); const a=state.draft.body.locations[i].actions[j];a[key]=value;if(key==='crew')a.margin_tag=value;if(key==='instructions')a.action_instruction=value;if(key==='destination'){if(value.trim())a.destination_mode='typed';else delete a.destination_mode;} },
   chooseOption: (key,id,on) => {state.choices[key]=on?[...new Set([...(state.choices[key]||[]),id])]:(state.choices[key]||[]).filter(x=>x!==id);},
   custom: (key,field,value) => {state.custom[key]={...state.custom[key],[field]:value};},
   saveOption: (target,category) => run(async()=>{const k=target+':'+category,c=state.custom[k]||{},j=state.detail?.job; if(!c.label?.trim())throw new Error('Type a new option first.'); const response=await api('option_add',{category,label:c.label.trim(),kind:c.kind||'instruction',...(!author()?{job_id:j.id}:{})},author()?null:j.revision,crypto.randomUUID()); await refreshCatalog(); state.choices[k]=[...(state.choices[k]||[]),response.option.id]; state.custom[k]={};}),
@@ -461,7 +492,7 @@
   closePreview: () => { const work=state.preview?.report_kind==='completed_work';invalidate();if(work){switchView('request');setReqTab('bunch-notes');}render(); },
   publish: send_email => run(async () => { await api('publish',{preview_id:state.preview.id,send_email},state.draft.revision,crypto.randomUUID()); invalidate(); state.draft=null; state.drafts=(await api('drafts')).drafts; await load(); showToast('Bunch Notes',send_email?'Published. Email queued.':'Published to Queue.'); }),
   refresh: () => run(load), filter: value => { state.filter=value;state.queueBase='';state.queueLocation=''; render(); },
-  detail: id => run(async () => { rememberScroll();state.item='';state.detail=await api('get',{job_id:id}); await refreshCatalog(); if(author()&&!state.users.length)state.users=(await api('directory')).users;restoreScroll(); }),
+  detail: id => run(async () => { rememberScroll();state.item='';state.workAction='';state.detail=await api('get',{job_id:id}); await refreshCatalog(); if(author()&&!state.users.length)state.users=(await api('directory')).users;restoreScroll(); }),
   backQueue: () => { state.detail=null;state.item='';state.queueBase='';state.queueLocation='';state.screen='source'; render(); },
   command: (operation, extra={}) => run(async () => { const j=state.detail.job; await api(operation,{job_id:j.id,...extra},j.revision,crypto.randomUUID()); state.detail=operation==='progress'?await api('get',{job_id:j.id}):null; await load(); }),
   assign: () => root.BunchNote.command('assign',{owner_id:document.getElementById('bn-owner').value}),
