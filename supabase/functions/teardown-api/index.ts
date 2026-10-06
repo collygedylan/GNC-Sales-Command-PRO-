@@ -31,7 +31,10 @@ Deno.serve(async request => {
     const authorization = request.headers.get('Authorization') || '';
     if (!authorization.startsWith('Bearer ')) fail('TEARDOWN_SIGN_IN_REQUIRED', 401);
     const { data: identity, error: authError } = await service.auth.getUser(authorization.slice(7));
-    if (authError || !identity.user) fail('TEARDOWN_SIGN_IN_REQUIRED', 401);
+    if (authError) return fail('TEARDOWN_SIGN_IN_REQUIRED', 401);
+    const verifiedUser = identity.user;
+    if (!verifiedUser) return fail('TEARDOWN_SIGN_IN_REQUIRED', 401);
+    const actorId = verifiedUser.id;
     const client = createClient(project, Deno.env.get('SUPABASE_ANON_KEY') || '', {
       global: { headers: { Authorization: authorization } }, auth: { persistSession: false }
     });
@@ -54,7 +57,7 @@ Deno.serve(async request => {
       if (error || ![...snapshot.inventory, ...snapshot.requests].some((row: Record<string, unknown>) => row.id === command.rowId)) fail('TEARDOWN_ROW_NOT_FOUND', 404);
       const extensions: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
       const extension = extensions[command.contentType];
-      const path = `${identity.user.id}/${command.rowId}/${crypto.randomUUID()}.${extension}`;
+      const path = `${actorId}/${command.rowId}/${crypto.randomUUID()}.${extension}`;
       const signed = await service.storage.from(bucket).createSignedUploadUrl(path, { upsert: false });
       if (signed.error || !signed.data) fail('TEARDOWN_UPLOAD_UNAVAILABLE', 503);
       return reply({ ...signed.data, bucket, path, uploadMethod: 'PUT', headers: { 'x-upsert': 'false' }, contentType: command.contentType });
@@ -64,7 +67,7 @@ Deno.serve(async request => {
     if (operation === 'save') rpc = 'save_row';
     else if (operation === 'capture_delivery') rpc = 'capture_delivery';
     else if (operation === 'photo_commit') {
-      if (!String(command.path || '').startsWith(`${identity.user.id}/${command.rowId}/`)) fail('TEARDOWN_PHOTO_FORBIDDEN', 403);
+      if (!String(command.path || '').startsWith(`${actorId}/${command.rowId}/`)) fail('TEARDOWN_PHOTO_FORBIDDEN', 403);
       command.photo = { bucket, path: command.path, name: String(command.filename || 'Photo').slice(0, 200), contentType: command.contentType };
       rpc = 'commit_photo';
     } else return reply({ error: 'TEARDOWN_OPERATION_UNAVAILABLE', message: 'This module is not included in the focused staging review.' }, 422);

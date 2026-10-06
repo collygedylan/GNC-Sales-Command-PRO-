@@ -175,7 +175,10 @@ jobs:
         run: |
           set -euo pipefail
           test -f artifact/staging/index.html
-          test ! -f artifact/CNAME
+          if find artifact -type f \( -iname 'CNAME' -o -iname 'OneSignalSDKWorker.js' -o -iname 'OneSignalSDKUpdaterWorker.js' \) -print -quit | grep -q .; then
+            echo 'Production domain or push worker artifact is forbidden in staging.'
+            exit 1
+          fi
           if find artifact -type l | grep -q .; then exit 1; fi
           gh auth setup-git
           git clone --branch gh-pages https://github.com/collygedylan/gnc-teardown-staging.git publication

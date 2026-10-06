@@ -25,6 +25,8 @@ test('publisher executes no candidate files, targets separate repo and serialize
   assert.doesNotMatch(source,/secrets\.(?:SUPABASE_|APPS_SCRIPT_|GDRIVE_)/);
   const command=publish.steps.find(step=>step.name==='Publish only the separate staging repository').run;
   assert.match(command,/gnc-teardown-staging\.git/);
+  assert.ok(command.includes("find artifact -type f \\( -iname 'CNAME' -o -iname 'OneSignalSDKWorker.js' -o -iname 'OneSignalSDKUpdaterWorker.js' \\)"));
+  assert.doesNotMatch(command,/test ! -f artifact\/CNAME/);
   assert.doesNotMatch(command,/GNC-Sales-Command-PRO-|HEAD:main|npm |node /);
 });
 test('staging rules never change main, and restoration requires human review',()=>{

@@ -292,9 +292,10 @@ async function compiledRuntimeName(html) {
   invariant(loaders.length === 1, `expected one generated live runtime loader, found ${loaders.length}`);
   const runtimeName = loaders[0][1];
   invariant(runtimeName.startsWith('live-app-runtime-'), 'generated runtime loader did not reference the live app runtime');
-  const preloadTag = html.match(/<link\b(?=[^>]*\brel=["']preload["'])(?=[^>]*\bas=["']script["'])[^>]*>/i)?.[0] || '';
-  const preload = preloadTag.match(/\bhref=["']\.\/assets\/([^/'"?]+\.js)(?:\?[^'"]*)?["']/i);
-  invariant(preload && preload[1] === runtimeName, 'generated live runtime loader and script preload do not agree');
+  const scriptPreloads = [...html.matchAll(/<link\b(?=[^>]*\brel=["']preload["'])(?=[^>]*\bas=["']script["'])[^>]*>/gi)]
+    .map(([tag]) => tag.match(/\bhref=["']\.\/assets\/([^/'"?]+\.js)(?:\?[^'"]*)?["']/i)?.[1] || '');
+  invariant(scriptPreloads.length <= 1 && scriptPreloads.every((preload) => preload === runtimeName),
+    'generated live runtime script preload does not match the loader');
   return runtimeName;
 }
 
@@ -303,7 +304,7 @@ async function removeProductionPwaArtifacts(directory) {
     for (const entry of await readdir(current, { withFileTypes: true })) {
       const target = path.join(current, entry.name);
       if (entry.isDirectory()) await visit(target);
-      else if (/^(?:sw|service-worker)\.js$|^manifest\.(?:json|webmanifest)$|^Code\.gs$/i.test(entry.name)) await rm(target, { force: true });
+      else if (/^(?:sw|service-worker)\.js$|^manifest\.(?:json|webmanifest)$|^Code\.gs$|^CNAME$|^OneSignalSDK(?:Updater)?Worker\.js$/i.test(entry.name)) await rm(target, { force: true });
     }
   }
   await visit(directory);

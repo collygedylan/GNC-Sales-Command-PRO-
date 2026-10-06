@@ -173,10 +173,13 @@ test('stage builder consumes a compiled shell, rewrites only its output and requ
     await mkdir(sourceScripts, { recursive: true });
     for (const file of ['adapter.mjs', 'entry.mjs', 'staging.css']) await cp(new URL(`../scripts/staging/${file}`, import.meta.url), path.join(sourceScripts, file));
     const runtimeName = 'live-app-runtime-v2026082010.min.js';
-    await writeFile(path.join(site, 'index.html'), `<html><head><script>const runtime=document.createElement('script');runtime.src='./assets/${runtimeName}?v=V2026.10.05.004';</script><link rel="preload" as="script" href="./assets/${runtimeName}?v=V2026.10.05.004"></head><body></body></html>`);
+    await writeFile(path.join(site, 'index.html'), `<html><head><link rel="preload" as="image" href="./logo.webp"><script>const runtime=document.createElement('script');runtime.src='./assets/${runtimeName}?v=V2026.10.05.004';</script></head><body></body></html>`);
     await writeFile(path.join(site, 'sw.js'), 'self.addEventListener("fetch",()=>{});');
     await writeFile(path.join(site, 'manifest.json'), '{"start_url":"/"}');
     await writeFile(path.join(site, 'Code.gs'), 'function doGet() {}');
+    await writeFile(path.join(site, 'CNAME'), 'agmetricapp.com');
+    await writeFile(path.join(site, 'OneSignalSDKWorker.js'), 'self.addEventListener("push",()=>{});');
+    await writeFile(path.join(site, 'OneSignalSDKUpdaterWorker.js'), 'self.addEventListener("push",()=>{});');
     await writeFile(path.join(site, 'assets', runtimeName), `const SUPABASE_URL='https://old.supabase.co';const SUPABASE_KEY='old';const GOOGLE_SCRIPT_URL='https://script.google.com/';const APP_API_FUNCTION_URL=SUPABASE_URL+'/functions/v1/app-api';const NATIVE_AUTH_ALIAS_DOMAIN='production.example';let supabaseClient;function getSupabaseBrowserClient(){return window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{global:{fetch:(input,init)=>window.fetch(input,init)},auth:{storageKey:'gnc_supabase_auth_v1'}})}async function fetchWithTimeout(url,options={}){try{return await (window.GncLoginTrace?.fetch(url,options)??fetch(url,options))}finally{}}async function postGoogleScriptRawJsonPayload(payload={},timeoutMs=1000,label='Email'){return fetchWithTimeout(GOOGLE_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)},timeoutMs,label)}`);
     const configPath = path.join(repo, 'config.json');
     await writeFile(configPath, JSON.stringify(config));
@@ -196,5 +199,8 @@ test('stage builder consumes a compiled shell, rewrites only its output and requ
     await assert.rejects(readFile(path.join(out, 'sw.js')));
     await assert.rejects(readFile(path.join(out, 'manifest.json')));
     await assert.rejects(readFile(path.join(out, 'Code.gs')));
+    await assert.rejects(readFile(path.join(out, 'CNAME')));
+    await assert.rejects(readFile(path.join(out, 'OneSignalSDKWorker.js')));
+    await assert.rejects(readFile(path.join(out, 'OneSignalSDKUpdaterWorker.js')));
   } finally { await rm(repo, { recursive: true, force: true }); }
 });
