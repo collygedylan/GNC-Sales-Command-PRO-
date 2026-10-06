@@ -183,7 +183,7 @@ test('Brandt receives admin access without any Managers entry point or direct vi
   });
 });
 
-test('Eval assignment dropdown exposes the full managed roster and composite key', async ({ page }) => {
+test('Eval assignment dropdown exposes the full managed roster and Itemcode default key', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalAssigneeOptionsHtml === 'function');
   const result = await page.evaluate(() => {
@@ -193,6 +193,7 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
       values: Array.from(select.options).map((option) => option.value),
       labels: Array.from(select.options).map((option) => option.textContent),
       key: (window as any).buildManagerEvalAssignmentKey(' 001668.030.1 ', ' Buddleia '),
+      otherGenusKey: (window as any).buildManagerEvalAssignmentKey('001668.030.1', 'Rosa'),
       alias: (window as any).normalizeEvalAssignableUser('charey_robertson'),
       sheetTypoAlias: (window as any).normalizeEvalAssignableUser('Boby'),
     };
@@ -214,7 +215,8 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
     'nelly_aguilar',
   ]);
   expect(result.labels).toEqual(result.values.map((value) => value || 'Unassigned'));
-  expect(result.key).toBe('001668.030.1|buddleia');
+  expect(result.key).toBe('001668.030.1');
+  expect(result.otherGenusKey).toBe(result.key);
   expect(result.alias).toBe('charley_robertson');
   expect(result.sheetTypoAlias).toBe('bobby_adair');
 });
@@ -1253,7 +1255,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(phone.hostFits).toBe(true);
   expect(phone.checkedBulkCount).toBe(0);
   expect(phone.groupSequence).toEqual(['unassigned', 'assigned']);
-  expect(phone.saved).toEqual({ itemcode: '000724.070.1', genusname: 'Acer', assignedto: '' });
+  expect(phone.saved).toEqual({ itemcode: '000724.070.1', genusname: '', assignedto: '' });
 
   await page.setViewportSize({ width: 1024, height: 844 });
   const desktop = await page.evaluate(() => window.eval(`(() => {

@@ -260,3 +260,23 @@ test('compact Assigned Items controls expose values and sort in triggers without
   assert.match(controls, /hasFilters \? '<button[^']*assigned-filter-clear/);
   assert.doesNotMatch(controls, /<details|<summary|assigned-filter-chip/);
 });
+
+test('Assigned Items filter panel clamps wide visual viewports to the layout viewport', () => {
+  const style = { setProperty(name, value) { this[name] = value; } };
+  const panel = { style };
+  const scope = { querySelector: () => ({ getBoundingClientRect: () => ({ left: 40, bottom: 80 }) }) };
+  const ctx = vm.createContext({
+    document: {
+      documentElement: { clientWidth: 412 },
+      getElementById: id => id === 'manager-assigned-filter-panel' ? panel : null,
+      querySelector: () => scope,
+    },
+    window: { visualViewport: { offsetLeft: 0, offsetTop: 0, width: 432, height: 800 }, innerWidth: 412, innerHeight: 800 },
+    getManagerAssignedColumnState: () => ({ editor: { field: 'COMMONNAME' } }),
+  });
+  vm.runInContext(`${helper('positionManagerAssignedColumnFilter')}\npositionManagerAssignedColumnFilter()`, ctx);
+  const left = Number.parseFloat(style.left);
+  const width = Number.parseFloat(style.width);
+  assert.ok(left >= 0);
+  assert.ok(left + width <= 412);
+});
