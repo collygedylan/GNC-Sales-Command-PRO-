@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -139,7 +139,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName]);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -300,7 +300,7 @@ test('perennial production preview is aggregate only and rolls back its read-onl
     if(sql==='begin read only'||sql==='rollback')return{rows:[]};
     assert.equal(sql,perennialPreviewSql);
     return{rows:[{inventory_revision:'22',inventory_state:'ready',preview_ready:true,itemcode_genus_groups:12,rose_exempt_groups:2,in_zone_policy_groups:3,
-      unresolved_groups:1,outside_groups:6,zoe_active_roster_rows:1,current_owner_changes_estimate:3,
+      unresolved_groups:1,outside_groups:6,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1,current_owner_changes_estimate:3,
       affected_assignments:[{itemcode:'A1',genus:'perennial',previousOwner:'owner1',proposedOwner:'zoe_green',ownerChange:true,
         automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]}]};
   }};
@@ -308,14 +308,14 @@ test('perennial production preview is aggregate only and rolls back its read-onl
   assert.deepEqual(calls,['begin read only',perennialPreviewSql,'rollback']);
   assert.equal(preview.counts.in_zone_policy_groups,3);
   assert.equal(preview.previewMode,'read_only_aggregate');
-  assert.equal(preview.policyActivation,'waits_for_successful_master_import');
+  assert.equal(preview.policyActivation,'requires_complete_snapshot_and_verified_backfill');
   assert.equal(preview.previewReady,true);
   assert.equal(getPerennialPreviewFailure(preview),'');
   assert.deepEqual(preview.affectedAssignments,[{itemcode:'A1',genus:'perennial',previousOwner:'owner1',proposedOwner:'zoe_green',ownerChange:true,
     automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]);
   assert.doesNotMatch(JSON.stringify(preview),/Customer Name/i);
   assert.match(perennialPreviewSql,/135_ROSES/);
-  assert.match(perennialPreviewSql,/D\\.10/);
+  assert.match(perennialPreviewSql,/private\.eval_location_zone/);
   assert.match(perennialPreviewSql,/preview_ready/);
 });
 
@@ -338,7 +338,7 @@ test('password reconciliation is additive and verified before the existing backe
 test('perennial preview withholds proposed owner details while a master import is partial',async()=>{
   const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'23',inventory_state:'importing',preview_ready:false,
     itemcode_genus_groups:7,rose_exempt_groups:0,in_zone_policy_groups:1,unresolved_groups:2,outside_groups:4,
-    zoe_active_roster_rows:1,current_owner_changes_estimate:1,affected_assignments:[{itemcode:'SHOULD_NOT_ESCAPE'}]}]})};
+    rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1,current_owner_changes_estimate:1,affected_assignments:[{itemcode:'SHOULD_NOT_ESCAPE'}]}]})};
   const preview=await runPerennialAssignmentPreview({client,repositorySha:'b'.repeat(40)});
   assert.equal(preview.previewReady,false);
   assert.deepEqual(preview.affectedAssignments,[]);
@@ -347,7 +347,7 @@ test('perennial preview withholds proposed owner details while a master import i
 test('perennial preview blocks activation when Zoe is inactive for qualifying keys',async()=>{
   const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'24',inventory_state:'ready',preview_ready:true,
     itemcode_genus_groups:7,rose_exempt_groups:1,in_zone_policy_groups:2,unresolved_groups:1,outside_groups:3,
-    zoe_active_roster_rows:0,current_owner_changes_estimate:2,
+    rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:0,current_owner_changes_estimate:2,
     affected_assignments:[{itemcode:'SECRET-FREE-SYNTHETIC',genus:'perennial',previousOwner:'fixture',proposedOwner:'zoe_green',ownerChange:true,
       automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]}]})};
   const preview=await runPerennialAssignmentPreview({client,repositorySha:'c'.repeat(40)});
@@ -356,9 +356,9 @@ test('perennial preview blocks activation when Zoe is inactive for qualifying ke
   assert.equal(preview.affectedAssignments.length,1,'the failure artifact retains the preview impact for diagnosis');
 });
 test('pre-activation gate requires a valid ready preview and an active Zoe only when policy keys exist',()=>{
-  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:0,zoe_active_roster_rows:0}}),'');
-  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:1,zoe_active_roster_rows:1}}),'');
-  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:'bad',zoe_active_roster_rows:1}}),'PERENNIAL_PREVIEW_RESULT_INVALID');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:0,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:0}}),'');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:1,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1}}),'');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:'bad',rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1}}),'PERENNIAL_PREVIEW_RESULT_INVALID');
 });
 test('SQL errors roll back without committing the migration history', async()=>{
   const calls=[]; const client={query:async(sql)=>{calls.push(sql);if(sql==='select broken;')throw Error('failure');return{rows:[]};}};
@@ -448,4 +448,15 @@ test('cloud rollout verifies the existing release proof before schema and import
   }
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
   assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
+});
+
+
+test('hybrid activation blocks conflicting saved owners and inactive rose owner', () => {
+  const counts = {in_zone_policy_groups:1,zoe_active_roster_rows:1,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0};
+  const preview = {previewReady:true,inventoryState:'ready',counts};
+  assert.equal(getPerennialPreviewFailure(preview),'');
+  assert.equal(getPerennialPreviewFailure({...preview,counts:{...counts,conflicting_defaults:1}}),'PERENNIAL_PREVIEW_DEFAULT_CONFLICT');
+  assert.equal(getPerennialPreviewFailure({...preview,counts:{...counts,mitch_active_roster_rows:0}}),'PERENNIAL_PREVIEW_MITCH_INACTIVE');
+  assert.match(perennialPreviewSql,/zone_override_prior_assignedto/);
+  assert.match(perennialPreviewSql,/where a\.present_in_drive/);
 });

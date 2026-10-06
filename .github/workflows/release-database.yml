@@ -224,6 +224,11 @@ jobs:
           cp supabase/migrations/20261006111244_bunch_note_card_commands.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261006145333_reclass_split_move_inquiries_v4.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261006150745_reclass_split_move_eval_submit_guards.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006200446_inventory_row_assignment_authority.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006200448_itemcode_default_owners.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006200449_inventory_row_assignment_fence_integration.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006210000_inventory_row_assignment_future_snapshots.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006210200_inventory_row_assignment_live_consumers.sql "$ci_root/supabase/migrations/"
           # Deactivate the external worker before the disposable replay commits,
           # so CI remains deterministic after the production cutoff date.
           python3 - "$ci_root" <<'PY'
@@ -299,6 +304,8 @@ jobs:
           cp supabase/tests/manager_season_priority_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/eval_item_low_stock_targets_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/perennial_zone_assignment_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/inventory_row_assignment_v1_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/inventory_row_assignment_consumers_test.sql "$ci_root/supabase/tests/"
           echo "SUPABASE_CI_ROOT=$ci_root" >> "$GITHUB_ENV"
       - name: Start isolated Supabase stack
         id: stack
@@ -344,6 +351,7 @@ jobs:
           CI=true BUNCH_NOTE_TEST_DB_URL="$DB_URL" node scripts/test-bunch-note-concurrency.mjs
           CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs
           CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs
+          CI=true ITEMCODE_DEFAULT_OWNER_TEST_DB_URL="$DB_URL" node scripts/test-itemcode-default-owner-concurrency.mjs
           CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs
           CI=true REQUEST_HISTORY_TEST_DB_URL="$DB_URL" node scripts/test-request-history-scale.mjs
           CI=true AURA_LLM_TEST_DB_URL="$DB_URL" node scripts/test-aura-llm-quota-concurrency.mjs

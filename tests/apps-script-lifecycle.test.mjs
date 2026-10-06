@@ -143,6 +143,16 @@ test('completion uses the documented fresh-email fallback without thread metadat
 test('Warehouse Assigned Items export converts the keyed Supabase result into complete sorted rows', () => {
   const context = createContext();
   vm.runInContext(`
+    __effectiveAssignmentRoute = null;
+    syncWarehouseAssignedItemsSheet_ = function(sheetId, folderId, tableName) {
+      __effectiveAssignmentRoute = { sheetId, folderId, tableName };
+      return __effectiveAssignmentRoute;
+    };
+  `, context);
+  const route = JSON.parse(JSON.stringify(vm.runInContext('runWarehouseAssignedItemsOnly()', context)));
+  assert.equal(route.tableName, 'ph_inventory_row_assignments');
+
+  vm.runInContext(`
     __selectedColumns = '';
     __writtenValues = null;
     callSupabaseRpc_ = function(name, args) {
@@ -155,9 +165,9 @@ test('Warehouse Assigned Items export converts the keyed Supabase result into co
     fetchAllSupabaseData = function(tableName, selectColumns) {
       __selectedColumns = selectColumns;
       return {
-        row_10: { unique_id: 'row_10', itemcode_normalized: '10', assignedto: 'megan_kelly' },
-        row_2: { unique_id: 'row_2', itemcode_normalized: '2', assignedto: '' },
-        row_100: { unique_id: 'row_100', itemcode_normalized: '100', assignedto: 'dylan_collyge' }
+        row_10: { master_unique_id: 'uid-10', unique_id: 'uid-10', itemcode_normalized: '10', locationcode: 'A.01.010', lotcode: 'L10', assignedto: 'megan_kelly', default_assignedto: 'zoe_green', default_revision: 2, assignment_reason: 'itemcode_default', review_required: false },
+        row_2: { master_unique_id: 'uid-2', unique_id: 'uid-2', itemcode_normalized: '2', locationcode: 'A.01.002', lotcode: 'L2', assignedto: '', default_assignedto: '', default_revision: 0, assignment_reason: 'unassigned', review_required: true },
+        row_100: { master_unique_id: 'uid-100', unique_id: 'uid-100', itemcode_normalized: '100', locationcode: 'B.02.100', lotcode: 'L100', assignedto: 'dylan_collyge', assignment_reason: 'zone_zoe', zone_override_active: true, present_in_drive: true }
       };
     };
     SpreadsheetApp = {
@@ -184,16 +194,20 @@ test('Warehouse Assigned Items export converts the keyed Supabase result into co
   `, context);
 
   const result = vm.runInContext(
-    "exportWarehouseAssignedItemsToSheet_('test-sheet', 'ph_warehouse_assigned_items')",
+    "exportWarehouseAssignedItemsToSheet_('test-sheet', 'ph_inventory_row_assignments')",
     context
   );
   const writtenValues = JSON.parse(JSON.stringify(context.__writtenValues));
 
   assert.match(context.__selectedColumns, /(^|,)unique_id(,|$)/);
+  assert.match(context.__selectedColumns, /(^|,)master_unique_id(,|$)/);
+  assert.match(context.__selectedColumns, /(^|,)default_assignedto(,|$)/);
   assert.equal(result.exportedRows, 3);
   assert.equal(writtenValues.length, 4);
-  assert.deepEqual(writtenValues.slice(1).map((row) => row[0]), ['2', '10', '100']);
-  assert.deepEqual(writtenValues.slice(1).map((row) => row[1]), ['', 'megan_kelly', 'dylan_collyge']);
-  assert.deepEqual(writtenValues[0].slice(11), ['AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY', 'SUGGESTED_LOW_STOCK_QTY', 'ORDER_LINE_OBSERVATIONS', 'HISTORY_DAYS', 'HISTORY_CALCULATED_AT']);
-  assert.deepEqual(writtenValues[1].slice(11, 16), [12, 35, 30, 15, 3]);
+  assert.deepEqual(writtenValues[0].slice(0, 18), ['MASTER_UNIQUE_ID', 'ITEMCODE', 'GENUSNAME', 'ASSIGNEDTO', 'DEFAULT_ASSIGNEDTO', 'DEFAULT_REVISION', 'ASSIGNMENT_REASON', 'REVIEW_REQUIRED', 'ZONE_OVERRIDE_ACTIVE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE', 'LOTCODE', 'SOURCE', 'WAREHOUSEI', 'PRESENT_IN_DRIVE', 'ASSIGNED_AT', 'UPDATED_AT']);
+  assert.deepEqual(writtenValues.slice(1).map((row) => row[1]), ['2', '10', '100']);
+  assert.deepEqual(writtenValues.slice(1).map((row) => row[3]), ['', 'megan_kelly', 'dylan_collyge']);
+  assert.deepEqual(writtenValues.slice(1).map((row) => row[0]), ['uid-2', 'uid-10', 'uid-100']);
+  assert.deepEqual(writtenValues[0].slice(18), ['AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY', 'SUGGESTED_LOW_STOCK_QTY', 'ORDER_LINE_OBSERVATIONS', 'HISTORY_DAYS', 'HISTORY_CALCULATED_AT']);
+  assert.deepEqual(writtenValues[1].slice(18, 23), [12, 35, 30, 15, 3]);
 });

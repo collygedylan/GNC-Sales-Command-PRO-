@@ -184,6 +184,8 @@ const READABLE_TABLES = new Set([
   "ph_hold_stop_itemcode_cycles",
   "ph_hold_stop_itemcode_summaries",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_hl_po",
   "ph_view_po_27f1_hl",
   AV_OPTION_EVAL_REQUESTS_TABLE,
@@ -277,6 +279,8 @@ const REP_READ_TABLES = new Set([
   "ph_cav_import",
   "ph_av_notes",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_dock_team_status",
   "ph_dock_item_status",
   "ph_inventory_edit_requests",
@@ -293,6 +297,8 @@ const SALES_MARKETING_READ_TABLES = new Set([
   "ph_cav_import",
   "ph_av_notes",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_dock_team_status",
   "ph_dock_item_status",
 ]);
@@ -1003,7 +1009,7 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   // Request creation, Eval assignments, and push identity are now enforced by
   // authenticated RPCs. Never let this legacy service-role proxy bypass those
   // database authorization boundaries.
-  if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
+  if (table === "ph_warehouse_assigned_items" || table === "ph_inventory_row_assignments" || table === "ph_itemcode_default_owners" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
   if (table === "ph_dock_team_status") return false;
   if (table === "ph_soc_master") return false; // Native column grants / protected Suspend Tag command own SOC writes.
   if (table === "ph_active_request" && access.isRep) return false;

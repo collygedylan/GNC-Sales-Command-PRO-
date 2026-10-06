@@ -35,6 +35,7 @@ insert into public.profiles (id, username, display_name, role) values
   ('e2584b32-472c-4888-b592-394235050b5b', 'kayla_knepp', 'Kayla Knepp', E'\nSalesRep')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
+update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 insert into public.ph_master_inventory (
   unique_id, itemcode, genusname, commonname, contsize, locationcode, lotcode,
   ptravailable, priority, holdstopcode, holdstopreason, app_tab_assignment
@@ -230,20 +231,26 @@ select lives_ok(
 select is((select username from public.ph_push_subscriptions where endpoint = 'https://push.invalid/test'), 'csr_test', 'push identity comes from caller profile');
 
 select throws_ok(
-  $q$select public.set_eval_itemcode_assignment('ITEM-TEST-1', 'Test Genus', 'abigail_vazquez')$q$,
+  $q$select public.set_itemcode_default_owners_v1(
+    jsonb_build_array(jsonb_build_object('itemcode','ITEM-TEST-1','assignedto','abigail_vazquez',
+      'expectedRevision',coalesce((select revision from public.ph_itemcode_default_owners where itemcode_normalized='ITEM-TEST-1'),0))),
+    '10000000-0000-4000-8000-000000000101'::uuid)$q$,
   '42501', 'EVAL_ASSIGNMENT_FORBIDDEN',
   'unauthorized user cannot assign Eval ItemCodes'
 );
 
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', true);
 select lives_ok(
-  $q$select public.set_eval_itemcode_assignment('ITEM-TEST-1', 'Test Genus', 'abigail_vazquez')$q$,
-  'Dylan can assign an ItemCode + GenusName to a roster user'
+  $q$select public.set_itemcode_default_owners_v1(
+    jsonb_build_array(jsonb_build_object('itemcode','ITEM-TEST-1','assignedto','abigail_vazquez',
+      'expectedRevision',coalesce((select revision from public.ph_itemcode_default_owners where itemcode_normalized='ITEM-TEST-1'),0))),
+    '10000000-0000-4000-8000-000000000102'::uuid)$q$,
+  'Dylan can assign the ItemCode default to an active roster user'
 );
 select is(
-  (select assignedto || '|' || assignment_key from public.ph_warehouse_assigned_items where itemcode_normalized = 'ITEM-TEST-1'),
-  'abigail_vazquez|ITEM-TEST-1|test genus',
-  'Eval assignment persisted under the composite key'
+  (select assignedto from public.ph_itemcode_default_owners where itemcode_normalized = 'ITEM-TEST-1'),
+  'abigail_vazquez',
+  'default assignment persisted under the normalized ItemCode key'
 );
 select is(
   (select count(distinct assignedto)::integer from public.ph_warehouse_assigned_items where assignedto is not null),

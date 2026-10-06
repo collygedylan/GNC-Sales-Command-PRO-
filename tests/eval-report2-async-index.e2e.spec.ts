@@ -39,9 +39,9 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
     }));
     delete fullInventory[0].UNIQUE_ID;
     fullInventory[9363] = {};
-    warehouseAssignedItemsInventory = Array.from({ length: 2341 }, (_, i) => ({
-      ITEMCODE: 'ITEM-' + String(i).padStart(4, '0'), GENUSNAME: 'Genus ' + i,
-      ASSIGNEDTO: ['dylan_collyge', 'megan_kelly'][i % 2]
+    warehouseAssignedItemsInventory = fullInventory.filter(row => row.UNIQUE_ID && row.ITEMCODE).map(row => ({
+      master_unique_id:row.UNIQUE_ID, ITEMCODE:row.ITEMCODE, GENUSNAME:row.GENUSNAME,
+      ASSIGNEDTO: ['dylan_collyge', 'megan_kelly'][Number(row.ITEMCODE.slice(5)) % 2]
     }));
     for (const dataset of ['master', 'warehouseAssignedItems']) {
       const state = getDatasetState(dataset); state.initialLoaded = state.fullLoaded = true;

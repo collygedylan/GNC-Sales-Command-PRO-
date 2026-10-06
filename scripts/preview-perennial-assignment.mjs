@@ -5,55 +5,44 @@ import { pathToFileURL } from 'node:url';
 import { createDatabaseClientOptions, validateDatabaseTarget } from './apply-item-low-stock-migration.mjs';
 
 export const perennialPreviewSql = `
-with normalized as materialized (
-  select upper(btrim(itemcode)) itemcode,
-    lower(regexp_replace(btrim(coalesce(genusname,'')),'[[:space:]]+',' ','g')) genus,
+with classified as materialized (
+  select unique_id, upper(btrim(itemcode)) itemcode,
     upper(btrim(coalesce(plantgroupcode,''))) plantgroup,
-    upper(regexp_replace(btrim(coalesce(locationcode,'')),'[[:space:]]+','','g')) location
+    private.eval_location_zone(locationcode) zone_state
   from public.ph_master_inventory
-  where nullif(btrim(coalesce(itemcode,'')),'') is not null
-), classified as materialized (
-  select itemcode,genus,plantgroup,
-    case
-      when location !~ '^[A-Z]\\.[0-9]{2}(\\.[0-9]{3})?$' then null
-      when location ~ '^C\\.(06|07)(\\.[0-9]{3})?$' then 'inside'
-      when location ~ '^D\\.(04|05|06|07|08|09)(\\.[0-9]{3})?$' then 'inside'
-      when location ~ '^D\\.10\\.[0-9]{3}$' then case when split_part(location,'.',3)::integer<=21 then 'inside' else 'outside' end
-      when location like 'D.10' then null
-      else 'outside'
-    end zone_state
-  from normalized
-), groups as (
-  select itemcode,genus,coalesce(bool_or(plantgroup='135_ROSES'),false) any_rose,
-    coalesce(bool_or(zone_state='inside'),false) any_inside,coalesce(bool_or(zone_state is null),false) any_unresolved,
-    coalesce(bool_and(zone_state='outside'),false) all_outside
-  from classified group by itemcode,genus
-), source_state as materialized (
-  select revision::text revision,state from public.app_dataset_revisions where key='ph_master_inventory'
+), active_owners as (
+  select distinct lower(btrim(u.username)) username from public.ph_eval_assignment_users u
+  left join public.profiles p on lower(btrim(p.username))=lower(btrim(u.username))
+  where u.active and p.disabled_at is null and (p.locked_until is null or p.locked_until<=now())
+), saved as (
+  select upper(btrim(coalesce(a.itemcode_normalized,a.itemcode,''))) itemcode,
+    case when a.zone_override_active then nullif(lower(btrim(a.zone_override_prior_assignedto)),'')
+      else nullif(lower(btrim(a.assignedto)),'') end saved_owner
+  from public.ph_warehouse_assigned_items a where a.present_in_drive and a.assignment_key is not null
+), candidates as (
+  select s.itemcode, o.username owner from saved s left join active_owners o on o.username=s.saved_owner
+), defaults as (
+  select itemcode, min(owner) owner,
+    count(distinct owner)>1 or (count(owner)>0 and count(owner)<count(*)) conflict
+  from candidates where itemcode<>''
+    and itemcode in (select c.itemcode from classified c) group by itemcode
+), source_state as (
+  select revision,state from public.app_dataset_revisions where key='ph_master_inventory'
 )
-select source_state.revision inventory_revision,source_state.state inventory_state,
- source_state.state='ready' preview_ready,
-  count(*)::integer itemcode_genus_groups,
-  count(*) filter(where any_rose)::integer rose_exempt_groups,
-  count(*) filter(where not any_rose and any_inside)::integer in_zone_policy_groups,
-  count(*) filter(where not any_rose and not any_inside and any_unresolved)::integer unresolved_groups,
-  count(*) filter(where not any_rose and not any_inside and not any_unresolved and all_outside)::integer outside_groups,
-  (select count(*)::integer from public.ph_eval_assignment_users where active and lower(btrim(username))='zoe_green') zoe_active_roster_rows,
-  (select count(*)::integer from public.ph_warehouse_assigned_items a join groups g on a.assignment_key=g.itemcode||'|'||g.genus
-    where not g.any_rose and g.any_inside and a.assignedto is distinct from 'zoe_green') current_owner_changes_estimate
- ,case when source_state.state='ready' then coalesce((
-   select jsonb_agg(jsonb_build_object('itemcode',g.itemcode,'genus',g.genus,
-     'previousOwner',a.assignedto,'proposedOwner','zoe_green',
-     'ownerChange',a.assignedto is distinct from 'zoe_green','automaticAssignment',true,
-     'reason',case when coalesce((to_jsonb(a)->>'zone_override_active')::boolean,false)
-       then 'reassert_perennial_zone_owner' else 'enforce_perennial_zone_owner' end)
-     order by g.itemcode,g.genus)
-   from groups g left join public.ph_warehouse_assigned_items a on a.assignment_key=g.itemcode||'|'||g.genus
-   where not g.any_rose and g.any_inside
-     and (a.assignment_key is null or not coalesce((to_jsonb(a)->>'zone_override_active')::boolean,false)
-       or a.assignedto is distinct from 'zoe_green')
- ),'[]'::jsonb) else '[]'::jsonb end affected_assignments
-from groups cross join source_state group by source_state.revision,source_state.state`;
+select r.revision inventory_revision, r.state inventory_state,
+  r.state='ready' and not exists(select 1 from app_sync_private.import_leases where key='ph_master_inventory') preview_ready,
+  (select count(*) from classified)::integer inventory_rows,
+  (select count(*) from classified where zone_state='inside' and plantgroup<>'135_ROSES')::integer in_zone_policy_groups,
+  (select count(*) from classified where zone_state='inside' and plantgroup='135_ROSES')::integer rose_override_rows,
+  (select count(*) from classified where zone_state='outside')::integer outside_rows,
+  (select count(*) from classified where zone_state is null)::integer unresolved_rows,
+  (select count(*) from defaults where owner is not null and not conflict)::integer consistent_active_defaults,
+  (select count(*) from defaults where owner is null)::integer unassigned_defaults,
+  (select count(*) from defaults where conflict)::integer conflicting_defaults,
+  (select count(*) from active_owners where username='zoe_green')::integer zoe_active_roster_rows,
+  (select count(*) from active_owners where username='mitch_kaiser')::integer mitch_active_roster_rows,
+  '[]'::jsonb affected_assignments
+from source_state r`;
 
 export function getPerennialPreviewFailure(preview) {
   if (!preview || preview.previewReady !== true || preview.inventoryState !== 'ready') {
@@ -65,6 +54,12 @@ export function getPerennialPreviewFailure(preview) {
     return 'PERENNIAL_PREVIEW_RESULT_INVALID';
   }
   if (inZoneGroups > 0 && activeZoeRows < 1) return 'PERENNIAL_PREVIEW_ZOE_INACTIVE';
+  const roseRows = Number(preview.counts?.rose_override_rows);
+  const activeMitchRows = Number(preview.counts?.mitch_active_roster_rows);
+  const conflicts = Number(preview.counts?.conflicting_defaults);
+  if (![roseRows, activeMitchRows, conflicts].every(value => Number.isSafeInteger(value) && value >= 0)) return 'PERENNIAL_PREVIEW_RESULT_INVALID';
+  if (roseRows > 0 && activeMitchRows < 1) return 'PERENNIAL_PREVIEW_MITCH_INACTIVE';
+  if (conflicts > 0) return 'PERENNIAL_PREVIEW_DEFAULT_CONFLICT';
   return '';
 }
 
@@ -77,12 +72,12 @@ export async function runPerennialAssignmentPreview({client,repositorySha,genera
     const row=result.rows?.[0];
     if (!row) throw new Error('PERENNIAL_PREVIEW_RESULT_MISSING');
     return {
-      contractVersion:'perennial-assignment-preview-v1',
+      contractVersion:'inventory-row-assignment-preview-v1',
       repositorySha,
       generatedAt,
       previewMode:'read_only_aggregate',
       previewReady:row.preview_ready===true,
-      policyActivation:'waits_for_successful_master_import',
+      policyActivation:'requires_complete_snapshot_and_verified_backfill',
       counts:Object.fromEntries(Object.entries(row).filter(([key])=>!['affected_assignments','preview_ready','inventory_state'].includes(key))
         .map(([key,value])=>[key,value==null?null:Number.isSafeInteger(Number(value))?Number(value):value])),
       inventoryState:row.inventory_state,
@@ -119,6 +114,6 @@ async function main() {
 
 if (process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch(error=>{const message=error?.message;
-    console.error(message==='PERENNIAL_PREVIEW_REQUIRES_CURRENT_MAIN'||/^PERENNIAL_PREVIEW_(?:MASTER_NOT_READY|ZOE_INACTIVE|RESULT_INVALID)$/.test(message||'')
+    console.error(message==='PERENNIAL_PREVIEW_REQUIRES_CURRENT_MAIN'||/^PERENNIAL_PREVIEW_(?:MASTER_NOT_READY|ZOE_INACTIVE|MITCH_INACTIVE|DEFAULT_CONFLICT|RESULT_INVALID)$/.test(message||'')
       ?message:'PERENNIAL_ASSIGNMENT_PREVIEW_FAILED');process.exitCode=1;});
 }

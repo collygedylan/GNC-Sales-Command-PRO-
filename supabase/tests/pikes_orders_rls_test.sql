@@ -69,6 +69,7 @@ insert into public.profiles (id, username, display_name, role, locked_until) val
   ('70000000-0000-0000-0000-000000000003', 'pikes_locked', 'Pikes Locked', 'MANAGER', now() + interval '1 day')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = excluded.locked_until;
 
+update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 insert into public.ph_master_inventory (
   unique_id, itemcode, genusname, commonname, contsize, locationcode, lotcode,
   assignedto, ptronhand, ptrreviewed, ptravailable, season, blockalpha, blocknumber
@@ -92,6 +93,16 @@ set assignedto = excluded.assignedto,
     assigned_at = excluded.assigned_at,
     present_in_drive = true,
     updated_at = excluded.updated_at;
+
+insert into public.ph_inventory_row_assignments(
+  master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,
+  locationcode,lotcode,source,assignedto,assigned_at,assignment_reason,present_in_drive
+) values
+  ('PIKES-MASTER-1','PIKES-MASTER-1','PIKES-ITEM-1','PIKES-ITEM-1','Pikesgenus','Pikes Fixture','#3','A.01.001','27.F1','PH','pikes_user',now()-interval '1 day','unresolved_preserved',true),
+  ('PIKES-MASTER-2','PIKES-MASTER-2','pikes-item-1','PIKES-ITEM-1','Pikesgenus','Pikes Fixture','#3','A.01.002','27.F1','PH','pikes_user',now()-interval '1 day','unresolved_preserved',true)
+on conflict (master_unique_id) do update set
+  assignedto=excluded.assignedto,assigned_at=excluded.assigned_at,
+  assignment_reason=excluded.assignment_reason,present_in_drive=true;
 
 select lives_ok(
   $q$select public.prepare_pikes_order_import(

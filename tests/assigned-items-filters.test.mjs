@@ -14,7 +14,7 @@ const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnS
   'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart', 'getWarehouseAssignedIdentityParts',
   'buildWarehouseAssignedLookupKeys', 'clearWarehouseAssignedItemCaches', 'rebuildWarehouseAssignedItemIndexes',
   'chooseWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowForItem',
-  'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue'];
+  'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue', 'getManagerEvalAssignmentReason'];
 function helper(name) {
   const start = html.indexOf(`        function ${name}(`);
   assert.ok(start >= 0, name);
@@ -216,7 +216,7 @@ test('real normalization preserves zeros, codes and location codes in exported v
   const result = ctx.getFilteredManagerAssignedItemsExportRows();
   assert.equal(result.length, 1);
   assert.deepEqual(Array.from(ctx.getManagerAssignedItemsExportColumns(), col => col.value(result[0])),
-      ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Saved assignment']);
+      ['zero', '', '', '', 'No', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Assignment pending reconciliation']);
   assert.equal(ctx.getManagerAssignedColumnOptions('WAREHOUSEI')[0].label, '0');
   assert.equal(data[0].warehousei, 0, 'source dataset remains unchanged');
 });
@@ -245,7 +245,7 @@ test('export metadata uses retained display labels, Unassigned, and readable sor
   const matching = ctx.getFilteredManagerAssignedItemsExportRows();
   const metadata = new Map(Array.from(ctx.getManagerAssignedItemsExportMetaRows(matching), row => Array.from(row)));
   assert.equal(metadata.get('Rows'), '1');
-  assert.equal(metadata.get('Column Filters'), 'AssignedTo: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
+  assert.equal(metadata.get('Column Filters'), 'Effective Worker: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
   assert.equal(metadata.get('Sort'), 'Item Code descending');
 });
 
