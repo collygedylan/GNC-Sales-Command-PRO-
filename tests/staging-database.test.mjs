@@ -19,9 +19,13 @@ test('staging SQL uses namespaced private operations and never resets shared res
   assert.doesNotMatch(schema, /function public\.[\s\S]{0,120}security definer/i);
   assert.match(schema, /expectedRevision/);
   assert.match(schema, /auth\.sessions/);
-  assert.match(schema, /starts_with\(coalesce\(photo->>'path',''\), actor::text \|\| '\/' \|\| \(command->>'rowId'\) \|\| '\/'\)/);
+  assert.match(schema, /starts_with\(coalesce\(photo->>'path',''\), v_actor::text \|\| '\/' \|\| \(command->>'rowId'\) \|\| '\/'\)/);
   assert.match(schema, /prior\.command <> command/);
   assert.match(schema, /'collection', collection/);
+  assert.match(schema, /commands\.actor = v_actor and commands\.request_id = v_request/);
+  assert.match(schema, /deliveries\.actor = v_actor and deliveries\.request_id = v_request/);
+  assert.doesNotMatch(schema, /(?:save_row|capture_delivery|commit_photo)\.actor/);
+  assert.match(schema, /jsonb_object_keys\(patch\) as patch_field\(key\) where patch_field\.key not in/);
   assert.match(schema, /default 'captured'.*check \(state = 'captured'\)/s);
 });
 test('shared-data fence only denies authenticated teardown identities without widening grants', () => {
@@ -104,11 +108,13 @@ test('isolated SQL authorization, revisions, idempotency and delivery capture', 
 
     await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:actor,session_id:'40000000-0000-4000-8000-000000000099'})]);
     await assert.rejects(db.query('select public.teardown_bootstrap()'), /ACCESS_DENIED/);
+    await db.query('reset role');
     await db.query('delete from auth.sessions where id=$1',[session]);
     await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:actor,session_id:session})]);
+    await db.query('set role authenticated');
     await assert.rejects(db.query('select public.teardown_bootstrap()'), /ACCESS_DENIED/);
-    await db.query('insert into auth.sessions values ($1,$2)',[session,actor]);
     await db.query('reset role');
+    await db.query('insert into auth.sessions values ($1,$2)',[session,actor]);
     await db.query('update teardown_private.members set active=false where user_id=$1',[actor]);
     await db.query('set role authenticated');
     await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:actor,session_id:session})]);

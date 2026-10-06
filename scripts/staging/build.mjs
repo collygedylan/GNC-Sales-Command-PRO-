@@ -288,9 +288,14 @@ function validateConfig(config, commitSha) {
 }
 
 async function compiledRuntimeName(html) {
-  const match = html.match(/const\s+runtimeName\s*=\s*['"]([^'"]+\.js)['"]/);
-  invariant(match, 'compiled shell runtime name was not found');
-  return match[1];
+  const loaders = [...html.matchAll(/\bruntime\.src\s*=\s*['"]\.\/assets\/([^/'"?]+\.js)(?:\?[^'"]*)?['"]/g)];
+  invariant(loaders.length === 1, `expected one generated live runtime loader, found ${loaders.length}`);
+  const runtimeName = loaders[0][1];
+  invariant(runtimeName.startsWith('live-app-runtime-'), 'generated runtime loader did not reference the live app runtime');
+  const preloadTag = html.match(/<link\b(?=[^>]*\brel=["']preload["'])(?=[^>]*\bas=["']script["'])[^>]*>/i)?.[0] || '';
+  const preload = preloadTag.match(/\bhref=["']\.\/assets\/([^/'"?]+\.js)(?:\?[^'"]*)?["']/i);
+  invariant(preload && preload[1] === runtimeName, 'generated live runtime loader and script preload do not agree');
+  return runtimeName;
 }
 
 async function removeProductionPwaArtifacts(directory) {

@@ -100,18 +100,19 @@ end $$;
 
 create or replace function teardown_private.save_row(command jsonb)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare actor uuid := auth.uid(); request uuid := (command->>'requestId')::uuid;
+declare v_actor uuid := auth.uid(); v_request uuid := (command->>'requestId')::uuid;
   prior teardown_private.commands; current_row teardown.rows; patch jsonb := command->'patch'; result jsonb;
 begin
   if not teardown_private.is_member() then raise exception 'TEARDOWN_ACCESS_DENIED' using errcode = '42501'; end if;
-  if request is null or patch is null or jsonb_typeof(patch) <> 'object' or coalesce((command->>'expectedRevision')::bigint, 0) < 1 then raise exception 'TEARDOWN_INVALID_COMMAND'; end if;
-  perform pg_advisory_xact_lock(hashtextextended(actor::text || request::text, 0));
-  select * into prior from teardown_private.commands where commands.actor = save_row.actor and request_id = request;
+  if v_request is null or patch is null or jsonb_typeof(patch) <> 'object' or coalesce((command->>'expectedRevision')::bigint, 0) < 1 then raise exception 'TEARDOWN_INVALID_COMMAND'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(v_actor::text || v_request::text, 0));
+  select * into prior from teardown_private.commands
+    where commands.actor = v_actor and commands.request_id = v_request;
   if found then
     if prior.body <> command then raise exception 'TEARDOWN_REQUEST_ID_REUSED'; end if;
     return prior.result;
   end if;
-  if exists (select 1 from jsonb_object_keys(patch) key where key not in
+  if exists (select 1 from jsonb_object_keys(patch) as patch_field(key) where patch_field.key not in
     ('note','notes','dock_spec','dockspec','caliper','av_note','avnote','locationcode',
      'quantity','ptravailable','completed','match_percent','match_quantity','initial_ptr')) then
     raise exception 'TEARDOWN_FIELD_FORBIDDEN' using errcode = '42501';
@@ -120,25 +121,26 @@ begin
   if not found then raise exception 'TEARDOWN_ROW_NOT_FOUND'; end if;
   if current_row.revision <> (command->>'expectedRevision')::bigint then raise exception 'TEARDOWN_REVISION_CONFLICT' using errcode = '40001'; end if;
   if patch ? 'completed' then
-    patch := patch || jsonb_build_object('completed_by', actor, 'completed_at', clock_timestamp());
+    patch := patch || jsonb_build_object('completed_by', v_actor, 'completed_at', clock_timestamp());
   end if;
   update teardown.rows set data = data || patch, revision = revision + 1, updated_at = clock_timestamp()
     where collection = current_row.collection and id = current_row.id returning * into current_row;
   result := jsonb_build_object('row', current_row.data || jsonb_build_object('unique_id', current_row.id,
     'id', current_row.id, '_staging_revision', current_row.revision, 'last_updated', current_row.updated_at), 'revision', current_row.revision);
-  insert into teardown_private.commands values (actor, request, command, result, now());
+  insert into teardown_private.commands values (v_actor, v_request, command, result, now());
   return result;
 end $$;
 
 create or replace function teardown_private.capture_delivery(command jsonb)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare actor uuid := auth.uid(); request uuid := (command->>'requestId')::uuid;
+declare v_actor uuid := auth.uid(); v_request uuid := (command->>'requestId')::uuid;
   prior teardown_private.deliveries; snapshot jsonb;
 begin
   if not teardown_private.is_member() then raise exception 'TEARDOWN_ACCESS_DENIED' using errcode = '42501'; end if;
-  if request is null or command->>'channel' not in ('email','push') then raise exception 'TEARDOWN_INVALID_CHANNEL'; end if;
-  perform pg_advisory_xact_lock(hashtextextended(actor::text || request::text, 1));
-  select * into prior from teardown_private.deliveries where deliveries.actor = capture_delivery.actor and request_id = request;
+  if v_request is null or command->>'channel' not in ('email','push') then raise exception 'TEARDOWN_INVALID_CHANNEL'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(v_actor::text || v_request::text, 1));
+  select * into prior from teardown_private.deliveries
+    where deliveries.actor = v_actor and deliveries.request_id = v_request;
   if found then
     if prior.command <> command then raise exception 'TEARDOWN_REQUEST_ID_REUSED'; end if;
     return jsonb_build_object('id', prior.id, 'state', 'captured', 'channel', prior.channel);
@@ -147,24 +149,25 @@ begin
     where id = command->>'rowId' and collection = coalesce(command->>'collection', 'requests');
   if snapshot is null then raise exception 'TEARDOWN_ROW_NOT_FOUND'; end if;
   insert into teardown_private.deliveries(actor, request_id, channel, command, snapshot)
-    values (actor, request, command->>'channel', command, snapshot) returning * into prior;
+    values (v_actor, v_request, command->>'channel', command, snapshot) returning * into prior;
   return jsonb_build_object('id', prior.id, 'state', 'captured', 'channel', prior.channel);
 end $$;
 
 create or replace function teardown_private.commit_photo(command jsonb)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare actor uuid := auth.uid(); request uuid := (command->>'requestId')::uuid;
+declare v_actor uuid := auth.uid(); v_request uuid := (command->>'requestId')::uuid;
   current_row teardown.rows; prior teardown_private.commands; result jsonb; photo jsonb := command->'photo';
 begin
   if not teardown_private.is_member() then raise exception 'TEARDOWN_ACCESS_DENIED' using errcode = '42501'; end if;
-  if request is null or coalesce((command->>'expectedRevision')::bigint, 0) < 1
-    or not starts_with(coalesce(photo->>'path',''), actor::text || '/' || (command->>'rowId') || '/')
+  if v_request is null or coalesce((command->>'expectedRevision')::bigint, 0) < 1
+    or not starts_with(coalesce(photo->>'path',''), v_actor::text || '/' || (command->>'rowId') || '/')
     or coalesce(photo->>'bucket','') <> 'teardown-photos'
     or coalesce(photo->>'contentType','') not in ('image/jpeg','image/png','image/webp')
     then raise exception 'TEARDOWN_PHOTO_FORBIDDEN'; end if;
   if not exists (select 1 from storage.objects where bucket_id = 'teardown-photos' and name = photo->>'path') then raise exception 'TEARDOWN_PHOTO_NOT_UPLOADED'; end if;
-  perform pg_advisory_xact_lock(hashtextextended(actor::text || request::text, 0));
-  select * into prior from teardown_private.commands where commands.actor = commit_photo.actor and request_id = request;
+  perform pg_advisory_xact_lock(hashtextextended(v_actor::text || v_request::text, 0));
+  select * into prior from teardown_private.commands
+    where commands.actor = v_actor and commands.request_id = v_request;
   if found then
     if prior.body <> command then raise exception 'TEARDOWN_REQUEST_ID_REUSED'; end if;
     return prior.result;
@@ -177,7 +180,7 @@ begin
     where collection = current_row.collection and id = current_row.id returning * into current_row;
   result := jsonb_build_object('row', current_row.data || jsonb_build_object('unique_id', current_row.id,
     'id', current_row.id, '_staging_revision', current_row.revision, 'last_updated', current_row.updated_at), 'revision', current_row.revision);
-  insert into teardown_private.commands values (actor, request, command, result, now());
+  insert into teardown_private.commands values (v_actor, v_request, command, result, now());
   return result;
 end $$;
 
