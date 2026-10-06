@@ -50,7 +50,7 @@ create function bunch_note_private.normalize_work_cards(p_entry jsonb,p_prior js
 language plpgsql stable set search_path='' as $$
 declare c jsonb; a jsonb; normalized jsonb:='[]'; ids uuid[]:='{}'; keys text[]:='{}';
  rows text[]; expected_rows text[]; used text[]:='{}'; source jsonb; source_all jsonb; group_source jsonb; selected_source jsonb:='[]'; r jsonb;
- old_card jsonb; original_card jsonb; normalized_card jsonb; v_card_id uuid; stable_id uuid; owner uuid; db_owner uuid; key_value text; kind_value text; linked_job uuid; batch_id uuid; note_id uuid; owner_found boolean;
+ old_card jsonb; original_card jsonb; normalized_card jsonb; v_card_id uuid; stable_id uuid; owner uuid; db_owner uuid; key_value text; kind_value text; linked_job uuid; v_batch_id uuid; note_id uuid; owner_found boolean;
 begin
  if jsonb_typeof(p_entry->'cards') is distinct from 'array' or jsonb_array_length(p_entry->'cards')>100 then
   raise exception 'BUNCH_NOTE_CARDS_REQUIRED';
@@ -93,9 +93,9 @@ begin
   end if;
   if kind_value='inventory' then used:=used||rows; end if;
   owner:=nullif(c->>'owner_id','')::uuid;
-  batch_id:=nullif(p_entry->>'batch_id','')::uuid;
-  if batch_id is not null then
-   select n.id into note_id from bunch_note_private.bunch_notes n where n.batch_id=batch_id and n.location_code=upper(btrim(p_entry->>'location'));
+  v_batch_id:=nullif(p_entry->>'batch_id','')::uuid;
+  if v_batch_id is not null then
+   select n.id into note_id from bunch_note_private.bunch_notes n where n.batch_id=v_batch_id and n.location_code=upper(btrim(p_entry->>'location'));
    stable_id:=null;
    if note_id is not null then select wc.card_id into stable_id from bunch_note_private.bunch_note_work_cards wc
      where wc.bunch_note_id=note_id and wc.card_key=bunch_note_private.card_key(c) limit 1; end if;
