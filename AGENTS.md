@@ -16,6 +16,13 @@ This file is the authoritative repository workflow for local development, candid
 - After pushing a new candidate branch, immediately create its pull request with `gh pr create --fill`. Reuse an existing open PR for that branch; subsequent repair pushes update the same PR.
 - GitHub Actions owns validated merging, production publication, and hosted verification. Do not manually promote commits to main or bypass release gates.
 
+## Development-to-Production Flow
+
+- Target `main` from an isolated `codex/` branch. Run focused local checks; let the full required GitHub Actions validation run on the PR.
+- The existing Auto-Merge workflow opts eligible PRs into GitHub auto-merge. Auto-merge relies on the target branch's configured protections and required checks; creating a PR or enabling auto-merge is not proof that validation passed.
+- Production publication is a separate mandatory cloud gate: it validates the exact candidate commit, deploys backend changes before Pages, and verifies the live release. Do not write directly to production or use an alternate publication path.
+- The aborted staging-teardown experiment adds no staging detour or prerequisite to this production flow.
+
 ## 2. Monitor and Fail Fast
 
 - Stay active and monitor the candidate with `gh pr checks <PR> --watch --fail-fast`. If checks have not registered yet, retry the watcher after a bounded delay; missing checks are not a pass.

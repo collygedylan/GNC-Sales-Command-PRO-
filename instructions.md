@@ -1,6 +1,6 @@
 # Engineering Guidance
 
-AGENTS.md is the authoritative workflow for local development, candidate delivery, monitoring, autonomous CI remediation, and file hygiene. Follow its Local Development and Early Delivery rules and its delivery sequence after every candidate push.
+AGENTS.md is the authoritative workflow for local development, candidate delivery, monitoring, autonomous CI remediation, file hygiene, and the development-to-production flow. Follow its existing rules after every candidate push.
 
 ## Development
 
@@ -21,7 +21,7 @@ Once core changes, applicable migration checks, and focused local tests pass, co
 
 Keep release markers synchronized with package.json using the repository's release-version tooling when preparing an application release. Use the date-based VYYYY.MM.DD.NNN version scheme for application releases. CI-only and documentation-only changes retain the current application version and must pass its consistency check.
 
-After pushing a candidate, create or reuse its PR and monitor with the fail-fast workflow in AGENTS.md. GitHub Actions performs validated merging, production publication, and hosted verification.
+After pushing a candidate, create or reuse its PR and monitor with the fail-fast workflow in AGENTS.md. The Auto-Merge workflow relies on configured branch protections and required checks; the separate exact-commit publication gate must also pass, deploying backend changes before Pages. Do not patch production directly. See the Development-to-Production Flow in AGENTS.md.
 
 ## Cleanup
 
