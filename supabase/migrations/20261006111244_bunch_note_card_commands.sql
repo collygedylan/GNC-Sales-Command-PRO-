@@ -273,7 +273,7 @@ begin
   if not author or nullif(btrim(p_payload->>'reason'),'') is null then raise exception 'BUNCH_NOTE_AUTHOR_ONLY' using errcode='42501'; end if;
   if job.revision is distinct from p_expected_revision or job.status<>'open' then raise exception 'BUNCH_NOTE_REVISION_CONFLICT'; end if;
   perform set_config('bunch_note.card_command','on',true);
-  update bunch_note_private.bunch_note_work_cards wc set status='retired',active=false,revision=revision+1,updated_at=now()
+  update bunch_note_private.bunch_note_work_cards wc set status='retired',active=false,revision=wc.revision+1,updated_at=now()
    from bunch_note_private.bunch_notes n where n.job_id=job.id and wc.bunch_note_id=n.id and wc.active;
   update bunch_note_private.jobs set status='cancelled',revision=revision+1,updated_at=now() where id=job.id returning * into job;
   insert into bunch_note_private.audit(job_id,actor_id,operation,detail) values(job.id,actor.id,p_operation,p_payload||jsonb_build_object('job_revision',job.revision));
