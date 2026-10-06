@@ -220,6 +220,8 @@ jobs:
           cp supabase/ci/suspend_tag_approval_baseline.sql "$ci_root/supabase/migrations/20261005194157_ci_suspend_tag_approval_baseline.sql"
           cp supabase/migrations/20261005194158_suspend_tag_approval_loop.sql "$ci_root/supabase/migrations/"
           cp supabase/migrations/20261005225759_structured_bunch_notes.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006110751_bunch_note_per_card_work.sql "$ci_root/supabase/migrations/"
+          cp supabase/migrations/20261006111244_bunch_note_card_commands.sql "$ci_root/supabase/migrations/"
           # Deactivate the external worker before the disposable replay commits,
           # so CI remains deterministic after the production cutoff date.
           python3 - "$ci_root" <<'PY'
@@ -256,6 +258,7 @@ jobs:
           PY
           cp supabase/tests/hl_po_health_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/bunch_note_workflow_test.sql "$ci_root/supabase/tests/"
+          cp supabase/tests/bunch_note_per_card_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/native_auth_rls_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/password_change_profile_reconciliation_test.sql "$ci_root/supabase/tests/"
           cp supabase/tests/request_integrity_rls_test.sql "$ci_root/supabase/tests/"

@@ -4544,8 +4544,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const actor = await resolveActiveSessionProfile(session);
       const allowed = new Set(["action", "operation", "payload", "commandId", "expectedRevision"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("BUNCH_NOTE_PAYLOAD_INVALID");
+      const operation = String(payload.operation || "");
       const { data, error } = await supabase.rpc("bunch_note_command_v1", {
-        p_actor_id: actor.id, p_operation: String(payload.operation || ""),
+        p_actor_id: actor.id, p_operation: operation,
         p_payload: payload.payload || {}, p_command_id: payload.commandId || null,
         p_expected_revision: payload.expectedRevision ?? null,
       });
