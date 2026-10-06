@@ -282,7 +282,9 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  await openBunchNotesFromInventory(page);
  await expect(page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true}).click();
-  await openAuthorLocation(page,'C.12.001');
+ await openAuthorLocation(page,'C.12.001');
+ await expect(page.getByLabel('Purposes',{exact:true})).toHaveValue('Rain day 0');
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
  await expect(page.getByLabel('Purposes',{exact:true})).toHaveCount(0);
  await expect(page.locator('#bunch-note-content')).toContainText('Rain day 0');
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
