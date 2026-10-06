@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(51);
 
 create function pg_temp.reclass_v4_inquiry(up_move jsonb, down_move jsonb, expected_oh text)
 returns jsonb language sql immutable as $$
