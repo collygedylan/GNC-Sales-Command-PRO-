@@ -1,0 +1,240 @@
+name: Staging teardown
+on:
+  push:
+    branches: [staging-teardown]
+  pull_request:
+    branches: [staging-teardown]
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: teardown-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  architecture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Targeted staging and audit contracts
+        run: node --test tests/architecture-audit.test.mjs tests/staging-*.test.mjs
+      - name: Compare against trusted base
+        env:
+          AUDIT_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          if git cat-file -e "$AUDIT_BASE:scripts/check-architecture.mjs" 2>/dev/null; then
+            mkdir -p .gnc-local
+            git show "$AUDIT_BASE:scripts/check-architecture.mjs" > .gnc-local/check-architecture.mjs
+            git show "$AUDIT_BASE:scripts/architecture-report.mjs" > .gnc-local/architecture-report.mjs
+            node .gnc-local/check-architecture.mjs --base "$AUDIT_BASE"
+          else
+            # Phase 1 introduces the gate; subsequent candidates use its trusted base copy.
+            node scripts/check-architecture.mjs --base "$AUDIT_BASE"
+          fi
+      - run: git diff --check
+      - name: Save repository findings and source locations
+        run: |
+          mkdir -p .gnc-local
+          node scripts/check-architecture.mjs --report > .gnc-local/architecture-inventory.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: teardown-architecture-${{ github.event.pull_request.head.sha || github.sha }}
+          path: .gnc-local/architecture-inventory.json
+          include-hidden-files: true
+          retention-days: 14
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: disposable_staging_ci
+          POSTGRES_DB: teardown_test
+        ports: ['55445:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./.github/actions/setup-node-dependencies
+      - run: node --test tests/staging-database.test.mjs
+        env:
+          STAGING_TEST_DATABASE_URL: postgresql://postgres:disposable_staging_ci@127.0.0.1:55445/teardown_test
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/teardown-api/index.ts
+  regression:
+    uses: ./.github/workflows/release-validation.yml
+    with:
+      production-health: false
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./.github/actions/setup-node-dependencies
+      - run: npm run build:live:assets
+      - run: npm run build:v2
+      - run: node scripts/prepare-release-site.mjs
+      - name: Produce isolated staging artifact
+        env:
+          GITHUB_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/staging/build.mjs --site _site --out _staging/staging --config scripts/staging/staging-config.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: teardown-site-${{ github.event.pull_request.head.sha || github.sha }}
+          path: _staging
+          if-no-files-found: error
+          retention-days: 14
+  browser:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - project: android
+            browsers: chromium
+          - project: iphone
+            browsers: webkit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: ${{ matrix.browsers }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: teardown-site-${{ github.event.pull_request.head.sha || github.sha }}
+          path: _staging
+      - name: Mobile staging boundaries
+        run: npx playwright test --config staging/playwright.config.ts --project=${{ matrix.project }} --workers=1 --max-failures=1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: teardown-browser-${{ matrix.project }}-${{ github.run_attempt }}
+          path: test-results
+          retention-days: 7
+  staging-gate:
+    if: always()
+    needs: [architecture, database, regression, build, browser]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every staging validation job
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module -e 'const jobs=JSON.parse(process.env.RESULTS); if(Object.values(jobs).some(job=>job.result!=="success")) process.exit(1);'
+  publish:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging-teardown'
+    needs: staging-gate
+    runs-on: ubuntu-latest
+    environment: staging-teardown
+    concurrency:
+      group: teardown-pages-publication
+      cancel-in-progress: false
+    steps:
+      # No checkout or candidate code execution in this credential-bearing job.
+      - name: Verify current staging head
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ref = await github.rest.git.getRef({...context.repo, ref:'heads/staging-teardown'});
+            if (ref.data.object.sha !== context.sha) throw new Error('SUPERSEDED_STAGING_ARTIFACT');
+      - uses: actions/download-artifact@v4
+        with:
+          name: teardown-site-${{ github.sha }}
+          path: artifact
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.STAGING_APP_ID }}
+          private-key: ${{ secrets.STAGING_APP_PRIVATE_KEY }}
+          owner: collygedylan
+          repositories: gnc-teardown-staging
+          permission-contents: write
+      - name: Publish only the separate staging repository
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SOURCE_READ_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f artifact/staging/index.html
+          test ! -f artifact/CNAME
+          if find artifact -type l | grep -q .; then exit 1; fi
+          gh auth setup-git
+          git clone --branch gh-pages https://github.com/collygedylan/gnc-teardown-staging.git publication
+          cp -a artifact/staging publication/staging-next
+          cd publication
+          git config user.name 'gnc-teardown-publisher[bot]'
+          git config user.email 'gnc-teardown-publisher[bot]@users.noreply.github.com'
+          rm -rf -- staging
+          mv staging-next staging
+          touch .nojekyll
+          git add -- staging .nojekyll
+          git diff --cached --quiet && exit 0
+          git commit -m "Staging artifact $SOURCE_SHA"
+          current=$(GH_TOKEN="$SOURCE_READ_TOKEN" gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/staging-teardown" --jq .object.sha)
+          test "$current" = "$SOURCE_SHA"
+          git push origin HEAD:gh-pages
+  hosted-review:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging-teardown'
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: staging-teardown
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: chromium webkit
+      - name: Require exact hosted commit
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          const url = 'https://collygedylan.github.io/gnc-teardown-staging/staging/';
+          for (let attempt = 0; attempt < 18; attempt++) {
+            const response = await fetch(url + '?commit=' + process.env.SOURCE_SHA, { signal: AbortSignal.timeout(15000) });
+            if (response.ok) {
+              const html = await response.text();
+              const match = html.match(/<script[^>]*id="gnc-staging-config"[^>]*>([\s\S]*?)<\/script>/);
+              if (match && JSON.parse(match[1]).commitSha === process.env.SOURCE_SHA) process.exit(0);
+            }
+            await new Promise(resolve => setTimeout(resolve, 10000));
+          }
+          throw new Error('EXACT_STAGING_COMMIT_NOT_HOSTED');
+          NODE
+      - name: Verify hosted mobile isolation
+        env:
+          TEARDOWN_STAGING_BASE_URL: https://collygedylan.github.io/gnc-teardown-staging/staging/
+        run: npx playwright test --config staging/playwright.config.ts --workers=1 --max-failures=1
+      - name: Verify real synthetic workflows on Android and iPhone
+        env:
+          TEARDOWN_STAGING_BASE_URL: https://collygedylan.github.io/gnc-teardown-staging/staging/
+          TEARDOWN_STAGING_USERNAME: ${{ vars.TEARDOWN_STAGING_USERNAME }}
+          TEARDOWN_STAGING_ACCESS_CODE: ${{ secrets.TEARDOWN_STAGING_ACCESS_CODE }}
+        run: npx playwright test --config staging/playwright.auth.config.ts --workers=1 --max-failures=1
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: teardown-hosted-diagnostics-${{ github.sha }}-${{ github.run_attempt }}
+          path: test-results
+          retention-days: 7

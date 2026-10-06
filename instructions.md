@@ -2,6 +2,12 @@
 
 AGENTS.md is the authoritative workflow for local development, candidate delivery, monitoring, autonomous CI remediation, and file hygiene. Follow its Local Development and Early Delivery rules and its delivery sequence after every candidate push.
 
+## Architecture and Stability
+
+Follow the Strict Architecture & Stability rules in AGENTS.md. Keep every newly added tracked text file within 500 lines, use module or component boundaries, avoid new shared browser globals, and handle every error explicitly. Do not perform live production writes; use the reviewed PR and required cloud checks. Run the repository-local AST audit with the trusted base commit. The audit is read-only and blocks only newly introduced findings and oversized new files, so legacy debt can be reduced incrementally. Do not add source-level suppressions or automatic fixes.
+
+For the staging teardown, target the exact long-lived `staging-teardown` branch from task-scoped candidate branches such as `codex/teardown-phase-1` and `codex/teardown-phase-2`. The user authorized CI-only merges for Phases 1 and 2 and staging hosting verification. Stop for human review after both phases are merged and `/staging/` is verified. Do not change production root content, production workflows, backend services, or publish to production. Agent-authored PRs use the repository automation identity; `collygedylan` is the only human reviewer.
+
 ## Development
 
 Implement complete, connected solutions and verify the affected behavior. Keep diffs focused and preserve unrelated changes. Prioritize offline synchronization and UI hydration stability.

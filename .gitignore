@@ -20,6 +20,7 @@ playwright-report/
 _site/
 artifacts/
 .gnc-local/
+_staging/
 .lighthouseci/
 legacy_fallback/
 

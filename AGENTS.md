@@ -10,6 +10,17 @@ This file is the authoritative repository workflow for local development, candid
 - Once core changes, applicable migration checks, and focused local tests pass, commit and push the candidate immediately, then follow the Auto-PR sequence below. Do not delay the PR for exhaustive local regression testing.
 - Let the parallel GitHub Actions pipeline perform exhaustive regression and E2E validation. On a cloud failure, inspect the failed job and make targeted corrections using the Monitor and Fail Fast and Autonomous Remediation rules below.
 
+## Strict Architecture & Stability
+
+- Do not write directly to production. Develop on an isolated candidate branch and use the reviewed pull request and required GitHub Actions checks for promotion. No live autonomous patching or direct production publication is permitted.
+- Keep every newly added tracked text file at or below 500 lines, including documentation, configuration, generated text, and lockfiles. Existing files may be modified without this new-file limit. Extract new behavior into scoped React components or isolated ES modules; do not grow the legacy shell monolith. Generated bundles and vendor files must not be edited by hand.
+- Keep state inside components, React Context, or explicitly imported and exported modules. Do not add implicit globals or new writes to `window`, `globalThis`, or other shared browser globals. Existing legacy bridges are migration debt, not precedent for new code.
+- Handle every failure explicitly. Empty `catch` blocks are forbidden; cancellation and parse fallbacks must have a concrete, documented handling path. Log actionable failures or route them to the existing notification/error handler.
+- When changing a file, remove only dead or redundant code whose callers and side effects are confirmed. Preserve compatibility entry points and unrelated behavior; do not use architectural cleanup as a reason for broad rewrites.
+- Run the repository-local AST audit against the trusted base commit for candidate changes. It reports legacy findings without blocking untouched files and fails new violations and newly added tracked text files over the size limit. It performs no automatic fixes and has no source-editable waiver mechanism.
+- All agent-authored pull requests must use the dedicated repository-scoped automation identity. `collygedylan` is the sole human reviewer. Keep the agent publisher separate from production deployment credentials and grant it no bypass of the `main` rules.
+- For the teardown effort, target the exact long-lived `staging-teardown` branch; use task-scoped candidate branches such as `codex/teardown-phase-1` and `codex/teardown-phase-2` for PRs into it. The user authorized CI-only merges for Phases 1 and 2 and staging hosting verification. After both phases are merged and `/staging/` is verified, stop for human review before later phases. Do not change production root content, production workflows, backend services, or production publication.
+
 ## 1. Auto-PR
 
 - Work on a candidate branch and preserve unrelated changes in shared workspaces.
