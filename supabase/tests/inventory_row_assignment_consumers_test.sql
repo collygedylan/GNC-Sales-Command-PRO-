@@ -23,8 +23,9 @@ select ok(position('eval_work_match_assignment_users_v1' in pg_get_functiondef('
   'issued Eval Work keeps its saved recipients while still validating source identity');
 select ok(position('a.master_unique_id = m.unique_id' in pg_get_functiondef('public.finalize_pikes_order_import(text,text,text,integer,integer)'::regprocedure)) > 0,
   'new Pikes snapshots join the exact source row');
-select ok(position('a.assigned_at <= target.imported_at' in pg_get_functiondef('public.finalize_pikes_order_import(text,text,text,integer,integer)'::regprocedure)) > 0,
-  'new Pikes snapshots respect the assignment cutoff');
+select ok(position('a.assigned_at <= snapshot_cutoff' in pg_get_functiondef('public.finalize_pikes_order_import(text,text,text,integer,integer)'::regprocedure)) > 0
+  and position('imported_at = snapshot_cutoff' in pg_get_functiondef('public.finalize_pikes_order_import(text,text,text,integer,integer)'::regprocedure)) > 0,
+  'new Pikes snapshots use and persist the same non-null assignment cutoff');
 select ok(position('ph_itemcode_default_owners' in pg_get_functiondef('private.handover_assignment_targets_v1()'::regprocedure)) > 0,
   'scheduled handover transfers ItemCode defaults');
 select ok(to_regprocedure('private.handover_recompute_default_owner_rows_v1()') is not null
@@ -33,9 +34,6 @@ select ok(to_regprocedure('private.handover_recompute_default_owner_rows_v1()') 
 select ok(position('ITEMCODE_DEFAULT_OWNER_REPLACED_REFRESH_REQUIRED' in
   pg_get_functiondef('public.set_itemcode_default_owners_v1(jsonb,uuid)'::regprocedure)) > 0,
   'manager RPC rejects an owner rewritten by the handover instead of acknowledging the wrong owner');
-update private.scheduled_account_handover_v1
-set effective_at=now()-interval '1 second'
-where transition_key='kayla_knepp_to_nelly_aguilar_20261002';
 insert into public.ph_itemcode_default_owners(itemcode_normalized,assignedto,assigned_at,revision)
 values('ROW-HANDOVER-AUDIT','kayla_knepp',now(),1);
 select is((select assignedto from public.ph_itemcode_default_owners where itemcode_normalized='ROW-HANDOVER-AUDIT'),

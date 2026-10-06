@@ -235,7 +235,7 @@ select throws_ok(
     jsonb_build_array(jsonb_build_object('itemcode','ITEM-TEST-1','assignedto','abigail_vazquez',
       'expectedRevision',coalesce((select revision from public.ph_itemcode_default_owners where itemcode_normalized='ITEM-TEST-1'),0))),
     '10000000-0000-4000-8000-000000000101'::uuid)$q$,
-  '42501', 'EVAL_ASSIGNMENT_FORBIDDEN',
+  '42501', 'ITEMCODE_DEFAULT_OWNER_FORBIDDEN',
   'unauthorized user cannot assign Eval ItemCodes'
 );
 
