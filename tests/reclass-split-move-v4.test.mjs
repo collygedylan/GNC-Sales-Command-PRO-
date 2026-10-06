@@ -57,3 +57,9 @@ test('disposable SQL contract verifies the requested audit preserves V4 and retr
   assert.match(sqlTests, /identical and conflicting retries do not duplicate the requested audit/);
   assert.match(sqlTests, /rejected requests roll back their provisional outbox audit/);
 });
+
+test('inquiry notice accurately discloses the Requested audit without claiming inventory changes', () => {
+  const html = read('index.html');
+  assert.equal(html.split('Requested history entry containing your instructions').length - 1, 2);
+  assert.doesNotMatch(html, /No inventory, History, audit, cache, or live-event data is changed/);
+});
