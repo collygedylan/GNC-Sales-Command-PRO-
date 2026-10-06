@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { minify } from 'terser';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest } from './live-runtime-manifest.mjs';
 
-const RELEASE = 'V2026.10.05.004';
+const RELEASE = 'V2026.10.06.001';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const siteRoot = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
 const htmlPath = path.join(root, 'index.html');
@@ -46,7 +46,7 @@ await mkdir(path.dirname(runtimeTarget), { recursive: true });
 await writeFile(runtimeTarget, `${minified.code}\n;window.__gncAppRuntimeExecuted = true;\n`, 'utf8');
 // These synchronous dependencies must accompany the extracted production
 // runtime in local verification as well as the Pages artifact.
-await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'location-code.js', 'bunch-note.js', 'bunch-note.css', 'bunch-note-structured.js', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'inventory-list-contract.js', 'master-detail-snapshots.js'].map((name) =>
+await Promise.all(['sales-workspace.js', 'sales-workspace.css', 'mobile-workspace.js', 'mobile-workspace.css', 'navigation-preferences.js', 'navigation-preferences.css', 'location-code.js', 'bunch-note.js', 'bunch-note.css', 'bunch-note-cards.css', 'bunch-note-structured.js', 'drive-demand-detail.js', 'live-sync-registry.js', 'live-sync-adapters.js', 'live-sync-coordinator.js', 'inventory-list-contract.js', 'master-detail-snapshots.js'].map((name) =>
   copyFile(path.join(root, 'assets', name), path.join(siteRoot, 'assets', name))));
 await mkdir(path.join(siteRoot, 'assets', 'vendor'), { recursive: true });
 await copyFile(path.join(root, 'assets', 'login-network-trace.js'), path.join(siteRoot, 'assets', 'login-network-trace.js'));

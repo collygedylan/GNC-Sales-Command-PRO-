@@ -28,7 +28,7 @@ test('destination sales years use only the actual year and keep mixed groups sep
  assert.equal(b.templates.find(t=>t.label==='Grade and Save / Move To').kind,'move');
 });
 
-test('top-level Back traverses item, bay and base while retaining planned destination and draft input',async()=>{
+test('top-level Back traverses action editor, location instructions and cards while retaining planned destination and draft input',async()=>{
  const row={unique_id:'source',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',commonname:'Plant',salesyear:'26',contsize:'#3',lotcode:'LOT',stock:0,review:null,available:0};
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};let saved,serial=0;
  const option={id:'move',category:'grading',label:'Grade and Save / Move To',kind:'move',active:true};
@@ -36,18 +36,18 @@ test('top-level Back traverses item, bay and base while retaining planned destin
   const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.08.001','D.09.001']}:body.operation==='inventory'?{rows:[row]}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.08.001','D.09.001','OTHER'],matching:[{...row,locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
   return {ok:true,data};
  }}),b=ctx.BunchNote;
- await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('Open location D.08"'));
+ await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('data-bn-cards'));
  assert.ok(!element.innerHTML.includes('Open location D.08.001"'));
- b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');assert.ok(element.innerHTML.includes('Next: Items'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.openItem('D.08.001|PLANT');
+ b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');assert.ok(element.innerHTML.includes('Inventory action editor'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.selectItem(0,['source'],true,false);b.openItem('D.08.001|PLANT');
  const key='item:0:D.08.001|PLANT';b.startAction(key,'move');b.startAction(key,'move');b.actionField('quantity','4');assert.ok(element.innerHTML.includes('Choose location'));
  await b.chooseActionDestination();assert.ok(element.innerHTML.includes('Locations with this item'));assert.ok(element.innerHTML.includes('All other locations'));
  b.destinationBase('D.09');b.pickDestination('D.09.001');await b.finishAction();assert.equal(saved.locations[0].actions.length,1);
  assert.equal(saved.locations[0].actions[0].destination,'D.09.001');assert.equal(saved.locations[0].actions[0].destination_mode,'matching');
  assert.equal(saved.locations[0].source_all[0].locationcode,'D.08.001');
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open item PLANT'));assert.ok(!element.innerHTML.includes('Choose destination'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Next: Items'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08.001"'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08"'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Inventory action editor'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('data-bn-cards'));
+ b.openLocation('D.08.001');assert.ok(element.innerHTML.includes('Grade for shipping'));
  assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);
 });
 test('shell repaint preserves creator navigation; explicit refresh and account reset reload metadata',async()=>{
@@ -65,7 +65,7 @@ test('shell repaint preserves creator navigation; explicit refresh and account r
  const count=commands.length;
  ctx.renderViewContent('bunch-note',false,true);
  assert.equal(commands.length,count);
- assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/Open location D.08.001/);
+ assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/data-bn-cards/);
  ctx.BunchNote.openLocation('D.08.001');assert.match(element.innerHTML,/Keep this draft/);
  ctx.renderViewContent('bunch-note',true,true);await new Promise(r=>setImmediate(r));
  assert.equal(commands.length,count+4);assert.match(element.innerHTML,/Keep this draft/);
@@ -161,7 +161,7 @@ test('refresh commits preserve active controls and cannot overwrite newer comman
 });
 test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
  const controls=Array.from({length:4},()=>({disabled:false})),attributes={},requests=[];
- const element={classList:{add(){}},childNodes:[],set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:()=>controls};
+ const element={classList:{add(){}},childNodes:[],set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:selector=>selector==='input,select,textarea,button'?controls:[]};
  const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[{id:'ta',kind:'ta',group:'inventory',scope:'location',instructions:'TA'}],source:[]},actuals:[]};
  let release,fail=false,command=0;
  const ctx=runtime({crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async(_url,body)=>{
@@ -258,9 +258,9 @@ test('setup and action saves retain values on failure; source changes preserve c
   const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.09.001','OTHER']}:body.operation==='inventory'?{rows}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.09.001','OTHER'],matching:[{...rows[0],locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
   return {ok:true,data};
  }}),b=ctx.BunchNote;
- await b.open();await b.chooseBlock('D');b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Move stock');await b.nextItems();
- assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/value="Move stock"/);assert.match(element.innerHTML,/Next: Items/);
- fail=false;await b.nextItems();b.openItem('D.08.001|PLANT');b.startAction('item:0:D.08.001|PLANT','move');b.actionField('quantity','3');
+ await b.open();await b.chooseBlock('D');b.openLocation('D.08.001');b.edit(0,'purposes','Move stock');await b.nextItems();
+ assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/value="Move stock"/);assert.match(element.innerHTML,/Inventory action editor/);
+ fail=false;await b.nextItems();b.selectItem(0,['a','b'],true,false);b.openItem('D.08.001|PLANT');b.startAction('item:0:D.08.001|PLANT','move');b.actionField('quantity','3');
  b.actionSource('PLANT|2026');await b.chooseActionDestination();b.destinationBase('D.09');b.pickDestination('D.09.001');
  b.actionSource('PLANT|');assert.match(element.innerHTML,/Choose location/);assert.ok(!element.innerHTML.includes('Move to: D.09.001'));assert.match(element.innerHTML,/value="PLANT\|2026"/);
  await b.chooseActionDestination();assert.match(element.innerHTML,/Same-item matching needs one known sales year/);assert.equal(lookups,1);b.pickDestination('OTHER','other');

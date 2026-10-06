@@ -17751,7 +17751,7 @@ function buildBunchNotePdfHtml_(report) {
   const badge = function(tag) { if(!tag)return '—';const tags=['BOB','QC','SAM','RHETT','BUNCHERS','TA','SHARON','MATT'],colors=['#1d4ed8','#6d28d9','#047857','#9a3412','#334155','#9f1239','#0e7490','#854d0e'];return '<b class="crew" style="background:'+(colors[tags.indexOf(String(tag).toUpperCase())]||'#475569')+'">'+e(tag)+'</b>'; };
   const sections=report.house_sections||[], ranks={}; sections.forEach(function(h,i){ranks[h.id]=i+1;});
   const orderedActions=(report.actions||[]).map(function(a,i){return {a:a,i:i};}).sort(function(x,y){return ((ranks[x.a.section_id]||0)-(ranks[y.a.section_id]||0)) || ((x.a.sequence_order||x.i+1)-(y.a.sequence_order||y.i+1));}).map(function(x){return x.a;});
-  let lastHouse = null;
+  let lastHouse = null, activeCard = null;
   const number = function(v) { return v === null || v === undefined || String(v).trim() === '' || !/^-?\d+(\.\d+)?$/.test(String(v).trim()) ? null : Number(v); };
   const qty = function(v) { return number(v) === null ? 'Unknown' : String(number(v)); };
   const kind = function(a) { return a.kind || (String(a.label || a.instructions || '').indexOf('TA / culls') === 0 ? 'ta' : a.label === 'Move' ? 'move' : a.group === 'hauling' && String(a.label || a.instructions || '').indexOf('Wait') !== 0 ? 'hauling' : 'instruction'); };
@@ -17772,16 +17772,24 @@ function buildBunchNotePdfHtml_(report) {
     rows += '<tr class="item"><td colspan="6"><b>' + e(itemcode) + ' · ' + e(lots[0].commonname) + '</b><br>LOC On Hand ' + e(total('stock')) + ' · LOC Review ' + e(total('review')) + ' · LOC Available ' + e(total('available')) + '</td></tr>';
     rows += lots.map(function(r) { return '<tr><td>'+e(r.commonname)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'</td><td>'+e(r.lotcode)+'<br>Sales year '+e(r.salesyear || 'Unknown')+'<br>Season '+e(r.season || 'Unknown')+'<br>DesigItem '+e(r.desigitem || '—')+'</td><td>On Hand '+e(qty(r.stock))+'<br>Review '+e(qty(r.review))+'<br>Available '+e(qty(r.available))+'</td><td>'+e(r.flags || '—')+'<br>'+e(r.hold || '—')+'<br>'+e(r.warehouse || '—')+'</td><td>'+e(r.location_notes || '—')+'<br><small>'+e(r.unique_id)+'</small></td></tr>'; }).join('');
   });
-  const actions = orderedActions.map(function(a) {
+  const actionRow = function(a) {
     const target = a.scope === 'location' ? 'Whole location' : (a.row_ids || []).map(function(id) { const r=(report.source||[]).find(function(r) { return r.unique_id===id; }); return r ? [r.itemcode,r.contsize,r.lotcode,'Sales year '+(r.salesyear || 'Unknown')].join(' / ') : id; }).join('; ');
     const recorded = current.filter(function(x) { return x.action_id===a.id; });
     const status = (report.progress || {})[a.id] || {};
     const completion = work ? e(status.status || 'Unresolved')+'<br>'+e(status.reason || '')+(status.review_flags && status.review_flags.length ? '<br><b>REVIEW: '+e(reviewText(status.review_flags))+'</b>' : '') : '☐ Done<br>☐ Not needed<br>Reason:';
     const section=sections.find(function(h){return h.id===a.section_id;}),houseId=section?section.id:'';
-    const house=lastHouse===houseId?'':'<tr class="house"><th colspan="5">'+e(section?section.name:'General tasks')+((section&&section.direction)||report.direction?' · '+e(section&&section.direction||report.direction):'')+'</th></tr>';
+    const cardScoped=activeCard&&activeCard.kind==='inventory',houseName=cardScoped&&activeCard.house?activeCard.house:section?section.name:'General tasks',houseDirection=cardScoped?activeCard.direction:((section&&section.direction)||report.direction);
+    const house=lastHouse===houseId?'':'<tr class="house"><th colspan="5">'+e(houseName)+(houseDirection?' · '+e(houseDirection):'')+'</th></tr>';
     lastHouse=houseId;
     return house+'<tr><td>'+badge(a.margin_tag == null ? a.crew : a.margin_tag)+'<br>'+e(a.label || a.group)+(a.worker_added?'<br><b>Worker added</b>':'')+'</td><td><b>'+e([a.item_size,a.item_desc].filter(Boolean).join(' · '))+'</b><br>'+e(target)+'</td><td>'+((a.quantity_constraint !== undefined && a.quantity_constraint !== '')?'<b>'+e(a.quantity_constraint)+'</b><br>':'')+'Planned '+e(a.quantity == null || a.quantity === '' ? '—' : a.quantity)+' / '+e(a.percentage || '—')+'%'+(work?'<br>Actual '+(recorded.length?e(recorded.reduce(function(sum,x) { return sum+Number(x.quantity); },0)):'Not recorded'):'')+'</td><td class="pre routing">'+(a.stage?e(a.stage)+'<br>':'')+(a.destination?'<b>To '+e(a.destination)+'</b><br>':'')+(a.marking?rich(a.marking)+'<br>':'')+rich(a.instructions)+'</td><td>'+completion+'</td></tr>';
-  }).join('');
+  };
+  const cardHeading = function(card) {
+    const ids=new Set(card.row_ids||[]),seenRows=new Set(),source=(report.source||[]).filter(function(r){if(!ids.has(r.unique_id)||seenRows.has(r.unique_id))return false;seenRows.add(r.unique_id);return true;});
+    const total=function(field){const values=source.map(function(r){return number(r[field]);});return source.length!==ids.size||values.some(function(v){return v===null;})?'Unknown / incomplete':String(values.reduce(function(sum,v){return sum+v;},0));};
+    return '<tr class="house"><th colspan="5">'+e(card.kind==='shared'?'General / Shared Work':[card.itemcode,card.commonname,card.contsize].filter(Boolean).join(' · '))+'<br><small>Worker: '+e(card.owner_name||'Unassigned')+' · House: '+e(card.house||'Not specified')+' · Direction: '+e(card.direction||'Not specified')+(card.kind==='shared'?'':'<br>Location Total (On Hand): '+e(total('stock'))+' · Available: '+e(total('available'))+' · '+source.length+' lot rows')+'</small></th></tr>';
+  };
+  const cards=report.cards||[];
+  const actions=cards.length?cards.map(function(card){lastHouse=null;activeCard=card;return cardHeading(card)+orderedActions.filter(function(a){return a.card_id===card.id;}).map(actionRow).join('');}).join(''):orderedActions.map(actionRow).join('');
   let recorded = '';
   if (work) {
     const totals={};

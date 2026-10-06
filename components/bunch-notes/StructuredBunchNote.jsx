@@ -97,3 +97,5 @@ export function mountStructuredBunchNote(host, props) {
   update(props);
   return { update, destroy: () => root.unmount() };
 }
+
+export { mountBunchNoteCards } from './CardBoard.jsx';
