@@ -42,7 +42,9 @@ test('Drive maps validation conflicts safely and keeps V4 behind its protected e
 });
 
 test('disposable SQL contract covers ordered splits, quantity bounds, stale OH, and authorization', () => {
-  assert.match(sqlTests, /select plan\(\d+\)/);
+  const declared = Number(sqlTests.match(/select plan\((\d+)\)/)?.[1]);
+  const assertions = sqlTests.match(/^select (?:has_function|ok|is|throws_ok|lives_ok)\(/gm) || [];
+  assert.equal(declared, assertions.length, 'pgTAP plan must include every declared assertion');
   assert.match(sqlTests, /split_move_v4/);
   assert.match(sqlTests, /original_oh_conflict/);
   assert.match(sqlTests, /eval_work_combined_move_exceeds_oh/i);
