@@ -35,8 +35,10 @@ try {
   }
   await admin.query("insert into public.ph_app_settings(key,value) values('current_season_salesyear','{\"seasonCode\":\"F1\",\"salesYear\":27}') on conflict(key) do update set value=excluded.value");
   await admin.query("insert into public.ph_cav_import(unique_id,itemcode,season,holdstopreason) values($1,$2,'F1','')", [cavId,itemcode]);
+  await admin.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory'");
   await admin.query("insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,source,season,saleyear,ptronhand,ptravailable,priority,app_tab_assignment) values($1,$3,'Concurrency Plant','#3','A.01.001','27.F1','PH','F1','27','5','4','1','season'),($2,$3,'Concurrency Plant','#3','B.01.001','27.F1','PH','F1','27','20','19','2','season')", [lowerId,sourceId,itemcode]);
-  await admin.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items')");
+  await admin.query("insert into public.ph_inventory_row_assignments(master_unique_id,unique_id,itemcode,itemcode_normalized,commonname,locationcode,lotcode,source,assignedto,assignment_reason,present_in_drive) values($1,$1,$3,upper($3),'Concurrency Plant','B.01.001','27.F1','PH','megan_kelly','unresolved_preserved',true),($2,$2,$3,upper($3),'Concurrency Plant','A.01.001','27.F1','PH','megan_kelly','unresolved_preserved',true) on conflict(master_unique_id) do update set assignedto=excluded.assignedto,assignment_reason=excluded.assignment_reason,present_in_drive=true,revision=ph_inventory_row_assignments.revision+1,updated_at=now()", [sourceId,lowerId,itemcode]);
+  await admin.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items','ph_inventory_row_assignments','ph_itemcode_default_owners')");
   await admin.query('commit');
   committed = true;
   const fingerprint = (await admin.query('select private.manager_season_priority_scope_fingerprint_v1($1) value',[itemcode])).rows[0].value;
@@ -61,6 +63,7 @@ try {
     await admin.query('delete from private.manager_season_priority_receipts where itemcode_normalized=upper($1)',[itemcode]);
     await admin.query("delete from public.ph_request_delivery_outbox where payload#>>'{reclassPayload,source,itemcode}'=$1",[itemcode]);
     await admin.query('delete from public.ph_master_inventory where itemcode=$1',[itemcode]);
+    await admin.query('delete from public.ph_inventory_row_assignments where master_unique_id=any($1::text[])',[[sourceId,lowerId]]);
     await admin.query('delete from public.ph_cav_import where unique_id=$1',[cavId]);
     await admin.query('delete from private.app_access_user_overrides where profile_id=any($1::uuid[])',[actors.map(a=>a.id)]);
     await admin.query('delete from private.app_access_legacy_baseline where profile_id=any($1::uuid[])',[actors.map(a=>a.id)]);

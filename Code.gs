@@ -1067,6 +1067,7 @@ const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBack
 const DRIVE_AROUND_HISTORY_BACKFILL_RETRY_DELAY_MS = 15 * 60 * 1000;
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
+const WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE = 'ph_inventory_row_assignments';
 // Eval assignment review sheet. Supabase is authoritative; this file is export-only.
 const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '16mK_5MWcIwVsbok0lGkBG65UeZt553nf5IEPiv0k34Q';
 const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1PLQJjNIM4dBTBlFOYiumLb-ICccPZbgn';
@@ -1155,7 +1156,7 @@ function runDriveAroundOnly() {
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
-function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_ASSIGNED_ITEMS_TABLE); }
+function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE); }
 function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
   const safeRevision = String(importRevision || new Date().toISOString()).trim();
   const safeSource = String(sourceName || 'canonical_import').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 60);
@@ -3807,7 +3808,7 @@ function getAssignedItemLowStockExportTargets_(rows) {
 
 function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const safeSheetId = String(sheetId || WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID).trim();
-  const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
+  const safeTableName = String(tableName || WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE).trim();
   if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
 
   // Reconciliation belongs to the one scheduled maintenance worker. Exporting
@@ -3815,34 +3816,43 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const maintenance = { status: 'owned_by_scheduled_worker' };
   const rows = Object.values(fetchAllSupabaseData(
     safeTableName,
-    'unique_id,itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
+    'master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,lotcode,source,warehousei,assignedto,default_assignedto,default_revision,assignment_reason,review_required,zone_override_active,present_in_drive,assigned_at,updated_at',
     getSupabaseFetchOptionsForTable_(safeTableName)
   )).sort(function(a, b) {
-    return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true });
+    return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true }) ||
+      String(a.locationcode || '').localeCompare(String(b.locationcode || ''), undefined, { numeric: true }) ||
+      String(a.master_unique_id || a.unique_id || '').localeCompare(String(b.master_unique_id || b.unique_id || ''), undefined, { numeric: true });
   });
 
   const lowStockTargets = getAssignedItemLowStockExportTargets_(rows);
   const spreadsheet = SpreadsheetApp.openById(safeSheetId);
   const sheet = spreadsheet.getSheets()[0];
   const headers = [
-    'ITEMCODE', 'ASSIGNEDTO', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
-    'PRESENT_IN_DRIVE', 'ASSIGNED_BY', 'ASSIGNED_AT', 'FIRST_SEEN_AT',
-    'LAST_SEEN_AT', 'UPDATED_AT', 'AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY',
+    'MASTER_UNIQUE_ID', 'ITEMCODE', 'GENUSNAME', 'ASSIGNEDTO', 'DEFAULT_ASSIGNEDTO', 'DEFAULT_REVISION',
+    'ASSIGNMENT_REASON', 'REVIEW_REQUIRED', 'ZONE_OVERRIDE_ACTIVE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
+    'LOTCODE', 'SOURCE', 'WAREHOUSEI', 'PRESENT_IN_DRIVE', 'ASSIGNED_AT', 'UPDATED_AT', 'AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY',
     'SUGGESTED_LOW_STOCK_QTY', 'ORDER_LINE_OBSERVATIONS', 'HISTORY_DAYS', 'HISTORY_CALCULATED_AT'
   ];
   const values = [headers].concat(rows.map(function(row) {
     const target = lowStockTargets[String(row.itemcode_normalized || row.itemcode || '').trim().toUpperCase()] || {};
     return [
+      row.master_unique_id || row.unique_id || '',
       row.itemcode_normalized || row.itemcode || '',
+      row.genusname || '',
       row.assignedto || '',
+      row.default_assignedto || '',
+      row.default_revision == null ? '' : row.default_revision,
+      row.assignment_reason || '',
+      row.review_required === true,
+      row.zone_override_active === true,
       row.commonname || '',
       row.contsize || '',
       row.locationcode || '',
+      row.lotcode || '',
+      row.source || '',
+      row.warehousei == null ? '' : row.warehousei,
       row.present_in_drive === true,
-      row.assigned_by || '',
       row.assigned_at || '',
-      row.first_seen_at || '',
-      row.last_seen_at || '',
       row.updated_at || '',
       target.history_ready === false ? 'History processing' : (target.mean_quantity == null ? 'No history' : target.mean_quantity),
       target.effective_qty == null ? '' : target.effective_qty,

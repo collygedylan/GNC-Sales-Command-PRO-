@@ -409,6 +409,54 @@ test('treats assignment container and location as samples, not ownership boundar
   assert.equal(engine.buildAuthoritativeAssignmentExactKey(inventory[0]), 'SHARED-001|#3|A.01.001');
 });
 
+test('uses exact inventory-row owners when the assignment snapshot has source IDs', () => {
+  const inventory = [
+    row('SHARED-001', 'F1', 27, { UNIQUE_ID: 'physical-a', GENUSNAME: 'Rosa', LOCATIONCODE: 'A.01.001' }),
+    row('SHARED-001', 'F1', 27, { UNIQUE_ID: 'physical-b', GENUSNAME: 'Rosa', LOCATIONCODE: 'B.02.002' }),
+    row('SHARED-001', 'F1', 27, { UNIQUE_ID: 'physical-c', GENUSNAME: 'Rosa', LOCATIONCODE: 'C.03.003' })
+  ];
+  const assignments = [
+    { master_unique_id: 'physical-a', assignedto: 'zoe_green' },
+    { master_unique_id: 'physical-b', assignedto: 'mitch_kaiser' },
+    { master_unique_id: 'physical-c', assignedto: null },
+    // This legacy row must not broaden a row-level ownership snapshot.
+    { itemcode: 'SHARED-001', genusname: 'Rosa', assignedto: 'legacy_owner' }
+  ];
+
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments);
+
+  assert.deepEqual(Array.from(model.rows, (entry) => entry.ASSIGNEDTO), ['zoe_green', 'mitch_kaiser', '']);
+  assert.deepEqual(Array.from(model.rows, (entry) => Array.from(entry.ASSIGNEDTO_USERS)), [['zoe_green'], ['mitch_kaiser'], ['']]);
+  assert.deepEqual(Array.from(model.assignedToOptions), ['(Unassigned)', 'mitch_kaiser', 'zoe_green']);
+  assert.equal(model.matchedCount, 3);
+  assert.equal(model.unassignedCount, 1);
+});
+
+test('does not use ItemCode + Genus fallback when an exact row has no assignment record', () => {
+  const inventory = [
+    row('SHARED-002', 'F1', 27, { UNIQUE_ID: 'physical-assigned', GENUSNAME: 'Acer' }),
+    row('SHARED-002', 'F1', 27, { UNIQUE_ID: 'physical-unmatched', GENUSNAME: 'Acer' })
+  ];
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, [
+    { master_unique_id: 'physical-assigned', assignedto: 'zoe_green' }
+  ]);
+
+  assert.deepEqual(Array.from(model.rows, (entry) => entry.ASSIGNEDTO), ['zoe_green', '']);
+  assert.equal(model.matchedCount, 1);
+  assert.equal(model.unassignedCount, 1);
+});
+
+test('the explicit row-authority contract disables fallback even with an empty cache snapshot', () => {
+  const inventory = [row('LEGACY-CACHE', 'F1', 27, { UNIQUE_ID: 'row-legacy-cache', GENUSNAME: 'Rosa' })];
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, [
+    { itemcode: 'LEGACY-CACHE', genusname: 'Rosa', assignedto: 'stale_owner' }
+  ], { assignmentContract: 'inventory-row-assignments-v1' });
+
+  assert.equal(model.rows[0].ASSIGNEDTO, '');
+  assert.equal(model.matchedCount, 0);
+  assert.equal(model.unassignedCount, 1);
+});
+
 test('script-compatible classifier preserves the pasted Apps Script predicates and boundaries', () => {
   const rows = [
     row('A', 'F1', 27, { TEST_ID: 'a-f1', ASSIGNEDTO: 'dylan_collyge', PRIORITY: '1', S_LTS: 100, HOLDSTOPCODE: 'H', HOLDSTOPBEGINDATE: '8/14/2026', LOCATIONNOTEDATE: '8/9/2026' }),
@@ -592,16 +640,16 @@ test('worker report identities and memberships match the synchronous contract', 
   vm.runInContext(helper.workerSource, worker);
   const inventory = [
     row('A', 'U1', 27, { TEST_ID: 'a', UNIQUE_ID: ' ', unique_id: 'a', GENUSNAME: 'oak' }),
-    row('B', 'U2', 27, { TEST_ID: 'b', MASTER_UNIQUE_ID: 'b', GENUSNAME: 'maple' }),
+    row('B', 'U2', 27, { TEST_ID: 'b', MASTER_UNIQUE_ID: 'b', unique_id: 'b', GENUSNAME: 'maple' }),
     row('_A', 'U1', 27, { TEST_ID: 'no-uid', WAREHOUSEI: 'PH', GENUSNAME: 'pine', SOURCE: 'LD', ROW_NUMBER: '3' }),
     { TEST_ID: 'blank' },
     row('_A', 'U1', 27, { TEST_ID: 'same-key', WAREHOUSEI: 'PH', GENUSNAME: 'pine', SOURCE: 'LD', ROW_NUMBER: '3' })
   ];
-  const assignments = [{ ITEMCODE: 'A', GENUSNAME: 'oak', ASSIGNEDTO: 'dylan_collyge' }];
+  const assignments = [{ master_unique_id: 'a', assignedto: 'dylan_collyge' }];
   const options = { currentSalesYear: 27, nextSeason: 'S1', nextSalesYear: 27, now };
   worker.onmessage({ data: { engineUrl: 'fixture-engine', inventory, assignments, options } });
   assert.equal(result.error, undefined);
-  const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments);
+  const model = engine.buildAuthoritativeAssignmentModel(inventory, assignments, { assignmentContract: 'inventory-row-assignments-v1' });
   const expected = engine.classifyScriptCompatibleRows(model.rows, options);
   const keyStart = html.indexOf('function getManagerEvalReport2RowKey(');
   const keyEnd = html.indexOf('function getManagerEvalReport2EditFieldConfig(', keyStart);
@@ -903,7 +951,7 @@ test('the live shell registers Eval Reports #2 without replacing Eval Reports #1
   assert.match(html, /function loadManagerEvalReports2\(force = false\)/);
   assert.match(html, /ensureDatasetLoaded\('master', 'full'/);
   assert.match(html, /ensureDatasetLoaded\('warehouseAssignedItems', 'full'/);
-  assert.match(html, /api\.buildAuthoritativeAssignmentModel\(fullInventory, warehouseAssignedItemsInventory\)/);
+  assert.match(html, /api\.buildAuthoritativeAssignmentModel\(fullInventory, warehouseAssignedItemsInventory, \{ assignmentContract: 'inventory-row-assignments-v1' \}\)/);
   assert.match(html, /api\.classifyScriptCompatibleRows\(assignmentModel\.rows/);
   assert.match(html, /api\.buildItemInquiryModel\(getManagerEvalReport2Rows\(\)/);
   assert.match(html, /model\.options\.assignedTo = getManagerEvalReport2AssignedToOptions\(\)/);

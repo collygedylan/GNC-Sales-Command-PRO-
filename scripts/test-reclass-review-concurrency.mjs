@@ -32,8 +32,9 @@ try {
     await admin.query("insert into public.profiles(id,username,display_name,role,must_change_password) values($1,$2,$2,'ADMIN',false)", [fixture.id, fixture.username]);
   }
   await admin.query("insert into public.ph_app_settings(key,value) values('current_season_salesyear','{\"seasonCode\":\"F1\",\"salesYear\":\"27\"}') on conflict(key) do update set value=excluded.value");
+  await admin.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory'");
   await admin.query("insert into public.ph_master_inventory(unique_id,itemcode,genusname,commonname,contsize,locationcode,lotcode,source,season,saleyear,ptronhand,ptravailable) values($1,$2,'Spiraea','Concurrency Fixture','#3','I.13.000','27.S1','LD','S1','27','40','40')", [sourceId,itemcode]);
-  await admin.query("insert into public.ph_warehouse_assigned_items(unique_id,itemcode,itemcode_normalized,genusname,genusname_normalized,assignment_key,assignedto,present_in_drive,assigned_at) values($1,$2,upper($2),'Spiraea','spiraea',private.normalize_eval_assignment_key($2,'Spiraea'),'charley_robertson',true,now())", [sourceId,itemcode]);
+  await admin.query("insert into public.ph_inventory_row_assignments(master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,locationcode,lotcode,source,assignedto,assignment_reason,present_in_drive,assigned_at) values($1,$1,$2,upper($2),'Spiraea','I.13.000','27.S1','LD','charley_robertson','unresolved_preserved',true,now()) on conflict(master_unique_id) do update set assignedto=excluded.assignedto,assigned_at=excluded.assigned_at,assignment_reason=excluded.assignment_reason,present_in_drive=true,revision=ph_inventory_row_assignments.revision+1,updated_at=now()", [sourceId,itemcode]);
   await admin.query('commit');
   fixtureCommitted = true;
   await admin.query("select set_config('request.jwt.claim.role','service_role',false)");
@@ -58,7 +59,7 @@ try {
   const count = (await admin.query('select count(*)::int count from public.ph_request_delivery_outbox where event_type=$1 and request_id=$2',['eval_work_assignment',work.id])).rows[0].count;
   assert.equal(count,1,'Concurrent retries created duplicate assignment events');
   const originalEvent = (await admin.query('select to_jsonb(o) event from public.ph_request_delivery_outbox o where event_id=$1',[work.assignment_event_id])).rows[0].event;
-  await admin.query("update public.ph_warehouse_assigned_items set assignedto='megan_kelly',assigned_at=now() where unique_id=$1",[sourceId]);
+  await admin.query("update public.ph_inventory_row_assignments set assignedto='megan_kelly',assigned_at=now(),revision=revision+1,updated_at=now() where master_unique_id=$1",[sourceId]);
   const replay = (await admin.query('select to_jsonb(public.create_eval_work_multi_v1($1::jsonb)) work',[JSON.stringify(payload)])).rows[0].work;
   assert.deepEqual(replay,work,'Later AssignedTo change redirected existing work');
   assert.deepEqual((await admin.query('select to_jsonb(o) event from public.ph_request_delivery_outbox o where event_id=$1',[work.assignment_event_id])).rows[0].event,originalEvent,'Retry rewrote frozen delivery');
@@ -72,7 +73,7 @@ try {
     await admin.query('delete from public.ph_request_delivery_outbox where request_id in (select id::text from public.ph_eval_work where create_token=$1)',[token]);
     await admin.query('delete from public.ph_eval_work_events where eval_work_id in (select id from public.ph_eval_work where create_token=$1)',[token]);
     await admin.query('delete from public.ph_eval_work where create_token=$1',[token]);
-    await admin.query('delete from public.ph_warehouse_assigned_items where unique_id=$1',[sourceId]);
+    await admin.query('delete from public.ph_inventory_row_assignments where master_unique_id=$1',[sourceId]);
     await admin.query('delete from public.ph_master_inventory where unique_id=$1',[sourceId]);
     await admin.query('delete from private.app_access_user_overrides where profile_id=any($1::uuid[])',[fixtures.map(f=>f.id)]);
     await admin.query('delete from private.app_access_legacy_baseline where profile_id=any($1::uuid[])',[fixtures.map(f=>f.id)]);

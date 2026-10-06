@@ -47,8 +47,8 @@ test('10,000-row reports reuse the index and local filters without low-stock req
       COMMONNAME:'Synthetic ' + (i % 3200), CONTSIZE:'#3', LOCATIONCODE:'D.06.' + (i % 40),
       SEASON:['U1','U2','X'][i % 3], SALEYEAR:27, S_LTS:20, PTRONHAND:25, PTRAVAILABLE:20
     }));
-    warehouseAssignedItemsInventory = Array.from({ length:3200 }, (_, i) => ({
-      ITEMCODE:String(i).padStart(6,'0'), GENUSNAME:'Genus ' + i,
+    warehouseAssignedItemsInventory = fullInventory.map((row, i) => ({
+      master_unique_id:row.UNIQUE_ID, UNIQUE_ID:row.UNIQUE_ID, ITEMCODE:row.ITEMCODE, GENUSNAME:row.GENUSNAME,
       ASSIGNEDTO:i % 2 ? 'zoe_green' : 'megan_kelly'
     }));
     for (const key of ['master','warehouseAssignedItems']) {
@@ -156,7 +156,7 @@ test('Eval2 builds and displays a joined saved cohort while revisions are withhe
       LOTCODE:'27.F1', SEASON:'F1', SALEYEAR:27, S_LTS:10, PTRAVAILABLE:12
     }));
     warehouseAssignedItemsInventory = Array.from({length:count}, (_,i) => ({
-      ITEMCODE:'PREVIEW-' + String(i).padStart(4,'0'), GENUSNAME:'Acer', ASSIGNEDTO:'zoe_green'
+      master_unique_id:'saved-preview-' + i, ITEMCODE:'PREVIEW-' + String(i).padStart(4,'0'), GENUSNAME:'Acer', ASSIGNEDTO:'zoe_green'
     }));
     for (const key of ['master','warehouseAssignedItems']) {
       const state = getDatasetState(key); state.fullLoaded = state.initialLoaded = false;
@@ -222,14 +222,14 @@ test('cooperative fallback preserves exact report parity and drops obsolete work
   expect(result.obsolete).toBe(true);
 });
 
-test('perennial assignment controls, exact pairs and explicit Unassigned survive mobile themes', async ({ page, baseURL }) => {
+test('perennial row ownership and itemcode default controls survive mobile themes', async ({ page, baseURL }) => {
   await isolatedApp(page, baseURL!);
   await page.evaluate(() => (window as any).eval(`(() => {
     fullInventory = [];
     warehouseAssignedItemsInventory = [
-      { itemcode:'0001', genusname:'Acer', assignedto:'zoe_green', zone_override_active:true, commonname:'Perennial item', locationcode:'D.10.021' },
-      { itemcode:'0001', genusname:'Rosa', assignedto:'mitch_kaiser', zone_override_active:false, commonname:'Rose exception', locationcode:'D.10.021' },
-      { itemcode:'0002', genusname:'Acer', assignedto:null, zone_override_active:false, commonname:'Moved outside', locationcode:'E.01.001' }
+      { master_unique_id:'inside', itemcode:'0001', genusname:'Acer', assignedto:'zoe_green', default_assignedto:'dylan_collyge', default_revision:1, zone_override_active:true, assignment_reason:'zone_zoe', commonname:'Perennial item', locationcode:'D.10.021' },
+      { master_unique_id:'rose', itemcode:'0001', genusname:'Rosa', assignedto:'mitch_kaiser', default_assignedto:'dylan_collyge', default_revision:1, zone_override_active:true, assignment_reason:'zone_mitch_rose', commonname:'Rose exception', locationcode:'D.10.021' },
+      { master_unique_id:'none', itemcode:'0002', genusname:'Acer', assignedto:null, zone_override_active:false, assignment_reason:'unassigned', commonname:'Moved outside', locationcode:'E.01.001' }
     ].map(normalizeWarehouseAssignedItemRow);
     getDatasetState('warehouseAssignedItems').fullLoaded = true;
     const masterState = getDatasetState('master'); masterState.fullLoaded = true; masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
@@ -250,21 +250,22 @@ test('perennial assignment controls, exact pairs and explicit Unassigned survive
         document.body.classList.toggle('outdoor-mode', ${JSON.stringify(theme)} === 'outdoor');
         document.getElementById('managers-content').innerHTML = renderManagerAssignedItemsPreviewTable(warehouseAssignedItemsInventory);
       })()`), theme);
-      const zone = page.locator('#managers-content select[data-itemcode="0001"][data-genusname="Acer"]');
-      await expect(zone).toBeDisabled();
-      await expect(zone).toHaveValue('zoe_green');
-      await expect(page.locator('#managers-content select[data-itemcode="0001"][data-genusname="Rosa"]')).toBeEnabled();
-      await expect(page.locator('[data-assignment-reason="perennial"]')).toHaveText('Automatic: Perennial Area');
+      const defaultOwner = page.locator('#managers-content select[data-itemcode="0001"]');
+      await expect(defaultOwner).toHaveCount(1);
+      await expect(defaultOwner).toBeEnabled();
+      await expect(defaultOwner).toHaveValue('dylan_collyge');
+      await expect(page.locator('[data-assignment-reason="zone_zoe"]')).toHaveText('Perennial Area: Zoe');
+      await expect(page.locator('[data-assignment-reason="zone_mitch_rose"]')).toHaveText('Perennial roses: Mitch');
     }
   }
   const result = await page.evaluate(() => (window as any).eval(`(() => ({
-    exact:getWarehouseAssignedUsersForItem({ ITEMCODE:'0001', GENUSNAME:'Acer' }),
-    rose:getWarehouseAssignedUsersForItem({ ITEMCODE:'0001', GENUSNAME:'Rosa' }),
+    exact:getWarehouseAssignedUsersForItem({ UNIQUE_ID:'inside', ITEMCODE:'0001', GENUSNAME:'Acer' }),
+    rose:getWarehouseAssignedUsersForItem({ UNIQUE_ID:'rose', ITEMCODE:'0001', GENUSNAME:'Rosa' }),
     unknown:getWarehouseAssignedUsersForItem({ ITEMCODE:'0001' }),
     wrong:getWarehouseAssignedUsersForItem({ ITEMCODE:'0001', GENUSNAME:'Pinus' }),
-    explicitNull:getWarehouseAssignedRowsForItem({ ITEMCODE:'0002', GENUSNAME:'Acer' }).length,
-    owner:getEvalTaskAutoAssigneeForItem({ ITEMCODE:'0002', GENUSNAME:'Acer', ASSIGNEDTO:'old_owner' }),
+    explicitNull:getWarehouseAssignedRowsForItem({ UNIQUE_ID:'none', ITEMCODE:'0002', GENUSNAME:'Acer' }).length,
+    owner:getEvalTaskAutoAssigneeForItem({ UNIQUE_ID:'none', ITEMCODE:'0002', GENUSNAME:'Acer', ASSIGNEDTO:'old_owner' }),
     exportReason:getManagerAssignedItemsExportColumns().find(column=>column.label==='Assignment Reason').value(warehouseAssignedItemsInventory[0])
   }))()`));
-  expect(result).toEqual({ exact:['zoe_green'], rose:['mitch_kaiser'], unknown:[], wrong:[], explicitNull:1, owner:'', exportReason:'Automatic: Perennial Area' });
+  expect(result).toEqual({ exact:['zoe_green'], rose:['mitch_kaiser'], unknown:[], wrong:[], explicitNull:1, owner:'', exportReason:'Perennial Area: Zoe' });
 });

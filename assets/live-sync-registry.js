@@ -15,7 +15,7 @@
         soc: ['ph_soc_master'], suspendTag: ['ph_soc_master'], salesOffice: ['ph_sales_office'],
         flyerRows: ['ph_flyer_folder_rows'], flyerHistory: ['ph_flyer_folder_history'],
         growerScoutReports: ['ph_grower_scout_reports'], growerScoutAssets: ['ph_grower_scout_assets'],
-        warehouseAssignedItems: ['ph_warehouse_assigned_items'], cav: ['ph_cav_import'], cavAvBlankKeys: ['ph_cav_import'],
+        warehouseAssignedItems: ['ph_inventory_row_assignments'], cav: ['ph_cav_import'], cavAvBlankKeys: ['ph_cav_import'],
         avHotPriceKeys: ['ph_cav_import', 'ph_master_inventory'], avNotes: ['ph_av_notes']
     };
     const side = {

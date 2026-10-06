@@ -275,8 +275,8 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   await page.getByRole('button', { name: /Export Excel/ }).click();
   const exported = await page.evaluate(() => (window as any).__assignedExport);
   expect(exported.ids).toEqual(['nav-23', ...Array.from({ length: 9 }, (_, i) => 'nav-' + (230 + i))]);
-  expect(exported.values.every((row: string[]) => row[1] === '0' && row[5] === 'D.08.002')).toBe(true);
-  expect(exported.values[0][2]).toBe('000023');
+  expect(exported.values.every((row: string[]) => row[5] === '0' && row[9] === 'D.08.002')).toBe(true);
+  expect(exported.values[0][6]).toBe('000023');
   await expect(rows).toHaveCount(10);
   const assignedTo = page.getByRole('combobox', { name: 'AssignedTo', exact: true });
   await expect(assignedTo).toHaveValue('all');
@@ -314,7 +314,7 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   await expect(page.locator('body')).toHaveAttribute('data-current-view', 'managers');
   await expect.poll(() => page.evaluate(() => (window as any).getMainAreaScrollTop())).toBe(savedScroll);
   expect(await page.evaluate(() => window.eval(`({ search: managersSearchTerm, assignee: managerAssignedItemsAssignedToFilter, sort: getManagerAssignedColumnState().sort, selected: [...managerEvalAssignmentSelection] })`)))
-    .toEqual({ search: 'Rose', assignee: 'unassigned', sort: { field: 'ITEMCODE', direction: 'desc' }, selected: ['000239|rosa'] });
+    .toEqual({ search: 'Rose', assignee: 'unassigned', sort: { field: 'ITEMCODE', direction: 'desc' }, selected: ['000239'] });
   await open('SOURCE');
   await panel.getByRole('button', { name: 'Clear Selection', exact: true }).click();
   await page.goBack();
@@ -545,4 +545,67 @@ test('Assigned Items low-stock targets preserve focused drafts, enforce editor i
   })()`));
   expect(emptyHistoryExported).toBe(false);
   await expect.poll(() => page.evaluate(() => (window as any).__assignedExports.length)).toBe(2);
+});
+
+
+test('hybrid default owner edits retain failed choices and preserve independent perennial owners', async ({ page, baseURL }) => {
+  const origin = new URL(baseURL!).origin;
+  await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue()
+    : route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
+  await page.routeWebSocket('**/*', socket => socket.close());
+  await page.goto('/?e2e=hybrid-assignment', { waitUntil: 'load' });
+  await page.waitForFunction(() => (window as any).__gncAppRuntimeExecuted === true);
+  await page.evaluate(() => window.eval(`(() => {
+    resetProductionLiveSync(); currentUser = 'dylan_collyge'; currentUserDisplay = 'Dylan Collyge';
+    managerAssignedColumnState = { owner:currentUser, filters:{}, sort:null, editor:null };
+    warehouseAssignedItemsInventory = [
+      { master_unique_id:'inside', unique_id:'inside', itemcode:'HYBRID', locationcode:'D.10.021', lotcode:'L1', assignedto:'zoe_green', assignment_reason:'zone_zoe' },
+      { master_unique_id:'rose', unique_id:'rose', itemcode:'HYBRID', locationcode:'C.06.001', lotcode:'L2', assignedto:'mitch_kaiser', assignment_reason:'zone_mitch_rose' },
+      { master_unique_id:'outside', unique_id:'outside', itemcode:'HYBRID', locationcode:'D.10.022', lotcode:'L3', assignedto:'dylan_collyge', assignment_reason:'itemcode_default' }
+    ].map(row => normalizeWarehouseAssignedItemRow({ ...row, default_assignedto:'dylan_collyge', default_revision:2, commonname:'Hybrid Fixture', contsize:'#3', present_in_drive:true }));
+    isManagerAssignedSnapshotCurrent = () => true;
+    canManageEvalItemcodeAssignments = () => true;
+    canManageItemLowStockTargets = () => false;
+    managerAssignedItemsAssignedToFilter = 'all';
+    window.__hybridCalls = []; window.__hybridFail = true;
+    const host = document.createElement('div'); host.id = 'hybrid-fixture';
+    host.style.cssText = 'position:fixed;inset:0 0 64px;overflow:auto;z-index:12000;background:white;padding:8px';
+    document.body.appendChild(host);
+    scheduleManagersRender = () => { host.innerHTML = renderManagerAssignedItemsPreviewTable(warehouseAssignedItemsInventory); };
+    reloadWarehouseAssignmentsAfterMutation = async () => true;
+    supabaseRpc = async (name,args) => {
+      window.__hybridCalls.push({name,args:JSON.parse(JSON.stringify(args))});
+      if(window.__hybridFail) throw new Error('Temporary network failure');
+      return { contractVersion:'inventory-row-assignments-v1', defaults:[{itemcode:'HYBRID',assignedto:'megan_kelly',revision:3}],
+        assignments:warehouseAssignedItemsInventory.map(row => ({ ...row, default_assignedto:'megan_kelly',default_revision:3,
+          assignedto:row.master_unique_id === 'outside' ? 'megan_kelly' : row.assignedto })) };
+    };
+    scheduleManagersRender();
+  })()`));
+  const host = page.locator('#hybrid-fixture');
+  const select = host.getByRole('combobox', { name: 'Itemcode Default Owner HYBRID', exact: true });
+  await expect(select).toHaveCount(1);
+  await expect(select).toHaveValue('dylan_collyge');
+  await expect(host).toContainText('D.10.021');
+  await expect(host).toContainText('D.10.022');
+  await select.selectOption('megan_kelly');
+  await expect.poll(() => page.evaluate(() => (window as any).__hybridCalls.length)).toBe(1);
+  await page.evaluate(() => window.eval('scheduleManagersRender()'));
+  await expect(select).toHaveValue('megan_kelly');
+  await expect(host.getByRole('alert')).toContainText('Temporary network failure');
+  expect(await page.evaluate(() => window.eval("warehouseAssignedItemsInventory.find(row=>row.master_unique_id==='outside').assignedto"))).toBe('dylan_collyge');
+  await page.evaluate(() => { (window as any).__hybridFail = false; });
+  await select.selectOption('megan_kelly');
+  await expect(host.getByRole('alert')).toHaveCount(0);
+  const result = await page.evaluate(() => ({ calls:(window as any).__hybridCalls,
+    rows:window.eval("warehouseAssignedItemsInventory.map(row=>({id:row.master_unique_id,owner:row.assignedto,defaultOwner:row.default_assignedto}))") }));
+  expect(result.calls).toHaveLength(2);
+  expect(result.calls[0].name).toBe('set_itemcode_default_owners_v1');
+  expect(result.calls[0].args).toEqual(result.calls[1].args);
+  expect(result.calls[0].args.p_changes).toEqual([{ itemcode:'HYBRID', assignedto:'megan_kelly', expectedRevision:2 }]);
+  expect(result.rows).toEqual([
+    {id:'inside',owner:'zoe_green',defaultOwner:'megan_kelly'},
+    {id:'rose',owner:'mitch_kaiser',defaultOwner:'megan_kelly'},
+    {id:'outside',owner:'megan_kelly',defaultOwner:'megan_kelly'},
+  ]);
 });

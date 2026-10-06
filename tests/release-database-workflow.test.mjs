@@ -61,7 +61,8 @@ test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', (
   for (const filename of ['perennial_zone_assignment_test.sql', 'pikes_orders_rls_test.sql']) {
     const source = fs.readFileSync(new URL(`../supabase/tests/${filename}`, import.meta.url), 'utf8');
     const calls = [...source.matchAll(/^\s*select\s+([a-z_]+)\s*\(/gim)].map(match => match[1].toLowerCase());
-    const assertions = calls.filter(name => !['set_config', 'count'].includes(name));
+    // Nested fixture queries use PostgreSQL builtins; they are not assertions.
+    const assertions = calls.filter(name => !['set_config', 'count', 'lower', 'jsonb_build_object'].includes(name));
     assert.ok(assertions.length > 0, `${filename} contains pgTAP assertions`);
     assert.deepEqual([...new Set(assertions.filter(name => !documented.has(name)))], [], `${filename} uses only documented pgTAP APIs`);
     assert.doesNotMatch(source, /\bis_null\s*\(/i, `${filename} does not use the nonexistent is_null assertion`);
@@ -129,6 +130,11 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     '20261006111244_bunch_note_card_commands.sql',
     '20261006145333_reclass_split_move_inquiries_v4.sql',
     '20261006150745_reclass_split_move_eval_submit_guards.sql',
+    '20261006200446_inventory_row_assignment_authority.sql',
+    '20261006200448_itemcode_default_owners.sql',
+    '20261006200449_inventory_row_assignment_fence_integration.sql',
+    '20261006210000_inventory_row_assignment_future_snapshots.sql',
+    '20261006210200_inventory_row_assignment_live_consumers.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
@@ -204,6 +210,8 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     'nelly_access_audit_baseline_repair_007_test.sql',
     'password_change_profile_reconciliation_test.sql',
     'perennial_zone_assignment_test.sql',
+    'inventory_row_assignment_v1_test.sql',
+    'inventory_row_assignment_consumers_test.sql',
     'eval_item_low_stock_targets_test.sql',
     'manager_season_priority_test.sql',
     'bunch_note_workflow_test.sql', 'bunch_note_per_card_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
@@ -269,6 +277,7 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'CI=true BUNCH_NOTE_TEST_DB_URL="$DB_URL" node scripts/test-bunch-note-concurrency.mjs',
     'CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs',
     'CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs',
+    'CI=true ITEMCODE_DEFAULT_OWNER_TEST_DB_URL="$DB_URL" node scripts/test-itemcode-default-owner-concurrency.mjs',
     'CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs',
     'CI=true REQUEST_HISTORY_TEST_DB_URL="$DB_URL" node scripts/test-request-history-scale.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',

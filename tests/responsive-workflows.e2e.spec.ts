@@ -285,10 +285,12 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       { UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '2', S_LTS: 20, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.000', LAST_UPDATED: '2026-08-24T12:00:00Z' },
       { UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 300, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'assign-a', ITEMCODE: ' a ', GENUSNAME: ' ROSA ', ASSIGNEDTO: 'dylan_collyge', UPDATED_AT: '2026-08-24T12:05:00Z' },
-      { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', UPDATED_AT: '2026-08-24T12:05:00Z' },
-      ...roster.filter((name) => name !== 'dylan_collyge' && name !== 'megan_kelly').map((name, index) => ({ UNIQUE_ID: 'roster-' + index, ITEMCODE: 'ROSTER-' + index, GENUSNAME: 'Genus ' + index, ASSIGNEDTO: name })),
-      { UNIQUE_ID: 'assign-blank', ITEMCODE: 'BLANK', GENUSNAME: 'Blank', ASSIGNEDTO: '' }
+      { master_unique_id: 'eval2-a-f1', UNIQUE_ID: 'eval2-a-f1', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-a-u1', UNIQUE_ID: 'eval2-a-u1', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-b-f1', UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-b-x', UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', default_revision: 0, revision: 1 },
+      ...roster.filter((name) => name !== 'dylan_collyge' && name !== 'megan_kelly').map((name, index) => ({ master_unique_id: 'roster-' + index, UNIQUE_ID: 'roster-' + index, ITEMCODE: 'ROSTER-' + index, GENUSNAME: 'Genus ' + index, ASSIGNEDTO: name, revision: 1 })),
+      { master_unique_id: 'assign-blank', UNIQUE_ID: 'assign-blank', ITEMCODE: 'BLANK', GENUSNAME: 'Blank', ASSIGNEDTO: '', revision: 1 }
     ], _fromCache: true });
     const state = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -329,11 +331,14 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     });
     const initialAssignedToOptions = getManagerEvalReport2AssignedToOptions();
     const beforeAssignmentEdit = getManagerEvalReport2Index();
-    applyAcknowledgedEvalAssignmentResults(
-      [{ itemcode: 'A', genusname: 'Rosa' }],
-      [{ itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly' }],
-      'megan_kelly'
-    );
+    const applied = applyAcknowledgedEvalAssignmentResults([], [{
+      contractVersion: 'inventory-row-assignments-v1',
+      defaults: [{ itemcode: 'A', assignedto: 'megan_kelly', revision: 1 }],
+      assignments: [
+        { master_unique_id: 'eval2-a-f1', unique_id: 'eval2-a-f1', itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly', revision: 2 },
+        { master_unique_id: 'eval2-a-u1', unique_id: 'eval2-a-u1', itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly', revision: 2 }
+      ]
+    }]);
     const afterAssignmentEdit = getManagerEvalReport2Index();
     const editedRows = getManagerEvalReport2Rows('low-stock').filter((row) => row.ITEMCODE === 'A');
     const originalEnsureDatasetLoaded = ensureDatasetLoaded;
@@ -364,6 +369,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
       hostOverflow: host.scrollWidth <= 391,
       immediateAssignmentRefresh: beforeAssignmentEdit !== afterAssignmentEdit && editedRows.length > 0 && editedRows.every((row) => row.ASSIGNEDTO === 'megan_kelly'),
+      acknowledgedDefaultCount: applied,
       retainsLastCompleteOnAssignmentFailure: retainedAfterFailure === afterAssignmentEdit && staleHtml.includes('last complete results remain visible')
     };
     canViewManagerEvalReports2 = originalCanViewManagerEvalReports2;
@@ -400,14 +406,13 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
       { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'eval2-assign-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'eval2-assign-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+      { master_unique_id: 'eval2-click-a', UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+      { master_unique_id: 'eval2-click-b', UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
     ], _fromCache: true });
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
-    masterState.fieldCoverage = 'full';
-    masterState.rowCompleteness = 'complete';
+    masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
@@ -1093,14 +1098,13 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
         { UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', COMMONNAME:'Current Beta', CONTSIZE:'#5', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'B.01.001' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
-        { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
+        { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+        { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
       masterState.initialLoaded = masterState.fullLoaded = true;
-      masterState.fieldCoverage = 'full';
-      masterState.rowCompleteness = 'complete';
+      masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
       setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
@@ -1120,8 +1124,8 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
       const localRows = getManagerEvalReport2RowsBeforeCommonName().map(row => getManagerEvalReport2ItemCode(row));
       // A later verified background snapshot, not a filter click, changes ownership.
       warehouseAssignedItemsInventory = [
-          { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
-          { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
+          { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
+          { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
         ];
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       assignmentState.lastLoadedAt = new Date().toISOString();
@@ -1516,17 +1520,18 @@ test('an acknowledged assignment immediately leaves the Unassigned filter', asyn
   await page.waitForFunction(() => typeof (window as any).applyAcknowledgedEvalAssignmentResults === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     processAndLoadData({ warehouseAssignedItemsData: [{
-      UNIQUE_ID: 'eval-test-1', ITEMCODE: '011364.070.1', GENUSNAME: 'Decumaria',
+      master_unique_id: 'eval-test-1', UNIQUE_ID: 'eval-test-1', ITEMCODE: '011364.070.1', GENUSNAME: 'Decumaria',
       ASSIGNEDTO: '', assignedto: '', COMMONNAME: 'Barbara Ann Climbing Hydrangea Espalier'
     }] });
     setManagerAssignedItemsAssigneeFilter('unassigned');
     const activeBefore = getManagerAssignedItemsActiveAssigneeKey();
     const before = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
-    const applied = applyAcknowledgedEvalAssignmentResults(
-      [{ itemcode: '011364.070.1', genusname: 'Decumaria' }],
-      [{ itemcode: '011364.070.1', genusname: 'Decumaria', assignedto: 'megan_kelly', source: 'supabase_assignment_manager' }],
-      'megan_kelly'
-    );
+    const applied = applyAcknowledgedEvalAssignmentResults([], [{
+      contractVersion: 'inventory-row-assignments-v1',
+      defaults: [{ itemcode: '011364.070.1', assignedto: 'megan_kelly', revision: 1 }],
+      assignments: [{ master_unique_id: 'eval-test-1', unique_id: 'eval-test-1',
+        itemcode: '011364.070.1', genusname: 'Decumaria', assignedto: 'megan_kelly', revision: 2 }]
+    }]);
     const activeAfter = getManagerAssignedItemsActiveAssigneeKey();
     const unassignedAfter = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
     setManagerAssignedItemsAssigneeFilter('megan_kelly');

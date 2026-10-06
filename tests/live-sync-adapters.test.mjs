@@ -443,6 +443,11 @@ test('every registered physical source has a database revision contract', () => 
     '20261006111244_bunch_note_card_commands.sql',
     '20261006145333_reclass_split_move_inquiries_v4.sql',
     '20261006150745_reclass_split_move_eval_submit_guards.sql',
+    '20261006200446_inventory_row_assignment_authority.sql',
+    '20261006200448_itemcode_default_owners.sql',
+    '20261006200449_inventory_row_assignment_fence_integration.sql',
+    '20261006210000_inventory_row_assignment_future_snapshots.sql',
+    '20261006210200_inventory_row_assignment_live_consumers.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
