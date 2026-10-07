@@ -475,8 +475,9 @@ test('Assigned Items low-stock targets preserve focused drafts, enforce editor i
   await page.evaluate(() => window.eval('window.__simulateLowStockConflict = true'));
   await targetInput.fill('31');
   await activateTargetControl(row.getByRole('button', { name: 'Save', exact: true }));
-  await expect(targetInput).toHaveValue('9');
+  await expect(targetInput).toHaveValue('31');
   await expect.poll(() => page.evaluate(() => (window as any).__lowStockRpcCalls.filter((call: any) => call.name === 'set_eval_item_low_stock_override_v1').length)).toBe(3);
+  await expect.poll(() => page.evaluate(() => { const target = window.eval("managerItemLowStockTargetsState.rowsByCode.get('AB-100')"); return [target.manual_override_qty, target.override_revision]; })).toEqual([9, 6]);
   calls = await page.evaluate(() => (window as any).__lowStockRpcCalls);
   expect(calls[2]).toEqual({ name: 'set_eval_item_low_stock_override_v1', args: { p_itemcode: 'AB-100', p_override_qty: 31, p_expected_revision: 5 } });
   expect(calls[3]).toEqual({ name: 'get_eval_item_low_stock_targets_v1', args: { p_itemcodes: ['AB-100'] } });
@@ -503,6 +504,10 @@ test('Assigned Items low-stock targets preserve focused drafts, enforce editor i
     for (const width of [320, 360, 390]) {
       await page.setViewportSize({ width, height: 844 });
       await page.evaluate(() => window.eval('renderManagers()'));
+      for (let attempt = 0; attempt < 8 && !(await targetInput.count()); attempt++) {
+        await fixture.evaluate((host, step) => { host.scrollTop = step === 0 ? 0 : Math.min(host.scrollHeight, host.scrollTop + Math.max(240, host.clientHeight * 0.75)); host.dispatchEvent(new Event('scroll')); }, attempt);
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      }
       await expect(targetInput).toBeVisible();
       const bounds = await row.evaluate(card => {
         const cardRect = card.getBoundingClientRect();

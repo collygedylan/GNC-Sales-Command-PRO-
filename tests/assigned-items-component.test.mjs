@@ -60,7 +60,7 @@ const rows = count => Array.from({ length: count }, (_, index) => ({
 
 const baseProps = (data, overrides = {}) => ({
   rows: data, totalRows: data.length, grouped: true,
-  columns: [['ASSIGNEDTO', 'Effective Worker'], ['DEFAULT_ASSIGNEDTO', 'Itemcode Default Owner'], ['ITEMCODE', 'Item Code'], ['LOCATIONCODE', 'Location Code']],
+  columns: [['ASSIGNEDTO', 'Effective Worker'], ['DEFAULT_ASSIGNEDTO', 'Itemcode Default Owner'], ['AVG_ORDER_QTY', 'Average Order Qty'], ['ITEMCODE', 'Item Code'], ['LOCATIONCODE', 'Location Code']],
   sort: { field: 'ITEMCODE', direction: 'asc' }, columnFilters: { ITEMCODE: { active: true, label: 'All', open: false } },
   canManageAssignments: true, snapshotCurrent: true,
   options: [{ value: '', label: 'Unassigned' }, { value: 'dylan_collyge', label: 'Dylan Collyge' }, { value: 'zoe_green', label: 'Zoe Green' }],
@@ -74,7 +74,10 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   const { mountAssignedItems } = await import(pathToFileURL(path.join(tempDir, 'component.mjs')).href);
   const host = setupDom();
   const data = rows(10000), changes = [];
-  await act(async () => { mounted = mountAssignedItems(host, baseProps(data, { onDefaultChange: (...args) => changes.push(args) })); });
+  const uiState = { expanded: new Set(), anchor: null };
+  const historyTarget = { mean_quantity: 11.8, history_ready: true, qualifying_line_count: 2, qualifying_day_count: 4, source_file_count: 1, suggested_qty: 12, effective_qty: 12 };
+  const viewProps = overrides => baseProps(data, { uiState, lowStock: { targets: new Map([['CD-200', historyTarget]]), drafts: new Map(), saving: new Set(), canEdit: false, fallback: 150 }, onDefaultChange: (...args) => changes.push(args), ...overrides });
+  await act(async () => { mounted = mountAssignedItems(host, viewProps()); });
   assert.ok(ResizeObserverMock.observed.has(document.getElementById('layout')), 'layout above the list is observed for height changes');
   assert.equal(host.dataset.logicalRowCount, '10000');
   assert.equal(host.dataset.totalRowCount, '10000');
@@ -83,6 +86,11 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   const visible = host.querySelectorAll('[data-manager-assigned-item-row]');
   assert.ok(visible.length > 0 && visible.length < 25, `virtualized desktop rendered ${visible.length} rows`);
   assert.equal(host.querySelectorAll('[aria-label^="Itemcode Default Owner "]').length, visible.length);
+  assert.equal(host.querySelector('[data-manager-item-average="CD-200"]')?.textContent, '11.8');
+  const initialHistory = host.querySelector('[data-inventory-id="row-0"] [data-manager-history]');
+  assert.ok(initialHistory);
+  await act(async () => { initialHistory.querySelector('summary').click(); });
+  assert.equal(initialHistory.open, true);
   assert.ok(host.querySelector('[data-manager-assigned-group="unassigned"]'));
   assert.ok(host.querySelector('[aria-label^="Itemcode Default Owner "]'));
   const firstOwner = host.querySelector('[aria-label^="Itemcode Default Owner "]');
@@ -92,7 +100,9 @@ test('Assigned Items mounts once, renders a bounded desktop window, and shows an
   const scroll = document.getElementById('main-scroll-area');
   await act(async () => { scroll.scrollTop = 899000; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
   assert.ok(host.querySelector('[data-inventory-id="row-9999"]'), 'the virtual list can render its final inventory row');
-  await act(async () => { mounted.update(baseProps(data, { onDefaultChange: (...args) => changes.push(args) })); });
+  await act(async () => { scroll.scrollTop = 0; scroll.dispatchEvent(new window.Event('scroll')); await new Promise(resolve => setTimeout(resolve, 0)); });
+  assert.equal(host.querySelector('[data-inventory-id="row-0"] [data-manager-history]')?.open, true, 'history expansion survives virtual unmount and remount');
+  await act(async () => { mounted.update(viewProps()); });
   assert.equal(host, document.getElementById('host'), 'updates retain the mounted host');
   await act(async () => { mounted.destroy(); });
   mounted = null;
@@ -102,12 +112,14 @@ test('Assigned Items switches to phone cards, exposes location override and expa
   const { act } = await import('react');
   const { mountAssignedItems } = await import(pathToFileURL(path.join(tempDir, 'component.mjs')).href);
   const host = setupDom(390), data = rows(1000);
-  await act(async () => { mounted = mountAssignedItems(host, baseProps(data)); });
+  const historyTarget = { mean_quantity: 11.8, history_ready: true, qualifying_line_count: 2, qualifying_day_count: 4, source_file_count: 1, suggested_qty: 12, effective_qty: 12 };
+  await act(async () => { mounted = mountAssignedItems(host, baseProps(data, { lowStock: { targets: new Map([['CD-200', historyTarget]]), drafts: new Map(), saving: new Set(), canEdit: false, fallback: 150 } })); });
   await act(async () => { window.dispatchEvent(new window.Event('resize')); });
   assert.equal(host.querySelector('[data-manager-assigned-layout="mobile"]') != null, true);
   assert.ok(host.querySelector('[data-manager-assigned-item-card]'));
   const first = host.querySelector('[data-manager-assigned-item-card]');
   assert.ok(first.querySelector('[aria-label^="Itemcode Default Owner "]'));
+  assert.equal(first.querySelector('[data-manager-item-average="CD-200"]')?.textContent, '11.8');
   assert.match(first.textContent, /Location Override: Zoe/);
   await act(async () => { first.querySelector('button[aria-expanded]').click(); });
   assert.ok(first.querySelector('dl[aria-label^="Details for "]'));

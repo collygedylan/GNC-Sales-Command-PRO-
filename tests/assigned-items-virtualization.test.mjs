@@ -57,7 +57,9 @@ test('snapshot memoization skips normalization and sorting until authoritative d
 test('toolbar refresh retains the connected list root and native input focus', () => {
   const dom = new JSDOM('<div id="panel"><div data-manager-assigned-chrome>Old toolbar</div><div id="manager-assigned-items-root"><input value="draft"></div></div>');
   const {document} = dom.window;
-  const ctx = vm.createContext({document});
+  let allowed = true, disposed = 0;
+  const ctx = vm.createContext({document, canViewAssignedItemsExport: () => allowed,
+    destroyManagerAssignedItemsView: () => { disposed++; }});
   vm.runInContext(extract('patchManagerAssignedItemsShell'),ctx);
   const panel = document.getElementById('panel'), root = document.getElementById('manager-assigned-items-root');
   const input = root.querySelector('input'); input.focus(); input.setSelectionRange(1,3);
@@ -76,6 +78,9 @@ test('toolbar refresh retains the connected list root and native input focus', (
   assert.equal(ctx.patchManagerAssignedItemsShell(panel,'<div data-manager-assigned-chrome>Filters cleared</div>'),true);
   assert.equal(panel.querySelector('.assigned-filter-clear'),null,'action buttons must not postpone toolbar state updates');
   assert.equal(document.getElementById('manager-assigned-items-root'),root);
+  allowed = false;
+  assert.equal(ctx.patchManagerAssignedItemsShell(panel,'<p>Access restricted</p>'),false);
+  assert.equal(disposed,1,'permission loss must dispose the view and replace its toolbar');
   dom.window.close();
 });
 

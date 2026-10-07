@@ -16,7 +16,7 @@ function assignmentOverride(row) {
   return '';
 }
 
-function History({ target, error = '' }) {
+function History({ target, error = '', expanded = false, historyKey = '', onToggle }) {
   if (!target) return <div className="mt-1 text-[10px] font-semibold text-slate-400">{error ? 'History unavailable' : 'Waiting for history summary'}</div>;
   const lines = Number(target.qualifying_line_count || 0), days = Number(target.qualifying_day_count || 0), files = Number(target.source_file_count || 0);
   if (target.history_ready !== true) {
@@ -25,7 +25,7 @@ function History({ target, error = '' }) {
     return <div role="status" className="mt-1 text-[10px] font-bold text-blue-700">{hasSuggestion ? 'Refreshing history; active targets remain in effect' : 'Processing order history; manual targets and fallback remain in effect'}{total ? ` · ${pending} of ${total} files pending` : ''}</div>;
   }
   if (!lines) return <div className="mt-1 text-[10px] font-semibold text-slate-500">No qualifying history · using target {numberOf(target.effective_qty)}</div>;
-  return <details className="mt-1 text-[10px] font-semibold text-slate-500"><summary>{lines.toLocaleString()} lines · {days} days · {files} files{lines < 10 ? ' · Limited history' : ''}</summary><div className="mt-1">History {textOf(target.history_from_date).slice(0, 10)} to {textOf(target.history_through_date).slice(0, 10)} · Calculated {textOf(target.calculated_at).replace('T', ' ').slice(0, 16)} · Suggested {numberOf(target.suggested_qty)} · P75 {numberOf(target.p75_quantity)}</div></details>;
+  return <details open={expanded} data-manager-history className="mt-1 text-[10px] font-semibold text-slate-500"><summary onClick={event => { event.preventDefault(); onToggle?.(historyKey, !expanded); }}>{lines.toLocaleString()} lines · {days} days · {files} files{lines < 10 ? ' · Limited history' : ''}</summary><div className="mt-1">History {textOf(target.history_from_date).slice(0, 10)} to {textOf(target.history_through_date).slice(0, 10)} · Calculated {textOf(target.calculated_at).replace('T', ' ').slice(0, 16)} · Suggested {numberOf(target.suggested_qty)} · P75 {numberOf(target.p75_quantity)}</div></details>;
 }
 
 const DefaultOwner = memo(function DefaultOwner({ code, rowId, value, options, draft, disabled, pending, override, onChange }) {
@@ -55,12 +55,12 @@ const LowStock = memo(function LowStock({ code, state, onDraft, onSave, onReset 
   </div>;
 });
 
-const Row = memo(function Row({ row, columns, canManageAssignments, snapshotCurrent, options, ownerDraft, pendingOwner, selected, lowStockState, handlers, getReason, index, measure }) {
+const Row = memo(function Row({ row, columns, canManageAssignments, snapshotCurrent, options, ownerDraft, pendingOwner, selected, lowStockState, handlers, getReason, index, measure, historyExpanded, onToggleHistory }) {
   const code = codeOf(row), rowId = idOf(row), override = assignmentOverride(row);
   const ownerDisabled = !canManageAssignments || !snapshotCurrent;
   const cell = field => {
     if (field === 'DEFAULT_ASSIGNEDTO') return <DefaultOwner code={code} rowId={rowId} value={row.DEFAULT_ASSIGNEDTO} options={options} draft={ownerDraft} disabled={ownerDisabled} pending={pendingOwner} override={override} onChange={handlers.onDefaultChange} />;
-    if (field === 'AVG_ORDER_QTY') { const target = lowStockState.targets?.get(code) || null; return <div data-manager-item-average={code} className="font-black text-slate-900">{numberOf(target?.mean_quantity)}<History target={target} error={lowStockState.error} /></div>; }
+    if (field === 'AVG_ORDER_QTY') { const target = lowStockState.targets?.get(code) || null; return <div><span data-manager-item-average={code} className="font-black text-slate-900">{numberOf(target?.mean_quantity)}</span><History target={target} error={lowStockState.error} expanded={historyExpanded} historyKey={`history:${rowId}`} onToggle={onToggleHistory} /></div>; }
     if (field === 'LOW_STOCK_TARGET') return <LowStock code={code} state={{ ...lowStockState, snapshotCurrent }} onDraft={handlers.onLowStockDraft} onSave={handlers.onLowStockSave} onReset={handlers.onLowStockReset} />;
     if (field === 'ASSIGNMENT_REASON') return <div data-assignment-reason={row.assignment_reason || row.ASSIGNMENT_REASON || ''} className={`text-[10px] font-bold ${row.review_required ? 'text-amber-800' : 'text-emerald-700'}`}>{String(getReason?.(row) || row.assignment_reason || row.ASSIGNMENT_REASON || 'Assignment pending reconciliation')}</div>;
     if (field === 'LOTCODE') return <span>{textOf(row.LOTCODE)}<span className="mt-1 block max-w-[220px] break-all text-[10px]">{rowId}</span></span>;
@@ -73,13 +73,13 @@ const Row = memo(function Row({ row, columns, canManageAssignments, snapshotCurr
   </tr>;
 });
 
-const Card = memo(function Card({ row, columns, canManageAssignments, snapshotCurrent, options, ownerDraft, pendingOwner, selected, lowStockState, handlers, getReason, index, measure, expanded, onToggle }) {
+const Card = memo(function Card({ row, columns, canManageAssignments, snapshotCurrent, options, ownerDraft, pendingOwner, selected, lowStockState, handlers, getReason, index, measure, expanded, onToggle, historyExpanded, onToggleHistory }) {
   const code = codeOf(row), rowId = idOf(row), override = assignmentOverride(row);
   const label = `${row.COMMONNAME || 'Item'} · ${row.CONTSIZE || '—'}`;
   return <article ref={measure} data-manager-assigned-item-card data-index={index} data-virtual-index={index} data-inventory-id={rowId} className="min-w-0 rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
     <div className="flex w-full min-w-0 items-start justify-between gap-3 text-left"><span className="min-w-0"><span className="block break-all text-[12px] font-black text-[#1d4ed8]">{code || '—'}</span><span className="mt-1 block break-words text-base font-black leading-5 text-slate-900">{textOf(row.COMMONNAME)}</span></span><span className="shrink-0 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-[11px] font-black text-[#007a4d]">{textOf(row.CONTSIZE)}</span></div>
     <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 text-[11px] font-bold"><Info label="Location" value={row.LOCATIONCODE} /><Info label="Warehouse" value={row.WAREHOUSEI} /></div>
-    <div className="mt-3 grid min-w-0 grid-cols-2 gap-2"><div data-manager-item-average={code}><Info label="Average Order Qty" value={numberOf(lowStockState.targets?.get(code)?.mean_quantity)} /><History target={lowStockState.targets?.get(code)} error={lowStockState.error} /></div><div className="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"><div className="text-[9px] font-black uppercase tracking-[0.1em] text-emerald-800">Low Stock Qty</div><LowStock code={code} state={{ ...lowStockState, snapshotCurrent }} onDraft={handlers.onLowStockDraft} onSave={handlers.onLowStockSave} onReset={handlers.onLowStockReset} /></div></div>
+    <div className="mt-3 grid min-w-0 grid-cols-2 gap-2"><div className="min-w-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2"><div className="text-[9px] font-black uppercase tracking-[0.1em] text-slate-400">Average Order Qty</div><div data-manager-item-average={code} className="mt-0.5 break-all text-slate-800">{numberOf(lowStockState.targets?.get(code)?.mean_quantity)}</div><History target={lowStockState.targets?.get(code)} error={lowStockState.error} expanded={historyExpanded} historyKey={`history:${rowId}`} onToggle={onToggleHistory} /></div><div className="min-w-0 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2"><div className="text-[9px] font-black uppercase tracking-[0.1em] text-emerald-800">Low Stock Qty</div><LowStock code={code} state={{ ...lowStockState, snapshotCurrent }} onDraft={handlers.onLowStockDraft} onSave={handlers.onLowStockSave} onReset={handlers.onLowStockReset} /></div></div>
     <div className="mt-3 min-w-0"><div className="text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">Effective Worker</div><div className="mt-1 break-all text-sm font-black text-slate-900">{textOf(row.ASSIGNEDTO || 'Unassigned')}</div><div data-assignment-reason={row.assignment_reason || row.ASSIGNMENT_REASON || ''} className={`mt-1 text-[10px] font-bold ${row.review_required ? 'text-amber-800' : 'text-emerald-700'}`}>{String(getReason?.(row) || row.assignment_reason || row.ASSIGNMENT_REASON || 'Assignment pending reconciliation')}</div><div className="mt-3"><DefaultOwner code={code} rowId={rowId} value={row.DEFAULT_ASSIGNEDTO} options={options} draft={ownerDraft} disabled={!canManageAssignments || !snapshotCurrent} pending={pendingOwner} override={override} onChange={handlers.onDefaultChange} /></div><div className="mt-2 break-all text-xs text-slate-500">Lot: {textOf(row.LOTCODE)} · Row: {rowId || '—'}</div></div>
     {canManageAssignments && <label className="mt-3 flex min-h-[46px] items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 text-[11px] font-black uppercase tracking-[0.1em] text-slate-700"><input type="checkbox" className="h-6 w-6 shrink-0" data-itemcode={code} checked={selected.has(code)} disabled={!snapshotCurrent} onChange={event => handlers.onSelect(code, event.target.checked)} /><span>Select for bulk assignment</span></label>}
     <button type="button" className="mt-3 min-h-[44px] rounded-lg border border-slate-200 px-3 text-[10px] font-black uppercase text-slate-600" aria-expanded={expanded} onClick={() => onToggle(rowId)}>More item details</button>
@@ -133,7 +133,7 @@ function AssignedItemsView(props) {
     onColumnFilter: (...args) => propsRef.current.onColumnFilter?.(...args)
   }), []);
   const measure = useCallback(element => { if (element) virtualizer.measureElement(element); }, [virtualizer]);
-  const onToggle = useCallback(id => setExpanded(current => { const next = new Set(current); next.has(id) ? next.delete(id) : next.add(id); if (propsRef.current.uiState) propsRef.current.uiState.expanded = next; return next; }), []);
+  const onToggle = useCallback((id, open = undefined) => setExpanded(current => { const next = new Set(current); const shouldOpen = open === undefined ? !current.has(id) : open; shouldOpen ? next.add(id) : next.delete(id); if (propsRef.current.uiState) propsRef.current.uiState.expanded = next; return next; }), []);
   useLayoutEffect(() => {
     const scroll = propsRef.current.scrollElement || document.getElementById('main-scroll-area');
     const root = hostRef.current;
@@ -177,7 +177,7 @@ function AssignedItemsView(props) {
       if (!current) return;
       const currentEntries = entriesRef.current, rowId = current.dataset.inventoryId, rowIndex = rowIndexByIdRef.current.get(rowId);
       if (rowIndex == null) return;
-      const controls = [...current.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];
+      const controls = [...current.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')];
       const controlIndex = controls.indexOf(event.target);
       if (controlIndex < 0) return;
       const forward = !event.shiftKey;
@@ -195,7 +195,7 @@ function AssignedItemsView(props) {
       const focusMounted = () => {
         const targetRow = [...root.querySelectorAll('[data-inventory-id]')].find(element => element.dataset.inventoryId === targetId);
         if (targetRow) {
-          const targetControls = [...targetRow.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')];
+          const targetControls = [...targetRow.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')];
           const focusTarget = forward ? targetControls[0] : targetControls.at(-1);
           if (focusTarget) focusTarget.focus();
           else propsRef.current.onError?.(new Error('The next Assigned Items row has no keyboard focus target.'));
@@ -252,8 +252,8 @@ function AssignedItemsView(props) {
     if (!entry) return null;
     if (entry.type === 'group') return mobile ? <div key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'} className={`rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</div> : <tr key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'}><td colSpan={colSpan} className={`border-y px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</td></tr>;
     const code = codeOf(entry.row);
-    const rowProps = { row: entry.row, columns, canManageAssignments: props.canManageAssignments, snapshotCurrent: props.snapshotCurrent, options, ownerDraft: props.ownerDrafts?.[code], pendingOwner: props.pendingCodes?.has(code), selected: props.selectedCodes || EMPTY_SET, lowStockState: lowStock, handlers, getReason: props.getReason, index, measure };
-    return mobile ? <Card key={entry.key} {...rowProps} expanded={expanded.has(idOf(entry.row))} onToggle={onToggle} /> : <Row key={entry.key} {...rowProps} />;
+    const rowId = idOf(entry.row), rowProps = { row: entry.row, columns, canManageAssignments: props.canManageAssignments, snapshotCurrent: props.snapshotCurrent, options, ownerDraft: props.ownerDrafts?.[code], pendingOwner: props.pendingCodes?.has(code), selected: props.selectedCodes || EMPTY_SET, lowStockState: lowStock, handlers, getReason: props.getReason, index, measure, historyExpanded: expanded.has(`history:${rowId}`), onToggleHistory: onToggle };
+    return mobile ? <Card key={entry.key} {...rowProps} expanded={expanded.has(rowId)} onToggle={onToggle} /> : <Row key={entry.key} {...rowProps} />;
   };
   const measurements = virtualizer.getMeasurements();
   const gaps = indexes.map((index, position) => {
