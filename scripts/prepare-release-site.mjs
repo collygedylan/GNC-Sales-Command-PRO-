@@ -51,6 +51,7 @@ try {
   await copyTree(path.join(root, 'utils', 'auraIntentParser.js'), path.join(site, 'utils', 'auraIntentParser.js'));
   await copyTree(path.join(root, 'utils', 'auraLingo.js'), path.join(site, 'utils', 'auraLingo.js'));
   await copyTree(path.join(root, 'components', 'common', 'auraVoiceWidget.js'), path.join(site, 'components', 'common', 'auraVoiceWidget.js'));
+  await copyTree(path.join(root, 'components', 'common', 'auraQueryPanel.js'), path.join(site, 'components', 'common', 'auraQueryPanel.js'));
   // The top-level widget URL is versioned by the shell. Version its relative
   // imports too: bypassing a service worker alone does not bypass HTTP caches.
   const auraRelease = `V${JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8')).version}`;

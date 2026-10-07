@@ -125,7 +125,13 @@ jobs:
           supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
           supabase functions deploy auth-admin --use-api --project-ref "$project_ref"
           supabase functions deploy inventory-assistant --use-api --project-ref "$project_ref"
+          supabase functions deploy aura-query --use-api --project-ref "$project_ref"
           supabase functions deploy aura-llm-router --use-api --project-ref "$project_ref"
+
+      - name: Verify deployed Aura authorization before publishing the PWA
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        run: node scripts/aura-query-production-smoke.mjs
 
       - name: Check whether deployed Apps Script already has identical code
         id: compatibility

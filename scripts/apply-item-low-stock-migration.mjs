@@ -15,6 +15,7 @@ export const readOptimizationMigrationName = '20261002014421_index_request_histo
 export const auraInventoryV2MigrationName = '20261002121446_aura_inventory_v2_007.sql';
 export const auraInventoryMatchMigrationName = '20261002204108_aura_inventory_match_010.sql';
 export const auraLlmFreeTierMigrationName = '20261003025749_aura_llm_free_tier_011.sql';
+export const auraInternalQueryMigrationName = '20261007041448_aura_internal_query_conversation_inventory.sql';
 export const nellyAccessAuditMigrationName = '20261002134138_nelly_access_audit_baseline_repair_007.sql';
 export const evalDeliveryArchiveHealthMigrationName = '20261002155017_eval_delivery_archive_health_007.sql';
 export const suspendTagApprovalMigrationName = '20261005194158_suspend_tag_approval_loop.sql';
@@ -28,7 +29,7 @@ export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -190,6 +191,28 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === auraInternalQueryMigrationName) {
+    const helpers = [
+      'public.aura_query_conversation_v1(uuid,text,uuid,uuid,integer,jsonb)',
+      'public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)',
+      'public.aura_query_hl_order_v1(uuid,text,jsonb,jsonb,integer)',
+      'public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)',
+    ];
+    const helperContracts = helpers.map(signature => `(
+      exists(select 1 from pg_proc where oid=to_regprocedure('${signature}') and prosecdef
+        and array_to_string(proconfig,',') like '%search_path=%'
+        and array_to_string(proconfig,',') like '%statement_timeout=%')
+      and not has_function_privilege('anon','${signature}','execute')
+      and not has_function_privilege('authenticated','${signature}','execute')
+      and has_function_privilege('service_role','${signature}','execute')
+    )`).join(' and ');
+    return `select ${helperContracts}
+      and not has_schema_privilege('anon','aura_private','usage')
+      and not has_schema_privilege('authenticated','aura_private','usage')
+      and (select count(*)=2 from pg_class where oid in
+        (to_regclass('aura_private.aura_query_conversations'),to_regclass('aura_private.aura_query_turns'))
+        and relrowsecurity) as installed`;
+  }
   if (name === inventoryRowAssignmentAuthorityMigrationName) return "select to_regclass('public.ph_inventory_row_assignments') is not null and to_regclass('public.ph_itemcode_default_owners') is not null and to_regprocedure('private.inventory_effective_owner_v1(text)') is not null and (select relrowsecurity from pg_class where oid='public.ph_inventory_row_assignments'::regclass) and not has_table_privilege('authenticated','public.ph_inventory_row_assignments','update') as installed";
   if (name === itemcodeDefaultOwnersMigrationName) return "select to_regprocedure('public.set_itemcode_default_owners_v1(jsonb,uuid)') is not null and to_regclass('private.ph_itemcode_default_owner_commands') is not null and to_regclass('private.ph_itemcode_default_owner_audit') is not null and has_function_privilege('service_role','public.set_itemcode_default_owners_v1(jsonb,uuid)','execute') and has_function_privilege('authenticated','public.set_itemcode_default_owners_v1(jsonb,uuid)','execute') and not has_function_privilege('anon','public.set_itemcode_default_owners_v1(jsonb,uuid)','execute') as installed";
   if (name === inventoryRowAssignmentFenceIntegrationMigrationName) return "select to_regclass('app_sync_private.sources') is not null and exists(select 1 from app_sync_private.sources where key='ph_inventory_row_assignments' and client_enabled) and to_regprocedure('public.reconcile_eval_itemcodes(uuid)') is not null and position('EVAL_ITEMCODE_GROUP_ASSIGNMENT_RETIRED' in pg_get_functiondef('public.set_eval_itemcode_assignment(text,text)'::regprocedure)) > 0 as installed";
