@@ -6,14 +6,34 @@ for (const theme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: theme === 'dark' ? 'light' : 'dark' });
     const html = await (await page.request.get('/index.html')).text();
     await page.goto('/tests/fixtures/ops-precision-browser.html');
-    await page.evaluate(({ html, theme }) => {
+    await page.evaluate(async ({ html, theme }) => {
       const source = new DOMParser().parseFromString(html, 'text/html');
-      const opsSheet = document.querySelector('link[href*="ops-precision-pilot.css"]')!;
-      // Use production inline selectors as well as its compiled Tailwind sheet.
-      for (const style of source.querySelectorAll('style')) document.head.insertBefore(style.cloneNode(true), opsSheet);
-      const sheet = document.createElement('link'); sheet.rel = 'stylesheet';
-      sheet.href = '/assets/live-tailwind-v2026082010.min.css';
-      document.head.insertBefore(sheet, opsSheet);
+      const themeStylesheet = /\/assets\/(?:theme-tokens|live-tailwind-|live-app-styles-(?:base|authority)-|ops-precision-pilot)/;
+      for (const sheet of document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')) {
+        if (themeStylesheet.test(sheet.href)) sheet.remove();
+      }
+      const loadedStyles: Promise<void>[] = [];
+      const seenStylesheets = new Set<string>();
+      // Mirror production order, including styles extracted by build-live-shell.
+      // Use normal stylesheets here so assertions wait for the complete cascade.
+      for (const node of source.head.querySelectorAll('style, link[rel="stylesheet"]')) {
+        if (node.tagName === 'STYLE') {
+          document.head.appendChild(node.cloneNode(true));
+          continue;
+        }
+        const href = new URL(node.getAttribute('href')!, `${location.origin}/index.html`).href;
+        if (!themeStylesheet.test(href) || seenStylesheets.has(href)) continue;
+        seenStylesheets.add(href);
+        const sheet = document.createElement('link');
+        sheet.rel = 'stylesheet';
+        sheet.href = href;
+        loadedStyles.push(new Promise<void>((resolve, reject) => {
+          sheet.addEventListener('load', () => resolve(), { once: true });
+          sheet.addEventListener('error', () => reject(new Error(`Could not load production stylesheet: ${href}`)), { once: true });
+        }));
+        document.head.appendChild(sheet);
+      }
+      await Promise.all(loadedStyles);
       document.body.dataset.opsTheme = theme;
       const host = document.querySelector('#view-wrapper')!;
       host.innerHTML = '<section id="view-request"></section><section id="view-detail" class="detail-request-mode"><div id="det-season-content"></div><div id="det-request-content"></div></section>';
