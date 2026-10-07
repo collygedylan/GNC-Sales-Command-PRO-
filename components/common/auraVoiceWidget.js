@@ -1,7 +1,7 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.06.002";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.06.002";
-import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.06.002";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.06.002";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.06.003";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.06.003";
+import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.06.003";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.06.003";
 
 const STYLE_ID = "aura-voice-widget-styles";
 
