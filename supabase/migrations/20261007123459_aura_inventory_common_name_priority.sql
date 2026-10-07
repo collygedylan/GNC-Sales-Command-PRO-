@@ -1,6 +1,10 @@
 begin;
 set local lock_timeout = '5s';
 
+-- Load pg_trgm in this connection before validating its function-local setting.
+-- Fresh non-superuser sessions cannot persist an unregistered extension setting.
+select extensions.similarity('aura','aura');
+
 create or replace function public.aura_query_inventory_v1(
   p_actor_id uuid,p_operation text,p_filters jsonb default '{}'::jsonb,p_cursor jsonb default null,p_limit integer default 50
 ) returns jsonb language plpgsql volatile security definer set search_path=pg_catalog,public,aura_private,extensions set statement_timeout='5s' set pg_trgm.word_similarity_threshold='0.3'
