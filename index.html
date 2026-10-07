@@ -23404,7 +23404,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 const targetView = document.getElementById('view-' + safeViewId);
                 if (!targetView || targetView.classList.contains('hidden')) return;
                 const blockClearingNavigation = safeViewId === 'managers' && activeHomeTab === MANAGER_BLOCK_CLEARING_VIEW && managerBlockClearingDraftState.restore;
-                const shouldRestoreScroll = !forceReset && !blockClearingNavigation && getCurrentVisibleViewId() === safeViewId;
+                const assignedItemsNavigation = safeViewId === 'managers' && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW && getManagerAssignedColumnState().restoreScroll;
+                const shouldRestoreScroll = !forceReset && !blockClearingNavigation && !assignedItemsNavigation && getCurrentVisibleViewId() === safeViewId;
                 const restoreScrollTop = shouldRestoreScroll && !shouldResetIosPhoneMainScrollForView(safeViewId) ? getMainAreaScrollTop() : 0;
                 const viewRenderStartedAt = beginInternalPerfMeasure();
                 try {

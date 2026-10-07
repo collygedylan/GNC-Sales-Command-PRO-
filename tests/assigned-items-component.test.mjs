@@ -170,6 +170,20 @@ test('virtualized row identity and text escaping survive reordered refreshes', a
   mounted = null;
 });
 
+test('anchor restoration preserves unchanged position and yields to newer scrolls', async () => {
+  const { restoreAssignedItemsAnchor } = await import(pathToFileURL(path.join(tempDir, 'component.mjs')).href);
+  const calls = [], scroll = { isConnected: true, scrollTop: 100, scrollHeight: 1000, clientHeight: 400 };
+  const virtualizer = { getMeasurements: () => [{ start: 260 }], scrollToOffset: (...args) => calls.push(args) };
+  const anchor = { id: 'row-8', viewportOffset: 20 };
+  const state = { scroll, scheduledScrollTop: 100, scheduledScrollRevision: 3, currentScrollRevision: 3, index: 0, anchor, virtualizer };
+  assert.equal(restoreAssignedItemsAnchor(state), true);
+  assert.deepEqual(calls, [[240, { behavior: 'auto' }]], 'an unchanged viewport restores its row anchor');
+  calls.length = 0;
+  assert.equal(restoreAssignedItemsAnchor({ ...state, scroll: { ...scroll, scrollTop: 500 } }), false);
+  assert.equal(restoreAssignedItemsAnchor({ ...state, currentScrollRevision: 4 }), false);
+  assert.deepEqual(calls, [], 'a newer explicit position or scroll event cancels the stale restore');
+});
+
 after(async () => {
   if (mounted) mounted.destroy();
   await new Promise(resolve => setTimeout(resolve, 180));
