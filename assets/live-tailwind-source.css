@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
+/* Follow the in-app preference, including the prepaint value, instead of OS media. */
+@custom-variant dark (&:where([data-ops-theme="dark"], [data-ops-theme="dark"] *, html[data-ops-prepaint-theme="dark"], html[data-ops-prepaint-theme="dark"] *));
+
 @source "../index.html";
 @source "../assets/*.js";
+@source "../components/common/*.js";
 
 @source "../components/assigned-items/*.jsx";
