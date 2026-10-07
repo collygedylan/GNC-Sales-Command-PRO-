@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
-import { installDatabaseBridge } from './helpers/database-bridge.mjs';
+import { appApiDatabaseBridge, installDatabaseBridge } from './helpers/database-bridge.mjs';
+import { hlOrderFixtureRpcResult } from './fixtures/hl-order-state.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const blockStart = html.indexOf('        // HL selections mirror');
@@ -14,6 +15,25 @@ const source = (name) => {
   assert.ok(start >= 0, `${name} must be present`);
   return html.slice(start, html.indexOf('\n        }', start) + 10);
 };
+
+test('HL browser fixture returns a contract-valid health RPC result through the strict database bridge', async () => {
+  const fixtureSource = readFileSync(new URL('./fixtures/hl-order-state.mjs', import.meta.url), 'utf8');
+  assert.match(fixtureSource, /if \(op === 'report_app_health_event'\) return json\(route, hlOrderFixtureRpcResult\(op\)\)/);
+  assert.throws(() => hlOrderFixtureRpcResult('unknown_operation'), /HL_FIXTURE_UNSUPPORTED_RPC_RESULT/);
+  const bridge = appApiDatabaseBridge(async (_url, init) => {
+    assert.equal(JSON.parse(String(init.body)).duration_ms, null);
+    return new Response(JSON.stringify(hlOrderFixtureRpcResult('report_app_health_event')), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  });
+  const response = await bridge.fetchRpc('https://fixture.invalid', 'report_app_health_event', {
+    method: 'POST',
+    body: JSON.stringify({ event_name: 'fixture_live_control', area: 'test', severity: 'error', sanitized_code: 'TEST',
+      duration_ms: null, sample_rate: 1, app_build: 'fixture', metadata: {} })
+  }, 1000, 'fixture semantic health event');
+  assert.equal((await response.json()), 1);
+});
 const row = (unique_id = 'soc-a', changes = {}) => ({ unique_id, itemcode: 'PLANT.003', commonname: 'Synthetic Holly', contsize: '#3',
   locationcode: 'C.12.001', lotcode: '27.F1', quantityordered: '10', dock: '4', planstartdate: '2026-09-15', stopnumber: '2',
   transactionnumber: 'SO-1', purchaseordernumber: 'PO-1', tripnumber: '3', customername: 'Synthetic Customer', consigneename: 'Synthetic Consignee', ...changes });
