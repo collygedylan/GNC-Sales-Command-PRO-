@@ -134908,6 +134908,10 @@ C.14.043 C.15.000
         }
 
         function patchManagerAssignedItemsShell(container, html) {
+            if (!canViewAssignedItemsExport()) {
+                destroyManagerAssignedItemsView();
+                return false;
+            }
             const current = container.querySelector('[data-manager-assigned-chrome]');
             const root = container.querySelector('#manager-assigned-items-root');
             if (!current || !root) return false;
