@@ -7,6 +7,7 @@ import {
   inventoryRowAssignmentFenceIntegrationMigrationName,
   inventoryRowAssignmentFutureSnapshotsMigrationName,
   inventoryRowAssignmentLiveConsumersMigrationName,
+  auraInternalQueryMigrationName,
   releaseDatabaseMigrations,
   migrationContractQuery
 } from '../scripts/apply-item-low-stock-migration.mjs';
@@ -33,7 +34,11 @@ test('release migration order applies exact-row authority before every consumer'
   const names = [inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName,
     inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName,
     inventoryRowAssignmentLiveConsumersMigrationName];
-  assert.deepEqual(releaseDatabaseMigrations.slice(-names.length), names);
+  const start = releaseDatabaseMigrations.indexOf(names[0]);
+  assert.ok(start >= 0, 'row authority is registered');
+  assert.deepEqual(releaseDatabaseMigrations.slice(start, start + names.length), names);
+  assert.ok(releaseDatabaseMigrations.indexOf(auraInternalQueryMigrationName) >= start + names.length,
+    'Aura reads are installed after row authority and its existing consumers');
   for (const name of names) assert.match(migrationContractQuery(name), / as installed$/);
 });
 
