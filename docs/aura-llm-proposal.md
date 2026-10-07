@@ -31,6 +31,8 @@ Unsupported or ambiguous wording produces clarification. Commands cannot supply 
 
 - Itemcodes remain strings, including leading zeros. Quantity, container size, lot and bay are distinct fields.
 - Exact identifiers and reviewed aliases precede fuzzy choices. Misspellings require selection; choices are bounded to five.
+- Inventory entity matching explicitly includes `ph_master_inventory.commonname`, using its existing normalized `pg_trgm` GIN index alongside genus and itemcode indexes. Exact common names take priority over other name matches; equally scored fuzzy candidates prefer common-name similarity. Explicit itemcode and genus filters still apply.
+- `common name`, `commonname`, and `common-name` identify a common-name-only search, for example `How many common name "Lily of the Valley" #3 in C.06?`. Quotes preserve names containing inventory words, dates, or module names. Ambiguous names and misspellings still require a choice, and follow-ups retain or replace the common-name filter explicitly.
 - `warehousei` is an assignment-table column in `public`. Eval ownership stays on its normalized ItemCode/genus mapping and recorded work membership. Aura's current-inventory ownership uses `ph_inventory_row_assignments` by exact `ph_master_inventory.unique_id` when the row-assignment policy is active; before activation it uses the legacy Eval assignment view. An active-policy row that is missing or explicitly unassigned never inherits a sibling ItemCode/genus owner.
 - Perennial physical location and policy-derived ownership are separate filters. The existing zone function controls C.06/C.07, D.04–D.09 and D.10 bays 000–021. Effective ownership retains rose exemptions.
 - Explicit Unassigned ownership is separate from missing or conflicting ownership.

@@ -95,6 +95,20 @@ Deno.test("handler denies missing, invalid, non-Dylan, locked, disabled, and pas
   }
 });
 
+Deno.test("common-name filters reach the fixed inventory RPC and remain the response subject", async () => {
+  const f = fixture({ moduleAllowed: true, inventoryResults: [
+    { ok: true, complete: true, total: 12, rows: [{ itemcode: "00123", commonName: "Lily of the Valley" }], hasMore: false, exactMatch: true },
+  ] });
+  const response = await handleAuraQueryRequest(f.request({ mode: "command", text: 'How many common name "Lily of the Valley" itemcode 00123?', turnId: TURN }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 200, "explicit common-name query must be accepted");
+  const filters = f.rpcCalls.find((call) => call.name === "aura_query_inventory_v1")?.args.p_filters as Record<string, unknown>;
+  assert(filters?.commonName === "Lily of the Valley", "commonName must survive the inventory filter allowlist");
+  assert(filters.itemcode === "00123", "common name must not erase explicit itemcode or its leading zeros");
+  assert(filters.productText === undefined, "explicit common name must not become a generic product query");
+  assert(body.reply.includes("12 Lily of the Valley available"), "the response must name the verified common-name scope");
+});
+
 Deno.test("write requests only stage a review action and never call a business mutation", async () => {
   const f = fixture({ moduleAllowed: true });
   const response = await handleAuraQueryRequest(f.request({ mode: "command", text: "prepare an order for itemcode 123", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });

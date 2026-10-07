@@ -20,7 +20,7 @@ type QueryContext = Record<string, unknown>;
 const MAX_BODY_BYTES = 64_000;
 const MAX_TEXT_CHARS = 2_000;
 const MAX_PAGE = 50;
-const INVENTORY_FILTER_KEYS = new Set(["productText", "itemcode", "genus", "contSize", "locationCode", "locationMode", "zone", "assignee", "assigneeText", "selectionId", "metric", "season", "salesYear", "lotcode", "openStockOnly", "countMode"]);
+const INVENTORY_FILTER_KEYS = new Set(["productText", "commonName", "itemcode", "genus", "contSize", "locationCode", "locationMode", "zone", "assignee", "assigneeText", "selectionId", "metric", "season", "salesYear", "lotcode", "openStockOnly", "countMode"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -341,7 +341,7 @@ function applyFilters(query: any, capability: AuraCapability, intent: AuraIntent
   let result = query;
   const f = intent.filters;
   if (f.zone || f.bay || f.quantity != null) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
-  if (f.genus || f.openStockOnly === true || f.countMode && f.countMode !== "quantity" || f.metric && f.metric !== "ptravailable"
+  if (f.commonName || f.genus || f.openStockOnly === true || f.countMode && f.countMode !== "quantity" || f.metric && f.metric !== "ptravailable"
     || f.assigneeText || f.selectionId || f.navigationView) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
   if (capability.id === "po_fall" || capability.id === "po_spring") {
     const expectedSeason = capability.id === "po_spring" ? "S1" : "F1";
@@ -825,7 +825,7 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
     }
     if (operation === "stock") {
       const amount = data.total == null ? NaN : Number(data.total);
-      const subject = String(intent.filters.productText || intent.filters.itemcode || intent.filters.genus || "plants");
+      const subject = String(intent.filters.commonName || intent.filters.productText || intent.filters.itemcode || intent.filters.genus || "plants");
       const metric = intent.filters.metric === "ptronhand" ? "on hand" : "available";
       const countMode = String(intent.filters.countMode || "quantity");
       const quantityLabel = countMode === "physical_rows" ? "physical inventory rows" : countMode === "unique_items" ? "unique items" : `${subject} ${metric}`;

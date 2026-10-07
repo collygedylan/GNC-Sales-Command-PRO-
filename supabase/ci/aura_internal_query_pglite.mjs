@@ -53,6 +53,9 @@ try {
  create table public.ph_eval_assignment_users(username text primary key,display_name text,active boolean);
  create table public.ph_master_inventory(unique_id text primary key,itemcode text,commonname text,contsize text,locationcode text,lotcode text,
  ptravailable text,ptronhand text,s_lts text,season text,saleyear text,desigitem text,app_tab_assignment text,genusname text,botanicalname text);
+ create extension if not exists pg_trgm with schema extensions;
+ create index idx_ph_master_inventory_aura_name_trgm on public.ph_master_inventory using gin
+   (public.aura_inventory_v2_name_v1(commonname) extensions.gin_trgm_ops);
  create function private.inventory_row_assignment_policy_active_v1() returns boolean language sql stable security definer set search_path='' as $$
    select active from public.test_assignment_policy where singleton$$;
  create function private.eval_assignment_profile_active_v1(p_username text) returns boolean language sql stable security definer set search_path='' as $$
@@ -121,7 +124,10 @@ try {
  values('Mia','W3','ROSE1','Rosa','ROSE1','rosa','ROSE1|rosa',true,false,'duplicate import row');
 `);
  const migration=fs.readFileSync(new URL('../migrations/20261007041448_aura_internal_query_conversation_inventory.sql',import.meta.url),'utf8');
- await db.exec(migration); await db.exec('set role service_role');
+ await db.exec(migration);
+ const commonNameMigration=fs.readFileSync(new URL('../migrations/20261007123459_aura_inventory_common_name_priority.sql',import.meta.url),'utf8');
+ await db.exec(commonNameMigration);
+ await db.exec('set role service_role');
  const actor='00000000-0000-0000-0000-000000000001',other='00000000-0000-0000-0000-000000000002',cid='10000000-0000-0000-0000-000000000001',tid='20000000-0000-0000-0000-000000000001';
  await assert.rejects(()=>q(`select public.aura_query_conversation_v1($1,'create',null,null,null,'{}')`,[other]),/AURA_ACTOR_FORBIDDEN/);
  for(const denied of ['00000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000006']) {
@@ -197,6 +203,29 @@ try {
  assert.equal(fuzzy.exactMatch,false,'fuzzy results require the user to choose a candidate'); assert.ok(fuzzy.rows.length>0);
  assert.ok(fuzzy.candidateChoices.length<=5);
  assert.equal(new Set(fuzzy.candidateChoices.map(choice=>choice.selectionId)).size,fuzzy.candidateChoices.length,'fuzzy choices are distinct plant identities');
+ const commonNameOnly=(await q(`select public.aura_query_inventory_v1($1,'match','{"commonName":"Quercus"}') x`,[actor]))[0].x;
+ assert.equal(commonNameOnly.rows.length,0,'commonName filters search the common-name field only, not botanical names');
+ assert.equal(commonNameOnly.exactMatch,false);
+ const commonNameFuzzy=(await q(`select public.aura_query_inventory_v1($1,'match','{"commonName":"Red Roes"}') x`,[actor]))[0].x;
+ assert.equal(commonNameFuzzy.exactMatch,false,'misspelled common names request a choice instead of silently choosing');
+ assert.equal(commonNameFuzzy.candidateChoices[0].commonName,'Red Rose','fuzzy common-name candidates sort by common-name similarity');
+ const commonNameAndItemcode=(await q(`select public.aura_query_inventory_v1($1,'match',$2::jsonb) x`,[actor,JSON.stringify({commonName:'Red Roes',itemcode:'ROSE1'})]))[0].x;
+ assert.ok(commonNameAndItemcode.rows.length>0);
+ assert.ok(commonNameAndItemcode.rows.every(row=>row.itemcode==='ROSE1'),'explicit itemcode remains a hard filter with a common name');
+ const commonNameAndGenus=(await q(`select public.aura_query_inventory_v1($1,'match',$2::jsonb) x`,[actor,JSON.stringify({commonName:'Red Roes',genus:'Quercus'})]))[0].x;
+ assert.equal(commonNameAndGenus.rows.length,0,'explicit genus remains a hard filter with a common name');
+ const chosenCommonName=(await q(`select public.aura_query_inventory_v1($1,'match',$2::jsonb) x`,[actor,JSON.stringify({commonName:'Red Roes',selectionId:commonNameFuzzy.candidateChoices[0].selectionId})]))[0].x;
+ assert.equal(chosenCommonName.exactMatch,true,'selecting a fuzzy common-name candidate resolves the ambiguity');
+ assert.ok(chosenCommonName.rows.length>0);
+ await db.exec('reset role');
+ await q(`insert into public.ph_master_inventory values('i13','BOTANICAL_COLLISION','Rosa rubiginosa','3DP','U1','27.F1','3','4','1','F1','27','','','Rosa','Rosa setigera')`);
+ await db.exec('set role service_role');
+ const rankedCrossField=(await q(`select public.aura_query_inventory_v1($1,'match','{"productText":"Rosa rubiginosa"}') x`,[actor]))[0].x;
+ assert.equal(rankedCrossField.exactMatch,false,'cross-field exact matches remain ambiguous');
+ assert.equal(rankedCrossField.candidateChoices[0].itemcode,'BOTANICAL_COLLISION','exact common-name match ranks before a botanical-name match');
+ const commonNameScope=(await q(`select public.aura_query_inventory_v1($1,'match','{"commonName":"Rosa rubiginosa"}') x`,[actor]))[0].x;
+ assert.equal(commonNameScope.rows.length,1,'explicit commonName avoids matching a different row only through its botanical name');
+ assert.equal(commonNameScope.rows[0].itemcode,'BOTANICAL_COLLISION');
  const exact=(await q(`select public.aura_query_inventory_v1($1,'stock','{"productText":"Red Rose","metric":"ptronhand"}') x`,[actor]))[0].x;
  assert.equal(exact.exactMatch,true); assert.equal(exact.total,40,'an exact plant match excludes fuzzy neighboring names from totals');
  const firstInventoryPage=(await q(`select public.aura_query_inventory_v1($1,'stock','{"itemcode":"ROSE1","metric":"ptronhand"}',null,1) x`,[actor]))[0].x;

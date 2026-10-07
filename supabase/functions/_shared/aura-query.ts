@@ -45,15 +45,40 @@ function residual(text: string) {
 }
 const writeWords = /\b(?:create|prepare|draft|submit|save|approve|deny|edit|update|change|move|assign|reclass|complete|finish|send|message|delete|cancel|release|deploy|merge)\b/i;
 
+/** Protect common names from inventory stopwords, sizes, dates and module routing. */
+function commonNameEntity(question: string) {
+  const cue = /\bcommon[\s-]*name\b\s*(?::|=|\bis\b)?\s*/i.exec(question);
+  if (!cue) return null;
+  const tail = question.slice(cue.index + cue[0].length);
+  let value = '', consumed = 0;
+  if (/^["“'‘]/.test(tail)) {
+    const quoted = /^["“]/.test(tail)
+      ? tail.match(/^["“]([^\r\n]+?)["”](?=\s|[?.!,;]|$)/)
+      : tail.match(/^['‘]([^\r\n]+?)['’](?=\s|[?.!,;]|$)/);
+    if (!quoted) return { value: '', remaining: question };
+    value = quoted[1]; consumed = quoted[0].length;
+  } else {
+    // Only recognized filter syntax ends an unquoted name: "of the" and "in"
+    // can be part of names such as Lily of the Valley and Love in a Mist.
+    const boundary = /[?!;,]|\s+(?=(?:(?:in|at|from|inside|outside|within)\s+(?:the\s+)?(?:[a-z]\.\d{2}|perennial\s+(?:area|zone))\b|(?:for\s+)?(?:season\s+)?(?:20\d{2}|\d{2})?(?:S1|F1|U1|U2|U3|X|Y|Z)\b|(?:item\s*code|itemcode|genus|lot(?:\s*code)?|bay|owned by|assigned to|assignee|worker|season)\b|(?:in\s+)?open stock\b|on[ -]hand\b|available\b|#\s*\d|hash\s+(?:\d|[a-z]+)\b|(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:gallons?|gal|deep\s+pee|dp|inches?|feet|foot|ft|quarts?|qt|pints?|pt|cells?|trays?)\b))/i.exec(tail);
+    consumed = boundary?.index ?? tail.length;
+    value = tail.slice(0, consumed).replace(/[.]+$/, '').trim();
+  }
+  return { value: value.trim(), remaining: `${question.slice(0, cue.index)} ${tail.slice(consumed)}` };
+}
+
 export function resolveAuraIntent(raw: unknown, context: Record<string, unknown> = {}, now = new Date()): AuraIntent {
   const question = clean(raw);
   if (!question || question.length > 2000) throw new Error('AURA_QUERY_TEXT_REQUIRED');
+  const commonName = commonNameEntity(question);
+  const syntaxQuestion = commonName?.remaining ?? question;
   const prior = record(context.lastIntent), priorFilters = record(prior.filters);
-  const follow = /^(?:and\b|only\b|just\b|what about\b|how about\b|same\b|those\b|these\b|there\b)|\b(?:those|these|there|same ones)\b/i.test(question)
-    || (!!prior.mode && /^(?:on[ -]hand|available|#\d+)[?.!]*$/i.test(question));
+  const follow = /^(?:and\b|only\b|just\b|what about\b|how about\b|same\b|those\b|these\b|there\b)|\b(?:those|these|there|same ones)\b/i.test(syntaxQuestion)
+    || (!!prior.mode && /^(?:on[ -]hand|available|#\d+)[?.!]*$/i.test(syntaxQuestion));
   const intent: AuraIntent = { mode: 'inventory', operation: 'stock', question, filters: {}, module: 'drive', title: 'Inventory', replyPrefix: 'Inventory' };
   const clarify = (message: string) => ({ ...intent, clarification: message });
-  const navigation = question.match(/^(?:please\s+)?(?:open|go to|take me to|navigate to)\s+(?:the\s+)?(.+?)[?.!]*$/i);
+  if (commonName && (!commonName.value || commonName.value.length > 160)) return clarify('Please provide one common name, using quotes around multiword names.');
+  const navigation = syntaxQuestion.match(/^(?:please\s+)?(?:open|go to|take me to|navigate to)\s+(?:the\s+)?(.+?)[?.!]*$/i);
   if (navigation) {
     const destination = navigation[1].toLowerCase().replace(/[?.!]$/, '').replace(/\s+screen$/, '').replace(/\s+/g, '-');
     const aliases: Record<string, string> = { inventory: 'drive', 'location-work': 'tasks', 'eval-work': 'review', calendar: 'department-calendar', settings: 'managers', operations: 'managers', propagation: 'production:propagation', planting: 'production:planting', 'sales-credits': 'sales-credit', marketing: 'advertisement' };
@@ -64,16 +89,16 @@ export function resolveAuraIntent(raw: unknown, context: Record<string, unknown>
     return clarify('Which app screen should I open? Ask for app areas to see the available destinations.');
   }
   if (follow && !prior.mode) return clarify('Which plants or records should I use for that follow-up?');
-  if (follow && /\b(?:those|these|there)\b/i.test(question) && Array.isArray(context.pendingChoices) && context.pendingChoices.length > 1) return clarify('Which of the previous matches do you mean? Choose one of the listed options.');
+  if (follow && /\b(?:those|these|there)\b/i.test(syntaxQuestion) && Array.isArray(context.pendingChoices) && context.pendingChoices.length > 1) return clarify('Which of the previous matches do you mean? Choose one of the listed options.');
   if (follow) Object.assign(intent, prior, { question, filters: { ...priorFilters } });
   const f = intent.filters;
   // Extract exact identifiers before normalizing spoken sizes: "00123 in C.06"
   // must never be interpreted as a 123-inch container.
-  let remaining = question.replace(/[’]/g, "'");
+  let remaining = syntaxQuestion.replace(/[’]/g, "'");
   const remove = (pattern: RegExp) => { const m = remaining.match(pattern); if (m) remaining = remaining.replace(pattern, ' '); return m; };
   const item = remove(/\b(?:item\s*code|itemcode|item)\b\s*(?:#|:)?\s*(?!default\b|owners?\b|assignments?\b)([A-Z0-9][A-Z0-9_-]{1,99})\b/i);
-  if (item) { f.itemcode = item[1]; delete f.productText; delete f.selectionId; }
-  else if (/^\d{3,}$/.test(remaining)) { f.itemcode = remaining; remaining = ''; delete f.productText; delete f.selectionId; }
+  if (item) { f.itemcode = item[1]; delete f.productText; delete f.commonName; delete f.selectionId; }
+  else if (/^\d{3,}$/.test(remaining)) { f.itemcode = remaining; remaining = ''; delete f.productText; delete f.commonName; delete f.selectionId; }
   const loc = remove(/\b[A-Z]\.[0-9]{2}(?:\.[0-9]{3})?\b/i);
   if (loc) { f.locationCode = loc[0].toUpperCase(); f.locationMode = loc[0].split('.').length === 2 ? 'prefix' : 'exact'; }
   const bay = remove(/\bbay\s*(?:#|:)?\s*(\d{1,3})\b/i);
@@ -96,70 +121,79 @@ export function resolveAuraIntent(raw: unknown, context: Record<string, unknown>
   const zone = remove(/\b(?:(outside|inside|in|within)\s+(?:the\s+)?)?perennial\s+(?:area|zone)\b/i);
   if (zone) f.zone = zone[1]?.toLowerCase() === 'outside' ? 'OUTSIDE' : 'perennial';
   const genus = remove(/\bgenus\s+([a-z][a-z-]{1,79})\b/i);
-  if (genus) { f.genus = genus[1]; delete f.productText; delete f.selectionId; }
-  const ownQuestion = /\b(?:who owns|who has|who is assigned to)\b/i.test(question);
+  if (genus) { f.genus = genus[1]; delete f.productText; delete f.commonName; delete f.selectionId; }
+  if (commonName) {
+    f.commonName = commonName.value; delete f.productText; delete f.selectionId;
+    if (!item) delete f.itemcode;
+  }
+  const ownQuestion = /\b(?:who owns|who has|who is assigned to)\b/i.test(syntaxQuestion);
   const zoe = remove(/\bzoe(?:_green| green)?(?:'s|s)?\b/i);
   if (zoe) f.assignee = 'zoe_green';
   if (!ownQuestion && !zoe) {
     const person = remove(/\b(?:owned by|assigned to|assignee|worker)\s+([a-z][a-z_'-]*(?:\s+[a-z][a-z_'-]*)?)(?=\s+(?:in|at|for|on|with|from|only)\b|[?.,!]|$)/i);
     if (person) { f.assigneeText = person[1]; delete f.assignee; }
   }
-  if (/\bon[ -]hand|physical stock\b/i.test(question)) f.metric = 'ptronhand';
-  else if (/\bavailable\b/i.test(question) || !follow) f.metric = 'ptravailable';
-  if (/\bopen stock\b/i.test(question)) f.openStockOnly = true;
-  else if (!follow || /\ball stock\b/i.test(question)) f.openStockOnly = false;
-  if (/\b(?:physical rows?|rows)\b/i.test(question)) f.countMode = 'physical_rows';
-  else if (/\b(?:distinct|unique) (?:items?|plants?|products?)|plant types?\b/i.test(question)) f.countMode = 'unique_items';
-  else if (!follow || /\bquantity\b/i.test(question)) f.countMode = 'quantity';
-  const date = auraDateRange(question, now);
-  if (!date && /\b(?:on|since|from|date)\s+\d{4}-\d{2}-\d{2}\b/i.test(question)) return clarify('Please use a valid date in YYYY-MM-DD format.');
+  if (/\bon[ -]hand|physical stock\b/i.test(syntaxQuestion)) f.metric = 'ptronhand';
+  else if (/\bavailable\b/i.test(syntaxQuestion) || !follow) f.metric = 'ptravailable';
+  if (/\bopen stock\b/i.test(syntaxQuestion)) f.openStockOnly = true;
+  else if (!follow || /\ball stock\b/i.test(syntaxQuestion)) f.openStockOnly = false;
+  if (/\b(?:physical rows?|rows)\b/i.test(syntaxQuestion)) f.countMode = 'physical_rows';
+  else if (/\b(?:distinct|unique) (?:items?|plants?|products?)|plant types?\b/i.test(syntaxQuestion)) f.countMode = 'unique_items';
+  else if (!follow || /\bquantity\b/i.test(syntaxQuestion)) f.countMode = 'quantity';
+  const date = auraDateRange(syntaxQuestion, now);
+  if (!date && /\b(?:on|since|from|date)\s+\d{4}-\d{2}-\d{2}\b/i.test(syntaxQuestion)) return clarify('Please use a valid date in YYYY-MM-DD format.');
   if (date) { f.dateFrom = date.dateFrom; if (date.dateTo) f.dateTo = date.dateTo; else delete f.dateTo; remaining = remaining.replace(date.phrase, ' '); }
   const status = remove(/\b(?:pending|approved|denied|cancelled|completed|complete|outstanding|in progress|open|active|submitted|closed)\b/i);
-  if (status && !/\bopen stock\b/i.test(question) && !/\b(?:app areas?|modules?|navigation)\b/i.test(question)) f.status = /^(?:outstanding)$/i.test(status[0]) ? 'open' : /^(?:completed)$/i.test(status[0]) ? 'complete' : status[0].toLowerCase().replace(/ /g, '_');
+  if (status && !/\bopen stock\b/i.test(syntaxQuestion) && !/\b(?:app areas?|modules?|navigation)\b/i.test(syntaxQuestion)) f.status = /^(?:outstanding)$/i.test(status[0]) ? 'open' : /^(?:completed)$/i.test(status[0]) ? 'complete' : status[0].toLowerCase().replace(/ /g, '_');
   const recordId = remove(/\b(?:record|job|task|conversation)\s+(?:id\s*)?([0-9a-f]{8}-[0-9a-f-]{27,})\b/i);
   if (recordId) f.recordId = recordId[1];
-  const route = AURA_DOMAIN_ROUTES.find(value => value.pattern.test(question));
-  if (/\b(?:can filling|order pulling)\b/i.test(question)) return clarify('That feature is not yet available in the app.');
-  if (/\b(?:chat|messages?|conversation|walkie|call)\b/i.test(question)) {
+  const route = AURA_DOMAIN_ROUTES.find(value => value.pattern.test(syntaxQuestion));
+  if (/\b(?:can filling|order pulling)\b/i.test(syntaxQuestion)) return clarify('That feature is not yet available in the app.');
+  if (/\b(?:chat|messages?|conversation|walkie|call)\b/i.test(syntaxQuestion)) {
     Object.assign(intent, { mode: 'chat', operation: 'read', module: 'chat', title: 'Chat messages', capability: undefined });
     remaining = remaining.replace(/\b(?:chat|messages?|conversation|walkie|call|read|my|latest|recent|private|authorized)\b/gi, ' ');
-  } else if (/\b(?:location work|worksheets?)\b/i.test(question)) {
+  } else if (/\b(?:location work|worksheets?)\b/i.test(syntaxQuestion)) {
     Object.assign(intent, { mode: 'location_work', operation: 'read', module: 'tasks', title: 'Location Work', capability: 'location_work' });
     remaining = remaining.replace(/\b(?:location work|worksheets?)\b/gi, ' ');
-  } else if (/\b(?:eval(?:uation)? work|eval(?:uation)? tasks?|worker assignments?)\b/i.test(question)) {
+  } else if (/\b(?:eval(?:uation)? work|eval(?:uation)? tasks?|worker assignments?)\b/i.test(syntaxQuestion)) {
     Object.assign(intent, { mode: 'eval_work', operation: 'read', module: 'review', title: 'Eval Work', capability: 'eval_work' });
     remaining = remaining.replace(/\b(?:eval(?:uation)? work|eval(?:uation)? tasks?|worker assignments?)\b/gi, ' ');
   } else if (route) {
     const key = route.capability === 'po_fall' && f.season === 'S1' ? 'po_spring' : route.capability;
     const cap = AURA_READ_CAPABILITIES[key];
-    Object.assign(intent, { mode: 'domain', operation: /\b(?:count|how many|number of)\b/i.test(question) ? 'count' : 'read', capability: key, module: cap.module, title: cap.title });
+    Object.assign(intent, { mode: 'domain', operation: /\b(?:count|how many|number of)\b/i.test(syntaxQuestion) ? 'count' : 'read', capability: key, module: cap.module, title: cap.title });
     remaining = remaining.replace(new RegExp(route.pattern.source, 'gi'), ' ');
     remaining = remaining.replace(/\b(?:department|latest|recent|stored|recorded|published|visible|does|look like)\b/gi, ' ').replace(/(?:^|\s)'s\b/gi, ' ');
     if (key === 'active_request') { if (f.status === 'active') delete f.status; remaining = remaining.replace(/\brequests?\b/gi, ' '); }
     if (key === 'navigation') remaining = remaining.replace(/\b(?:which|can|i|open)\b/gi, ' ');
-  } else if (/\brequests?\b/i.test(question)) {
+  } else if (/\brequests?\b/i.test(syntaxQuestion)) {
     Object.assign(intent, { mode: 'domain', operation: 'read', capability: 'request_queue', module: 'request', title: 'Requests' }); remaining = remaining.replace(/\b(?:active )?requests?\b/gi, ' ');
-  } else if (/\borders?\b/i.test(question)) {
+  } else if (/\borders?\b/i.test(syntaxQuestion)) {
     Object.assign(intent, { mode: 'domain', operation: 'read', capability: 'sales_orders', module: 'sales-office', title: 'Orders' }); remaining = remaining.replace(/\borders?\b/gi, ' ');
-  } else if (ownQuestion || (zoe && !/\b(?:where|how many|how much|count)\b/i.test(question) && !follow)) Object.assign(intent, { mode: 'ownership', operation: 'ownership', module: 'drive', title: 'Effective Eval ownership', capability: undefined });
-  else if (/\bunassigned\b/i.test(question)) { Object.assign(intent, { mode: 'unassigned', operation: 'unassigned', module: 'drive', title: 'Explicitly Unassigned inventory', capability: undefined }); remaining = remaining.replace(/\bunassigned\b/gi, ' '); }
-  else if (lot && !/\b(?:where|how many|count)\b/i.test(question)) Object.assign(intent, { mode: 'lot', operation: 'lot', capability: undefined });
-  else if (/\bwhere\b/i.test(question)) Object.assign(intent, { mode: 'inventory', operation: 'locations', capability: undefined });
-  else if (/\b(?:most|highest|maximum)\b/i.test(question)) { Object.assign(intent, { mode: 'inventory', operation: 'maximum', capability: undefined }); remaining = remaining.replace(/\b(?:most|highest|maximum)\b/gi, ' '); }
-  else if (['inventory', 'ownership', 'lot'].includes(intent.mode) && /\b(?:how many|how much|count)\b/i.test(question)) Object.assign(intent, { mode: 'inventory', operation: 'stock', capability: undefined });
+  } else if (ownQuestion || (zoe && !/\b(?:where|how many|how much|count)\b/i.test(syntaxQuestion) && !follow)) Object.assign(intent, { mode: 'ownership', operation: 'ownership', module: 'drive', title: 'Effective Eval ownership', capability: undefined });
+  else if (/\bunassigned\b/i.test(syntaxQuestion)) { Object.assign(intent, { mode: 'unassigned', operation: 'unassigned', module: 'drive', title: 'Explicitly Unassigned inventory', capability: undefined }); remaining = remaining.replace(/\bunassigned\b/gi, ' '); }
+  else if (lot && !/\b(?:where|how many|count)\b/i.test(syntaxQuestion)) Object.assign(intent, { mode: 'lot', operation: 'lot', capability: undefined });
+  else if (/\bwhere\b/i.test(syntaxQuestion)) Object.assign(intent, { mode: 'inventory', operation: 'locations', capability: undefined });
+  else if (/\b(?:most|highest|maximum)\b/i.test(syntaxQuestion)) { Object.assign(intent, { mode: 'inventory', operation: 'maximum', capability: undefined }); remaining = remaining.replace(/\b(?:most|highest|maximum)\b/gi, ' '); }
+  else if (['inventory', 'ownership', 'lot'].includes(intent.mode) && /\b(?:how many|how much|count)\b/i.test(syntaxQuestion)) Object.assign(intent, { mode: 'inventory', operation: 'stock', capability: undefined });
   if (zoe) remaining = remaining.replace(/\b(?:owned by|assigned to)\b/gi, ' ');
   let product = residual(remaining);
   if (product && !/^(?:recent|latest|read|by|to)$/i.test(product)) {
     // A new product explicitly replaces any selected or remembered product.
-    f.productText = product; delete f.selectionId;
+    if (commonName) return clarify('Please put the complete common name in quotes and keep inventory filters outside them.');
+    f.productText = product; delete f.commonName; delete f.selectionId;
     if (!item) delete f.itemcode;
   }
   if (follow && /^(?:and|only|just|what about|how about)\s*$/i.test(product)) delete f.productText;
-  if (!follow && !route && !item && !loc && !lot && !genus && !zoe && !/\b(?:how many|how much|where|who|count|find|show|look up|inventory|stock|plants?|items?|rows?|most|highest|maximum)\b/i.test(question) && intent.mode === 'inventory') return clarify('I can query nursery records and prepare app changes for review. Please name the plants, records, or app area you want.');
-  if (/\bthose\b/i.test(question) && product === 'those') delete f.productText;
+  if (!follow && !route && !item && !loc && !lot && !genus && !commonName && !zoe && !/\b(?:how many|how much|where|who|count|find|show|look up|inventory|stock|plants?|items?|rows?|most|highest|maximum)\b/i.test(syntaxQuestion) && intent.mode === 'inventory') return clarify('I can query nursery records and prepare app changes for review. Please name the plants, records, or app area you want.');
+  if (/\bthose\b/i.test(syntaxQuestion) && product === 'those') delete f.productText;
+  if (f.commonName && !['inventory', 'ownership', 'unassigned', 'lot'].includes(intent.mode)
+      && (!intent.capability || AURA_READ_CAPABILITIES[intent.capability]?.reader !== 'inventory')) {
+    return clarify('Common-name field searches are supported for current inventory. Ask for inventory by common name, or use a general search in this app area.');
+  }
   if (['inventory','ownership','unassigned','lot'].includes(intent.mode) && (f.status || f.dateFrom || f.bay)) return clarify('Please use a full location for a bay query. Inventory queries use current stock and ownership; use the relevant workflow or history for statuses and dates.');
-  if (writeWords.test(question)) {
-    const quantity = question.match(/\b(?:quantity|qty)\s*[:=]?\s*([a-z\d, -]+?)(?=\s+(?:of|to|in|at|for)\b|[?.!]|$)/i);
+  if (writeWords.test(syntaxQuestion)) {
+    const quantity = syntaxQuestion.match(/\b(?:quantity|qty)\s*[:=]?\s*([a-z\d, -]+?)(?=\s+(?:of|to|in|at|for)\b|[?.!]|$)/i);
     if (quantity) { const n = parseAuraWholeNumber(quantity[1]); if (n != null) f.quantity = n; }
   }
   intent.replyPrefix = intent.title;
