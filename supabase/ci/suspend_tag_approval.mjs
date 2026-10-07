@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { migrationContractQuery, suspendTagApprovalMigrationName } from '../../scripts/apply-item-low-stock-migration.mjs';
+import { latestMigrationFunctionDefinition } from '../../scripts/migration-function-source.mjs';
 
 // Disposable PostgreSQL only. No hosted connection string or production access.
 const host = process.env.PGHOST || '127.0.0.1';
@@ -34,6 +35,16 @@ try {
   `);
   await db.query(fs.readFileSync('supabase/migrations/20261005194158_suspend_tag_approval_loop.sql','utf8'));
   assert.equal((await db.query(migrationContractQuery(suspendTagApprovalMigrationName))).rows[0].installed,true);
+  const currentCommand = latestMigrationFunctionDefinition({
+    schema: 'suspend_tag_private',
+    name: 'command',
+    argumentTypes: ['uuid', 'text', 'jsonb', 'uuid', 'bigint'],
+  });
+  await db.query(currentCommand);
+  const replayedCommand = (await db.query(
+    "select pg_get_functiondef('suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)'::regprocedure) as definition",
+  )).rows[0].definition;
+  assert.match(replayedCommand, /where outbox\.event_id in/i, 'fixture replays the latest exact active function definition');
   await db.query('set role anon');
   await assert.rejects(db.query('select * from public.ph_soc_master'),/permission denied/);
   await assert.rejects(db.query('select public.suspend_tag_command_v1(null,\'rows\')'),/permission denied/);

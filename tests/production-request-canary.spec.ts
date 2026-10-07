@@ -1,4 +1,5 @@
 import { expect, test, type Route } from '@playwright/test';
+import { poManagementCanaryRows } from './fixtures/po-management-canary.mjs';
 
 import { readFileSync } from 'node:fs';
 // @test-group: @production-canary
@@ -432,10 +433,7 @@ test('live PO Management uses authenticated PostgREST and never the retired data
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([
-          { id: 1, run_id: 'CANARY', row_index: 1, itemcode: 'CANARY.PO.001', commonname: 'Synthetic PO Canary', contsize: '#1 TEST', lotcode: '27.F1', po_remain: 12, built_at: '2026-08-27T00:00:00Z' },
-          { id: 2, run_id: 'CANARY', row_index: 2, itemcode: 'CANARY.PO.002', commonname: 'Synthetic PO Canary Two', contsize: '#3 TEST', lotcode: '27.F1', po_remain: 8, built_at: '2026-08-27T00:00:00Z' }
-        ])
+        body: JSON.stringify(poManagementCanaryRows())
       });
       return;
     }

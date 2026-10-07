@@ -372,11 +372,13 @@ test('historical fixture builder preserves ordered migrations and isolates the s
     rmSync(fixtureRoot, { recursive: true, force: true });
     rmSync(path.dirname(destination), { recursive: true, force: true });
   });
-  for (const directory of ['supabase/ci', 'supabase/migrations', 'supabase/functions', 'supabase/tests', 'utils']) {
+  for (const directory of ['supabase/ci', 'supabase/migrations', 'supabase/functions', 'supabase/tests', 'services/nested', 'utils']) {
     mkdirSync(path.join(fixtureRoot, directory), { recursive: true });
   }
   writeFileSync(path.join(fixtureRoot, 'supabase/config.toml'), 'project_id = "fixture"\n');
   writeFileSync(path.join(fixtureRoot, 'supabase/functions/index.ts'), 'export {};\n');
+  writeFileSync(path.join(fixtureRoot, 'services/database-contract-runtime.ts'), 'export const runtime = true;\n');
+  writeFileSync(path.join(fixtureRoot, 'services/nested/shared.ts'), 'export const shared = true;\n');
   writeFileSync(path.join(fixtureRoot, 'utils/auraLingo.js'), 'export {};\n');
   writeFileSync(path.join(fixtureRoot, 'supabase/ci/base.sql'), 'select 1;\r\n');
   writeFileSync(path.join(fixtureRoot, 'supabase/ci/scheduled_handover_isolation.sql'), 'select 2;\n');
@@ -398,6 +400,8 @@ test('historical fixture builder preserves ordered migrations and isolates the s
   ]);
   assert.match(readFileSync(path.join(destination, 'supabase/migrations/20261001215508_scheduled_handover_005.sql'), 'utf8'), /select 2;\s*commit;\s*$/);
   assert.deepEqual(readdirSync(path.join(destination, 'supabase/tests')).sort(), ['acceptance_test.sql', 'direct_test.sql']);
+  assert.equal(readFileSync(path.join(destination, 'services/database-contract-runtime.ts'), 'utf8'), 'export const runtime = true;\n');
+  assert.equal(readFileSync(path.join(destination, 'services/nested/shared.ts'), 'utf8'), 'export const shared = true;\n');
   assert.equal(existsSync(path.join(destination, 'supabase/seed.sql')), true);
 });
 

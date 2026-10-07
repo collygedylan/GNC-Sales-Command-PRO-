@@ -88,6 +88,10 @@ export function prepareHistoricalDatabaseFixture({ root = repositoryRoot, destin
     config = config.replace(/^project_id\s*=\s*"[^"]+"\s*$/m, `project_id = "${projectId}"`);
     writeFileSync(path.join(supabaseDir, 'config.toml'), config);
     copyDirectory(resolveInside(absoluteRoot, 'supabase/functions', 'HISTORICAL_FUNCTIONS_PATH_INVALID'), path.join(supabaseDir, 'functions'));
+    // Configured Edge Functions resolve shared runtime and generated contract
+    // modules outside supabase/functions. Preserve the authored module tree so
+    // local Edge Runtime and functions serve can load the same imports.
+    copyDirectory(resolveInside(absoluteRoot, 'services', 'HISTORICAL_SERVICES_PATH_INVALID'), path.join(absoluteDestination, 'services'));
     mkdirSync(path.join(absoluteDestination, 'utils'), { recursive: true });
     copyDirectory(resolveInside(absoluteRoot, 'utils/auraLingo.js', 'HISTORICAL_LINGO_PATH_INVALID'), path.join(absoluteDestination, 'utils/auraLingo.js'));
     writeFileSync(path.join(supabaseDir, 'seed.sql'), '');
