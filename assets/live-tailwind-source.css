@@ -2,3 +2,5 @@
 
 @source "../index.html";
 @source "../assets/*.js";
+
+@source "../components/assigned-items/*.jsx";

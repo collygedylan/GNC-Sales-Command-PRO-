@@ -22,8 +22,9 @@ Every interactive command still requires a valid active authenticated session.
 
 ## Editing and existing work
 
-Assigned Items displays each source row and one **Itemcode Default Owner**
-control per displayed Itemcode. Dylan and Megan retain editing access. Default
+Assigned Items virtualizes each source row and displays an **Itemcode Default Owner**
+control on every visible row. All controls for an Itemcode share its draft and save state;
+location-override labels distinguish the effective worker from this default. Dylan and Megan retain editing access. Default
 changes use expected revisions and request IDs. Effective ownership is derived
 and read-only. Errors retain the selected value; Refresh retrieves the current
 revision before a reviewed retry. A default change does not notify workers.

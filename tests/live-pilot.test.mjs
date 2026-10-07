@@ -1684,7 +1684,7 @@ test('Eval assignment management uses the requested roster and ItemCode + GenusN
   assert.match(html, /boby: 'bobby_adair'/);
   assert.match(html, /function getEvalAssignableUserLabel\(value = ''\) \{[\s\S]*return normalized;/);
   assert.match(html, /function buildManagerEvalAssignmentKey\(itemcode = '', genusname = ''\)/);
-  assert.match(html, /p_changes: changes, p_request_id: state\.defaultCommand\.id/);
+  assert.match(html, /p_changes: changes, p_request_id: command\.id/);
   assert.match(html, /ensureEvalAssignableUsers\(\)\.then\(\(\) => scheduleManagersRender\(true\)\)/);
   assert.doesNotMatch(html, /ensureEvalAssignableUsersReady/);
   assert.match(html, /Defaults use Itemcode only/);

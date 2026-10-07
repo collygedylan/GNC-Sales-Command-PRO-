@@ -1,5 +1,12 @@
 import { expect, test, type Locator } from '@playwright/test';
 
+async function expectVirtualAssignedRows(root: Locator, rows: Locator, count: number) {
+  await expect(root).toHaveAttribute('data-logical-row-count', String(count));
+  if (!count) { await expect(rows).toHaveCount(0); return; }
+  await expect.poll(() => rows.count()).toBeGreaterThan(0);
+  expect(await rows.count()).toBeLessThanOrEqual(35);
+}
+
 test('Managers module picker defers low-stock reads until a consuming tab is selected', async ({ page, baseURL }) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', async route => {
@@ -66,6 +73,7 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
     syncManagersHeaderChrome = () => {};
     const fixture = document.createElement('div'); fixture.id = 'assigned-filter-fixture';
     fixture.style.cssText = 'position:fixed;inset:8px 8px 80px;overflow:auto;z-index:12000;background:var(--ui-surface,#fff)';
+    fixture.dataset.managerAssignedScroll = 'true';
     const wrapper = document.getElementById('view-wrapper');
     Array.from(wrapper.children).forEach(view => { if (view.id.startsWith('view-')) view.classList.add('hidden'); });
     document.getElementById('view-managers').classList.remove('hidden');
@@ -79,7 +87,9 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
   const phone = (page.viewportSize()?.width || 1000) < 768;
   const fixture = page.locator('#assigned-filter-fixture');
   const rows = fixture.locator(phone ? '[data-manager-assigned-item-card]' : '[data-manager-assigned-item-row]');
-  await expect(rows).toHaveCount(125);
+  const root = fixture.locator('#manager-assigned-items-root');
+  await expectVirtualAssignedRows(root, rows, 125);
+  await expect.poll(async () => rows.locator('select[aria-label^="Itemcode Default Owner "]').count()).toBeGreaterThan(0);
   const trigger = (field: string) => fixture.locator(`${phone ? '.assigned-phone-filters' : '[data-manager-assigned-desktop-table]'} [data-assigned-filter-trigger="${field}"]`);
   const open = async (field: string) => {
     await trigger(field).click();
@@ -126,7 +136,7 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
   await page.evaluate(() => (window as any).renderManagers());
   await expect(page.locator('#manager-assigned-value-search')).toHaveValue('Zebra');
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(rows).toHaveCount(1);
+  await expectVirtualAssignedRows(root, rows, 1);
   await expect(rows.first()).toContainText('000124');
   await expect(trigger('COMMONNAME').locator('.assigned-filter-value')).toHaveText('Zebra Rose');
   await expect(fixture.locator('.assigned-filter-clear')).toBeVisible();
@@ -140,21 +150,22 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
   await page.keyboard.press('Escape');
   await expect(panel).toHaveCount(0);
-  await expect(rows).toHaveCount(1);
+  await expectVirtualAssignedRows(root, rows, 1);
   await open('CONTSIZE');
   await panel.getByRole('button', { name: 'Clear Selection', exact: true }).click();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(rows).toHaveCount(0);
+  await expectVirtualAssignedRows(root, rows, 0);
   await expect(trigger('CONTSIZE').locator('.assigned-filter-value')).toHaveText('0 selected');
   await open('CONTSIZE');
   await panel.getByRole('button', { name: 'Clear Column Filter', exact: true }).click();
-  await expect(rows).toHaveCount(1);
+  await expectVirtualAssignedRows(root, rows, 1);
   await fixture.getByRole('button', { name: 'Clear All Filters', exact: true }).click();
-  await expect(rows).toHaveCount(125);
+  await expectVirtualAssignedRows(root, rows, 125);
   await expect(fixture.locator('.assigned-filter-clear')).toHaveCount(0);
   await open('ITEMCODE');
   await panel.getByRole('button', { name: 'Sort Z–A ↓', exact: true }).click();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
+  await fixture.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
   await expect(rows.first()).toContainText('000124');
   await expect(fixture.locator('[data-manager-assigned-group]')).toHaveCount(0);
   await expect(trigger('ITEMCODE').locator('.assigned-filter-value')).toHaveText('All');
@@ -163,8 +174,12 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
   await open('ITEMCODE');
   await panel.getByRole('button', { name: 'Clear Sort', exact: true }).click();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
+  await fixture.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
   await expect(rows.first()).toContainText('000000');
-  await expect(fixture.locator('[data-manager-assigned-group]')).toHaveCount(2);
+  await expect(root.locator('[data-manager-assigned-group="unassigned"]')).toHaveCount(1);
+  await fixture.evaluate(element => { element.scrollTop = Math.max(0, element.scrollHeight - element.clientHeight - 100); element.dispatchEvent(new Event('scroll')); });
+  await expect(root.locator('[data-manager-assigned-group="assigned"]')).toHaveCount(1);
+  await fixture.evaluate(element => { element.scrollTop = 0; element.dispatchEvent(new Event('scroll')); });
   for (const field of ['ASSIGNEDTO', 'WAREHOUSEI', 'ITEMCODE', 'CONTSIZE', 'COMMONNAME', 'LOCATIONCODE', 'SOURCE', 'GENUSNAME']) {
     await open(field);
     await expect(panel.getByRole('checkbox').first()).toBeVisible();
@@ -178,7 +193,7 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
     expect((await panel.getByRole('button', { name: 'Apply', exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await page.evaluate(() => (window as any).goBackUniversal());
     await expect(panel).toHaveCount(0);
-    await expect(rows).toHaveCount(125);
+    await expectVirtualAssignedRows(root, rows, 125);
   }
   const denied = await page.evaluate(() => window.eval(`(() => { currentUser = 'unauthorized_rep'; currentUserDisplay = 'Unauthorized Rep'; currentRole = 'REP'; return renderManagerAssignedItemsExportPanel(); })()`));
   expect(denied).toContain('available to managers only');
@@ -242,12 +257,16 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   const phone = (page.viewportSize()?.width || 1000) < 768;
   const panel = page.locator('#manager-assigned-filter-panel');
   const rows = page.locator(phone ? '[data-manager-assigned-item-card]' : '[data-manager-assigned-item-row]');
+  const root = page.locator('#manager-assigned-items-root');
   const open = async (field: string) => {
     await page.locator(`${phone ? '.assigned-phone-filters' : '[data-manager-assigned-desktop-table]'} [data-assigned-filter-trigger="${field}"]`).click();
     await expect(panel).toBeVisible();
   };
-  await expect(rows).toHaveCount(240);
-  if (phone) await expect(rows.first()).toHaveCSS('content-visibility', 'auto');
+  await expectVirtualAssignedRows(root, rows, 240);
+  if (phone) {
+    await expect(root).toHaveAttribute('data-logical-row-count', '240');
+    expect(await rows.count()).toBeLessThanOrEqual(35);
+  }
   await open('COMMONNAME');
   await panel.getByRole('button', { name: 'Clear Selection', exact: true }).click();
   const search = page.locator('#manager-assigned-value-search');
@@ -271,13 +290,13 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   expect(await page.evaluate(() => document.activeElement === (window as any).__assignedSearchInput)).toBe(true);
   await expect(panel.getByRole('checkbox', { name: 'Rose 239 New (1)' })).not.toBeChecked();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
-  await expect(rows).toHaveCount(10);
+  await expectVirtualAssignedRows(root, rows, 10);
   await page.getByRole('button', { name: /Export Excel/ }).click();
   const exported = await page.evaluate(() => (window as any).__assignedExport);
   expect(exported.ids).toEqual(['nav-23', ...Array.from({ length: 9 }, (_, i) => 'nav-' + (230 + i))]);
   expect(exported.values.every((row: string[]) => row[5] === '0' && row[9] === 'D.08.002')).toBe(true);
   expect(exported.values[0][6]).toBe('000023');
-  await expect(rows).toHaveCount(10);
+  await expectVirtualAssignedRows(root, rows, 10);
   const assignedTo = page.getByRole('combobox', { name: 'AssignedTo', exact: true });
   await expect(assignedTo).toHaveValue('all');
   await expect(assignedTo).toContainText('All AssignedTo (240)');
@@ -287,7 +306,7 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   await panel.getByRole('button', { name: 'Sort Z–A ↓', exact: true }).click();
   await panel.getByRole('button', { name: 'Apply', exact: true }).click();
   await page.getByRole('button', { name: 'Clear All Filters', exact: true }).click();
-  await expect(rows).toHaveCount(240);
+  await expectVirtualAssignedRows(root, rows, 240);
   await expect(page.locator(`${phone ? '.assigned-phone-filters' : '[data-manager-assigned-desktop-table]'} [data-assigned-filter-trigger="ITEMCODE"]`)).toContainText('↓');
   await expect(page.locator('.assigned-filter-chip')).toHaveCount(0);
   await page.getByRole('button', { name: /Export Excel/ }).click();
@@ -320,7 +339,7 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   await page.goBack();
   await expect(panel).toHaveCount(0);
   await expect(page.locator('body')).toHaveAttribute('data-current-view', 'managers');
-  await expect(rows).toHaveCount(240);
+  await expectVirtualAssignedRows(root, rows, 240);
   await open('SOURCE');
   await panel.getByRole('button', { name: 'Apply', exact: true }).focus();
   await page.keyboard.press('Tab');
@@ -401,6 +420,7 @@ test('Assigned Items low-stock targets preserve focused drafts, enforce editor i
     scheduleManagersRender = () => setTimeout(renderManagers, 10);
     const fixture = document.createElement('div'); fixture.id = 'low-stock-assigned-fixture';
     fixture.style.cssText = 'position:fixed;inset:8px 8px 80px;overflow:auto;z-index:12000;background:var(--ui-surface,#fff)';
+    fixture.dataset.managerAssignedScroll = 'true';
     const wrapper = document.getElementById('view-wrapper');
     Array.from(wrapper.children).forEach(view => { if (view.id.startsWith('view-')) view.classList.add('hidden'); });
     document.getElementById('view-managers').classList.remove('hidden'); fixture.appendChild(wrapper); document.body.appendChild(fixture);
@@ -548,14 +568,14 @@ test('Assigned Items low-stock targets preserve focused drafts, enforce editor i
 });
 
 
-test('hybrid default owner edits retain failed choices and preserve independent perennial owners', async ({ page, baseURL }) => {
+test('hybrid per-row default controls retain failures and clarify perennial overrides', async ({ page, baseURL }) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue()
     : route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
   await page.routeWebSocket('**/*', socket => socket.close());
   await page.goto('/?e2e=hybrid-assignment', { waitUntil: 'load' });
   await page.waitForFunction(() => (window as any).__gncAppRuntimeExecuted === true);
-  await page.evaluate(() => window.eval(`(() => {
+  await page.evaluate(() => window.eval(`(async () => {
     resetProductionLiveSync(); currentUser = 'dylan_collyge'; currentUserDisplay = 'Dylan Collyge';
     managerAssignedColumnState = { owner:currentUser, filters:{}, sort:null, editor:null };
     warehouseAssignedItemsInventory = [
@@ -568,39 +588,48 @@ test('hybrid default owner edits retain failed choices and preserve independent 
     canManageItemLowStockTargets = () => false;
     managerAssignedItemsAssignedToFilter = 'all';
     window.__hybridCalls = []; window.__hybridHealthEvents = []; window.__hybridFail = true;
+    reportSemanticHealthEvent = (event_name, area, code, metadata) => { window.__hybridHealthEvents.push({ args:{ event_name, area, code, metadata } }); return Promise.resolve(true); };
     const host = document.createElement('div'); host.id = 'hybrid-fixture';
     host.style.cssText = 'position:fixed;inset:0 0 64px;overflow:auto;z-index:12000;background:white;padding:8px';
+    host.dataset.managerAssignedScroll = 'true';
     document.body.appendChild(host);
-    scheduleManagersRender = () => { host.innerHTML = renderManagerAssignedItemsPreviewTable(warehouseAssignedItemsInventory); };
+    scheduleManagersRender = () => { void mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), warehouseAssignedItemsInventory, warehouseAssignedItemsInventory.length); };
     reloadWarehouseAssignmentsAfterMutation = async () => true;
     supabaseRpc = async (name,args) => {
       if(name === 'report_app_health_event') { window.__hybridHealthEvents.push({name,args}); return true; }
       window.__hybridCalls.push({name,args:JSON.parse(JSON.stringify(args))});
       if(name !== 'set_itemcode_default_owners_v1') throw new Error('Unexpected RPC in assignment fixture: ' + name);
-      if(window.__hybridFail) throw new Error('Temporary network failure');
+      if(window.__hybridFail) return await new Promise((resolve, reject) => { window.__releaseHybridCall = () => reject(new Error('Temporary network failure')); });
       return { contractVersion:'inventory-row-assignments-v1', defaults:[{itemcode:'HYBRID',assignedto:'megan_kelly',revision:3}],
         assignments:warehouseAssignedItemsInventory.map(row => ({ ...row, default_assignedto:'megan_kelly',default_revision:3,
           assignedto:row.master_unique_id === 'outside' ? 'megan_kelly' : row.assignedto })) };
     };
-    scheduleManagersRender();
+    host.innerHTML = renderManagerAssignedItemsPreviewTable();
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), warehouseAssignedItemsInventory, warehouseAssignedItemsInventory.length);
   })()`));
   const host = page.locator('#hybrid-fixture');
-  const select = host.getByRole('combobox', { name: 'Itemcode Default Owner HYBRID', exact: true });
-  await expect(select).toHaveCount(1);
-  await expect(select).toHaveValue('dylan_collyge');
-  await expect(host).toContainText('D.10.021');
-  await expect(host).toContainText('D.10.022');
+  const selects = host.getByRole('combobox', { name: /Itemcode Default Owner HYBRID/ });
+  await expect(selects).toHaveCount(3);
+  const select = selects.first();
+  const expectSiblingValues = async (value: string) => expect.poll(() => selects.evaluateAll(elements => elements.map(element => (element as HTMLSelectElement).value))).toEqual([value, value, value]);
+  await expectSiblingValues('dylan_collyge');
+  await expect(host.locator('[data-inventory-id="inside"] .ai-owner-control')).toContainText('Location Override: Zoe');
+  await expect(host.locator('[data-inventory-id="rose"] .ai-owner-control')).toContainText('Location Override: Mitch');
+  await expect(host.locator('[data-inventory-id="outside"]')).toContainText('D.10.022');
   await select.selectOption('megan_kelly');
   await expect.poll(() => page.evaluate(() => (window as any).__hybridCalls.length)).toBe(1);
+  await expect.poll(() => selects.evaluateAll(elements => elements.every(element => (element as HTMLSelectElement).disabled))).toBe(true);
+  await page.evaluate(() => window.eval('window.__releaseHybridCall()'));
   await page.evaluate(() => window.eval('scheduleManagersRender()'));
-  await expect(select).toHaveValue('megan_kelly');
-  await expect(host.getByRole('alert')).toContainText('Temporary network failure');
+  await expectSiblingValues('megan_kelly');
+  await expect(host.getByRole('alert').first()).toContainText('Temporary network failure');
   await expect.poll(() => page.evaluate(() => (window as any).__hybridHealthEvents.length)).toBe(1);
   expect(await page.evaluate(() => (window as any).__hybridHealthEvents[0].args.event_name)).toBe('eval_assignment_failed');
   expect(await page.evaluate(() => window.eval("warehouseAssignedItemsInventory.find(row=>row.master_unique_id==='outside').assignedto"))).toBe('dylan_collyge');
   await page.evaluate(() => { (window as any).__hybridFail = false; });
-  await select.selectOption('megan_kelly');
+  await host.locator('.ai-owner-control').first().getByRole('button', { name: /Retry owner save/ }).click();
   await expect(host.getByRole('alert')).toHaveCount(0);
+  await expectSiblingValues('megan_kelly');
   const result = await page.evaluate(() => ({ calls:(window as any).__hybridCalls,
     rows:window.eval("warehouseAssignedItemsInventory.map(row=>({id:row.master_unique_id,owner:row.assignedto,defaultOwner:row.default_assignedto}))") }));
   expect(result.calls).toHaveLength(2);
