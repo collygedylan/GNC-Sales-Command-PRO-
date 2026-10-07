@@ -6,6 +6,7 @@ create table if not exists public.ph_master_inventory (
   unique_id text primary key,
   itemcode text,
   genusname text,
+  botanicalname text,
   commonname text,
   contsize text,
   locationcode text,
