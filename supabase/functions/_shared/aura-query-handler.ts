@@ -20,7 +20,7 @@ type QueryContext = Record<string, unknown>;
 const MAX_BODY_BYTES = 64_000;
 const MAX_TEXT_CHARS = 2_000;
 const MAX_PAGE = 50;
-const INVENTORY_FILTER_KEYS = new Set(["productText", "commonName", "itemcode", "genus", "contSize", "locationCode", "locationMode", "zone", "assignee", "assigneeText", "selectionId", "metric", "season", "salesYear", "lotcode", "openStockOnly", "countMode"]);
+const INVENTORY_FILTER_KEYS = new Set(["productText", "commonName", "itemcode", "genus", "contSize", "locationCode", "locationMode", "zone", "assignee", "assigneeText", "selectionId", "metric", "season", "salesYear", "seasonReference", "lotcode", "openStockOnly", "countMode"]);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +43,35 @@ function fail(error: string, status: number, code: string) {
 }
 function sourceInfo(kind: string) {
   return { kind, checkedAt: new Date().toISOString(), sourceUpdatedAt: null, freshness: "unknown" };
+}
+type SeasonScope = { seasonCode: string; salesYear: number; settingRevision: number; reference: string };
+type SeasonalReadInfo = { season?: string; salesYear?: number; settingRevision?: number; yearCoverage?: string; unresolvedCount?: number };
+function isSeasonalIntent(intent: AuraIntent) {
+  const capability = capabilityForIntent(intent)[0];
+  return capability?.reader === "inventory" || capability?.seasonal === true
+    || ["inventory", "ownership", "unassigned", "lot"].includes(intent.mode);
+}
+async function resolveSeasonScope(admin: QueryClient, actorId: string, intent: AuraIntent, signal?: AbortSignal): Promise<SeasonScope> {
+  const reference = intent.filters.seasonReference === "next" ? "next" : "current";
+  const settings = await rpc(admin, "aura_resolve_season_v1", { p_actor_id: actorId, p_reference: reference }, signal);
+  if (!["F1", "S1"].includes(String(settings.seasonCode)) || !Number.isInteger(settings.salesYear)
+    || Number(settings.salesYear) < 1 || Number(settings.salesYear) > 99
+    || !Number.isSafeInteger(settings.revision) || Number(settings.revision) < 0) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+  return { seasonCode: String(intent.filters.season || settings.seasonCode),
+    salesYear: Number(intent.filters.salesYear ?? settings.salesYear), settingRevision: Number(settings.revision),
+    reference: intent.filters.season ? "explicit" : reference };
+}
+function seasonalReadInfo(data: Record<string, unknown>): SeasonalReadInfo {
+  if (data.code === "AURA_INVENTORY_IMPORT_INCOMPLETE" && data.complete === false) return {};
+  if (!Number.isSafeInteger(data.settingRevision) || Number(data.settingRevision) < 0) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+  return { season: String(data.season || ""), salesYear: Number(data.salesYear),
+    settingRevision: Number(data.settingRevision), yearCoverage: String(data.yearCoverage || "inventory-cutoff"),
+    unresolvedCount: Number(data.unresolvedCount || 0) };
+}
+function resetContinuation(context: QueryContext): QueryContext {
+  const next: QueryContext = { ...context, pendingChoices: [], nextCursor: null };
+  for (const key of ["selectedChoice", "selectedAssignee", "selectionId"]) delete next[key];
+  return next;
 }
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -292,6 +321,19 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
       }
       continue;
     }
+    if (capability.reader === "seasonal_records") {
+      const query = record(descriptor.query);
+      const data = await rpc(admin, "aura_query_seasonal_records_v1", {
+        p_actor_id: actorId, p_capability: capability.id, p_filters: record(query.filters),
+        p_cursor: boundedCursor(query.cursor), p_limit: 200,
+      }, signal);
+      if (data.ok !== true) return false;
+      const returned = Array.isArray(data.rows)
+        ? new Set(data.rows.map((row) => String(record(row)[capability.key] || record(row).unique_id || record(row).id || "")))
+        : new Set<string>();
+      if (ids.some((id) => !returned.has(id))) return false;
+      continue;
+    }
     if (capability.reader === "navigation") {
       for (const id of ids) if (!await moduleAllowed(admin, actorId, id)) return false;
       continue;
@@ -320,6 +362,11 @@ function searchTerm(intent: AuraIntent) {
   return value;
 }
 function assertDomainFilters(capability: AuraCapability, filters: Record<string, unknown>) {
+  if (capability.reader === "seasonal_records") {
+    const unsupported = capability.id === "av" ? ["locationCode", "lotcode", "status"]
+      : capability.id === "reserves" ? ["status"] : [];
+    if (unsupported.some(key => filters[key] != null && filters[key] !== "")) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
+  }
   const reader = capability.reader;
   const allowedByReader: Record<string, Set<string>> = {
     low_stock: new Set(["itemcode"]),
@@ -329,11 +376,13 @@ function assertDomainFilters(capability: AuraCapability, filters: Record<string,
     production_schedule: new Set(["productText", "locationCode", "locationMode", "lotcode", "contSize", "assigneeText", "selectionId"]),
     hl_orders: new Set(["productText", "itemcode", "lotcode", "contSize", "status"]),
     bunch_notes: new Set(["recordId", "status", "locationCode", "locationMode", "productText", "dateFrom", "dateTo"]),
+    seasonal_records: new Set(["productText", "itemcode", "locationCode", "locationMode", "lotcode", "status", "season", "salesYear", "seasonReference"]),
   };
   if (!reader || !allowedByReader[reader]) return;
   for (const [key, value] of Object.entries(filters)) {
     if (value == null || value === false || value === "") continue;
-    if ((key === "metric" && value === "ptravailable") || (key === "countMode" && value === "quantity")) continue;
+    if ((key === "metric" && value === "ptravailable") || (key === "countMode" && value === "quantity")
+      || (key === "openStockOnly" && value === false)) continue;
     if (!allowedByReader[reader].has(key)) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
   }
 }
@@ -557,7 +606,7 @@ async function runDomainRead(admin: QueryClient, user: QueryClient, actorId: str
 }
 
 async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: string, intent: AuraIntent,
-  capability: AuraCapability, context: QueryContext, signal?: AbortSignal): Promise<{ reply: string; actions: QueryAction[]; context: QueryContext; sourceQuery?: Record<string, unknown> }> {
+  capability: AuraCapability, context: QueryContext, signal?: AbortSignal): Promise<{ reply: string; actions: QueryAction[]; context: QueryContext; sourceQuery?: Record<string, unknown>; total?: number | null; complete?: boolean; unresolvedCount?: number; season?: string; yearCoverage?: string; salesYear?: number; settingRevision?: number }> {
   const reader = capability.reader;
   if (reader === "navigation") {
     const modules = Object.entries(AURA_MODULE_CAPABILITIES);
@@ -637,6 +686,39 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
       : response.reply;
     return { ...response, reply, context: { ...response.context, nextCursor: data.nextCursor || null },
       sourceQuery: { operation, filters, cursor } };
+  }
+  if (reader === "seasonal_records") {
+    const filters: Record<string, unknown> = {};
+    for (const key of ["productText", "itemcode", "locationCode", "locationMode", "lotcode", "status", "season", "salesYear", "seasonReference"])
+      if (intent.filters[key] != null) filters[key] = intent.filters[key];
+    const cursor = boundedCursor(context.nextCursor);
+    const data = await rpc(admin, "aura_query_seasonal_records_v1", {
+      p_actor_id: actorId, p_capability: capability.id, p_filters: filters, p_cursor: cursor, p_limit: MAX_PAGE,
+    }, signal);
+    if (data.ok !== true) throw Object.assign(new Error(String(data.code || "AURA_SEASONAL_READ_UNAVAILABLE")), { status: 503 });
+    if (data.yearCoverage === "season-only" && intent.filters.salesYear != null) throw new Error("AURA_SEASON_YEAR_UNAVAILABLE");
+    const rows = Array.isArray(data.rows) ? data.rows.map(record) : [];
+    const unresolvedCount = Number(data.unresolvedCount || 0);
+    const season = String(data.season || filters.season || "");
+    const scope = season ? ` for season ${season}` : "";
+    const complete = data.complete === true && data.total != null;
+    let reply: string;
+    if (!rows.length && unresolvedCount > 0) reply = `I found no verified ${capability.title.toLowerCase()}${scope}; ${unresolvedCount} matching source record${unresolvedCount === 1 ? " lacks" : "s lack"} season information, so I can’t confirm that there are no matches.`;
+    else if (!rows.length) reply = `No matching ${capability.title.toLowerCase()}${scope} were found.`;
+    else {
+      const base = responseForRows(intent, rows, data.hasMore === true).reply;
+      reply = `${base} Scope: season ${season}.`;
+    }
+    if (intent.operation === "count") {
+      reply = complete ? `Verified ${new Intl.NumberFormat("en-US").format(Number(data.total))} ${capability.title.toLowerCase()}${scope}.`
+        : `The ${capability.title.toLowerCase()} count${scope} is incomplete${unresolvedCount > 0 ? `; ${unresolvedCount} matching source record${unresolvedCount === 1 ? " lacks" : "s lack"} reliable season information` : ""}, so I can’t give a reliable total.`;
+    }
+    if (unresolvedCount > 0 && rows.length) reply += ` ${unresolvedCount} matching record${unresolvedCount === 1 ? " was" : "s were"} excluded because the season or year is unresolved.`;
+    if (data.yearCoverage === "season-only") reply += " This source stores season only; sales-year coverage is unavailable.";
+    const actions = rows.length ? [{ type: "records", title: capability.title, rows, columns: Object.keys(rows[0]), hasMore: data.hasMore === true }] : [];
+    return { reply, actions, context: { pendingChoices: [], nextCursor: data.nextCursor || null },
+      sourceQuery: { filters: { ...filters, season }, cursor }, total: complete ? Number(data.total) : null, complete,
+      ...seasonalReadInfo(data), unresolvedCount, season, yearCoverage: String(data.yearCoverage || "season-only") };
   }
   if (reader === "production_schedule") return await readProductionSchedule(admin, intent, context, signal);
   return { reply: "This app area is not available to AURA yet.", actions: [], context: { pendingChoices: [], nextCursor: null } };
@@ -799,7 +881,13 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
       : selectedCapability.reader === "hl_orders" ? String(record(result.sourceQuery).operation || "orders") === "receipts" ? "receiptId" : String(record(result.sourceQuery).operation || "orders") === "balances" ? "poId" : "orderId"
       : selectedCapability.reader === "bunch_notes" ? "recordId" : "id");
     const recordIds = rows.map((row) => String(row[idField] || row.recordId || row.receiptId || row.poId || row.id || "")).filter(Boolean).slice(0, 200);
-    return { ...result, sources: [{ capabilityId: selectedCapability.id, module: selectedCapability.module, recordIds, query: record(result.sourceQuery) }] };
+    const sources = [{ capabilityId: selectedCapability.id, module: selectedCapability.module, recordIds, query: record(result.sourceQuery) }];
+    if (selectedCapability.reader === "seasonal_records") {
+      return { ...result, sources, actions: result.actions, total: result.total, complete: result.complete,
+        unresolvedCount: result.unresolvedCount, season: result.season, yearCoverage: result.yearCoverage, salesYear: result.salesYear, settingRevision: result.settingRevision,
+        context: { ...result.context, lastIntent: context.lastIntent } };
+    }
+    return { ...result, sources };
   }
   if (["inventory", "ownership", "unassigned", "lot"].includes(intent.mode) || selectedCapability?.reader === "inventory") {
     if (!await moduleAllowed(admin, actorId, intent.module)) return {
@@ -807,8 +895,7 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
     };
     const operation = ["inventory", "domain"].includes(intent.mode)
       ? (intent.operation === "locations" || intent.operation === "maximum" ? intent.operation : "stock") : intent.mode;
-    const filters = inventoryFilters(intent.filters);
-    if (context.selectedAssignee && !filters.assignee) filters.assignee = context.selectedAssignee;
+    const filters = inventoryFilters({ ...intent.filters });
     const pageCursor = intent.question.toLowerCase().includes("show more") ? boundedCursor(context.nextCursor) : null;
     const data = await rpc(admin, "aura_query_inventory_v1", {
       p_actor_id: actorId, p_operation: operation, p_filters: filters, p_cursor: pageCursor, p_limit: MAX_PAGE,
@@ -819,7 +906,7 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
     if (data.exactMatch === false && candidates.length > 0) {
       const choices = candidates.slice(0, 5).map((row) => ({ id: String(row.selectionId || row.uniqueId || row.itemcode || ""), label: labelFor(row), ...row }));
       const actions = [{ type: "choices", kind: "entity", items: choices, complete: data.complete === true, hasMore: data.hasMore === true }];
-      return { reply: `I found ${choices.length} possible matches. Choose the exact plant, size, or location.`, actions,
+      return { ...seasonalReadInfo(data), reply: `I found ${choices.length} possible matches. Choose the exact plant, size, or location.`, actions,
         context: { ...context, pendingChoices: choices, nextCursor: data.nextCursor || null },
         sources: [{ capabilityId: "inventory", module: "drive", recordIds: choices.map((choice) => String(choice.id)), query: { operation, filters, cursor: pageCursor } }] };
     }
@@ -830,23 +917,33 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
       const countMode = String(intent.filters.countMode || "quantity");
       const quantityLabel = countMode === "physical_rows" ? "physical inventory rows" : countMode === "unique_items" ? "unique items" : `${subject} ${metric}`;
       const scope = inventoryScope(intent.filters, data);
-      const reply = data.complete === true && Number.isFinite(amount) && amount === 0 && rows.length === 0
+      const unresolved = Number(data.unresolvedCount || 0);
+      let reply = unresolved > 0 && rows.length === 0
+        ? `No verified inventory matches${scope}; ${unresolved} matching records have an unresolved season or sales year and were excluded.`
+        : data.complete === true && Number.isFinite(amount) && amount === 0 && rows.length === 0
         ? `No matching inventory was found${scope}.`
         : data.complete === true && Number.isFinite(amount)
         ? `Verified ${new Intl.NumberFormat("en-US").format(amount)} ${quantityLabel}${scope}.`
         : `The ${quantityLabel} count is incomplete, so I can’t give a reliable total. Please refine the filters or try again later.`;
+      if (unresolved > 0 && rows.length) reply += ` ${unresolved} matching records have an unresolved season or sales year and were excluded.`;
       const actions = rows.length ? [{ type: "records", title: intent.title, rows, columns: Object.keys(rows[0]) }] : [];
-      return { reply, actions, context: { pendingChoices: [], nextCursor: data.nextCursor || null },
+      return { ...seasonalReadInfo(data), reply, actions, context: { pendingChoices: [], nextCursor: data.nextCursor || null },
         sources: [{ capabilityId: "inventory", module: "drive", recordIds: rows.map((row) => String(row.selectionId || row.uniqueId || "")).filter(Boolean), query: { operation, filters, cursor: pageCursor } }] };
     }
-    if (data.complete !== true && rows.length === 0) return { reply: `I couldn’t complete the ${intent.title.toLowerCase()} lookup, so I can’t confirm whether matching inventory exists.`,
+    if (data.complete !== true && rows.length === 0) return { ...seasonalReadInfo(data), reply: Number(data.unresolvedCount) > 0
+      ? `No verified inventory matches${inventoryScope(intent.filters, data)}; ${Number(data.unresolvedCount)} matching records have an unresolved season or sales year and were excluded.`
+      : `I couldn’t complete the ${intent.title.toLowerCase()} lookup, so I can’t confirm whether matching inventory exists.`,
       actions: [], context: { pendingChoices: [], nextCursor: data.nextCursor || null },
       sources: [{ capabilityId: "inventory", module: "drive", recordIds: [], query: { operation, filters, cursor: pageCursor } }] };
-    if (rows.length === 0) return { reply: `No matching inventory was found${inventoryScope(intent.filters, data)}.`, actions: [],
+    if (rows.length === 0) return { ...seasonalReadInfo(data), reply: Number(data.unresolvedCount) > 0
+      ? `No verified inventory matches${inventoryScope(intent.filters, data)}; ${Number(data.unresolvedCount)} matching records have an unresolved season or sales year and were excluded.`
+      : `No matching inventory was found${inventoryScope(intent.filters, data)}.`, actions: [],
       context: { pendingChoices: [], nextCursor: data.nextCursor || null },
       sources: [{ capabilityId: "inventory", module: "drive", recordIds: [], query: { operation, filters, cursor: pageCursor } }] };
     const response = responseForRows(intent, rows, data.hasMore === true);
-    return { ...response, context: { ...response.context, nextCursor: data.nextCursor || null },
+    response.reply += ` Scope:${inventoryScope(intent.filters, data)}.`;
+    if (Number(data.unresolvedCount) > 0) response.reply += ` ${Number(data.unresolvedCount)} matching records have an unresolved season or sales year and were excluded.`;
+    return { ...seasonalReadInfo(data), ...response, context: { ...response.context, nextCursor: data.nextCursor || null },
       sources: [{ capabilityId: "inventory", module: "drive", recordIds: rows.map((row) => String(row.selectionId || row.uniqueId || "")).filter(Boolean), query: { operation, filters, cursor: pageCursor } }] };
   }
   const result = await runDomainRead(admin, user, actorId, intent, context, signal);
@@ -886,7 +983,28 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
   }
   try {
   let context = record(begin.context);
-  const choice = parseSelectedChoice(question, context);
+  const more = /\bshow more\b/i.test(question);
+  const isSelection = /^\s*(?:option\s*)?\d{1,2}\s*$/i.test(question);
+  const continuation = record(context.lastIntent);
+  let intent = (isSelection || more) && typeof continuation.mode === "string"
+    ? { ...continuation, question, filters: { ...record(continuation.filters) } } as AuraIntent
+    : resolveAuraIntent(question, context);
+  let seasonScope: SeasonScope | null = null;
+  let scopeRestarted = false;
+  if (!intent.clarification && !handoffAction(intent) && isSeasonalIntent(intent)
+    && await moduleAllowed(admin, actorId, capabilityForIntent(intent)[0]?.module || intent.module)) {
+    // Keep the relative reference in memory; SQL resolves it again in its read snapshot.
+    if (!intent.filters.season && !intent.filters.seasonReference) intent.filters.seasonReference = "current";
+    seasonScope = await resolveSeasonScope(admin, actorId, intent, signal);
+    const previous = record(context.seasonScope);
+    scopeRestarted = typeof continuation.mode === "string" && (more || isSelection) && (previous.settingRevision !== seasonScope.settingRevision
+      || previous.seasonCode !== seasonScope.seasonCode || previous.salesYear !== seasonScope.salesYear);
+    if (scopeRestarted) {
+      context = resetContinuation(context);
+      delete intent.filters.selectionId;
+    }
+  }
+  const choice = scopeRestarted ? { context, error: "" } : parseSelectedChoice(question, context);
   if (choice.error) {
     const result = { ok: true, requestId: turnId, conversationId: resolvedConversationId, revision,
       reply: choice.error, speech: choice.error, actions: [], context, interpretation: { intent: "selection", entities: {} }, source: sourceInfo(source),
@@ -898,8 +1016,7 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
     return { ...result, revision: Number(completed.revision || revision) };
   }
   context = choice.context;
-  const more = /\bshow more\b/i.test(question);
-  if (more && !context.nextCursor) {
+  if (more && !context.nextCursor && !scopeRestarted) {
     const reply = "There are no more results in the current page.";
     const result = { ok: true, requestId: turnId, conversationId: resolvedConversationId, revision, reply, speech: reply,
       actions: [], context, interpretation: { intent: "pagination", entities: {} }, source: sourceInfo(source), hasMore: false, nextCursor: null };
@@ -909,16 +1026,12 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
     }, signal);
     return { ...result, revision: Number(completed.revision || revision) };
   }
-  const continuation = record(context.lastIntent);
-  const isSelection = /^\s*(?:option\s*)?\d{1,2}\s*$/i.test(question);
-  const isContinuation = more;
-  const intent = (isSelection || isContinuation) && typeof continuation.mode === "string"
-    ? { ...resolveAuraIntent(continuation.question || question, context), ...continuation,
-      question, filters: { ...record(continuation.filters), ...context.selectionId ? { selectionId: context.selectionId } : {} } } as AuraIntent
-    : resolveAuraIntent(question, context);
+  if (!more || scopeRestarted) context = { ...context, nextCursor: null };
+  if (isSelection && !scopeRestarted && context.selectionId) intent.filters.selectionId = context.selectionId;
+  if (isSelection && !scopeRestarted && context.selectedAssignee) intent.filters.assignee = context.selectedAssignee;
   const clarification = String(record(intent).clarification || "");
   let handoff = clarification ? null : handoffAction(intent);
-  let outcome: { reply: string; actions: QueryAction[]; context: QueryContext; sources?: unknown[] };
+  let outcome: { reply: string; actions: QueryAction[]; context: QueryContext; sources?: unknown[] } & SeasonalReadInfo;
   if (clarification) outcome = { reply: clarification, actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [] };
   else if (handoff?.type === "navigation") {
     if (!await moduleAllowed(admin, actorId, intent.module)) { outcome = {
@@ -931,22 +1044,39 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
     }; handoff = null; }
     else outcome = { reply: `I prepared a draft for review in ${String(handoff.view)}.`, actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [] };
   } else {
-    try { outcome = await executeIntent(intent, admin, user, actorId, context, signal); }
+    try {
+      outcome = await executeIntent(intent, admin, user, actorId, context, signal);
+      if (seasonScope && outcome.settingRevision != null && outcome.settingRevision !== seasonScope.settingRevision) {
+        // A Manager save raced the initial read. Never return an old page or choice under a new scope.
+        context = resetContinuation(context);
+        delete intent.filters.selectionId;
+        scopeRestarted = more || isSelection;
+        seasonScope = await resolveSeasonScope(admin, actorId, intent, signal);
+        outcome = await executeIntent(intent, admin, user, actorId, context, signal);
+        if (outcome.settingRevision !== seasonScope.settingRevision) throw new Error("AURA_SEASON_SCOPE_CHANGED");
+      }
+    }
     catch (error) {
       if (safeErrorCode(error) !== "AURA_QUERY_FILTER_NEEDS_CLARIFICATION") throw error;
       outcome = { reply: "I can’t safely apply every part of that filter to this app area. Please open its screen or rephrase with a supported item, location, assignee, status, or date filter.",
         actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [] };
     }
   }
+  if (scopeRestarted) outcome.reply = "The Managers season setting changed. I restarted this query with the current scope. " + outcome.reply;
+  const seasonMetadata = seasonScope ? {
+    resolvedSeason: { seasonCode: outcome.season || seasonScope.seasonCode, salesYear: outcome.salesYear || seasonScope.salesYear },
+    settingRevision: outcome.settingRevision ?? seasonScope.settingRevision,
+    yearCoverage: outcome.yearCoverage || "inventory-cutoff", unresolvedCount: outcome.unresolvedCount || 0,
+  } : {};
   const actions = [...outcome.actions, ...(handoff ? [handoff] : [])];
   const result = {
     ok: true, requestId: turnId, conversationId: resolvedConversationId, revision,
     reply: handoff?.type === "review" ? `${outcome.reply} Review and save any changes in the existing ${String(handoff.view)} screen.` : outcome.reply,
     speech: handoff?.type === "review" ? `${outcome.reply} Review and save any changes in the existing ${String(handoff.view)} screen.` : outcome.reply,
-    actions, context: { ...outcome.context, lastIntent: { mode: intent.mode, operation: intent.operation, question: intent.question,
+    actions, context: { ...outcome.context, ...(seasonScope ? { seasonScope } : {}), lastIntent: { mode: intent.mode, operation: intent.operation, question: intent.question,
       filters: intent.filters, capability: intent.capability, module: intent.module, title: intent.title, replyPrefix: intent.replyPrefix } },
-    interpretation: { intent: intent.mode, operation: intent.operation, entities: intent.filters },
-    source: sourceInfo(source),
+    interpretation: { intent: intent.mode, operation: intent.operation, entities: intent.filters, ...seasonMetadata },
+    source: { ...sourceInfo(source), ...seasonMetadata },
     checkedAt: { at: new Date().toISOString(), capabilities: Array.isArray(outcome.sources) ? outcome.sources.map((item) => String(record(item).capabilityId || record(item).mode || "")) : [] },
     hasMore: Boolean(outcome.context.nextCursor) || actions.some((action) => record(action).hasMore === true), nextCursor: outcome.context.nextCursor || null,
   };
@@ -1008,8 +1138,13 @@ export async function handleAuraQueryRequest(request: Request, deps: AuraQueryDe
     const failure = record(error);
     if (signal.aborted) return fail("AURA’s request took too long. Try again.", 504, "AURA_QUERY_TIMEOUT");
     const sqlState = String(failure.code || "");
+    const databaseMessage = String(failure.message || "");
     const code = sqlState === "40001" ? "AURA_QUERY_REVISION_CONFLICT"
-      : sqlState === "42501" ? "AURA_FORBIDDEN" : safeErrorCode(error);
+      : sqlState === "42501" ? "AURA_FORBIDDEN"
+      : /^AURA_[A-Z0-9_]+$/.test(databaseMessage) ? databaseMessage : safeErrorCode(error);
+    if (code === "AURA_SEASON_SETTINGS_UNAVAILABLE" || code === "AURA_MANAGER_SETTINGS_REVISION_INVALID") return fail("The Managers current season setting is missing or invalid. Ask an authorized manager to save a valid season and sales year.", 503, "AURA_SEASON_SETTINGS_UNAVAILABLE");
+    if (code === "AURA_SEASON_YEAR_UNAVAILABLE") return fail("This source stores season only and cannot honor an explicit sales-year filter. Ask for a season without a year.", 400, code);
+    if (code === "AURA_SEASON_SCOPE_CHANGED") return fail("The Managers season setting changed during the query. Please ask again to restart with the current scope.", 409, code);
     const status = Number(failure.status) || (code === "AURA_FORBIDDEN" ? 403
       : /INVALID|REQUIRED|MODE/.test(code) ? 400 : /CONFLICT|REVISION|LEASE/.test(code) ? 409 : 503);
     const message = status === 400 ? "AURA could not validate that request."

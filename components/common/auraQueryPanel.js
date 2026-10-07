@@ -1,5 +1,5 @@
 /** Private conversation UI. All data and actions are re-authorized by the server. */
-export function mountAuraQueryPanel({ panel, content, input, request, isAuthorized, speak, setBusy, openAction }) {
+export function mountAuraQueryPanel({ panel, content, input, request, isAuthorized, speak, setBusy, openAction, cancelSpeech = () => {} }) {
   let conversationId = null, revision = null, active = null, epoch = 0, destroyed = false;
   let historyCursor = null, listCursor = null, cancelling = Promise.resolve();
   const node = (tag, text, className = '') => {
@@ -95,6 +95,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     }
   }
   function cancel() {
+    cancelSpeech();
     const pending = active;
     epoch += 1;
     active = null;
@@ -113,6 +114,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
   async function submit(raw, source = 'typed', retry = null) {
     const text = String(raw || '').trim();
     if (!current() || !text) return;
+    cancelSpeech();
     if (/^(?:stop|cancel(?: that)?|never\s?mind)$/i.test(text)) {
       await cancel();
       if (current()) status.textContent = 'Stopped. Nothing was saved.';
@@ -146,7 +148,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       const checkedAt = response.source?.checkedAt || response.checkedAt?.at;
       status.textContent = checkedAt ? `Checked ${new Date(checkedAt).toLocaleString()}` : 'Ready for a follow-up.';
       input.value = '';
-      if (response.speech) speak(String(response.speech).slice(0, 600));
+      if (source === 'voice') speak(String(response.speech || response.reply || ''));
       content.scrollTop = content.scrollHeight;
     } catch (error) {
       if (current() && ticket === epoch && !controller.signal.aborted) {
@@ -211,6 +213,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     } catch (error) { if (current() && ticket === epoch) status.textContent = error.message; }
   }
   button('New chat', async () => {
+    cancelSpeech();
     await cancel();
     conversationId = null; revision = null;
     timeline.replaceChildren(); title.textContent = 'New conversation'; deleteButton.disabled = true;

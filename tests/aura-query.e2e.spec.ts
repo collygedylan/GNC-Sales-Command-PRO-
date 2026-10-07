@@ -72,3 +72,75 @@ test('Aura restores private conversations across pages and hands changes to revi
     expect(calls.every(body => ['create', 'list', 'read', 'delete', 'command', 'cancel'].includes(body.mode))).toBe(true);
   } finally { for (const context of contexts) await context.close(); }
 });
+
+test('Aura hands-free wakes globally, waits for final speech, and resumes after audio ownership', async ({ browser }) => {
+  const files = new Set(['components/common/auraVoiceWidget.js', 'components/common/auraQueryPanel.js',
+    'services/auraVoiceService.js', 'services/auraConversation.js', 'utils/auraIntentParser.js', 'utils/auraLingo.js']);
+  const sent: any[] = [];
+  const context = await browser.newContext({ viewport: { width: 390, height: 900 }, serviceWorkers: 'block' });
+  const page = await context.newPage();
+  await page.addInitScript(() => {
+    (window as any).__auraEngines = [];
+    class FakeRecognition {
+      static async available() { return 'unavailable'; }
+      processLocally = false;
+      continuous = false;
+      aborted = false;
+      onstart?: () => void;
+      onresult?: (event: any) => void;
+      onerror?: (event: any) => void;
+      onend?: () => void;
+      start() { this.onstart?.(); }
+      abort() { this.aborted = true; }
+      stop() {}
+      constructor() { (window as any).__auraEngines.push(this); }
+    }
+    (window as any).SpeechRecognition = FakeRecognition;
+    Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => ({ state: 'granted' }) } });
+  });
+  await page.route('**/*', async route => {
+    const url = new URL(route.request().url());
+    if (url.origin !== 'https://aura.test') return route.abort();
+    const file = url.pathname.slice(1);
+    if (!file) return route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body></body></html>' });
+    if (!files.has(file)) return route.abort();
+    return route.fulfill({ contentType: 'text/javascript', body: await fs.readFile(path.join(process.cwd(), file), 'utf8') });
+  });
+  await page.exposeFunction('auraVoiceSend', (intent: any) => { sent.push(intent); return { ok: true, recipientName: intent.recipientName }; });
+  try {
+    await page.goto('https://aura.test');
+    await page.evaluate(async () => {
+      const { mountAuraWidget } = await import('/components/common/auraVoiceWidget.js');
+      const widget = mountAuraWidget({ userId: 'voice-user', isAuthorized: () => true,
+        sendMessage: (intent: any) => (window as any).auraVoiceSend(intent) });
+      (window as any).auraWidget = widget;
+      const button = document.createElement('button'); button.textContent = 'Enable hands free'; button.id = 'enable-hands-free';
+      button.addEventListener('click', () => widget.setHandsFreeAutoStart(true)); document.body.append(button);
+    });
+    await page.getByRole('button', { name: 'Enable hands free' }).click();
+    await expect.poll(() => page.evaluate(() => (window as any).__auraEngines.length)).toBe(1);
+    expect(await page.evaluate(() => (window as any).__auraEngines[0].continuous)).toBe(true);
+    expect(await page.evaluate(() => localStorage.getItem('aura.handsFree.autostart:voice-user'))).toBe('true');
+    await page.evaluate(() => {
+      const result = (transcript: string, isFinal: boolean) => Object.assign([[{ transcript, confidence: .99 }]], { 0: Object.assign([{ transcript, confidence: .99 }], { isFinal }), resultIndex: 0 });
+      const engine = (window as any).__auraEngines[0];
+      engine.onresult({ results: result('Hey Aura, send a message to Megan saying The bay is ready', false), resultIndex: 0 });
+    });
+    await page.waitForTimeout(850);
+    expect(sent).toHaveLength(0);
+    await page.evaluate(() => {
+      const entry = [{ transcript: 'Hey Aura, send a message to Megan saying The bay is ready', confidence: .99 }];
+      (entry as any).isFinal = true;
+      (window as any).__auraEngines[0].onresult({ results: [entry], resultIndex: 0 });
+    });
+    await expect.poll(() => sent.length, { timeout: 5000 }).toBe(1);
+    expect(sent[0].recipientName).toBe('Megan');
+    const enginesBeforeClaim = await page.evaluate(() => (window as any).__auraEngines.length);
+    await page.evaluate(() => (window as any).GncAuraAudio.claim('leaf'));
+    await expect.poll(() => page.evaluate(() => (window as any).__auraEngines.at(-1).aborted)).toBe(true);
+    expect(await page.evaluate(() => (window as any).__auraEngines.length)).toBe(enginesBeforeClaim);
+    await page.evaluate(() => (window as any).GncAuraAudio.release('leaf'));
+    await expect.poll(() => page.evaluate(() => (window as any).__auraEngines.length)).toBe(enginesBeforeClaim + 1);
+    expect(await page.evaluate(() => (window as any).__auraEngines.at(-1).continuous)).toBe(true);
+  } finally { await context.close(); }
+});

@@ -3,6 +3,29 @@ const LOCAL_VOICE_PREFERENCE = /neural|google us english|samantha|ava|allison|ka
 const RESTART_DELAYS_MS = [700, 1400, 2800, 5600, 10000];
 const LOCAL_CAPABILITY_TIMEOUT_MS = 2000;
 
+function splitSpeechIntoChunks(text, limit = 220) {
+  const normalized = String(text || "").replace(/\s+/g, " ").trim();
+  if (!normalized) return [];
+  const chunks = [];
+  let rest = normalized;
+  while (rest.length > limit) {
+    const punctuation = Math.max(rest.lastIndexOf(". ", limit - 1), rest.lastIndexOf("? ", limit - 1), rest.lastIndexOf("! ", limit - 1), rest.lastIndexOf("; ", limit - 1));
+    let end, next;
+    if (punctuation >= Math.floor(limit * 0.55)) {
+      end = punctuation + 1;
+      next = punctuation + 2;
+    } else {
+      const space = rest.lastIndexOf(" ", limit);
+      end = space > 0 ? space : limit;
+      next = space > 0 ? space + 1 : limit;
+    }
+    chunks.push(rest.slice(0, end).trim());
+    rest = rest.slice(next).trim();
+  }
+  if (rest) chunks.push(rest);
+  return chunks;
+}
+
 function recognitionConstructor() {
   if (typeof window === "undefined") return null;
   return window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -44,6 +67,11 @@ export function createAuraVoiceSession({
   let lastFinalTranscriptAt = 0;
   let activeRecognitionMode = null;
   let browserFinalizationTimer = null;
+  let handsFree = false;
+  let tapToTalkMode = false;
+  let preparedLocalCapability = null;
+  let localCapabilityPromise = null;
+  let handsFreePermissionGranted = false;
 
   function emitState(status, message = "") {
     if (!destroyed) onState({ status, message, recognitionMode: activeRecognitionMode });
@@ -124,6 +152,15 @@ export function createAuraVoiceSession({
     }
   }
 
+  function prepare() {
+    const Constructor = recognitionConstructor();
+    if (!localCapabilityPromise) localCapabilityPromise = localCapability(Constructor).then(value => {
+      preparedLocalCapability = value;
+      return value;
+    });
+    return localCapabilityPromise;
+  }
+
   async function selectRecognitionMode(Constructor, { allowBrowserFallback }) {
     if (!Constructor) return { mode: null, message: "Browser speech recognition is unavailable here. Type a command instead." };
     const localAvailable = await localCapability(Constructor);
@@ -177,6 +214,7 @@ export function createAuraVoiceSession({
     if (busy || speaking) return false;
     if (desiredListening && (listening || restartTimer != null || recognition)) return true;
     activeRecognitionMode = null;
+    tapToTalkMode = false;
     restartFailures = 0;
     const attempt = ++startAttempt;
     if (!(await microphoneAlreadyGranted())) {
@@ -195,10 +233,37 @@ export function createAuraVoiceSession({
     activeRecognitionMode = null;
     restartFailures = 0;
     const attempt = ++startAttempt;
+    handsFree = false;
+    tapToTalkMode = false;
     return beginListening({ allowPermissionPrompt: true, allowBrowserFallback: true, attempt });
   }
 
-  async function beginListening({ allowPermissionPrompt, allowBrowserFallback = true, attempt, recognitionMode = activeRecognitionMode }) {
+  async function startTapToTalk() {
+    if (destroyed || busy || speaking) return false;
+    if (desiredListening && (listening || restartTimer != null || recognition)) return true;
+    activeRecognitionMode = null;
+    restartFailures = 0;
+    handsFree = false;
+    tapToTalkMode = true;
+    const attempt = ++startAttempt;
+    return beginListening({ allowPermissionPrompt: true, allowBrowserFallback: true, attempt, tapToTalkMode: true });
+  }
+
+  async function startHandsFree() {
+    if (destroyed || busy || speaking) return false;
+    if (desiredListening && (listening || restartTimer != null || recognition)) return true;
+    handsFree = true;
+    tapToTalkMode = false;
+    activeRecognitionMode = null;
+    restartFailures = 0;
+    const attempt = ++startAttempt;
+    // Invoke immediately from the trusted activation handler; recognition setup
+    // continues without waiting on any unrelated network request.
+    const recognitionMode = preparedLocalCapability === true ? "local" : "browser";
+    return beginListening({ allowPermissionPrompt: true, allowBrowserFallback: true, attempt, recognitionMode, handsFreeMode: true });
+  }
+
+  async function beginListening({ allowPermissionPrompt, allowBrowserFallback = true, attempt, recognitionMode = activeRecognitionMode, handsFreeMode = handsFree, tapToTalkMode: tapMode = tapToTalkMode }) {
     if (destroyed || attempt !== startAttempt || speaking || busy) return false;
     if (desiredListening && (listening || restartTimer != null || recognition)) return true;
     if (!isVisible()) {
@@ -234,7 +299,7 @@ export function createAuraVoiceSession({
     emitState("starting", selectionMessage || (selectedMode === "local"
       ? "On-device English recognition is ready."
       : "Using browser speech recognition; your browser may process audio online."));
-    if (!allowPermissionPrompt && !(await microphoneAlreadyGranted())) {
+    if (!allowPermissionPrompt && !(handsFreeMode && handsFreePermissionGranted) && !(await microphoneAlreadyGranted())) {
       if (destroyed || attempt !== startAttempt || !desiredListening || !isVisible() || speaking || busy) return false;
       desiredListening = false;
       detachVisibility();
@@ -266,7 +331,7 @@ export function createAuraVoiceSession({
       }
       activeRecognitionMode = selectedMode;
       engine.lang = RECOGNITION_LANGUAGES[0];
-      engine.continuous = selectedMode === "local";
+      engine.continuous = !tapMode && (selectedMode === "local" || handsFreeMode);
       engine.interimResults = true;
       engine.maxAlternatives = 1;
       recognition = engine;
@@ -274,6 +339,7 @@ export function createAuraVoiceSession({
       let browserInterimSegments = [];
       let browserSpeechEnded = false;
       let browserTurnCompleted = false;
+      let tapToTalkFinalReceived = false;
 
       const completeBrowserTurn = (status = "idle", { abort = false } = {}) => {
         if (browserTurnCompleted || selectedMode !== "browser" || destroyed || sessionGeneration !== generation || recognition !== engine) return;
@@ -311,6 +377,7 @@ export function createAuraVoiceSession({
           return;
         }
         listening = true;
+        if (handsFreeMode) handsFreePermissionGranted = true;
         emitState("listening", selectedMode === "local"
           ? "Listening on this device."
           : "Browser recognition is active; your browser may process audio online.");
@@ -377,26 +444,32 @@ export function createAuraVoiceSession({
             epoch: sessionGeneration,
             recognitionId: sessionGeneration,
             recognitionMode: "browser",
+            handsFree: handsFreeMode,
+            tapToTalk: tapMode,
             processLocally: false,
             phase: "preview",
+            handsFree: handsFreeMode,
             confidence: finalConfidence,
             lowConfidence: finalConfidence != null && finalConfidence < minimumConfidence,
           });
           return;
+          // Hands-free browser recognition stays open across utterances.
+          // Its end/error paths share the bounded restart policy below.
         }
-        onRecognition({ results, text, resultIndex, epoch: sessionGeneration, recognitionId: sessionGeneration, recognitionMode: selectedMode, processLocally });
+        onRecognition({ results, text, resultIndex, epoch: sessionGeneration, recognitionId: sessionGeneration, recognitionMode: selectedMode, processLocally, handsFree: handsFreeMode, tapToTalk: tapMode });
         const hasNewFinal = changed.some((result) => result.isFinal);
+        if (tapMode && hasNewFinal) tapToTalkFinalReceived = true;
         if (hasNewFinal && changedText) {
           const now = Date.now();
           if (now - lastFinalTranscriptAt >= 250) {
             lastFinalTranscriptAt = now;
-            onTranscript(changedText, { confidence: finalConfidence, isFinal: true, recognitionMode: selectedMode, processLocally });
+            onTranscript(changedText, { confidence: finalConfidence, isFinal: true, recognitionMode: selectedMode, processLocally, handsFree: handsFreeMode });
           }
         }
       };
       engine.onerror = (event) => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
-        if (selectedMode === "browser") {
+        if (selectedMode === "browser" && !handsFreeMode) {
           const detail = event.error === "no-speech"
             ? "No speech was captured. Tap the microphone to try again, or type a command."
             : event.error === "network"
@@ -437,7 +510,7 @@ export function createAuraVoiceSession({
         emitState("hearing", "Voice recognition paused. AURA will make a limited restart.");
       };
       engine.onspeechend = () => {
-        if (selectedMode !== "browser" || destroyed || sessionGeneration !== generation || recognition !== engine || browserSpeechEnded) return;
+        if (selectedMode !== "browser" || handsFreeMode || destroyed || sessionGeneration !== generation || recognition !== engine || browserSpeechEnded) return;
         browserSpeechEnded = true;
         clearBrowserFinalization();
         browserFinalizationTimer = setTimeout(() => {
@@ -448,8 +521,23 @@ export function createAuraVoiceSession({
       };
       engine.onend = () => {
         if (destroyed || sessionGeneration !== generation || recognition !== engine) return;
-        if (selectedMode === "browser") {
+        if (selectedMode === "browser" && !handsFreeMode) {
           completeBrowserTurn("idle");
+          return;
+        }
+        if (tapMode) {
+          desiredListening = false;
+          recognition = null;
+          listening = false;
+          engine.onstart = null;
+          engine.onresult = null;
+          engine.onerror = null;
+          engine.onend = null;
+          engine.onspeechend = null;
+          detachVisibility();
+          emitState("idle", tapToTalkFinalReceived
+            ? "One command captured. Tap the microphone to speak again."
+            : "No command was captured. Tap the microphone to try again, or type a command.");
           return;
         }
         recognition = null;
@@ -481,7 +569,7 @@ export function createAuraVoiceSession({
           restartTimer = null;
           if (destroyed || !desiredListening || !isVisible() || speaking || busy) return;
           const attempt = ++startAttempt;
-          void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, recognitionMode: selectedMode, attempt });
+          void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: handsFree, recognitionMode: selectedMode, attempt, handsFreeMode: handsFree, tapToTalkMode });
         }, delay);
       };
       emitState("starting");
@@ -519,11 +607,14 @@ export function createAuraVoiceSession({
 
   function stop() {
     if (destroyed) return;
+    const ownedSpeech = speaking;
     desiredListening = false;
+    handsFree = false;
+    tapToTalkMode = false;
     busy = false;
     speaking = false;
     speechGeneration += 1;
-    try { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); } catch { /* Optional browser feature. */ }
+    try { if (ownedSpeech && typeof window !== "undefined") window.speechSynthesis?.cancel(); } catch { /* Optional browser feature. */ }
     startAttempt += 1;
     generation += 1;
     restartFailures = 0;
@@ -538,7 +629,8 @@ export function createAuraVoiceSession({
     busy = Boolean(value);
     if (busy) {
       startAttempt += 1;
-      if (activeRecognitionMode === "browser" || (activeRecognitionMode == null && !recognition)) {
+      if (tapToTalkMode) { desiredListening = false; detachVisibility(); }
+      if ((activeRecognitionMode === "browser" && !handsFree) || (activeRecognitionMode == null && !recognition && !handsFree)) {
         desiredListening = false;
         detachVisibility();
       }
@@ -547,38 +639,55 @@ export function createAuraVoiceSession({
       emitState("hearing", "AURA is checking that request…");
       return;
     }
-    if (activeRecognitionMode === "local" && desiredListening && !speaking && isVisible() && !recognition && restartTimer == null) {
+    if (tapToTalkMode && !desiredListening && !speaking) {
+      detachVisibility();
+      emitState("idle", "Tap the microphone to speak again.");
+      return;
+    }
+    if (!tapToTalkMode && (activeRecognitionMode === "local" || handsFree) && desiredListening && !speaking && isVisible() && !recognition && restartTimer == null) {
       const attempt = ++startAttempt;
-      void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, recognitionMode: activeRecognitionMode, attempt });
+      void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: handsFree, recognitionMode: activeRecognitionMode, attempt, handsFreeMode: handsFree });
+    }
+  }
+
+  function cancelSpeech({ resume = true } = {}) {
+    if (destroyed) return;
+    const ownedSpeech = speaking;
+    speechGeneration += 1;
+    speaking = false;
+    try { if (ownedSpeech && typeof window !== "undefined") window.speechSynthesis?.cancel(); } catch { /* Optional browser feature. */ }
+    if (resume && !tapToTalkMode && !busy && desiredListening && isVisible() && !recognition && restartTimer == null && (activeRecognitionMode === "local" || handsFree)) {
+      const attempt = ++startAttempt;
+      void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: handsFree, recognitionMode: activeRecognitionMode, attempt, handsFreeMode: handsFree });
     }
   }
 
   function speak(text) {
     if (destroyed || !isVisible() || typeof window === "undefined" || !window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== "function") return false;
     const synthesis = window.speechSynthesis;
-    const voices = synthesis.getVoices().filter((voice) => voice.localService === true && /^en(?:-|_)/i.test(voice.lang || ""));
-    const voice = voices.find((candidate) => LOCAL_VOICE_PREFERENCE.test(candidate.name)) || voices[0];
-    if (!voice) return false;
+    let voices = [];
+    try { voices = synthesis.getVoices(); } catch { /* Some engines expose TTS before their voice list is ready. */ }
+    const englishVoices = voices.filter((voice) => /^en(?:-|_)/i.test(voice.lang || ""));
+    const localEnglishVoices = englishVoices.filter((voice) => voice.localService === true);
+    const voice = localEnglishVoices.find((candidate) => LOCAL_VOICE_PREFERENCE.test(candidate.name))
+      || localEnglishVoices[0] || englishVoices[0] || null;
 
     const utteranceGeneration = ++speechGeneration;
     speaking = true;
-    if (activeRecognitionMode === "browser" || (activeRecognitionMode == null && !recognition)) {
+    if ((activeRecognitionMode === "browser" && !handsFree) || (activeRecognitionMode == null && !recognition)) {
       desiredListening = false;
       startAttempt += 1;
       detachVisibility();
     }
     clearRestart();
     stopRecognition();
-    const utterance = new window.SpeechSynthesisUtterance(String(text ?? ""));
-    utterance.voice = voice;
-    utterance.rate = 1.08;
-    utterance.pitch = 0.92;
-    utterance.volume = 1;
+    const chunks = splitSpeechIntoChunks(String(text ?? ""), 220);
+    let chunkIndex = 0;
     const resume = () => {
       if (utteranceGeneration !== speechGeneration || !speaking) return;
       speaking = false;
       if (destroyed || busy) return;
-      if (!desiredListening || activeRecognitionMode !== "local") {
+      if (!desiredListening || tapToTalkMode || (activeRecognitionMode !== "local" && !handsFree)) {
         emitState("idle", activeRecognitionMode === "browser"
           ? "Browser speech is one-shot. Tap the microphone to speak again."
           : "");
@@ -590,14 +699,25 @@ export function createAuraVoiceSession({
         return;
       }
       const attempt = ++startAttempt;
-      void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: false, recognitionMode: activeRecognitionMode, attempt });
+      void beginListening({ allowPermissionPrompt: false, allowBrowserFallback: handsFree, recognitionMode: activeRecognitionMode, attempt, handsFreeMode: handsFree });
     };
-    utterance.onend = resume;
-    utterance.onerror = resume;
+    const speakNext = () => {
+      if (utteranceGeneration !== speechGeneration || !speaking) return;
+      if (chunkIndex >= chunks.length) { resume(); return; }
+      const utterance = new window.SpeechSynthesisUtterance(chunks[chunkIndex++]);
+      if (voice) utterance.voice = voice;
+      utterance.lang = "en-US";
+      utterance.rate = 1.08;
+      utterance.pitch = 0.92;
+      utterance.volume = 1;
+      utterance.onend = speakNext;
+      utterance.onerror = speakNext;
+      try { synthesis.speak(utterance); } catch { resume(); }
+    };
     try {
       synthesis.cancel();
-      synthesis.speak(utterance);
       emitState("speaking");
+      speakNext();
       return true;
     } catch {
       resume();
@@ -607,6 +727,7 @@ export function createAuraVoiceSession({
 
   function destroy() {
     if (destroyed) return;
+    const ownedSpeech = speaking;
     desiredListening = false;
     startAttempt += 1;
     destroyed = true;
@@ -617,14 +738,18 @@ export function createAuraVoiceSession({
     detachVisibility();
     listening = false;
     clearRecognition();
-    try { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); } catch { /* Optional browser feature. */ }
+    try { if (ownedSpeech && typeof window !== "undefined") window.speechSynthesis?.cancel(); } catch { /* Optional browser feature. */ }
   }
 
   return {
     start,
+    startTapToTalk,
+    startHandsFree,
+    prepare,
     startIfAllowed,
     stop,
     setBusy,
+    cancelSpeech,
     speak,
     destroy,
     get listening() { return listening; },

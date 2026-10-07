@@ -13,7 +13,8 @@ test('each domain reader has a fixed projection of real fields and scalar text s
   for (const [id, cap] of Object.entries(AURA_READ_CAPABILITIES)) {
     assert.equal(cap.id, id);
     assert.ok(cap.module in AURA_MODULE_CAPABILITIES, `${id}: registered permission module`);
-    if (cap.reader) { assert.equal(cap.table, ''); continue; }
+    if (cap.reader && cap.reader !== 'seasonal_records') { assert.equal(cap.table, ''); continue; }
+    if (cap.reader === 'seasonal_records') assert.equal(cap.seasonal, true, `${id}: season scope required`);
     const table = schema.match(new RegExp(`create table (?:if not exists )?public\\.${cap.table} \\(([\\s\\S]+?)\\n\\);`, 'i'));
     const view = schema.match(new RegExp(`create view public\\.${cap.table} [\\s\\S]+? AS([\\s\\S]+?);`, 'i'));
     assert.ok(table || view, `${id}: ${cap.table} exists in the checked-in schema`);

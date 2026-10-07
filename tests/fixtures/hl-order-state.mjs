@@ -639,6 +639,11 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};
+      const managerSeasonRead = method === 'POST' && body.action === 'manager_season_settings' && body.operation === 'read'
+        && Object.keys(body).every(key => ['action', 'operation'].includes(key))
+        && req.headers().authorization === 'Bearer ' + token
+        && ['dylan_collyge', 'jd_jones', 'megan_kelly'].includes(username);
+      if (managerSeasonRead) return json(route, { ok: true, data: { seasonCode: 'F1', salesYear: 27, revision: 0, updatedAt: null, updatedBy: '' } });
       const salesCompatibilityRead = method === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && url.pathname === '/functions/v1/app-api' && ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
         && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))

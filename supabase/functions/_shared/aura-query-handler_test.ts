@@ -6,13 +6,19 @@ const CONVERSATION = "00000000-0011-4000-8000-000000000002";
 const TURN = "00000000-0011-4000-8000-000000000003";
 function assert(value: unknown, message: string) { if (!value) throw new Error(message); }
 
-function fixture(options: { username?: string; locked?: boolean; disabled?: boolean; mustChange?: boolean; authValid?: boolean; moduleAllowed?: boolean; inventoryResults?: unknown[] } = {}) {
+function fixture(options: { username?: string; locked?: boolean; disabled?: boolean; mustChange?: boolean; authValid?: boolean; moduleAllowed?: boolean; inventoryResults?: unknown[]; seasonalResults?: unknown[]; seasonSettings?: { current?: Record<string, unknown>; next?: Record<string, unknown> } | null } = {}) {
   const tables: string[] = [];
   const rpcNames: string[] = [];
   const rpcCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
   let revision = 0;
   let savedContext: Record<string, unknown> = {};
   let inventoryIndex = 0;
+  let seasonalIndex = 0;
+  let seasonSettings: { current?: Record<string, unknown>; next?: Record<string, unknown> } | null = options.seasonSettings === null ? null : {
+    current: { seasonCode: "F1", salesYear: 27, revision: 0, ...(options.seasonSettings?.current || {}) },
+    next: { seasonCode: "S1", salesYear: 27, revision: 0, ...(options.seasonSettings?.next || {}) },
+  };
+  let resolvedSeason = { season: "F1", salesYear: 27, settingRevision: 0 };
   const profile = {
     id: ACTOR,
     username: options.username || "dylan_collyge",
@@ -55,7 +61,26 @@ function fixture(options: { username?: string; locked?: boolean; disabled?: bool
         return chain(name, data);
       }
       if (name === "aura_query_inventory_v1") {
-        const value = options.inventoryResults?.[inventoryIndex++] ?? { ok: true, complete: true, total: 0, rows: [], hasMore: false };
+        const filters = args.p_filters as Record<string, unknown> || {};
+        const configured = options.inventoryResults?.[inventoryIndex++] as Record<string, unknown> || {};
+        const value: Record<string, unknown> = { ok: true, complete: true, total: 0, rows: [], hasMore: false,
+          season: String(filters.season || resolvedSeason.season), salesYear: Number(filters.salesYear ?? resolvedSeason.salesYear), settingRevision: resolvedSeason.settingRevision,
+          yearCoverage: "inventory-cutoff", unresolvedCount: 0, ...configured };
+        if (Object.hasOwn(configured, "currentSeason") && !Object.hasOwn(configured, "season")) delete value.season;
+        return chain(name, value);
+      }
+      if (name === "aura_query_seasonal_records_v1") {
+        const filters = args.p_filters as Record<string, unknown> || {};
+        const value = { ok: true, complete: true, total: 0, rows: [], hasMore: false,
+          season: String(filters.season || resolvedSeason.season), salesYear: Number(filters.salesYear ?? resolvedSeason.salesYear),
+          settingRevision: resolvedSeason.settingRevision, yearCoverage: "season-only", unresolvedCount: 0,
+          ...(options.seasonalResults?.[seasonalIndex++] as Record<string, unknown> || {}) };
+        return chain(name, value);
+      }
+      if (name === "aura_resolve_season_v1") {
+        const reference = String(args.p_reference || "current") === "next" ? "next" : "current";
+        const value = seasonSettings?.[reference] || {};
+        resolvedSeason = { season: String(value.seasonCode || ""), salesYear: Number(value.salesYear), settingRevision: Number(value.revision) };
         return chain(name, value);
       }
       const data = name === "app_account_active_v1" ? true
@@ -75,7 +100,13 @@ function fixture(options: { username?: string; locked?: boolean; disabled?: bool
     headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  return { admin, user, request, tables, userTables, rpcNames, rpcCalls };
+  return { admin, user, request, tables, userTables, rpcNames, rpcCalls,
+    setSeasonSettings(value: { current?: Record<string, unknown>; next?: Record<string, unknown> } | null) {
+      seasonSettings = value === null ? null : {
+        current: { seasonCode: "F1", salesYear: 27, revision: 0, ...(value.current || {}) },
+        next: { seasonCode: "S1", salesYear: 27, revision: 0, ...(value.next || {}) },
+      };
+    } };
 }
 
 Deno.test("handler denies missing, invalid, non-Dylan, locked, disabled, and password-change identities", async () => {
@@ -314,6 +345,106 @@ Deno.test("legacy bind_party mutation is redirected to the reviewed Bloom flow",
   const body = await response.json();
   assert(response.status === 409 && body.code === "AURA_REFRESH_REQUIRED", "legacy bind_party must not mutate or bind data");
   assert(f.userTables.length === 0, "legacy binding call must not access business data");
+});
+
+Deno.test("current and next season references stay semantic while SQL returns resolved metadata", async () => {
+  const settings = { current: { seasonCode: "F1", salesYear: 27, revision: 4 }, next: { seasonCode: "S1", salesYear: 28, revision: 5 } };
+  const currentFixture = fixture({ moduleAllowed: true, seasonSettings: settings });
+  const current = await handleAuraQueryRequest(currentFixture.request({ mode: "command", text: "How many roses are available this season?", turnId: TURN, source: "typed" }), { adminClient: currentFixture.admin, userClient: currentFixture.user });
+  const currentBody = await current.json();
+  const currentSetting = currentFixture.rpcCalls.find((call) => call.name === "aura_resolve_season_v1");
+  const currentRead = currentFixture.rpcCalls.find((call) => call.name === "aura_query_inventory_v1");
+  const currentFilters = currentRead?.args.p_filters as Record<string, unknown>;
+  assert(current.status === 200, "current season query should succeed");
+  assert(currentSetting?.args.p_reference === "current", "current language should resolve through current settings");
+  assert(currentFilters.seasonReference === "current" && currentFilters.season === undefined, "relative current scope should remain semantic at the data RPC");
+  assert(currentBody.interpretation.resolvedSeason.seasonCode === "F1" && currentBody.interpretation.resolvedSeason.salesYear === 27, "response scope should use SQL season metadata");
+  assert(currentBody.interpretation.settingRevision === 4, "response should include the setting revision");
+
+  const nextFixture = fixture({ moduleAllowed: true, seasonSettings: settings });
+  const next = await handleAuraQueryRequest(nextFixture.request({ mode: "command", text: "How many roses next season?", turnId: "00000000-0011-4000-8000-000000000004", source: "typed" }), { adminClient: nextFixture.admin, userClient: nextFixture.user });
+  const nextBody = await next.json();
+  const nextSetting = nextFixture.rpcCalls.find((call) => call.name === "aura_resolve_season_v1");
+  const nextRead = nextFixture.rpcCalls.find((call) => call.name === "aura_query_inventory_v1");
+  assert(next.status === 200, "next season query should succeed");
+  assert(nextSetting?.args.p_reference === "next", "next-season language should reach the resolver as a relative reference");
+  assert((nextRead?.args.p_filters as Record<string, unknown>).seasonReference === "next", "relative next scope should be retained at the data RPC");
+  assert(nextBody.interpretation.resolvedSeason.seasonCode === "S1" && nextBody.interpretation.resolvedSeason.salesYear === 28, "next-season response should use returned metadata");
+});
+
+Deno.test("explicit season and year override the resolved current setting", async () => {
+  const f = fixture({ moduleAllowed: true, seasonSettings: { current: { seasonCode: "F1", salesYear: 28, revision: 8 } } });
+  const response = await handleAuraQueryRequest(f.request({ mode: "command", text: "How many roses for 27S1?", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  const filters = f.rpcCalls.find((call) => call.name === "aura_query_inventory_v1")?.args.p_filters as Record<string, unknown>;
+  assert(response.status === 200, "explicit season-year query should succeed");
+  assert(filters.season === "S1" && filters.salesYear === 27 && filters.seasonReference === undefined, "literal scope should override current settings and clear relative scope");
+  assert(body.interpretation.resolvedSeason.seasonCode === "S1" && body.interpretation.resolvedSeason.salesYear === 27, "response should describe the explicit scope");
+});
+
+Deno.test("missing or invalid settings fail clearly, and denied or nonseasonal reads do not resolve settings", async () => {
+  const missing = fixture({ moduleAllowed: true, seasonSettings: null });
+  const response = await handleAuraQueryRequest(missing.request({ mode: "command", text: "How many roses this season?", turnId: TURN, source: "typed" }), { adminClient: missing.admin, userClient: missing.user });
+  const body = await response.json();
+  assert(response.status === 503 && body.code === "AURA_SEASON_SETTINGS_UNAVAILABLE", "missing settings should produce the documented 503 response");
+  assert(!missing.rpcNames.includes("aura_query_inventory_v1"), "no inventory query should run without valid settings");
+
+  const invalid = fixture({ moduleAllowed: true, seasonSettings: { current: { seasonCode: "U1", salesYear: 27, revision: 1 } } });
+  const invalidResponse = await handleAuraQueryRequest(invalid.request({ mode: "command", text: "How many roses this season?", turnId: TURN, source: "typed" }), { adminClient: invalid.admin, userClient: invalid.user });
+  assert(invalidResponse.status === 503, "unsupported current season settings should fail closed");
+
+  const denied = fixture({ moduleAllowed: false });
+  await handleAuraQueryRequest(denied.request({ mode: "command", text: "How many roses this season?", turnId: TURN, source: "typed" }), { adminClient: denied.admin, userClient: denied.user });
+  assert(!denied.rpcNames.includes("aura_resolve_season_v1") && !denied.rpcNames.includes("aura_query_inventory_v1"), "denied inventory must not read settings or rows");
+
+  const nonseasonal = fixture({ moduleAllowed: true });
+  await handleAuraQueryRequest(nonseasonal.request({ mode: "command", text: "Show Bunch Notes jobs", turnId: TURN, source: "typed" }), { adminClient: nonseasonal.admin, userClient: nonseasonal.user });
+  assert(!nonseasonal.rpcNames.includes("aura_resolve_season_v1"), "nonseasonal readers must not query Manager settings");
+});
+
+Deno.test("a changed setting resets selected inventory pagination and returns a restart notice", async () => {
+  const f = fixture({ moduleAllowed: true, inventoryResults: [
+    { ok: true, complete: true, total: null, rows: [], exactMatch: false, candidateChoices: [{ selectionId: "rose-choice", commonName: "Rose", itemcode: "00123" }], hasMore: true, nextCursor: { offset: 50 } },
+    { ok: true, complete: true, total: 3, rows: [{ selectionId: "rose-choice", commonName: "Rose", itemcode: "00123" }], hasMore: true, nextCursor: { offset: 50 } },
+    { ok: true, complete: true, total: 2, rows: [{ selectionId: "rose-new", commonName: "Rose", itemcode: "00999" }], hasMore: false, nextCursor: null },
+  ] });
+  const first = await handleAuraQueryRequest(f.request({ mode: "command", text: "How many roses this season?", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+  const firstBody = await first.json();
+  const selected = await handleAuraQueryRequest(f.request({ mode: "command", text: "option 1", turnId: "00000000-0011-4000-8000-000000000004", source: "typed", conversationId: CONVERSATION, expectedRevision: firstBody.revision }), { adminClient: f.admin, userClient: f.user });
+  const selectedBody = await selected.json();
+  const calls = () => f.rpcCalls.filter((call) => call.name === "aura_query_inventory_v1");
+  assert(selected.status === 200 && selectedBody.hasMore === true, "candidate selection should establish a continuation");
+  assert((calls()[1].args.p_filters as Record<string, unknown>).selectionId === "rose-choice", "selected identity should scope the first continuation");
+
+  f.setSeasonSettings({ current: { seasonCode: "S1", salesYear: 28, revision: 1 }, next: { seasonCode: "F1", salesYear: 29, revision: 1 } });
+  const more = await handleAuraQueryRequest(f.request({ mode: "command", text: "show more", turnId: "00000000-0011-4000-8000-000000000005", source: "typed", conversationId: CONVERSATION, expectedRevision: selectedBody.revision }), { adminClient: f.admin, userClient: f.user });
+  const moreBody = await more.json();
+  const restarted = calls()[2];
+  const restartedFilters = restarted.args.p_filters as Record<string, unknown>;
+  assert(more.status === 200, `changed scope should restart: ${JSON.stringify(moreBody)}`);
+  assert(restarted.args.p_cursor === null, "stale pagination cursor must be cleared");
+  assert(!Object.hasOwn(restartedFilters, "selectionId"), "stale selection must be cleared");
+  assert(restartedFilters.seasonReference === "current", "relative current reference should survive the follow-up");
+  assert(/Managers season setting changed/i.test(moreBody.reply), "response should disclose the restart");
+  const completedContext = f.rpcCalls.filter((call) => call.name === "aura_query_conversation_v1" && call.args.p_operation === "complete").at(-1)?.args.p_payload as Record<string, unknown>;
+  const storedContext = completedContext.context as Record<string, unknown>;
+  assert(Array.isArray(storedContext.pendingChoices) && storedContext.pendingChoices.length === 0 && storedContext.nextCursor == null, "old choices and cursor should be cleared from persisted continuation state");
+  assert(moreBody.interpretation.resolvedSeason.seasonCode === "S1" && moreBody.interpretation.settingRevision === 1, "response should use the updated scope metadata");
+});
+
+Deno.test("season-only records disclose unavailable year coverage and reject explicit year filters", async () => {
+  const f = fixture({ moduleAllowed: true, seasonalResults: [{ season: "S1", salesYear: 27, settingRevision: 0, yearCoverage: "season-only", unresolvedCount: 2, total: 4, rows: [{ id: "req-1", itemcode: "00123", season: "S1" }] }] });
+  const response = await handleAuraQueryRequest(f.request({ mode: "command", text: "Show request history for S1", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 200, "season-only read without a year should succeed");
+  assert(/season only/i.test(body.reply) && /sales-year coverage is unavailable/i.test(body.reply), "reply should distinguish season coverage from year coverage");
+  assert(/2 matching record/i.test(body.reply), "unresolved source rows should be disclosed");
+  assert(body.source.yearCoverage === "season-only" && body.source.unresolvedCount === 2, "source metadata should include coverage and unresolved totals");
+
+  const explicit = fixture({ moduleAllowed: true, seasonalResults: [{ season: "S1", salesYear: 27, settingRevision: 0, yearCoverage: "season-only", unresolvedCount: 0, total: 1, rows: [{ id: "req-1", itemcode: "00123", season: "S1" }] }] });
+  const rejected = await handleAuraQueryRequest(explicit.request({ mode: "command", text: "Show request history for 27S1", turnId: TURN, source: "typed" }), { adminClient: explicit.admin, userClient: explicit.user });
+  const rejectedBody = await rejected.json();
+  assert(rejected.status === 400 && rejectedBody.code === "AURA_SEASON_YEAR_UNAVAILABLE", "an explicit year must be rejected when this source cannot verify it");
 });
 
 function chainForTest(data: unknown) {

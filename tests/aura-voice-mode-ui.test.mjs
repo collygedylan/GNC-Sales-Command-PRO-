@@ -90,6 +90,7 @@ test("recognition mode badge persists through transcript and error status update
     const engine = env.engines[0];
     assert.ok(engine);
     assert.equal(engine.processLocally, true);
+    assert.equal(engine.continuous, false, "the mic button uses a single local utterance");
     assert.equal(badge.textContent, "On-device speech");
     assert.equal(mic.getAttribute("aria-label"), "Pause voice input");
 
@@ -103,7 +104,7 @@ test("recognition mode badge persists through transcript and error status update
     activeEngine.onresult(result("Hey Aura, florp"));
     await flush();
     assert.equal(badge.textContent, "On-device speech");
-    assert.match(panel.querySelector(".aura-status").textContent, /Listening on this device/i);
+    assert.doesNotMatch(panel.querySelector(".aura-status").textContent, /hands-free listening/i);
     assert.match(panel.querySelector(".aura-message").textContent, /not configured/i);
     assert.ok([...panel.querySelectorAll(".aura-retry")].some(button => button.textContent === "Retry AURA"));
 
@@ -113,7 +114,7 @@ test("recognition mode badge persists through transcript and error status update
   }
 });
 
-test("browser recognition is clearly disclosed and status never claims on-device processing", async () => {
+test("browser recognition uses compact status without a verbose disclosure card", async () => {
   const env = browserEnvironment({ available: "unavailable" });
   const widget = mount();
   try {
@@ -125,15 +126,15 @@ test("browser recognition is clearly disclosed and status never claims on-device
 
     assert.equal(env.engines.length, 1);
     assert.equal(env.engines[0].processLocally, false);
-    assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
-    assert.match(panel.querySelector(".aura-status").textContent, /browser/i);
-    assert.doesNotMatch(panel.querySelector(".aura-status").textContent, /on-device|locally/i);
+    assert.equal(badge.style.display, "");
+    assert.match(document.getElementById("aura-voice-widget-styles").textContent, /\.aura-mode\{display:none\}/);
+    assert.match(panel.querySelector(".aura-status").textContent, /listening|starting/i);
     assert.equal(mic.getAttribute("aria-label"), "Pause voice input");
 
     env.engines[0].onresult(result("Hey Aura, cloud locally remote", false));
     await flush();
     assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
-    assert.match(panel.querySelector(".aura-status").textContent, /cloud locally remote/i);
+    assert.equal(panel.querySelector(".aura-status").textContent, "Checking request…");
     assert.doesNotMatch(panel.querySelector(".aura-status").textContent, /in the browser network/i);
     env.engines[0].onerror({ error: "audio-capture" });
     assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
@@ -143,6 +144,55 @@ test("browser recognition is clearly disclosed and status never claims on-device
     widget.destroy();
     await env.restore();
   }
+});
+
+test("mic button captures one local command and requires another tap for the next turn", async () => {
+  const env = browserEnvironment({ available: "available" });
+  let resolveCommand;
+  const widget = mount({ requestAssistant: body => body.mode === "command"
+    ? new Promise(resolve => { resolveCommand = resolve; })
+    : Promise.resolve({ ok: true, conversationId: "tap-thread", revision: 0 }) });
+  try {
+    const panel = openPanel();
+    await flush();
+    const mic = panel.querySelector(".aura-mic");
+    mic.click(); await flush();
+    assert.equal(env.engines[0].continuous, false);
+    env.engines[0].onresult(result("How many roses?", true));
+    for (let attempt = 0; attempt < 10 && !resolveCommand; attempt += 1) await flush();
+    assert.ok(resolveCommand, "the spoken command should be sent after one-shot recognition");
+    resolveCommand({ ok: true, conversationId: "tap-thread", revision: 1, reply: "Checked." });
+    await flush(); await flush();
+    assert.equal(env.engines.length, 1, "processing the command must not reopen the tap-to-talk mic");
+    assert.match(panel.querySelector(".aura-status").textContent, /tap the microphone to speak again/i);
+    mic.click(); await flush();
+    assert.equal(env.engines.length, 2, "the next one-shot starts only after another mic tap");
+    assert.equal(env.engines[1].continuous, false);
+  } finally { widget.destroy(); await env.restore(); }
+});
+
+test("clicking a voice-produced party choice does not speak a follow-up response", async () => {
+  const env = browserEnvironment({ available: "available" });
+  const utterances = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
+    getVoices: () => [{ name: "Local English", lang: "en-US", localService: true }], cancel() {}, speak: item => utterances.push(item),
+  } });
+  Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
+  const widget = mount({ resolveOrderParty: async () => ({ items: [
+    { key: "north", customerName: "Acme", label: "Acme North" },
+    { key: "south", customerName: "Acme", label: "Acme South" },
+  ], hasMore: false }) });
+  try {
+    const panel = openPanel();
+    await flush();
+    panel.querySelector(".aura-mic").click(); await flush();
+    env.engines[0].onresult(result("Start a request for Acme", true));
+    await flush();
+    assert.equal(panel.querySelectorAll(".aura-choice").length, 2, "voice turn should present exact party choices");
+    panel.querySelector(".aura-choice").click();
+    assert.equal(utterances.length, 0, "a click choice must remain silent after an earlier voice turn");
+  } finally { widget.destroy(); await env.restore(); }
 });
 
 test("browser push-to-talk accepts no-wake commands, deduplicates results, and keeps draft across taps", async () => {
@@ -184,7 +234,7 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
     await flush();
     assert.deepEqual(resolvedCustomers, ["Megan"]);
     assert.match(panel.querySelector(".aura-message").textContent, /Request started for Megan/i);
-    assert.equal(panel.querySelector(".aura-status").textContent, "Tap the microphone for your next command. Your current draft is still here.");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Tap mic to speak");
     assert.equal(mic.getAttribute("aria-label"), "Start voice input");
 
     mic.click();
@@ -196,7 +246,7 @@ test("browser push-to-talk accepts no-wake commands, deduplicates results, and k
     await useStandardLookup();
     assert.deepEqual(lotCalls.map(call => call.quantity), [50]);
     assert.match(panel.querySelector(".aura-message").textContent, /Added 50 3DP Limelight/i);
-    assert.equal(panel.querySelector(".aura-status").textContent, "Tap the microphone for your next command. Your current draft is still here.");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Tap mic to speak");
     assert.equal(mic.getAttribute("aria-label"), "Start voice input");
 
     mic.click();
@@ -278,23 +328,23 @@ test("browser busy state reports a closed mic and completion does not hide activ
     await flush();
 
     assert.equal(mic.getAttribute("aria-pressed"), "false", "a query may be processing, but browser capture is closed");
-    assert.equal(panel.querySelector(".aura-status").textContent, "AURA is checking that request…");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Checking request…");
     resolveSend({ ok: true, recipientName: "Megan" });
     await flush();
 
     assert.equal(utterances.length, 1);
-    assert.equal(panel.querySelector(".aura-status").textContent, "AURA is responding…");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Aura responding…");
     assert.equal(mic.getAttribute("aria-pressed"), "false");
 
     utterances[0].onend();
-    assert.equal(panel.querySelector(".aura-status").textContent, "Tap the microphone for your next command.");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Tap mic to speak");
   } finally {
     widget.destroy();
     await env.restore();
   }
 });
 
-test("selected local mode survives AURA speech and recognizer restart", async () => {
+test("typed responses stay silent while explicit hands-free local recognition resumes", async () => {
   const env = browserEnvironment({ available: "available" });
   const utterances = [];
   class FakeUtterance { constructor(text) { this.text = text; } }
@@ -310,22 +360,22 @@ test("selected local mode survives AURA speech and recognizer restart", async ()
   const widget = mount({ requestV2: async () => ({ complete: true, winner: { commonname: "Limelight", contsize: "3DP", total: 12 }, tieCount: 1 }) });
   try {
     const panel = openPanel();
-    panel.querySelector(".aura-mic").click();
+    await flush(); // Let the widget's background local-capability probe finish before the trusted start.
+    widget.startHandsFreeFromGesture();
     await flush();
+    assert.equal(env.engines[0].continuous, true, "hands-free remains continuous while tap-to-talk is one-shot");
     assert.equal(panel.querySelector(".aura-mode").textContent, "On-device speech");
 
     const input = panel.querySelector("input");
     input.value = "What item has largest U1 value?";
     panel.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
     await flush();
-    assert.equal(panel.querySelector(".aura-status").textContent, "AURA is responding…");
+    assert.match(panel.querySelector(".aura-status").textContent, /hands-free listening/i);
     assert.equal(panel.querySelector(".aura-mode").textContent, "On-device speech");
-    assert.equal(utterances.length, 1);
+    assert.equal(utterances.length, 0, "typed questions do not trigger speech synthesis");
 
-    utterances[0].onend();
     await flush();
-    assert.equal(env.engines.length, 2);
-    assert.equal(env.engines[1].processLocally, true);
+    assert.equal(env.engines.length, 2, "the hands-free local recognizer resumes after typed work completes");
     assert.equal(panel.querySelector(".aura-mode").textContent, "On-device speech");
   } finally {
     widget.destroy();
@@ -376,18 +426,186 @@ test("voice controls retain neutral accessible labels and 44px minimum targets",
     assert.match(style, /\.aura-mic\{[^}]*width:48px;height:48px/s);
     assert.match(style, /\.aura-action\{[^}]*min-height:44px/s);
     assert.match(style, /\.aura-head>div:nth-child\(2\)\{[^}]*min-width:0/s);
-    assert.match(style, /\.aura-mode\{[^}]*max-width:100%[^}]*overflow-wrap:anywhere/s);
-    assert.equal(panel.querySelector(".aura-mode").getAttribute("aria-live"), "polite");
+    assert.match(style, /\.aura-mode\{display:none\}/);
   } finally {
     widget.destroy();
     void env.restore();
   }
 });
 
+test("hands-free recognizes both wake phrases, waits for finalized speech, and arbitrates external audio", async () => {
+  const env = browserEnvironment({ available: "unavailable" });
+  const sent = [];
+  const widget = mountAuraWidget({
+    isAuthorized: () => true,
+    userId: "auth-user-7",
+    sendMessage: async intent => { sent.push(intent); return { ok: true, recipientName: intent.recipientName }; },
+  });
+  try {
+    assert.equal(widget.getHandsFreeAutoStart(), false);
+    widget.setHandsFreeAutoStart(true);
+    await flush();
+    assert.equal(window.localStorage.getItem("aura.handsFree.autostart:auth-user-7"), "true");
+    assert.equal(env.engines.length, 1);
+    assert.equal(env.engines[0].continuous, true);
+    assert.equal(env.engines[0].processLocally, false);
+    assert.equal(document.querySelector(".aura-fab").dataset.handsFreeListening, "true");
+
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    document.dispatchEvent(new window.Event("visibilitychange"));
+    assert.equal(env.engines[0].aborted, true, "backgrounding pauses continuous recognition");
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new window.Event("visibilitychange"));
+    await flush();
+    assert.equal(env.engines.length, 2, "returning to foreground resumes hands-free listening");
+
+    const engine = env.engines.at(-1);
+    engine.onresult(result("Okay Aura, send a message to Megan saying The bay is ready", false));
+    await new Promise(resolve => setTimeout(resolve, 850));
+    assert.equal(sent.length, 0, "interim speech must never be submitted");
+    engine.onresult(result("Okay Aura, send a message to Megan saying The bay is ready", true));
+    await new Promise(resolve => setTimeout(resolve, 850));
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].recipientName, "Megan");
+
+    const secondEngine = env.engines.at(-1);
+    secondEngine.onresult(result("Hey Aura, send a message to Zoe saying North gate", true));
+    await new Promise(resolve => setTimeout(resolve, 850));
+    assert.equal(sent.length, 2, "the alternate wake phrase is accepted");
+    assert.equal(sent[1].recipientName, "Zoe");
+
+    const thirdEngine = env.engines.at(-1);
+    const sr = (transcript, isFinal) => Object.assign([{ transcript, confidence: 0.99 }], { isFinal });
+    const finalizedBase = "Hey Aura, send a message to Ava saying The north gate";
+    thirdEngine.onresult({ results: [sr(finalizedBase, true)], resultIndex: 0 });
+    await new Promise(resolve => setTimeout(resolve, 450));
+    thirdEngine.onresult({ results: [sr(finalizedBase, true), sr("Wait, I meant dock three", false)], resultIndex: 1 });
+    await new Promise(resolve => setTimeout(resolve, 450));
+    assert.equal(sent.length, 2, "a new interim result cancels the pending final-settle timer");
+    thirdEngine.onresult({ results: [sr(finalizedBase, true), sr("Wait, I meant dock three", true)], resultIndex: 1 });
+    await new Promise(resolve => setTimeout(resolve, 850));
+    assert.equal(sent.length, 3);
+    assert.match(sent[2].message, /dock three/i);
+
+    const countBeforeClaim = env.engines.length;
+    const release = window.GncAuraAudio.claim("leaf");
+    const duplicateRelease = window.GncAuraAudio.claim("leaf");
+    assert.equal(env.engines.at(-1).aborted, true);
+    assert.equal(document.querySelector(".aura-fab").dataset.handsFreeListening, "false");
+    release();
+    await flush();
+    assert.equal(env.engines.length, countBeforeClaim + 1, "releasing another audio owner resumes manual hands-free mode");
+    assert.equal(env.engines.at(-1).continuous, true);
+    duplicateRelease();
+    await flush();
+    assert.equal(env.engines.length, countBeforeClaim + 1, "duplicate owner release is idempotent");
+    widget.setHandsFreeAutoStart(false);
+    assert.equal(window.localStorage.getItem("aura.handsFree.autostart:auth-user-7"), "false");
+  } finally {
+    widget.destroy();
+    await env.restore();
+  }
+});
+
+test("typed Aura answers stay silent and voice answers use the complete chunked speech", async () => {
+  const env = browserEnvironment({ available: "unavailable" });
+  const utterances = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
+    getVoices: () => [{ name: "Local English", lang: "en-US", localService: true }], cancel() {}, speak: item => utterances.push(item),
+  } });
+  Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
+  const longSpeech = `${"A complete spoken inventory answer contains several useful details. ".repeat(90)}END OF FULL ANSWER`;
+  const widget = mountAuraWidget({ isAuthorized: () => true, userId: "speech-user", requestAssistant: async body => ({
+    ok: true, conversationId: "speech-thread", revision: body.mode === "command" ? 1 : 0,
+    reply: "Aura checked the current data.", speech: longSpeech,
+  }) });
+  try {
+    const panel = openPanel();
+    const input = panel.querySelector("input");
+    input.value = "Give me the long answer";
+    panel.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true }));
+    await flush();
+    assert.equal(utterances.length, 0, "typed questions never speak their full answer");
+
+    widget.setHandsFreeAutoStart(true);
+    await flush();
+    env.engines[0].onresult(result("Hey Aura, give me the long answer", true));
+    await new Promise(resolve => setTimeout(resolve, 850));
+    assert.equal(utterances.length, 1);
+    let full = "", guard = 0;
+    while (utterances.at(-1)?.onend && guard++ < 40) {
+      const item = utterances.at(-1); full += item.text;
+      assert.ok(item.text.length <= 220, "native utterances stay short enough for browser support");
+      item.onend();
+    }
+    assert.ok(utterances.length > 1, "long speech is queued sequentially");
+    assert.match(full, /END OF FULL ANSWER$/, "the complete answer is spoken, not clipped to a preview");
+  } finally { widget.destroy(); await env.restore(); }
+});
+
 function enter(command) {
   document.querySelector('.aura-inputbar input').value = command;
   document.querySelector('.aura-inputbar').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
 }
+
+test('runtime hands-free toggle is independent of Auto-Start and global mic reflects actual processing', async t => {
+  const env = browserEnvironment({ available: 'unavailable' });
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
+  let resolveCommand;
+  const widget = mount({ userId: 'runtime-user', requestAssistant: async body => body.mode === 'command'
+    ? await new Promise(resolve => { resolveCommand = resolve; }) : { ok: true, conversationId: 'voice-thread', revision: 0 } });
+  try {
+    const panel = openPanel();
+    const toggle = [...panel.querySelectorAll('button')].find(button => button.textContent === 'Hands-Free Mode: Off');
+    assert.ok(toggle); toggle.click(); await flush();
+    assert.equal(widget.getHandsFreeAutoStart(), false);
+    assert.equal(window.localStorage.getItem('aura.handsFree.autostart:runtime-user'), null);
+    const fab = document.querySelector('.aura-fab');
+    assert.equal(fab.dataset.handsFreeListening, 'true');
+    panel.querySelector('.aura-close').click();
+    assert.equal(fab.dataset.handsFreeListening, 'true', 'panel closure keeps the global listener');
+    env.engines[0].onresult(result('Hey Aura how many roses', true));
+    t.mock.timers.tick(800); await flush();
+    assert.equal(fab.dataset.handsFreeListening, 'false', 'processing pauses actual capture');
+    resolveCommand({ ok: true, reply: 'Twelve roses.', revision: 1 }); await flush();
+    assert.equal(fab.dataset.handsFreeListening, 'true');
+    toggle.click();
+    assert.equal(fab.dataset.handsFreeListening, 'false');
+    assert.equal(toggle.getAttribute('aria-pressed'), 'false');
+  } finally { widget.destroy(); t.mock.timers.reset(); await env.restore(); }
+});
+
+test('split wake phrases, quiet deadline, wake expiry and capture cap fence stale commands', async t => {
+  const env = browserEnvironment({ available: 'unavailable' });
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
+  const sent = [];
+  const widget = mount({ userId: 'wake-user', requestAssistant: async body => {
+    if (body.mode === 'command') sent.push(body.text);
+    return { ok: true, conversationId: 'voice-thread', revision: 1, reply: 'Checked.' };
+  } });
+  const emit = (engine, segments) => engine.onresult({ resultIndex: segments.length - 1,
+    results: segments.map(([text, isFinal]) => Object.assign([{ transcript: text, confidence: .99 }], { isFinal })) });
+  try {
+    widget.startHandsFreeFromGesture(); await flush();
+    let engine = env.engines.at(-1);
+    emit(engine, [['Ambient words', true], ['Hey', true]]);
+    assert.equal(document.querySelector('.aura-inputbar input').value, '', 'ambient words are not placed in the command field');
+    emit(engine, [['Ambient words', true], ['Hey', true], ['Aura how many roses', true]]);
+    t.mock.timers.tick(799); await flush(); assert.equal(sent.length, 0);
+    t.mock.timers.tick(1); await flush(); assert.deepEqual(sent, ['how many roses']);
+    engine = env.engines.at(-1);
+    emit(engine, [['Hey Aura', true]]);
+    t.mock.timers.tick(8000);
+    emit(engine, [['Hey Aura', true], ['how many lilies', true]]);
+    t.mock.timers.tick(800); await flush(); assert.equal(sent.length, 1, 'expired wake cannot capture a later ambient command');
+    emit(engine, [['Hey Aura', true], ['how many lilies', true], ['Okay Aura how many roses', false]]);
+    for (let i = 0; i < 5; i++) { t.mock.timers.tick(5000); emit(engine, [['Hey Aura', true], ['how many lilies', true], ['Okay Aura how many roses ' + i, false]]); }
+    t.mock.timers.tick(4999);
+    emit(engine, [['Hey Aura', true], ['how many lilies', true], ['Okay Aura how many roses finally', true]]);
+    t.mock.timers.tick(801); await flush(); assert.equal(sent.length, 1, '30-second cap cancels a pending finalized command');
+  } finally { widget.destroy(); t.mock.timers.reset(); await env.restore(); }
+});
 const babyGem = { itemcode: 'BG', commonname: 'Baby Gem® Boxwood', contsize: '3DP', matchKind: 'exact' };
 const exactBabyGem = { complete: true, exactMatch: true, additionalMatches: false, rows: [babyGem] };
 

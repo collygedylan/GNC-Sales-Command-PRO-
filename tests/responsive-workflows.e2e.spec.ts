@@ -1,7 +1,39 @@
 import { expect, test } from '@playwright/test';
 import { installDriveCardLayoutFixture, renderDriveLayoutCard, renderSharedHlDriveLayoutCard } from './fixtures/drive-card-layout';
+import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 
 const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
+
+test('Drive search stays inside the selected location and preserves it when cleared', async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  const fixture = await installHlOrderFixture(page, baseURL!, { role: 'ADMIN', username: 'dylan_collyge', master: [
+    hlMaster('scope-c', { itemcode: 'SCOPE.C', commonname: 'Scoped Rose', blockalpha: 'C', locationcode: 'C.06.001' }),
+    hlMaster('scope-d', { itemcode: 'SCOPE.D', commonname: 'Scoped Rose', blockalpha: 'D', locationcode: 'D.04.001' }),
+  ] });
+  await page.evaluate(() => window.eval(`(async () => {
+    switchView('drive');
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    activeDriveMode = 'ok'; activeDriveTab = 'loc'; driveViewLevel = 2;
+    selectedDriveBlock = 'C'; selectedDriveLoc = LocationCode.normalize('C.06.001');
+    setDriveSearchManualSelectionLock(false);
+    invalidateDriveResolvedCardState(); renderDrive();
+  })()`));
+  await page.locator('#drive-search').fill('Scoped Rose');
+  await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
+  await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
+  await page.locator('#drive-search').fill('No matching plant');
+  await expect(page.locator('#drive-content')).toContainText('No matching inventory');
+  await page.locator('#drive-search-clear').click();
+  await expect.poll(() => page.evaluate(() => window.eval('activeDriveTab'))).toBe('loc');
+  await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc === LocationCode.normalize("C.06.001")'))).toBe(true);
+  await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
+  await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
+  await page.evaluate(() => window.eval(`selectedDriveBlock = 'D'; selectedDriveLoc = LocationCode.normalize('D.04.001'); invalidateDriveResolvedCardState(); renderDrive();`));
+  await page.locator('#drive-search').fill('Scoped Rose');
+  await expect(page.locator('#drive-content')).toContainText('SCOPE.D');
+  await expect(page.locator('#drive-content')).not.toContainText('SCOPE.C');
+  expect(fixture.blockedMutations).toEqual([]);
+});
 
 test('Drive inventory cards use AV-density layout at desktop and tablet widths without restyling shared HL cards', async ({ page, baseURL }) => {
   test.setTimeout(90_000);
