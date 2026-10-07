@@ -26,7 +26,7 @@ test('Drive search stays inside the selected location and preserves it when clea
     await page.getByRole('button', { name: `Open location ${locationGroup}`, exact: true }).click();
     await page.getByRole('button', { name: `Open block number ${location}`, exact: true }).click();
     await expect.poll(() => page.evaluate(() => window.eval('driveViewLevel === 2 && !!selectedDriveLoc'))).toBe(true);
-    await expect.poll(() => page.evaluate(() => window.eval(`selectedDriveLoc === LocationCode.normalize('${location}')`))).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc'))).toBe(location);
   };
   await chooseLocation('C', 'C.06', 'C.06.001');
   await page.locator('#drive-search').fill('Scoped Rose');
@@ -36,7 +36,7 @@ test('Drive search stays inside the selected location and preserves it when clea
   await expect(page.locator('#drive-content')).toContainText('No matching inventory');
   await page.locator('#drive-search-clear').click();
   await expect.poll(() => page.evaluate(() => window.eval('activeDriveTab'))).toBe('loc');
-  await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc === LocationCode.normalize("C.06.001")'))).toBe(true);
+  await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc'))).toBe('C.06.001');
   await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
   await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
   await chooseLocation('D', 'D.04', 'D.04.001');
