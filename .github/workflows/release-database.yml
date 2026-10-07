@@ -332,6 +332,7 @@ jobs:
           node supabase/ci/aura_llm_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/nelly_access_audit_baseline_pglite.mjs --pglite-root "$pglite_root"
           node supabase/ci/eval_delivery_archive_health_pglite.mjs --pglite-root "$pglite_root"
+          node supabase/ci/inventory_row_assignment_line_endings_pglite.mjs --pglite-root "$pglite_root"
       - id: browser_setup
         uses: ./.github/actions/setup-playwright
         with:
