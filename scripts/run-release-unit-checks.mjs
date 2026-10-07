@@ -1,106 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { discoverTests } from './test-discovery.mjs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-export const releaseUnitScriptNames = Object.freeze(['test:photo', 'test:pilot', 'test:live-sync']);
-export const explicitReleaseUnitTests = Object.freeze([
-  'tests/assigned-items-component.test.mjs',
-  'tests/assigned-items-virtualization.test.mjs',
-  'tests/inventory-row-assignment-client.test.mjs',
-  'tests/inventory-row-assignment-consumers.test.mjs',
-  'tests/reclass-split-client.test.mjs',
-  'tests/reclass-split-move-v4.test.mjs',
-  'tests/aura-voice.test.mjs',
-  'tests/aura-voice-mode-ui.test.mjs',
-  'tests/aura-lingo-v2.test.mjs',
-  'tests/aura-shell-v2.test.mjs',
-  'tests/aura-llm-release.test.mjs',
-  'tests/aura-query-panel.test.mjs',
-  'tests/aura-query-release.test.mjs',
-  'tests/aura-capabilities.test.mjs',
-  'tests/aura-season-ui.test.mjs',
-  'tests/manager-season-settings.test.mjs',
-  'tests/drive-search-location.test.mjs',
-  'tests/alpha-command-center.test.mjs',
-  'tests/floor-startup-hotfix.test.mjs',
-  'tests/dataset-read-hotfix.test.mjs',
-  'tests/docks-suspend-performance.test.mjs',
-  'tests/suspend-tag-dataset.test.mjs',
-  'tests/suspend-tag-approval.test.mjs',
-  'tests/suspend-tag-subset.test.mjs',
-  'tests/soc-write-diagnostics.test.mjs',
-  'tests/soc-order-history.test.mjs',
-  'tests/item-low-stock-migration-runner.test.mjs',
-  'tests/password-change-handler.test.mjs',
-  'tests/scheduled-handover-boundaries.test.mjs',
-  'tests/scheduled-offboarding-worker.test.mjs',
-  'tests/request-archive-handler.test.mjs',
-  'tests/season-priority-report.test.mjs',
-  'tests/manager-season-priority-protected.test.mjs',
-  'tests/assigned-items-filters.test.mjs',
-  'tests/bunch-note.test.mjs',
-  'tests/bunch-note-structured.test.mjs',
-  'tests/bunch-note-work-cards.test.mjs',
-  'tests/bunch-note-card-board.test.mjs',
-  'tests/bunch-note-card-model.test.mjs',
-  'tests/sales-workflow.test.mjs',
-  'tests/sales-history-context.test.mjs',
-  'tests/request-metadata-notifications.test.mjs',
-  'tests/navigation-preferences.test.mjs',
-  'tests/production-workflow.test.mjs',
-  'tests/production-schedule-client.test.mjs',
-  'tests/production-schedule-page.test.mjs',
-  'tests/read-optimization-api.test.mjs',
-  'tests/inventory-read-boundary.test.mjs',
-  'tests/production-schedule-ingestion.test.mjs',
-  'tests/production-schedule-release-seed.test.mjs',
-  'tests/drive-demand-detail.test.mjs',
-  'tests/live-sync-priority-cache.test.mjs',
-  'tests/inventory-list-read-fixture.test.mjs',
-  'tests/hl-order.test.mjs',
-  'tests/hl-order-restock.test.mjs',
-  'tests/hl-order-ship-date.test.mjs',
-  'tests/hl-po-import-staging.test.mjs',
-  'tests/hl-po-receipt-ui.test.mjs',
-  'tests/hl-order-rollback.test.mjs',
-  'tests/hl-order-delivery.test.mjs',
-  'tests/hl-order-delivery-worker.test.mjs',
-  'tests/hl-tags-email.test.mjs',
-  'tests/eval-review-assignedto-api.test.mjs',
-  'tests/production-probe-read-only.test.mjs',
-  'tests/wait-for-live-release.test.mjs',
-  'tests/prepare-ci-playwright-apt.test.mjs',
-]);
 const repositoryRoot = fileURLToPath(new URL('../', import.meta.url));
 
-export function testFilesFromPackageScript(name, command) {
-  const tokens = String(command || '').trim().split(/\s+/);
-  if (tokens.shift() !== 'node' || tokens.shift() !== '--test') {
-    throw new Error(`Release unit script ${name} must start with node --test.`);
-  }
-  const files = tokens.filter(token => !/^--test-concurrency=\d+$/.test(token));
-  if (!files.length || files.some(file => !/^tests\/(?:[\w.-]+\/)*[\w.-]+\.test\.(?:mjs|cjs|js)$/.test(file)
-    || file.split('/').includes('..'))) {
-    throw new Error(`Release unit script ${name} must enumerate test files; unsupported flags, shell commands, and globs require an explicit runner update.`);
-  }
-  return files;
-}
-
 export function collectReleaseUnitTestFiles(rootDir = repositoryRoot) {
-  const manifest = JSON.parse(readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
-  const files = new Set(explicitReleaseUnitTests);
-  for (const name of releaseUnitScriptNames) {
-    for (const file of testFilesFromPackageScript(name, manifest.scripts?.[name])) files.add(file);
-  }
-  for (const entry of readdirSync(path.join(rootDir, 'tests'), { withFileTypes: true })) {
-    if (entry.isFile() && /^release-.+\.test\.mjs$/.test(entry.name)) files.add(`tests/${entry.name}`);
-  }
-  const sorted = [...files].sort();
-  for (const file of sorted) {
-    if (!statSync(path.join(rootDir, file)).isFile()) throw new Error(`Release unit test is not a file: ${file}`);
-  }
-  return sorted;
+  return discoverTests({ root: rootDir, group: 'node-unit' });
 }
 
 export function runReleaseUnitChecks({
@@ -127,7 +33,7 @@ export function runReleaseUnitChecks({
   return result.status ?? 1;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
   try {
     process.exitCode = runReleaseUnitChecks({ argv: process.argv.slice(2) });
   } catch (error) {

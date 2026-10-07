@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
+
 import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
+// @test-group: @home-role,runtime-foundation,home
+
 const tileSelector = (view: string, dynamic: boolean) => dynamic ? `#home-sales-open-${view}` : `#home-tile-${view}`;
 
-test('cold login stays disabled and Enter is safe while the compiled runtime is held', async ({ page, baseURL }) => {
+test('cold login stays disabled and Enter is safe while the compiled runtime is held', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   let releaseRuntime!: () => void;
   const runtimeGate = new Promise<void>(resolve => { releaseRuntime = resolve; });
   const username = 'native_start_admin', accessCode = 'Synthetic-Access-123!';
@@ -52,7 +55,7 @@ test('cold login stays disabled and Enter is safe while the compiled runtime is 
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('failed compiled runtime keeps login disabled and Reload app recovers normal login', async ({ page, baseURL }) => {
+test('failed compiled runtime keeps login disabled and Reload app recovers normal login', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, {
     username: 'native_start_admin', role: 'ADMIN', startupMode: 'cold',
     runtimeRequest: async (route: any, control: any) => control.runtimeRequests === 1
@@ -84,7 +87,7 @@ test('failed compiled runtime keeps login disabled and Reload app recovers norma
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Reload app aborts an in-flight inline manifest check before recovering a failed runtime', async ({ page, baseURL }) => {
+test('Reload app aborts an in-flight inline manifest check before recovering a failed runtime', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   await page.addInitScript(() => {
     const originalFetch = window.fetch;
     window.fetch = function(input, init) {
@@ -147,7 +150,7 @@ const nativeStartupCases = [
 ];
 
 for (const entry of nativeStartupCases) {
-  test(`native ${entry.startupMode} startup waits for authoritative ${entry.role} access before opening its Home`, async ({ page, baseURL }) => {
+  test(`native ${entry.startupMode} startup waits for authoritative ${entry.role} access before opening its Home`, {"tag":["@home-role"]}, async ({ page, baseURL }) => {
     const permissions = (entry.denied || []).map(moduleKey => ({ permissionKey: `module.${moduleKey}.view`, kind: 'module', moduleKey, allowed: false }));
     const fixture = await installHlOrderFixture(page, baseURL!, {
       username: entry.username,
@@ -178,7 +181,7 @@ for (const entry of nativeStartupCases) {
   });
 }
 
-test('verified raw cache survives reload and changed revisions reload its dependencies', async ({ page, baseURL }) => {
+test('verified raw cache survives reload and changed revisions reload its dependencies', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const reloadHealthRequests: string[] = [];
   page.on('request', request => {
     if (request.url().endsWith('/rest/v1/rpc/report_app_health_event')

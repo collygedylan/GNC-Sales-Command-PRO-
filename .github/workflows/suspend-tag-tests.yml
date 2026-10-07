@@ -34,15 +34,15 @@ jobs:
       PGDATABASE: suspend_tag_test
     steps:
       - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
       - name: Verify protected completion on isolated PostgreSQL without production access
         run: |
           set -euo pipefail
           psql -X -v ON_ERROR_STOP=1 -f supabase/ci/suspend_tag_baseline.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/archive_migrations/20260908165943_suspend_tag_completion.sql
           psql -X -v ON_ERROR_STOP=1 -f supabase/tests/suspend_tag_completion_test.sql
-          node supabase/ci/suspend_tag_concurrency.mjs
-      - uses: ./.github/actions/setup-node-dependencies
+          node scripts/run-discovered-database-tests.mjs suspend-tag-concurrency
       - name: Verify approval permissions and lifecycle in a separate disposable database
         run: |
           createdb suspend_tag_approval_test
-          PGDATABASE=suspend_tag_approval_test node supabase/ci/suspend_tag_approval.mjs
+          PGDATABASE=suspend_tag_approval_test node scripts/run-discovered-tests.mjs postgres-runtime

@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: 'request-archive-mobile.e2e.spec.ts',
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@request-archive/,
   outputDir: './artifacts/request-archive-mobile-browser',
   fullyParallel: false,
   workers: 1,

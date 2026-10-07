@@ -1,3 +1,5 @@
+import { assertPgliteTest } from './helpers/ci-discovery.mjs';
+// @test-group: inventory
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -69,8 +71,7 @@ test('Eval Reports migration matches one exact LF or CRLF fragment without norma
   assert.match(projection, /if crlf_matches = 1 then[\s\S]*old_projection := crlf_projection/);
   assert.match(projection, /execute replace\(definition, old_projection, new_projection\)/);
   assert.doesNotMatch(projection, /definition := (?:replace|regexp_replace)/);
-  const workflow = read('../.github/workflows/release-database.yml');
-  assert.match(workflow, /node supabase\/ci\/inventory_row_assignment_line_endings_pglite\.mjs --pglite-root "\$pglite_root"/);
+  assertPgliteTest('inventory_row_assignment_line_endings_pglite.mjs');
 });
 
 test('new Eval Work uses exact recipients and issued work preserves its saved authorization', () => {

@@ -5,7 +5,8 @@ const baseURL = remoteBaseURL || 'http://127.0.0.1:43121';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /season-priority\.e2e\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@season-priority/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

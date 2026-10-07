@@ -1,3 +1,5 @@
+-- @test-runtime: isolated-supabase
+-- @test-harness: season-av
 -- Disposable local/CI database only. This test emits TAP and rolls back.
 begin;
 create temporary table av_reset_checks (id integer generated always as identity, description text) on commit drop;

@@ -1,8 +1,11 @@
+// @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import yaml from 'js-yaml';
 import { migrationBody, migrationContractQuery, auraLlmFreeTierMigrationName, releaseDatabaseMigrations } from '../scripts/apply-item-low-stock-migration.mjs';
+import { discoverTests } from '../scripts/test-discovery.mjs';
+import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 
 test('AURA quota migration is atomic, private, and checked before release', () => {
@@ -36,10 +39,16 @@ test('AURA router deploy follows migration and remains a prerequisite of Pages',
 
 test('database CI checks quota contention and permissions in an isolated database', () => {
   const workflow = read('.github/workflows/release-database.yml');
-  assert.ok(workflow.includes(`cp supabase/migrations/${auraLlmFreeTierMigrationName}`));
-  assert.match(workflow, /cp supabase\/tests\/aura_llm_011_test.sql/);
-  assert.match(workflow, /AURA_LLM_TEST_DB_URL="\$DB_URL" node scripts\/test-aura-llm-quota-concurrency.mjs/);
-  assert.match(workflow, /deno check[^\n]*aura-llm-router\/index.ts/);
+  const historicalSources = new Set(readHistoricalMigrationManifest().map(entry => entry.source));
+  assert.ok(historicalSources.has(`supabase/migrations/${auraLlmFreeTierMigrationName}`), 'historical fixture replays the quota migration');
+  assert.ok(discoverTests({ group: 'sql-isolated-supabase' }).includes('supabase/tests/aura_llm_011_test.sql'), 'quota assertions are runtime-discovered');
+  assert.match(workflow, /node scripts\/historical-database-fixture\.mjs/);
+  assert.match(workflow, /node scripts\/sql-lint-temp-context\.mjs --historical-reset/);
+  assert.doesNotMatch(workflow, /cp supabase\/.*aura_llm_011/);
+  assert.ok(discoverTests({ group: 'postgres-concurrency' }).includes('scripts/test-aura-llm-quota-concurrency.mjs'), 'quota contention check is runtime-discovered');
+  assert.match(workflow, /node scripts\/run-discovered-database-tests\.mjs postgres-concurrency "\$DB_URL"/);
+  assert.ok(discoverTests({ group: 'deno-entrypoints' }).includes('supabase/functions/aura-llm-router/index.ts'), 'router is in discovered Edge entrypoints');
+  assert.match(workflow, /node scripts\/test-discovery\.mjs deno-entrypoints/);
   const concurrency = read('scripts/test-aura-llm-quota-concurrency.mjs');
   assert.match(concurrency, /LOCAL_DATABASE_ONLY/);
   assert.match(concurrency, /results\.filter\(r=>r\.allowed\)\.length,15/);

@@ -1,3 +1,4 @@
+// @test-group: foundation
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -43,3 +44,4 @@ test('the compiler embeds the one lifecycle owner before deferred runtime boot',
   assert.match(html, /AgMetricLifecycle\.getSignal\('session'\)/);
   assert.match(html, /AgMetricLifecycle\.resetSession\(\)/);
 });
+// @test-group: foundation

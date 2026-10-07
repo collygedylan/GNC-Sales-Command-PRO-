@@ -26,6 +26,7 @@ function harness({ readable = true, writable = true, role = 'admin', username = 
   const context = vm.createContext({
     SUSPEND_TAG_EDITORS: new Set(['dylan_collyge','megan_kelly','dan_mccuistion']),
     handleSuspendTag: async () => ({ rows: [] }),
+    suspendTagRowsFromResult: (result) => Array.isArray(result?.rows) ? result.rows : [],
     verifySuspendTagSession: async () => 'verified-session',
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
@@ -38,6 +39,47 @@ function harness({ readable = true, writable = true, role = 'admin', username = 
     },
     errorResponse: (message, status, details = {}) => ({ status, body: { error: message, ...details } }),
     jsonResponse: (body) => ({ status: 200, body }),
+    URLSearchParams,
+    jsonValue: (value) => value,
+    jsonObject: (value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
+    SUPABASE_URL: 'https://fixture.invalid',
+    buildRestHeaders: () => ({}),
+    readResponsePayload: async (response) => response.json(),
+    databaseBridge: {
+      fetchTable: async (_url, table, queryString, _options, _timeout, _label) => {
+        tables.push(table);
+        const query = { table, calls: [] };
+        queries.push(query);
+        const params = new URLSearchParams(queryString);
+        if (params.has('select')) query.calls.push(['select', params.get('select')]);
+        for (const [key, value] of params) {
+          if (key === 'select' || key === 'offset' || key === 'limit') continue;
+          if (key === 'order') {
+            const [field, direction] = value.split('.');
+            query.calls.push(['order', field, { ascending: direction === 'asc' }]);
+          } else if (key === 'or') query.calls.push(['or', value]);
+          else {
+            const dot = value.indexOf('.');
+            query.calls.push(['filter', key, value.slice(0, dot), value.slice(dot + 1)]);
+          }
+        }
+        if (params.has('offset') && params.has('limit')) {
+          const offset = Number(params.get('offset'));
+          query.calls.push(['range', offset, offset + Number(params.get('limit')) - 1]);
+        }
+        const status = dbError?.code === '42501' ? 403 : dbError?.code === '40001' ? 409 : dbError ? 500 : 200;
+        const body = dbError || rows;
+        return {
+          ok: status >= 200 && status < 300,
+          status,
+          headers: { get: (name) => name.toLowerCase() === 'content-range' ? `0-${Math.max(0, rows.length - 1)}/${count}` : null },
+          json: async () => body,
+        };
+      },
+    },
     supabase: {
       from(table) {
         tables.push(table);
@@ -141,7 +183,8 @@ test('suspend_tag uses a narrow fixed SOC projection and server-forced normalize
   const calls = h.queries[0].calls;
   const projection = calls.find(([method]) => method === 'select')?.[1];
   assert.equal(projection, 'unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode');
-  assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend' && op === 'imatch' && pattern === '^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$'));
+  assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend' && op === 'imatch'
+    && pattern === String.raw`^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$`), JSON.stringify(calls));
   assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend_to' && op === 'imatch' && pattern === '^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$'));
   assert.ok(!calls.some(([method, field]) => method === 'is' && field === 'date_completed'), 'completed rows remain in the bounded subset');
   assert.ok(calls.some(([method, start, end]) => method === 'range' && start === 10 && end === 29));
@@ -199,7 +242,7 @@ test('dataset_read validates filter names and safely builds typed OR expressions
   const h = harness({ role: 'rep', username: 'rep_user' });
   const bad = await h.context.datasetReadTest(h.session(), { dataset: 'soc', params: { filters: [{ field: 'secret_column', op: 'eq', value: 'x' }] } });
   assert.equal(bad.status, 400);
-  assert.equal(h.queries[0].calls.some(([method]) => method === 'range'), false);
+  assert.equal(h.queries.length, 0, 'invalid filters are rejected before the database request');
 
   const result = await h.context.datasetReadTest(h.session('rep', 'rep_user'), {
     dataset: 'reserves', params: { anyOf: [
@@ -208,7 +251,7 @@ test('dataset_read validates filter names and safely builds typed OR expressions
     ] },
   });
   assert.equal(result.status, 200);
-  const orCall = h.queries[1].calls.find(([method]) => method === 'or');
+  const orCall = h.queries[0].calls.find(([method]) => method === 'or');
   assert.ok(orCall);
   assert.match(orCall[1], /salesrepname\.ilike/);
   assert.match(orCall[1], /and\(or\(/);
@@ -255,6 +298,12 @@ test('inventory source_freshness uses only the authorized minimal metadata proje
   const calls = [];
   const context = vm.createContext({
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
+    jsonValue: value => value,
+    jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
+    projectInventoryRows: (rows, fields) => Array.isArray(rows) ? rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => fields.split(',').includes(key)))) : [],
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     getRoleAccessState: () => ({ isRepLike: false, isRep: false, isAdmin: true, isQcSupervisor: false }),
     hasTableReadAccess: (role, table) => table === 'ph_master_inventory' && String(role).toLowerCase() === 'admin',

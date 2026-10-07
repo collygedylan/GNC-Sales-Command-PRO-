@@ -1,4 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from './sandbox.database.types';
+import { sandboxUpdate } from './sandbox-contracts';
+import { jsonObject } from '../../../services/database-contract-runtime';
 import { selectAndSortAvRows } from '../utils/avSort';
 import { cacheInventoryPage, readCachedInventoryPage, savePreference as cachePreference } from './cache';
 import { loadRuntimeConfig } from './runtime';
@@ -11,7 +14,7 @@ import type {
   WorkflowRow
 } from '../types';
 
-export const APP_VERSION = 'V2026.10.06.005';
+export const APP_VERSION = 'V2026.10.07.001';
 export const REQUEST_TABLE = 'ph_active_request';
 export const REQUEST_LIVE_TABLE = REQUEST_TABLE;
 export const INVENTORY_TABLE = 'ph_master_inventory';
@@ -24,12 +27,9 @@ export const INVENTORY_CARD_COLUMN_NAMES = [
   'unique_id', 'itemcode', 'commonname', 'contsize', 'locationcode', 'lotcode',
   'ptravailable', 'ptronhand', 'ptrreviewed', 'priority', 'season', 'season_supply',
   'saleyear', 'blockalpha', 'blocknumber', 'holdstopcode', 'photo_link', 'photo_name'
-] as const;
-const INVENTORY_CARD_COLUMNS = INVENTORY_CARD_COLUMN_NAMES.join(',');
-const AV_OPTION_COLUMNS = [
-  'unique_id', 'itemcode', 'contsize', 'locationcode', 'lotcode', 'ptravailable',
-  'ptronhand', 'ptrreviewed', 'priority', 'season', 'saleyear', 'blockalpha', 'blocknumber'
-].join(',');
+] as const satisfies readonly (keyof Database['public']['Tables']['ph_master_inventory']['Row'])[];
+const INVENTORY_CARD_COLUMNS = 'unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,ptronhand,ptrreviewed,priority,season,season_supply,saleyear,blockalpha,blocknumber,holdstopcode,photo_link,photo_name';
+const AV_OPTION_COLUMNS = 'unique_id,itemcode,contsize,locationcode,lotcode,ptravailable,ptronhand,ptrreviewed,priority,season,saleyear,blockalpha,blocknumber';
 
 export type RequestRow = RequestRecord;
 
@@ -55,7 +55,7 @@ type PageOptions = {
 };
 
 const SESSION_KEY = 'gnc:v2:sandbox-session';
-const ALLOWED_TABLES = new Set([
+const ALLOWED_TABLE_NAMES = [
   REQUEST_TABLE,
   INVENTORY_TABLE,
   'ph_cav_import',
@@ -67,14 +67,16 @@ const ALLOWED_TABLES = new Set([
   'sandbox_messages',
   'sandbox_upload_jobs',
   'sandbox_event_log'
-]);
+] as const satisfies readonly (keyof Database['public']['Tables'])[];
+type AllowedTable = typeof ALLOWED_TABLE_NAMES[number];
+const ALLOWED_TABLES: ReadonlySet<string> = new Set(ALLOWED_TABLE_NAMES);
 
-let clientPromise: Promise<SupabaseClient> | null = null;
+let clientPromise: Promise<SupabaseClient<Database>> | null = null;
 let sandboxSessionRevision = 0;
 
 async function sandboxClient() {
   if (!clientPromise) {
-    clientPromise = loadRuntimeConfig().then(config => createClient(config.supabaseUrl, config.publishableKey, {
+    clientPromise = loadRuntimeConfig().then(config => createClient<Database>(config.supabaseUrl, config.publishableKey, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       global: { headers: { 'x-gnc-app-shell': APP_VERSION } }
     }));
@@ -82,7 +84,7 @@ async function sandboxClient() {
   return clientPromise;
 }
 
-function assertAllowedTable(table: string) {
+function assertAllowedTable(table: string): asserts table is AllowedTable {
   if (!ALLOWED_TABLES.has(table)) throw new Error(`Blocked sandbox table: ${table}`);
 }
 
@@ -149,7 +151,7 @@ export async function recordSandboxEvent(session: Session | null, eventType: str
     actor_username: session?.username || 'anonymous_sandbox',
     entity_type: String(payload.entityType || 'v2_shell'),
     entity_id: payload.entityId ? String(payload.entityId) : null,
-    payload: { ...payload, shell: APP_VERSION },
+    payload: jsonObject({ ...payload, shell: APP_VERSION }),
     created_at: new Date().toISOString()
   });
   if (error) console.warn('[v2 sandbox event]', error.message);
@@ -162,7 +164,7 @@ export async function dbRows(_session: Session, table: string, query: string): P
   const limit = Math.min(1000, Math.max(1, Number(limitMatch?.[1] || 400)));
   const { data, error } = await client.from(table).select('*').limit(limit);
   if (error) throw error;
-  return (data || []) as RequestRow[];
+  return data || [];
 }
 
 const REQUEST_PATCH_KEYS: Record<string, string> = {
@@ -199,7 +201,11 @@ function normalizedPatch(table: string, body: Record<string, unknown>) {
     const normalized = table === REQUEST_TABLE
       ? REQUEST_PATCH_KEYS[key.toUpperCase()] || key.toLowerCase()
       : key.toLowerCase();
-    output[normalized] = value;
+    if (table === REQUEST_TABLE && ['req_qty', 'req_match'].includes(normalized) && typeof value === 'string') {
+      const text = value.trim();
+      if (text && !Number.isFinite(Number(text))) throw new Error(`Invalid ${normalized}: enter a number.`);
+      output[normalized] = text ? Number(text) : null;
+    } else output[normalized] = value;
   }
   return output;
 }
@@ -210,14 +216,14 @@ export async function patchRow(session: Session, table: string, uniqueId: string
   const patch = normalizedPatch(table, body);
   if (!Object.keys(patch).length) return;
   const client = await sandboxClient();
-  const timestampPatch = table === INVENTORY_TABLE || table === 'ph_cav_import'
-    ? { last_updated: new Date().toISOString() }
-    : {};
-  const { data, error } = await client
-    .from(table)
-    .update({ ...patch, ...timestampPatch })
-    .eq('unique_id', String(uniqueId))
-    .select('unique_id');
+  const result = table === REQUEST_TABLE
+    ? await client.from(REQUEST_TABLE).update(sandboxUpdate(REQUEST_TABLE, patch)).eq('unique_id', String(uniqueId)).select('unique_id')
+    : table === INVENTORY_TABLE
+      ? await client.from(INVENTORY_TABLE).update(sandboxUpdate(INVENTORY_TABLE, { ...patch, last_updated: new Date().toISOString() })).eq('unique_id', String(uniqueId)).select('unique_id')
+      : table === 'ph_cav_import'
+        ? await client.from('ph_cav_import').update(sandboxUpdate('ph_cav_import', { ...patch, last_updated: new Date().toISOString() })).eq('unique_id', String(uniqueId)).select('unique_id')
+        : (() => { throw new Error(`Exact inventory/request updates are unavailable for ${table}.`); })();
+  const { data, error } = result;
   if (error) throw error;
   if (!data?.length) throw new Error('Sandbox row was not found or is not writable.');
   await recordSandboxEvent(session, 'exact_row_update', {
@@ -244,7 +250,7 @@ export async function fetchRequestRows(_session: Session, options: PageOptions =
   if (options.signal) query = query.abortSignal(options.signal);
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as RequestRow[];
+  return data || [];
 }
 
 export async function fetchInventoryPage(options: PageOptions = {}): Promise<PageResult<InventoryRow>> {
@@ -285,7 +291,7 @@ export async function fetchInventoryPage(options: PageOptions = {}): Promise<Pag
     const { data, error, count } = await query;
     if (error) throw error;
     if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
-    const rows = (data || []) as unknown as InventoryRow[];
+    const rows: InventoryRow[] = data || [];
     if (cacheKey) await cacheInventoryPage(cacheKey, scopeKey, rows);
     if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
     return { rows, page, pageSize, total: count ?? rows.length, source: 'sandbox' };
@@ -293,7 +299,7 @@ export async function fetchInventoryPage(options: PageOptions = {}): Promise<Pag
     if (options.signal?.aborted || (error && typeof error === 'object' && 'name' in error && error.name === 'AbortError')) throw error;
     if (!isCurrentScope() || isTerminalInventoryError(error)) throw error;
     const rows = cacheKey ? await readCachedInventoryPage(cacheKey) : null;
-    if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
+    if (!isCurrentScope()) throw Object.assign(new Error('Sandbox account changed during inventory load. Retry in the active account.'), { cause: error });
     if (rows === null) throw error;
     return { rows, page, pageSize, total: rows.length, source: 'cache' };
   }
@@ -325,7 +331,7 @@ export async function fetchAvOptions(itemcode: unknown, selectedYear = 27, signa
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
-  return selectAndSortAvRows((data || []) as unknown as InventoryRow[], normalized, selectedYear);
+  return selectAndSortAvRows(data || [], normalized, selectedYear);
 }
 
 export async function fetchWorkflowRows(moduleKey: string, signal?: AbortSignal): Promise<WorkflowRow[]> {
@@ -340,14 +346,14 @@ export async function fetchWorkflowRows(moduleKey: string, signal?: AbortSignal)
   const { data, error } = await query;
   if (error) throw error;
   return (data || []).map(row => {
-    const payload = (row.payload || {}) as Record<string, unknown>;
+    const payload = jsonObject(row.payload || {});
     return {
     id: String(row.id),
     moduleKey: row.module_key,
     title: row.title,
-    subtitle: row.subtitle,
-    owner: row.assigned_to,
-    status: row.status,
+    subtitle: row.subtitle ?? undefined,
+    owner: row.assigned_to ?? undefined,
+    status: row.status ?? undefined,
     count: Number(row.count_value || 0),
     itemcode: String(payload.itemcode || ''),
     locationcode: String(payload.locationcode || ''),

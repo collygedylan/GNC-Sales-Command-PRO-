@@ -1,11 +1,14 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional
+
+
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?e2e=photo-egress-v1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getDirectImageUrl === 'function');
 });
 
-test('legacy and V2 card URLs never point at the original object', async ({ page }) => {
+test('legacy and V2 card URLs never point at the original object', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const urls = await page.evaluate(() => {
     const hash = 'a'.repeat(64);
     const legacy = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/2026-09-04/legacy.webp';
@@ -24,7 +27,7 @@ test('legacy and V2 card URLs never point at the original object', async ({ page
   expect(urls.fallback).toBe('');
 });
 
-test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnails', async ({ page }) => {
+test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnails', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const result = await page.evaluate(async () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1400;

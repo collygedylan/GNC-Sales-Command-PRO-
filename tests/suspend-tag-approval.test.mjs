@@ -1,3 +1,4 @@
+// @test-group: suspend
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -14,7 +15,7 @@ const approval = { id: '12345678-1234-4234-8234-123456789abc', rep_email: 'toby@
 } };
 
 test('protected API has exactly three editors and passes verified identity/session to SQL', async () => {
-  const ctx = vm.createContext({}); vm.runInContext(transpile(read('supabase/functions/_shared/suspend-tag.ts')), ctx);
+  const ctx = vm.createContext({ jsonValue: value => value }); vm.runInContext(transpile(read('supabase/functions/_shared/suspend-tag.ts')), ctx);
   const calls = []; const client = { rpc: async (...args) => { calls.push(args); return { data: { ok: true } }; } };
   for (const username of ['dylan_collyge','megan_kelly','dan_mccuistion']) {
     await ctx.handleSuspendTag(client, { id: 'actor', username, nativeSessionId: 'verified-session' }, { operation: 'complete', payload: { sourceUid: 'row', expectedLastUpdated: null, patch: {} }, commandId: 'token', expectedVersion: 0 });
@@ -29,7 +30,7 @@ test('protected API has exactly three editors and passes verified identity/sessi
 });
 
 test('Suspend Tag requires a verified native bearer bound to the current actor and session',async()=>{
-  const ctx=vm.createContext({atob});vm.runInContext(transpile(read('supabase/functions/_shared/suspend-tag.ts')),ctx);
+  const ctx=vm.createContext({atob,jsonValue:value=>value});vm.runInContext(transpile(read('supabase/functions/_shared/suspend-tag.ts')),ctx);
   const token=claims=>'header.'+Buffer.from(JSON.stringify(claims)).toString('base64url')+'.signature';
   const actor={id:'native-user'},claims={sub:actor.id,role:'authenticated',session_id:approval.id};
   const client={auth:{getUser:async()=>({data:{user:{id:actor.id}},error:null})}};
@@ -127,7 +128,7 @@ test('protected approval push targets only its rep and skips confirmed devices a
   const rows=['first','second'].map((endpoint,id)=>({id,username:'toby_brown',endpoint,p256dh:'key',auth:'auth'}));
   rows.push({id:3,username:'jd_jones',endpoint:'unrelated',p256dh:'key',auth:'auth'});
   const query={select(){return this;},eq(){return this;},in(){return Promise.resolve({data:rows});}};
-  const client={from:()=>query,rpc:async(_name,args)=>{if(args.p_delivered)confirmed.add(args.p_endpoint);return {data:confirmed.has(args.p_endpoint)};}};
+  const client={from:()=>query,rpc:async(name,args)=>{if(name==='resolve_operational_recipients_v1')return {data:args.p_recipients,error:null};if(args.p_delivered)confirmed.add(args.p_endpoint);return {data:confirmed.has(args.p_endpoint)};}};
   const ctx=vm.createContext({Request,Response,console,
     Deno:{env:{get:name=>({SUPABASE_URL:'https://db.example.test',SUPABASE_SERVICE_ROLE_KEY:'service',WEB_PUSH_VAPID_PUBLIC_KEY:'public',WEB_PUSH_VAPID_PRIVATE_KEY:'private'})[name]}},
     createClient:()=>client,serve:fn=>handler=fn,withObservedRequest:(_,__,fn)=>fn(),

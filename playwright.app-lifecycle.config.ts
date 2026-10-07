@@ -6,7 +6,8 @@ const siteDir = String(process.env.APP_LIFECYCLE_SITE_DIR || '_site').trim() || 
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /app-lifecycle\.e2e\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@app-lifecycle/,
   outputDir: './test-results/lifecycle',
   fullyParallel: false,
   workers: 1,

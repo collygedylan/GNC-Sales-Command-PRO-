@@ -1,7 +1,9 @@
+// @test-group: hl-orders
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { installDatabaseBridge } from './helpers/database-bridge.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const blockStart = html.indexOf('        // HL selections mirror');
@@ -234,6 +236,7 @@ test('HL command retries retain ambiguous HTTP failures and release only structu
 
 test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects and ambiguous transport outcomes', async () => {
   let calls=0;
+  const rpcArgs = { p_action: 'state', p_command_id: '00000000-0000-4000-8000-000000000001', p_payload: {} };
   const ctx=vm.createContext({
     getNativeAuthRequestHeaders:async()=>null,
     nativeSessionRecoveryError:()=>new Error('Sign in again.'),
@@ -241,11 +244,12 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
     SUPABASE_URL:'https://synthetic.invalid', SUPABASE_WRITE_TIMEOUT_MS:5000,
     getResponseError:async(_response,fallback)=>fallback
   });
+  installDatabaseBridge(ctx);
   const rpcStart=html.indexOf('        async function supabaseRpc(');
   const rpcSource=html.slice(rpcStart,html.indexOf('\n        }',rpcStart)+10);
   assert.ok(rpcStart>=0);
   vm.runInContext(`${rpcSource}\n${source('isHlOrderCommandDefinitelyRejected')}`,ctx);
-  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
     assert.equal(error.hlOrderCommandDispatch,'not_sent');
     assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),true);
     return true;
@@ -265,7 +269,7 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
     calls++;
     return {ok:false,status:403,clone:()=>({json:async()=>({code:responseCode})}),text:async()=>'{"code":"42501"}'};
   };
-  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
     assert.equal(error.code,'42501');
     assert.equal(error.hlOrderCommandDispatch,'response_received');
     assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),true);
@@ -274,7 +278,7 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
 
   responseCode='';
   ctx.fetchWithTimeout=async()=>{calls++;throw new TypeError('connection reset after dispatch');};
-  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
     assert.equal(error.hlOrderCommandDispatch,undefined);
     assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),false);
     return true;

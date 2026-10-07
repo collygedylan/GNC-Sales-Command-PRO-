@@ -4,7 +4,8 @@ const remote = String(process.env.TASK_AV_BLANKS_BASE_URL || '').trim().replace(
 const baseURL = remote || 'http://127.0.0.1:43125';
 
 export default defineConfig({
-  testDir: './tests', testMatch: /task-av-blanks\.e2e\.spec\.ts/,
+  testDir: './tests', testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@task-av-blanks/,
   outputDir: './artifacts/task-av-blanks-browser', fullyParallel: false, workers: 1,
   forbidOnly: Boolean(process.env.CI), retries: process.env.CI ? 2 : 0, timeout: 60_000,
   reporter: process.env.CI ? 'github' : 'list', expect: { timeout: 10_000 },

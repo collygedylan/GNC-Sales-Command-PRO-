@@ -1,8 +1,11 @@
 import { test, expect } from '@playwright/test';
+
 import fs from 'node:fs/promises';
 import path from 'node:path';
+// @test-group: @local-e2e,@release-functional,aura
 
-test('Aura restores private conversations across pages and hands changes to review', async ({ browser }) => {
+
+test('Aura restores private conversations across pages and hands changes to review', {"tag":["@local-e2e","@release-functional"]}, async ({ browser }) => {
   const files = new Set(['components/common/auraVoiceWidget.js', 'components/common/auraQueryPanel.js',
     'services/auraVoiceService.js', 'services/auraConversation.js', 'utils/auraIntentParser.js', 'utils/auraLingo.js']);
   const turns: any[] = [];
@@ -73,7 +76,7 @@ test('Aura restores private conversations across pages and hands changes to revi
   } finally { for (const context of contexts) await context.close(); }
 });
 
-test('Aura hands-free wakes globally, waits for final speech, and resumes after audio ownership', async ({ browser }) => {
+test('Aura hands-free wakes globally, waits for final speech, and resumes after audio ownership', {"tag":["@local-e2e","@release-functional"]}, async ({ browser }) => {
   const files = new Set(['components/common/auraVoiceWidget.js', 'components/common/auraQueryPanel.js',
     'services/auraVoiceService.js', 'services/auraConversation.js', 'utils/auraIntentParser.js', 'utils/auraLingo.js']);
   const sent: any[] = [];

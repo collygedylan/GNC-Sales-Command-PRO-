@@ -1,9 +1,12 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test } from '@playwright/test';
+// @test-group: @request-photo,photos
+
+
 
 const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
-test('Kayla receives standard Admin Request, Drive, and photo access', async ({ page }) => {
+test('Kayla receives standard Admin Request, Drive, and photo access', {"tag":["@request-photo"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const permissions = await page.evaluate(() => {
@@ -32,7 +35,7 @@ test('Kayla receives standard Admin Request, Drive, and photo access', async ({ 
   });
 });
 
-test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', async ({ page }) => {
+test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', {"tag":["@request-photo"]}, async ({ page }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
@@ -104,7 +107,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
   }
 });
 
-test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
+test('Request AV sheet preserves swipe intent before selecting a later option', {"tag":["@request-photo"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
@@ -141,7 +144,7 @@ test('Request AV sheet preserves swipe intent before selecting a later option', 
   await expect(page.locator('#req-av-note')).toHaveValue('OPTION 39');
 });
 
-test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
+test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', {"tag":["@request-photo"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.09.04.04&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
@@ -247,14 +250,14 @@ test('Request reusable evidence prompt accepts partial exact-row data without au
   expect(storedChoice).toBe('YES');
 });
 
-test.describe('September 9 photo processing', () => {
+test.describe('September 9 photo processing', {"tag":["@request-photo"]}, () => {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?e2e=photo-egress-v1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getDirectImageUrl === 'function');
 });
 
-test('legacy and V2 card URLs never point at the original object', async ({ page }) => {
+test('legacy and V2 card URLs never point at the original object', {"tag":["@request-photo"]}, async ({ page }) => {
   const urls = await page.evaluate(() => {
     const hash = 'a'.repeat(64);
     const legacy = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/2026-09-04/legacy.webp';
@@ -273,7 +276,7 @@ test('legacy and V2 card URLs never point at the original object', async ({ page
   expect(urls.fallback).toBe('');
 });
 
-test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnails', async ({ page }) => {
+test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnails', {"tag":["@request-photo"]}, async ({ page }) => {
   const result = await page.evaluate(async () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1400;

@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 begin;
 create temporary table bn_checks(description text);
 create function pg_temp.bn_check(ok boolean,description text) returns void language plpgsql as $$

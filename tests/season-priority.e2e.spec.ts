@@ -1,4 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+// @test-group: @season-priority,season-priority
+
+
 
 type PriorityRow = {
   sourceUid: string; itemcode: string; commonname: string; contsize: string;
@@ -163,7 +166,7 @@ async function fixture(page: Page, baseURL: string, role = 'MANAGER') {
   };
 }
 
-test('Managers navigation drills through the full AA location and assigned filtering is server-side', async ({ page, baseURL }, testInfo) => {
+test('Managers navigation drills through the full AA location and assigned filtering is server-side', {"tag":["@season-priority"]}, async ({ page, baseURL }, testInfo) => {
   const app = await fixture(page, baseURL!);
   const filter = page.locator('select#season-priority-assigned');
   await expect(filter).toBeVisible();
@@ -202,7 +205,7 @@ test('Managers navigation drills through the full AA location and assigned filte
   app.assertClean();
 });
 
-test('one Make Priority 1 submission is deduplicated and pending survives Managers navigation', async ({ page, baseURL }) => {
+test('one Make Priority 1 submission is deduplicated and pending survives Managers navigation', {"tag":["@season-priority"]}, async ({ page, baseURL }) => {
   const app = await fixture(page, baseURL!);
   await app.openLocation();
   const button = app.card(rows[0].sourceUid).getByRole('button', { name: 'Make Priority 1', exact: true });
@@ -227,7 +230,7 @@ test('one Make Priority 1 submission is deduplicated and pending survives Manage
   app.assertClean();
 });
 
-test('failed delivery exposes Retry and an empty server result renders safely', async ({ page, baseURL }) => {
+test('failed delivery exposes Retry and an empty server result renders safely', {"tag":["@season-priority"]}, async ({ page, baseURL }) => {
   const app = await fixture(page, baseURL!);
   app.setRequests([{ eventId: 'failed-1', itemcode: rows[0].itemcode, sourceUid: rows[0].sourceUid,
     selectedLineageHash: rows[0].lineageHash, lifecycleStatus: 'delivery_failed', deliveryStatus: 'failed', canRetry: true,
@@ -260,7 +263,7 @@ test('failed delivery exposes Retry and an empty server result renders safely', 
   app.assertClean();
 });
 
-test('a changed source UID keeps its stable-lineage request blocked until import fulfills it', async ({ page, baseURL }) => {
+test('a changed source UID keeps its stable-lineage request blocked until import fulfills it', {"tag":["@season-priority"]}, async ({ page, baseURL }) => {
   const app = await fixture(page, baseURL!);
   const importedRow: PriorityRow = {
     ...rows[0],
@@ -289,7 +292,7 @@ test('a changed source UID keeps its stable-lineage request blocked until import
   app.assertClean();
 });
 
-test('late list responses cannot repaint after navigation or an account change', async ({ page, baseURL }) => {
+test('late list responses cannot repaint after navigation or an account change', {"tag":["@season-priority"]}, async ({ page, baseURL }) => {
   const app = await fixture(page, baseURL!);
   // Wait for the initial server options before holding a forced refresh.
   // Otherwise the force call can abort the initial request while auth headers
@@ -310,7 +313,7 @@ test('late list responses cannot repaint after navigation or an account change',
   app.assertClean();
 });
 
-test('Season Priority is restricted to managers and admins', async ({ page, baseURL }) => {
+test('Season Priority is restricted to managers and admins', {"tag":["@season-priority"]}, async ({ page, baseURL }) => {
   const denied = await fixture(page, baseURL!, 'REP');
   await expect(denied.panel).toHaveCount(0);
   expect(await page.evaluate(() => window.eval('activeHomeTab'))).not.toBe('season-priority');

@@ -33,6 +33,7 @@ function decodedRequestPath(requestUrl) {
   if (!raw.startsWith('/') || raw.startsWith('//') || /%2f|%5c/i.test(raw)) throw httpError(400);
   let decoded;
   try { decoded = decodeURIComponent(raw); } catch { throw httpError(400); }
+  // eslint-disable-next-line no-control-regex -- Reject control bytes in decoded HTTP paths.
   if (/[\\%:<>"|?*#\x00-\x1f\x7f]/.test(decoded)) throw httpError(400);
   const parts = decoded.slice(1).split('/');
   if (parts.at(-1) === '') parts.pop();
@@ -65,6 +66,7 @@ export async function createReleaseTestServer({
   siteDir = process.env.GNC_LOCAL_SITE_DIR || path.join(repositoryRoot, '_site'),
   fixtureDir = path.join(repositoryRoot, 'tests', 'fixtures'),
   responseHeaders = {},
+  rootFixture,
 } = {}) {
   const site = await checkedRoot(siteDir);
   const fixtures = await checkedRoot(fixtureDir);
@@ -83,6 +85,12 @@ export async function createReleaseTestServer({
     let opened;
     try {
       const parts = decodedRequestPath(request.url);
+      if (rootFixture !== undefined && (!parts.length || parts.length === 1 && parts[0] === 'index.html')) {
+        const bytes = Buffer.from(rootFixture, 'utf8');
+        response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Length': bytes.length });
+        response.end(request.method === 'HEAD' ? undefined : bytes);
+        return;
+      }
       const alias = parts[0] === '_site';
       const artifactParts = alias ? parts.slice(1) : parts;
       try { opened = await openFile(site, artifactParts); }

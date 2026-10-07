@@ -1,3 +1,5 @@
+-- @test-runtime: isolated-supabase
+-- @test-harness: hl-order
 -- Synthetic, disposable delivery/auth fixture. No email or production data.
 begin;
 create temporary table hl_delivery_checks(id integer generated always as identity,description text) on commit drop;

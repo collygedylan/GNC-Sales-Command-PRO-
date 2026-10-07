@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 const baseURL = 'http://127.0.0.1:43142';
 export default defineConfig({
-  testDir: './tests', testMatch: 'module-mobile-smoke.e2e.spec.ts',
+  testDir: './tests', testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@module-mobile/,
   outputDir: './artifacts/module-mobile', fullyParallel: false, workers: 1,
   retries: process.env.CI ? 2 : 0, timeout: 120_000, forbidOnly: Boolean(process.env.CI),
   expect: { timeout: 8_000 },

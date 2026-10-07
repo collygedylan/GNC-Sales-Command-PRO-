@@ -37,11 +37,18 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - run: node scripts/prepare-release-version.mjs --check
       - run: npm run check:inline
+      - run: npm run check:tooling
       - run: node scripts/run-release-unit-checks.mjs
       - run: npm run test:v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: node scripts/run-discovered-tests.mjs python
 
   database:
     uses: ./.github/workflows/release-database.yml
@@ -600,6 +607,42 @@ jobs:
             browsers: webkit
             shard: 1
             total: 1
+          - suite: worker-isolation
+            config: playwright.sw-isolation.config.ts
+            project: sw-isolation-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: worker-isolation
+            config: playwright.sw-isolation.config.ts
+            project: sw-isolation-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: partner-workspace
+            config: v2/tests/playwright.partner.config.ts
+            project: desktop-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: partner-workspace
+            config: v2/tests/playwright.partner.config.ts
+            project: android-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: partner-workspace
+            config: v2/tests/playwright.partner.config.ts
+            project: iphone-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: partner-workspace
+            config: v2/tests/playwright.partner.config.ts
+            project: tablet-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: command-center
             project: chromium
             browsers: chromium
@@ -618,7 +661,7 @@ jobs:
         run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob --project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.total }} --max-failures=1
       - name: AURA command center browser interactions
         if: matrix.suite == 'command-center'
-        run: node --test tests/alpha-command-center.browser.test.mjs
+        run: node scripts/run-discovered-tests.mjs node-browser
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}

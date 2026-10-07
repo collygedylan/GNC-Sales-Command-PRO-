@@ -1,7 +1,9 @@
+// @test-group: sticky-layout
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { discoverTests } from '../scripts/test-discovery.mjs';
 import vm from 'node:vm';
 
 const root = process.cwd();
@@ -61,7 +63,9 @@ test('the shared scroll path has no universal restyle or synchronous sticky geom
 });
 
 test('the hosted browser suite measures scrolling and realtime decorations stay subtree-scoped', () => {
-  assert.match(playwrightConfig, /scroll-performance\\\.e2e/);
+  assert.match(playwrightConfig, /grep: \/@local-e2e\//);
+  assert.ok(discoverTests({ group: 'playwright' }).includes('tests/scroll-performance.e2e.spec.ts'));
+  assert.match(read('tests/scroll-performance.e2e.spec.ts'), /["']?tag["']?:.*@local-e2e/);
   assert.match(pilot, /new MutationObserver\(\(records\) =>/);
   assert.match(pilot, /record\.addedNodes/);
   assert.match(pilot, /schedulePremiumDecorations\(node\)/);

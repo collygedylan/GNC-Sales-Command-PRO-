@@ -202,7 +202,7 @@ test('live probes await exact commit and all retained suites run with writes blo
   assert.deepEqual(pages.jobs['post-deployment-canary'].needs, ['deploy','exact-live']);
   const matrix = pages.jobs['post-deployment-canary'].strategy.matrix.include;
   assert.deepEqual([...new Set(matrix.map(x=>x.suite))], ['foundation','requests','session','login-photo']);
-  assert.match(matrix.find(x=>x.suite==='requests').command, /production-request-canary.spec.ts/);
+  assert.match(matrix.find(x=>x.suite==='requests').command, /--config playwright\.production\.config\.ts/);
   assert.deepEqual(matrix.filter(x=>x.suite==='login-photo').map(x=>x.project), ['chromium','webkit','android']);
   assert.equal(matrix.length, 9);
   assert.equal(pages.jobs['post-deployment-canary'].strategy['fail-fast'], true);

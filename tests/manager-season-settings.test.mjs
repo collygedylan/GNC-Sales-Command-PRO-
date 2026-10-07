@@ -16,6 +16,10 @@ function fixture(options = {}) {
   const calls = [];
   const profile = { id: authId, username: 'dylan_collyge', disabled_at: null, must_change_password: false, ...options.profile };
   const context = vm.createContext({
+    jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
     normalizeUsername: value => String(value || '').trim().toLowerCase(),
     isAppAccountActive: async () => options.accountActive !== false,
@@ -75,7 +79,7 @@ test('Managers validates exact operation, season, year, revision and forbids spo
   }
   const f = fixture();
   assert.equal((await f.invoke({ action: 'manager_season_settings', operation: 'read' })).status, 200);
-  assert.equal(f.calls.at(-1).args.p_expected_revision, null);
+  assert.equal(f.calls.at(-1).args.p_expected_revision, undefined);
 });
 
 test('stale revisions return 409 and database failures expose no internal details', async () => {

@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Disposable isolated local/CI database only. Synthetic profiles, work and
 -- outbox events are transaction-scoped and rolled back; nothing is delivered.
 begin;

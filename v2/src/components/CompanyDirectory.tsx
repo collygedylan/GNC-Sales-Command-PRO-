@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../../../supabase/functions/_shared/database.types';
+import { z } from 'zod';
 import { Plus, Search, Pencil, Trash2, LogOut, Loader2, X } from 'lucide-react';
 
 const PRODUCTION_URL = 'https://kzrnyjsosryejjejliii.supabase.co';
@@ -12,18 +14,39 @@ const TABLES = {
 } as const;
 
 type Kind = 'contacts' | 'blocks' | 'codes';
-type DirectoryRow = Record<string, unknown> & { id?: string; letter?: string };
+type DirectoryRow = Record<string, unknown> & { id: string; letter?: string };
 type DirectoryUser = { id: string; username: string; display_name: string | null; disabled_at: string | null; locked_until: string | null; must_change_password: boolean };
 
-let client: SupabaseClient | null = null;
+let client: SupabaseClient<Database> | null = null;
 function getClient() {
-  if (!client) client = createClient(PRODUCTION_URL, PUBLISHABLE_KEY, {
+  if (!client) client = createClient<Database>(PRODUCTION_URL, PUBLISHABLE_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: 'gnc-company-directory-native-auth' }
   });
   return client;
 }
 
-const metadata: Record<Kind, { title: string; table: string; columns: Array<{ key: string; label: string }>; fields: Array<{ key: string; label: string; type?: string; required?: boolean }> }> = {
+const nullableText = z.string().nullable();
+const contactInput = z.object({ name: z.string().min(1), location: z.string().min(1),
+  department: nullableText, extension: nullableText, cell_number: nullableText, home_number: nullableText }).strict();
+const bedInput = z.object({ block_letter: z.string().regex(/^[A-L]$/), bed_identifier: z.string().min(1), capacity: z.number().positive() }).strict();
+const codeInput = z.object({ code: z.string().min(1), description: z.string().min(1), department_reference: nullableText }).strict();
+async function saveDirectoryRecord(active: SupabaseClient<Database>, kind: Kind, input: unknown, id?: string) {
+  if (kind === 'contacts') {
+    const values = contactInput.parse(input);
+    return id ? active.from(TABLES.contacts).update(values).eq('id', id).select('*').single()
+      : active.from(TABLES.contacts).insert(values).select('*').single();
+  }
+  if (kind === 'blocks') {
+    const values = bedInput.parse(input);
+    return id ? active.from(TABLES.beds).update(values).eq('id', id).select('*').single()
+      : active.from(TABLES.beds).insert(values).select('*').single();
+  }
+  const values = codeInput.parse(input);
+  return id ? active.from(TABLES.codes).update(values).eq('id', id).select('*').single()
+    : active.from(TABLES.codes).insert(values).select('*').single();
+}
+
+const metadata: Record<Kind, { title: string; table: typeof TABLES.contacts | typeof TABLES.beds | typeof TABLES.codes; columns: Array<{ key: string; label: string }>; fields: Array<{ key: string; label: string; type?: string; required?: boolean }> }> = {
   contacts: { title: 'Employee contacts', table: TABLES.contacts, columns: [
     { key: 'name', label: 'Name' }, { key: 'department', label: 'Department' }, { key: 'extension', label: 'Extension' },
     { key: 'cell_number', label: 'Cell' }, { key: 'home_number', label: 'Home' }, { key: 'location', label: 'Location' }
@@ -58,7 +81,7 @@ export function CompanyDirectory() {
   const [password, setPassword] = useState('');
   const [kind, setKind] = useState<Kind>('contacts');
   const [rows, setRows] = useState<DirectoryRow[]>([]);
-  const [blocks, setBlocks] = useState<DirectoryRow[]>([]);
+  const [blocks, setBlocks] = useState<Array<{ letter: string; name: string | null }>>([]);
   const [query, setQuery] = useState('');
   const [filterValue, setFilterValue] = useState('');
   const [loading, setLoading] = useState(false);
@@ -69,7 +92,7 @@ export function CompanyDirectory() {
   const [form, setForm] = useState<Record<string, string>>({});
   const [reviewOnly, setReviewOnly] = useState(false);
 
-  const bootstrap = async (active: SupabaseClient) => {
+  const bootstrap = async (active: SupabaseClient<Database>) => {
     const { data: auth } = await active.auth.getSession();
     const authUser = auth.session?.user;
     if (!authUser) return;
@@ -80,7 +103,7 @@ export function CompanyDirectory() {
       await active.auth.signOut({ scope: 'local' });
       throw new Error('This directory is available only to Dylan’s active account.');
     }
-    setUser(data as DirectoryUser);
+    setUser(data);
   };
 
   useEffect(() => {
@@ -106,8 +129,8 @@ export function CompanyDirectory() {
       ]);
       if (result.error) throw result.error;
       if (blockResult.error) throw blockResult.error;
-      setRows((result.data || []) as DirectoryRow[]);
-      setBlocks((blockResult.data || []) as DirectoryRow[]);
+      setRows(result.data || []);
+      setBlocks(blockResult.data || []);
     } catch (reason) { setError(errorText(reason)); }
     finally { setLoading(false); }
   };
@@ -164,9 +187,7 @@ export function CompanyDirectory() {
     }
     try {
       const active = getClient();
-      const result = editing?.id
-        ? await active.from(table).update(values).eq('id', editing.id).select('*').single()
-        : await active.from(table).insert(values).select('*').single();
+      const result = await saveDirectoryRecord(active, kind, values, editing?.id);
       if (result.error) throw result.error;
       setEditing(null); setFormOpen(false); await reload();
     } catch (reason) { setError(errorText(reason)); }

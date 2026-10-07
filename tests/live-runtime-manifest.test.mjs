@@ -1,3 +1,4 @@
+// @test-group: runtime-foundation
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { assembleLiveRuntime, assertLiveRuntimeOutputSize, loadLiveRuntimeManifest, validateLiveRuntimeManifest } from '../scripts/live-runtime-manifest.mjs';

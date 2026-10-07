@@ -1,4 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+// @test-group: @suspend-tag,suspend
+
+
 
 type FixtureRow = Record<string, string | number>;
 type Reply = {
@@ -239,7 +242,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   return { requests, replies, receipts, backendRows, card, done, complete, seed, refresh, assertClean };
 }
 
-test('Done waits for server acknowledgment, completes only that source and retains it, and survives refresh and app reload', async ({ page, baseURL }) => {
+test('Done waits for server acknowledgment, completes only that source and retains it, and survives refresh and app reload', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
@@ -271,7 +274,7 @@ test('Done waits for server acknowledgment, completes only that source and retai
   app.assertClean();
 });
 
-test('canceling confirmation retains the row and makes no completion request', async ({ page, baseURL }) => {
+test('canceling confirmation retains the row and makes no completion request', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.done().tap();
   await page.locator('#app-prompt-dialog').getByRole('button', { name: 'Keep Pending', exact: true }).tap();
@@ -280,7 +283,7 @@ test('canceling confirmation retains the row and makes no completion request', a
   app.assertClean();
 });
 
-test('Suspend filters stay in the view, preserve a restored choice across Queue tabs, and Clear Filters restores rows on phone', async ({ page, baseURL }, info) => {
+test('Suspend filters stay in the view, preserve a restored choice across Queue tabs, and Clear Filters restores rows on phone', {"tag":["@suspend-tag"]}, async ({ page, baseURL }, info) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const app = await harness(page, baseURL!);
   const shell = page.locator('#request-suspend-tag-filter-shell');
@@ -353,7 +356,7 @@ test('Suspend filters stay in the view, preserve a restored choice across Queue 
   app.assertClean();
 });
 
-test('bounded Suspend Tag cards and filters remain reachable at 320, 390 and 430 pixels', async ({ page, baseURL }) => {
+test('bounded Suspend Tag cards and filters remain reachable at 320, 390 and 430 pixels', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   for (const width of [320, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
@@ -368,7 +371,7 @@ test('bounded Suspend Tag cards and filters remain reachable at 320, 390 and 430
   app.assertClean();
 });
 
-test('double activation sends one completion even through a stale rerendered button', async ({ page, baseURL }) => {
+test('double activation sends one completion even through a stale rerendered button', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
@@ -385,7 +388,7 @@ test('double activation sends one completion even through a stale rerendered but
   app.assertClean();
 });
 
-test('lost response leaves row actionable and retry after reload reuses the persisted request token', async ({ page, baseURL }) => {
+test('lost response leaves row actionable and retry after reload reuses the persisted request token', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   app.replies.push({ abort: true, commitBeforeAbort: true });
   await app.complete();
@@ -411,7 +414,7 @@ for (const failure of [
   { status: 400, message: 'Suspend Tag source revision is required.' },
   { status: 409, message: 'Suspend Tag row changed. Refresh and review before completing.' },
 ]) {
-  test(`HTTP ${failure.status} preserves actionable row and shows the actual error`, async ({ page, baseURL }) => {
+  test(`HTTP ${failure.status} preserves actionable row and shows the actual error`, {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
     const app = await harness(page, baseURL!);
     app.replies.push({ status: failure.status, body: { code: String(failure.status), message: failure.message } });
     await app.complete();
@@ -425,7 +428,7 @@ for (const failure of [
   });
 }
 
-test('malformed or mismatched acknowledgment never marks the row completed', async ({ page, baseURL }) => {
+test('malformed or mismatched acknowledgment never marks the row completed', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   for (const body of [
     { ok: true, sourceUid: 'another-source', completedAt: completionTime, sourceLastUpdated: sourceRevision, alreadyCompleted: false },
@@ -444,7 +447,7 @@ test('malformed or mismatched acknowledgment never marks the row completed', asy
   app.assertClean();
 });
 
-test('a stale snapshot cannot restore Done, but a newer reopened source stays visible', async ({ page, baseURL }) => {
+test('a stale snapshot cannot restore Done, but a newer reopened source stays visible', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.complete();
   await expect(app.card()).toHaveCount(1);
@@ -458,7 +461,7 @@ test('a stale snapshot cannot restore Done, but a newer reopened source stays vi
   app.assertClean();
 });
 
-test('an old completion response cannot hide a newer reopened version of the source', async ({ page, baseURL }) => {
+test('an old completion response cannot hide a newer reopened version of the source', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
@@ -474,7 +477,7 @@ test('an old completion response cannot hide a newer reopened version of the sou
 });
 
 
-test('detail Mark Done preserves failed form edits and only applies a confirmed save', async ({page,baseURL})=>{
+test('detail Mark Done preserves failed form edits and only applies a confirmed save', {"tag":["@suspend-tag"]}, async ({page,baseURL})=>{
   test.setTimeout(120000);
   const app=await harness(page,baseURL!);
   await page.evaluate(()=>window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
@@ -507,7 +510,7 @@ test('detail Mark Done preserves failed form edits and only applies a confirmed 
   app.assertClean();
 });
 
-test('emailed approval opens after sign-in and URL decision text never records a decision',async({page,baseURL})=>{
+test('emailed approval opens after sign-in and URL decision text never records a decision', {"tag":["@suspend-tag"]},async({page,baseURL})=>{
   test.setTimeout(120000);
   const id='b0000000-0000-4000-8000-000000000001';
   const row={...fixtures[0],DATE_COMPLETED:completionTime,SUSPEND_TAG_STATUS:'awaiting_rep',SUSPEND_TAG_APPROVAL_ID:id};
@@ -526,7 +529,7 @@ test('emailed approval opens after sign-in and URL decision text never records a
   app.assertClean();
 });
 
-test('manual first email, denial preserves work, and re-completion starts a fresh approval', async ({page,baseURL})=>{
+test('manual first email, denial preserves work, and re-completion starts a fresh approval', {"tag":["@suspend-tag"]}, async ({page,baseURL})=>{
   test.setTimeout(120000); // Two complete mobile approval rounds.
   const app=await harness(page,baseURL!);
   await app.complete();

@@ -1,3 +1,6 @@
+// @test-runtime: postgres-concurrency
+// @test-db-env: AURA_LLM_TEST_DB_URL
+// @test-group: aura
 import pg from 'pg';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';

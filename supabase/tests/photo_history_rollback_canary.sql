@@ -1,5 +1,31 @@
+-- @test-runtime: sql-rollback
 -- Rollback-only canary. No email event becomes visible to a worker.
 begin;
+-- Transaction-owned recipient identities and available catalog photo.
+insert into auth.users (id, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data) values
+  ('ab000001-0000-4000-8000-000000000001', 'rollback-dylan@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000002', 'rollback-megan@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000005', 'rollback-jd@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000006', 'rollback-madison@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000007', 'rollback-madelyn@example.invalid', now(), '{}'::jsonb, '{}'::jsonb)
+on conflict (id) do update set email=excluded.email, email_confirmed_at=excluded.email_confirmed_at,
+  raw_app_meta_data=excluded.raw_app_meta_data, raw_user_meta_data=excluded.raw_user_meta_data;
+insert into public.profiles (id, username, display_name, role, must_change_password) values
+  ('ab000001-0000-4000-8000-000000000001', 'dylan_collyge', 'Rollback Dylan', 'ADMIN', false),
+  ('ab000001-0000-4000-8000-000000000002', 'megan_kelly', 'Rollback Megan', 'ADMIN', false),
+  ('ab000001-0000-4000-8000-000000000005', 'jd_jones', 'Rollback JD', 'USER', false),
+  ('ab000001-0000-4000-8000-000000000006', 'madison_austin', 'Rollback Madison', 'REP', false),
+  ('ab000001-0000-4000-8000-000000000007', 'madelyn_gray', 'Rollback Madelyn', 'REP', false)
+on conflict (id) do update set username=excluded.username, display_name=excluded.display_name,
+  role=excluded.role, disabled_at=null, locked_until=null, must_change_password=false;
+insert into public.ph_photo_history_assets
+  (source_key, bucket, path, filename, photo_at, itemcode, commonname, contsize,
+   locationcode, lotcode, contexts, search_text, storage_available)
+values
+  ('rollback-fixture/photo-history/lemon-grass.jpg', 'request_photos', 'rollback-fixture/lemon-grass.jpg',
+   'lemon-grass.jpg', now(), 'ROLLBACK-PHOTO-001', 'Lemon Grass', '#1', 'A.01.001', 'R-PHOTO',
+   '[{"itemcode":"ROLLBACK-PHOTO-001","commonname":"Lemon Grass","contsize":"#1","locationcode":"A.01.001","lotcode":"R-PHOTO"}]'::jsonb,
+   'lemon grass rollback fixture', true);
 select set_config('request.jwt.claim.role','service_role',true);
 do $$
 declare actor uuid; actor_name text; other_actor uuid; rep uuid; asset uuid; packet jsonb; first_result jsonb; replay jsonb; ev uuid; count_before bigint;

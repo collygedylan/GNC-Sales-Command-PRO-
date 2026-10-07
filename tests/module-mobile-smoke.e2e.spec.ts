@@ -1,6 +1,9 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
+
 import { installSalesMobileFixture } from './fixtures/sales-mobile-fixture';
 import { installDriveCardLayoutFixture, renderDriveLayoutCard, restoreDriveLayoutRenderer, settleDriveLayoutShell } from './fixtures/drive-card-layout';
+// @test-group: @module-mobile
+
 
 // Opening/layout evidence only. The real compiled renderers and click handlers run,
 // but API reads are synthetic. No business action, email or inventory write is
@@ -8,7 +11,7 @@ import { installDriveCardLayoutFixture, renderDriveLayoutCard, restoreDriveLayou
 const themes = ['light', 'dark', 'outdoor'] as const;
 type Evidence = { screen: string; theme: string; view: string; text: string; controls: number; issues: string[] };
 
-test('Drive compact cards fit phone widths in every theme and keep row actions usable', async ({ page, baseURL }, testInfo) => {
+test('Drive compact cards fit phone widths in every theme and keep row actions usable', {"tag":["@module-mobile"]}, async ({ page, baseURL }, testInfo) => {
   const fixtureControl = await installDriveCardLayoutFixture(page, baseURL!);
   await settleDriveLayoutShell(page, testInfo.project.name);
   for (const theme of themes) {
@@ -368,7 +371,7 @@ const drawerGroups = {
   'inventory and work modules': ['drive', 'tasks', 'request', 'av', 'reserves', 'docks', 'take-back', 'crop-roll', 'low-stock', 'review', 'move-up'],
   'hubs and specialist modules': ['sales', 'sales-inventory', 'production', 'office', 'qc', 'communication', 'sales-office', 'advertisement', 'grower', 'pest-management', 'disease-pest', 'hours', 'bunch-note', 'hl-order'],
 };
-for (const [group, views] of Object.entries(drawerGroups)) test(`phone opening smoke: ${group}`, async ({ page, baseURL }, info) => {
+for (const [group, views] of Object.entries(drawerGroups)) test(`phone opening smoke: ${group}`, {"tag":["@module-mobile"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!), evidence: Evidence[] = [];
   try {
     for (const view of views) await test.step(view, async () => {
@@ -381,20 +384,20 @@ for (const [group, views] of Object.entries(drawerGroups)) test(`phone opening s
 });
 
 for (const [group, routes] of Object.entries(phoneHubRouteGroups)) {
-  test(`phone opening smoke: ${group}`, async ({ page, baseURL }, info) => {
+  test(`phone opening smoke: ${group}`, {"tag":["@module-mobile"]}, async ({ page, baseURL }, info) => {
     await checkHubRoutes(page, baseURL!, info, routes, group === 'Communication and Reports routes');
   });
 }
 
-test('phone opening smoke: first half of accessible Manager modules', async ({ page, baseURL }, info) => {
+test('phone opening smoke: first half of accessible Manager modules', {"tag":["@module-mobile"]}, async ({ page, baseURL }, info) => {
   await checkManagerModuleGroup(page, baseURL!, info, 0);
 });
 
-test('phone opening smoke: second half of accessible Manager modules', async ({ page, baseURL }, info) => {
+test('phone opening smoke: second half of accessible Manager modules', {"tag":["@module-mobile"]}, async ({ page, baseURL }, info) => {
   await checkManagerModuleGroup(page, baseURL!, info, 1);
 });
 
-test('phone opening smoke: footer shortcut settings', async ({ page, baseURL }, info) => {
+test('phone opening smoke: footer shortcut settings', {"tag":["@module-mobile"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!), evidence: Evidence[] = [];
   try {
     await home(page);

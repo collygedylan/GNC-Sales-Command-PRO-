@@ -1,7 +1,9 @@
+// @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { installDatabaseBridge } from './helpers/database-bridge.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
@@ -220,11 +222,12 @@ test('health telemetry cancels across navigation during authentication and in fl
         SUPABASE_URL: 'https://fixture.invalid', SUPABASE_WRITE_TIMEOUT_MS: 1000,
         productionLiveSyncNavigation: new AbortController(), getNativeAuthRequestHeaders: () => auth.promise,
         sanitizeHealthMetadata: value => value,
-        fetchWithTimeout: async (_, options) => { calls.push(options); return { ok: true, text: async () => '[]' }; }
+        fetchWithTimeout: async (_, options) => { calls.push(options); return new Response('1', { headers: { 'content-type': 'application/json' } }); }
     };
     vm.createContext(ctx);
     const signalStart = html.indexOf('async function withProductionLiveSyncSignal(');
     vm.runInContext(html.slice(signalStart, html.indexOf('function ', signalStart + 15)).trim(), ctx);
+    installDatabaseBridge(ctx);
     const rpcStart = html.indexOf('async function supabaseRpc(');
     vm.runInContext(html.slice(rpcStart, html.indexOf('const SECURE_DRIVE_EVIDENCE_PREFIXES', rpcStart)), ctx);
     const healthStart = html.indexOf('function reportSemanticHealthEvent(');
@@ -244,7 +247,7 @@ test('health telemetry cancels across navigation during authentication and in fl
     assert.deepEqual(await Promise.all(pending), [false, false]);
     assert.ok(calls.every(options => options.signal.aborted));
     ctx.productionLiveSyncNavigation = new AbortController();
-    ctx.fetchWithTimeout = async () => ({ ok: true, text: async () => '[]' });
+    ctx.fetchWithTimeout = async () => new Response('1', { headers: { 'content-type': 'application/json' } });
     assert.deepEqual(await Promise.all(reports()), [true, true], 'active-document health reporting remains enabled');
 });
 
@@ -255,16 +258,17 @@ test('a revision read cancelled during auth preparation never starts its RPC', a
     const ctx = { Error, Object, String, Number, Math, JSON, encodeURIComponent,
         SUPABASE_URL: 'https://fixture.invalid', SUPABASE_WRITE_TIMEOUT_MS: 1000,
         getNativeAuthRequestHeaders: () => gate.promise,
-        fetchWithTimeout: async () => { calls++; return { ok: true, text: async () => '{}' }; }
+        fetchWithTimeout: async () => { calls++; return new Response('{}', { headers: { 'content-type': 'application/json' } }); }
     };
+    installDatabaseBridge(ctx);
     vm.createContext(ctx);
     vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
     vm.runInContext(html.slice(from, to), ctx);
-    const pending = ctx.supabaseRpc('get_my_dataset_revisions_v1', {}, { signal: controller.signal });
+    const pending = ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: [] }, { signal: controller.signal });
     controller.abort(); gate.resolve({ Authorization: 'synthetic' });
     await assert.rejects(pending, error => error.code === 'REQUEST_ABORTED');
     assert.equal(calls, 0);
-    await ctx.supabaseRpc('get_my_dataset_revisions_v1', {}, { signal: new AbortController().signal });
+    await ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: [] }, { signal: new AbortController().signal });
     assert.equal(calls, 1, 'new document/account reads retain normal authentication');
 });
 
@@ -1105,3 +1109,4 @@ test('initial restored auth event keeps its pending session read while a known a
     callback('SIGNED_IN', { user: { id: 'account-b' } });
     assert.deepEqual(calls, ['dispose-aura', 'invalidate', 'reset']);
 });
+// @test-group: foundation

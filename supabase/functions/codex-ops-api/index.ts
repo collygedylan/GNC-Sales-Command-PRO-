@@ -1,4 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import type { Database } from "../_shared/database.types.ts";
+import { contracts } from "../../../services/database-contracts.generated.ts";
+import { jsonObject, jsonValue, validateSchema } from "../../../services/database-contract-runtime.ts";
 import {
   CODEX_OPS_BUCKET,
   corsHeaders,
@@ -20,13 +23,19 @@ import {
 type JsonRecord = Record<string, unknown>;
 const admin = serviceClient();
 
-async function userRpc(req: Request, name: string, args: JsonRecord = {}) {
-  const { data, error } = await userClient(req).rpc(name, args);
+type UserOperation = "get_codex_ops_task_v1" | "get_codex_ops_capabilities_v1" | "list_codex_ops_tasks_v1"
+  | "create_codex_ops_task_v1" | "add_codex_ops_message_v1" | "cancel_codex_ops_task_v1"
+  | "request_codex_ops_escalation_v1" | "approve_codex_ops_deployment_v1";
+async function userRpc<N extends UserOperation>(req: Request, name: N, args: unknown = {}) {
+  validateSchema(contracts.functions[name], args, `${name} arguments`);
+  // Narrow only after the generated runtime contract validates bridge inputs.
+  const checked = args as Database["public"]["Functions"][N]["Args"];
+  const { data, error } = await userClient(req).rpc(name, checked);
   if (error)
     throw new Error(
       String(error.message || error.code || "CODEX_OPS_RPC_FAILED"),
     );
-  return data;
+  return jsonValue(data);
 }
 
 async function serviceEvent(
@@ -39,13 +48,13 @@ async function serviceEvent(
     p_task_id: taskId,
     p_expected_revision: revision,
     p_action: action,
-    p_payload: payload,
+    p_payload: jsonValue(payload),
   });
   if (error)
     throw new Error(
       String(error.message || error.code || "CODEX_OPS_SERVICE_EVENT_FAILED"),
     );
-  return data as JsonRecord;
+  return jsonObject(data);
 }
 
 async function verifiedTask(req: Request, taskId: string) {
@@ -54,7 +63,7 @@ async function verifiedTask(req: Request, taskId: string) {
     p_after_event_id: 0,
     p_event_limit: 1,
   });
-  return (taskData as JsonRecord)?.task as JsonRecord;
+  return jsonObject(jsonObject(taskData).task);
 }
 
 async function beginAttachment(req: Request, body: JsonRecord) {
@@ -147,7 +156,7 @@ serve(async (req) => {
     return jsonResponse({ error: "METHOD_NOT_ALLOWED" }, 405);
   try {
     await requireNativeDylan(req, admin);
-    const body = (await req.json()) as JsonRecord;
+    const body = jsonObject(await req.json());
     const action = String(body.action || "");
     if (action === "capabilities")
       return jsonResponse(await userRpc(req, "get_codex_ops_capabilities_v1"));

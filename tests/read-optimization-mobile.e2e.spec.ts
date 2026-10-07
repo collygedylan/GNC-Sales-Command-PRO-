@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
+
 import fs from 'node:fs';
+// @test-group: @production-schedule
+
 
 const shell = fs.readFileSync('index.html', 'utf8');
 const start = shell.indexOf('const CLIENT_BROWSE_PAGE_SIZE = 100;');
@@ -7,7 +10,7 @@ const end = shell.indexOf('function renderDriveRecordResults', start);
 if (start < 0 || end < start) throw new Error('Browse paging helpers not found');
 const paging = shell.slice(start, end);
 
-test('AV, Drive and Que paging remains bounded and usable at mobile widths', async ({ page }, testInfo) => {
+test('AV, Drive and Que paging remains bounded and usable at mobile widths', {"tag":["@production-schedule"]}, async ({ page }, testInfo) => {
   await page.setContent('<body><main id="results"></main></body>');
   await page.addStyleTag({ path: 'assets/live-tailwind-v2026082010.min.css' });
   await page.addStyleTag({ content: 'body { margin:0; padding:8px; --bg-surface:#0a120e; --text-main:#f0fdf4; --text-meta:#c7d9ce; --color-border-subtle:#316e4b; } .fixture-row { padding:8px; overflow-wrap:anywhere; }' });

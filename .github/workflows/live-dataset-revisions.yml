@@ -6,6 +6,10 @@ on:
       - 'supabase/archive_migrations/*live_dataset_revision*'
       - 'supabase/ci/live_dataset_revision*'
       - 'supabase/tests/live_dataset_revisions*'
+      - 'scripts/test-discovery.mjs'
+      - 'scripts/run-discovered-database-tests.mjs'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/live-dataset-revisions.yml'
   workflow_dispatch:
 permissions:
@@ -28,7 +32,7 @@ jobs:
         with:
           version: '2.111.0'
       - uses: ./.github/actions/setup-node-dependencies
-      - run: node --test supabase/ci/live_dataset_revision_import.test.mjs
+      - run: node scripts/run-discovered-tests.mjs node-ci-integration
       - name: Start disposable local Auth, REST and Realtime only
         run: |
           set -euo pipefail

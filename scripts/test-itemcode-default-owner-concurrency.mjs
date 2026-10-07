@@ -1,3 +1,5 @@
+// @test-runtime: postgres-concurrency
+// @test-db-env: ITEMCODE_DEFAULT_OWNER_TEST_DB_URL
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';

@@ -1,13 +1,23 @@
 import { getDocumentProxy } from 'npm:unpdf@1.8.1';
 import { HL_PO_PDF_VERSION, parseHlPoPdfPage, validateHlPoPdfReport } from '../_shared/hl-po-pdf.mjs';
+import type { Database } from '../_shared/database.types.ts';
+import { createDatabaseRestBridge } from '../../../services/databaseRest.ts';
+import { jsonObject, jsonValue, type Json } from '../../../services/database-contract-runtime.ts';
 
 const response=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json','Cache-Control':'private, no-store'}});
 const hash=async(bytes:Uint8Array)=>Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new Uint8Array(bytes).buffer))).map(n=>n.toString(16).padStart(2,'0')).join('');
 
-type RpcClient={rpc(name:string,args:Record<string,unknown>):PromiseLike<{data:Record<string,unknown>|null,error:{message:string}|null}>};
+/** PostgreSQL allows NULL for p_page although Supabase's generated Args type omits argument nullability. */
+export type HlPoPdfStageArgs=Omit<Database['public']['Functions']['hl_po_pdf_stage']['Args'],'p_page'>
+ & {p_page:Database['public']['Functions']['hl_po_pdf_stage']['Args']['p_page']|null};
+export type HlPoRpcResult={data:Json|null,error:{message:string}|null};
+export type HlPoRpcClient={
+ rpc(name:'hl_po_import_capabilities'):PromiseLike<HlPoRpcResult>;
+ rpc(name:'hl_po_pdf_stage',args:HlPoPdfStageArgs):PromiseLike<HlPoRpcResult>;
+};
 
 export function createHlPoServiceAuthorizer(url:string, fetcher:typeof fetch=fetch) {
- return async(request:Request):Promise<RpcClient|null>=>{
+ return async(request:Request):Promise<HlPoRpcClient|null>=>{
   const authorization=request.headers.get('authorization') || '';
   const bearer=/^Bearer\s+(.+)$/i.exec(authorization)?.[1].trim() || '';
   const apiKey=(request.headers.get('apikey') || bearer).trim();
@@ -17,25 +27,44 @@ export function createHlPoServiceAuthorizer(url:string, fetcher:typeof fetch=fet
   const headers:Record<string,string>={'apikey':apiKey,'Content-Type':'application/json'};
   if(bearer) headers.Authorization=`Bearer ${bearer}`;
   else if(!apiKey.startsWith('sb_')) headers.Authorization=`Bearer ${apiKey}`;
-  const call=async(name:string,args:Record<string,unknown>)=>fetcher(`${url}/rest/v1/rpc/${name}`,{
-   method:'POST',headers,body:JSON.stringify(args),signal:AbortSignal.timeout(8000),redirect:'error'
-  });
-  const proof=await call('hl_po_import_capabilities',{});
+  const bridge=createDatabaseRestBridge((target,init,timeout,label)=>fetcher(target,{
+   ...init,signal:init.signal || AbortSignal.timeout(timeout),redirect:'error'
+  }));
+  async function call(name:'hl_po_import_capabilities'):Promise<Response>;
+  async function call(name:'hl_po_pdf_stage',args:HlPoPdfStageArgs):Promise<Response>;
+  async function call(name:'hl_po_import_capabilities'|'hl_po_pdf_stage',args?:HlPoPdfStageArgs):Promise<Response> {
+   return bridge.fetchRpc(url,name,{
+    method:'POST',headers,body:JSON.stringify(args ?? {}),signal:AbortSignal.timeout(8000),redirect:'error'
+   },8000,`HL PO ${name}`);
+  }
+  const proof=await call('hl_po_import_capabilities');
   if(proof.status===401 || proof.status===403) return null;
   if(!proof.ok) throw new Error('HL_PO_PDF_AUTH_UNAVAILABLE');
-  const capabilities=await proof.json();
+  const capabilities=jsonObject(jsonValue(await proof.json()));
   if(capabilities?.pdf!==true || capabilities?.version!==2) throw new Error('HL_PO_PDF_AUTH_UNAVAILABLE');
-  return {async rpc(name,args){
-   const result=await call(name,args);
-   const body=await result.json();
-   return result.ok?{data:body,error:null}:{data:null,error:{message:String(body?.message || 'HL_PO_PDF_STAGE_FAILED')}};
-  }};
+  async function rpc(name:'hl_po_import_capabilities'):Promise<HlPoRpcResult>;
+  async function rpc(name:'hl_po_pdf_stage',args:HlPoPdfStageArgs):Promise<HlPoRpcResult>;
+  async function rpc(name:'hl_po_import_capabilities'|'hl_po_pdf_stage',args?:HlPoPdfStageArgs):Promise<HlPoRpcResult> {
+   let result:Response;
+   if(name==='hl_po_import_capabilities') result=await call(name);
+   else {
+    if(!args) throw new Error('HL_PO_PDF_STAGE_FAILED');
+    result=await call(name,args);
+   }
+   if(!result.ok) {
+    let message='HL_PO_PDF_STAGE_FAILED';
+    try { const body=jsonObject(jsonValue(await result.json())); message=String(body.message || message); } catch { /* keep safe fallback */ }
+    return {data:null,error:{message}};
+   }
+   return {data:jsonValue(await result.json()),error:null};
+  }
+  return {rpc};
  };
 }
 
-export function createHlPoPdfHandler(authorize:(request:Request)=>Promise<RpcClient|null>) {
+export function createHlPoPdfHandler(authorize:(request:Request)=>Promise<HlPoRpcClient|null>) {
 return async (request:Request)=>{
-  let client:RpcClient|null;
+  let client:HlPoRpcClient|null;
   try { client=await authorize(request); }
   catch { return response({ok:false,code:'HL_PO_PDF_AUTH_UNAVAILABLE'},503); }
   if(!client) return response({ok:false,code:'HL_PO_PDF_FORBIDDEN'},403);
@@ -71,7 +100,7 @@ return async (request:Request)=>{
     if(last<pdf.numPages) return response({ok:true,run_id:runId,status:'staging',next_page:last+1,page_count:pdf.numPages});
     const {data,error}=await client.rpc('hl_po_pdf_stage',{p_run_id:runId,p_metadata:metadata,p_page:null,p_rows:[],p_complete:true});
     if(error) throw new Error(error.message?.match(/HL_PO_[A-Z_]+/)?.[0] || 'HL_PO_PDF_FINALIZE_FAILED');
-    return response({ok:true,...data,run_id:runId,next_page:null,page_count:pdf.numPages,total_rows:pages.reduce((n,p)=>n+p.rows.length,0)});
+    return response({ok:true,...jsonObject(data),run_id:runId,next_page:null,page_count:pdf.numPages,total_rows:pages.reduce((n,p)=>n+p.rows.length,0)});
   } catch(error) {
     const code=String(error instanceof Error?error.message:'').match(/^HL_PO_[A-Z_]+(?::page_\d+)?$/)?.[0].split(':')[0] || 'HL_PO_PDF_IMPORT_FAILED';
     return response({ok:false,code},422);

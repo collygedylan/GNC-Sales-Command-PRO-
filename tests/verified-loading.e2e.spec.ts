@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+// @test-group: @home-role
+
 
 type VisitPhase = 'cold' | 'repeat-settled-home' | 'repeat-rapid-home';
 type CoordinatorStats = { revisionReads: number; adapterReads: number; discardedLoads: number; commits: number; signals: number; cacheHits: number };
@@ -276,7 +279,7 @@ function commonNameMasterRows() {
 const commonNameState = (page: Page) => page.locator('#drive-content');
 const commonNameButtons = (page: Page) => page.locator('#drive-content').getByRole('button', { name: /^Open Common Name / });
 
-test('Common Name displays early rows, finishes all 9366 rows, and survives identical refreshes', async ({ page, baseURL }, info) => {
+test('Common Name displays early rows, finishes all 9366 rows, and survives identical refreshes', {"tag":["@home-role"]}, async ({ page, baseURL }, info) => {
   const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
   fixture.holdNextMasterLaterPage();
   const coldStartedAt = Date.now();
@@ -286,7 +289,7 @@ test('Common Name displays early rows, finishes all 9366 rows, and survives iden
     try { await expect.poll(() => commonNameButtons(page).count()).toBeGreaterThan(0); }
     catch (error) {
       const detail = await page.evaluate(() => window.eval(`JSON.stringify({ context: getProductionLiveSyncContext().adapters.map(a=>a.id), surfaces:getProductionLiveSyncContext().surfaces, progressive:getProductionLiveSyncContext().progressive, canDisplay:hasProgressiveViewData(), groups:[...productionDisplayGroups], draft:hasProductionLiveSyncDraft(), active:document.activeElement?.id, rows:fullInventory.length, status:productionLiveSyncCoordinator.getStatus(), pending:!!driveCommonNamePreparation })`));
-      throw new Error(`${String(error)}\nPreview diagnostic: ${detail}`);
+      throw new Error(`${String(error)}\nPreview diagnostic: ${detail}`, { cause: error });
     }
     const firstMs = Date.now() - coldStartedAt;
     expect(await commonNameButtons(page).count()).toBeLessThan(COMMON_NAME_TOTAL);
@@ -317,7 +320,7 @@ test('Common Name displays early rows, finishes all 9366 rows, and survives iden
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Common Name replaces obsolete search and navigation work and resumes after visibility changes', async ({ page, baseURL }) => {
+test('Common Name replaces obsolete search and navigation work and resumes after visibility changes', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
   await page.locator('#home-tile-drive').click();
   await waitForVerifiedDrive(page);
@@ -345,7 +348,7 @@ test('Common Name replaces obsolete search and navigation work and resumes after
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-for (const failure of ['failed', 'empty'] as const) test(`Common Name retains early rows with Retry when a later page is ${failure}`, async ({ page, baseURL }) => {
+for (const failure of ['failed', 'empty'] as const) test(`Common Name retains early rows with Retry when a later page is ${failure}`, {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!, { master: commonNameMasterRows() });
   if (failure === 'failed') fixture.failNextMasterLaterPage(); else fixture.emptyMasterLaterPage();
   await page.locator('#home-tile-drive').click();
@@ -361,8 +364,8 @@ for (const failure of ['failed', 'empty'] as const) test(`Common Name retains ea
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('mobile Pending Requests renders its required rows while unrelated reads are held or failing', async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
+test('mobile Pending Requests renders its required rows while unrelated reads are held or failing', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Focused native-auth phone and tablet regression');
   const control = await installPendingRequestFixture(page, baseURL!, 'rows');
   try {
     await openPendingRequests(page);
@@ -378,8 +381,8 @@ test('mobile Pending Requests renders its required rows while unrelated reads ar
   expect(control.fixture.blockedMutations).toEqual([]);
 });
 
-test('native mobile search viewport changes settle without browser resize errors', async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, 'Native mobile viewport regression');
+test('native mobile search viewport changes settle without browser resize errors', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Native mobile viewport regression');
   await page.addInitScript(() => {
     (window as any).__nativeResizeErrors = 0;
     window.addEventListener('error', event => {
@@ -414,7 +417,7 @@ test('native mobile search viewport changes settle without browser resize errors
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('navigation clears a stale draft warning without discarding the retained input value', async ({ page, baseURL }) => {
+test('navigation clears a stale draft warning without discarding the retained input value', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!);
   await page.locator('#bottom-nav [data-footer-view="docks"]').click();
   await expect(page.locator('#view-docks')).toBeVisible();
@@ -442,8 +445,8 @@ test('navigation clears a stale draft warning without discarding the retained in
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('mobile Pending Requests exposes required-read failure and recovers through Retry', async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
+test('mobile Pending Requests exposes required-read failure and recovers through Retry', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Focused native-auth phone and tablet regression');
   const control = await installPendingRequestFixture(page, baseURL!, 'failed');
   try {
     await openPendingRequests(page);
@@ -458,8 +461,8 @@ test('mobile Pending Requests exposes required-read failure and recovers through
   expect(control.fixture.blockedMutations).toEqual([]);
 });
 
-test('mobile Pending Requests verifies an empty required list without waiting on other datasets', async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
+test('mobile Pending Requests verifies an empty required list without waiting on other datasets', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
+  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Focused native-auth phone and tablet regression');
   const control = await installPendingRequestFixture(page, baseURL!, 'empty');
   try {
     await openPendingRequests(page);
@@ -473,7 +476,7 @@ test('mobile Pending Requests verifies an empty required list without waiting on
   expect(control.fixture.blockedMutations).toEqual([]);
 });
 
-test('QC Supervisor Drive cold start verifies inventory and season before searchable cards', async ({ page, baseURL }) => {
+test('QC Supervisor Drive cold start verifies inventory and season before searchable cards', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const reads: string[] = [];
   const fixture = await installColdFixture(page, baseURL!, {
     username: 'dan_mccuistion', role: 'QC Supervisor',
@@ -496,7 +499,7 @@ test('QC Supervisor Drive cold start verifies inventory and season before search
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Drive season denial stays recoverable and makes no automatic retry before explicit Retry', async ({ page, baseURL }) => {
+test('Drive season denial stays recoverable and makes no automatic retry before explicit Retry', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   let denied = true;
   let settingReads = 0;
   const fixture = await installColdFixture(page, baseURL!, {
@@ -530,7 +533,7 @@ test('Drive season denial stays recoverable and makes no automatic retry before 
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Drive verifies cards before unopened reserves and AV-note sources are requested', async ({ page, baseURL }) => {
+test('Drive verifies cards before unopened reserves and AV-note sources are requested', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   let releaseOptional!: () => void;
   const optionalGate = new Promise<void>(resolve => { releaseOptional = resolve; });
   let optionalReadCount = 0;
@@ -560,8 +563,8 @@ test('Drive verifies cards before unopened reserves and AV-note sources are requ
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-for (const view of ['Drive', 'Tasks'] as const) test(`benchmark records three independent cold and repeat ${view} visits`, async ({ browser, baseURL }, info) => {
-  test.skip(process.env.VERIFIED_LOADING_BENCHMARK !== '1', 'benchmark enabled only when explicitly requested');
+for (const view of ['Drive', 'Tasks'] as const) test(`benchmark records three independent cold and repeat ${view} visits`, {"tag":["@home-role"]}, async ({ browser, baseURL }, info) => {
+  test.skip(process.env.VERIFIED_LOADING_BENCHMARK !== '1', {"tag":["@home-role"]}, 'benchmark enabled only when explicitly requested');
   const trials: Visit[][] = [];
   for (let trial = 0; trial < 3; trial++) {
     const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = info.project.use;
@@ -614,7 +617,7 @@ for (const view of ['Drive', 'Tasks'] as const) test(`benchmark records three in
 });
 
 
-test('Tasks verifies both AV Blank inputs without waiting for unopened task categories', async ({ page, baseURL }) => {
+test('Tasks verifies both AV Blank inputs without waiting for unopened task categories', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   let releaseCav!: () => void, releaseOptional!: () => void;
   const cavGate = new Promise<void>(resolve => { releaseCav = resolve; });
   const optionalGate = new Promise<void>(resolve => { releaseOptional = resolve; });
@@ -654,7 +657,7 @@ test('Tasks verifies both AV Blank inputs without waiting for unopened task cate
 });
 
 
-test('Drive previews same-permission cache before revisions and keeps it display-only through import and failure', async ({ page, baseURL }, testInfo) => {
+test('Drive previews same-permission cache before revisions and keeps it display-only through import and failure', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
   const forbiddenMasterReads: string[] = [];
   page.on('request', request => {
     const url = new URL(request.url());
@@ -759,7 +762,7 @@ test('Drive previews same-permission cache before revisions and keeps it display
   expect(fixture.errors).toEqual([]); expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Managers module picker opens without waiting for unrelated live datasets', async ({ page, baseURL }, testInfo) => {
+test('Managers module picker opens without waiting for unrelated live datasets', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
   const fixture = await installColdFixture(page, baseURL!);
   await page.evaluate(() => {
     const tile = document.querySelector('#home-tile-managers');
@@ -804,7 +807,7 @@ test('Managers module picker opens without waiting for unrelated live datasets',
 });
 
 
-test('native session recovery is shared by module reads and never calls the legacy database proxy', async ({ page, baseURL }) => {
+test('native session recovery is shared by module reads and never calls the legacy database proxy', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!);
   let release!: () => void, refreshes = 0;
   const gate = new Promise<void>(resolve => { release = resolve; });
@@ -829,7 +832,7 @@ test('native session recovery is shared by module reads and never calls the lega
   expect(fixture.errors).toEqual([]);
 });
 
-test('failed native session recovery shows recovery guidance without a legacy database request', async ({ page, baseURL }) => {
+test('failed native session recovery shows recovery guidance without a legacy database request', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!);
   await page.evaluate(() => {
     const client = window.eval('getSupabaseBrowserClient()');
@@ -841,7 +844,7 @@ test('failed native session recovery shows recovery guidance without a legacy da
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('HL and PO show permission-matched saved listings before refresh, with current actions gated', async ({ page, baseURL }) => {
+test('HL and PO show permission-matched saved listings before refresh, with current actions gated', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!, {
     username: 'dylan_collyge',
     poRows: [{ row_index: 1, itemcode: 'CACHE.PO', commonname: 'Saved PO listing', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' }]
@@ -892,8 +895,8 @@ test('HL and PO show permission-matched saved listings before refresh, with curr
 });
 
 
-test('progressive loader reference timing uses three cold sessions and repeat visits', async ({ browser, baseURL }, info) => {
-  test.skip(process.env.PROGRESSIVE_LOADING_BENCHMARK !== '1', 'Timing runs are isolated from functional browser work');
+test('progressive loader reference timing uses three cold sessions and repeat visits', {"tag":["@home-role"]}, async ({ browser, baseURL }, info) => {
+  test.skip(process.env.PROGRESSIVE_LOADING_BENCHMARK !== '1', {"tag":["@home-role"]}, 'Timing runs are isolated from functional browser work');
   test.setTimeout(240000);
   const samples: any[] = [];
   for (let trial = 0; trial < 3; trial++) {

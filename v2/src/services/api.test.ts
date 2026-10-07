@@ -13,7 +13,7 @@ vi.mock('@supabase/supabase-js', () => ({
     from: (table: string) => {
       harness.calls.push(['from', table]);
       const builder: Record<string, unknown> = {};
-      for (const method of ['select', 'order', 'range', 'or', 'abortSignal']) {
+      for (const method of ['select', 'order', 'range', 'or', 'abortSignal', 'update', 'insert', 'eq']) {
         builder[method] = (...args: unknown[]) => {
           harness.calls.push([method, ...args]);
           return builder;
@@ -35,7 +35,21 @@ vi.mock('./cache', () => ({
   savePreference: vi.fn()
 }));
 
-import { fetchInventoryPage, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession } from './api';
+import { fetchInventoryPage, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession, patchRow, REQUEST_TABLE } from './api';
+
+describe('schema-checked request updates', () => {
+  it('converts input quantities and blanks to native database values', async () => {
+    harness.response = { data: [{ unique_id: 'request-1' }], error: null };
+    await patchRow({ username: 'fixture', token: 'fixture-token' }, REQUEST_TABLE, 'request-1', { REQ_QTY: '12', LOC_MATCH: '', REQ_ARCHIVED: false });
+    expect(harness.calls).toContainEqual(['update', { req_qty: 12, req_match: null, req_archived: false }]);
+    expect(harness.calls).toContainEqual(['eq', 'unique_id', 'request-1']);
+  });
+  it('rejects invalid numeric inputs and columns absent from the schema', async () => {
+    await expect(patchRow({ username: 'fixture', token: 'fixture-token' }, REQUEST_TABLE, 'request-1', { REQ_QTY: 'twelve' })).rejects.toThrow(/enter a number/);
+    await expect(patchRow({ username: 'fixture', token: 'fixture-token' }, REQUEST_TABLE, 'request-1', { missing_column: true })).rejects.toThrow(/database schema/);
+    expect(harness.calls.some(([method]) => method === 'update')).toBe(false);
+  });
+});
 
 afterEach(() => {
   harness.calls = [];

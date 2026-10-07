@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional,eval
+
+
 
 for (const width of [390, 1280]) {
-  test(`Eval Reports #2 multi-report picker unions rows and Queue context at ${width}px`, async ({ page }) => {
+  test(`Eval Reports #2 multi-report picker unions rows and Queue context at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/?e2e=eval-multi-report&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof (window as any).setManagerEvalReport2Reports === 'function');
@@ -66,7 +69,7 @@ for (const width of [390, 1280]) {
 
 for (const width of [360, 390, 1280]) {
   for (const theme of ['light', 'dark']) {
-    test(`Eval Reports #2 six-column inventory card preserves row values at ${width}px in ${theme} theme`, async ({ page }, testInfo) => {
+    test(`Eval Reports #2 six-column inventory card preserves row values at ${width}px in ${theme} theme`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 844 });
       await page.goto('/?e2e=eval2-six-column-card&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(() => typeof (window as any).renderManagerEvalReport2SelectableCard === 'function');
@@ -122,7 +125,7 @@ for (const width of [360, 390, 1280]) {
 }
 
 for (const width of [390, 1280]) {
-  test(`Eval Reports #2 Low Stock season picker matches any selected season at ${width}px`, async ({ page }) => {
+  test(`Eval Reports #2 Low Stock season picker matches any selected season at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/?e2e=eval2-low-stock-multi-season&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
@@ -282,7 +285,7 @@ for (const width of [390, 1280]) {
   });
 }
 
-test('bottom quick-access navigation opens each destination on the first click', async ({ page }) => {
+test('bottom quick-access navigation opens each destination on the first click', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width:390, height:844 });
   await page.goto('/?e2e=bottom-quick-access&post_deploy_access_canary=1', { waitUntil:'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).switchView === 'function' && typeof (window as any).updateFooterNavState === 'function');
@@ -325,7 +328,7 @@ test('bottom quick-access navigation opens each destination on the first click',
   await expect(page.locator('#side-drawer')).toHaveClass(/open/);
 });
 
-test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to LocationCode without rebuilding Managers', async ({ page }) => {
+test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to LocationCode without rebuilding Managers', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-block-location-performance&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).refreshManagerEvalReport2BrowseRegion === 'function');
@@ -432,7 +435,7 @@ test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to Locatio
   expect(await host.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
 });
 
-test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', async ({ page }) => {
+test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item Inquiry tabs', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkDetail === 'function');
@@ -589,7 +592,7 @@ test('opened Eval Work row has exactly two phone-safe Pictures & Specs and Item 
   expect(result.controlsFit).toBe(true);
 });
 
-test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on phones', async ({ page }) => {
+test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on phones', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
@@ -638,7 +641,7 @@ test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on 
   expect(result.pickerZ).toBeGreaterThan(result.setupZ);
 });
 
-test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', async ({ page }) => {
+test('Queue Eval Work renders every stored Drive Mode origin as a Request-style row card', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderEvalWorkQueue === 'function');

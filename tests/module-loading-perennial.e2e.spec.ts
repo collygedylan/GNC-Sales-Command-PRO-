@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+// @test-group: @local-e2e,@release-timing
+
+
 
 test.setTimeout(90_000);
 
@@ -39,7 +42,7 @@ async function isolatedApp(page: Page, baseURL: string) {
   })()`));
 }
 
-test('10,000-row reports reuse the index and local filters without low-stock requests', async ({ page, baseURL }, testInfo) => {
+test('10,000-row reports reuse the index and local filters without low-stock requests', {"tag":["@local-e2e","@release-timing"]}, async ({ page, baseURL }, testInfo) => {
   await isolatedApp(page, baseURL!);
   const metrics = await page.evaluate(() => (window as any).eval(`(async () => {
     fullInventory = Array.from({ length:10000 }, (_, i) => ({
@@ -146,7 +149,7 @@ test('10,000-row reports reuse the index and local filters without low-stock req
   expect(await page.evaluate(() => (window as any).eval("getManagerEvalReport2SelectedReportIds().join(',')"))).toBe('u1');
 });
 
-test('Eval2 builds and displays a joined saved cohort while revisions are withheld, with edits gated', async ({ page, baseURL }) => {
+test('Eval2 builds and displays a joined saved cohort while revisions are withheld, with edits gated', {"tag":["@local-e2e","@release-timing"]}, async ({ page, baseURL }) => {
   await isolatedApp(page, baseURL!);
   const result = await page.evaluate(async () => (window as any).eval(`(async () => {
     const count = 1200;
@@ -194,7 +197,7 @@ test('Eval2 builds and displays a joined saved cohort while revisions are withhe
   await expect(page.locator('#manager-eval-report-2-records')).toContainText('Saved preview');
 });
 
-test('cooperative fallback preserves exact report parity and drops obsolete work', async ({ page, baseURL }) => {
+test('cooperative fallback preserves exact report parity and drops obsolete work', {"tag":["@local-e2e","@release-timing"]}, async ({ page, baseURL }) => {
   await isolatedApp(page, baseURL!);
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
     window.Worker = undefined;
@@ -222,7 +225,7 @@ test('cooperative fallback preserves exact report parity and drops obsolete work
   expect(result.obsolete).toBe(true);
 });
 
-test('perennial row ownership and itemcode default controls survive mobile themes', async ({ page, baseURL }) => {
+test('perennial row ownership and itemcode default controls survive mobile themes', {"tag":["@local-e2e","@release-timing"]}, async ({ page, baseURL }) => {
   await isolatedApp(page, baseURL!);
   await page.evaluate(() => (window as any).eval(`(async () => {
     fullInventory = [];

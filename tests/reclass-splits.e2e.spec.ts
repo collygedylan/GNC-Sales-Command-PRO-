@@ -1,6 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+
 import { renderDriveLayoutCard, settleDriveLayoutShell } from './fixtures/drive-card-layout';
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
+// @test-group: @reclass-splits
+
 
 // The real editor/submit handlers run against intercepted requests. Unknown
 // writes remain rejected by the existing fixture; no real inventory/email is used.
@@ -62,7 +65,7 @@ async function populate(page: Page) {
   return { row, move };
 }
 
-test('split move holds require a reason and failed submissions retain all destinations', async ({ page, baseURL }, info) => {
+test('split move holds require a reason and failed submissions retain all destinations', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name); await f.open();
   const { move } = await populate(page);
   await expect(move.locator('[data-reclass-move-balance]')).toContainText('Remaining: 0');
@@ -90,7 +93,7 @@ test('split move holds require a reason and failed submissions retain all destin
   expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('both directions share the OH cap and split controls fit mobile widths', async ({ page, baseURL }, info) => {
+test('both directions share the OH cap and split controls fit mobile widths', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name); await f.open();
   const { row, move } = await populate(page);
   await move.getByRole('button', { name: 'Remove Move Up destination 2', exact: true }).click();
@@ -112,7 +115,7 @@ test('both directions share the OH cap and split controls fit mobile widths', as
   expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('refresh and Review and Resend restore every split and hold instruction', async ({ page, baseURL }, info) => {
+test('refresh and Review and Resend restore every split and hold instruction', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name); await f.open();
   const { move } = await populate(page);
   await move.getByLabel('Place moved quantities On Hold', { exact: true }).check();

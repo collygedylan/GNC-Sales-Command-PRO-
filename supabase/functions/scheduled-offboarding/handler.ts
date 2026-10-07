@@ -1,7 +1,8 @@
-type SupabaseClientLike = {
-  rpc: (name: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }>;
-  auth: { admin: { updateUserById: (id: string, attributes: Record<string, unknown>) => PromiseLike<{ error: unknown }> } };
-};
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database, Json } from "../_shared/database.types.ts";
+
+type SupabaseClientLike = Pick<SupabaseClient<Database>, "rpc" | "auth">;
+type JsonObject = { [key: string]: Json | undefined };
 
 export const TRANSITION_ID = "kayla_knepp_to_nelly_aguilar_20261002";
 const PUSH_TIMEOUT_MS = 12_000;
@@ -32,13 +33,40 @@ function safeCode(value: unknown, fallback: string) {
   return code || fallback;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isJson(value: unknown): value is Json {
+  if (value === null || typeof value === "string" || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every(isJson);
+  if (!isRecord(value)) return false;
+  return Object.values(value).every(isJson);
+}
+
+function jsonObject(value: unknown): JsonObject {
+  if (!isRecord(value)) return {};
+  const output: JsonObject = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (!isJson(item)) return {};
+    output[key] = item;
+  }
+  return output;
+}
+
+async function responseJsonObject(response: Response): Promise<JsonObject> {
+  try { return jsonObject(await response.json()); }
+  catch { return {}; }
+}
+
 export function createScheduledOffboardingHandler(deps: HandlerDependencies) {
   const fetcher = deps.fetcher || fetch;
 
   async function deliverQueuedNotifications() {
     const { data: claimed, error: claimError } = await deps.supabase.rpc("scheduled_handover_claim_push_v1");
     if (claimError) return { claimed: 0, delivered: 0, failed: 1 };
-    const rows = Array.isArray(claimed) ? claimed as Record<string, unknown>[] : [];
+    const rows = Array.isArray(claimed) ? claimed.filter(isRecord) : [];
     const serviceHeaders = {
       Authorization: `Bearer ${deps.serviceRoleKey}`,
       apikey: deps.serviceRoleKey,
@@ -66,7 +94,7 @@ export function createScheduledOffboardingHandler(deps: HandlerDependencies) {
             targetUsers: ["dylan_collyge"],
           }),
         });
-        const result = await push.json().catch(() => ({})) as Record<string, unknown>;
+        const result = await responseJsonObject(push);
         const subscriptions = Number(result.subscriptions || 0);
         const deliveryCount = Number(result.delivered || 0);
         if (push.ok && subscriptions > 0 && deliveryCount > 0) ok = true;
@@ -77,10 +105,12 @@ export function createScheduledOffboardingHandler(deps: HandlerDependencies) {
         errorCode = name === "timeouterror" || name === "aborterror" ? "push_timeout" : "push_network_error";
       }
 
+      const id = Number(row.id);
+      if (!Number.isSafeInteger(id) || id < 1) { failed += 1; continue; }
       const { error: finishError } = await deps.supabase.rpc("scheduled_handover_finish_push_v1", {
-        p_id: Number(row.id),
+        p_id: id,
         p_ok: ok,
-        p_error_code: ok ? null : errorCode,
+        ...(!ok ? { p_error_code: errorCode } : {}),
       });
       if (finishError || !ok) failed += 1;
       else delivered += 1;
@@ -95,14 +125,15 @@ export function createScheduledOffboardingHandler(deps: HandlerDependencies) {
 
     const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
     if (bearer !== deps.serviceRoleKey) return response({ error: "Unauthorized." }, 401);
-    const input = await req.json().catch(() => ({})) as Record<string, unknown>;
+    const parsedInput: unknown = await req.json().catch(() => ({}));
+    const input = isRecord(parsedInput) ? parsedInput : {};
     if (Object.keys(input).length !== 1 || String(input.source || "") !== "pg_cron") {
       return response({ error: "Invalid offboarding request." }, 400);
     }
 
     const { data: state, error: tickError } = await deps.supabase.rpc("scheduled_handover_tick_v1");
     if (tickError) return response({ error: "Offboarding transition could not be advanced." }, 503);
-    const tick = state && typeof state === "object" ? state as Record<string, unknown> : {};
+    const tick = jsonObject(state);
     if (tick.configured === false || tick.due === false || tick.busy === true) {
       const notifications = await deliverQueuedNotifications();
       return response({ configured: tick.configured !== false, due: tick.due === true, busy: tick.busy === true, notifications });
@@ -112,23 +143,20 @@ export function createScheduledOffboardingHandler(deps: HandlerDependencies) {
     if (tick.authBanPending === true) {
       const profileId = String(tick.profileId || "");
       if (!profileId) return response({ error: "Offboarding identity is incomplete." }, 503);
-      let banError: { code?: string } | null = null;
-      try {
-        const result = await deps.supabase.auth.admin.updateUserById(profileId, {
+      const banErrorCode = await deps.supabase.auth.admin.updateUserById(profileId, {
           // A long ban revokes refresh/session access. The DB cutoff separately
           // blocks already-issued JWTs immediately, before their expiry.
           ban_duration: "876000h",
+        }).then((result) => result.error?.code || null).catch((error: unknown) => {
+          const errorCode = isRecord(error) ? error.code : undefined;
+          return safeCode(errorCode, "auth_admin_network_error");
         });
-        banError = result.error as { code?: string } | null;
-      } catch (error) {
-        banError = { code: safeCode((error as { code?: string })?.code, "auth_admin_network_error") };
-      }
       const { error: checkpointError } = await deps.supabase.rpc("scheduled_handover_auth_checkpoint_v1", {
-        p_ok: !banError,
-        p_error_code: banError ? safeCode(banError.code, "auth_admin_ban_failed") : null,
+        p_ok: !banErrorCode,
+        ...(banErrorCode ? { p_error_code: safeCode(banErrorCode, "auth_admin_ban_failed") } : {}),
       });
       if (checkpointError) return response({ error: "Offboarding Auth status could not be checkpointed." }, 503);
-      authBanFailed = Boolean(banError);
+      authBanFailed = Boolean(banErrorCode);
     }
 
     const { error: finalTickError } = await deps.supabase.rpc("scheduled_handover_tick_v1");

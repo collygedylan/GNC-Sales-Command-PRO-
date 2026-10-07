@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional
+
+
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`Queue and Item Detail respect ${theme} app preference with opposite OS preference`, async ({ page }, testInfo) => {
+  test(`Queue and Item Detail respect ${theme} app preference with opposite OS preference`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ colorScheme: theme === 'dark' ? 'light' : 'dark' });
     const html = await (await page.request.get('/index.html')).text();
@@ -96,7 +99,7 @@ for (const theme of ['light', 'dark'] as const) {
 
 for (const width of [320, 390, 430]) {
   for (const theme of ['light', 'dark'] as const) {
-    test(`.011 ${theme} materials stay usable at ${width}px`, async ({ page }, testInfo) => {
+    test(`.011 ${theme} materials stay usable at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 760 });
       await page.goto('/tests/fixtures/ops-precision-browser.html');
       await page.evaluate(activeTheme => {
@@ -176,7 +179,7 @@ for (const width of [320, 390, 430]) {
   }
 }
 
-test('.011 retains outdoor colors and suppresses motion when requested', async ({ page }) => {
+test('.011 retains outdoor colors and suppresses motion when requested', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/tests/fixtures/ops-precision-browser.html');
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.evaluate(() => {
@@ -191,7 +194,7 @@ test('.011 retains outdoor colors and suppresses motion when requested', async (
   expect(parseFloat(state.duration)).toBeLessThanOrEqual(0.001);
 });
 
-test('.011 dark navigation uses the surface token and drops blur during constrained scrolling', async ({ page }) => {
+test('.011 dark navigation uses the surface token and drops blur during constrained scrolling', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 760 });
   await page.goto('/tests/fixtures/ops-precision-browser.html');
   await page.evaluate(() => {

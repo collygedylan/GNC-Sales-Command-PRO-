@@ -1,4 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test';
+// @test-group: @home-role
+
+
 
 async function expectVirtualAssignedRows(root: Locator, rows: Locator, count: number) {
   await expect(root).toHaveAttribute('data-logical-row-count', String(count));
@@ -7,7 +10,7 @@ async function expectVirtualAssignedRows(root: Locator, rows: Locator, count: nu
   expect(await rows.count()).toBeLessThanOrEqual(35);
 }
 
-test('Managers module picker defers low-stock reads until a consuming tab is selected', async ({ page, baseURL }) => {
+test('Managers module picker defers low-stock reads until a consuming tab is selected', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', async route => {
     if (new URL(route.request().url()).origin === origin) return route.continue();
@@ -44,7 +47,7 @@ test('Managers module picker defers low-stock reads until a consuming tab is sel
   expect(surfaces.eval2.adapters).toContain('side:managerEvalSettings');
 });
 
-test('Assigned Items header and phone filters share complete rows, export, sorting and safe editing', async ({ page, baseURL }, testInfo) => {
+test('Assigned Items header and phone filters share complete rows, export, sorting and safe editing', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', async route => {
     if (new URL(route.request().url()).origin === origin) return route.continue();
@@ -200,7 +203,7 @@ test('Assigned Items header and phone filters share complete rows, export, sorti
 });
 
 
-test('Assigned Items preserves the real navigation state and a focused editor during refreshed data', async ({ page, baseURL }) => {
+test('Assigned Items preserves the real navigation state and a focused editor during refreshed data', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue()
     : route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));
@@ -374,7 +377,7 @@ test('Assigned Items preserves the real navigation state and a focused editor du
   await expect(page.getByRole('button', { name: /Export Excel/ })).toHaveCount(0);
 });
 
-test('Assigned Items low-stock targets preserve focused drafts, enforce editor identities and export report-matched averages', async ({ page, baseURL }, testInfo) => {
+test('Assigned Items low-stock targets preserve focused drafts, enforce editor identities and export report-matched averages', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', async route => {
     if (new URL(route.request().url()).origin === origin) return route.continue();
@@ -585,7 +588,7 @@ test('Assigned Items low-stock targets preserve focused drafts, enforce editor i
 });
 
 
-test('hybrid per-row default controls retain failures and clarify perennial overrides', async ({ page, baseURL }) => {
+test('hybrid per-row default controls retain failures and clarify perennial overrides', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const origin = new URL(baseURL!).origin;
   await page.route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue()
     : route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: '[]' }));

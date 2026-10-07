@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+// @test-group: @database
+
+
 
 const localUrl = String(process.env.SUPABASE_LOCAL_URL || '').replace(/\/$/, '');
 const anonKey = String(process.env.SUPABASE_LOCAL_ANON_KEY || '');
@@ -7,7 +10,7 @@ const serviceKey = String(process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY || '');
 async function jsonFetch(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
-  let body = null;
+  let body;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
   return { response, body };
 }
@@ -26,10 +29,10 @@ async function serviceRpc(name, body) {
   });
 }
 
-test.describe('Native Auth password profile reconciliation', () => {
-  test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
+test.describe('Native Auth password profile reconciliation', {"tag":["@database"]}, () => {
+  test.skip(!localUrl || !anonKey || !serviceKey, {"tag":["@database"]}, 'Local Supabase environment is required.');
 
-  test('repairs an orphan profile and atomically synchronizes a forced password change', async () => {
+  test('repairs an orphan profile and atomically synchronizes a forced password change', {"tag":["@database"]}, async () => {
     const suffix = `${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;
     const username = `auth_link_${suffix}`;
     const email = `${username}@example.com`;
@@ -158,7 +161,7 @@ test.describe('Native Auth password profile reconciliation', () => {
     }
   });
 
-  test('reserves a forced starter-password attempt before native identity exists', async () => {
+  test('reserves a forced starter-password attempt before native identity exists', {"tag":["@database"]}, async () => {
     const suffix = `${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;
     const username = `deferred_reset_${suffix}`;
     const email = `${username}@greenleafnursery.com`;

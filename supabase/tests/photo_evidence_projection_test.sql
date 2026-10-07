@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Pure projection verification: synthetic JSON arguments only. No customer,
 -- inventory, order, workflow, auth, or fixture table is inserted/updated/deleted.
 -- Run after the migration; transaction rolls back even the session settings.

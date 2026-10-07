@@ -1,3 +1,4 @@
+// @test-group: aura
 import { handleAuraQueryRequest } from "./aura-query-handler.ts";
 import { AURA_MODULE_CAPABILITIES } from "./aura-capabilities.ts";
 
@@ -222,6 +223,24 @@ Deno.test("Bunch Notes use the fixed gated read RPC with server-built filters", 
   if (!call) throw new Error("missing Bunch Notes RPC call");
   assert((call.args.p_filters as Record<string, unknown>).status == null, "unrequested filters must not be inferred");
   assert(body.actions.some((action: any) => action.type === "records"), "Bunch Notes rows should use the shared records action");
+});
+
+Deno.test("Bunch Notes creation-date filters return an explicit unsupported-scope message", async () => {
+  const f = fixture({ moduleAllowed: true });
+  const baseRpc = f.admin.rpc;
+  f.admin.rpc = (name: string, args: Record<string, unknown> = {}) => {
+    if (name === "aura_query_bunch_v1") {
+      f.rpcCalls.push({ name, args });
+      return Promise.resolve({ data: null, error: { message: "AURA_BUNCH_CREATION_DATE_UNAVAILABLE", code: "22023" } });
+    }
+    return baseRpc(name, args);
+  };
+  const response = await handleAuraQueryRequest(f.request({ mode: "command", text: "Show Bunch Notes jobs yesterday", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 400 && body.code === "AURA_BUNCH_CREATION_DATE_UNAVAILABLE", `unsupported creation dates should be client errors: ${JSON.stringify(body)}`);
+  assert(/reliable creation timestamp/i.test(body.error) && /without a date range/i.test(body.error), "response should explain the missing source timestamp");
+  assert((f.rpcCalls.find((entry) => entry.name === "aura_query_bunch_v1")?.args.p_filters as Record<string, unknown>).dateFrom != null,
+    "relative date was passed to the SQL reader rather than silently dropped");
 });
 
 Deno.test("compatibility handler shares the deterministic primary handler", () => {

@@ -1,3 +1,4 @@
+import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -84,7 +85,7 @@ test('database contract keeps sources independent and service-owned', () => {
   assert.match(migration, /grant execute on function public\.prepare_manager_order_import_v2[\s\S]*to service_role/);
   assert.match(migration, /safe_source_key not in \('pikes', 'stine_lumber'\)/);
   assert.match(migration, /get_pikes_order_assignment_health_v1[\s\S]*where b\.source_key = 'pikes'/);
-  assert.match(workflow, /20260902131328_stine_orders_history\.sql/);
+  assertHistoricalMigration('20260902131328_stine_orders_history.sql');
 });
 
 test('source rows use the bounded service-only upload operation', () => {
@@ -95,7 +96,7 @@ test('source rows use the bounded service-only upload operation', () => {
   assert.match(uploadMigration, /on conflict \(batch_id, source_row_number\) do update/);
   assert.match(uploadMigration, /revoke all on function public\.append_manager_order_source_rows_v1\(uuid, jsonb\)[\s\S]*from public, anon, authenticated/);
   assert.match(uploadMigration, /grant execute on function public\.append_manager_order_source_rows_v1\(uuid, jsonb\)[\s\S]*to service_role/);
-  assert.match(workflow, /20260902134004_manager_order_source_row_upload\.sql/);
+  assertHistoricalMigration('20260902134004_manager_order_source_row_upload.sql');
 });
 
 test('shared finalizer retains service-only access while resolving private assignment keys', () => {
@@ -103,7 +104,7 @@ test('shared finalizer retains service-only access while resolving private assig
   assert.match(finalizerPrivilegeMigration, /set search_path = ''/);
   assert.match(finalizerPrivilegeMigration, /revoke all on function public\.finalize_pikes_order_import[\s\S]*from public, anon, authenticated/);
   assert.match(finalizerPrivilegeMigration, /grant execute on function public\.finalize_pikes_order_import[\s\S]*to service_role/);
-  assert.match(workflow, /20260902140500_repair_manager_order_finalizer_privilege\.sql/);
+  assertHistoricalMigration('20260902140500_repair_manager_order_finalizer_privilege.sql');
 });
 
 test('Managers Orders UI labels Stine history and source rows dynamically', () => {

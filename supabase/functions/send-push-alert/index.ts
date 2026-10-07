@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { withObservedRequest } from "../_shared/observability.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "../_shared/database.types.ts";
 import webpush from "npm:web-push@3.6.7";
 import { getRoleAccessState, normalizeUsername, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
-import { resolveOperationalRecipients } from "../_shared/operational-routing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,12 +44,30 @@ if (WEB_PUSH_VAPID_PUBLIC_KEY && WEB_PUSH_VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(WEB_PUSH_VAPID_SUBJECT, WEB_PUSH_VAPID_PUBLIC_KEY, WEB_PUSH_VAPID_PRIVATE_KEY);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
+async function resolvePushRecipients(recipients: string[]) {
+  if (recipients.length > 1000) throw new Error("RECIPIENT_LIMIT_EXCEEDED");
+  const { data, error } = await supabase.rpc("resolve_operational_recipients_v1", {
+    p_recipients: recipients,
+    p_kind: "username",
+  });
+  if (error || !Array.isArray(data) || data.some((entry) => typeof entry !== "string")) {
+    throw new Error("RECIPIENT_RESOLUTION_UNAVAILABLE");
+  }
+  return [...new Set(data)];
+}
+
 function normalizeEndpoint(value: unknown) {
   return String(value || "").trim();
+}
+
+function statusCodeFromError(error: unknown) {
+  if (!error || typeof error !== "object" || Array.isArray(error)) return 0;
+  const statusCode = Reflect.get(error, "statusCode");
+  return Number(statusCode || 0);
 }
 
 function normalizePayloadUserList(value: unknown) {
@@ -323,7 +341,7 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
   }
 
   let targetUsers: string[];
-  try { targetUsers = await resolveOperationalRecipients(supabase, buildTargetUsers(eventType, payload), "username"); }
+  try { targetUsers = await resolvePushRecipients(buildTargetUsers(eventType, payload)); }
   catch { return jsonResponse({ error: "Recipient routing is temporarily unavailable. No push was sent." }, 503); }
   if (!targetUsers.length) {
     return jsonResponse({ delivered: 0, targets: [] });
@@ -359,24 +377,24 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
     const chunk = subscriptions.slice(start, start + PUSH_SEND_CONCURRENCY);
     // A long send may cross the cutoff after the initial subscription query.
     let currentTargets: Set<string>;
-    try { currentTargets = new Set(await resolveOperationalRecipients(supabase, targetUsers, "username")); }
+    try { currentTargets = new Set(await resolvePushRecipients(targetUsers)); }
     catch { return jsonResponse({ error: "Recipient routing changed. Remaining pushes were stopped.", delivered }, 503); }
     await Promise.all(chunk.map(async (row) => {
       if (!currentTargets.has(normalizeUsername(String(row.username || "")))) return;
       try {
         if (eventType === "suspend_tag_approval_requested") {
-          const receipt = await supabase.rpc("suspend_tag_push_receipt_v1", { p_approval_id: payload.approvalId, p_endpoint: row.endpoint, p_delivered: false });
+          const receipt = await supabase.rpc("suspend_tag_push_receipt_v1", { p_approval_id: String(payload.approvalId || ""), p_endpoint: row.endpoint, p_delivered: false });
           if (receipt.error) throw new Error("SUSPEND_TAG_PUSH_RECEIPT_FAILED");
           if (receipt.data === true) { delivered += 1; return; }
         }
         await webpush.sendNotification(buildSubscription(row), notificationPayload, WEB_PUSH_OPTIONS);
         if (eventType === "suspend_tag_approval_requested") {
-          const receipt = await supabase.rpc("suspend_tag_push_receipt_v1", { p_approval_id: payload.approvalId, p_endpoint: row.endpoint, p_delivered: true });
+          const receipt = await supabase.rpc("suspend_tag_push_receipt_v1", { p_approval_id: String(payload.approvalId || ""), p_endpoint: row.endpoint, p_delivered: true });
           if (receipt.error) throw new Error("SUSPEND_TAG_PUSH_RECEIPT_FAILED");
         }
         delivered += 1;
       } catch (error) {
-        const statusCode = Number((error as { statusCode?: number }).statusCode || 0);
+        const statusCode = statusCodeFromError(error);
         if (statusCode === 404 || statusCode === 410) {
           staleIds.push(Number(row.id));
         }

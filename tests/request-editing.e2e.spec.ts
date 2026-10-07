@@ -1,8 +1,12 @@
 import { expect, test } from '@playwright/test';
+
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 test.use({ trace: 'off' });
 
-test('Request editing calculates immediately and renders a usable form', async ({ page, baseURL }) => {
+// @test-group: @request-reliability,requests
+
+
+test('Request editing calculates immediately and renders a usable form', {"tag":["@request-reliability"]}, async ({ page, baseURL }) => {
   await installHlOrderFixture(page, baseURL, { startupMode: 'cold' });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -69,8 +73,8 @@ test('Request editing calculates immediately and renders a usable form', async (
   await expect(page.locator('#req-match-qty-val')).toHaveText('456');
 });
 
-test.describe('Request save performance', () => {
-test('Request input and save timing with a complete inventory', async ({ page, baseURL, browserName }, testInfo) => {
+test.describe('Request save performance', {"tag":["@request-reliability"]}, () => {
+test('Request input and save timing with a complete inventory', {"tag":["@request-reliability"]}, async ({ page, baseURL, browserName }, testInfo) => {
   const fixture = await installHlOrderFixture(page, baseURL, { startupMode: 'cold', master: Array.from({ length:9366 }, (_,i) => hlMaster('inventory-'+i,
     { itemcode:i?'TIMING.'+i:'TIMING.001', commonname:i?'Timing Hosta '+i:'Timing Hosta', contsize:'#1', locationcode:'C.09.000', ptravailable:'911', ptronhand:'911', holdstopcode:'H' })) });
   const saves: any[] = [];
@@ -163,4 +167,5 @@ test('Request input and save timing with a complete inventory', async ({ page, b
   })()`));
   expect(sync).toEqual({ local:{comments:'Fixture typing response',available:'911'},externalSweeps:1,persistedHasFlag:false });
 });
+
 });

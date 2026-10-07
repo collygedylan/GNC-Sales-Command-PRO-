@@ -1,6 +1,10 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+import { jsonValue } from "../../../services/database-contract-runtime.ts";
+
 export const SUSPEND_TAG_EDITORS = new Set(['dylan_collyge', 'megan_kelly', 'dan_mccuistion']);
 type RecordValue = Record<string, unknown>;
-type RpcClient = { rpc: (name: string, args: RecordValue) => PromiseLike<{ data: unknown; error: { message?: string; code?: string } | null }> };
+type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 
 export async function verifySuspendTagSession(client: { auth: { getUser: (token: string) => PromiseLike<{ data: { user: { id: string } | null }; error: unknown }> } }, actor: RecordValue, request?: Request) {
   const token = String(request?.headers.get('authorization') || '').replace(/^Bearer\s+/i, '');
@@ -24,9 +28,10 @@ export async function handleSuspendTag(client: RpcClient, actor: RecordValue, pa
   if (operation === 'rows' && (!Array.isArray(body.ids) || body.ids.length > 1000)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');
   if (!['rows', 'approval', 'decide'].includes(operation) && (!Number.isSafeInteger(payload.expectedVersion) || Number(payload.expectedVersion) < 0)) throw new Error('SUSPEND_TAG_VERSION_REQUIRED');
   const { data, error } = await client.rpc('suspend_tag_command_v1', {
-    p_actor_id: actor.id, p_operation: operation, p_payload: body,
-    p_command_id: payload.commandId || null, p_expected_version: payload.expectedVersion ?? null,
-    p_session_id: actor.nativeSessionId || null,
+    p_actor_id: String(actor.id), p_operation: operation, p_payload: jsonValue(body),
+    ...(typeof payload.commandId === "string" ? { p_command_id: payload.commandId } : {}),
+    ...(typeof payload.expectedVersion === "number" ? { p_expected_version: payload.expectedVersion } : {}),
+    ...(typeof actor.nativeSessionId === "string" ? { p_session_id: actor.nativeSessionId } : {}),
   });
   if (error) throw new Error(error.message || 'SUSPEND_TAG_REQUEST_FAILED');
   return data;

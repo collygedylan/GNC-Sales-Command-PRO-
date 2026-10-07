@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { commandCenterDatabase } from '../../services/commandCenterDatabase';
 
 const h = React.createElement;
 const newId = () => globalThis.crypto?.randomUUID?.() || `alpha-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -284,9 +285,9 @@ function HrHub({ deps }) {
       setLoading(true);
       try {
         const [staff, codes, hours] = await Promise.all([
-          readOptionalAlpha(deps, () => deps.client.from('core_employees').select('id,name,emp_number,department,role,hired_date,vacation_balance').eq('active', true).order('name').limit(200)),
-          readOptionalAlpha(deps, () => deps.client.from('hr_job_codes').select('job_code,description').eq('enabled', true).order('job_code').limit(200)),
-          readOptionalAlpha(deps, () => deps.client.from('labor_timesheets').select('id,employee_id,work_date,job_code,hours').gte('work_date', dates[0]).lte('work_date', dates[6]).limit(1000)),
+          readOptionalAlpha(deps, () => commandCenterDatabase.employees(deps.client)),
+          readOptionalAlpha(deps, () => commandCenterDatabase.jobCodes(deps.client)),
+          readOptionalAlpha(deps, () => commandCenterDatabase.timesheets(deps.client, dates[0], dates[6])),
         ]);
         for (const result of [staff,codes,hours]) if (result?.error) throw result.error;
         if (active && deps.isAuthorized()) {
@@ -308,7 +309,7 @@ function HrHub({ deps }) {
   }, [tab, api]);
   const save = async entry => {
     if (!deps.isAuthorized()) throw new Error('Session changed.');
-    const result = await deps.client.from('labor_timesheets').upsert({ ...entry, created_by_profile_id: deps.profileId }, { onConflict: 'employee_id,work_date,job_code' }).select('id,employee_id,work_date,job_code,hours').single();
+    const result = await commandCenterDatabase.saveTimesheet(deps.client, entry, deps.profileId);
     if (result.error) throw result.error;
     if (!deps.isAuthorized()) throw new Error('Session changed.');
     // The card keeps unsaved edits locally. Changing weeks reloads authoritative rows.

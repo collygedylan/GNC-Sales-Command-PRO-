@@ -1,5 +1,8 @@
 import { expect, test, type Page, type Locator } from '@playwright/test';
+
 import { installHlOrderFixture, hlSoc, hlMaster, hlRecipient } from './fixtures/hl-order-state.mjs';
+// @test-group: @hl-order,hl-orders
+
 
 async function openHl(page: Page) {
   await expect(page.locator('#view-login')).toBeHidden();
@@ -83,7 +86,7 @@ function assertIsolated(fixture: any) {
   expect(fixture.blockedMutations).toEqual([]);
 }
 
-test('initial HL timeout shows Retry without indefinite loading or a current-data badge', async ({ page, baseURL }) => {
+test('initial HL timeout shows Retry without indefinite loading or a current-data badge', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await page.route('**/rest/v1/rpc/hl_order_state', route => route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ code: '57014', message: 'canceling statement due to statement timeout' }) }));
   await page.evaluate(() => window.eval('hlOrderStateData = null; hlOrderStateLoadedAt = 0;'));
@@ -99,7 +102,7 @@ test('initial HL timeout shows Retry without indefinite loading or a current-dat
   assertIsolated(fixture);
 });
 
-test('HL statement timeout keeps saved rows, pauses polling, and Retry preserves edits', async ({ page, baseURL }) => {
+test('HL statement timeout keeps saved rows, pauses polling, and Retry preserves edits', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a')] });
   await openHl(page); await openDetails(page);
   const input = page.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]');
@@ -122,7 +125,7 @@ test('HL statement timeout keeps saved rows, pauses polling, and Retry preserves
   assertIsolated(fixture);
 });
 
-test('fresh HL tab navigation reuses state and loads Restocking only on demand', async ({page,baseURL})=>{
+test('fresh HL tab navigation reuses state and loads Restocking only on demand', {"tag":["@hl-order"]}, async ({page,baseURL})=>{
   const reads={state:0,restock:0};
   page.on('request',request=>{
     if(request.url().endsWith('/rpc/hl_order_state')) reads.state++;
@@ -147,7 +150,7 @@ test('fresh HL tab navigation reuses state and loads Restocking only on demand',
   assertIsolated(fixture);
 });
 
-test('cards use all five grouping fields and detail shows all accessible matching Drive seasons despite search filters', async ({ page, baseURL }, info) => {
+test('cards use all five grouping fields and detail shows all accessible matching Drive seasons despite search filters', {"tag":["@hl-order"]}, async ({ page, baseURL }, info) => {
   const forbiddenMasterReads: string[] = [];
   page.on('request', request => {
     const url = new URL(request.url());
@@ -200,7 +203,7 @@ test('cards use all five grouping fields and detail shows all accessible matchin
   expect(fixture.commands).toHaveLength(0); assertIsolated(fixture);
 });
 
-test('HL verified Drive cards use normal details and global Back restores the edited HL parent', async ({ page, baseURL }) => {
+test('HL verified Drive cards use normal details and global Back restores the edited HL parent', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await openDetails(page);
   const detail = page.locator('#hl-order-detail');
@@ -218,7 +221,7 @@ test('HL verified Drive cards use normal details and global Back restores the ed
   assertIsolated(fixture);
 });
 
-test('Drive demand tabs use exact item and lot-derived season/year rows, then return to the edited HL detail', async ({ page, baseURL }) => {
+test('Drive demand tabs use exact item and lot-derived season/year rows, then return to the edited HL detail', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, {
     demandPageSize: 2,
     reserveRows: [
@@ -274,7 +277,7 @@ test('Drive demand tabs use exact item and lot-derived season/year rows, then re
   assertIsolated(fixture);
 });
 
-test('Open Orders waits for an importing revision and cannot commit an obsolete held page after reset', async ({ page, baseURL }) => {
+test('Open Orders waits for an importing revision and cannot commit an obsolete held page after reset', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, {
     demandPageSize: 1,
     reserveRows: [{ unique_id: 'reserve-read-only', itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Read only reserve', quantityordered: '0' }],
@@ -344,7 +347,7 @@ test('Open Orders waits for an importing revision and cannot commit an obsolete 
   assertIsolated(fixture);
 });
 
-test('a held verified master refresh adds HL Drive cards without replacing a focused Needed edit', async ({ page, baseURL }) => {
+test('a held verified master refresh adds HL Drive cards without replacing a focused Needed edit', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page);
   // Arm after login so the controlled response is the availability refresh
@@ -377,7 +380,7 @@ test('a held verified master refresh adds HL Drive cards without replacing a foc
   assertIsolated(fixture);
 });
 
-test('HL Drive detail return preserves tracking inputs but keeps their original revision conflict check', async ({ page, baseURL }) => {
+test('HL Drive detail return preserves tracking inputs but keeps their original revision conflict check', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true });
   await openHl(page);
   await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
@@ -416,7 +419,7 @@ test('HL Drive detail return preserves tracking inputs but keeps their original 
   assertIsolated(fixture);
 });
 
-test('HL Cart quantities persist through reload and removing HL rows preserves unrelated Bloom items', async ({ page, baseURL }) => {
+test('HL Cart quantities persist through reload and removing HL rows preserves unrelated Bloom items', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page);
   await expect.poll(() => page.evaluate(() => window.eval(`(() => {
@@ -453,7 +456,7 @@ test('HL Cart quantities persist through reload and removing HL rows preserves u
   assertIsolated(fixture);
 });
 
-test('Clear HL Cart acknowledges mixed editable drafts once and preserves locked rows', async ({page,baseURL}) => {
+test('Clear HL Cart acknowledges mixed editable drafts once and preserves locked rows', {"tag":["@hl-order"]}, async ({page,baseURL}) => {
   const fixture=await installHlOrderFixture(page,baseURL!,{restockItems:[{itemcode:'SYNTH.003',size:'#3',commonname:'Synthetic HL Holly',
     po_ordered:100,target:30,available:12,status:'ready',po_balance:{status:'ready',remaining:100}}]});
   let sequence=0;
@@ -509,7 +512,7 @@ test('Clear HL Cart acknowledges mixed editable drafts once and preserves locked
   assertIsolated(fixture);
 });
 
-test('ordinary Bloom stays isolated during a pending HL read and HL Cart clear preserves review', async ({page,baseURL}) => {
+test('ordinary Bloom stays isolated during a pending HL read and HL Cart clear preserves review', {"tag":["@hl-order"]}, async ({page,baseURL}) => {
   const fixture=await installHlOrderFixture(page,baseURL!);
   fixture.command({p_command_id:'20000000-0000-4000-8000-000000009001',p_action:'draft_save',
     p_payload:{rows:[{source_id:'hl-a',quantity:6},{source_id:'hl-b',quantity:5}]},p_expected_revision:fixture.state.revision});
@@ -553,7 +556,7 @@ test('ordinary Bloom stays isolated during a pending HL read and HL Cart clear p
   assertIsolated(fixture);
 });
 
-test('PO inventory action pages verified same-size rows and preserves zero availability', async ({ page, baseURL }) => {
+test('PO inventory action pages verified same-size rows and preserves zero availability', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const master = [hlMaster('po-exact', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', ptravailable: '0' }),
     ...Array.from({ length: 251 }, (_, index) => hlMaster(`po-related-${String(index).padStart(3, '0')}`, { itemcode: 'PO.TEST', contsize: '#3', locationcode: `C.14.${String(index).padStart(3, '0')}`, lotcode: '27.F1', ptravailable: index === 1 ? null : '3' })),
     hlMaster('po-hidden-approval', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.19.999', lotcode: '27.F1', ptravailable: '9', app_tab_assignment: 'not_on_inventory_dylan' })];
@@ -591,7 +594,7 @@ test('PO inventory action pages verified same-size rows and preserves zero avail
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('PO eligibility is authoritative and a shortage requires fresh acknowledgement for each preview', async ({ page, baseURL }) => {
+test('PO eligibility is authoritative and a shortage requires fresh acknowledgement for each preview', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('not-po', { itemcode: 'NOT.IN.PO' })], poMembership: ['SYNTH.003'],
     poBalances: [{ itemcode: 'SYNTH.003', size: '#3', status: 'ready', imported: 2, remaining: 2 }] });
   await openHl(page);
@@ -614,7 +617,7 @@ test('PO eligibility is authoritative and a shortage requires fresh acknowledgem
   assertIsolated(fixture);
 });
 
-test('PO remaining follows receipt differences including corrections and negative balances', async ({ page, baseURL }) => {
+test('PO remaining follows receipt differences including corrections and negative balances', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true,
     poBalances: [{ itemcode: 'SYNTH.003', size: '#3', status: 'ready', imported: 2, remaining: 2 }] });
   await openHl(page); await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
@@ -637,7 +640,7 @@ test('PO remaining follows receipt differences including corrections and negativ
   assertIsolated(fixture);
 });
 
-test('PO reconciliation previews Chicago cutoff balances and changes eligibility only after confirmation', async ({ page, baseURL }) => {
+test('PO reconciliation previews Chicago cutoff balances and changes eligibility only after confirmation', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { poImports: [{ id: 'po-import-1', status: 'pending', created_at: '2026-09-11T17:00:00Z', report_date: '2026-09-11', row_count: 2,
     balances: [{ itemcode: 'NEXT.PO', size: '#3', status: 'ready', imported: 30 }] }], poCutoff: '2026-09-10T15:00:00Z' });
   await openHl(page); await page.locator('[data-hl-tab="po-imports"]').click();
@@ -655,7 +658,7 @@ test('PO reconciliation previews Chicago cutoff balances and changes eligibility
   assertIsolated(fixture);
 });
 
-test('a same-date addition keeps its sent order number and leaves only the new batch protected', async ({ page, baseURL }) => {
+test('a same-date addition keeps its sent order number and leaves only the new batch protected', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('hl-b', { locationcode: 'C.14.002', lotcode: '26.F1' })], seedOrder: true });
   const orderNumber = fixture.state.orders[0].order_number;
   await openHl(page); await openDetails(page);
@@ -697,7 +700,7 @@ test('a same-date addition keeps its sent order number and leaves only the new b
   assertIsolated(fixture);
 });
 
-test('HL TAGS separates saved drafts by canonical ship date and previews only the chosen date', async ({ page, baseURL }) => {
+test('HL TAGS separates saved drafts by canonical ship date and previews only the chosen date', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { planstartdate: 'Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)' }),
     hlSoc('hl-b', { planstartdate: '2026-09-16', locationcode: 'C.14.002', lotcode: '26.F1' })] });
   await openHl(page); await selectOne(page, 'hl-a', '6');
@@ -742,7 +745,7 @@ test('HL TAGS separates saved drafts by canonical ship date and previews only th
   assertIsolated(fixture);
 });
 
-test('undated HL demand persists as a draft but cannot preview or send', async ({ page, baseURL }) => {
+test('undated HL demand persists as a draft but cannot preview or send', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { planstartdate: '' })] });
   await openHl(page); await selectOne(page);
   await reloadHl(page, fixture);
@@ -756,7 +759,7 @@ test('undated HL demand persists as a draft but cannot preview or send', async (
   assertIsolated(fixture);
 });
 
-test('PDF review freezes quantities and a durable submission leaves Needed and the Cart while Orders tracks delivery', async ({ page, baseURL }, info) => {
+test('PDF review freezes quantities and a durable submission leaves Needed and the Cart while Orders tracks delivery', {"tag":["@hl-order"]}, async ({ page, baseURL }, info) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page, 'hl-a', '6');
   await preview(page);
@@ -786,7 +789,7 @@ test('PDF review freezes quantities and a durable submission leaves Needed and t
   assertIsolated(fixture);
 });
 
-test('failed PDF and changed source never submit, and source review preserves the saved quantity', async ({ page, baseURL }) => {
+test('failed PDF and changed source never submit, and source review preserves the saved quantity', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page, 'hl-a', '6');
   fixture.failPreview = true;
@@ -807,7 +810,7 @@ test('failed PDF and changed source never submit, and source review preserves th
   assertIsolated(fixture);
 });
 
-test('uncertain delivery remains protected across reload without another submission', async ({ page, baseURL }) => {
+test('uncertain delivery remains protected across reload without another submission', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page); await preview(page);
   await page.locator('#hl-tags-send').click();
@@ -823,7 +826,7 @@ test('uncertain delivery remains protected across reload without another submiss
   assertIsolated(fixture);
 });
 
-test('an older uncertain order stays protected while a different-date ready source can be reviewed and ordered', async ({ page, baseURL }) => {
+test('an older uncertain order stays protected while a different-date ready source can be reviewed and ordered', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a'), hlSoc('hl-b', { quantityordered: '15', locationcode: 'C.14.002', lotcode: '26.F1', planstartdate: '2026-09-16' })], seedOrder: true, seedDelivery: 'delivery_unknown' });
   const oldOrderId = fixture.state.orders[0].id;
   await openHl(page);
@@ -855,7 +858,7 @@ test('an older uncertain order stays protected while a different-date ready sour
   assertIsolated(fixture);
 });
 
-test('a lost submit response recovers the same command instead of creating another order', async ({ page, baseURL }) => {
+test('a lost submit response recovers the same command instead of creating another order', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page); await preview(page);
   fixture.loseSubmitResponse = true;
@@ -878,7 +881,7 @@ test('a lost submit response recovers the same command instead of creating anoth
   assertIsolated(fixture);
 });
 
-test('replacement demand defaults to its remaining ceiling and rejects fractional or excessive quantities', async ({ page, baseURL }) => {
+test('replacement demand defaults to its remaining ceiling and rejects fractional or excessive quantities', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { rows: [hlSoc('hl-a', { quantityordered: '10', available_quantity: 4 })] });
   await openHl(page); await openDetails(page);
   const input = page.locator('[data-hl-source-id="hl-a"] [data-hl-quantity]');
@@ -894,7 +897,7 @@ test('replacement demand defaults to its remaining ceiling and rejects fractiona
   assertIsolated(fixture);
 });
 
-test('Remove selected rows is reversible without dismissing the other SOC row', async ({ page, baseURL }) => {
+test('Remove selected rows is reversible without dismissing the other SOC row', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await openDetails(page);
   await page.locator('[data-hl-source-id="hl-b"] [data-hl-select]').uncheck();
@@ -911,7 +914,7 @@ test('Remove selected rows is reversible without dismissing the other SOC row', 
   assertIsolated(fixture);
 });
 
-test('partial receipts and corrections remain separate from cancellation PDF submission', async ({ page, baseURL }, info) => {
+test('partial receipts and corrections remain separate from cancellation PDF submission', {"tag":["@hl-order"]}, async ({ page, baseURL }, info) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true });
   await openHl(page); await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await expect(page.locator('[data-hl-order-id]')).toBeVisible();
@@ -965,7 +968,7 @@ test('partial receipts and corrections remain separate from cancellation PDF sub
   assertIsolated(fixture);
 });
 
-test('a focused draft edit cannot overwrite another device after a newer state poll', async ({ page, baseURL }) => {
+test('a focused draft edit cannot overwrite another device after a newer state poll', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await selectOne(page, 'hl-a', '6');
   const draft = page.locator('[data-hl-draft-source-id="hl-a"]');
@@ -995,7 +998,7 @@ test('a focused draft edit cannot overwrite another device after a newer state p
   assertIsolated(fixture);
 });
 
-test('removing one dirty HL Cart draft preserves another edit and account reset restores saved drafts', async ({ page, baseURL }) => {
+test('removing one dirty HL Cart draft preserves another edit and account reset restores saved drafts', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!);
   await openHl(page); await openDetails(page);
   for (const [sourceId, quantity] of [['hl-a', '3'], ['hl-b', '4']]) {
@@ -1032,7 +1035,7 @@ test('removing one dirty HL Cart draft preserves another edit and account reset 
   assertIsolated(fixture);
 });
 
-test('a focused receipt correction cannot overwrite a newer receipt after a state poll', async ({ page, baseURL }) => {
+test('a focused receipt correction cannot overwrite a newer receipt after a state poll', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { seedOrder: true });
   await openHl(page); await navigateHl(page, page.locator('[data-hl-tab="orders"]'));
   await navigateHl(page, page.getByRole('button', { name: 'View order', exact: true }));
@@ -1056,7 +1059,7 @@ test('a focused receipt correction cannot overwrite a newer receipt after a stat
   assertIsolated(fixture);
 });
 
-test('a same-state refresh during a mouse press preserves the HL card activation', async ({ page, baseURL }) => {
+test('a same-state refresh during a mouse press preserves the HL card activation', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   // Browser push is optional for HL. Keep its education overlays out of this held-pointer scenario.
   await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
   const fixture = await installHlOrderFixture(page, baseURL!);
@@ -1074,7 +1077,7 @@ test('a same-state refresh during a mouse press preserves the HL card activation
   assertIsolated(fixture);
 });
 
-test('a state refresh during an edited order button press preserves the save', async ({ page, baseURL }) => {
+test('a state refresh during an edited order button press preserves the save', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
   const fixture = await installHlOrderFixture(page, baseURL!);
   expect(await page.evaluate(() => window.eval('isPushSupported()'))).toBe(false);
@@ -1099,7 +1102,7 @@ test('a state refresh during an edited order button press preserves the save', a
   assertIsolated(fixture);
 });
 
-test('another admin cannot discover or open HL ordering', async ({ page, baseURL }) => {
+test('another admin cannot discover or open HL ordering', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'jd_jones' });
   await expect(page.locator('#home-tile-hl-order')).toBeHidden();
   await expect(page.locator('#drawer-hl-order-btn')).toBeHidden();
@@ -1110,7 +1113,7 @@ test('another admin cannot discover or open HL ordering', async ({ page, baseURL
   assertIsolated(fixture);
 });
 
-test('PO Management opens both confirmed seasons without mixing balances or search', async ({ page, baseURL }) => {
+test('PO Management opens both confirmed seasons without mixing balances or search', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { poRows: [
     { row_index: 1, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.F1', po_remain: 300 },
     { row_index: 2, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.S1', po_remain: 794 }

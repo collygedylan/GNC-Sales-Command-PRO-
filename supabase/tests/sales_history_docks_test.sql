@@ -1,3 +1,6 @@
+\set ON_ERROR_STOP on
+-- @test-runtime: isolated-acceptance
+-- @test-harness: sales-mobile
 begin;
 create temporary table sales_history_docks_checks(description text);
 create function pg_temp.history_check(ok boolean,description text) returns void language plpgsql as $$
@@ -202,4 +205,10 @@ select public.finish_dataset_import_v1('97100000-0000-4000-8000-000000000023');
 select pg_temp.history_check((select bool_and(state='ready') from public.app_dataset_revisions
   where key in ('ph_active_request','ph_customer_consignee_sales_reps')),'mixed import publishes both datasets with unchanged finish contract');
 select count(*) as sales_history_docks_checks from sales_history_docks_checks;
+
+create extension if not exists pgtap with schema extensions;
+set local search_path = public,extensions,pg_temp;
+select plan(1);
+select ok((select count(*) > 0 from sales_history_docks_checks), 'sales_history_docks_test.sql: all exception assertions completed');
+select * from finish();
 rollback;

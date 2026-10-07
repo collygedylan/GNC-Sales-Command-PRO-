@@ -1,7 +1,10 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional,eval
 
-test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', async ({ page }) => {
+
+
+test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-direct-multiselect', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -103,7 +106,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
-test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', async ({ page }) => {
+test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=eval2-authoritative-user-filter', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyManagerEvalReport2UserFilter === 'function');
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
@@ -178,7 +181,7 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
   });
 });
 
-test('Eval Reports #2 manager search refreshes while the search field remains active', async ({ page }) => {
+test('Eval Reports #2 manager search refreshes while the search field remains active', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-manager-search', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');

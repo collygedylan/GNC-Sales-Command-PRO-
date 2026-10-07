@@ -1,5 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+
 import { folderName, installSalesMobileFixture } from './fixtures/sales-mobile-fixture';
+// @test-group: @sales-mobile,module-hubs,sales
+
 
 const photo = (name: string) => ({ name, mimeType: 'image/png',
   buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aU1QAAAAASUVORK5CYII=', 'base64') });
@@ -107,7 +110,7 @@ async function expectModuleTileLabelColor(page: Page, theme: 'light' | 'dark', s
 }
 
 for (const role of ['ADMIN', 'SALES']) {
-  test(`shared module tiles remain readable in every theme for ${role}`, async ({ page, baseURL }) => {
+  test(`shared module tiles remain readable in every theme for ${role}`, {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
     const f = await installSalesMobileFixture(page, baseURL!, role === 'SALES'
       ? { role, username: 'theme_sales_rep', hiddenViews: ['credit-request'] } : { role });
     const activate = async (locator: Locator) => locator[test.info().project.use.isMobile ? 'tap' : 'click']();
@@ -198,7 +201,7 @@ for (const role of ['ADMIN', 'SALES']) {
   });
 }
 
-test('history searches the complete permitted result set, pages newest first, and preserves detail Back', async ({ page, baseURL }) => {
+test('history searches the complete permitted result set, pages newest first, and preserves detail Back', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const area = await openSales(page, 'Request History', 'request-history');
   await expect(area.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -250,7 +253,7 @@ test('history searches the complete permitted result set, pages newest first, an
   expectIsolated(f);
 });
 
-test('Credit tabs keep source lists and selections separate', async ({ page, baseURL }) => {
+test('Credit tabs keep source lists and selections separate', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const area = await openSales(page, 'Credit', 'sales-credit');
   const docksTab = area.getByRole('button', { name: 'Docks History', exact: true });
@@ -277,7 +280,7 @@ test('Credit tabs keep source lists and selections separate', async ({ page, bas
   expectIsolated(f);
 });
 
-test('history Request Credit resolves the exact archive and a denied source shows an alert', async ({ page, baseURL }) => {
+test('history Request Credit resolves the exact archive and a denied source shows an alert', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const history = await openSales(page, 'Request History', 'request-history');
   await history.getByLabel('Search customer, consignee, item, common name, or folder', { exact: true }).fill('Rare Orchid');
@@ -309,7 +312,7 @@ test('history Request Credit resolves the exact archive and a denied source show
   expectIsolated(f);
 });
 
-test('Docks Request Credit keeps the existing unsaved draft and photos', async ({ page, baseURL }) => {
+test('Docks Request Credit keeps the existing unsaved draft and photos', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!, { role: 'SALES' });
   const credit = await openSales(page, 'Credit', 'sales-credit');
   await credit.getByRole('button', { name: `${folderName} 2 records`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
@@ -336,7 +339,7 @@ test('Docks Request Credit keeps the existing unsaved draft and photos', async (
   expectIsolated(f);
 });
 
-test('multi-line drafts retain repeated photos, failed uploads, Back edits, and one uncertain submission', async ({ page, baseURL }) => {
+test('multi-line drafts retain repeated photos, failed uploads, Back edits, and one uncertain submission', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const area = await openSales(page, 'Credit', 'sales-credit');
   await area.getByRole('button', { name: new RegExp(folderName) })[test.info().project.use.isMobile ? 'tap' : 'click']();
@@ -407,7 +410,7 @@ test('multi-line drafts retain repeated photos, failed uploads, Back edits, and 
   expectIsolated(f);
 });
 
-test('review keeps separate line decisions and exposes one mixed submission in each matching tab', async ({ page, baseURL }) => {
+test('review keeps separate line decisions and exposes one mixed submission in each matching tab', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const submissionId = f.seedReview();
   const area = await openSales(page, 'Credit Request', 'credit-request');
@@ -441,7 +444,7 @@ test('review keeps separate line decisions and exposes one mixed submission in e
   expectIsolated(f);
 });
 
-test('footer preferences survive reload, preserve fixed controls, and reject a revoked shortcut', async ({ page, baseURL }) => {
+test('footer preferences survive reload, preserve fixed controls, and reject a revoked shortcut', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   await page.locator('#footer-menu-btn')[test.info().project.use.isMobile ? 'tap' : 'click']();
   await page.getByRole('button', { name: 'Customize shortcuts', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
@@ -480,7 +483,7 @@ test('footer preferences survive reload, preserve fixed controls, and reject a r
   expectIsolated(f);
 });
 
-test('propagation and planting retain protected work after reload and complete without inventory writes', async ({ page, baseURL }) => {
+test('propagation and planting retain protected work after reload and complete without inventory writes', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const panel = page.locator('#production-workflow-page-content');
   const openWorkflow = async (type: string) => {
@@ -541,7 +544,7 @@ test('propagation and planting retain protected work after reload and complete w
   expectIsolated(f);
 });
 
-test('Inventory Transaction History pages and searches on the server, preserving requested status', async ({ page, baseURL }) => {
+test('Inventory Transaction History pages and searches on the server, preserving requested status', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const capabilityRequests: string[] = [];
   page.on('request', request => {
     if (new URL(request.url()).pathname === '/functions/v1/codex-ops-api') capabilityRequests.push(request.url());

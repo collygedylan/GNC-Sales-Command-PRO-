@@ -4,7 +4,8 @@ import { defineConfig, devices } from '@playwright/test';
 // This catches fixture and navigation changes before they reach production.
 export default defineConfig({
   testDir: './tests',
-  testMatch: /production-request-canary\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@production-canary/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: true,

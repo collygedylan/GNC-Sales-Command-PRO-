@@ -1,3 +1,4 @@
+import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -87,7 +88,7 @@ test('structured storage stays private and participates in guarded cloud migrati
  assert.match(sql,/p_command_id is null/);assert.match(sql,/pg_advisory_xact_lock/);
  assert.match(sql,/job\.revision is distinct from p_expected_revision/);
  assert.ok(read('scripts/apply-item-low-stock-migration.mjs').includes(name));
- assert.ok(read('.github/workflows/release-database.yml').includes(name));
+ assertHistoricalMigration(name);
  assert.match(read('assets/bunch-note.js'),/Your edits are still here/);
  assert.match(read('assets/bunch-note.js'),/generation!==structuredGeneration/);
 });
