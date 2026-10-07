@@ -42,6 +42,42 @@ test('query UI is packaged, versioned through the widget import and excluded fro
   assert.match(read('index.html'), /functions\/v1\/aura-query/);
 });
 
+test('seasonal SOC reader projection is present with production types in the composed CI fixture', () => {
+  const reader = read('supabase/migrations/20261007145433_aura_dynamic_season_scope.sql');
+  const socBranch = reader.match(/if capability='soc_orders' then([\s\S]*?)\), filtered as materialized/);
+  assert.ok(socBranch, 'SOC branch projection remains discoverable');
+  const projectedColumns = [...new Set([...socBranch[1].matchAll(/\bs\.([a-z_][a-z0-9_]*)\b/g)].map(match => match[1]))];
+
+  const production = read('supabase/migrations/20260929200000_production_baseline.sql');
+  const normalizeType = type => type.toLowerCase().replace(/\btimestamptz\b/g, 'timestamp with time zone').replace(/\s+/g, ' ').trim();
+  const productionSoc = production.match(/CREATE TABLE public\.ph_soc_master \(([\s\S]*?)\n\);/);
+  assert.ok(productionSoc, 'production SOC schema exists');
+  const productionColumns = new Map([...productionSoc[1].matchAll(/^\s*([a-z_][a-z0-9_]*)\s+([a-z][a-z0-9_ ]*?)(?:\s+(?:DEFAULT|NOT NULL|CHECK|PRIMARY|REFERENCES|COLLATE)|,?$)/gim)]
+    .map(match => [match[1], normalizeType(match[2])]));
+
+  // hl_order_baseline creates a reduced SOC table first. The later scheduled
+  // handover CREATE TABLE IF NOT EXISTS cannot add columns to that table.
+  const ciBase = read('supabase/ci/hl_order_baseline.sql');
+  const ciCreate = ciBase.match(/create table if not exists public\.ph_soc_master \(([\s\S]*?)\n\);/i);
+  assert.ok(ciCreate, 'reduced CI SOC table exists');
+  const ciColumns = new Map([...ciCreate[1].matchAll(/^\s*([a-z_][a-z0-9_]*)\s+([a-z][a-z0-9_ ]*?)(?:\s+(?:default|not null|primary|references|check)|,?$)/gim)]
+    .map(match => [match[1], normalizeType(match[2])]));
+
+  for (const fixture of ['supabase/ci/sales_credit_baseline.sql', 'supabase/ci/suspend_tag_approval_baseline.sql']) {
+    const sql = read(fixture);
+    const alter = sql.match(/alter table public\.ph_soc_master([\s\S]*?);/i)?.[1] || '';
+    for (const match of alter.matchAll(/add column if not exists\s+([a-z_][a-z0-9_]*)\s+([a-z][a-z0-9_]*)/gi)) {
+      ciColumns.set(match[1].toLowerCase(), normalizeType(match[2]));
+    }
+  }
+
+  assert.ok(projectedColumns.length > 0, 'reader references physical SOC columns');
+  for (const column of projectedColumns) {
+    assert.ok(productionColumns.has(column), `production ph_soc_master has ${column}`);
+    assert.equal(ciColumns.get(column), productionColumns.get(column), `CI ph_soc_master.${column} matches production type`);
+  }
+});
+
 test('Aura query and compatibility sources contain no external AI calls or provider activation dependency', () => {
   const files = ['supabase/functions/aura-query/index.ts', 'supabase/functions/aura-llm-router/index.ts', 'supabase/functions/_shared/aura-query-handler.ts', 'supabase/functions/_shared/aura-query.ts'];
   for (const file of files) {

@@ -10,14 +10,23 @@ test('Drive search stays inside the selected location and preserves it when clea
     hlMaster('scope-c', { itemcode: 'SCOPE.C', commonname: 'Scoped Rose', blockalpha: 'C', locationcode: 'C.06.001' }),
     hlMaster('scope-d', { itemcode: 'SCOPE.D', commonname: 'Scoped Rose', blockalpha: 'D', locationcode: 'D.04.001' }),
   ] });
-  await page.evaluate(() => window.eval(`(async () => {
-    switchView('drive');
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    activeDriveMode = 'ok'; activeDriveTab = 'loc'; driveViewLevel = 2;
-    selectedDriveBlock = 'C'; selectedDriveLoc = LocationCode.normalize('C.06.001');
-    setDriveSearchManualSelectionLock(false);
-    invalidateDriveResolvedCardState(); renderDrive();
-  })()`));
+  await page.evaluate(() => window.eval("switchView('drive')"));
+  await page.waitForFunction(() => window.eval("getCurrentVisibleViewId() === 'drive' && fullInventory.some(row => row.ITEMCODE === 'SCOPE.C') && fullInventory.some(row => row.ITEMCODE === 'SCOPE.D')"));
+  const selectLocationTab = async () => {
+    const mobileMode = page.locator('#drive-mobile-mode');
+    if (await mobileMode.isVisible()) await mobileMode.selectOption('loc');
+    else await page.locator('#tab-drive-loc').click();
+  };
+  const chooseLocation = async (block: string, location: string) => {
+    await selectLocationTab();
+    await expect.poll(() => page.evaluate(() => window.eval('activeDriveTab'))).toBe('loc');
+    await expect(page.locator('#drive-crumb')).toContainText('Select Block Alpha');
+    await page.getByRole('button', { name: `Open ${block}`, exact: true }).click();
+    await page.getByRole('button', { name: `Open block number ${location}`, exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.eval('driveViewLevel === 2 && !!selectedDriveLoc'))).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.eval(`selectedDriveLoc === LocationCode.normalize('${location}')`))).toBe(true);
+  };
+  await chooseLocation('C', 'C.06.001');
   await page.locator('#drive-search').fill('Scoped Rose');
   await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
   await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
@@ -28,7 +37,7 @@ test('Drive search stays inside the selected location and preserves it when clea
   await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc === LocationCode.normalize("C.06.001")'))).toBe(true);
   await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
   await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
-  await page.evaluate(() => window.eval(`selectedDriveBlock = 'D'; selectedDriveLoc = LocationCode.normalize('D.04.001'); invalidateDriveResolvedCardState(); renderDrive();`));
+  await chooseLocation('D', 'D.04.001');
   await page.locator('#drive-search').fill('Scoped Rose');
   await expect(page.locator('#drive-content')).toContainText('SCOPE.D');
   await expect(page.locator('#drive-content')).not.toContainText('SCOPE.C');

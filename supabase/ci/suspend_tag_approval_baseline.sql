@@ -15,4 +15,15 @@ alter table public.ph_soc_master
   add column if not exists match text,
   add column if not exists loc_match_qty text,
   add column if not exists initial_ptr text,
-  add column if not exists holdstopcode text;
+  add column if not exists holdstopcode text,
+  -- The Aura seasonal-read test runs against this composed CI schema. The
+  -- earlier HL fixture creates a reduced SOC table, so restore these existing
+  -- production columns here before migrations that define the seasonal RPC.
+  add column if not exists season text,
+  add column if not exists warehouseid text,
+  add column if not exists warehousename text,
+  add column if not exists assignedto text,
+  add column if not exists dock_num text,
+  add column if not exists quantityshipped text,
+  add column if not exists requestdate text,
+  add column if not exists stagename text;
