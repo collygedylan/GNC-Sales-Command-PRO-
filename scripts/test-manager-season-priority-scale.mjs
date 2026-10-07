@@ -6,6 +6,7 @@ import pg from 'pg';
 
 // Shared with the private local query-plan reproduction. All values are synthetic.
 export async function seedSeasonPriorityScaleRows(db, prefix) {
+  await db.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory'");
   await db.query(`insert into public.ph_master_inventory
     (unique_id,itemcode,genusname,commonname,contsize,locationcode,lotcode,source,season,saleyear,
      ptronhand,ptravailable,priority,app_tab_assignment,assignedto,blockalpha)
@@ -19,12 +20,20 @@ export async function seedSeasonPriorityScaleRows(db, prefix) {
     from generate_series(1,9364) i`, [prefix]);
   await db.query(`insert into public.ph_cav_import(unique_id,itemcode,commonname,contsize,season,holdstopreason)
     select $1||'-cav-'||i,$1||'-item-'||i,'Scale plant','#3','F1','' from generate_series(0,49) i`,[prefix]);
-  await db.query(`insert into public.ph_warehouse_assigned_items
-    (unique_id,itemcode,itemcode_normalized,genusname,assignedto,source,present_in_drive)
-    select $1||'-assignment-'||i,$1||case when i<50 then '-item-'||i else '-background-'||i end,
-      $1||case when i<50 then '-item-'||i else '-background-'||i end,'Scale genus',
-      case when i%3=0 then '' when i%3=1 then 'scale_manager_a' else 'scale_manager_b' end,'fixture',i%2=0
-    from generate_series(0,4054) i`,[prefix]);
+  await db.query(`insert into public.ph_inventory_row_assignments
+    (master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,
+     lotcode,source,assignedto,assignment_reason,present_in_drive)
+    select m.unique_id,m.unique_id,m.itemcode,upper(m.itemcode),m.genusname,m.commonname,m.contsize,
+      m.locationcode,m.lotcode,m.source,
+      case when ((i-1)/8)::int%3=0 then null
+           when ((i-1)/8)::int%3=1 then 'scale_manager_a' else 'scale_manager_b' end,
+      'unresolved_preserved',true
+    from public.ph_master_inventory m
+    cross join lateral (select substring(m.unique_id from '-row-([0-9]+)$')::integer i) parsed
+    where m.unique_id like $1||'-row-%' and parsed.i<=4055
+    on conflict (master_unique_id) do update set
+      assignedto=excluded.assignedto,assignment_reason=excluded.assignment_reason,
+      present_in_drive=true,revision=ph_inventory_row_assignments.revision+1,updated_at=now()`,[prefix]);
 }
 
 export function seasonPriorityListQuery(definition) {
@@ -53,15 +62,15 @@ export async function runSeasonPriorityScaleFixture(db) {
   try {
     const initial=(await db.query(`select
       (select count(*)::int from public.ph_master_inventory) inventory,
-      (select count(*)::int from public.ph_warehouse_assigned_items) assignments,
+      (select count(*)::int from public.ph_inventory_row_assignments) assignments,
       (select count(*)::int from private.manager_season_priority_receipts) receipts,
       (select count(*)::int from public.ph_request_delivery_outbox) deliveries`)).rows[0];
     assert.equal(initial.inventory,0,'Scale fixture requires an empty isolated inventory');
     const assignmentFingerprint=async(excludeFixture=false)=> (await db.query(`select
-      md5(string_agg(to_jsonb(a)::text,',' order by unique_id)) value
-      from public.ph_warehouse_assigned_items a where not $2::boolean or unique_id not like $1||'-%'`,[prefix,excludeFixture])).rows[0].value;
+      md5(string_agg(to_jsonb(a)::text,',' order by master_unique_id)) value
+      from public.ph_inventory_row_assignments a where not $2::boolean or master_unique_id not like $1||'-%'`,[prefix,excludeFixture])).rows[0].value;
     const baselineAssignments=await assignmentFingerprint();
-    const namespaceCount=(await db.query(`select count(*)::int count from public.ph_warehouse_assigned_items where unique_id like $1||'-%'`,[prefix])).rows[0].count;
+    const namespaceCount=(await db.query(`select count(*)::int count from public.ph_inventory_row_assignments where master_unique_id like $1||'-%'`,[prefix])).rows[0].count;
     assert.equal(namespaceCount,0,'Synthetic assignment namespace must not overlap the migration baseline');
     await db.query("insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data) values($1,$2,now(),'{}','{}')",[actor,`${prefix}@example.invalid`]);
     await db.query("insert into public.profiles(id,username,display_name,role,must_change_password) values($1,$2,'Scale Manager','MANAGER',false)",[actor,prefix.toLowerCase()]);
@@ -70,16 +79,16 @@ export async function runSeasonPriorityScaleFixture(db) {
     const seeded=(await db.query(`select
       (select count(*)::int from public.ph_master_inventory) inventory,
       (select count(*)::int from public.ph_master_inventory where unique_id like $1||'-%') fixture_inventory,
-      (select count(*)::int from public.ph_warehouse_assigned_items) assignments,
-      (select count(*)::int from public.ph_warehouse_assigned_items where unique_id like $1||'-%') fixture_assignments`,[prefix])).rows[0];
+      (select count(*)::int from public.ph_inventory_row_assignments) assignments,
+      (select count(*)::int from public.ph_inventory_row_assignments where master_unique_id like $1||'-%') fixture_assignments`,[prefix])).rows[0];
     assert.deepEqual(seeded,{inventory:initial.inventory+9364,fixture_inventory:9364,
-      assignments:initial.assignments+4055,fixture_assignments:4055},'Scale seed must add every synthetic row without replacing migration data');
+      assignments:initial.assignments+9364,fixture_assignments:9364},'Scale seed must add every synthetic row without replacing migration data');
     assert.equal(await assignmentFingerprint(true),baselineAssignments,'Scale seed must preserve all migration assignments');
     const assignmentsBefore=await assignmentFingerprint();
-    await db.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items')");
+    await db.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items','ph_inventory_row_assignments','ph_itemcode_default_owners')");
     await db.query('analyze public.ph_master_inventory');
     await db.query('analyze public.ph_cav_import');
-    await db.query('analyze public.ph_warehouse_assigned_items');
+    await db.query('analyze public.ph_inventory_row_assignments');
     const fingerprint=async()=> (await db.query(`select md5(string_agg(unique_id||':'||coalesce(priority,''),',' order by unique_id)) value from public.ph_master_inventory`)).rows[0].value;
     const before=await fingerprint();
     await db.query("set local statement_timeout='8s'");
@@ -108,7 +117,7 @@ export async function runSeasonPriorityScaleFixture(db) {
     const final=(await db.query(`select (select count(*)::int from private.manager_season_priority_receipts) receipts,(select count(*)::int from public.ph_request_delivery_outbox) deliveries`)).rows[0];
     assert.deepEqual(final,{receipts:initial.receipts,deliveries:initial.deliveries},'List must not create inquiries or delivery');
     console.log(JSON.stringify({ok:true,fixture:'season-priority-production-scale',inventoryRows:seeded.inventory,
-      baselineAssignmentRows:initial.assignments,syntheticAssignmentRows:4055,totalAssignmentRows:seeded.assignments,assignmentsUnchanged:true,
+      baselineAssignmentRows:initial.assignments,syntheticAssignmentRows:9364,totalAssignmentRows:seeded.assignments,assignmentsUnchanged:true,
       eligibleRows:50,coldMs,scopeProducerLoops:1,planExecutionMs:explained['Execution Time'],fingerprintParity:true,filters:true,inventoryUnchanged:true,deliveryUnchanged:true}));
   } finally { await db.query('rollback'); }
 }

@@ -152,13 +152,18 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   assert.match(modelRouting, /GPT-6 Luna \/ low/);
   assert.match(modelRouting, /bounded diff or contract under review/);
   assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
-  const finalReleaseOverride = agentRules.split('OVERRIDE: STAY AWAKE AND MONITOR PROTOCOL')[1] || '';
-  assert.match(finalReleaseOverride, /ALWAYS automatically create a pull request using the GitHub CLI \(gh pr create --fill\)/);
-  assert.match(finalReleaseOverride, /MUST monitor the GitHub Actions pipeline using gh pr checks --watch/);
-  assert.match(agentRules, /Autonomous CI Remediation[\s\S]*authorized to autonomously attempt up to 3 consecutive fixes/i);
-  assert.match(agentRules, /only pause and request explicit approval if a CI check fails 3 times in a row/i);
-  assert.match(agentRules, /database migration, security credential, or production data risk/i);
-  assert.match(finalReleaseOverride, /read the failure logs and follow the Autonomous CI Remediation rule below/);
+  assert.deepEqual([...agentRules.matchAll(/^## \d\. (.+)$/gm)].map(match => match[1]),
+    ['Auto-PR', 'Monitor and Fail Fast', 'Autonomous Remediation', 'File Hygiene']);
+  assert.match(agentRules, /After pushing a new candidate branch, immediately create its pull request with `gh pr create --fill`/);
+  assert.match(agentRules, /gh pr checks <PR> --watch --fail-fast/);
+  assert.match(agentRules, /first failed check, stop the watcher immediately/);
+  assert.match(agentRules, /without waiting for parallel jobs or the entire run/);
+  assert.match(agentRules, /initial failed CI validation run as failure one/);
+  assert.match(agentRules, /at most two repair pushes/);
+  assert.match(agentRules, /Pause for explicit user approval if the third consecutive validation run fails/);
+  assert.match(agentRules, /Pause immediately[\s\S]*database migration, security credential, or production-data risk/);
+  assert.match(agentRules, /Preserve unrelated work, shared resources, and diagnostics/);
+  assert.doesNotMatch(agentRules, /FIRE-AND-FORGET|OVERRIDE:|terminate the session immediately/);
   assert.match(releasePipeline, /single source of progress/);
   assert.match(releasePipeline, /Planning, explanation, diagnosis, status, and review-only requests do not authorize/);
 });

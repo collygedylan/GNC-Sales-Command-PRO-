@@ -10,7 +10,7 @@ export type AuraCapability = {
   reviewView?: string;
   fixedFilters?: Readonly<Record<string, string | boolean>>;
   dateField?: string;
-  reader?: "inventory" | "low_stock" | "production_schedule" | "operations" | "settings" | "navigation" | "hl_orders";
+  reader?: "inventory" | "low_stock" | "production_schedule" | "operations" | "settings" | "navigation" | "hl_orders" | "bunch_notes";
 };
 
 /** Fixed projections only. Reads still run with the caller's JWT so database RLS applies. */
@@ -57,6 +57,7 @@ export const AURA_READ_CAPABILITIES: Readonly<Record<string, AuraCapability>> = 
     operations: special('managers', 'operations', 'Operations tasks'),
     low_stock: special('low-stock', 'low_stock', 'Item low-stock targets'),
     hl_orders: special('hl-order', 'hl_orders', 'HL orders and receipts'),
+    bunch_notes: special('bunch-note', 'bunch_notes', 'Bunch Notes jobs'),
     production_schedule: special('production', 'production_schedule', 'Production schedule'),
     request_history: { ...baseCapabilities.request_history, module: 'request-history', reviewView: 'request-history' },
     calendar: { ...baseCapabilities.calendar, module: 'department-calendar', reviewView: 'department-calendar', dateField: 'start_at' },
@@ -70,6 +71,12 @@ export const AURA_READ_CAPABILITIES: Readonly<Record<string, AuraCapability>> = 
     marketing: { ...baseCapabilities.marketing, module: 'advertisement', reviewView: 'advertisement' },
     av: capability('av', 'ph_cav_import', 'unique_id', 'unique_id,itemcode,commonname,contsize,season,ptravailable,available,reserved_qty,order_qty,hold_reason,holdstopreason,unit_price,last_updated', 'itemcode,commonname', 'Published availability'),
     av_notes: capability('av', 'ph_av_notes', 'unique_id', 'unique_id,commonname,salesnote', 'commonname,salesnote', 'AV notes'),
+    row_assignments: capability('drive', 'ph_inventory_row_assignments', 'master_unique_id', 'master_unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,lotcode,warehousei,assignedto,default_assignedto,assignment_reason,zone_override_active,review_required,revision,updated_at', 'itemcode,commonname,genusname', 'Current inventory row assignments', { fixedFilters: { present_in_drive: true } }),
+    default_owners: capability('drive', 'ph_itemcode_default_owners', 'itemcode_normalized', 'itemcode_normalized,assignedto,assigned_at,revision,review_required,updated_by,updated_at', 'itemcode_normalized,assignedto', 'Itemcode default owners'),
+    directory_contacts: capability('communication', 'ph_company_directory_contacts', 'id', 'id,name,department,extension,cell_number,home_number,location,needs_review,updated_at', 'name,department,extension,location', 'Company contacts'),
+    directory_blocks: capability('communication', 'ph_company_directory_blocks', 'letter', 'letter,name,needs_review,updated_at', 'letter,name', 'Nursery blocks'),
+    directory_beds: capability('communication', 'ph_company_directory_beds', 'id', 'id,block_letter,bed_identifier,capacity,updated_at', 'block_letter,bed_identifier', 'Nursery bed capacity'),
+    directory_codes: capability('communication', 'ph_company_directory_codes', 'id', 'id,code,description,department_reference,needs_review,updated_at', 'code,description,department_reference', 'Company directory codes'),
     customers: capability('sales', 'ph_customer_consignee_sales_reps', 'unique_id', 'unique_id,customeridentityid,customername,customerstatus,consigneeid,consigneename,consigneestatus,salesrepname,updated_at', 'customername,consigneename,salesrepname', 'Customers'),
     credits: capability('sales-credit', 'ph_sales_credit_requests', 'unique_id', creditFields, 'itemcode,commonname,customername,consigneename,request_folder', 'Sales credits', { dateField: 'submitted_at' }),
     credit_requests: capability('credit-request', 'ph_sales_credit_requests', 'unique_id', creditFields, 'itemcode,commonname,customername,consigneename,request_folder', 'Credit requests', { dateField: 'submitted_at' }),
@@ -116,7 +123,14 @@ export const AURA_DOMAIN_ROUTES = Object.freeze([
   { pattern: /\b(?:propagation|propagate)\b/i, capability: 'propagation' },
   { pattern: /\b(?:planting)\b/i, capability: 'planting' },
   { pattern: /\b(?:production work|production workflow)\b/i, capability: 'production_work' },
-  { pattern: /\b(?:bunch notes?|bunch counts?)\b/i, capability: 'bunch' },
+  { pattern: /\bbunch counts?\b/i, capability: 'bunch' },
+  { pattern: /\bbunch notes?(?: jobs?)?\b/i, capability: 'bunch_notes' },
+  { pattern: /\b(?:inventory row assignments?|row owners?)\b/i, capability: 'row_assignments' },
+  { pattern: /\b(?:itemcode default owners?|default owners?)\b/i, capability: 'default_owners' },
+  { pattern: /\b(?:company contacts?|company directory|directory contacts?)\b/i, capability: 'directory_contacts' },
+  { pattern: /\b(?:nursery blocks?|directory blocks?)\b/i, capability: 'directory_blocks' },
+  { pattern: /\b(?:nursery beds?|bed capacity|directory beds?)\b/i, capability: 'directory_beds' },
+  { pattern: /\b(?:directory codes?|company codes?)\b/i, capability: 'directory_codes' },
   { pattern: /\b(?:shear|shearing)(?: work| list)?\b/i, capability: 'shear' },
   { pattern: /\btake[ -]back(?: queue)?\b/i, capability: 'take_back' },
   { pattern: /\binventory change requests?\b/i, capability: 'moves' },
@@ -150,12 +164,12 @@ const moduleEntry = (reviewView: string, capabilities: string[], question: strin
 /** Coverage of navigation_catalog_v1, including explicit unavailable app features. */
 export const AURA_MODULE_CAPABILITIES = Object.freeze({
   home: moduleEntry('home', ['navigation'], 'Which app areas can I open?'),
-  drive: moduleEntry('drive', ['inventory', 'photo_history'], 'Where is item 00123?'),
+  drive: moduleEntry('drive', ['inventory', 'photo_history', 'row_assignments', 'default_owners'], 'Where is item 00123?'),
   tasks: moduleEntry('tasks', ['eval_work', 'location_work'], 'Show open Location Work'),
   docks: moduleEntry('docks', ['dock_trips', 'dock_team', 'dock_item', 'dock_issue', 'soc_orders'], 'Show dock trips'),
   request: moduleEntry('request', ['request_queue', 'active_request'], 'Show active requests'),
   bloom: moduleEntry('bloom', ['inventory', 'customers'], 'Prepare an order for review'),
-  communication: moduleEntry('communication', ['navigation'], 'Open communication'),
+  communication: moduleEntry('communication', ['navigation', 'directory_contacts', 'directory_blocks', 'directory_beds', 'directory_codes'], 'Open communication'),
   'department-calendar': moduleEntry('department-calendar', ['calendar', 'time_off'], 'Show calendar events tomorrow'),
   chat: moduleEntry('chat', [], 'Read my authorized chat messages'),
   sales: moduleEntry('sales', ['customers', 'soc_orders'], 'Find customer Acme'),
@@ -168,7 +182,7 @@ export const AURA_MODULE_CAPABILITIES = Object.freeze({
   advertisement: moduleEntry('advertisement', ['marketing'], 'Find marketing materials'),
   'sales-inventory': moduleEntry('sales-inventory', ['av'], 'Show sales inventory'),
   'weather-hold': moduleEntry('weather-hold', ['weather_daily', 'weather_hourly'], 'Show stored weather records'),
-  'bunch-note': moduleEntry('bunch-note', ['bunch'], 'Show bunch counts'),
+  'bunch-note': moduleEntry('bunch-note', ['bunch', 'bunch_notes'], 'Show bunch counts'),
   'hl-order': moduleEntry('hl-order', ['hl_orders'], 'Show HL orders'),
   'po-management': moduleEntry('po-management', ['po_fall', 'po_spring'], 'Show purchase-order balances for 27S1'),
   'crop-roll': moduleEntry('crop-roll', ['crop_rows', 'crop_runs'], 'Show crop-roll status'),

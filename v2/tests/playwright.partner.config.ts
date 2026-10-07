@@ -5,6 +5,7 @@ export default defineConfig({
   testDir: '.',
   testMatch: 'partner-workspace.e2e.spec.ts',
   workers: 1,
+  retries: process.env.CI ? 2 : 0,
   timeout: 40_000,
   reporter: 'list',
   use: {

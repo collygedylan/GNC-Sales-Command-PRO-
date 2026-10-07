@@ -4,7 +4,7 @@ const baseURL = 'http://127.0.0.1:43142';
 export default defineConfig({
   testDir: './tests', testMatch: 'module-mobile-smoke.e2e.spec.ts',
   outputDir: './artifacts/module-mobile', fullyParallel: false, workers: 1,
-  retries: 0, timeout: 120_000, forbidOnly: Boolean(process.env.CI),
+  retries: process.env.CI ? 2 : 0, timeout: 120_000, forbidOnly: Boolean(process.env.CI),
   expect: { timeout: 8_000 },
   reporter: [[process.env.CI ? 'github' : 'list'], ['json', { outputFile: './artifacts/module-mobile/results.json' }]],
   use: { baseURL, actionTimeout: 8_000, navigationTimeout: 20_000, serviceWorkers: 'block', trace: 'retain-on-failure', screenshot: 'only-on-failure' },

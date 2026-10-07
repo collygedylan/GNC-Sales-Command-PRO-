@@ -15,7 +15,7 @@ for (const width of [390, 1280]) {
         { UNIQUE_ID: 'multi-a2', ITEMCODE: 'MULTI.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Multi', CONTSIZE: '#3', SEASON: 'U2', SALEYEAR: 27, LOTCODE: '27.U2', PRIORITY: '', LOCATIONCODE: 'B.01.001', PTRONHAND: 10, PTRAVAILABLE: 10 },
         { UNIQUE_ID: 'multi-b1', ITEMCODE: 'MULTI.B', GENUSNAME: 'Rosa', COMMONNAME: 'Beta Multi', CONTSIZE: '#3', SEASON: 'U2', SALEYEAR: 27, LOTCODE: '27.U2', PRIORITY: '', LOCATIONCODE: 'C.01.001', PTRONHAND: 30, PTRAVAILABLE: 25 },
         { UNIQUE_ID: 'multi-c1', ITEMCODE: 'MULTI.C', GENUSNAME: 'Rosa', COMMONNAME: 'Excluded Multi', CONTSIZE: '#3', SEASON: 'U3', SALEYEAR: 27, LOTCODE: '27.U3', DESIGITEM: 'SHFT', LOCATIONCODE: 'D.01.001', PTRONHAND: 30 }
-      ], warehouseAssignedItemsData: ['MULTI.A','MULTI.B','MULTI.C'].map((item, i) => ({ UNIQUE_ID: 'multi-assigned-' + i, ITEMCODE: item, GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' })), _fromCache: true });
+      ], warehouseAssignedItemsData: [['multi-a1','MULTI.A'],['multi-a2','MULTI.A'],['multi-b1','MULTI.B'],['multi-c1','MULTI.C']].map(([id,item]) => ({ master_unique_id:id, UNIQUE_ID:id, ITEMCODE:item, GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' })), _fromCache: true });
       for (const name of ['master', 'warehouseAssignedItems']) {
         const state = getDatasetState(name); state.initialLoaded = state.fullLoaded = true;
         if (name === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
@@ -149,7 +149,7 @@ for (const width of [390, 1280]) {
         { UNIQUE_ID:'not-low-u1', ITEMCODE:'NOT.LOW', GENUSNAME:'Ilex', COMMONNAME:'U1 Not Low', CONTSIZE:'#3', SEASON:'U1', SALEYEAR:27, S_LTS:999, LOCATIONCODE:'E.01.002', LOTCODE:'27.U1', PTRONHAND:7, PTRAVAILABLE:7 },
         { UNIQUE_ID:'shift-f1', ITEMCODE:'SHIFT.U3', GENUSNAME:'Miscanthus', COMMONNAME:'Shift Excluded', CONTSIZE:'#3', SEASON:'F1', SALEYEAR:27, S_LTS:5, LOCATIONCODE:'F.01.001', LOTCODE:'27.F1', PTRONHAND:14, PTRAVAILABLE:14 },
         { UNIQUE_ID:'shift-u3', ITEMCODE:'SHIFT.U3', GENUSNAME:'Miscanthus', COMMONNAME:'Shift Excluded', CONTSIZE:'#3', SEASON:'U3', SALEYEAR:27, DESIGITEM:'SHFT', S_LTS:999, LOCATIONCODE:'F.01.002', LOTCODE:'27.U3', PTRONHAND:6, PTRAVAILABLE:6 }
-      ], warehouseAssignedItemsData: ['LOW.A','LOW.B','LOW.C','LOW.D','NOT.LOW','SHIFT.U3'].map((item, index) => ({ UNIQUE_ID:'low-assign-' + index, ITEMCODE:item, GENUSNAME:['Rosa','Acer','Thuja','Panicum','Ilex','Miscanthus'][index], ASSIGNEDTO:'dylan_collyge' })), _fromCache:true });
+      ], warehouseAssignedItemsData: [['LOW.A','low-a-f1','low-a-s1','low-a-u1'],['LOW.B','low-b-f1','low-b-u2'],['LOW.C','low-c-f1','low-c-u3'],['LOW.D','low-d-f1','low-d-x'],['NOT.LOW','not-low-f1','not-low-u1'],['SHIFT.U3','shift-f1','shift-u3']].flatMap(([item,...ids],index) => ids.map(id => ({master_unique_id:id,UNIQUE_ID:id,ITEMCODE:item,GENUSNAME:['Rosa','Acer','Thuja','Panicum','Ilex','Miscanthus'][index],ASSIGNEDTO:'dylan_collyge'}))), _fromCache:true });
       for (const name of ['master','warehouseAssignedItems']) {
         const state = getDatasetState(name); state.initialLoaded = state.fullLoaded = true;
         if (name === 'master') { state.fieldCoverage = 'full'; state.rowCompleteness = 'complete'; }
@@ -341,8 +341,9 @@ test('Eval Reports #2 switches between flat ITEMCODEs and Block Alpha to Locatio
       { UNIQUE_ID:'drill-a2', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', COMMONNAME:'Alpha One', CONTSIZE:'#3', SEASON:'U2', SALEYEAR:27, PRIORITY:'', S_LTS:15, BLOCKALPHA:'A', LOCATIONCODE:'A.02.001', LOTCODE:'27.U2', PTRONHAND:15, PTRAVAILABLE:15 },
       { UNIQUE_ID:'drill-b1', ITEMCODE:'DRILL.B1', GENUSNAME:'Thuja', COMMONNAME:'Beta One', CONTSIZE:'#7', SEASON:'U2', SALEYEAR:27, PRIORITY:'', S_LTS:12, BLOCKALPHA:'B', LOCATIONCODE:'B.01.001', LOTCODE:'27.U2', PTRONHAND:12, PTRAVAILABLE:11 }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID:'assign-drill-a1', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
-      { UNIQUE_ID:'assign-drill-b1', ITEMCODE:'DRILL.B1', GENUSNAME:'Thuja', ASSIGNEDTO:'dylan_collyge' }
+      { master_unique_id:'drill-a1', UNIQUE_ID:'drill-a1', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+      { master_unique_id:'drill-a2', UNIQUE_ID:'drill-a2', ITEMCODE:'DRILL.A1', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+      { master_unique_id:'drill-b1', UNIQUE_ID:'drill-b1', ITEMCODE:'DRILL.B1', GENUSNAME:'Thuja', ASSIGNEDTO:'dylan_collyge' }
     ], _fromCache:true });
     for (const name of ['master','warehouseAssignedItems']) {
       const state = getDatasetState(name); state.initialLoaded = state.fullLoaded = true;

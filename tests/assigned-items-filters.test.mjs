@@ -14,7 +14,7 @@ const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnS
   'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart', 'getWarehouseAssignedIdentityParts',
   'buildWarehouseAssignedLookupKeys', 'clearWarehouseAssignedItemCaches', 'rebuildWarehouseAssignedItemIndexes',
   'chooseWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowForItem',
-  'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue'];
+  'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue', 'getManagerEvalAssignmentReason'];
 function helper(name) {
   const start = html.indexOf(`        function ${name}(`);
   assert.ok(start >= 0, name);
@@ -216,7 +216,7 @@ test('real normalization preserves zeros, codes and location codes in exported v
   const result = ctx.getFilteredManagerAssignedItemsExportRows();
   assert.equal(result.length, 1);
   assert.deepEqual(Array.from(ctx.getManagerAssignedItemsExportColumns(), col => col.value(result[0])),
-      ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Saved assignment']);
+      ['zero', '', '', '', 'No', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Assignment pending reconciliation']);
   assert.equal(ctx.getManagerAssignedColumnOptions('WAREHOUSEI')[0].label, '0');
   assert.equal(data[0].warehousei, 0, 'source dataset remains unchanged');
 });
@@ -245,7 +245,7 @@ test('export metadata uses retained display labels, Unassigned, and readable sor
   const matching = ctx.getFilteredManagerAssignedItemsExportRows();
   const metadata = new Map(Array.from(ctx.getManagerAssignedItemsExportMetaRows(matching), row => Array.from(row)));
   assert.equal(metadata.get('Rows'), '1');
-  assert.equal(metadata.get('Column Filters'), 'AssignedTo: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
+  assert.equal(metadata.get('Column Filters'), 'Effective Worker: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
   assert.equal(metadata.get('Sort'), 'Item Code descending');
 });
 
@@ -259,4 +259,29 @@ test('compact Assigned Items controls expose values and sort in triggers without
   assert.match(controls, /<div class="assigned-phone-filters">/);
   assert.match(controls, /hasFilters \? '<button[^']*assigned-filter-clear/);
   assert.doesNotMatch(controls, /<details|<summary|assigned-filter-chip/);
+});
+
+test('Assigned Items filter panel clamps wide visual viewports to the layout viewport', () => {
+  const style = { setProperty(name, value) { this[name] = value; } };
+  const panel = { style };
+  const scope = { querySelector: () => ({ getBoundingClientRect: () => ({ left: 40, bottom: 80 }) }) };
+  const ctx = vm.createContext({
+    document: {
+      documentElement: { clientWidth: 412 },
+      getElementById: id => id === 'manager-assigned-filter-panel' ? panel : null,
+      querySelector: () => scope,
+    },
+    window: { visualViewport: { offsetLeft: 0, offsetTop: 0, width: 432, height: 800 }, innerWidth: 412, innerHeight: 800 },
+    getManagerAssignedColumnState: () => ({ editor: { field: 'COMMONNAME' } }),
+  });
+  vm.runInContext(`${helper('positionManagerAssignedColumnFilter')}\npositionManagerAssignedColumnFilter()`, ctx);
+  const left = Number.parseFloat(style.left);
+  const width = Number.parseFloat(style.width);
+  assert.ok(left >= 0);
+  assert.ok(left + width <= 412);
+});
+
+test('Assigned Items fixed dialog opts out of the generic non-fixed modal width rule', () => {
+  const source = helper('openManagerAssignedColumnFilter');
+  assert.match(source, /class="excel-filter-panel assigned-column-panel fixed"/);
 });

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
@@ -48,6 +50,77 @@ function configLoader(extraEnv = {}) {
   return name => load(name).default;
 }
 
+test('every CI Playwright config permits two retries while local runs remain immediate', () => {
+  const configs = readdirSync(root).filter(name => /^playwright(?:\.[\w-]+)?\.config\.ts$/.test(name)
+    && name !== 'playwright.local.config.ts');
+  configs.push('v2/tests/playwright.partner.config.ts');
+  for (const CI of ['true', undefined]) {
+    const load = configLoader({ CI, CANARY_BASE_URL: 'http://127.0.0.1:43144' });
+    for (const name of configs) {
+      const config = load(name);
+      assert.equal(config.retries, CI ? 2 : 0, name);
+      assert.notEqual(config.failOnFlakyTests, true, name);
+      for (const project of config.projects || []) {
+        assert.equal(project.retries ?? config.retries, CI ? 2 : 0, `${name}: ${project.name}`);
+      }
+    }
+  }
+  assert.match(readFileSync(path.join(root, 'playwright.local.config.ts'), 'utf8'), /retries: 0/);
+  for (const file of ['scripts/check-local.mjs', 'scripts/check-foundation.mjs']) {
+    assert.match(readFileSync(path.join(root, file), 'utf8'), /'--retries=0'/, file);
+  }
+});
+
+test('real Playwright retries recover twice, exhaust after three attempts, and then fail fast without a browser', { timeout: 60_000 }, () => {
+  const parent = path.resolve(tmpdir());
+  const fixture = mkdtempSync(path.join(parent, 'gnc-ci-retry-probe-'));
+  const playwright = JSON.stringify(require.resolve('@playwright/test'));
+  const base = JSON.stringify(path.join(root, 'playwright.config.ts'));
+  try {
+    writeFileSync(path.join(fixture, 'playwright.config.cjs'), `
+      const { defineConfig } = require(${playwright});
+      const base = require(${base}).default;
+      module.exports = defineConfig({ ...base, testDir: __dirname, testMatch: '*.spec.cjs',
+        projects: [{ name: 'retry-probe' }], fullyParallel: false, workers: 1, maxFailures: 1,
+        use: {}, webServer: undefined, reporter: 'json', outputDir: __dirname + '/results' });
+    `);
+    writeFileSync(path.join(fixture, 'retry.spec.cjs'), `
+      const { test, expect } = require(${playwright});
+      test('retry target', async ({}, info) => {
+        expect(process.env.GNC_RETRY_PROBE_MODE === 'recover' && info.retry === 2).toBe(true);
+      });
+      test('following test', async () => { expect(true).toBe(true); });
+    `);
+    for (const scenario of [
+      { ci: true, mode: 'recover', exit: 0, attempts: ['failed', 'failed', 'passed'], outcome: 'flaky' },
+      { ci: true, mode: 'fail', exit: 1, attempts: ['failed', 'failed', 'failed'], outcome: 'unexpected' },
+      { ci: false, mode: 'fail', exit: 1, attempts: ['failed'], outcome: 'unexpected' },
+    ]) {
+      const env = { ...process.env, GNC_RETRY_PROBE_MODE: scenario.mode };
+      if (scenario.ci) env.CI = 'true'; else delete env.CI;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_NAME;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_FILE;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_DIR;
+      const run = spawnSync(process.execPath, [require.resolve('@playwright/test/cli'), 'test',
+        '--config', path.join(fixture, 'playwright.config.cjs')], {
+        cwd: root, env, encoding: 'utf8', timeout: 15_000, maxBuffer: 2 * 1024 * 1024,
+      });
+      assert.equal(run.error, undefined, run.error?.message);
+      assert.equal(run.status, scenario.exit, run.stderr + run.stdout);
+      const report = JSON.parse(run.stdout);
+      const specs = report.suites.flatMap(suite => suite.specs);
+      const target = specs.find(spec => spec.title === 'retry target').tests[0];
+      assert.deepEqual(target.results.map(result => result.status), scenario.attempts);
+      assert.equal(target.status, scenario.outcome);
+      const following = specs.find(spec => spec.title === 'following test').tests[0];
+      assert.equal(following.status, scenario.exit ? 'skipped' : 'expected');
+    }
+  } finally {
+    assert.equal(path.dirname(path.resolve(fixture)), parent, 'Cleanup is limited to this generated fixture');
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
 function specFiles(directory = path.join(root, 'tests')) {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const fullPath = path.join(directory, entry.name);
@@ -88,6 +161,12 @@ const originalBrowserFiles = [
 test('release unit union preserves every existing script and explicit gate exactly once', () => {
   assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
   assert.deepEqual(explicitReleaseUnitTests, [
+    'tests/assigned-items-component.test.mjs',
+    'tests/assigned-items-virtualization.test.mjs',
+    'tests/inventory-row-assignment-client.test.mjs',
+    'tests/inventory-row-assignment-consumers.test.mjs',
+    'tests/reclass-split-client.test.mjs',
+    'tests/reclass-split-move-v4.test.mjs',
     'tests/aura-voice.test.mjs',
     'tests/aura-voice-mode-ui.test.mjs',
     'tests/aura-lingo-v2.test.mjs',
@@ -99,6 +178,11 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/alpha-command-center.test.mjs',
     'tests/floor-startup-hotfix.test.mjs',
     'tests/dataset-read-hotfix.test.mjs',
+    'tests/docks-suspend-performance.test.mjs',
+    'tests/suspend-tag-dataset.test.mjs',
+    'tests/suspend-tag-approval.test.mjs',
+    'tests/suspend-tag-subset.test.mjs',
+    'tests/soc-write-diagnostics.test.mjs',
     'tests/soc-order-history.test.mjs',
     'tests/item-low-stock-migration-runner.test.mjs',
     'tests/password-change-handler.test.mjs',
@@ -109,6 +193,10 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/manager-season-priority-protected.test.mjs',
     'tests/assigned-items-filters.test.mjs',
     'tests/bunch-note.test.mjs',
+    'tests/bunch-note-structured.test.mjs',
+    'tests/bunch-note-work-cards.test.mjs',
+    'tests/bunch-note-card-board.test.mjs',
+    'tests/bunch-note-card-model.test.mjs',
     'tests/sales-workflow.test.mjs',
     'tests/sales-history-context.test.mjs',
     'tests/request-metadata-notifications.test.mjs',
@@ -229,6 +317,7 @@ test('functional and timing lanes retain all original browser projects and asser
 });
 
 const compiledSuites = [
+  ['reclass-splits', 'reclass-splits', ['cache-chromium', 'cache-android', 'cache-iphone']],
   ['bunch-note', 'bunch-note', ['cache-chromium', 'cache-android', 'cache-iphone']],
   ['sales-mobile', 'sales-mobile', ['sales-desktop', 'sales-android', 'sales-iphone', 'sales-narrow']],
   ['module-mobile', 'module-mobile-smoke', ['module-320', 'module-iphone']],
@@ -270,7 +359,7 @@ for (const [name, spec, projects] of compiledSuites) {
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
-    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'sales-mobile', 'module-mobile', 'task-av-blanks'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
+    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'reclass-splits', 'sales-mobile', 'module-mobile', 'task-av-blanks'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
     else assert.match(config.webServer.command, /startReleaseTestServer/);
   });
@@ -283,7 +372,7 @@ test('Request regressions run against the compiled shell across desktop and mobi
   assert.deepEqual(plain(config.projects.map(project => project.name)), ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']);
   assert.match(config.webServer.command, /startReleaseTestServer/);
   assert.equal(config.workers, 1);
-  assert.equal(config.retries, 0);
+  assert.equal(config.retries, 2);
 });
 
 test('compiled Android login coverage stays separate while three desktop projects move to timing', () => {
@@ -407,7 +496,7 @@ const september9BrowserBodies = [
   [
     "tests/review-assignedto.e2e.spec.ts",
     "tests/responsive-workflows.e2e.spec.ts",
-    "Eval assignment dropdown exposes the full managed roster and composite key"
+    "Eval assignment dropdown exposes the full managed roster and Itemcode default key"
   ],
   [
     "tests/review-assignedto.e2e.spec.ts",
@@ -507,4 +596,24 @@ test('rollback browser lanes preserve baseline assertions and fixture implementa
   }
   const replacements = new Set([...september9BrowserBodies, ...september9BrowserFixtures].map(([destination]) => destination));
   for (const file of replacements) assert.doesNotMatch(read(file), /\btest\.(?:skip|fixme|only)\s*\(/, file);
+});
+
+test('compiled matrix partitions preserve every declared browser project and suite', () => {
+  const workflow = require('js-yaml').load(readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8'));
+  const entries = workflow.jobs.compiled.strategy.matrix.include.filter(row => row.suite !== 'command-center');
+  const expected = ["playwright.release-canary.config.ts","playwright.footer.config.ts","playwright.home-role.config.ts","playwright.season-sales-office.config.ts","playwright.season-priority.config.ts","playwright.suspend-tag.config.ts","playwright.docks-filter.config.ts","playwright.task-av-blanks.config.ts","playwright.session-recovery.config.ts","playwright.review-assignedto.config.ts","playwright.verified-data-cache.config.ts","playwright.request-reliability.config.ts","playwright.request-photo.config.ts","playwright.bunch-note.config.ts","playwright.reclass-splits.config.ts","playwright.sales-mobile.config.ts","playwright.module-mobile.config.ts","playwright.production-schedule.config.ts","playwright.hl-order.config.ts","playwright.hl-restock.config.ts","playwright.stable-background-refresh.config.ts"];
+  assert.deepEqual([...new Set(entries.map(row => row.config))].sort(), expected.sort());
+  const load = configLoader();
+  for (const file of expected) {
+    const projects = load(file).projects;
+    const rows = entries.filter(row => row.config === file);
+    assert.deepEqual([...new Set(rows.map(row => row.project))].sort(), plain(projects.map(project => project.name)).sort(), file);
+    for (const project of projects) {
+      const group = rows.filter(row => row.project === project.name);
+      const total = file === 'playwright.home-role.config.ts' ? 2 : 1;
+      assert.equal(group.length, total, file + ': ' + project.name);
+      assert.deepEqual(group.map(row => row.shard).sort(), Array.from({length:total}, (_,i)=>i+1));
+      assert.ok(group.every(row => row.total === total && row.browsers === (project.use.browserName || project.use.defaultBrowserType || 'chromium')));
+    }
+  }
 });

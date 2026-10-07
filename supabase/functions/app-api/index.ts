@@ -1,4 +1,5 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
 import { readAvPage } from "../_shared/av-read.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
@@ -183,6 +184,8 @@ const READABLE_TABLES = new Set([
   "ph_hold_stop_itemcode_cycles",
   "ph_hold_stop_itemcode_summaries",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_hl_po",
   "ph_view_po_27f1_hl",
   AV_OPTION_EVAL_REQUESTS_TABLE,
@@ -276,6 +279,8 @@ const REP_READ_TABLES = new Set([
   "ph_cav_import",
   "ph_av_notes",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_dock_team_status",
   "ph_dock_item_status",
   "ph_inventory_edit_requests",
@@ -292,6 +297,8 @@ const SALES_MARKETING_READ_TABLES = new Set([
   "ph_cav_import",
   "ph_av_notes",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_dock_team_status",
   "ph_dock_item_status",
 ]);
@@ -479,6 +486,7 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   ph_request_queue_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,delivery_event_id,delivery_status,delivery_attempt_count,delivery_next_attempt_at,delivery_first_attempt_at,delivery_last_attempt_at,delivery_lease_expires_at,delivery_error_code,delivery_email_delivered_at,delivery_push_delivered_at,delivery_delivered_at,delivery_mode,delivery_age_seconds,delivery_display_state",
   ph_active_request_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,customeridentityid,customername,consigneeidentityid,consigneename",
   ph_soc_master: "unique_id,concat,last_updated,assignedto,date_completed,dock_photo_link,dock_photo_name,dock_spec,dock_caliper,dock_note,contsize,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccount,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortnamevariety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landed,retailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,dock_num,source,desigitem,desigcust,desigloc,filename",
+  suspend_tag: "unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode",
   ph_cav_import: "unique_id,last_updated,filename,itemcode,commonname,contsize,season,ptravailable,brand,spec,hz,unitprice,holdstopreason,ordertotal,product_description,brand_code,h,available,reserved_qty,order_qty,unit_price,n_star,hot_price,hold_reason,ext_item_total,created_at",
   ph_reserves: "unique_id,concat,last_updated,assigned_to,assignedto,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,date_completed,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,item,size,container,location,lot,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccountidgroup,national_account_idgroup,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortname,variety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landedretailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit,merch_shipped,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,nationalaccount,sortnamevariety,landed,retailprice,dock_num,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,contsize,source,desigitem,desigcust,desigloc,filename",
   ph_sales_office: "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,sales_note,photo_link,completed_by,completed_at,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,spec,caliper,photo_name,move_batch_id,move_from_locationcode,move_to_locationcode,move_actual_qty,workflow_status,workflow_detail,state_revision,reopen_reason,source_revision,updated_at,arrived_at",
@@ -515,6 +523,12 @@ const DATASET_READ_SOURCES: Record<string, { table: string; permission: string; 
     table: "ph_soc_master", permission: "ph_soc_master", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_soc_master,
     filterFields: new Set(["unique_id", "tripnumber", "stopnumber", "dock_num", "assignedto", "salesrepid", "salesrepname", "customername", "consigneename", "transactionnumber", "itemcode", "locationcode", "lotcode", "season", "source", "last_updated", "date_completed", "planstart", "warehouseid", "stagename"]),
     orderFields: new Set(["unique_id", "last_updated", "date_completed", "tripnumber", "stopnumber", "itemcode", "locationcode"]),
+  },
+  // Suspend Tag is a server-filtered subset of SOC. Keep the same SOC
+  // authorization boundary while returning only fields used by its cards/actions.
+  suspend_tag: {
+    table: "ph_soc_master", permission: "ph_soc_master", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.suspend_tag,
+    filterFields: new Set(), orderFields: new Set(["unique_id"]),
   },
   cav: {
     table: "ph_cav_import", permission: "ph_cav_import", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_cav_import,
@@ -620,6 +634,7 @@ function datasetReadOrCondition(filter: { field: string; op: string; value: unkn
 async function handleDatasetRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
+  request?: Request,
 ) {
   if (!session) return errorResponse("Unauthorized", 401, { code: "DATASET_READ_UNAUTHORIZED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -631,7 +646,11 @@ async function handleDatasetRead(
   const dataset = String(payload.dataset || "").trim().toLowerCase();
   const source = DATASET_READ_SOURCES[dataset];
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
-  if (!hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  if (dataset === "suspend_tag" ? !SUSPEND_TAG_EDITORS.has(username) : !hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  if (dataset === "suspend_tag") {
+    try { actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, request); }
+    catch { return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" }); }
+  }
   let parsed: ReturnType<typeof validateDatasetReadParams>;
   try { parsed = validateDatasetReadParams(payload); }
   catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
@@ -647,6 +666,13 @@ async function handleDatasetRead(
       else if (filter.op === "not.is") query = query.not(filter.field, "is", filter.value);
       else if (filter.op === "not.ilike") query = query.not(filter.field, "ilike", filter.value);
       else query = query.filter(filter.field, filter.op, filter.value);
+    }
+    if (dataset === "suspend_tag") {
+      // Mirror the Suspend Tag eligibility normalization in index.html, but
+      // enforce it in PostgREST before exact count/paging so callers cannot
+      // widen the result or receive inconsistent page totals.
+      query = query.filter("suspend", "imatch", "^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$")
+        .filter("suspend_to", "imatch", "^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$");
     }
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
@@ -684,9 +710,21 @@ async function handleDatasetRead(
     const { data, error, count } = await query.range(parsed.offset, parsed.offset + parsed.limit - 1);
     if (error) return databaseFailureResponse("Dataset read failed.", error, "DATASET_READ_UNAVAILABLE");
     if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    if (dataset === "suspend_tag") {
+      const state = await handleSuspendTag(supabase, actor, { operation: "rows", payload: { ids: data.map((row: Record<string, unknown>) => row.unique_id) } }) as { rows: Record<string, unknown>[] };
+      const byId = new Map(state.rows.map(row => [row.unique_id, row]));
+      for (const row of data) {
+        const current = byId.get(row.unique_id);
+        if (current) for (const [key, value] of Object.entries(current)) if (key.startsWith("suspend_tag_") || key in row) row[key] = value;
+      }
+    }
     return jsonResponse({ ok: true, data: { rows: data, total: count, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < count } });
   } catch (error) {
     const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
+    if (dataset === "suspend_tag" && code.includes("SUSPEND_TAG_")) {
+      const failure = suspendTagError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
     return errorResponse("Dataset read parameters are invalid.", 400, { code });
   }
 }
@@ -971,8 +1009,9 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   // Request creation, Eval assignments, and push identity are now enforced by
   // authenticated RPCs. Never let this legacy service-role proxy bypass those
   // database authorization boundaries.
-  if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
+  if (table === "ph_warehouse_assigned_items" || table === "ph_inventory_row_assignments" || table === "ph_itemcode_default_owners" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
   if (table === "ph_dock_team_status") return false;
+  if (table === "ph_soc_master") return false; // Native column grants / protected Suspend Tag command own SOC writes.
   if (table === "ph_active_request" && access.isRep) return false;
   if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
@@ -1071,10 +1110,13 @@ function driveReclassErrorResponse(message: string) {
   if (/SOURCE_CHANGED|SOURCE_MISSING|TOKEN_CONFLICT/.test(raw)) {
     return errorResponse("Inventory or inquiry state changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
   }
+  if (/EVAL_WORK_(ORIGINAL_OH|VERSION|SUBMISSION_TOKEN)_.*CONFLICT|EVAL_WORK_SUBMISSION_TOKEN_CONFLICT/.test(raw)) {
+    return errorResponse("The inventory or saved inquiry changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
   if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
     return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
   }
-  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|STATUS_INVALID|RETRY_INVALID/.test(raw)) {
+  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
   return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
@@ -1188,7 +1230,10 @@ async function handleDriveReclassAction(
         ...sanitizeDriveReclassPayload(payload),
         actorUsername,
       };
-      const { data, error } = await supabase.rpc("enqueue_drive_reclass_inquiry_v1", { p_payload: protectedPayload });
+      const enqueueRpc = protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
+        ? "enqueue_drive_reclass_inquiry_v4"
+        : "enqueue_drive_reclass_inquiry_v1";
+      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: protectedPayload });
       if (error) return driveReclassErrorResponse(error.message || "");
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
     }
@@ -4480,6 +4525,17 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       return jsonResponse(failure.body, failure.status);
     }
   }
+  if (action === "suspend_tag") {
+    if (!session?.authUserId || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" });
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
+      return jsonResponse({ ok: true, data: await handleSuspendTag(supabase, actor, payload) });
+    } catch (error) {
+      const failure = suspendTagError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
+  }
   if (action === "login") return await handleLogin(payload);
   if (action === "native_session_bridge") return await handleNativeSessionBridge(session);
   if (action === "password_change") return await handlePasswordChange(await readPasswordChangeSession(req, session), payload);
@@ -4500,8 +4556,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const actor = await resolveActiveSessionProfile(session);
       const allowed = new Set(["action", "operation", "payload", "commandId", "expectedRevision"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("BUNCH_NOTE_PAYLOAD_INVALID");
+      const operation = String(payload.operation || "");
       const { data, error } = await supabase.rpc("bunch_note_command_v1", {
-        p_actor_id: actor.id, p_operation: String(payload.operation || ""),
+        p_actor_id: actor.id, p_operation: operation,
         p_payload: payload.payload || {}, p_command_id: payload.commandId || null,
         p_expected_revision: payload.expectedRevision ?? null,
       });
@@ -4539,7 +4596,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       });
     }
   }
-  if (action === "dataset_read") return await handleDatasetRead(session, payload);
+  if (action === "dataset_read") return await handleDatasetRead(session, payload, req);
   if (action === "request_archive") return await handleRequestArchive(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);
@@ -4554,15 +4611,27 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const role = String(actor.role || "");
       const access = getRoleAccessState(role);
       const data = await readAvPage({ supabase, actor, payload,
-        // readAvPage exposes only the single current-season setting here; do
-        // not grant rep-like accounts access to arbitrary app settings.
+        // Existing active master-inventory readers may read the single
+        // current-season dependency. readAvPage pins settings to that key.
         canRead: table => hasTableReadAccess(role, table, username)
-          || (table === "ph_app_settings" && access.isRepLike),
+          || (table === "ph_app_settings" && hasTableReadAccess(role, "ph_master_inventory", username)),
         restrictRep: access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username),
       });
       return jsonResponse({ ok: true, data });
     } catch (error) {
-      const failure = error as { message?: string; status?: number; code?: string };
+      const failure = error as { message?: string; status?: number; code?: string; stage?: string };
+      const status = Number(failure.status) || 503;
+      const sqlState = /^[0-9A-Z]{5}$/.test(String(failure.code || "")) ? String(failure.code) : null;
+      const dataset = ["reserves", "notes", "hot_prices", "settings"].includes(String(payload.dataset))
+        ? String(payload.dataset) : "unknown";
+      if (status === 403 || status >= 500) {
+        recordHandledError("app-api", "av_read", error, status, {
+          requestId: req.headers.get("x-request-id") || undefined,
+          sqlState,
+          dataset,
+          denialStage: failure.stage || (status === 403 ? "authorization" : "upstream"),
+        });
+      }
       return errorResponse(failure.message || "AV_READ_UNAVAILABLE", failure.status || 503, {
         code: failure.code || failure.message || "AV_READ_UNAVAILABLE",
       });

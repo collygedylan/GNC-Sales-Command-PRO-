@@ -1,21 +1,46 @@
-# CRITICAL OVERRIDE: FIRE-AND-FORGET PROTOCOL ACTIVE
-Agents are explicitly forbidden from monitoring live deployments, running exact-commit candidate proofs manually, or performing fast-forward promotions to `main`. 
+# Repository Agent Workflow
 
-All production promotions, validations, and merges are handled autonomously by GitHub Actions cloud runners. Agents must push their code or trigger the release script and terminate the session immediately. Do not wait for CI/CD results. Any conflicting rules in this document below this block are officially deprecated and must be ignored.
+This file is the authoritative repository workflow for local development, candidate delivery, CI monitoring, remediation, and cleanup. Apply the sequence below in order. Supporting guidance in instructions.md must remain consistent with it.
 
-# AUTO-PR REQUIREMENT
-Agents must ALWAYS automatically create a pull request using the GitHub CLI (gh pr create --fill) immediately after pushing a candidate branch. Do not wait for the user to explicitly request a production publication. Create the PR and terminate.
+## Local Development and Early Delivery
 
-# OVERRIDE: STAY AWAKE AND MONITOR PROTOCOL
-Agents must ALWAYS automatically create a pull request using the GitHub CLI (gh pr create --fill) immediately after pushing a candidate branch. 
-DO NOT terminate immediately. Instead, you MUST monitor the GitHub Actions pipeline using gh pr checks --watch.
-If the checks pass, you may terminate.
-If the checks fail, read the failure logs and follow the Autonomous CI Remediation rule below.
-This rule completely overrides any previous "fire-and-forget" or "terminate immediately" instructions.
+- Run only targeted unit tests or specific test files directly related to the current changes locally. Leave the full E2E suite and mobile/browser matrices to GitHub Actions.
+- Prefer fast local dev-server verification for affected UI behavior. Do not rebuild full release artifacts or compile heavy production stylesheets merely to support local tests; send tests that require those artifacts to cloud CI.
+- Run a local production build only when strictly necessary to diagnose or verify a potentially build-breaking configuration change. Explain why the build is required and run the smallest build that can verify that change.
+- Once core changes, applicable migration checks, and focused local tests pass, commit and push the candidate immediately, then follow the Auto-PR sequence below. Do not delay the PR for exhaustive local regression testing.
+- Let the parallel GitHub Actions pipeline perform exhaustive regression and E2E validation. On a cloud failure, inspect the failed job and make targeted corrections using the Monitor and Fail Fast and Autonomous Remediation rules below.
 
-# STRICT ENVIRONMENT SYNCHRONIZATION AND FILE HYGIENE
-Maintain strict environment synchronization and file hygiene. Keep all codebase and external integrations highly organized. Automatically clean up temporary, legacy, or obsolete files, and ensure no excess or orphaned files are left behind in GitHub, Google Drive, or local directories after a task is completed or refactored.
+## 1. Auto-PR
 
-# Autonomous CI Remediation
-You are authorized to autonomously attempt up to 3 consecutive fixes for any CI/CD, browser matrix, or unit test failures (such as minor UI pixel shifts, timeouts, or test regressions) without asking for user approval. You must only pause and request explicit approval if a CI check fails 3 times in a row, or if the failure involves a database migration, security credential, or production data risk.
-This rule overrides the earlier requirement to request approval after every CI failure. Continue creating pull requests immediately after pushing candidate branches and monitoring their checks as required above.
+- Work on a candidate branch and preserve unrelated changes in shared workspaces.
+- After pushing a new candidate branch, immediately create its pull request with `gh pr create --fill`. Reuse an existing open PR for that branch; subsequent repair pushes update the same PR.
+- GitHub Actions owns validated merging, production publication, and hosted verification. Do not manually promote commits to main or bypass release gates.
+
+## Development-to-Production Flow
+
+- Target `main` from an isolated `codex/` branch. Run focused local checks; let the full required GitHub Actions validation run on the PR.
+- The existing Auto-Merge workflow opts eligible PRs into GitHub auto-merge. Auto-merge relies on the target branch's configured protections and required checks; creating a PR or enabling auto-merge is not proof that validation passed.
+- Production publication is a separate mandatory cloud gate: it validates the exact candidate commit, deploys backend changes before Pages, and verifies the live release. Do not write directly to production or use an alternate publication path.
+- The aborted staging-teardown experiment adds no staging detour or prerequisite to this production flow.
+
+## 2. Monitor and Fail Fast
+
+- Stay active and monitor the candidate with `gh pr checks <PR> --watch --fail-fast`. If checks have not registered yet, retry the watcher after a bounded delay; missing checks are not a pass.
+- Maintain lockfile-keyed dependency and browser caches, parallel test execution, and `fail-fast: true` on test matrices. GitHub cancels sibling shards within the failed matrix; this does not imply cancellation of unrelated jobs.
+- On the first failed check, stop the watcher immediately and report the failed check and available evidence. Inspect the completed job's logs directly without waiting for parallel jobs or the entire run to finish.
+- Continue directly into the remediation sequence below. Stopping polling does not mean abandoning an authorized repair.
+- Treat cancelled or missing required checks as incomplete validation. Report success only when the current candidate's required checks pass. Production checks remain owned by cloud workflows.
+
+## 3. Autonomous Remediation
+
+- Count the initial failed CI validation run as failure one. Autonomously diagnose and repair ordinary CI, browser, or unit-test failures, then push the repair to the same PR and restart monitoring.
+- Allow at most two repair pushes after that initial failure. Pause for explicit user approval if the third consecutive validation run fails. Count each validation run once, even when multiple checks fail; sibling cancellations do not add failures. Reset the consecutive count after successful validation.
+- Pause immediately for explicit user approval when a failure involves a database migration, security credential, or production-data risk.
+- Preserve test coverage and assertions. Do not skip, quarantine, disable, or bypass tests or release gates to obtain a passing result.
+
+## 4. File Hygiene
+
+- Keep the branch, PR, and task artifacts synchronized and organized. Track temporary files created by the task and remove them when no longer needed.
+- Remove confirmed obsolete or orphaned artifacts within the task's scope. Preserve unrelated work, shared resources, and diagnostics needed for unresolved failures.
+- Before recursive cleanup, verify the resolved target is within the intended task directory. Do not use broad cleanup commands against a shared workspace or external integration.
+- Finish with committed task changes and a clear report of validation, PR status, and any remaining failure evidence.

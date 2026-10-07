@@ -161,13 +161,13 @@ const inventory = Array.from({ length: itemCount }, (_, index) => {
   ];
 }).flat();
 const assignments = inventory.map((row, index) => ({
-  unique_id: `assignment-${index + 1}`, itemcode: row.itemcode, genusname: row.genusname,
+  unique_id: row.unique_id, master_unique_id: row.unique_id, itemcode: row.itemcode, genusname: row.genusname,
   contsize: row.contsize, locationcode: row.locationcode, warehouseid: row.warehouseid,
   assignedto: 'dylan_collyge'
 }));
 
 async function installAssignmentsRoute(page: any) {
-  await page.route('**/rest/v1/ph_warehouse_assigned_items**', async (route: any) => {
+  await page.route('**/rest/v1/ph_inventory_row_assignments**', async (route: any) => {
     await route.fulfill({ status: 200, contentType: 'application/json', headers: {
       'content-range': `0-${Math.max(0, assignments.length - 1)}/${assignments.length}`,
       'access-control-expose-headers': 'content-range'

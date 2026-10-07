@@ -10,12 +10,13 @@ function between(start, end) {
   assert.ok(from > 0 && to > from);
   return html.slice(from, to);
 }
+const workflow = between('function getSuspendTagStatus(', 'let dockSuspendCompletionState = null;');
 const helpers = between('let dockSuspendCompletionState = null;', 'async function openDockSuspendDcNotFoundRecount(');
 const handler = between('async function completeDockSuspendDcRequestFromCard(', 'async function saveDockSuspendDcRequestMirrorData(');
 const revision = '2026-09-08T15:50:47.123456Z';
 const source = () => ({ UNIQUE_ID: 'soc-1', LAST_UPDATED: revision, DATE_COMPLETED: '', SUSPEND: 'SUSPEND', SUSPEND_TO: 'DC', PTRONHAND: '0' });
 const button = () => ({ innerHTML: 'Done', disabled: false, classList: { add() {}, remove() {} } });
-const acknowledgement = (changes = {}) => ({ ok: true, sourceUid: 'soc-1', sourceLastUpdated: revision, completedAt: '2026-09-08T16:00:00Z', alreadyCompleted: false, ...changes });
+const acknowledgement = (changes = {}) => ({ ok: true, row: { unique_id: 'soc-1', last_updated: revision, date_completed: '2026-09-08T16:00:00Z', suspend_tag_version: 1, suspend_tag_status: 'completed', ...changes } });
 function harness(options = {}) {
   const storage = options.storage || new Map();
   const calls = [], toasts = [];
@@ -30,6 +31,7 @@ function harness(options = {}) {
     normalizeSessionIdentity: (value) => String(value || '').trim().toLowerCase(),
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim()) ?? '',
     canCurrentUserViewDockSuspendDcRequests: () => ctx.allowed,
+    requireCurrentSuspendTagWriteProof: () => options.proof !== false,
     getDockSuspendDcRequestSourceUid: (item) => item?.DOCK_SUSPEND_SOURCE_UID || item?.UNIQUE_ID?.replace(/^dock_suspend_dc_/, '') || '',
     findDockSuspendDcRequestSourceRow: () => ctx.currentSource,
     findDockSuspendDcRequestMirrorRowByUniqueId: () => mirror,
@@ -38,18 +40,20 @@ function harness(options = {}) {
     showAppConfirm: async () => options.confirm !== false,
     showToast: (...args) => toasts.push(args),
     getDetailRowWriteTimeoutMs: () => 1000,
-    supabaseRpc: async (name, body) => { calls.push({ name, body }); return options.api ? options.api(body) : acknowledgement(); },
+    postAppFunctionJson: async (_url, body) => { calls.push({ name: body.operation, body }); return { ok: true, data: options.api ? await options.api(body) : acknowledgement() }; },
+    APP_API_FUNCTION_URL: 'https://example.invalid', normalizeRowPhotoFields() {}, buildSearchIndex() {},
+    getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() {},
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
     dockSuspendDcRequestMirrorRowsCacheKey: 'stale', requestScopedItemsCacheKey: 'stale',
     requestsInventory: [mirror], currentSource: row,
   };
   vm.createContext(ctx);
-  vm.runInContext(`${helpers}\n${handler}`, ctx);
+  vm.runInContext(`${workflow}\n${helpers}\n${handler}`, ctx);
   return { ctx, row, mirror, calls, toasts, storage };
 }
 
-test('Done saves the exact source revision before removing zero-stock rows; retains the source', async () => {
+test('Done saves the exact source revision before marking retained rows completed; retains the source', async () => {
   let resolve;
   const wait = new Promise((done) => { resolve = done; });
   const h = harness({ api: () => wait });
@@ -60,18 +64,27 @@ test('Done saves the exact source revision before removing zero-stock rows; reta
   assert.equal(h.row.DATE_COMPLETED, '');
   assert.equal(h.toasts.length, 0);
   assert.equal(h.calls.length, 1);
-  assert.equal(h.calls[0].name, 'complete_suspend_tag_v1');
-  assert.equal(h.calls[0].body.p_source_uid, 'soc-1');
-  assert.equal(h.calls[0].body.p_expected_last_updated, revision);
+  assert.equal(h.calls[0].name, 'complete');
+  assert.equal(h.calls[0].body.payload.sourceUid, 'soc-1');
+  assert.equal(h.calls[0].body.payload.expectedLastUpdated, revision);
   await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
   assert.equal(h.calls.length, 1);
   resolve(acknowledgement());
   await pending;
-  assert.equal(h.row.DATE_COMPLETED, acknowledgement().completedAt);
+  assert.equal(h.row.DATE_COMPLETED, acknowledgement().row.date_completed);
   assert.equal(h.row.PTRONHAND, '0');
   assert.equal(h.ctx.isAcknowledgedDockSuspendCompletion(source()), true);
 });
 
+test('unverified Suspend Tag view never starts a completion write', async () => {
+  const h = harness({ proof: false });
+  const action = button();
+  await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, action);
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.row.DATE_COMPLETED, '');
+  assert.equal(action.disabled, false);
+  assert.ok(h.toasts.length === 0);
+});
 test('cancel or unauthorized actor never submits a write', async () => {
   for (const denied of [false, true]) {
     const h = harness({ confirm: denied });
@@ -93,12 +106,12 @@ test('lost response and reopening the app preserve the command token; failures s
   assert.equal(h.ctx.isAcknowledgedDockSuspendCompletion(h.row), false);
   const next = harness({ storage: h.storage, api: () => acknowledgement({ alreadyCompleted: true }) });
   await next.ctx.completeDockSuspendDcRequestFromCard(next.mirror.UNIQUE_ID, button());
-  assert.equal(next.calls[0].body.p_request_id, h.calls[0].body.p_request_id);
-  assert.equal(next.row.DATE_COMPLETED, acknowledgement().completedAt);
+  assert.equal(next.calls[0].body.commandId, h.calls[0].body.commandId);
+  assert.equal(next.row.DATE_COMPLETED, acknowledgement().row.date_completed);
 });
 
 test('malformed acknowledgements never hide the row or claim success', async () => {
-  for (const result of [null, {}, acknowledgement({ sourceUid: 'other' }), acknowledgement({ sourceLastUpdated: null }), acknowledgement({ completedAt: 'invalid' }), acknowledgement({ alreadyCompleted: undefined })]) {
+  for (const result of [null, {}, acknowledgement({ unique_id: 'other' }), acknowledgement({ last_updated: null }), acknowledgement({ date_completed: 'invalid' }), acknowledgement({ suspend_tag_version: undefined })]) {
     const h = harness({ api: () => result });
     const action = button();
     await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, action);
@@ -109,7 +122,7 @@ test('malformed acknowledgements never hide the row or claim success', async () 
   }
 });
 
-test('receipts suppress stale snapshots but not newer imports or other users', async () => {
+test('receipts preserve completed state across stale snapshots without hiding rows', async () => {
   const h = harness();
   await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
   const next = harness({ storage: h.storage });
@@ -149,14 +162,17 @@ test('a row changed while confirmation is open submits only the originally revie
   h.ctx.currentSource = { ...source(), LAST_UPDATED: '2026-09-08T17:00:00Z' };
   confirm(true);
   await pending;
-  assert.equal(h.calls[0].body.p_expected_last_updated, revision);
+  assert.equal(h.calls[0].body.payload.expectedLastUpdated, revision);
   assert.equal(h.ctx.currentSource.DATE_COMPLETED, '');
-  assert.ok(h.toasts.some(([, message]) => message.includes('SUSPEND_TAG_SOURCE_CHANGED')));
+  assert.ok(h.toasts.some(([, message]) => message.includes('Refresh')));
 });
 
 test('recount completion shares the protected persistence path', async () => {
   const h = harness();
   await h.ctx.markDockSuspendDcRequestCompleteAfterRecount(h.mirror.UNIQUE_ID);
-  assert.equal(h.calls[0].name, 'complete_suspend_tag_v1');
-  assert.equal(h.row.DATE_COMPLETED, acknowledgement().completedAt);
+  assert.equal(h.calls[0].name, 'complete');
+  assert.equal(h.row.DATE_COMPLETED, acknowledgement().row.date_completed);
 });
+
+ test('incomplete cards cannot bypass detail photo validation', async () => { const h=harness({ready:false}); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); assert.equal(h.calls.length,0); assert.equal(h.row.DATE_COMPLETED,''); });
+test('new denial state supersedes a cached completion without dropping photos', async () => { const h=harness(); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); const denied={...source(),suspend_tag_status:'denied',suspend_tag_version:2,DOCK_PHOTO_LINK:'saved.jpg'}; assert.equal(h.ctx.getSuspendTagStatus(denied),'denied'); assert.equal(h.ctx.overlaySuspendTagReceipt(denied).DOCK_PHOTO_LINK,'saved.jpg'); });

@@ -42,6 +42,14 @@ async function fixture(page:any,baseURL:string,worker=false) {
   else if(body.operation==='list')data={jobs};
   else if(body.operation==='get')data={job:jobs.find(j=>j.id===p.job_id),versions:[],work_reports:[],audit:[]};
   else if(body.operation==='claim'){jobs[0].owner_id=hlUserId;jobs[0].revision++;data={job:jobs[0]};}
+   else if(body.operation==='claim_card'||body.operation==='complete_card'){
+    const card=jobs[0].cards.find((item:any)=>item.id===p.card_id);
+    if(!card)throw new Error('Unknown card '+p.card_id);
+    expect(body.expectedRevision).toBe(card.revision);
+    if(body.operation==='claim_card'){expect(card.owner_id).toBeNull();card.owner_id=hlUserId;}
+    else {expect(card.owner_id).toBe(hlUserId);card.status='complete';}
+    card.revision++;jobs[0].revision++;data={job:jobs[0]};
+   }
   else if(body.operation==='add_action'){jobs[0].worker_actions.push({...p.action,worker_added:true});jobs[0].revision++;data={job:jobs[0]};}
   else if(body.operation==='actual'){if(actualReply){await actualReply;actualReply=null;}if(!/^[1-9][0-9]*$/.test(String(p.quantity))&&!p.replaces_id)throw new Error('Invalid actual quantity submitted');const j=jobs[0],action=[...j.body.actions,...j.worker_actions].find((a:any)=>a.id===p.action_id),source=j.body.source.find((r:any)=>r.unique_id===p.source_id);if(p.replaces_id)j.actuals.find((a:any)=>a.id===p.replaces_id).superseded=true;j.actuals.push({id:'actual'+j.actuals.length,action_id:action.id,action_snapshot:action,source_snapshot:source,quantity:Number(p.quantity),destination:p.destination,explanation:p.explanation,replaces_id:p.replaces_id,review_flags:[],created_at:new Date().toISOString()});delete j.progress[action.id];j.revision++;data={job:j};}
   else if(body.operation==='progress'){jobs[0].progress[p.action_id]={status:p.status,reason:p.reason};jobs[0].revision++;data={job:jobs[0]};}
@@ -59,11 +67,116 @@ async function fixture(page:any,baseURL:string,worker=false) {
 }
 async function openBunchNotesFromInventory(page:any) {
  await expect(page.locator('#home-tile-bunch-note')).toHaveCount(0);
+ await expect(page.locator('#home-tile-sales-inventory')).toBeVisible();
  const press=test.info().project.use.isMobile?'tap':'click';
  await page.locator('#home-tile-sales-inventory')[press]();
+ await expect(page.locator('#hub-extra-sales-inventory-bunch-note')).toBeVisible();
  await page.locator('#hub-extra-sales-inventory-bunch-note')[press]();
  await expect(page.locator('#view-bunch-note')).toBeVisible();
 }
+async function openAuthorLocation(page:any, location:string) {
+ const section=page.locator('.bn-card-board__location').filter({has:page.locator('h3',{hasText:location})});
+ await expect(section).toBeVisible();
+ await section.getByRole('button',{name:'Location instructions',exact:true}).first().click();
+}
+
+test('structured worksheet saves ordered houses, custom crew tags and freeform routing without losing failed edits',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!);
+ await openBunchNotesFromInventory(page);
+ await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
+ await openAuthorLocation(page,'C.12.001');
+ await page.getByLabel('Purposes',{exact:true}).fill('Bunch for shipping');
+ await page.getByLabel('General instructions',{exact:true}).fill('Leave aisles at risers, remove drape. Red flags');
+ await page.getByLabel('Default direction',{exact:true}).fill('West to East');
+ await page.getByLabel('Target houses',{exact:true}).fill('South house only');
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
+ await page.getByRole('button',{name:'Add house section',exact:true}).click();
+ await page.getByLabel('House name',{exact:true}).fill('North House');
+ await page.getByLabel('House direction override',{exact:true}).fill('East to West');
+ await page.getByRole('button',{name:'Add freeform task to North House',exact:true}).click();
+ const north=page.getByRole('region',{name:'North House',exact:true});
+ await north.getByLabel('Crew tag',{exact:true}).fill('BOB');
+ await north.getByLabel('Quantity constraint',{exact:true}).fill('< 30');
+ await north.getByLabel('Action / routing instruction',{exact:true}).fill('Haul to G15 S-HS. Blue flags');
+ await page.getByRole('button',{name:'Add house section',exact:true}).click();
+ await page.getByLabel('House name',{exact:true}).last().fill('Center House');
+ await page.getByRole('button',{name:'Add freeform task to Center House',exact:true}).click();
+ const center=page.getByRole('region',{name:'Center House',exact:true});
+ await center.getByLabel('Crew tag',{exact:true}).fill('NIGHT CREW');
+ await center.getByLabel('Item size',{exact:true}).fill('3DP');
+ await center.getByLabel('Quantity constraint',{exact:true}).fill('all');
+ await center.getByLabel('Action / routing instruction',{exact:true}).fill('Stop and pickup from E.23.000. Pink Ribbon');
+ await page.getByRole('button',{name:'Move Center House up',exact:true}).click();
+ f.failNextSave();await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await expect(page.locator('#bunch-note-content').getByRole('alert')).toContainText('Save unavailable');
+ await expect(center.getByLabel('Quantity constraint',{exact:true})).toHaveValue('all');
+ await expect(north.getByLabel('Action / routing instruction',{exact:true})).toHaveValue('Haul to G15 S-HS. Blue flags');
+ await page.getByRole('button',{name:'Save draft',exact:true}).click();
+ await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
+ const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body.locations[0];
+ expect(saved.direction).toBe('West to East');expect(saved.target_houses).toBe('South house only');
+ expect(saved.house_sections.map((s:any)=>s.name)).toEqual(['Center House','North House']);
+ expect(saved.actions.map((a:any)=>[a.sequence_order,a.margin_tag,a.quantity_constraint])).toEqual([[1,'NIGHT CREW','all'],[2,'BOB','< 30']]);
+ expect(saved.actions.every((a:any)=>a.freeform&&a.row_ids.length===0)).toBe(true);
+ await page.evaluate(()=>{(window as any).BunchNote.editSetup();});
+ await expect(page.getByLabel('Default direction',{exact:true})).toHaveValue('West to East');
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
+ await expect(center.locator('mark')).toHaveText('Pink Ribbon');
+ await page.screenshot({path:test.info().outputPath('structured-worksheet.png'),fullPage:true});
+ expect(f.control.blockedMutations).toEqual([]);
+});
+
+test('author includes one location card explicitly, assigns it, and limits planned Move to its lot rows',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!);
+ await openBunchNotesFromInventory(page);
+ await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
+ const firstLocation=page.locator('.bn-card-board__location').filter({has:page.locator('h3', {hasText:'C.12.001'})});
+ await expect(firstLocation).toBeVisible();
+ const inventoryCards=firstLocation.locator('.bn-board-card');
+ await expect(inventoryCards).toHaveCount(2);
+ await expect(inventoryCards.nth(0)).toContainText('Not included');
+ await inventoryCards.nth(0).getByRole('checkbox',{name:'Include in this Bunch Note'}).check();
+ await inventoryCards.nth(0).getByRole('button',{name:'Assign Worker Name',exact:true}).click();
+ await inventoryCards.nth(0).getByLabel('Assign worker',{exact:true}).selectOption(hlUserId);
+ await inventoryCards.nth(0).getByRole('button',{name:'House to work in',exact:true}).click();
+ await inventoryCards.nth(0).getByRole('combobox',{name:'House to work in',exact:true}).selectOption('Custom');
+ await inventoryCards.nth(0).getByLabel('Custom house to work in',{exact:true}).fill('North House');
+ await inventoryCards.nth(0).getByRole('button',{name:'Direction',exact:true}).click();
+ await inventoryCards.nth(0).getByRole('combobox',{name:'Direction',exact:true}).selectOption('East to West');
+ await inventoryCards.nth(0).getByRole('button',{name:'Save card',exact:true}).click();
+ await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
+ const saved=f.commands.filter(c=>c.operation==='save').at(-1).payload.body.locations[0];
+ expect(saved.cards).toHaveLength(1);
+ expect(saved.cards[0]).toMatchObject({kind:'inventory',row_ids:['a'],owner_id:hlUserId,house:'North House',direction:'East to West'});
+ expect(saved.row_ids).toEqual(['a']);
+ expect(saved.actions).toEqual([]);
+ await inventoryCards.nth(0).getByRole('button',{name:'Move',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'Move',exact:true})).toBeVisible();
+ await expect(page.getByText('Source lots (1)',{exact:true})).toBeVisible();
+ await page.getByText('Source lots (1)',{exact:true}).click();
+ await expect(page.getByLabel('Action lot #3 27.F1 a',{exact:true})).toBeChecked();
+ await expect(page.getByLabel('Action lot #5 LOT2 a2',{exact:true})).toHaveCount(0);
+ expect(f.control.blockedMutations).toEqual([]);
+});
+
+test('structured queue shows house directions and survives refresh before opening linked work',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!,true),j=f.jobs[0];
+ j.body.direction='West to East';j.body.target_houses='South house only';
+ j.body.house_sections=[{id:'north',name:'North House',direction:'East to West'}];
+ Object.assign(j.body.actions[1],{section_id:'north',margin_tag:'QC',quantity_constraint:'all',instructions:'TA all. Red flags and Yellow Ribbon'});
+ await page.evaluate(()=>{(window as any).switchView('request');(window as any).setReqTab('bunch-notes');});
+ for(const name of ['Open location C.12','Open location C.12.001','Open'])await page.getByRole('button',{name,exact:true}).click();
+ const worksheet=page.locator('[data-bn-structured="read"]');
+ await expect(worksheet).toContainText('North House · East to West');
+ await expect(worksheet).toContainText('South house only');
+ await expect(worksheet.locator('.bn-crew-badge')).toHaveText('QC');
+ await expect(worksheet.locator('mark')).toHaveText(['Red flags','Yellow Ribbon']);
+ await page.evaluate(()=>{(window as any).BunchNote.render();});
+ await expect(worksheet.locator('.bn-task-line')).toHaveCount(3);
+ await worksheet.locator('[data-action-id="ta"]').getByRole('button',{name:'Open work details'}).click();
+ await expect(page.locator('[data-bn-work-action="ta"]')).toBeVisible();
+ expect(f.control.blockedMutations).toEqual([]);
+});
 
 test('creator actions drill through themed block and location cards',async({page,baseURL},testInfo)=>{
  const f=await fixture(page,baseURL!);
@@ -77,12 +190,11 @@ test('creator actions drill through themed block and location cards',async({page
  await expect(block).toBeVisible();
  await expect.poll(()=>block.evaluate(el=>{const probe=document.createElement('span');probe.style.color='var(--ops-surface)';el.append(probe);const same=getComputedStyle(el).backgroundColor===getComputedStyle(probe).color;probe.remove();return same;})).toBe(true);
  await block.click();
- await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
  for(const [i,location] of ['C.12.001'].entries()) {
-  await page.getByRole('button',{name:'Open location '+location,exact:true}).click();
+   await openAuthorLocation(page,location);
   await page.getByLabel('Purposes',{exact:true}).fill('Rain day '+i);
   await expect(page.locator('.bn-plant')).toHaveCount(0);
-  await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+  await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
   await expect(page.getByLabel('Purposes',{exact:true})).toHaveCount(0);
   await expect(page.locator('.bn-plant')).toHaveCount(1);
   await expect(page.locator('.bn-plant')).toContainText('LOC Available Unknown');
@@ -125,7 +237,7 @@ test('creator actions drill through themed block and location cards',async({page
  expect(created.actions[0].row_ids).toEqual(['a','a2']);
  expect(created.actions.find((a:any)=>a.group==='hauling').row_ids).toEqual(['a']);
  expect(created.actions.filter((a:any)=>['ta','move'].includes(a.kind))).toHaveLength(2);
- await expect(page.getByRole('button',{name:'Open location C.12.002',exact:true})).toBeVisible();
+  await expect(page.locator('.bn-card-board__location h3',{hasText:'C.12.002'})).toBeVisible();
  expect(f.control.blockedMutations).toEqual([]);
 });
 
@@ -133,11 +245,10 @@ test('creator adds a whole-location action on the second location card',async({p
  const f=await fixture(page,baseURL!);f.options.push({id:'custom-walkway',category:'sequence',label:'Check walkway',kind:'instruction',active:true,revision:1});
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12.002',exact:true}).click();
+  await openAuthorLocation(page,'C.12.002');
  await page.getByLabel('Purposes',{exact:true}).fill('Rain day 1');
  await expect(page.locator('.bn-plant')).toHaveCount(0);
- await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
  await expect(page.getByLabel('Purposes',{exact:true})).toHaveCount(0);
  await expect(page.locator('.bn-plant')).toHaveCount(1);
  await expect(page.locator('.bn-plant')).toContainText('LOC Available Unknown');
@@ -171,8 +282,9 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  await openBunchNotesFromInventory(page);
  await expect(page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true})).toBeVisible();
  await page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
+ await openAuthorLocation(page,'C.12.001');
+ await expect(page.getByLabel('Purposes',{exact:true})).toHaveValue('Rain day 0');
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
  await expect(page.getByLabel('Purposes',{exact:true})).toHaveCount(0);
  await expect(page.locator('#bunch-note-content')).toContainText('Rain day 0');
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
@@ -226,10 +338,9 @@ test('shell repaint during Back retains creator state without reloading metadata
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
- await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
+ await openAuthorLocation(page,'C.12.001');
  await page.getByLabel('Purposes',{exact:true}).fill('Rain day');
- await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
  await expect(page.getByRole('button',{name:'Open item BN-I',exact:true})).toBeEnabled();
  await expect(page.locator('#bunch-note-content')).toHaveAttribute('aria-busy','false');
  const metadataCount=()=>f.commands.filter(c=>['blocks','directory','drafts','catalog'].includes(c.operation)).length;
@@ -239,15 +350,17 @@ test('shell repaint during Back retains creator state without reloading metadata
  await expect(page.getByLabel('Purposes',{exact:true})).toBeVisible();
  expect(metadataCount()).toBe(before);
  await page.locator('#global-header-inline-back').click();
- await expect(page.getByRole('button',{name:'Open location C.12.002',exact:true})).toBeVisible();
+  await expect(page.locator('.bn-card-board__location h3',{hasText:'C.12.002'})).toBeVisible();
 });
 
 test('combined move keeps its full destination and opens destination instructions',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
- for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001'])await page.getByRole('button',{name,exact:true}).click();
+ await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
+ await openAuthorLocation(page,'C.12.001');
  await page.getByLabel('Purposes',{exact:true}).fill('Grade and move');
- await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
+ await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).check();
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
  const grading=page.locator('.bn-plant .bn-action-choices details').filter({has:page.locator('summary').filter({hasText:/^Grading$/})});
  await grading.locator('summary').click();
@@ -367,18 +480,50 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  expect(f.commands.some(c=>['send','publish','preview','retry'].includes(c.operation))).toBe(false);
 });
 
+test('worker claims and completes only the selected published inventory card',async({page,baseURL})=>{
+ const f=await fixture(page,baseURL!,true),job=f.jobs[0];
+ job.cards=[
+  {id:'card-a',kind:'inventory',itemcode:'BN-I',commonname:'Bunch Plant',contsize:'#3',row_ids:['a'],owner_id:null,owner_name:null,house:'North House',direction:'West to East',status:'open',revision:4},
+  {id:'card-b',kind:'inventory',itemcode:'BN-I',commonname:'Bunch Plant',contsize:'#5',row_ids:['a2'],owner_id:hlUserId,owner_name:'Dylan',house:'South House',direction:'East to West',status:'open',revision:7}
+ ];
+ job.body.actions=[
+  {id:'card-action-a',card_id:'card-a',group:'placement',scope:'rows',row_ids:['a'],label:'North House task',instructions:'North House task'},
+  {id:'card-action-b',card_id:'card-b',group:'placement',scope:'rows',row_ids:['a2'],label:'South House task',instructions:'South House task'}
+ ];
+ job.progress={'card-action-a':{status:'done',reason:'Already handled'}};
+ await page.evaluate(()=>{(window as any).switchView('request');(window as any).setReqTab('bunch-notes');});
+ await page.getByRole('button',{name:'Open location C.12',exact:true}).click();
+ await page.getByRole('button',{name:'Open location C.12.001',exact:true}).click();
+ await page.getByRole('button',{name:'Open',exact:true}).click();
+ await expect(page.getByRole('button',{name:'Open card',exact:true})).toHaveCount(2);
+ const cardA=page.locator('.bn-card').filter({hasText:'North House'});
+ await expect(cardA).toContainText('Unassigned');
+ await cardA.getByRole('button',{name:'Claim card',exact:true}).click();
+ expect(f.commands.filter(c=>c.operation==='claim_card').at(-1)).toMatchObject({expectedRevision:4,payload:{card_id:'card-a'}});
+ await cardA.getByRole('button',{name:'Open card',exact:true}).click();
+ await expect(page.locator('#request-content')).toContainText('North House task');
+ await expect(page.locator('#request-content')).not.toContainText('South House task');
+ await expect(page.locator('#request-content')).toContainText('27.F1');
+ await expect(page.locator('#request-content')).not.toContainText('LOT2');
+ await page.getByRole('button',{name:'Complete card',exact:true}).click();
+ expect(f.commands.filter(c=>c.operation==='complete_card').at(-1)).toMatchObject({expectedRevision:5,payload:{card_id:'card-a'}});
+ expect(f.control.blockedMutations).toEqual([]);
+});
+
 
 test('phone steps retain failed saves and make mixed-year and unknown-year destinations reachable',async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);f.rows[1].salesyear='';
  await openBunchNotesFromInventory(page);
- for(const name of ['Open block FULL.BLOCK','Open location C.12','Open location C.12.001'])await page.getByRole('button',{name,exact:true}).click();
+ await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
+ await openAuthorLocation(page,'C.12.001');
  await page.getByLabel('Purposes',{exact:true}).fill('Move safely');f.failNextSave();
- await page.getByRole('button',{name:'Next: Items',exact:true}).click();
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).click();
  await expect(page.locator('#bunch-note-content [role=alert]')).toContainText('Save unavailable');
  await expect(page.getByLabel('Purposes',{exact:true})).toHaveValue('Move safely');
- await page.getByRole('button',{name:'Next: Items',exact:true}).evaluate((el:HTMLButtonElement)=>{el.click();el.click();});
+ await page.getByRole('button',{name:'Inventory action editor',exact:true}).evaluate((el:HTMLButtonElement)=>{el.click();el.click();});
  await expect(page.getByRole('button',{name:'Open item BN-I',exact:true})).toBeVisible();
  expect(f.commands.filter(c=>c.operation==='save')).toHaveLength(2);
+ await page.getByRole('checkbox',{name:'Select item BN-I',exact:true}).check();
  await page.getByRole('button',{name:'Open item BN-I',exact:true}).click();
  await page.locator('.bn-action-choices').getByText('Inventory',{exact:true}).click();
  await page.getByRole('button',{name:'Move',exact:true}).click();

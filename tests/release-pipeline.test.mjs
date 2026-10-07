@@ -13,6 +13,51 @@ const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
+test('superseded validation cancels only the matching workflow and PR or branch', () => {
+  const names = ['release-validation', 'release-database', 'bloomscapes-pending-tests',
+    'live-dataset-revisions', 'suspend-tag-tests', 'codex-mobile-path-policy'];
+  const workflows = [performance, ...names.map(name => {
+    const workflow = yaml.load(read(`.github/workflows/${name}.yml`));
+    assert.equal(workflow.concurrency.group,
+      name + '-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}');
+    return workflow;
+  })];
+  const group = (workflow, { pr = 42, ref = 'refs/pull/42/merge', caller = performance.name, sha = 'old' } = {}) =>
+    workflow.concurrency.group.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => String(vm.runInNewContext(expression,
+      { github: { workflow: caller, ref, sha, event: { pull_request: { number: pr } } } })));
+  assert.equal(performance.concurrency.group, 'performance-${{ github.event.pull_request.number || github.ref }}');
+  assert.equal(new Set(workflows.map(workflow => group(workflow))).size, workflows.length,
+    'Caller and reusable children must never cancel one another');
+  for (const workflow of workflows) {
+    assert.equal(workflow.concurrency['cancel-in-progress'], true, workflow.name);
+    assert.equal(group(workflow), group(workflow, { sha: 'new' }), 'New commits supersede the same group');
+    assert.notEqual(group(workflow), group(workflow, { pr: 43 }), 'Other PRs remain independent');
+    assert.notEqual(group(workflow, { pr: null, ref: 'refs/heads/main' }),
+      group(workflow, { pr: null, ref: 'refs/heads/other' }), 'Manual branches remain independent');
+  }
+  for (const workflow of workflows.slice(1, 3)) {
+    assert.notEqual(group(workflow), group(workflow, { caller: pages.name }), 'Publication callers have a distinct namespace');
+  }
+  for (const name of ['pages-static', 'publish-candidate', 'apps-script-sync', 'codex-ops',
+    'apps-script-lifecycle-canary', 'test-sandbox-setup', 'production-auth-health', 'photo-archive', 'weather-hold-learning']) {
+    assert.equal(yaml.load(read(`.github/workflows/${name}.yml`)).concurrency['cancel-in-progress'], false, name);
+  }
+});
+
+test('CI commands defer retries to their configs and retain exhausted-failure gates', () => {
+  const manifest = JSON.parse(read('package.json'));
+  assert.doesNotMatch(manifest.scripts['test:foundation'], /--retries/);
+  for (const name of ['release-validation', 'release-database', 'pages-static']) {
+    const source = read(`.github/workflows/${name}.yml`);
+    assert.doesNotMatch(source, /--retries[= ]0|--fail-on-flaky-tests/);
+  }
+  for (const name of ['foundation', 'functional', 'compiled', 'timing']) {
+    const job = validation.jobs[name];
+    assert.equal(job.strategy['fail-fast'], true);
+    assert.ok(job.steps.some(step => /--max-failures=1/.test(step.run || '')), name);
+  }
+});
+
 test('all safety lanes must succeed before the sealed release can deploy', () => {
   assert.equal(pages.permissions.actions, 'read');
   assert.equal(validation.jobs['release-gate'].outputs['proof-id'], '${{ steps.proof.outputs.artifact-id }}');
@@ -86,19 +131,32 @@ test('Pages job guards allow validated reuse without ignoring failures or cancel
 });
 
 test('browser shards and compiled suites use isolated runners without racing performance tests', () => {
-  assert.deepEqual(validation.jobs.functional.strategy.matrix.shard, [1,2,3,4]);
-  assert.equal(validation.jobs.functional.strategy['max-parallel'], 4);
-  assert.equal(validation.jobs.functional.strategy['fail-fast'], false);
-  assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=/);
-  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['production-requests','footer','home-1','home-2','season','season-priority','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo','bunch-note','sales-mobile','module-mobile','production-schedule-mobile','hl-order-1','hl-order-2','hl-order-3','hl-restock','stable-refresh']);
-  const home = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.home-role.config.ts');
-  assert.deepEqual(home.map(x => x.shard), ['1/2','2/2']);
-  const hl = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.hl-order.config.ts');
-  assert.deepEqual(hl.map(x => x.shard), ['1/3','2/3','3/3']);
+  assert.deepEqual(validation.jobs.functional.strategy.matrix.project, ['chromium','firefox','webkit']);
+  assert.deepEqual(validation.jobs.functional.strategy.matrix.shard, [1,2]);
+  for (const name of ['foundation','functional','compiled','timing']) {
+    assert.equal(validation.jobs[name].strategy['fail-fast'], true);
+    assert.equal(validation.jobs[name].strategy['max-parallel'], undefined);
+  }
+  assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=.*--project=.*--max-failures=1/);
+  const entries = validation.jobs.compiled.strategy.matrix.include;
+  assert.equal(entries.filter(x => x.suite === 'command-center').length, 1);
+  const home = entries.filter(x => x.config === 'playwright.home-role.config.ts');
+  assert.equal(home.length, 8);
+  for (const project of new Set(home.map(x => x.project))) {
+    assert.deepEqual(home.filter(x => x.project === project).map(x => [x.shard,x.total]), [[1,2],[2,2]]);
+  }
+  const hl = entries.filter(x => x.config === 'playwright.hl-order.config.ts');
+  assert.deepEqual(hl.map(x => x.project), ['cache-chromium','cache-firefox','cache-webkit','cache-android','cache-iphone']);
+  assert.ok(hl.every(x => x.shard === 1 && x.total === 1));
   assert.equal(validation.jobs.compiled['timeout-minutes'], 20);
-  assert.match(validation.jobs.compiled.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*matrix.shard.*--shard=/);
-  assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-timing.config.ts --workers=1/);
-  assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-android.config.ts --project=android --workers=1/);
+  assert.match(validation.jobs.compiled.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--project=.*--shard=.*--max-failures=1/);
+  assert.deepEqual(validation.jobs.timing.strategy.matrix.include.map(x=>[x.project,x.config]), [
+    ['chromium','playwright.release-timing.config.ts'], ['firefox','playwright.release-timing.config.ts'],
+    ['webkit','playwright.release-timing.config.ts'], ['android','playwright.release-android.config.ts']
+  ]);
+  const preview = validation.jobs.timing.steps.filter(s => s.run === 'node scripts/check-isolated-preview.mjs');
+  assert.equal(preview.length, 1);
+  assert.equal(preview[0].if, "matrix.project == 'chromium'");
   assert.equal(validation.jobs.lighthouse['runs-on'], 'ubuntu-latest');
 });
 
@@ -143,8 +201,12 @@ test('live probes await exact commit and all retained suites run with writes blo
     '${{ needs.deploy.outputs.build-commit }}');
   assert.deepEqual(pages.jobs['post-deployment-canary'].needs, ['deploy','exact-live']);
   const matrix = pages.jobs['post-deployment-canary'].strategy.matrix.include;
-  assert.deepEqual(matrix.map(x=>x.suite), ['foundation','requests','session','login-photo']);
+  assert.deepEqual([...new Set(matrix.map(x=>x.suite))], ['foundation','requests','session','login-photo']);
   assert.match(matrix.find(x=>x.suite==='requests').command, /production-request-canary.spec.ts/);
+  assert.deepEqual(matrix.filter(x=>x.suite==='login-photo').map(x=>x.project), ['chromium','webkit','android']);
+  assert.equal(matrix.length, 9);
+  assert.equal(pages.jobs['post-deployment-canary'].strategy['fail-fast'], true);
+  for (const row of matrix) assert.match(row.command, /--project=.*--workers=1.*--max-failures=1/);
   const liveCanary = pages.jobs['post-deployment-canary'].steps.find(step => step.name?.startsWith('Mutation-blocked live'));
   assert.equal(liveCanary.env.APP_LIFECYCLE_BASE_URL, 'https://agmetricapp.com');
   assert.equal(liveCanary.env.SESSION_RECOVERY_BASE_URL, 'https://agmetricapp.com');

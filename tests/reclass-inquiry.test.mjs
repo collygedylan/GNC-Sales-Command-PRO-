@@ -92,7 +92,7 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
@@ -122,6 +122,8 @@ function loadClientPayloadBuilder(values = {}) {
     APP_SHELL_BUILD: 'test',
     RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION: 'reclass-action-workflow-v3-row-actions-20260826',
+    RECLASS_ACTION_WORKFLOW_V4_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
     RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION: 'reclass-action-workflow-v2-live-20260826',
     getReclassActionWorkflowV2Config: (value) => ({ hold: { kind: 'hold_on' }, recount: { kind: 'recount' }, move_up: { kind: 'move' } }[value] || null),
@@ -497,6 +499,70 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   assert.equal((output.match(/<tr>/g) || []).length, rows.length + 1);
 });
 
+test('workflow V4 validates split moves, preserves repeated destination order, and renders request-only hold instructions', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', source: 'LD', priority: '', ptronhand: '20', season: 'F1', holdstopcode: '', holdstopreason: '' };
+  const proposal = { action: 'move_up', splits: [
+    { quantity: 4, destinationSeason: 'S1' },
+    { quantity: 3, destinationSeason: 'S1' },
+    { quantity: 5, destinationSeason: 'U1' },
+  ], applyHold: true, holdReason: '  inspect & stage <carefully>  ' };
+  const downProposal = { action: 'move_down', splits: [{ quantity: 2, destinationSeason: 'U2' }], applyHold: false, holdReason: '' };
+  const transaction = { requestActions: ['move_up', 'move_down'], holdStopProposals: [], scope: {} };
+  const result = server.buildReclassInquiryActionRowsV3_(transaction, [row], [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '20' }, proposals: [proposal, downProposal] }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ });
+  assert.equal(result.ok, true);
+  assert.deepEqual(Array.from(result.rows[0].actionValues.moveupsplits, (split) => [split.quantity, split.destinationSeason]), [[4, 'S1'], [3, 'S1'], [5, 'U1']]);
+  assert.equal(result.rows[0].actionValues.moveupapplyhold, true);
+  assert.equal(result.rows[0].actionValues.moveupholdreason, 'inspect & stage <carefully>');
+  assert.equal(result.rows[0].values.holdstopcode, '', 'a per-move hold request must not mutate source Hold/Stop state');
+  assert.equal(result.rows[0].values.holdstopreason, '', 'a per-move hold reason stays an inquiry instruction');
+  const model = server.buildReclassInquiryReportModel_(row, [row], result.rows, { transaction, actor: { display: 'Tester' } }, new Date('2026-10-06T14:00:00Z'));
+  const pdf = server.buildReclassInquiryCompactReportHtml_(model, true);
+  const text = server.buildReclassInquiryReportText_(model);
+  const htmlBody = server.buildReclassInquiryEmailHtml_(model);
+  assert.equal((pdf.match(/class="proposal-box proposal-box-movement"/g) || []).length, 7, 'four individual splits plus UP, DOWN, and combined totals are boxed');
+  assert.match(pdf, /A\.1 \/ 27\.F1 · UP 4 TO S1 · PLACE ON HOLD REQUESTED: inspect &amp; stage &lt;carefully&gt;/);
+  assert.match(pdf, /UP split total requested: 12/);
+  assert.match(pdf, /DOWN split total requested: 2/);
+  assert.match(pdf, /UP \+ DOWN total requested: 14/);
+  assert.match(text, /A\.1 \/ 27\.F1 \/ UP 4 to S1 \/ Place on Hold requested: inspect & stage <carefully>/);
+  assert.match(text, /UP 3 to S1/);
+  assert.match(text, /UP 5 to U1/);
+  assert.match(text, /UP total requested: 12/);
+  assert.match(text, /DOWN total requested: 2/);
+  assert.match(text, /UP \+ DOWN total requested: 14/);
+  assert.match(htmlBody, /UP 4 to S1/);
+  assert.match(htmlBody, /inspect &amp; stage &lt;carefully&gt;/);
+  assert.match(htmlBody, /UP total requested: 12/);
+  assert.match(htmlBody, /DOWN total requested: 2/);
+  assert.match(htmlBody, /UP \+ DOWN total requested: 14/);
+  assert.match(text, /inventory was not changed/);
+});
+
+test('workflow V4 rejects invalid split totals, seasons, counts, and hold-reason combinations', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', season: 'F1', holdstopcode: '', holdstopreason: '' };
+  const run = (proposals) => server.buildReclassInquiryActionRowsV3_({ requestActions: ['move_up'], holdStopProposals: [], scope: {} }, [row], [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' }, proposals }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ });
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 6, destinationSeason: 'S1' }, { quantity: 5, destinationSeason: 'U1' }], applyHold: false, holdReason: '' }]), /Combined Move Up and Move Down quantities cannot exceed original OH/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'F1' }], applyHold: false, holdReason: '' }]), /differ from the current season/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'Q1' }], applyHold: false, holdReason: '' }]), /configured destination season/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 0, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }]), /positive whole number/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: true, holdReason: '' }]), /requires a reason/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: false, holdReason: 'stale' }]), /must be blank unless Place on Hold is selected/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: true, holdReason: 'x'.repeat(1001) }]), /1000 characters or fewer/);
+  assert.throws(() => run([{ action: 'move_up', splits: Array.from({ length: 101 }, () => ({ quantity: 1, destinationSeason: 'S1' })), applyHold: false, holdReason: '' }]), /between 1 and 100/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['move_up', 'move_down'], holdStopProposals: [], scope: {} }, [row], [{
+    unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' }, proposals: [
+      { action: 'move_up', splits: [{ quantity: 6, destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
+      { action: 'move_down', splits: [{ quantity: 5, destinationSeason: 'U1' }], applyHold: false, holdReason: '' },
+    ],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ }), /Combined Move Up and Move Down quantities cannot exceed original OH/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['move_up'], holdStopProposals: [], scope: {} }, [row], [{
+    unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    proposals: [{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ }), /expected original OH/);
+});
+
 test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is outside the affected scope', () => {
   const server = loadServerModel();
   const rows = [
@@ -751,7 +817,7 @@ test('every Hold/Stop action combines with priority, move and recount on the sam
   }
 });
 
-test('approved pilot sender is removed and the live Reclass handler accepts V3 before V2 compatibility', () => {
+test('approved pilot sender is removed and the live Reclass handler accepts V4, V3, and V2 compatibility', () => {
   const handlerStart = code.indexOf('function deliverReclassInquiryPayload_');
   const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
   const handler = code.slice(handlerStart, handlerEnd);
@@ -760,6 +826,7 @@ test('approved pilot sender is removed and the live Reclass handler accepts V3 b
   assert.doesNotMatch(code, /function sendReclassInquiryCompactPilotEmails/);
   assert.doesNotMatch(doPost, /compact_pilot|sendReclassInquiryCompactPilotEmails/);
   assert.match(handler, /buildReclassInquiryActionRowsV3_/);
+  assert.match(handler, /RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_/);
   assert.match(handler, /buildReclassInquiryActionRowsV2_/);
   assert.match(handler, /buildReclassInquiryCompactReportHtml_\(model, true\)/);
   assert.match(handler, /workflowPolicyVersion/);
@@ -913,6 +980,7 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
     document: {querySelectorAll:()=>[input,mirror,otherAction]},
     getArgosReclassV3Proposal: () => proposal,
     getArgosReclassV3HoldProposal: () => proposal,
+    markArgosReclassProposalEdited: () => {},
     RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
     captureEvalWorkLocalDraftSoon: () => {},
   };
@@ -995,7 +1063,7 @@ test('Reclass client guards recipient selection and retains background drafts un
   assert.doesNotMatch(status, /Retry Queued/);
 });
 
-test('live Reclass payload uses the V3 policy and independent action proposal arrays', () => {
+test('live Reclass payload uses the V4 policy and independent action proposal arrays', () => {
   const buildPayload = loadClientPayloadBuilder({
     'argos-inventory-transaction-qty': '0',
     'argos-inventory-transaction-new-item': 'A1',
@@ -1009,7 +1077,7 @@ test('live Reclass payload uses the V3 policy and independent action proposal ar
   assert.deepEqual(Array.from(payload.transaction.requestActions), ['hold', 'priority_change']);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.holdStopProposals)), [{ action: 'hold', reason: 'field review' }]);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.scope)), { season: 'F1', salesYear: 2027 });
-  assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v3-row-actions-20260826');
+  assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v4-split-moves-20261006');
   assert.equal(payload.transaction.quantity, undefined);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.rowOverlays[0].proposals)), [
     { action: 'priority_change', priority: '2' },
@@ -1025,6 +1093,8 @@ test('live Reclass payload obtains its validation from the direct-action V3 draf
     argosInventoryTransactionState: { snapshot: {} },
     RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION: 'reclass-action-workflow-v3-row-actions-20260826',
+    RECLASS_ACTION_WORKFLOW_V4_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
     RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
     collectArgosReclassV3Draft: () => { throw new Error('Choose at least one Reclass action inside a Location/Lot row.'); },
     getArgosInventoryTransactionInputValue: () => '',

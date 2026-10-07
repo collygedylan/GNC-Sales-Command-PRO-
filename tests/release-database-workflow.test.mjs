@@ -61,7 +61,8 @@ test('perennial and Pikes SQL fixtures only call documented pgTAP assertions', (
   for (const filename of ['perennial_zone_assignment_test.sql', 'pikes_orders_rls_test.sql']) {
     const source = fs.readFileSync(new URL(`../supabase/tests/${filename}`, import.meta.url), 'utf8');
     const calls = [...source.matchAll(/^\s*select\s+([a-z_]+)\s*\(/gim)].map(match => match[1].toLowerCase());
-    const assertions = calls.filter(name => !['set_config', 'count'].includes(name));
+    // Nested fixture queries use PostgreSQL builtins; they are not assertions.
+    const assertions = calls.filter(name => !['set_config', 'count', 'lower', 'jsonb_build_object'].includes(name));
     assert.ok(assertions.length > 0, `${filename} contains pgTAP assertions`);
     assert.deepEqual([...new Set(assertions.filter(name => !documented.has(name)))], [], `${filename} uses only documented pgTAP APIs`);
     assert.doesNotMatch(source, /\bis_null\s*\(/i, `${filename} does not use the nonexistent is_null assertion`);
@@ -73,6 +74,16 @@ test('request workflow baseline provides the text hold start date consumed by Ev
   assert.ok(inventory, 'CI baseline defines the legacy master inventory table');
   assert.match(inventory[1], /\bholdstopbegindate\s+text\b/i);
   assert.match(evalReport2Migration, /eval_report2_inventory_date_v1\(m\.holdstopbegindate\)/i);
+});
+
+test('isolated master warehousei matches the production text column used by row ownership', () => {
+  const production = fs.readFileSync(new URL('../supabase/migrations/20260929200000_production_baseline.sql', import.meta.url), 'utf8');
+  const master = production.match(/CREATE TABLE public\.ph_master_inventory\s*\(([\s\S]*?)\n\);/i);
+  const fixture = requestWorkflowBaseline.match(/create table if not exists public\.ph_master_inventory\s*\(([\s\S]*?)\n\);/i);
+  assert.ok(master && fixture, 'both inventory definitions exist');
+  for (const [label, definition] of [['production', master[1]], ['CI', fixture[1]]]) {
+    assert.match(definition, /^\s*warehousei text,?\s*$/m, `${label} has nullable text warehousei without a default`);
+  }
 });
 
 test('isolated database stages the existing calendar before the HR migration', () => {
@@ -121,13 +132,29 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
       '20261002134138_nelly_access_audit_baseline_repair_007.sql',
     '20261002155017_eval_delivery_archive_health_007.sql',
     '20261002204108_aura_inventory_match_010.sql',
-    '20261003025749_aura_llm_free_tier_011.sql', '20261007041448_aura_internal_query_conversation_inventory.sql',
+    '20261003025749_aura_llm_free_tier_011.sql',
+    '20261004010000_company_directory.sql',
+    '20261005194158_suspend_tag_approval_loop.sql',
+    '20261005225759_structured_bunch_notes.sql',
+    '20261006110751_bunch_note_per_card_work.sql',
+    '20261006111244_bunch_note_card_commands.sql',
+    '20261006145333_reclass_split_move_inquiries_v4.sql',
+    '20261006150745_reclass_split_move_eval_submit_guards.sql',
+    '20261006200446_inventory_row_assignment_authority.sql',
+    '20261006200448_itemcode_default_owners.sql',
+    '20261006200449_inventory_row_assignment_fence_integration.sql',
+    '20261006210000_inventory_row_assignment_future_snapshots.sql',
+    '20261006210200_inventory_row_assignment_live_consumers.sql',
+    '20261007041448_aura_internal_query_conversation_inventory.sql',
   ]);
   const pt409Fixture = 'cp supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql "$ci_root/supabase/migrations/"';
   assert.ok(workflow.includes(pt409Fixture), 'the current PT409 migration is staged in the isolated database fixture');
   assert.ok(workflow.indexOf(pt409Fixture) > workflow.lastIndexOf('cp supabase/archive_migrations/'),
     'the PT409 migration applies after historical fixtures install the legacy Season Sales RPC definitions');
   assert.ok(workflow.includes('archive_migrations in this disposable project only'));
+  assert.ok(workflow.includes('cp supabase/ci/suspend_tag_approval_baseline.sql "$ci_root/supabase/migrations/20261005194157_ci_suspend_tag_approval_baseline.sql"'));
+  assert.ok(workflow.includes('cp supabase/migrations/20261004010000_company_directory.sql "$ci_root/supabase/migrations/"'),
+    'the Company Directory migration is staged for the isolated database fixture');
   for (const filename of [
     '20260928145055_item_low_stock_targets.sql',
     '20260929013125_perennial_zone_assignment_override.sql',
@@ -195,12 +222,14 @@ test('archived regression migrations and pgTAP tests remain staged in the isolat
     'nelly_access_audit_baseline_repair_007_test.sql',
     'password_change_profile_reconciliation_test.sql',
     'perennial_zone_assignment_test.sql',
+    'inventory_row_assignment_v1_test.sql',
+    'inventory_row_assignment_consumers_test.sql',
     'eval_item_low_stock_targets_test.sql',
     'manager_season_priority_test.sql',
-    'bunch_note_workflow_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
+    'bunch_note_workflow_test.sql', 'bunch_note_per_card_test.sql', 'native_auth_rls_test.sql', 'request_integrity_rls_test.sql', 'codex_ops_rls_test.sql',
     'pikes_orders_rls_test.sql', 'request_eval_drive_reliability_test.sql',
     'reclass_review_assignedto_test.sql', 'request_option_append_test.sql',
-    'drive_reclass_protected_test.sql', 'drive_evidence_retry_storm_test.sql',
+    'drive_reclass_protected_test.sql', 'reclass_split_move_v4_test.sql', 'drive_evidence_retry_storm_test.sql',
     'shear_location_inquiry_v1_test.sql',
     'photo_delivery_health_rls_test.sql', 'photo_history_rls_test.sql',
     'function_search_path_pinning_test.sql', 'season_sales_done_lifecycle_test.sql',
@@ -260,6 +289,7 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'CI=true BUNCH_NOTE_TEST_DB_URL="$DB_URL" node scripts/test-bunch-note-concurrency.mjs',
     'CI=true SALES_CREDIT_TEST_DB_URL="$DB_URL" node scripts/test-sales-credit-concurrency.mjs',
     'CI=true SEASON_PRIORITY_TEST_DB_URL="$DB_URL" node scripts/test-manager-season-priority-concurrency.mjs',
+    'CI=true ITEMCODE_DEFAULT_OWNER_TEST_DB_URL="$DB_URL" node scripts/test-itemcode-default-owner-concurrency.mjs',
     'CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs',
     'CI=true REQUEST_HISTORY_TEST_DB_URL="$DB_URL" node scripts/test-request-history-scale.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',

@@ -171,13 +171,13 @@ test('every implemented request subview has an explicit surface instead of silen
     'Archived rows are loaded only through the capability-checked archive RPC.');
 });
 
-test('Pending requests verifies only its queue cohort while every other request tab keeps its joins', () => {
+test('Pending and Suspend Tag verify their own queue cohorts while other request tabs keep their joins', () => {
   const registry = harness().AgMetricLiveSyncRegistry;
   assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:pending'] })),
     ['core:requests', 'side:settings']);
   const expected = {
     'request:reps': ['core:requests', 'core:master', 'core:customerRepMap', 'core:requestHistory', 'core:salesCredits', 'side:settings'],
-    'request:suspend-tag': ['core:requests', 'core:master', 'core:customerRepMap', 'core:soc', 'side:settings'],
+    'request:suspend-tag': ['core:suspendTag', 'core:master', 'core:customerRepMap', 'side:settings'],
     'request:eval-work': ['core:requests', 'core:master', 'core:customerRepMap', 'side:evalWork', 'side:settings'],
     'request:av-check': ['core:requests', 'core:master', 'core:customerRepMap', 'side:avOptionEval', 'side:settings'],
     'request:moves': ['core:requests', 'core:master', 'core:customerRepMap', 'core:inventoryEditRequests', 'side:locationWork', 'side:settings'],

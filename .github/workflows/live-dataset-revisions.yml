@@ -10,6 +10,10 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: live-dataset-revisions-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   isolated-native-revisions:
     runs-on: ubuntu-latest
@@ -23,7 +27,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: '2.111.0'
-      - run: npm ci
+      - uses: ./.github/actions/setup-node-dependencies
       - run: node --test supabase/ci/live_dataset_revision_import.test.mjs
       - name: Start disposable local Auth, REST and Realtime only
         run: |

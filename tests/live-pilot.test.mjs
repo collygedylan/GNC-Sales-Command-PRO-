@@ -138,7 +138,8 @@ test('Queue and Drive render from the smallest canonical dataset needed for the 
   assert.match(html, /function buildActiveRequestLiveRowsQuery\(selectFields = '\*'\)[\s\S]*order=unique_id\.desc/);
   const requestLoading = html.slice(html.indexOf('function getRequestViewLoadingConfig'), html.indexOf('function getViewLoadingConfig'));
   assert.match(requestLoading, /safeTab === 'reps'[\s\S]*requestHistory[\s\S]*salesCredits/);
-  assert.match(requestLoading, /safeTab === 'suspend-tag'[\s\S]*\{ key: 'soc', mode: 'full' \}/);
+  assert.match(requestLoading, /safeTab === 'suspend-tag'[\s\S]*\{ key: 'suspendTag', mode: 'full' \}/);
+  assert.doesNotMatch(requestLoading.slice(requestLoading.indexOf("safeTab === 'suspend-tag'"), requestLoading.indexOf("safeTab === 'recount'")), /key: 'soc'|required: \[requests/);
   assert.match(requestLoading, /return \{ required: \[requests\], background: \[\], label: 'Loading verified Que\.\.\.' \}/);
   assert.doesNotMatch(requestLoading, /required: \[requests, \{ key: 'requestHistory'[\s\S]*inventoryEditRequests[\s\S]*soc/);
   const requestTabs = html.slice(html.indexOf('function setReqTab'), html.indexOf('function resolveRequestRecipientEmail'));
@@ -1317,11 +1318,13 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.doesNotMatch(authAdmin, /readSupabaseOrAppSessionFromRequest/);
 });
 
-test('acknowledged Eval assignments replace stale local rows before the unassigned view rerenders', () => {
-  assert.match(html, /function applyAcknowledgedEvalAssignmentResults\(assignments = \[\], rpcResults = \[\], assignedto = ''\)/);
-  assert.match(html, /merged\.ASSIGNEDTO = acknowledged\.canonicalAssignee/);
-  assert.match(html, /const appliedCount = applyAcknowledgedEvalAssignmentResults\(assignments, rpcResults, assignee\);[\s\S]*scheduleManagersRender\(true\);[\s\S]*showToast\('Assignments Saved'/);
-  assert.match(html, /await reloadWarehouseAssignmentsAfterMutation\(\);[\s\S]*finally \{[\s\S]*applyAcknowledgedEvalAssignmentResults\(assignments, rpcResults, assignee\)/);
+test('acknowledged default commands apply canonical row ownership without overriding newer refreshes', () => {
+  assert.match(html, /function applyAcknowledgedEvalAssignmentResults\(assignments = \[\], rpcResults = \[\]\)/);
+  assert.match(html, /result\?\.contractVersion !== 'inventory-row-assignments-v1'/);
+  assert.match(html, /canonical\.has\(String\(row\.master_unique_id/);
+  assert.match(html, /applyAcknowledgedEvalAssignmentResults\(changes, \[result\]\)/);
+  assert.match(html, /await reloadWarehouseAssignmentsAfterMutation\(\)/);
+  assert.doesNotMatch(html, /finally \{\s*applyAcknowledgedEvalAssignmentResults/);
 });
 
 test('legacy Request capability checks remain compatible after Kayla becomes a standard Admin', () => {
@@ -1681,10 +1684,10 @@ test('Eval assignment management uses the requested roster and ItemCode + GenusN
   assert.match(html, /boby: 'bobby_adair'/);
   assert.match(html, /function getEvalAssignableUserLabel\(value = ''\) \{[\s\S]*return normalized;/);
   assert.match(html, /function buildManagerEvalAssignmentKey\(itemcode = '', genusname = ''\)/);
-  assert.match(html, /genusname: entry\.genusname/);
+  assert.match(html, /p_changes: changes, p_request_id: command\.id/);
   assert.match(html, /ensureEvalAssignableUsers\(\)\.then\(\(\) => scheduleManagersRender\(true\)\)/);
   assert.doesNotMatch(html, /ensureEvalAssignableUsersReady/);
-  assert.match(html, /Assignments use the ItemCode \+ GenusName key\./);
+  assert.match(html, /Defaults use Itemcode only/);
   assert.match(completeAssignmentSheetMigration, /'source_rows', 9857/);
   assert.match(completeAssignmentSheetMigration, /'distinct_itemcode_genus_keys', 3307/);
   assert.match(completeAssignmentSheetMigration, /public\.ph_warehouse_assigned_items\.source = 'supabase_assignment_manager'/);

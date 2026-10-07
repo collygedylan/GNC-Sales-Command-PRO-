@@ -44,6 +44,7 @@ values
 ('SP-CAV-S','SP-ITEM-STALE','Season Priority Stale','#3','F1',''),
 ('SP-CAV-R','SP-ITEM-RECIP','Season Priority Recipient','#3','F1',''),
 ('SP-CAV-SCOPE','SP-ITEM-SCOPE','Season Priority Scope','#3','F1','');
+update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 insert into public.ph_master_inventory(
   unique_id,itemcode,genusname,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
   priority,source,season,saleyear,blockalpha,desigitem,desigloc,assignedto,app_tab_assignment
@@ -70,14 +71,17 @@ insert into public.ph_master_inventory(
 ('SP-SCOPE-3','SP-ITEM-SCOPE','Acer','Season Priority Scope','#3','Z.10.001','27.F1','100','99','3','PH','F1','27','Z','D3','L3','','season'),
 ('SP-SCOPE-OFF','SP-ITEM-SCOPE','Acer','Season Priority Scope','#3','Y.10.001','27.F2','15','14','','PH','F2','27','Y','D4','L4','','other');
 update public.ph_master_inventory set date_completed=now() where unique_id='SP-X-3';
-insert into public.ph_warehouse_assigned_items(
-  assignedto,itemcode,itemcode_normalized,genusname,source,present_in_drive,unique_id
+insert into public.ph_inventory_row_assignments(
+  master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,
+  locationcode,lotcode,source,assignedto,assignment_reason,present_in_drive
 ) values
-('sp_manager_1','SP-ITEM-X','SP-ITEM-X','Acer','fixture',true,'SP-ASSIGN-X'),
-('sp_manager_1','SP-ITEM-SCOPE','SP-ITEM-SCOPE','Acer','fixture',false,'SP-ASSIGN-SCOPE');
+('SP-X-3','SP-X-3','SP-ITEM-X','SP-ITEM-X','Acer','Season Priority Plant','#3','C.01.001','27.F1','PH','sp_manager_1','unresolved_preserved',true),
+('SP-SCOPE-3','SP-SCOPE-3','SP-ITEM-SCOPE','SP-ITEM-SCOPE','Acer','Season Priority Scope','#3','Z.10.001','27.F1','PH','sp_manager_1','unresolved_preserved',true),
+('SP-ASSIGN-SCOPE','SP-ASSIGN-SCOPE','SP-ITEM-SCOPE','SP-ITEM-SCOPE','Acer','Season Priority Scope','#3','Y.10.001','27.F1','PH','sp_manager_2','unresolved_preserved',false)
+on conflict (master_unique_id) do update set assignedto=excluded.assignedto,assignment_reason=excluded.assignment_reason,present_in_drive=excluded.present_in_drive,revision=ph_inventory_row_assignments.revision+1,updated_at=now();
 update public.app_dataset_revisions
 set state='ready', revision=greatest(revision,1)
-where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items');
+where key in ('ph_master_inventory','ph_cav_import','ph_warehouse_assigned_items','ph_inventory_row_assignments','ph_itemcode_default_owners');
 
 do $$
 declare
@@ -130,7 +134,7 @@ begin
   perform pg_temp.sp_check(scope_row->>'assignmentAuthoritative'='true'
     and scope_row->'warehouseAssignedTo'='["sp_manager_1"]'::jsonb
     and scope_row->'resolvedAssignedTo'='["sp_manager_1"]'::jsonb,
-    'present_in_drive=false roster row remains visible and filterable');
+    'the selected physical row is visible and filterable by its exact owner');
   perform pg_temp.sp_check(not exists (
     select 1 from jsonb_array_elements(listed->'rows') value
     where value->>'scopeFingerprint' is distinct from
@@ -143,11 +147,13 @@ begin
   ),'ITEM-X winner is selected before Priority 2-4 and includes completed rows');
   perform pg_temp.sp_check(listed#>>'{rows,0,warehouseAssignedTo,0}'='sp_manager_1','authoritative warehouse assignment is returned');
   perform pg_temp.sp_check(listed#>>'{rows,0,currentAssignment}'='season','current Season Sales assignment is returned');
-  delete from public.ph_warehouse_assigned_items;
+  delete from public.ph_inventory_row_assignments where master_unique_id='SP-X-3';
   listed:=public.manager_season_priority_list_v1(manager1,'sp_manager_1');
-  perform pg_temp.sp_check(listed#>>'{rows,0,assignmentAuthoritative}'='false' and listed#>>'{rows,0,resolvedAssignedTo,0}'='sp_manager_1','empty roster falls back to normalized imported assignment');
-  insert into public.ph_warehouse_assigned_items(assignedto,itemcode,itemcode_normalized,genusname,source,present_in_drive,unique_id)
-  values('sp_manager_2','SP-OTHER','SP-OTHER','Acer','fixture',true,'SP-ASSIGN-OTHER');
+  perform pg_temp.sp_check(not exists(select 1 from jsonb_array_elements(listed->'rows') value where value->>'itemcode'='SP-ITEM-X'),
+    'a missing exact assignment never falls back to imported ItemCode ownership');
+  insert into public.ph_inventory_row_assignments(
+    master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,locationcode,source,assignedto,assignment_reason,present_in_drive
+  ) values('SP-ASSIGN-OTHER','SP-ASSIGN-OTHER','SP-OTHER','SP-OTHER','Acer','A.01.001','fixture','sp_manager_2','unresolved_preserved',true);
   listed:=public.manager_season_priority_list_v1(manager1,'sp_manager_1');
   perform pg_temp.sp_check(not exists(
     select 1 from jsonb_array_elements(listed->'rows') value where value->>'itemcode'='SP-ITEM-X'
@@ -160,10 +166,11 @@ begin
       and value->>'assignmentAuthoritative'='true'
       and value->'resolvedAssignedTo'='[]'::jsonb
   ),'loaded roster without a matching item makes ITEM-X explicitly unassigned');
-  delete from public.ph_warehouse_assigned_items;
-  insert into public.ph_warehouse_assigned_items(assignedto,itemcode,itemcode_normalized,genusname,source,present_in_drive,unique_id)
-  values('sp_manager_1','SP-ITEM-X','SP-ITEM-X','Acer','fixture',true,'SP-ASSIGN-X-RESTORED');
-  update public.app_dataset_revisions set state='ready' where key='ph_warehouse_assigned_items';
+  insert into public.ph_inventory_row_assignments(
+    master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,
+    locationcode,lotcode,source,assignedto,assignment_reason,present_in_drive
+  ) values('SP-X-3','SP-X-3','SP-ITEM-X','SP-ITEM-X','Acer','Season Priority Plant','#3','C.01.001','27.F1','PH','sp_manager_1','unresolved_preserved',true);
+  update public.app_dataset_revisions set state='ready' where key in ('ph_warehouse_assigned_items','ph_inventory_row_assignments','ph_itemcode_default_owners');
   select value->>'scopeFingerprint' into scope_fingerprint
   from jsonb_array_elements(listed->'rows') value where value->>'sourceUid'='SP-X-3';
   select jsonb_agg(to_jsonb(m) order by m.unique_id) into before_inventory

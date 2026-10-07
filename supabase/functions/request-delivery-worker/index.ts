@@ -350,6 +350,47 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
           continue;
         }
 
+        if (["suspend_tag_approval_requested", "suspend_tag_approval_decided"].includes(eventType)) {
+          const { data: prepared, error } = await supabase.rpc("prepare_suspend_tag_delivery_v1", { p_event_id: eventId, p_lease_token: leaseToken });
+          if (error) throw new Error(error.message);
+          if (prepared?.suppressed) continue;
+          const approval = prepared.approval as JsonRecord;
+          const snapshot = approval.snapshot as JsonRecord;
+          event.payload = { approval, thread: prepared.thread };
+          if (!event.email_delivered_at) {
+            const result = await callAppsScript(event, [snapshot], prepared.thread);
+            if (!result.gmailMessageId || !result.threadId || !result.messageIdHeader) throw new Error("SUSPEND_TAG_EMAIL_RECEIPT_MISSING");
+            channelResults.email = {
+              delivered_at: new Date().toISOString(), recipients: result.recipients,
+              gmail_message_id: result.gmailMessageId, thread_id: result.threadId,
+              message_id: result.messageId, message_id_header: result.messageIdHeader,
+              reply_to_message_id: result.replyToMessageId || "", mode: result.mode,
+            };
+            await recordChannels(eventId, leaseToken, { email: channelResults.email });
+          }
+          if (eventType === "suspend_tag_approval_requested" && !event.push_delivered_at) {
+            if (approval.status !== "pending") {
+              channelResults.push = { delivered_at: new Date().toISOString(), delivered_count: 0, mode: "decision_already_recorded" };
+              await recordChannels(eventId, leaseToken, { push: channelResults.push });
+            } else {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/send-push-alert`, {
+              method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`, apikey: SUPABASE_SERVICE_ROLE_KEY },
+              body: JSON.stringify({ eventType, approvalId: approval.id, repUsername: snapshot.rep_username,
+                customer: snapshot.customername || snapshot.consigneename, itemDescription: [snapshot.commonname, snapshot.contsize].filter(Boolean).join(" ") }),
+            });
+            if (!response.ok) throw new Error(`PUSH_SEND_FAILED:${response.status}`);
+            const push = await response.json();
+            if (Object.keys(push.failureCounts || {}).length) throw new Error("PUSH_SEND_FAILED");
+            channelResults.push = { delivered_at: new Date().toISOString(), delivered_count: push.delivered || 0,
+              mode: push.subscriptions === 0 ? "no_subscription" : "web_push" };
+            await recordChannels(eventId, leaseToken, { push: channelResults.push });
+            }
+          }
+          await finishEvent(eventId, leaseToken, channelResults);
+          delivered += 1;
+          continue;
+        }
+
         if ((isHlOrderEvent(event) || isBunchNoteEvent(event))) {
           // HL is email-only. Apps Script resolves its frozen report and sole recipient
           // from protected storage and durably records intent before Gmail is called.

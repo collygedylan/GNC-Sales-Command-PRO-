@@ -51,7 +51,16 @@ async function waitForVerifiedDrive(page: Page) {
       && !content?.querySelector('.skeleton')
       && Array.from(content?.querySelectorAll('button,[role="button"]') || []).some(button =>
         (button.getAttribute('aria-label') || button.textContent || '').startsWith('Open ') && button.getClientRects().length);
-  }, null, { timeout: 10000 });
+  }, null, { timeout: 10000 }).catch(async error => {
+    const state = await page.evaluate(() => window.eval(`JSON.stringify({
+      state: getProductionLiveSyncCoordinator().getStatus().state,
+      verified: productionLiveSyncVerifiedView === productionVerifiedViewKey(),
+      skeletons: document.querySelectorAll('#drive-content .skeleton').length,
+      visibleCards: Array.from(document.querySelectorAll('#drive-content [role="button"]')).filter(node => node.getClientRects().length).length,
+      statistics: getProductionLiveSyncCoordinator().getStatistics()
+    })`));
+    throw new Error(`${String(error)}\nDrive verification diagnostic: ${state}`);
+  });
   const rows = page.locator('#drive-content').getByRole('button', { name: /^Open / });
   await expect(rows.first()).toBeVisible();
   return rows.count();
@@ -462,6 +471,63 @@ test('mobile Pending Requests verifies an empty required list without waiting on
   }
   expect(control.fixture.errors).toEqual([]);
   expect(control.fixture.blockedMutations).toEqual([]);
+});
+
+test('QC Supervisor Drive cold start verifies inventory and season before searchable cards', async ({ page, baseURL }) => {
+  const reads: string[] = [];
+  const fixture = await installColdFixture(page, baseURL!, {
+    username: 'dan_mccuistion', role: 'QC Supervisor',
+    beforeLogin: async () => {
+      await page.route('**/functions/v1/app-api', async route => {
+        const body = route.request().postDataJSON() || {};
+        if (body.action === 'av_read') reads.push(body.dataset);
+        return route.fallback();
+      });
+      await expect(page.locator('#login-button')).toBeEnabled();
+    },
+  });
+  await page.locator('#home-tile-drive').click();
+  expect(await waitForVerifiedDrive(page)).toBeGreaterThan(0);
+  expect(reads).toContain('settings');
+  expect(reads).not.toContain('reserves');
+  await page.locator('#drive-search').fill('Synthetic HL Holly');
+  await expect(page.locator('#drive-content').getByRole('button', { name: /^Open / }).first()).toBeVisible();
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('Drive season denial stays recoverable and makes no automatic retry before explicit Retry', async ({ page, baseURL }) => {
+  let denied = true;
+  let settingReads = 0;
+  const fixture = await installColdFixture(page, baseURL!, {
+    username: 'dan_mccuistion', role: 'QC Supervisor',
+    beforeLogin: async () => {
+      await page.route('**/functions/v1/app-api', async route => {
+        const body = route.request().postDataJSON() || {};
+        if (body.action !== 'av_read' || body.dataset !== 'settings') return route.fallback();
+        settingReads++;
+        if (!denied) return route.fallback();
+        return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({
+          ok: false, error: 'AV_READ_FORBIDDEN', code: 'AV_READ_FORBIDDEN',
+        }) });
+      });
+      await expect(page.locator('#login-button')).toBeEnabled();
+    },
+  });
+  await page.locator('#home-tile-drive').click();
+  await expect(page.locator('#drive-content')).toContainText('Drive inventory unavailable');
+  const attempts = settingReads;
+  expect(attempts).toBeGreaterThan(0);
+  await page.evaluate(() => window.eval("signalProductionLiveSync('background-regression-check', 0)"));
+  await expect(page.locator('#drive-content').getByRole('button', { name: 'Retry', exact: true })).toBeVisible();
+  expect(settingReads).toBe(attempts);
+  expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
+  denied = false;
+  await page.locator('#drive-content').getByRole('button', { name: 'Retry', exact: true }).click();
+  expect(await waitForVerifiedDrive(page)).toBeGreaterThan(0);
+  expect(settingReads).toBe(attempts + 1);
+  expect(fixture.errors).toEqual([]);
+  expect(fixture.blockedMutations).toEqual([]);
 });
 
 test('Drive verifies cards before unopened reserves and AV-note sources are requested', async ({ page, baseURL }) => {

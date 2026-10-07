@@ -7,6 +7,29 @@ const source = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const origin = 'https://agmetric-isolation.test';
 const absolute = value => new URL(typeof value === 'string' ? value : value.url, `${origin}/`).href;
 
+const suspendApprovalId = '12345678-1234-4234-8234-123456789abc';
+test('Suspend notification buttons survive closed-app startup and are consumed only once by the root app', async () => {
+  const h=harness([{id:'demo',url:`${origin}/v2/`}]);
+  const data={viewId:'suspend-tag-approval',approvalId:suspendApprovalId,url:`${origin}/?suspendApproval=${suspendApprovalId}`};
+  await h.dispatch('push',{data:{json:()=>data}});
+  assert.deepEqual(Array.from(h.calls.notifications[0].options.actions,a=>a.action),['approve','deny']);
+  await h.dispatch('notificationclick',{action:'deny',notification:{close(){},data}});
+  assert.match(h.calls.opened[0],/suspendApproval=/);
+  const consume=async client=>{let result;await h.dispatch('message',{source:client,data:{type:'GNC_TAKE_SUSPEND_ACTION',approvalId:suspendApprovalId},ports:[{postMessage:value=>result=value}]});return result?.decision || '';};
+  assert.equal(await consume(h.clients[0]),'','other app cannot consume');
+  h.clients.push({id:'root',url:`${origin}/`});
+  assert.equal(await consume(h.clients[1]),'deny');assert.equal(await consume(h.clients[1]),'');
+  assert.equal(h.calls.fetch.length,0,'notification handling never writes a business decision');
+});
+test('iPhone notification tap and emailed URL open a review without deciding; expired actions do not submit',async()=>{
+  const h=harness([{id:'root',url:`${origin}/`}]);const data={viewId:'suspend-tag-approval',approvalId:suspendApprovalId,url:`${origin}/?suspendApproval=${suspendApprovalId}&decision=approve`};
+  await h.dispatch('notificationclick',{action:'',notification:{close(){},data}});
+  let result;const consume=()=>h.dispatch('message',{source:h.clients[0],data:{type:'GNC_TAKE_SUSPEND_ACTION',approvalId:suspendApprovalId},ports:[{postMessage:value=>result=value}]});
+  await consume();assert.equal(result.decision,'');assert.equal(h.calls.fetch.length,0);
+  await (await h.caches.open('gnc-suspend-notification-actions')).put(`${origin}/__suspend_action/${suspendApprovalId}`,new Response(JSON.stringify({decision:'approve',expiresAt:Date.now()-1})));
+  await consume();assert.equal(result.decision,'');
+});
+
 function harness(clientDefinitions = []) {
   const handlers = new Map();
   const cacheStores = new Map();

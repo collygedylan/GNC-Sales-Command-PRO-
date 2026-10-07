@@ -211,6 +211,28 @@ Deno.test("database revision conflicts return a retryable conflict status", asyn
   assert(body.code === "AURA_QUERY_REVISION_CONFLICT", "revision conflict should have a stable retryable code");
 });
 
+Deno.test("legacy cached requests are upgraded after auth with a server-derived turn id", async () => {
+  const f = fixture({ moduleAllowed: false });
+  const request = new Request("https://example.invalid/aura-query", { method: "POST",
+    headers: { authorization: "Bearer verified-token", "content-type": "application/json", "idempotency-key": "legacy-retry-key" },
+    body: JSON.stringify({ text: "Show roses", context: { lastIntent: { mode: "chat", question: "private" } } }),
+  });
+  const response = await handleAuraQueryRequest(request, { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 200, `legacy request should be migrated: ${JSON.stringify(body)}`);
+  assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(body.requestId || "")), "legacy turn id must be server-derived UUID");
+  assert(response.headers.get("x-request-id") === body.requestId, "idempotency id should be returned for safe retries");
+  assert(body.interpretation.intent !== "chat", "legacy client context must not steer server routing");
+});
+
+Deno.test("legacy bind_party mutation is redirected to the reviewed Bloom flow", async () => {
+  const f = fixture();
+  const response = await handleAuraQueryRequest(f.request({ mode: "bind_party", party: { customerName: "Acme" } }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 409 && body.code === "AURA_REFRESH_REQUIRED", "legacy bind_party must not mutate or bind data");
+  assert(f.userTables.length === 0, "legacy binding call must not access business data");
+});
+
 function chainForTest(data: unknown) {
   const q: any = { select: () => q, eq: () => q, maybeSingle: async () => ({ data, error: null }), then: (yes: any, no: any) => Promise.resolve({ data, error: null }).then(yes, no) };
   return q;

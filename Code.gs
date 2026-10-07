@@ -1067,6 +1067,7 @@ const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBack
 const DRIVE_AROUND_HISTORY_BACKFILL_RETRY_DELAY_MS = 15 * 60 * 1000;
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
+const WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE = 'ph_inventory_row_assignments';
 // Eval assignment review sheet. Supabase is authoritative; this file is export-only.
 const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '16mK_5MWcIwVsbok0lGkBG65UeZt553nf5IEPiv0k34Q';
 const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1PLQJjNIM4dBTBlFOYiumLb-ICccPZbgn';
@@ -1155,7 +1156,7 @@ function runDriveAroundOnly() {
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
-function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_ASSIGNED_ITEMS_TABLE); }
+function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE); }
 function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
   const safeRevision = String(importRevision || new Date().toISOString()).trim();
   const safeSource = String(sourceName || 'canonical_import').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 60);
@@ -3807,7 +3808,7 @@ function getAssignedItemLowStockExportTargets_(rows) {
 
 function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const safeSheetId = String(sheetId || WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID).trim();
-  const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
+  const safeTableName = String(tableName || WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE).trim();
   if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
 
   // Reconciliation belongs to the one scheduled maintenance worker. Exporting
@@ -3815,34 +3816,43 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const maintenance = { status: 'owned_by_scheduled_worker' };
   const rows = Object.values(fetchAllSupabaseData(
     safeTableName,
-    'unique_id,itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
+    'master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,lotcode,source,warehousei,assignedto,default_assignedto,default_revision,assignment_reason,review_required,zone_override_active,present_in_drive,assigned_at,updated_at',
     getSupabaseFetchOptionsForTable_(safeTableName)
   )).sort(function(a, b) {
-    return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true });
+    return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true }) ||
+      String(a.locationcode || '').localeCompare(String(b.locationcode || ''), undefined, { numeric: true }) ||
+      String(a.master_unique_id || a.unique_id || '').localeCompare(String(b.master_unique_id || b.unique_id || ''), undefined, { numeric: true });
   });
 
   const lowStockTargets = getAssignedItemLowStockExportTargets_(rows);
   const spreadsheet = SpreadsheetApp.openById(safeSheetId);
   const sheet = spreadsheet.getSheets()[0];
   const headers = [
-    'ITEMCODE', 'ASSIGNEDTO', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
-    'PRESENT_IN_DRIVE', 'ASSIGNED_BY', 'ASSIGNED_AT', 'FIRST_SEEN_AT',
-    'LAST_SEEN_AT', 'UPDATED_AT', 'AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY',
+    'MASTER_UNIQUE_ID', 'ITEMCODE', 'GENUSNAME', 'ASSIGNEDTO', 'DEFAULT_ASSIGNEDTO', 'DEFAULT_REVISION',
+    'ASSIGNMENT_REASON', 'REVIEW_REQUIRED', 'ZONE_OVERRIDE_ACTIVE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
+    'LOTCODE', 'SOURCE', 'WAREHOUSEI', 'PRESENT_IN_DRIVE', 'ASSIGNED_AT', 'UPDATED_AT', 'AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY',
     'SUGGESTED_LOW_STOCK_QTY', 'ORDER_LINE_OBSERVATIONS', 'HISTORY_DAYS', 'HISTORY_CALCULATED_AT'
   ];
   const values = [headers].concat(rows.map(function(row) {
     const target = lowStockTargets[String(row.itemcode_normalized || row.itemcode || '').trim().toUpperCase()] || {};
     return [
+      row.master_unique_id || row.unique_id || '',
       row.itemcode_normalized || row.itemcode || '',
+      row.genusname || '',
       row.assignedto || '',
+      row.default_assignedto || '',
+      row.default_revision == null ? '' : row.default_revision,
+      row.assignment_reason || '',
+      row.review_required === true,
+      row.zone_override_active === true,
       row.commonname || '',
       row.contsize || '',
       row.locationcode || '',
+      row.lotcode || '',
+      row.source || '',
+      row.warehousei == null ? '' : row.warehousei,
       row.present_in_drive === true,
-      row.assigned_by || '',
       row.assigned_at || '',
-      row.first_seen_at || '',
-      row.last_seen_at || '',
       row.updated_at || '',
       target.history_ready === false ? 'History processing' : (target.mean_quantity == null ? 'No history' : target.mean_quantity),
       target.effective_qty == null ? '' : target.effective_qty,
@@ -12283,6 +12293,8 @@ const RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = 'reclass-action-workflow-v2-live-20260826';
 const RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = 'reclass-action-workflow-v3-row-actions-20260826';
+const RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = true;
+const RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = 'reclass-action-workflow-v4-split-moves-20261006';
 const RECLASS_INQUIRY_DESTINATION_SEASONS_V2_ = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
 const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request' }),
@@ -12850,6 +12862,7 @@ function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authorit
 
 function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overlays, authoritativeScope, options) {
   const safeOptions = options && typeof options === 'object' ? options : {};
+  const isV4 = safeOptions.policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
   const allowEmptyActions = safeOptions.allowEmptyActions === true;
   const now = safeOptions.now instanceof Date ? safeOptions.now : new Date();
   const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope', 'seasonPriority'], 'The Reclass transaction');
@@ -12990,6 +13003,10 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
       const expectedOh = String(expected.ptronhand == null ? '' : expected.ptronhand).trim().replace(/,/g, '');
       if (currentOh !== expectedOh) return { ok: false, status: 'conflict', message: 'OH changed for an Item Inquiry row. Sync and review it before sending.' };
     }
+    if (isV4 && overlay.proposals.some(function(proposal) { return proposal && ['move_up', 'move_down'].indexOf(String(proposal.action || '').trim().toLowerCase()) !== -1; })
+        && !Object.prototype.hasOwnProperty.call(expected, 'ptronhand')) {
+      throw new Error('Split Move proposals require the expected original OH. Refresh and review the row before sending.');
+    }
     const values = {};
     RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) { values[field.key] = getReclassInquiryExactValue_(row, field.aliases, ''); });
     const actionValues = {};
@@ -13041,18 +13058,44 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
         values.priority = requestedPriority;
         changedFields.push('priority');
       } else if (rule.kind === 'move') {
-        const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'moveQuantity', 'destinationSeason'], 'A Move proposal');
         const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
-        const quantity = Number(proposal.moveQuantity);
-        if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1 || quantity > originalOh) throw new Error(rule.label + ' Qty must be a whole number from 1 through original OH.');
-        const destination = String(proposal.destinationSeason || '').trim().toUpperCase();
-        if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
-        if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
-        combinedMoveQuantity += quantity;
         const prefix = action === 'move_up' ? 'moveup' : 'movedown';
-        actionValues[prefix + 'quantity'] = String(quantity);
-        actionValues[prefix + 'season'] = destination;
-        changedFields.push(prefix + 'quantity', prefix + 'season');
+        if (isV4) {
+          const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'splits', 'applyHold', 'holdReason'], 'A Move proposal');
+          if (!Array.isArray(proposal.splits) || !proposal.splits.length || proposal.splits.length > 100) throw new Error(rule.label + ' requires between 1 and 100 destination splits.');
+          const applyHold = proposal.applyHold === true;
+          if (proposal.applyHold !== undefined && typeof proposal.applyHold !== 'boolean') throw new Error(rule.label + ' Place on Hold must be a boolean.');
+          const holdReason = String(proposal.holdReason == null ? '' : proposal.holdReason).trim().toLowerCase();
+          if (applyHold && !holdReason) throw new Error(rule.label + ' Place on Hold requires a reason.');
+          if (holdReason.length > 1000) throw new Error(rule.label + ' hold reason must be 1000 characters or fewer.');
+          if (!applyHold && holdReason) throw new Error(rule.label + ' hold reason must be blank unless Place on Hold is selected.');
+          const splits = proposal.splits.map(function(rawSplit) {
+            const split = assertReclassInquiryObjectKeysV2_(rawSplit, ['quantity', 'destinationSeason'], 'A Move split');
+            const quantity = Number(split.quantity);
+            if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1) throw new Error(rule.label + ' split quantity must be a positive whole number.');
+            const destination = String(split.destinationSeason || '').trim().toUpperCase();
+            if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
+            if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
+            combinedMoveQuantity += quantity;
+            return { quantity: quantity, destinationSeason: destination };
+          });
+          actionValues[prefix + 'splits'] = splits;
+          actionValues[prefix + 'applyhold'] = applyHold;
+          actionValues[prefix + 'holdreason'] = applyHold ? holdReason : '';
+          changedFields.push(prefix + 'splits');
+          if (applyHold) changedFields.push(prefix + 'applyhold', prefix + 'holdreason');
+        } else {
+          const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'moveQuantity', 'destinationSeason'], 'A Move proposal');
+          const quantity = Number(proposal.moveQuantity);
+          if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1 || quantity > originalOh) throw new Error(rule.label + ' Qty must be a whole number from 1 through original OH.');
+          const destination = String(proposal.destinationSeason || '').trim().toUpperCase();
+          if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
+          if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
+          combinedMoveQuantity += quantity;
+          actionValues[prefix + 'quantity'] = String(quantity);
+          actionValues[prefix + 'season'] = destination;
+          changedFields.push(prefix + 'quantity', prefix + 'season');
+        }
       } else if (rule.kind === 'recount') {
         assertReclassInquiryObjectKeysV2_(baseProposal, ['action'], 'A Re-Count proposal');
       }
@@ -13228,7 +13271,7 @@ function buildReclassInquiryReportText_(model) {
   const safeModel = model || {};
   const identity = safeModel.identity || {};
   const editSummary = safeModel.editSummary || {};
-  return [
+  const body = [
     'GNC PH Reclass Item Inquiry',
     'Submitted: ' + String(safeModel.submittedAt || ''),
     'Submitted By: ' + String(safeModel.actorDisplay || ''),
@@ -13238,10 +13281,12 @@ function buildReclassInquiryReportText_(model) {
     'Container: ' + String(identity.contsize || ''),
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
-    buildSeasonPriorityDecisionText_(safeModel),
-    '',
-    'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.'
-  ].join('\n');
+    buildSeasonPriorityDecisionText_(safeModel)
+  ];
+  const splitMoveText = buildReclassInquirySplitMoveText_(safeModel);
+  if (splitMoveText) body.push(splitMoveText);
+  body.push('', 'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.');
+  return body.join('\n');
 }
 
 function buildSeasonPriorityDecisionText_(model) {
@@ -13265,10 +13310,87 @@ function buildReclassInquiryEmailHtml_(model) {
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
+    buildReclassInquirySplitMoveHtml_(safeModel),
     safeModel.transaction && safeModel.transaction.seasonPriority ? '<p style="white-space:pre-line;overflow-wrap:anywhere;">' + escapeEmailHtml_(buildSeasonPriorityDecisionText_(safeModel)) + '</p>' : '',
     '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.</p>',
     '</div>'
   ].join(''));
+}
+
+function getReclassInquirySplitMoveEntries_(model) {
+  const entries = [];
+  (Array.isArray(model && model.rows) ? model.rows : []).forEach(function(row) {
+    const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+    const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
+    [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
+      const prefix = pair[0];
+      const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
+      splits.forEach(function(split) {
+        entries.push({
+          direction: pair[1], quantity: String(split && split.quantity != null ? split.quantity : ''),
+          destinationSeason: String(split && split.destinationSeason || '').toUpperCase(),
+          applyHold: actionValues[prefix + 'applyhold'] === true,
+          holdReason: String(actionValues[prefix + 'holdreason'] || '').trim().toLowerCase(),
+          location: String(values.locationcode || ''), lot: String(values.lotcode || '')
+        });
+      });
+    });
+  });
+  return entries;
+}
+
+function getReclassInquirySplitMoveSummaries_(model) {
+  return (Array.isArray(model && model.rows) ? model.rows : []).map(function(row) {
+    const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+    const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
+    let combinedTotal = 0;
+    let hasMoves = false;
+    const directions = [['moveup', 'UP'], ['movedown', 'DOWN']].map(function(pair) {
+      const splits = Array.isArray(actionValues[pair[0] + 'splits']) ? actionValues[pair[0] + 'splits'] : [];
+      if (!splits.length) return null;
+      const total = splits.reduce(function(sum, split) { return sum + Number(split && split.quantity || 0); }, 0);
+      combinedTotal += total;
+      hasMoves = true;
+      return { direction: pair[1], splits: splits, total: total };
+    }).filter(Boolean);
+    return hasMoves ? { location: String(values.locationcode || ''), lot: String(values.lotcode || ''), directions: directions, combinedTotal: combinedTotal } : null;
+  }).filter(Boolean);
+}
+
+function buildReclassInquirySplitMoveText_(model) {
+  const entries = getReclassInquirySplitMoveEntries_(model);
+  if (!entries.length) return '';
+  const lines = ['Move split instructions (request only; inventory was not changed):'].concat(entries.map(function(entry) {
+    return [entry.location, entry.lot, entry.direction + ' ' + entry.quantity + ' to ' + entry.destinationSeason,
+      entry.applyHold ? 'Place on Hold requested' + (entry.holdReason ? ': ' + entry.holdReason : '') : ''].filter(Boolean).join(' / ');
+  }));
+  const summaries = getReclassInquirySplitMoveSummaries_(model);
+  if (summaries.length) {
+    lines.push('Requested totals by source row:');
+    summaries.forEach(function(group) {
+      const directionText = group.directions.map(function(direction) {
+        return direction.direction + ' total requested: ' + String(direction.total);
+      }).join(' / ');
+      lines.push([group.location, group.lot, directionText, 'UP + DOWN total requested: ' + String(group.combinedTotal)].filter(Boolean).join(' / '));
+    });
+  }
+  return lines.join('\n');
+}
+
+function buildReclassInquirySplitMoveHtml_(model) {
+  const entries = getReclassInquirySplitMoveEntries_(model);
+  if (!entries.length) return '';
+  const esc = escapeEmailHtml_;
+  const summaries = getReclassInquirySplitMoveSummaries_(model);
+  const summaryHtml = summaries.length ? '<p><strong>Requested totals by source row</strong><br>' + summaries.map(function(group) {
+    const directionText = group.directions.map(function(direction) { return direction.direction + ' total requested: ' + String(direction.total); }).join(' · ');
+    return esc(group.location) + ' / ' + esc(group.lot) + ' — ' + esc(directionText) + ' · UP + DOWN total requested: ' + esc(String(group.combinedTotal));
+  }).join('<br>') + '</p>' : '';
+  return '<section style="margin:14px 0;padding:12px;border:1px solid #94a3b8;border-radius:8px;overflow-wrap:anywhere;"><strong>Move split instructions (request only; inventory was not changed)</strong>' + summaryHtml + '<ul>'
+    + entries.map(function(entry) {
+      return '<li>' + esc(entry.location) + ' / ' + esc(entry.lot) + ' — ' + esc(entry.direction + ' ' + entry.quantity + ' to ' + entry.destinationSeason)
+        + (entry.applyHold ? ' — Place on Hold requested' + (entry.holdReason ? ': ' + esc(entry.holdReason) : '') : '') + '</li>';
+    }).join('') + '</ul></section>';
 }
 
 function sortReclassInquiryCompactRows_(rows) {
@@ -13340,6 +13462,31 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       if (field.key === 'ptronhand') {
         const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
         const movementLines = [];
+        const v4MovementDetails = [];
+        const v4MovementSummaries = [];
+        let combinedSplitTotal = 0;
+        let hasV4Splits = false;
+        [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
+          const prefix = pair[0];
+          const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
+          if (splits.length) {
+            const directionTotal = splits.reduce(function(sum, split) { return sum + Number(split && split.quantity || 0); }, 0);
+            combinedSplitTotal += directionTotal;
+            hasV4Splits = true;
+            const sourceLabel = String(row && row.values && row.values.locationcode || 'Unknown Location') + ' / ' + String(row && row.values && row.values.lotcode || 'Unknown Lot') + ' · ';
+            v4MovementSummaries.push(buildReclassInquiryProposalBoxHtml_(sourceLabel + pair[1] + ' split total requested: ' + String(directionTotal), 'proposal-box-movement'));
+          }
+          splits.forEach(function(split) {
+            const hold = actionValues[prefix + 'applyhold'] === true
+              ? ' · PLACE ON HOLD REQUESTED' + (actionValues[prefix + 'holdreason'] ? ': ' + actionValues[prefix + 'holdreason'] : '')
+              : '';
+            const sourceLabel = String(row && row.values && row.values.locationcode || 'Unknown Location') + ' / ' + String(row && row.values && row.values.lotcode || 'Unknown Lot') + ' · ';
+            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(sourceLabel + pair[1] + ' ' + String(split && split.quantity != null ? split.quantity : '')
+              + ' TO ' + String(split && split.destinationSeason || '').toUpperCase() + hold, 'proposal-box-movement'));
+          });
+        });
+        if (hasV4Splits) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP + DOWN total requested: ' + String(combinedSplitTotal), 'proposal-box-movement'));
+        movementLines.push.apply(movementLines, v4MovementSummaries.concat(v4MovementDetails));
         if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.moveupquantity).trim() + ' TO ' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('DOWN ' + String(actionValues.movedownquantity).trim() + ' TO ' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         if (!movementLines.length && String(actionValues.movequantity || '').trim()) {
@@ -13396,7 +13543,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       }).join('')
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
+    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
     '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span>Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
     '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + supplementalTemporaryHtml + '</body></html>';
 }
@@ -13622,7 +13769,7 @@ function enqueueReclassInquiryEmail_(payload) {
     return { ok: false, status: 'unauthorized', message: 'Refresh the app and sign in before sending this Drive Mode inquiry.' };
   }
   const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
-  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
+  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
     return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app and review the current rows.' };
   }
   const recipients = getReclassInquiryEmailRecipients_(safePayload);
@@ -13670,7 +13817,8 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
     const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
     const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
-    const isV3 = RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_;
+    const isV4 = RECLASS_ACTION_WORKFLOW_V4_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
+    const isV3 = (RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_) || isV4;
     const isV2 = RECLASS_ACTION_WORKFLOW_V2_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
     if (!isV3 && !isV2) {
       throw new Error('RECLASS_CONFLICT:WORKFLOW_POLICY_CHANGED');
@@ -13687,7 +13835,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     let overlayResult;
     try {
       overlayResult = isV3
-        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now })
+        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now, policyVersion: isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '' })
         : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
     } catch (validationError) {
       throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
@@ -13735,7 +13883,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
       });
       result.subject = subject;
       result.submittedAt = now.toISOString();
-      result.policyVersion = isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
+      result.policyVersion = isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : (isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_);
       result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Requested changes are highlighted yellow; no inventory data was changed.';
       return result;
     } catch (emailError) {
@@ -15757,6 +15905,11 @@ function buildMimeEmail_(options) {
   if (options.ccList) lines.push('Cc: ' + String(options.ccList));
   if (options.bccList) lines.push('Bcc: ' + String(options.bccList));
   if (fromHeader) lines.push('From: ' + fromHeader);
+  if (options.replyTo) {
+    const replyTo = String(options.replyTo).trim();
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(replyTo)) throw new Error('EMAIL_REPLY_TO_INVALID');
+    lines.push('Reply-To: ' + replyTo);
+  }
   const messageIdHeader = String(options.messageIdHeader || '').trim();
   if (messageIdHeader) lines.push('Message-ID: ' + messageIdHeader);
   lines.push('Subject: ' + String(options.subject || ''));
@@ -16541,6 +16694,8 @@ function buildEvalWorkReportModel_(eventPayload) {
     return current;
   }) : allCurrentItemRows;
   const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
+  const inquiryPolicyVersion = normalizeInventoryTransactionText_(inquiry.workflowPolicyVersion);
+  const isV4Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
   const requestActions = Array.isArray(transaction.requestActions)
     ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
     : [];
@@ -16554,7 +16709,10 @@ function buildEvalWorkReportModel_(eventPayload) {
       const authoritativeScope = hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)
         ? fetchReclassInquiryScopeSettingsV3_()
         : null;
-      proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, { allowEmptyActions: true });
+      proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, {
+        allowEmptyActions: true,
+        policyVersion: isV4Inquiry ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : ''
+      });
     } catch (error) {
       throw new Error('EVAL_WORK_VALIDATION:' + String(error && error.message || 'PROPOSAL_INVALID'));
     }
@@ -17742,6 +17900,11 @@ function handleSignedHlOrderDelivery_(delivery) {
 
 function buildBunchNotePdfHtml_(report) {
   const e = escapeEmailHtml_;
+  const rich = function(value) { return e(value == null ? '' : value).replace(/\b(red\s+flags?|blue\s+flags?|pink\s+ribbons?|yellow\s+ribbons?)\b/gi,function(word){const key=word.split(/\s/)[0].toLowerCase(),colors={red:['#fee2e2','#991b1b'],blue:['#dbeafe','#1e40af'],pink:['#fce7f3','#9d174d'],yellow:['#fef9c3','#713f12']}[key];return '<b style="background:'+colors[0]+';color:'+colors[1]+'">'+word+'</b>';}); };
+  const badge = function(tag) { if(!tag)return '—';const tags=['BOB','QC','SAM','RHETT','BUNCHERS','TA','SHARON','MATT'],colors=['#1d4ed8','#6d28d9','#047857','#9a3412','#334155','#9f1239','#0e7490','#854d0e'];return '<b class="crew" style="background:'+(colors[tags.indexOf(String(tag).toUpperCase())]||'#475569')+'">'+e(tag)+'</b>'; };
+  const sections=report.house_sections||[], ranks={}; sections.forEach(function(h,i){ranks[h.id]=i+1;});
+  const orderedActions=(report.actions||[]).map(function(a,i){return {a:a,i:i};}).sort(function(x,y){return ((ranks[x.a.section_id]||0)-(ranks[y.a.section_id]||0)) || ((x.a.sequence_order||x.i+1)-(y.a.sequence_order||y.i+1));}).map(function(x){return x.a;});
+  let lastHouse = null, activeCard = null;
   const number = function(v) { return v === null || v === undefined || String(v).trim() === '' || !/^-?\d+(\.\d+)?$/.test(String(v).trim()) ? null : Number(v); };
   const qty = function(v) { return number(v) === null ? 'Unknown' : String(number(v)); };
   const kind = function(a) { return a.kind || (String(a.label || a.instructions || '').indexOf('TA / culls') === 0 ? 'ta' : a.label === 'Move' ? 'move' : a.group === 'hauling' && String(a.label || a.instructions || '').indexOf('Wait') !== 0 ? 'hauling' : 'instruction'); };
@@ -17762,13 +17925,24 @@ function buildBunchNotePdfHtml_(report) {
     rows += '<tr class="item"><td colspan="6"><b>' + e(itemcode) + ' · ' + e(lots[0].commonname) + '</b><br>LOC On Hand ' + e(total('stock')) + ' · LOC Review ' + e(total('review')) + ' · LOC Available ' + e(total('available')) + '</td></tr>';
     rows += lots.map(function(r) { return '<tr><td>'+e(r.commonname)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'</td><td>'+e(r.lotcode)+'<br>Sales year '+e(r.salesyear || 'Unknown')+'<br>Season '+e(r.season || 'Unknown')+'<br>DesigItem '+e(r.desigitem || '—')+'</td><td>On Hand '+e(qty(r.stock))+'<br>Review '+e(qty(r.review))+'<br>Available '+e(qty(r.available))+'</td><td>'+e(r.flags || '—')+'<br>'+e(r.hold || '—')+'<br>'+e(r.warehouse || '—')+'</td><td>'+e(r.location_notes || '—')+'<br><small>'+e(r.unique_id)+'</small></td></tr>'; }).join('');
   });
-  const actions = (report.actions || []).map(function(a) {
+  const actionRow = function(a) {
     const target = a.scope === 'location' ? 'Whole location' : (a.row_ids || []).map(function(id) { const r=(report.source||[]).find(function(r) { return r.unique_id===id; }); return r ? [r.itemcode,r.contsize,r.lotcode,'Sales year '+(r.salesyear || 'Unknown')].join(' / ') : id; }).join('; ');
     const recorded = current.filter(function(x) { return x.action_id===a.id; });
     const status = (report.progress || {})[a.id] || {};
     const completion = work ? e(status.status || 'Unresolved')+'<br>'+e(status.reason || '')+(status.review_flags && status.review_flags.length ? '<br><b>REVIEW: '+e(reviewText(status.review_flags))+'</b>' : '') : '☐ Done<br>☐ Not needed<br>Reason:';
-    return '<tr><td>'+e(a.label || a.group)+'<br>'+e(a.crew || '')+(a.worker_added?'<br><b>Worker added</b>':'')+'</td><td>'+e(target)+'</td><td>Planned '+e(a.quantity || '—')+' / '+e(a.percentage || '—')+'%'+(work?'<br>Actual '+(recorded.length?e(recorded.reduce(function(sum,x) { return sum+Number(x.quantity); },0)):'Not recorded'):'')+'</td><td>'+e(a.stage || '')+'<br>'+e(a.destination || '')+'<br>'+e(a.marking || '')+'</td><td class="pre">'+e(a.instructions)+'</td><td>'+completion+'</td></tr>';
-  }).join('');
+    const section=sections.find(function(h){return h.id===a.section_id;}),houseId=section?section.id:'';
+    const cardScoped=activeCard&&activeCard.kind==='inventory',houseName=cardScoped&&activeCard.house?activeCard.house:section?section.name:'General tasks',houseDirection=cardScoped?activeCard.direction:((section&&section.direction)||report.direction);
+    const house=lastHouse===houseId?'':'<tr class="house"><th colspan="5">'+e(houseName)+(houseDirection?' · '+e(houseDirection):'')+'</th></tr>';
+    lastHouse=houseId;
+    return house+'<tr><td>'+badge(a.margin_tag == null ? a.crew : a.margin_tag)+'<br>'+e(a.label || a.group)+(a.worker_added?'<br><b>Worker added</b>':'')+'</td><td><b>'+e([a.item_size,a.item_desc].filter(Boolean).join(' · '))+'</b><br>'+e(target)+'</td><td>'+((a.quantity_constraint !== undefined && a.quantity_constraint !== '')?'<b>'+e(a.quantity_constraint)+'</b><br>':'')+'Planned '+e(a.quantity == null || a.quantity === '' ? '—' : a.quantity)+' / '+e(a.percentage || '—')+'%'+(work?'<br>Actual '+(recorded.length?e(recorded.reduce(function(sum,x) { return sum+Number(x.quantity); },0)):'Not recorded'):'')+'</td><td class="pre routing">'+(a.stage?e(a.stage)+'<br>':'')+(a.destination?'<b>To '+e(a.destination)+'</b><br>':'')+(a.marking?rich(a.marking)+'<br>':'')+rich(a.instructions)+'</td><td>'+completion+'</td></tr>';
+  };
+  const cardHeading = function(card) {
+    const ids=new Set(card.row_ids||[]),seenRows=new Set(),source=(report.source||[]).filter(function(r){if(!ids.has(r.unique_id)||seenRows.has(r.unique_id))return false;seenRows.add(r.unique_id);return true;});
+    const total=function(field){const values=source.map(function(r){return number(r[field]);});return source.length!==ids.size||values.some(function(v){return v===null;})?'Unknown / incomplete':String(values.reduce(function(sum,v){return sum+v;},0));};
+    return '<tr class="house"><th colspan="5">'+e(card.kind==='shared'?'General / Shared Work':[card.itemcode,card.commonname,card.contsize].filter(Boolean).join(' · '))+'<br><small>Worker: '+e(card.owner_name||'Unassigned')+' · House: '+e(card.house||'Not specified')+' · Direction: '+e(card.direction||'Not specified')+(card.kind==='shared'?'':'<br>Location Total (On Hand): '+e(total('stock'))+' · Available: '+e(total('available'))+' · '+source.length+' lot rows')+'</small></th></tr>';
+  };
+  const cards=report.cards||[];
+  const actions=cards.length?cards.map(function(card){lastHouse=null;activeCard=card;return cardHeading(card)+orderedActions.filter(function(a){return a.card_id===card.id;}).map(actionRow).join('');}).join(''):orderedActions.map(actionRow).join('');
   let recorded = '';
   if (work) {
     const totals={};
@@ -17776,7 +17950,7 @@ function buildBunchNotePdfHtml_(report) {
     recorded='<h2>Recorded totals by action type</h2><p>'+Object.keys(totals).map(function(type) { return e(type.toUpperCase())+': '+e(totals[type]); }).join(' · ')+'</p><h2>Actual work and correction history</h2><table><thead><tr><th>Action / item</th><th>Size / lot</th><th>Quantity / destination</th><th>Record / actor</th><th>Explanation / review</th></tr></thead><tbody>'+
       actuals.map(function(a) { const r=a.source_snapshot;return '<tr><td>'+e(a.action_snapshot.label || a.action_snapshot.instructions)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'<br>'+e(r.lotcode)+'<br>Sales year '+e(r.salesyear || 'Unknown')+'</td><td>'+e(a.quantity)+'<br>'+e(a.destination || '—')+'</td><td>'+e(a.created_at)+'<br>'+e(a.actor_id)+'<br>'+e(a.superseded?'Replaced; excluded from totals':a.replaces_id?'Correction; current':'Current')+'</td><td class="pre">'+e(a.explanation || '—')+(a.review_flags.length?'<br><b>REVIEW: '+e(reviewText(a.review_flags))+'</b>':'')+'</td></tr>'; }).join('')+'</tbody></table>';
   }
-  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px}h2{font-size:15px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}</style></head><body><h1>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h1><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Purposes:</b> '+e(report.purposes)+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+e(report.instructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+e(report.prerequisites || '—')+'</p><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Sales Year / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table><h2>Work checklist'+(work?' — planned versus actual':'')+'</h2><table><thead><tr><th>Action / crew label</th><th>Applies to</th><th>Qty / %</th><th>Stage / destination / marking</th><th>Instructions</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table>'+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px;margin:0 0 10px}p{margin:6px 0}h2{font-size:15px;margin:12px 0 6px;break-after:avoid;page-break-after:avoid}tr.item{break-after:avoid;page-break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}.crew{display:inline-block;color:#fff;padding:5px;font-size:12px;overflow-wrap:anywhere}.house{break-after:avoid;page-break-after:avoid}.house th{font-size:15px;background:#dce8df}.routing{font-size:12px;font-weight:bold}</style></head><body><h1>'+e(report.purposes || 'Bunch Notes')+'</h1><h2>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h2><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Direction:</b> '+e(report.direction || 'Not specified')+' <b>Target houses:</b> '+e(report.target_houses || 'Not specified')+'<br><b>Purposes:</b> '+e(report.purposes)+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+rich(report.instructions || report.general_instructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+rich(report.prerequisites || '—')+'</p><h2>Crew task instructions'+(work?' — planned versus actual':'')+'</h2><table><colgroup><col style="width:13%"><col style="width:23%"><col style="width:12%"><col style="width:38%"><col style="width:14%"></colgroup><thead><tr><th>Crew / action</th><th>Item / source</th><th>Quantity</th><th>Instructions / routing</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Sales Year / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table>'+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
 }
 
 function handleBunchNotePreview_(payload) {
@@ -17852,9 +18026,82 @@ function handleSignedBunchNoteDelivery_(delivery) {
   } finally { if(lock) { try { lock.releaseLock(); } catch(ignored) {} } }
 }
 
+function buildSuspendTagApprovalEmail_(delivery) {
+  const approval = delivery.payload.approval;
+  const row = approval.snapshot;
+  const decision = delivery.eventType === 'suspend_tag_approval_decided';
+  const value = function(v) { return v === null || typeof v === 'undefined' ? '' : String(v); };
+  const fields = [
+    ['Customer', value(row.customername)], ['Consignee', value(row.consigneename)],
+    ['Item Description', [row.commonname, row.contsize].filter(Boolean).join(' ')],
+    ['Location Code', value(row.locationcode)], ['Qty', value(row.quantityordered)],
+    ['Spec', value(row.dock_spec)], ['Caliper', value(row.dock_caliper)],
+    ['LOC MATCH %', value(row.match)], ['Match Qty', value(row.loc_match_qty)], ['Initial PTR', value(row.initial_ptr)],
+    ['AV Note', value(row.av_note)], ['Notes', value(row.dock_note)]
+  ];
+  const appUrl = 'https://agmetricapp.com/' + '?suspendApproval=' + encodeURIComponent(approval.id);
+  const title = decision ? value(row.rep_display) + ' ' + (approval.status === 'approved' ? 'approved' : 'denied') + ' this Suspend Tag row.'
+    : approval.status !== 'pending' ? 'Saved Suspend Tag review. The Sales Rep has already ' + value(approval.status) + ' this round.' : 'Please review this completed Suspend Tag row.';
+  const subject = ('GNC PH Suspend Tag - ' + value(row.customername || row.consigneename) + ' - ' + value(row.commonname) + ' - ' + approval.id).replace(/[\r\n]+/g, ' ');
+  const item = Object.assign({}, row, { req_qty: row.quantityordered, req_spec: row.dock_spec, req_caliper: row.dock_caliper,
+    req_photo_link: row.dock_photo_link, req_photo_name: row.dock_photo_name, req_customer: [row.customername,row.consigneename].filter(Boolean).join(' | ') });
+  return {
+    subject: subject, to: decision ? approval.submitter_email : approval.rep_email,
+    replyTo: decision ? approval.rep_email : approval.submitter_email,
+    textBody: ['GNC PH Suspend Tag', title].concat(fields.map(function(f) { return f[0] + ': ' + f[1]; }),
+      ['Photos: ' + value(row.dock_photo_link), 'Open approval: ' + appUrl]).join('\n'),
+    htmlBody: '<div style="font-family:Arial,sans-serif"><h2>GNC PH Suspend Tag</h2><p>' + escapeEmailHtml_(title) + '</p>'
+      + fields.map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(f[1]) + '</p>'; }).join('')
+      + buildRequestEmailTableItemsHtml_({ requestItems: [item], folderId: 'suspend-tag-' + approval.id }, { title: 'Suspend Tag Row' })
+      + '<p><a href="' + escapeEmailHtml_(appUrl) + '">Open approval in the app</a></p></div>'
+  };
+}
+
+function handleSignedSuspendTagDelivery_(delivery) {
+  const approval = delivery.payload && delivery.payload.approval;
+  if (!approval || !approval.id || !approval.snapshot || !delivery.messageIdHeader) throw new Error('SUSPEND_TAG_DELIVERY_INVALID');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('REQUEST_DELIVERY_BUSY');
+  try {
+    const messageId = String(delivery.messageIdHeader);
+    const saved = getRequestDeliveryReceipt_(messageId) || findSentRequestDeliveryByMessageId_(messageId);
+    if (saved) return Object.assign({ ok: true, mode: 'gmail_api_idempotent_recovery', recipients: [] }, saved, { messageIdHeader: messageId });
+    const model = buildSuspendTagApprovalEmail_(delivery);
+    const thread = delivery.thread || {};
+    const isDecision = delivery.eventType === 'suspend_tag_approval_decided';
+    if (isDecision && (!thread.threadId || !thread.messageId)) throw new Error('SUSPEND_TAG_ORIGINAL_EMAIL_PENDING');
+    const props = PropertiesService.getScriptProperties();
+    const intentKey = 'suspend_tag_send:' + messageId;
+    if (props.getProperty(intentKey)) throw new Error('SUSPEND_TAG_EMAIL_RECONCILIATION_REQUIRED');
+    // Validate delivery-time routing before recording a potentially sent message.
+    const routed = resolveOperationalEmailHeaders_([model.to], [], []).to;
+    if (routed.length !== 1 || routed[0].toLowerCase() !== String(model.to).toLowerCase()) throw new Error('SUSPEND_TAG_RECIPIENT_CHANGED');
+    props.setProperty(intentKey, new Date().toISOString());
+    let result;
+    try { result = sendGmailApiMessage_({ toList: model.to, toArray: [model.to], replyTo: model.replyTo,
+      fromName: 'GNC PH Suspend Tag', fromAddress: resolveAutomatedEmailSenderAddress_(), subject: model.subject,
+      textBody: model.textBody, htmlBody: model.htmlBody, messageIdHeader: messageId,
+      threadId: isDecision ? thread.threadId : '', inReplyTo: isDecision ? thread.messageId : '', references: isDecision ? thread.messageId : '' });
+    } catch (error) {
+      // A definite Gmail rejection is safe to retry. A timeout or lost response
+      // retains intent until the stable Message-ID can be reconciled.
+      const status = Number(error && (error.code || (error.details && error.details.code)));
+      if ([400,401,403,404,429].indexOf(status) >= 0) props.deleteProperty(intentKey);
+      throw error;
+    }
+    if (!result.gmailMessageId || !result.threadId) throw new Error('SUSPEND_TAG_EMAIL_RECONCILIATION_REQUIRED');
+    result.messageIdHeader = messageId;
+    result.replyToMessageId = isDecision ? thread.messageId : '';
+    saveRequestDeliveryReceipt_(messageId, result);
+    props.deleteProperty(intentKey);
+    return result;
+  } finally { lock.releaseLock(); }
+}
+
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
+  if (eventType === 'suspend_tag_approval_requested' || eventType === 'suspend_tag_approval_decided') return handleSignedSuspendTagDelivery_(delivery);
   if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
   if (eventType === 'bunch_note_submission') return handleSignedBunchNoteDelivery_(delivery);
   if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);

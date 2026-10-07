@@ -261,7 +261,7 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
       const query = record(descriptor.query);
       for (const rowNumber of ids) {
         const sourceRow = Number(rowNumber);
-        const data = record(await rpcValue(user, "production_schedule_read_rows_v1", {
+        const data = record(await rpcValue(admin, "production_schedule_read_rows_v1", {
           p_sheet_index: Number(query.sheetIndex), p_snapshot_id: query.snapshotId || null,
           p_cursor: Math.max(0, sourceRow - 1), p_limit: 1, p_search: "", p_filters: {},
         }, signal));
@@ -541,9 +541,14 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
   capability: AuraCapability, context: QueryContext, signal?: AbortSignal): Promise<{ reply: string; actions: QueryAction[]; context: QueryContext; sourceQuery?: Record<string, unknown> }> {
   const reader = capability.reader;
   if (reader === "navigation") {
-    const entries = await Promise.all(Object.entries(AURA_MODULE_CAPABILITIES).map(async ([view, info]) => ({
-      view, info, allowed: await moduleAllowed(admin, actorId, view),
-    })));
+    const modules = Object.entries(AURA_MODULE_CAPABILITIES);
+    const entries: Array<{ view: string; info: typeof AURA_MODULE_CAPABILITIES[keyof typeof AURA_MODULE_CAPABILITIES]; allowed: boolean }> = [];
+    for (let offset = 0; offset < modules.length; offset += 8) {
+      const batch = await Promise.all(modules.slice(offset, offset + 8).map(async ([view, info]) => ({
+        view, info, allowed: await moduleAllowed(admin, actorId, view),
+      })));
+      entries.push(...batch);
+    }
     const rows = entries.filter((entry) => entry.allowed).map(({ view, info }) => ({ view, title: info.questions[0], available: info.available }));
     return responseForRows(intent, rows.slice(0, MAX_PAGE), rows.length > MAX_PAGE);
   }
@@ -925,20 +930,21 @@ export async function handleAuraQueryRequest(request: Request, deps: AuraQueryDe
     return fail("AURA is available only to Dylan’s verified active account.", 403, "AURA_FORBIDDEN");
   }
   try {
-    const body = await Promise.race([readBody(request), aborted(signal)]);
-      let mode = String(body.mode || "command").toLowerCase();
+    let body = await Promise.race([readBody(request), aborted(signal)]);
+    const mode = String(body.mode || "command").toLowerCase();
+    if (mode === "bind_party") return fail("Party binding now happens in the Bloom review screen. Refresh the app and continue there.", 409, "AURA_REFRESH_REQUIRED");
     if (mode === "list" || mode === "create" || mode === "read" || mode === "delete" || mode === "cancel") {
       return json(await handleMemoryMode(mode, body, admin, user, actor.actorId, signal));
     }
     if (mode !== "command") return fail("AURA request mode is invalid.", 400, "AURA_QUERY_MODE_INVALID");
-      if (!body.turnId) {
-        const sourceValue = String(body.source || "typed").toLowerCase();
-        body = { ...body, text: body.text ?? body.question ?? body.prompt, turnId: await legacyTurnId(request),
-          source: sourceValue === "voice" || sourceValue === "speech" ? "voice" : "typed", context: {} };
-      }
-      const turnId = String(body.turnId || "");
-      const result = await handleCommand(body, admin, user, actor.actorId, signal);
-      return json(result, 200, UUID.test(turnId) ? { "X-Request-Id": turnId } : {});
+    if (!body.turnId) {
+      const sourceValue = String(body.source || "typed").toLowerCase();
+      body = { ...body, text: body.text ?? body.question ?? body.prompt, turnId: await legacyTurnId(request),
+        source: sourceValue === "voice" || sourceValue === "speech" ? "voice" : "typed", context: {} };
+    }
+    const turnId = String(body.turnId || "");
+    const result = await handleCommand(body, admin, user, actor.actorId, signal);
+    return json(result, 200, UUID.test(turnId) ? { "X-Request-Id": turnId } : {});
   } catch (error) {
     const failure = record(error);
     if (signal.aborted) return fail("AURA’s request took too long. Try again.", 504, "AURA_QUERY_TIMEOUT");

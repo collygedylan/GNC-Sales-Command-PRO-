@@ -17,14 +17,16 @@ on conflict(id) do update set display_name=excluded.display_name,disabled_at=nul
 insert into public.ph_app_settings(key,value)
 values('current_season_salesyear','{"seasonCode":"F1","salesYear":"27"}')
 on conflict(key) do update set value=excluded.value;
+update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 insert into public.ph_master_inventory(unique_id,itemcode,genusname,commonname,contsize,locationcode,lotcode,source,season,saleyear,ptronhand,ptravailable)
 values
  ('REVIEW-TEST-A','REVIEW-TEST-ITEM','Spiraea','Magic Carpet fixture','#3','I.13.000','27.S1','LD','S1','27','40','40'),
  ('REVIEW-TEST-B','REVIEW-TEST-ITEM','Hydrangea','Same ITEMCODE other genus','#3','B.01.000','27.F1','LD','F1','27','20','20');
-insert into public.ph_warehouse_assigned_items(unique_id,itemcode,itemcode_normalized,genusname,genusname_normalized,assignment_key,assignedto,present_in_drive,assigned_at)
+insert into public.ph_inventory_row_assignments(master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,lotcode,source,assignedto,assignment_reason,present_in_drive,assigned_at)
 values
- ('REVIEW-ASSIGN-A','REVIEW-TEST-ITEM','REVIEW-TEST-ITEM','Spiraea','spiraea','REVIEW-TEST-ITEM|spiraea','charley_robertson',true,now()),
- ('REVIEW-ASSIGN-B','REVIEW-TEST-ITEM','REVIEW-TEST-ITEM','Hydrangea','hydrangea','REVIEW-TEST-ITEM|hydrangea','zoe_green',true,now());
+ ('REVIEW-TEST-A','REVIEW-TEST-A','REVIEW-TEST-ITEM','REVIEW-TEST-ITEM','Spiraea','Magic Carpet fixture','#3','I.13.000','27.S1','LD','charley_robertson','unresolved_preserved',true,now()),
+ ('REVIEW-TEST-B','REVIEW-TEST-B','REVIEW-TEST-ITEM','REVIEW-TEST-ITEM','Hydrangea','Same ITEMCODE other genus','#3','B.01.000','27.F1','LD','zoe_green','unresolved_preserved',true,now())
+on conflict (master_unique_id) do update set assignedto=excluded.assignedto,assigned_at=excluded.assigned_at,assignment_reason=excluded.assignment_reason,present_in_drive=true,revision=ph_inventory_row_assignments.revision+1,updated_at=now();
 create temporary table review_packets(name text primary key,payload jsonb);
 insert into review_packets values ('a','{"actorUsername":"dylan_collyge","source":{"unique_id":"REVIEW-TEST-A","source_table":"ph_master_inventory","itemcode":"REVIEW-TEST-ITEM","locationcode":"I.13.000","lotcode":"27.S1"}}');
 insert into review_packets select 'b', payload || '{"source":{"unique_id":"REVIEW-TEST-B","source_table":"ph_master_inventory","itemcode":"REVIEW-TEST-ITEM","locationcode":"B.01.000","lotcode":"27.F1"}}'::jsonb from review_packets where name='a';
@@ -71,20 +73,20 @@ select is((select source_context#>>'{reviewAssignment,completionRecipients,0,dis
 select ok((select o.payload->'assignmentRecipients' @> '["dylan_collyge@review.example.invalid","megan_kelly@review.example.invalid","charley_robertson@review.example.invalid"]'::jsonb from public.ph_request_delivery_outbox o join review_created w on w.assignment_event_id=o.event_id),'assignment email retains manager copies and evaluator');
 create temporary table review_frozen_event as select o.* from public.ph_request_delivery_outbox o join review_created w on w.assignment_event_id=o.event_id;
 
-update public.ph_warehouse_assigned_items set assignedto='zoe_green',assigned_at=now()+interval '1 second' where unique_id='REVIEW-ASSIGN-A';
+update public.ph_inventory_row_assignments set assignedto='zoe_green',assigned_at=now()+interval '1 second',revision=revision+1,updated_at=now() where master_unique_id='REVIEW-TEST-A';
 select is((public.create_eval_work_multi_v1((select payload from review_packets where name='create'))).id,(select id from review_created),'idempotent retry returns original work after assignment changed');
 select is((select count(*)::integer from public.ph_eval_work where create_token='review-assignedto-test-created-0001'),1,'same token creates exactly one review');
 select is((select to_jsonb(o) from public.ph_request_delivery_outbox o join review_created w on w.assignment_event_id=o.event_id),(select to_jsonb(f) from review_frozen_event f),'replay never rewrites assignment delivery');
 select throws_ok($q$select public.create_eval_work_multi_v1((select payload from review_packets where name='create') || '{"createToken":"review-assignedto-test-stale-0002"}'::jsonb)$q$,'22023','REVIEW_ASSIGNMENT_CHANGED','new work requires reconfirmation of changed assignment');
 select throws_ok($q$select public.create_eval_work_multi_v1((select payload from review_packets where name='create') || '{"actorUsername":"megan_kelly"}'::jsonb)$q$,'42501','eval_work_create_token_forbidden','another creator cannot replay someone else token');
 
-update public.ph_warehouse_assigned_items set assignedto='' where unique_id='REVIEW-ASSIGN-A';
+update public.ph_inventory_row_assignments set assignedto=null,assigned_at=null,revision=revision+1,updated_at=now() where master_unique_id='REVIEW-TEST-A';
 select throws_ok($q$select public.get_eval_work_review_setup_v1((select payload from review_packets where name='a'))$q$,'22023','REVIEW_ASSIGNMENT_MISSING','blank assignment has specific guidance');
-update public.ph_warehouse_assigned_items set assignedto='charley_robertson,zoe_green' where unique_id='REVIEW-ASSIGN-A';
-select throws_ok($q$select public.get_eval_work_review_setup_v1((select payload from review_packets where name='a'))$q$,'22023','REVIEW_ASSIGNMENT_AMBIGUOUS','multiple assigned people never silently selected');
-update public.ph_warehouse_assigned_items set assignedto='review_extra' where unique_id='REVIEW-ASSIGN-A';
+update public.ph_inventory_row_assignments set assignedto='charley_robertson,zoe_green',revision=revision+1,updated_at=now() where master_unique_id='REVIEW-TEST-A';
+select throws_ok($q$select public.get_eval_work_review_setup_v1((select payload from review_packets where name='a'))$q$,'22023','REVIEW_ASSIGNEE_INELIGIBLE','a multi-owner value cannot be parsed into multiple row owners');
+update public.ph_inventory_row_assignments set assignedto='review_extra',revision=revision+1,updated_at=now() where master_unique_id='REVIEW-TEST-A';
 select throws_ok($q$select public.get_eval_work_review_setup_v1((select payload from review_packets where name='a'))$q$,'22023','REVIEW_ASSIGNEE_INELIGIBLE','non-evaluator assignment denied');
-update public.ph_warehouse_assigned_items set assignedto='charley_robertson' where unique_id='REVIEW-ASSIGN-A';
+update public.ph_inventory_row_assignments set assignedto='charley_robertson',revision=revision+1,updated_at=now() where master_unique_id='REVIEW-TEST-A';
 update public.profiles set disabled_at=now() where username='charley_robertson';
 select throws_ok($q$select public.get_eval_work_review_setup_v1((select payload from review_packets where name='a'))$q$,'22023','REVIEW_ASSIGNEE_INACTIVE','inactive evaluator denied');
 select is((public.create_eval_work_multi_v1((select payload from review_packets where name='create'))).id,(select id from review_created),'old work replay does not depend on current evaluator eligibility');
@@ -99,7 +101,7 @@ select lives_ok($q$select public.create_eval_work_multi_v1(((select payload from
 select lives_ok($q$select public.create_eval_work_multi_v1((select payload from review_packets where name='create') || jsonb_build_object('createToken','review-assignedto-test-null-0005','inquiry',null,'expectedAssignmentRevision',public.get_eval_work_review_setup_v1((select payload from review_packets where name='a'))->>'assignmentRevision'))$q$,'JSON null inquiry uses valid base default');
 
 -- Completion uses the stored recipient list, even after a later reassignment.
-update public.ph_warehouse_assigned_items set assignedto='zoe_green' where unique_id='REVIEW-ASSIGN-A';
+update public.ph_inventory_row_assignments set assignedto='zoe_green',revision=revision+1,updated_at=now() where master_unique_id='REVIEW-TEST-A';
 select lives_ok($q$select public.submit_eval_work_v1(w.id,'charley_robertson',w.version,w.inquiry_draft,
  jsonb_build_object('spec','N/A','avNote','Fixture reviewed','locMatchPercent','100','photos',jsonb_build_array(jsonb_build_object('filePath','eval/'||w.id::text||'/fixture.jpg','url','https://example.invalid/fixture.jpg','name','fixture.jpg'))),
  'review-assignedto-completion-0001') from public.ph_eval_work w where w.create_token='review-assignedto-test-created-0001'$q$,'existing review is completed by saved evaluator after assignment changes');

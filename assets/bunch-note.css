@@ -74,3 +74,18 @@
 .bn-step-actions .bn-button{width:100%;margin:0;min-height:48px}
 .bn-root :is(input,textarea,select){scroll-margin-bottom:190px}
 @media(max-width:520px){.bn-root .bn-step-actions{position:static}.bn-field textarea{min-height:72px}}
+.bn-structured{border:0;min-width:0;padding:0;margin:16px 0;color:inherit;font:inherit}
+.bn-structured legend{font-weight:800;font-size:1.1rem;margin-bottom:12px}
+.bn-worksheet-header,.bn-house-heading{padding:16px;background:var(--ops-surface,#f1f5f9);border:1px solid var(--ops-border,#cbd5e1);border-radius:12px}
+.bn-house-section{margin:18px 0;border:1px solid var(--ops-border,#cbd5e1);border-radius:12px;overflow:hidden}
+.bn-house-heading{border-radius:0;border:0;border-bottom:1px solid var(--ops-border,#cbd5e1)}
+.bn-task-line{display:grid;grid-template-columns:86px minmax(0,1fr);gap:12px;padding:16px 12px;border-bottom:1px solid var(--ops-border,#cbd5e1)}
+.bn-task-line:last-child{border-bottom:0}.bn-task-line aside{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.bn-crew-badge{display:inline-block;padding:7px 9px;border-radius:6px;color:#fff;font-weight:900;max-width:100%;overflow-wrap:anywhere;font-size:13px}
+.bn-task-content{min-width:0}.bn-task-content h4{font-weight:800;margin:0 0 8px;font-size:1rem;overflow-wrap:anywhere}
+.bn-operational-text{white-space:pre-wrap;overflow-wrap:anywhere}.bn-operational-text mark{font-weight:800;padding:1px 3px;border-radius:3px}
+.bn-routing{font-size:1.05rem;font-weight:700;line-height:1.5;overflow-wrap:anywhere}
+.bn-line-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.bn-structured button{min-height:44px;padding:8px 12px;border:1px solid var(--ops-border,#cbd5e1);border-radius:8px;background:var(--ops-surface,#f1f5f9);color:inherit;font-weight:700}
+.bn-structured button:disabled{opacity:.5}.bn-structured input,.bn-structured select,.bn-structured textarea{font-size:16px;max-width:100%}
+@media(max-width:500px){.bn-task-line{grid-template-columns:70px minmax(0,1fr);gap:8px;padding:12px 8px}.bn-crew-badge{padding:6px;font-size:11px}.bn-line-fields{grid-template-columns:minmax(0,1fr)}}

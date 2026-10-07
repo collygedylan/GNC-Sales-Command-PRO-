@@ -183,7 +183,7 @@ test('Brandt receives admin access without any Managers entry point or direct vi
   });
 });
 
-test('Eval assignment dropdown exposes the full managed roster and composite key', async ({ page }) => {
+test('Eval assignment dropdown exposes the full managed roster and Itemcode default key', async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalAssigneeOptionsHtml === 'function');
   const result = await page.evaluate(() => {
@@ -193,6 +193,7 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
       values: Array.from(select.options).map((option) => option.value),
       labels: Array.from(select.options).map((option) => option.textContent),
       key: (window as any).buildManagerEvalAssignmentKey(' 001668.030.1 ', ' Buddleia '),
+      otherGenusKey: (window as any).buildManagerEvalAssignmentKey('001668.030.1', 'Rosa'),
       alias: (window as any).normalizeEvalAssignableUser('charey_robertson'),
       sheetTypoAlias: (window as any).normalizeEvalAssignableUser('Boby'),
     };
@@ -214,7 +215,8 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
     'nelly_aguilar',
   ]);
   expect(result.labels).toEqual(result.values.map((value) => value || 'Unassigned'));
-  expect(result.key).toBe('001668.030.1|buddleia');
+  expect(result.key).toBe('001668.030.1');
+  expect(result.otherGenusKey).toBe(result.key);
   expect(result.alias).toBe('charley_robertson');
   expect(result.sheetTypoAlias).toBe('bobby_adair');
 });
@@ -285,10 +287,12 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       { UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '2', S_LTS: 20, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.000', LAST_UPDATED: '2026-08-24T12:00:00Z' },
       { UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 300, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'assign-a', ITEMCODE: ' a ', GENUSNAME: ' ROSA ', ASSIGNEDTO: 'dylan_collyge', UPDATED_AT: '2026-08-24T12:05:00Z' },
-      { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', UPDATED_AT: '2026-08-24T12:05:00Z' },
-      ...roster.filter((name) => name !== 'dylan_collyge' && name !== 'megan_kelly').map((name, index) => ({ UNIQUE_ID: 'roster-' + index, ITEMCODE: 'ROSTER-' + index, GENUSNAME: 'Genus ' + index, ASSIGNEDTO: name })),
-      { UNIQUE_ID: 'assign-blank', ITEMCODE: 'BLANK', GENUSNAME: 'Blank', ASSIGNEDTO: '' }
+      { master_unique_id: 'eval2-a-f1', UNIQUE_ID: 'eval2-a-f1', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-a-u1', UNIQUE_ID: 'eval2-a-u1', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-b-f1', UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-b-x', UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', default_revision: 0, revision: 1 },
+      ...roster.filter((name) => name !== 'dylan_collyge' && name !== 'megan_kelly').map((name, index) => ({ master_unique_id: 'roster-' + index, UNIQUE_ID: 'roster-' + index, ITEMCODE: 'ROSTER-' + index, GENUSNAME: 'Genus ' + index, ASSIGNEDTO: name, revision: 1 })),
+      { master_unique_id: 'assign-blank', UNIQUE_ID: 'assign-blank', ITEMCODE: 'BLANK', GENUSNAME: 'Blank', ASSIGNEDTO: '', revision: 1 }
     ], _fromCache: true });
     const state = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -329,11 +333,14 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     });
     const initialAssignedToOptions = getManagerEvalReport2AssignedToOptions();
     const beforeAssignmentEdit = getManagerEvalReport2Index();
-    applyAcknowledgedEvalAssignmentResults(
-      [{ itemcode: 'A', genusname: 'Rosa' }],
-      [{ itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly' }],
-      'megan_kelly'
-    );
+    const applied = applyAcknowledgedEvalAssignmentResults([], [{
+      contractVersion: 'inventory-row-assignments-v1',
+      defaults: [{ itemcode: 'A', assignedto: 'megan_kelly', revision: 1 }],
+      assignments: [
+        { master_unique_id: 'eval2-a-f1', unique_id: 'eval2-a-f1', itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly', revision: 2 },
+        { master_unique_id: 'eval2-a-u1', unique_id: 'eval2-a-u1', itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly', revision: 2 }
+      ]
+    }]);
     const afterAssignmentEdit = getManagerEvalReport2Index();
     const editedRows = getManagerEvalReport2Rows('low-stock').filter((row) => row.ITEMCODE === 'A');
     const originalEnsureDatasetLoaded = ensureDatasetLoaded;
@@ -364,6 +371,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
       hostOverflow: host.scrollWidth <= 391,
       immediateAssignmentRefresh: beforeAssignmentEdit !== afterAssignmentEdit && editedRows.length > 0 && editedRows.every((row) => row.ASSIGNEDTO === 'megan_kelly'),
+      acknowledgedDefaultCount: applied,
       retainsLastCompleteOnAssignmentFailure: retainedAfterFailure === afterAssignmentEdit && staleHtml.includes('last complete results remain visible')
     };
     canViewManagerEvalReports2 = originalCanViewManagerEvalReports2;
@@ -400,14 +408,13 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
       { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'eval2-assign-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'eval2-assign-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+      { master_unique_id: 'eval2-click-a', UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+      { master_unique_id: 'eval2-click-b', UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
     ], _fromCache: true });
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
-    masterState.fieldCoverage = 'full';
-    masterState.rowCompleteness = 'complete';
+    masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
@@ -514,8 +521,9 @@ test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Lo
       PTRONHAND: 25,
       PTRAVAILABLE: 25
     }));
-    const assignments = rows.map((row, index) => ({
-      UNIQUE_ID: 'eval2-auto-assignment-' + String(index + 1),
+    const assignments = rows.map((row) => ({
+      master_unique_id: row.UNIQUE_ID,
+      UNIQUE_ID: row.UNIQUE_ID,
       ITEMCODE: row.ITEMCODE,
       GENUSNAME: row.GENUSNAME,
       ASSIGNEDTO: 'dylan_collyge'
@@ -599,10 +607,12 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
         { UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', COMMONNAME: 'Delta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '4', S_LTS: 10, LOCATIONCODE: 'D.01.001', LOTCODE: '27.F1', PTRONHAND: 10, PTRREVIEWED: 0, PTRAVAILABLE: 10 },
         { UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', COMMONNAME: 'Gamma', CONTSIZE: '#7', SEASON: 'X', SALEYEAR: 27, PRIORITY: '3', S_LTS: 40, LOCATIONCODE: 'C.01.001' }
       ], warehouseAssignedItemsData: [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-a-other', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', ASSIGNEDTO: 'megan_kelly' },
-        { UNIQUE_ID: 'assign-d', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
+        { master_unique_id: 'mail-a', UNIQUE_ID: 'mail-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-b', UNIQUE_ID: 'mail-b', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-other-user', UNIQUE_ID: 'mail-other-user', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', ASSIGNEDTO: 'megan_kelly' },
+        { master_unique_id: 'mail-d1', UNIQUE_ID: 'mail-d1', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-d2', UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-c', UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
       ], _fromCache: true });
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -695,7 +705,8 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
       const assignedToStayedLocked = getManagerEvalReportRowAssignedTo(getManagerEvalReport2VisibleItemGroups()[0].representativeRow);
       const host = document.createElement('div');
       host.id = 'eval2-email-test-host';
-      host.style.width = '390px';
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
       host.innerHTML = renderManagerEvalReports2Panel();
       document.body.appendChild(host);
       const recordsHost = host.querySelector('#manager-eval-report-2-records');
@@ -938,8 +949,9 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         { UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 15, ASSIGNEDTO: 'stale', LOCATIONCODE: 'C.03.001', BLOCKALPHA: 'C', BLOCKNUMBER: '03', LOTCODE: '27.X2', SOURCE: 'LD' },
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ], warehouseAssignedItemsData: [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
+        { master_unique_id: 'batch-a', UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-a2', UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-b', UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ], _fromCache: true });
       fullInventory = [
         { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
@@ -947,8 +959,9 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
+        { master_unique_id: 'batch-a', UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-a2', UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-b', UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -1093,14 +1106,13 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
         { UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', COMMONNAME:'Current Beta', CONTSIZE:'#5', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'B.01.001' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
-        { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
+        { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+        { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
       masterState.initialLoaded = masterState.fullLoaded = true;
-      masterState.fieldCoverage = 'full';
-      masterState.rowCompleteness = 'complete';
+      masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
       setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
@@ -1120,8 +1132,8 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
       const localRows = getManagerEvalReport2RowsBeforeCommonName().map(row => getManagerEvalReport2ItemCode(row));
       // A later verified background snapshot, not a filter click, changes ownership.
       warehouseAssignedItemsInventory = [
-          { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
-          { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
+          { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
+          { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
         ];
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       assignmentState.lastLoadedAt = new Date().toISOString();
@@ -1190,18 +1202,20 @@ test('Eval Reports #2 manager search refreshes while the search field remains ac
   expect(result.regionRefreshCalls).toBeGreaterThan(0);
 });
 
-test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
+test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
-  const phone = await page.evaluate(() => window.eval(`(() => {
+  const phone = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
-    const originalSave = setSingleEvalItemcodeAssignment;
+    const originalAssign = assignEvalItemcodes;
     let saved = null;
     try {
       canManageEvalItemcodeAssignments = () => true;
-      setSingleEvalItemcodeAssignment = (itemcode, genusname, assignedto) => {
-        saved = { itemcode, genusname, assignedto };
+      canViewAssignedItemsExport = () => true;
+      isManagerAssignedSnapshotCurrent = () => true;
+      assignEvalItemcodes = (itemcodes, assignedto) => {
+        saved = { itemcodes, assignedto };
         return false;
       };
       const rows = [
@@ -1212,9 +1226,12 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       window.__assignedItemsResponsiveRows = rows;
       const host = document.createElement('div');
       host.id = 'assigned-items-phone-test-host';
-      host.style.width = '390px';
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(rows));
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
       document.body.appendChild(host);
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), getManagerAssignedItemsDisplayRows(rows), rows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const mobileList = host.querySelector('[data-manager-assigned-mobile-list]');
       const controls = Array.from(mobileList.querySelectorAll('select,input')).map((element) => {
         const box = element.getBoundingClientRect();
@@ -1224,6 +1241,8 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       firstSelect.dispatchEvent(new Event('change', { bubbles: true }));
       return {
         cardCount: mobileList.querySelectorAll('[data-manager-assigned-item-card]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+        defaultOwnerCount: mobileList.querySelectorAll('select[aria-label^=\"Itemcode Default Owner \"]').length,
         mobileDisplay: getComputedStyle(mobileList).display,
         desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
         hasVisibleTable: host.querySelectorAll('table').length > 0,
@@ -1236,11 +1255,13 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       };
     } finally {
       canManageEvalItemcodeAssignments = originalCanManage;
-      setSingleEvalItemcodeAssignment = originalSave;
+      assignEvalItemcodes = originalAssign;
     }
   })()`));
 
   expect(phone.cardCount).toBe(3);
+  expect(phone.logicalCount).toBe('3');
+  expect(phone.defaultOwnerCount).toBe(3);
   expect(phone.mobileDisplay).not.toBe('none');
   expect(phone.desktopPresent).toBe(false);
   expect(phone.hasVisibleTable).toBe(false);
@@ -1249,12 +1270,15 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(phone.hostFits).toBe(true);
   expect(phone.checkedBulkCount).toBe(0);
   expect(phone.groupSequence).toEqual(['unassigned', 'assigned']);
-  expect(phone.saved).toEqual({ itemcode: '000724.070.1', genusname: 'Acer', assignedto: '' });
+  expect(phone.saved).toEqual({ itemcodes: ['000724.070.1'], assignedto: '' });
+  await page.screenshot({ path: '.gnc-local/assigned-virtual-mobile.png' });
 
   await page.setViewportSize({ width: 1024, height: 844 });
-  const desktop = await page.evaluate(() => window.eval(`(() => {
+  const desktop = await page.evaluate(() => window.eval(`(async () => {
     const host = document.getElementById('assigned-items-phone-test-host');
-    host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(window.__assignedItemsResponsiveRows || []));
+    host.innerHTML = renderManagerAssignedItemsPreviewTable();
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), getManagerAssignedItemsDisplayRows(window.__assignedItemsResponsiveRows || []), window.__assignedItemsResponsiveRows?.length || 0);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const desktopTable = host?.querySelector('[data-manager-assigned-desktop-table]');
     return {
       mobilePresent: !!host?.querySelector('[data-manager-assigned-mobile-list]'),
@@ -1267,17 +1291,20 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(desktop.desktopDisplay).not.toBe('none');
   expect(desktop.tableCount).toBe(1);
   expect(desktop.rowCount).toBe(3);
+  await page.screenshot({ path: '.gnc-local/assigned-virtual-desktop.png' });
 });
 
-test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
+test('Assigned Items virtualizes the full list while preserving complete search results', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
-  const desktop = await page.evaluate(() => window.eval(`(() => {
+  const desktop = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
     try {
+      canViewAssignedItemsExport = () => true;
       canManageEvalItemcodeAssignments = () => false;
+      isManagerAssignedSnapshotCurrent = () => true;
       const rows = Array.from({ length: 125 }, (_, index) => ({
         UNIQUE_ID: 'full-' + index,
         ITEMCODE: 'SKU-' + String(index).padStart(3, '0'),
@@ -1292,10 +1319,16 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
       window.__assignedItemsFullRows = getManagerAssignedItemsDisplayRows(rows);
       const host = document.createElement('div');
       host.id = 'assigned-items-full-list-test-host';
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, rows.length);
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
       document.body.appendChild(host);
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), window.__assignedItemsFullRows, rows.length);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       return {
         rowCount: host.querySelectorAll('[data-manager-assigned-item-row]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+        disabledOwnerCount: host.querySelectorAll('[data-manager-assigned-item-row] select[aria-label^="Itemcode Default Owner "]:disabled').length,
         mobilePresent: !!host.querySelector('[data-manager-assigned-mobile-list]'),
         status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || '',
         oldCapMessagePresent: /first 100/i.test(host.textContent || '')
@@ -1305,30 +1338,42 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
     }
   })()`));
 
-  expect(desktop.rowCount).toBe(125);
+  expect(desktop.rowCount).toBeGreaterThan(0);
+  expect(desktop.rowCount).toBeLessThanOrEqual(35);
+  expect(desktop.logicalCount).toBe('125');
+  expect(desktop.disabledOwnerCount).toBe(desktop.rowCount);
   expect(desktop.mobilePresent).toBe(false);
   expect(desktop.status).toContain('Showing all 125 matching rows');
   expect(desktop.oldCapMessagePresent).toBe(false);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const phoneSearch = await page.evaluate(() => window.eval(`(() => {
+  const phoneSearch = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
     const searchInput = document.getElementById('managers-search');
     const originalSearch = searchInput ? searchInput.value : '';
     try {
+      canViewAssignedItemsExport = () => true;
       canManageEvalItemcodeAssignments = () => false;
+      isManagerAssignedSnapshotCurrent = () => true;
       const host = document.getElementById('assigned-items-full-list-test-host');
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, window.__assignedItemsFullRows.length);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), window.__assignedItemsFullRows, window.__assignedItemsFullRows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const fullCardCount = host.querySelectorAll('[data-manager-assigned-item-card]').length;
+      const fullLogicalCount = host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count');
       if (!searchInput) throw new Error('Managers search input is unavailable');
       searchInput.value = 'SKU-124';
       handleManagersSearch();
       const filteredRows = getFilteredManagerAssignedItemsExportRows(window.__assignedItemsFullRows);
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(filteredRows, window.__assignedItemsFullRows.length);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), filteredRows, window.__assignedItemsFullRows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       return {
         fullCardCount,
+        fullLogicalCount,
         filteredCount: filteredRows.length,
         filteredCardCount: host.querySelectorAll('[data-manager-assigned-item-card]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
         desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
         status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || ''
       };
@@ -1341,11 +1386,80 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
     }
   })()`));
 
-  expect(phoneSearch.fullCardCount).toBe(125);
+  expect(phoneSearch.fullCardCount).toBeGreaterThan(0);
+  expect(phoneSearch.fullLogicalCount).toBe('125');
+  expect(phoneSearch.fullCardCount).toBeLessThanOrEqual(35);
   expect(phoneSearch.filteredCount).toBe(1);
   expect(phoneSearch.filteredCardCount).toBe(1);
+  expect(phoneSearch.logicalCount).toBe('1');
   expect(phoneSearch.desktopPresent).toBe(false);
   expect(phoneSearch.status).toContain('Search checks the complete 125-row list');
+});
+
+test('Assigned Items renders 10k and 25k records with bounded DOM and scrolls to the final row', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/?e2e=assigned-items-virtualization', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).mountManagerAssignedItemsView === 'function');
+  const metrics = await page.evaluate(() => window.eval(`(async () => {
+    currentUser = 'dylan_collyge'; currentUserDisplay = 'Dylan Collyge'; currentRole = 'Manager';
+    canViewAssignedItemsExport = () => true;
+    canManageEvalItemcodeAssignments = () => false;
+    isManagerAssignedSnapshotCurrent = () => true;
+    const host = document.createElement('div'); host.id = 'assigned-items-virtual-benchmark-host';
+    host.dataset.managerAssignedScroll = 'true';
+    host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+    document.body.appendChild(host);
+    const makeRows = count => Array.from({ length: count }, (_, index) => ({
+      UNIQUE_ID: 'stress-' + index,
+      ITEMCODE: 'STRESS-' + String(index).padStart(5, '0'),
+      COMMONNAME: 'Virtual Plant ' + index,
+      GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', WAREHOUSEI: 'PH',
+      SOURCE: 'virtualization-test', ASSIGNEDTO: 'dylan_collyge', DEFAULT_ASSIGNEDTO: 'dylan_collyge'
+    }));
+    const originalDisplayRows = getManagerAssignedItemsDisplayRows;
+    window.__assignedVirtualTransforms = 0;
+    getManagerAssignedItemsDisplayRows = (...args) => { window.__assignedVirtualTransforms += 1; return originalDisplayRows(...args); };
+    const start10k = performance.now();
+    const rows10k = getManagerAssignedItemsDisplayRows(makeRows(10000));
+    host.innerHTML = renderManagerAssignedItemsPreviewTable();
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), rows10k, 10000);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const elapsed10kMs = performance.now() - start10k;
+    const dom10k = host.querySelectorAll('[data-manager-assigned-item-row]').length;
+    const domNodeCount10k = host.querySelectorAll('*').length;
+    const start25k = performance.now();
+    const rows25k = getManagerAssignedItemsDisplayRows(makeRows(25000));
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), rows25k, 25000);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const elapsed25kMs = performance.now() - start25k;
+    const dom25k = host.querySelectorAll('[data-manager-assigned-item-row]').length;
+    const domNodeCount25k = host.querySelectorAll('*').length;
+    const beforeScrollTransforms = window.__assignedVirtualTransforms;
+    const scroll = host;
+    for (let attempt = 0; attempt < 4 && !host.querySelector('[data-inventory-id="stress-24999"]'); attempt++) {
+      scroll.scrollTop = scroll.scrollHeight;
+      scroll.dispatchEvent(new Event('scroll'));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+    return {
+      elapsed10kMs, dom10k, domNodeCount10k, elapsed25kMs, dom25k, domNodeCount25k,
+      logical25k: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+      visibleAfterScroll: host.querySelectorAll('[data-manager-assigned-item-row]').length,
+      finalRowAfterScroll: !!host.querySelector('[data-inventory-id="stress-24999"]'),
+      transformsDuringScroll: window.__assignedVirtualTransforms - beforeScrollTransforms
+    };
+  })()`));
+  await testInfo.attach('assigned-items-virtualization-metrics.json', { body: Buffer.from(JSON.stringify(metrics, null, 2)), contentType: 'application/json' });
+  expect(metrics.dom10k).toBeGreaterThan(0);
+  expect(metrics.dom10k).toBeLessThanOrEqual(35);
+  expect(metrics.dom25k).toBeGreaterThan(0);
+  expect(metrics.dom25k).toBeLessThanOrEqual(35);
+  expect(metrics.logical25k).toBe('25000');
+  expect(metrics.visibleAfterScroll).toBeGreaterThan(0);
+  expect(metrics.finalRowAfterScroll).toBe(true);
+  expect(metrics.visibleAfterScroll).toBeLessThanOrEqual(35);
+  expect(metrics.transformsDuringScroll).toBe(0);
+  await expect(page.locator('#assigned-items-virtual-benchmark-host [data-inventory-id="stress-24999"]')).toContainText('STRESS-24999');
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
@@ -1516,17 +1630,18 @@ test('an acknowledged assignment immediately leaves the Unassigned filter', asyn
   await page.waitForFunction(() => typeof (window as any).applyAcknowledgedEvalAssignmentResults === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     processAndLoadData({ warehouseAssignedItemsData: [{
-      UNIQUE_ID: 'eval-test-1', ITEMCODE: '011364.070.1', GENUSNAME: 'Decumaria',
+      master_unique_id: 'eval-test-1', UNIQUE_ID: 'eval-test-1', ITEMCODE: '011364.070.1', GENUSNAME: 'Decumaria',
       ASSIGNEDTO: '', assignedto: '', COMMONNAME: 'Barbara Ann Climbing Hydrangea Espalier'
     }] });
     setManagerAssignedItemsAssigneeFilter('unassigned');
     const activeBefore = getManagerAssignedItemsActiveAssigneeKey();
     const before = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
-    const applied = applyAcknowledgedEvalAssignmentResults(
-      [{ itemcode: '011364.070.1', genusname: 'Decumaria' }],
-      [{ itemcode: '011364.070.1', genusname: 'Decumaria', assignedto: 'megan_kelly', source: 'supabase_assignment_manager' }],
-      'megan_kelly'
-    );
+    const applied = applyAcknowledgedEvalAssignmentResults([], [{
+      contractVersion: 'inventory-row-assignments-v1',
+      defaults: [{ itemcode: '011364.070.1', assignedto: 'megan_kelly', revision: 1 }],
+      assignments: [{ master_unique_id: 'eval-test-1', unique_id: 'eval-test-1',
+        itemcode: '011364.070.1', genusname: 'Decumaria', assignedto: 'megan_kelly', revision: 2 }]
+    }]);
     const activeAfter = getManagerAssignedItemsActiveAssigneeKey();
     const unassignedAfter = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
     setManagerAssignedItemsAssigneeFilter('megan_kelly');
@@ -1616,7 +1731,10 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
   expect(configs.query).not.toContain('date_completed=is.null');
   expect(configs.pending).toEqual({ required: ['requests:full'], background: [] });
   expect(configs.reps.required).toEqual(['requests:full', 'requestHistory:full', 'salesCredits:full']);
-  expect(configs.suspendTag.required).toEqual(['requests:full', 'soc:full']);
+  expect(configs.suspendTag).toEqual({
+    required: ['suspendTag:full', 'master:initial', 'customerRepMap:full'],
+    background: []
+  });
   expect(configs.recount).toEqual({ required: ['salesOffice:full'], background: ['requests:full'] });
   expect(configs.avCheck).toEqual({ required: [], background: ['requests:full'] });
 });
@@ -2417,7 +2535,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await second.locator('[data-reclass-v3-action="priority_change"]').click();
     await secondPriority.fill('1');
     await second.locator('[data-reclass-v3-action="move_up"]').click();
-    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="moveQuantity"]').fill('150');
+    await second.getByLabel('Move Up quantity 1', { exact: true }).fill('150');
     await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
     await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(3);
     await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
@@ -2433,7 +2551,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
     await expect(holdReason).toHaveValue('sheared');
     await expect(secondPriority).toHaveValue('1');
-    await expect(second.locator('[data-reclass-v3-proposal-field="moveQuantity"]')).toHaveValue('150');
+    await expect(second.getByLabel('Move Up quantity 1', { exact: true })).toHaveValue('150');
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up']);
@@ -2441,7 +2559,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     expect(draft.rowOverlays).toHaveLength(41);
     expect(draft.rowOverlays[1].proposals).toEqual([
       { action: 'priority_change', priority: '1' },
-      { action: 'move_up', moveQuantity: 150, destinationSeason: 'F1' },
+      { action: 'move_up', splits: [{ quantity: 150, destinationSeason: 'F1' }], applyHold: false, holdReason: '' },
     ]);
     expect(draft.rowOverlays[40].proposals).toEqual([]);
     expect(draft.scope).toEqual({ season: 'F1', salesYear: 2027 });
@@ -2450,7 +2568,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
       const panel = root.querySelector('.argos-tx-panel') as HTMLElement;
       const body = root.querySelector('.argos-tx-body') as HTMLElement;
       const footer = root.querySelector('.argos-tx-footer') as HTMLElement;
-      const visibleInputs = Array.from(root.querySelectorAll('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-input')) as HTMLElement[];
+      const visibleInputs = Array.from(root.querySelectorAll<HTMLElement>('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-input')).filter(input => input.getClientRects().length > 0);
       const visibleActions = Array.from(root.querySelectorAll('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-action-btn')) as HTMLElement[];
       const overflowers = Array.from(root.querySelectorAll('.argos-tx-panel, .argos-tx-body, .argos-tx-form, .argos-reclass-inquiry, .argos-reclass-row-list, .argos-reclass-row-card, .argos-reclass-row-grid, .argos-reclass-action-panel, .argos-reclass-action-grid, .argos-reclass-action-proposal-grid'))
         .filter((element) => (element as HTMLElement).scrollWidth > (element as HTMLElement).clientWidth + 1)

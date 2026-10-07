@@ -76,6 +76,7 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function buildTargetUsers(eventType: string, payload: Record<string, unknown>) {
+  if (eventType === "suspend_tag_approval_requested") return normalizePayloadUserList(payload.repUsername);
   if (eventType === "scheduled_handover_complete" || eventType === "scheduled_handover_failed") return ["dylan_collyge"];
   if (eventType.startsWith("codex_ops_")) return ["dylan_collyge"];
   if (eventType === "hr_calendar_reminder") return ["dylan_collyge"];
@@ -113,6 +114,13 @@ function buildNotification(eventType: string, payload: Record<string, unknown>) 
       tag: `handover-${String(payload.transitionId || "scheduled")}-${eventType}`,
       viewId: "managers", url: "./",
     };
+  }
+  if (eventType === "suspend_tag_approval_requested") {
+    const approvalId = String(payload.approvalId || "");
+    if (!/^[0-9a-f-]{36}$/i.test(approvalId)) throw new Error("SUSPEND_TAG_APPROVAL_INVALID");
+    return { title: "GNC PH Suspend Tag", body: `${String(payload.customer || "")} — ${String(payload.itemDescription || "")} — Approval requested`,
+      tag: `suspend-tag-${approvalId}`, viewId: "suspend-tag-approval", approvalId,
+      actions: [{ action: "approve", title: "Approve" }, { action: "deny", title: "Deny" }], url: `./?suspendApproval=${approvalId}` };
   }
   const customer = String(payload.customer || "Unknown Customer").trim();
   const repName = String(payload.repName || payload.requestedBy || "Unknown Rep").trim();
@@ -304,7 +312,7 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const eventType = String(payload.eventType || payload.type || "").trim().toLowerCase();
   const codexEventTypes = new Set(["codex_ops_needs_input", "codex_ops_ready", "codex_ops_live", "codex_ops_failed", "codex_ops_reverted"]);
-  const handoverEventTypes = new Set(["scheduled_handover_complete", "scheduled_handover_failed"]);
+  const handoverEventTypes = new Set(["scheduled_handover_complete", "scheduled_handover_failed", "suspend_tag_approval_requested"]);
   if (eventType !== "new_request" && eventType !== "request_complete" && eventType !== "flyer_created" && eventType !== "flyer_complete" && eventType !== "chat_message" && eventType !== "walkie_alert" && eventType !== "department_calendar_event" && eventType !== "hr_calendar_reminder" && eventType !== "eval_assignment_unassigned" && eventType !== "eval_assignment_summary" && !codexEventTypes.has(eventType) && !handoverEventTypes.has(eventType)) {
     return jsonResponse({ error: "Unsupported event type." }, 400);
   }
@@ -356,7 +364,16 @@ serve((req) => withObservedRequest("send-push-alert", req, async () => {
     await Promise.all(chunk.map(async (row) => {
       if (!currentTargets.has(normalizeUsername(String(row.username || "")))) return;
       try {
+        if (eventType === "suspend_tag_approval_requested") {
+          const receipt = await supabase.rpc("suspend_tag_push_receipt_v1", { p_approval_id: payload.approvalId, p_endpoint: row.endpoint, p_delivered: false });
+          if (receipt.error) throw new Error("SUSPEND_TAG_PUSH_RECEIPT_FAILED");
+          if (receipt.data === true) { delivered += 1; return; }
+        }
         await webpush.sendNotification(buildSubscription(row), notificationPayload, WEB_PUSH_OPTIONS);
+        if (eventType === "suspend_tag_approval_requested") {
+          const receipt = await supabase.rpc("suspend_tag_push_receipt_v1", { p_approval_id: payload.approvalId, p_endpoint: row.endpoint, p_delivered: true });
+          if (receipt.error) throw new Error("SUSPEND_TAG_PUSH_RECEIPT_FAILED");
+        }
         delivered += 1;
       } catch (error) {
         const statusCode = Number((error as { statusCode?: number }).statusCode || 0);

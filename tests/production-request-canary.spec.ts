@@ -234,8 +234,9 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
     }
     activeHomeTab = 'eval-reports-2';
     const canaryAssignmentRows = [
-      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'HOSTED-EVAL2-ASSIGN-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly' }
+      { master_unique_id:'HOSTED-EVAL2-A', UNIQUE_ID:'HOSTED-EVAL2-A', ITEMCODE:'CANARY.EVAL.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+      { master_unique_id:'HOSTED-EVAL2-A2', UNIQUE_ID:'HOSTED-EVAL2-A2', ITEMCODE:'CANARY.EVAL.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+      { master_unique_id:'HOSTED-EVAL2-B', UNIQUE_ID: 'HOSTED-EVAL2-B', ITEMCODE: 'CANARY.EVAL.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly' }
     ];
     processAndLoadData({ data: [
       { UNIQUE_ID: 'HOSTED-EVAL2-A', ITEMCODE: 'CANARY.EVAL.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Eval Canary', CONTSIZE: '#3 TEST', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'T.01.001', LOTCODE: '27.F1', PTRONHAND: 24, PTRAVAILABLE: 20 },

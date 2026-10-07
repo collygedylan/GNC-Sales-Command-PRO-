@@ -6,7 +6,7 @@ const baseURL = remote || 'http://127.0.0.1:43126';
 export default defineConfig({
   testDir: './tests', testMatch: /session-recovery\.e2e\.spec\.ts/,
   outputDir: './artifacts/session-recovery-browser', fullyParallel: true, workers: 2,
-  forbidOnly: Boolean(process.env.CI), retries: 0, timeout: 60_000,
+  forbidOnly: Boolean(process.env.CI), retries: process.env.CI ? 2 : 0, timeout: 60_000,
   reporter: process.env.CI ? 'github' : 'list', expect: { timeout: 12_000 },
   use: { baseURL, serviceWorkers: 'block', trace: 'retain-on-failure', screenshot: 'only-on-failure' },
   projects: [

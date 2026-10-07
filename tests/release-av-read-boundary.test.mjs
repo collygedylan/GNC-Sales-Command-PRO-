@@ -11,6 +11,9 @@ const { readAvPage } = await import(`data:text/javascript;base64,${Buffer.from(j
 const reserveColumns = [...source.matchAll(/const RESERVE_FULL_SELECT_FIELDS = \[([\s\S]*?)\].join/g)].flatMap(match => [...match[1].matchAll(/"([a-z0-9_]+)"/g)].map(item => item[1])).join(',');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const edge = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+const observability = fs.readFileSync(new URL('../supabase/functions/_shared/observability.ts', import.meta.url), 'utf8');
+const appAuth = fs.readFileSync(new URL('../supabase/functions/_shared/app-auth.ts', import.meta.url), 'utf8');
+const directoryMigration = fs.readFileSync(new URL('../supabase/migrations/20261004010000_company_directory.sql', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 
 function fixture(overrides = {}) {
   const calls = [];
@@ -77,6 +80,105 @@ test('the hot-price view checks its protected source and settings cannot expose 
   await assert.rejects(failed.read({}), { message: 'AV_READ_UNAVAILABLE' });
 });
 
+test('only active inventory readers get the AV current-season settings dependency', async () => {
+  const block = edge.slice(edge.indexOf('  if (action === "av_read") {'), edge.indexOf('  if (action === "inventory_read") return'));
+  const roleHelpers = appAuth.slice(appAuth.indexOf('export function normalizeUsername'), appAuth.indexOf('function getSessionSecret()'));
+  const tableConstants = edge.slice(edge.indexOf('const AV_OPTION_EVAL_REQUESTS_TABLE'), edge.indexOf('const REP_WRITE_TABLES'));
+  const readGate = edge.slice(edge.indexOf('function hasTableReadAccess('), edge.indexOf('// This read boundary deliberately accepts dataset'));
+  const branch = `async function invoke(session, payload) { const action = 'av_read'; const req = { headers: new Headers([['x-request-id', 'test-request']]) }; ${block} }`;
+  const code = ts.transpileModule(`${roleHelpers}\n${tableConstants}\n${readGate}\n${branch}`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText.replace(/export\s+/g, '');
+  const calls = [];
+  const context = vm.createContext({ Headers, supabase: {},
+    resolveActiveSessionProfile: async session => ({ username: session.username, role: session.role }),
+    readAvPage: async ({ payload, canRead }) => {
+      const source = { settings: 'ph_app_settings', reserves: 'ph_reserves', notes: 'ph_av_notes', hot_prices: 'ph_cav_import' }[payload.dataset];
+      const permitted = canRead(source);
+      calls.push({ role: payload.role, username: payload.username, dataset: payload.dataset, source, permitted });
+      if (!permitted) throw Object.assign(new Error('AV_READ_FORBIDDEN'), { status: 403, stage: 'authorization' });
+      return { rows: [] };
+    }, jsonResponse: (body, status = 200) => ({ body, status }), errorResponse: (message, status, extra) => ({ body: { error: message, ...extra }, status }),
+    recordHandledError: () => {} });
+  vm.runInContext(code, context);
+  const cases = [
+    ['QC Supervisor', 'dan_mccuistion', true, false],
+    ['QC', 'quality_user', false, false],
+    ['REP', 'riley_sales', true, true],
+    ['Sales Rep', 'riley_sales', true, true],
+    ['salesrep', 'riley_sales', true, true],
+    ['Sales', 'riley_sales', true, true],
+    ['CSR', 'customer_service', true, true],
+    ['Sales & Marketing', 'marketing_user', true, false],
+    ['QC Supervisor', 'dylan_collyge', true, true],
+    ['Manager', 'manager_user', true, true],
+  ];
+  for (const [role, username] of cases) {
+    for (const dataset of ['settings', 'reserves']) {
+      const result = await context.invoke({ role, username, mustChangePassword: false }, { dataset, role, username });
+      calls.at(-1).resultStatus = result.status;
+    }
+  }
+  assert.deepEqual(calls.map(({ role, username, dataset, permitted, resultStatus }) => [role, username, dataset, permitted, resultStatus]),
+    cases.flatMap(([role, username, inventory, av]) => [
+      [role, username, 'settings', inventory, inventory ? 200 : 403],
+      [role, username, 'reserves', av, av ? 200 : 403],
+    ]));
+});
+
+test('Company Directory SQL still restricts every table policy to Dylan active profile', () => {
+  assert.match(directoryMigration, /lower\(btrim\(\(profile\)\.username\)\) = 'dylan_collyge'[\s\S]*not coalesce\(\(profile\)\.must_change_password, true\)/);
+  for (const table of ['contacts', 'blocks', 'beds', 'codes']) {
+    assert.ok(directoryMigration.includes(`create policy company_directory_${table}_dylan_all on public.ph_company_directory_${table}\n  for all to authenticated using ((select private.company_directory_is_dylan_v1()))\n  with check ((select private.company_directory_is_dylan_v1()));`));
+  }
+  assert.match(directoryMigration, /grant execute on function private\.company_directory_is_dylan_v1\(\) to authenticated/);
+});
+
+test('AV failures log bounded request, dataset, stage, HTTP status and SQLSTATE diagnostics', async () => {
+  const block = edge.slice(edge.indexOf('  if (action === "av_read") {'), edge.indexOf('  if (action === "inventory_read") return'));
+  const code = ts.transpileModule(`async function invoke(session, payload) { const action = 'av_read'; const req = { headers: new Headers([['x-request-id', 'diagnostic-request']]) }; ${block} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const logs = [];
+  const context = vm.createContext({ Headers, FULL_ACCESS_USER_KEYS: new Set(), normalizeUsername: value => String(value).toLowerCase(),
+    getRoleAccessState: () => ({ isRep: false, isRepLike: false, isAdmin: false }), hasTableReadAccess: () => true,
+    supabase: {}, resolveActiveSessionProfile: async () => ({ username: 'user', role: 'Manager' }),
+    readAvPage: async () => { throw Object.assign(new Error('AV_READ_FORBIDDEN'), { status: 403, code: '42501', stage: 'database' }); },
+    jsonResponse: (body, status = 200) => ({ body, status }), errorResponse: (message, status, extra) => ({ body: { error: message, ...extra }, status }),
+    recordHandledError: (...args) => logs.push(args) });
+  vm.runInContext(code, context);
+  const result = await context.invoke({ mustChangePassword: false }, { dataset: 'settings' });
+  assert.equal(result.status, 403);
+  assert.deepEqual(JSON.parse(JSON.stringify(logs.map(([fn, action, , status, diagnostics]) => [fn, action, status, diagnostics]))), [[
+    'app-api', 'av_read', 403,
+    { requestId: 'diagnostic-request', sqlState: '42501', dataset: 'settings', denialStage: 'database' },
+  ]]);
+  assert.equal(result.body.error, 'AV_READ_FORBIDDEN');
+  assert.equal(result.body.sqlState, undefined);
+});
+
+test('AV observability adds bounded denial dimensions without logging raw errors or request data', () => {
+  const js = ts.transpileModule(observability, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText.replace(/export\s+/g, '');
+  const logs = [];
+  const context = vm.createContext({ TextEncoder, Error, crypto: { randomUUID: () => 'generated-id' },
+    console: { error: value => logs.push(String(value)), info: value => logs.push(String(value)) } });
+  vm.runInContext(js, context);
+  const error = new Error('Bearer super-secret-token select=* rows=[customer private data]');
+  context.recordHandledError('app-api', 'av_read', error, 403, {
+    requestId: 'safe-request-id', sqlState: '42501', dataset: 'settings', denialStage: 'database',
+  });
+  const record = JSON.parse(logs[0]);
+  assert.deepEqual([record.request_id, record.action, record.status, record.sqlstate, record.dataset, record.denial_stage],
+    ['safe-request-id', 'av_read', 403, '42501', 'settings', 'database']);
+  assert.equal(record.error_code, 'error');
+  assert.doesNotMatch(logs[0], /super-secret-token|customer private data|select=\*/);
+  logs.length = 0;
+  context.recordHandledError('app-api', 'av_read', new Error('AV_READ_FORBIDDEN'), 403, {
+    requestId: 'safe-request-id', sqlState: null, dataset: 'reserves', denialStage: 'authorization',
+  });
+  assert.equal(JSON.parse(logs[0]).error_code, 'av_read_forbidden');
+  logs.length = 0;
+  context.recordHandledError('app-api', 'other', error, 503);
+  assert.equal(Object.hasOwn(JSON.parse(logs[0]), 'dataset'), false);
+  assert.equal(Object.hasOwn(JSON.parse(logs[0]), 'denial_stage'), false);
+});
+
 test('AV handler rejects absent, forced-password and inactive sessions before querying data', async () => {
   const block = edge.slice(edge.indexOf('  if (action === "av_read") {'), edge.indexOf('  if (action === "inventory_read") return'));
   const code = ts.transpileModule(`async function invoke(session) { const action = 'av_read', payload = {}; ${block} }`, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -93,11 +195,12 @@ test('AV transport rejects stale identity, incomplete pages and failed requests 
   const calls = [];
   const ctx = vm.createContext({ URLSearchParams, APP_API_FUNCTION_URL: 'app-api', SUPABASE_READ_TIMEOUT_MS: 1000,
     getSupabaseReadIdentityScope: () => scope, staleSupabaseReadScopeError: () => new Error('STALE'),
-    runWithFullJitter: task => task(), postAppFunctionJson: async (url, payload) => { calls.push({ url, payload }); return pending; } });
+    runWithFullJitter: task => task(), postAppFunctionJson: async (url, payload, options) => { calls.push({ url, payload, options }); return pending; } });
   vm.runInContext(html.slice(html.indexOf('function getAvReadDataset('), html.indexOf('async function requestInventoryRead(')), ctx);
   pending = { ok: true, data: { rows: [{ unique_id: 'one' }], total: 1, offset: 0 } };
   assert.equal((await ctx.requestAvReadPage('ph_av_notes', 'select=*')).rows.length, 1);
   assert.equal(calls[0].payload.action, 'av_read');
+  assert.match(calls[0].options.requestId, /^[a-z0-9-]+$/i, 'AV requests carry a non-sensitive diagnostic correlation ID');
   pending = { ok: true, data: { rows: [], total: 0, offset: 0 } };
   assert.equal((await ctx.requestAvReadPage('ph_av_notes', 'select=*')).rows.length, 0);
   pending = { ok: true, data: { rows: [], total: 1, offset: 0 } };

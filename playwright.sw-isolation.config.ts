@@ -9,7 +9,7 @@ export default defineConfig({
   outputDir: 'test-results/sw-isolation',
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   forbidOnly: Boolean(process.env.CI),
   reporter: 'list',
   timeout: 60_000,

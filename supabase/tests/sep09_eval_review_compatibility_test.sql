@@ -18,10 +18,16 @@ on conflict(id) do update set display_name=excluded.display_name,disabled_at=nul
 insert into public.ph_app_settings(key,value)
 values('current_season_salesyear','{"seasonCode":"F1","salesYear":"27"}')
 on conflict(key) do update set value=excluded.value;
+update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 insert into public.ph_master_inventory(unique_id,itemcode,genusname,commonname,contsize,locationcode,lotcode,source,season,saleyear,ptronhand,ptravailable)
 values('SEP09-COMPAT-A','SEP09-COMPAT-ITEM','Spiraea','Synthetic rollback fixture','#3','I.13.000','27.S1','LD','S1','27','40','40');
-insert into public.ph_warehouse_assigned_items(unique_id,itemcode,itemcode_normalized,genusname,genusname_normalized,assignment_key,assignedto,present_in_drive,assigned_at)
-values('SEP09-COMPAT-ASSIGN','SEP09-COMPAT-ITEM','SEP09-COMPAT-ITEM','Spiraea','spiraea','SEP09-COMPAT-ITEM|spiraea','charley_robertson',true,now());
+insert into public.ph_inventory_row_assignments(
+  master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,
+  locationcode,lotcode,source,assignedto,assignment_reason,present_in_drive,assigned_at
+)
+values('SEP09-COMPAT-A','SEP09-COMPAT-A','SEP09-COMPAT-ITEM','SEP09-COMPAT-ITEM','Spiraea',
+  'Synthetic rollback fixture','#3','I.13.000','27.S1','LD','charley_robertson','unresolved_preserved',true,now())
+on conflict (master_unique_id) do update set assignedto=excluded.assignedto,assigned_at=excluded.assigned_at,assignment_reason=excluded.assignment_reason,present_in_drive=true,revision=ph_inventory_row_assignments.revision+1,updated_at=now();
 
 create temporary table sep09_packets(name text primary key,payload jsonb);
 insert into sep09_packets values('source','{"actorUsername":"dylan_collyge","source":{"unique_id":"SEP09-COMPAT-A","source_table":"ph_master_inventory","itemcode":"SEP09-COMPAT-ITEM","locationcode":"I.13.000","lotcode":"27.S1"}}');

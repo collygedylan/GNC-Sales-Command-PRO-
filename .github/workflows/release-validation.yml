@@ -27,17 +27,17 @@ permissions:
   contents: read
   actions: read
 
+concurrency:
+  group: release-validation-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   unit:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/setup-node-dependencies
       - run: node scripts/prepare-release-version.mjs --check
       - run: npm run check:inline
       - run: node scripts/run-release-unit-checks.mjs
@@ -54,11 +54,7 @@ jobs:
       artifact-id: ${{ steps.site.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
+      - uses: ./.github/actions/setup-node-dependencies
       - run: npm run build:pilot-monitoring
       - run: npm run build:live:assets
       - run: npm run build:v2
@@ -79,16 +75,24 @@ jobs:
     runs-on: ubuntu-latest
     # Browser dependency installation can consume over eight minutes on a cold runner.
     timeout-minutes: 20
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - project: lifecycle-chromium
+            browsers: chromium
+          - project: lifecycle-iphone
+            browsers: webkit
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
         with:
-          browsers: chromium webkit
+          browsers: ${{ matrix.browsers }}
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Shared lifecycle fault injection before feature suites
-        run: npm run test:foundation -- --reporter=github
+        run: npm run test:foundation -- --project=${{ matrix.project }} --max-failures=1 --reporter=github
       - name: Verify immutable package after foundation checks
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
@@ -96,7 +100,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: foundation-${{ github.run_attempt }}
+          name: foundation-${{ matrix.project }}-${{ github.run_attempt }}
           path: test-results/lifecycle
           if-no-files-found: ignore
 
@@ -106,18 +110,25 @@ jobs:
     # A cold browser install can leave too little of a 15-minute job for the shard.
     timeout-minutes: 25
     strategy:
-      fail-fast: false
-      max-parallel: 4
+      fail-fast: true
       matrix:
-        shard: [1, 2, 3, 4]
+        project:
+          - chromium
+          - firefox
+          - webkit
+        shard:
+          - 1
+          - 2
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: ${{ matrix.project }}
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
-      - name: Functional browsers, shard ${{ matrix.shard }} of 4
-        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --retries=0 --shard=${{ matrix.shard }}/4 --reporter=github,blob
+      - name: Functional browsers, shard ${{ matrix.shard }} of 2
+        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --shard=${{ matrix.shard }}/2 --project=${{ matrix.project }} --max-failures=1 --reporter=github,blob
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
@@ -125,7 +136,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: functional-${{ matrix.shard }}-${{ github.run_attempt }}
+          name: functional-${{ matrix.project }}-${{ matrix.shard }}-${{ github.run_attempt }}
           path: |
             blob-report
             test-results
@@ -136,71 +147,477 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
-      fail-fast: false
-      max-parallel: 6
+      fail-fast: true
       matrix:
         include:
           - suite: production-requests
             config: playwright.release-canary.config.ts
+            project: production-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: production-requests
+            config: playwright.release-canary.config.ts
+            project: production-iphone-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: footer
             config: playwright.footer.config.ts
-          - suite: home-1
+            project: footer-android-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: footer
+            config: playwright.footer.config.ts
+            project: footer-iphone-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: footer
+            config: playwright.footer.config.ts
+            project: footer-desktop-firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: home
             config: playwright.home-role.config.ts
-            shard: 1/2
-          - suite: home-2
+            project: home-android-chromium
+            browsers: chromium
+            shard: 1
+            total: 2
+          - suite: home
             config: playwright.home-role.config.ts
-            shard: 2/2
+            project: home-android-chromium
+            browsers: chromium
+            shard: 2
+            total: 2
+          - suite: home
+            config: playwright.home-role.config.ts
+            project: home-iphone-webkit
+            browsers: webkit
+            shard: 1
+            total: 2
+          - suite: home
+            config: playwright.home-role.config.ts
+            project: home-iphone-webkit
+            browsers: webkit
+            shard: 2
+            total: 2
+          - suite: home
+            config: playwright.home-role.config.ts
+            project: home-tablet-coarse-webkit
+            browsers: webkit
+            shard: 1
+            total: 2
+          - suite: home
+            config: playwright.home-role.config.ts
+            project: home-tablet-coarse-webkit
+            browsers: webkit
+            shard: 2
+            total: 2
+          - suite: home
+            config: playwright.home-role.config.ts
+            project: home-desktop-chromium
+            browsers: chromium
+            shard: 1
+            total: 2
+          - suite: home
+            config: playwright.home-role.config.ts
+            project: home-desktop-chromium
+            browsers: chromium
+            shard: 2
+            total: 2
           - suite: season
             config: playwright.season-sales-office.config.ts
+            project: season-sales-office-android-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: season
+            config: playwright.season-sales-office.config.ts
+            project: season-sales-office-iphone-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: season-priority
             config: playwright.season-priority.config.ts
+            project: season-priority-desktop-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: season-priority
+            config: playwright.season-priority.config.ts
+            project: season-priority-android-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: season-priority
+            config: playwright.season-priority.config.ts
+            project: season-priority-iphone-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: suspend
             config: playwright.suspend-tag.config.ts
+            project: suspend-tag-android-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: suspend
+            config: playwright.suspend-tag.config.ts
+            project: suspend-tag-iphone-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: docks
             config: playwright.docks-filter.config.ts
+            project: docks-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: docks
+            config: playwright.docks-filter.config.ts
+            project: docks-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: docks
+            config: playwright.docks-filter.config.ts
+            project: docks-desktop
+            browsers: chromium
+            shard: 1
+            total: 1
           - suite: av-blanks
             config: playwright.task-av-blanks.config.ts
+            project: task-av-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: av-blanks
+            config: playwright.task-av-blanks.config.ts
+            project: task-av-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: av-blanks
+            config: playwright.task-av-blanks.config.ts
+            project: task-av-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: session
             config: playwright.session-recovery.config.ts
+            project: session-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: session
+            config: playwright.session-recovery.config.ts
+            project: session-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: assignedto
             config: playwright.review-assignedto.config.ts
+            project: chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: assignedto
+            config: playwright.review-assignedto.config.ts
+            project: firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: assignedto
+            config: playwright.review-assignedto.config.ts
+            project: webkit
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: verified-cache
             config: playwright.verified-data-cache.config.ts
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: verified-cache
+            config: playwright.verified-data-cache.config.ts
+            project: cache-firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: verified-cache
+            config: playwright.verified-data-cache.config.ts
+            project: cache-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: verified-cache
+            config: playwright.verified-data-cache.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: verified-cache
+            config: playwright.verified-data-cache.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: request-reliability
             config: playwright.request-reliability.config.ts
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: request-reliability
+            config: playwright.request-reliability.config.ts
+            project: cache-firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: request-reliability
+            config: playwright.request-reliability.config.ts
+            project: cache-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: request-reliability
+            config: playwright.request-reliability.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: request-reliability
+            config: playwright.request-reliability.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: request-photo
             config: playwright.request-photo.config.ts
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: request-photo
+            config: playwright.request-photo.config.ts
+            project: cache-firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: request-photo
+            config: playwright.request-photo.config.ts
+            project: cache-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: request-photo
+            config: playwright.request-photo.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: request-photo
+            config: playwright.request-photo.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: reclass-splits
+            config: playwright.reclass-splits.config.ts
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: reclass-splits
+            config: playwright.reclass-splits.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: reclass-splits
+            config: playwright.reclass-splits.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: bunch-note
             config: playwright.bunch-note.config.ts
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: bunch-note
+            config: playwright.bunch-note.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: bunch-note
+            config: playwright.bunch-note.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: sales-mobile
             config: playwright.sales-mobile.config.ts
+            project: sales-desktop
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: sales-mobile
+            config: playwright.sales-mobile.config.ts
+            project: sales-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: sales-mobile
+            config: playwright.sales-mobile.config.ts
+            project: sales-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: sales-mobile
+            config: playwright.sales-mobile.config.ts
+            project: sales-narrow
+            browsers: chromium
+            shard: 1
+            total: 1
           - suite: module-mobile
             config: playwright.module-mobile.config.ts
+            project: module-320
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: module-mobile
+            config: playwright.module-mobile.config.ts
+            project: module-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: production-schedule-mobile
             config: playwright.production-schedule.config.ts
-          - suite: hl-order-1
+            project: phone-320
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: production-schedule-mobile
+            config: playwright.production-schedule.config.ts
+            project: phone-390
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: production-schedule-mobile
+            config: playwright.production-schedule.config.ts
+            project: phone-430
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: production-schedule-mobile
+            config: playwright.production-schedule.config.ts
+            project: desktop
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: hl-order
             config: playwright.hl-order.config.ts
-            shard: 1/3
-          - suite: hl-order-2
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: hl-order
             config: playwright.hl-order.config.ts
-            shard: 2/3
-          - suite: hl-order-3
+            project: cache-firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: hl-order
             config: playwright.hl-order.config.ts
-            shard: 3/3
+            project: cache-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: hl-order
+            config: playwright.hl-order.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: hl-order
+            config: playwright.hl-order.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: hl-restock
             config: playwright.hl-restock.config.ts
+            project: cache-chromium
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: hl-restock
+            config: playwright.hl-restock.config.ts
+            project: cache-firefox
+            browsers: firefox
+            shard: 1
+            total: 1
+          - suite: hl-restock
+            config: playwright.hl-restock.config.ts
+            project: cache-webkit
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: hl-restock
+            config: playwright.hl-restock.config.ts
+            project: cache-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: hl-restock
+            config: playwright.hl-restock.config.ts
+            project: cache-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
           - suite: stable-refresh
             config: playwright.stable-background-refresh.config.ts
+            project: stable-background-desktop
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: stable-refresh
+            config: playwright.stable-background-refresh.config.ts
+            project: stable-background-android
+            browsers: chromium
+            shard: 1
+            total: 1
+          - suite: stable-refresh
+            config: playwright.stable-background-refresh.config.ts
+            project: stable-background-iphone
+            browsers: webkit
+            shard: 1
+            total: 1
+          - suite: command-center
+            project: chromium
+            browsers: chromium
+            shard: 1
+            total: 1
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: ${{ matrix.browsers }}
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Compiled shell — ${{ matrix.suite }}
-        run: npx playwright test --config ${{ matrix.config }} --workers=1 --retries=0 --reporter=github,blob ${{ matrix.shard && format('--shard={0}', matrix.shard) || '' }}
+        if: matrix.suite != 'command-center'
+        run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob --project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.total }} --max-failures=1
       - name: AURA command center browser interactions
-        if: matrix.suite == 'module-mobile'
+        if: matrix.suite == 'command-center'
         run: node --test tests/alpha-command-center.browser.test.mjs
       - name: Verify tests did not change the release package
         env:
@@ -209,7 +626,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: compiled-${{ matrix.suite }}-${{ github.run_attempt }}
+          name: compiled-${{ matrix.suite }}-${{ matrix.project }}-${{ matrix.shard }}-${{ github.run_attempt }}
           path: |
             blob-report
             test-results
@@ -220,22 +637,39 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - project: chromium
+            config: playwright.release-timing.config.ts
+            browsers: chromium
+          - project: firefox
+            config: playwright.release-timing.config.ts
+            browsers: firefox
+          - project: webkit
+            config: playwright.release-timing.config.ts
+            browsers: webkit
+          - project: android
+            config: playwright.release-android.config.ts
+            browsers: chromium
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: ${{ matrix.browsers }}
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
       - name: Scroll and throttled startup on a quiet runner
-        run: npx playwright test --config playwright.release-timing.config.ts --workers=1 --retries=0
+        run: npx playwright test --config ${{ matrix.config }} --workers=1 --project=${{ matrix.project }} --max-failures=1
       - name: Verify isolated preview blocks production requests
+        if: matrix.project == 'chromium'
         run: node scripts/check-isolated-preview.mjs
-      - name: Android startup and protected photo persistence
-        run: npx playwright test --config playwright.release-android.config.ts --project=android --workers=1 --retries=0
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: timing-diagnostics-${{ github.run_attempt }}
+          name: timing-diagnostics-${{ matrix.project }}-${{ github.run_attempt }}
           path: test-results
           if-no-files-found: ignore
 

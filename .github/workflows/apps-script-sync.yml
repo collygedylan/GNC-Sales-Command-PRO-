@@ -120,6 +120,7 @@ jobs:
           supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
           supabase functions deploy app-api --use-api --project-ref "$project_ref"
           supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
+          supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
           supabase functions deploy calendar-reminder-sweep --use-api --project-ref "$project_ref"
           supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
           supabase functions deploy auth-admin --use-api --project-ref "$project_ref"
@@ -193,9 +194,10 @@ jobs:
 
       # Workbook imports are user-initiated in Managers > Production Schedule.
       # Code publication must neither start an import nor wait for one to finish.
+      - name: Install locked dependencies
+        uses: ./.github/actions/setup-node-dependencies
       - name: Install dependencies and build the complete site
         run: |
-          npm ci
           npm run build:pilot-monitoring
           npm run build:live:assets
           npm run build:v2
