@@ -9281,3 +9281,54 @@ body.ops-precision-pilot .grower-item-photo-placeholder {
 
 body.ops-precision-pilot .grower-item-photo { object-fit: cover; }
 body.ops-precision-pilot .grower-quantity-total { font-variant-numeric: tabular-nums; }
+
+/* Nested Item Detail surfaces keep their status colors without a light canvas. */
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .crop-roll-form-card--info,
+body.ops-precision-pilot[data-ops-theme="dark"] #item-inquiry-panel .item-inquiry-grid--header {
+  background: var(--ops-surface-muted) !important;
+  color: var(--ops-text) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #item-inquiry-panel .item-inquiry-grid--header > * {
+  color: var(--ops-text-muted) !important;
+  border-color: var(--ops-border) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #item-inquiry-panel .item-inquiry-row--even:not(.item-inquiry-row--current):not(.item-inquiry-row--crop-complete):not(.item-inquiry-row--crop-pending):not(.item-inquiry-row--decision) {
+  background: var(--ops-surface-muted) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #item-inquiry-panel :is(.item-inquiry-row--current, .item-inquiry-row--crop-complete, .item-inquiry-row:hover) {
+  background: color-mix(in srgb, var(--ops-brand) 15%, var(--ops-surface)) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #item-inquiry-panel .item-inquiry-row--crop-pending {
+  background: color-mix(in srgb, var(--ops-warning) 15%, var(--ops-surface)) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #item-inquiry-panel .item-inquiry-row--decision {
+  background: color-mix(in srgb, var(--ops-info) 15%, var(--ops-surface)) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail :is(.request-av-option-selectbar, .request-desired-summary) {
+  background: color-mix(in srgb, var(--ops-brand) 12%, var(--ops-surface)) !important;
+  border-color: var(--ops-border) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail :is(.request-av-option-selectbar-main, .request-desired-label, .crop-roll-form-chip) {
+  color: var(--ops-brand) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail :is(.request-av-option-full-card, .request-av-option-selectbar-reason, .request-desired-chip, .request-desired-cell, .request-desired-note, .crop-roll-read-cell, .crop-roll-field-control) {
+  border-color: var(--ops-border) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .request-av-option-selectbar-reason,
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .crop-roll-field-control::placeholder {
+  color: var(--ops-text-muted) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .crop-roll-field-control:focus {
+  border-color: var(--ops-brand) !important;
+  outline: 2px solid color-mix(in srgb, var(--ops-brand) 25%, transparent) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .crop-roll-field-control:disabled {
+  background: var(--ops-surface-muted) !important;
+  color: var(--ops-text-muted) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .request-desired-cell--row-note-data {
+  background: color-mix(in srgb, var(--ops-danger) 12%, var(--ops-surface)) !important;
+}
+body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .request-desired-cell--row-note-data :is(.request-desired-label, .request-desired-value) {
+  color: var(--ops-danger) !important;
+}

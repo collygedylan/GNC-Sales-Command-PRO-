@@ -502,14 +502,15 @@ test('Drive universal search remains available outside the Common Name drill', (
   assert.match(html, /function captureDriveStateBeforeUniversalSearch\(\)/);
   assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)/);
   assert.match(html, /function renderDriveUniversalSearchResultsOnly\(\)/);
-  assert.match(html, /filterBySearch\(drivePlantFilterState\.filteredItems, safeTerm, 'drive_universal'\)/);
+  assert.match(html, /scopeDriveSearchToLocation\(drivePlantFilterState\.filteredItems\)/);
+  assert.match(html, /filterBySearch\(scopedItems, safeTerm, 'drive_universal'\)/);
   assert.match(html, /const driveUniversalSearchResultCache=new Map\(\)/);
   assert.match(html, /while \(driveUniversalSearchResultCache\.size > 24\)/);
   assert.match(html, /renderDriveRecordResults\('drive-universal-search'/);
   assert.match(html, /if \(renderDriveUniversalSearchResultsOnly\(\)\) return;[\s\S]*renderViewContent\('drive'/);
   const searchHandler = html.slice(html.indexOf('function handleDriveSearch'), html.indexOf('function selectDriveName'));
   assert.match(searchHandler, /activeDriveTab === 'name'[\s\S]*resetDriveDrillSelectionState\(\)[\s\S]*setDriveSearchManualSelectionLock\(true\)/);
-  assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)[\s\S]*activeDriveTab = 'name';[\s\S]*resetDriveDrillSelectionState\(\);[\s\S]*driveUniversalSearchPendingScrollTop = 0/);
+  assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)[\s\S]*activeDriveTab = state\.activeDriveTab;[\s\S]*selectedDriveLoc = state\.selectedDriveLoc;[\s\S]*driveUniversalSearchPendingScrollTop = state\.scrollTop/);
   const backHandler = html.slice(html.indexOf('function goBackUniversal'), html.indexOf('function syncFabVisibility'));
   const driveBackHandler = backHandler.slice(backHandler.indexOf("if (currentView === 'drive')"), backHandler.indexOf("if (currentView === 'crop-roll')"));
   assert.match(driveBackHandler, /activeDriveTab === 'name'[\s\S]*driveViewLevel >= 2 && selectedDriveName[\s\S]*backToDriveSizes\(\)/);

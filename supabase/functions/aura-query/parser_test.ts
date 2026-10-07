@@ -1,5 +1,6 @@
 import { assertEquals, assert } from 'jsr:@std/assert@1';
 import { AURA_MODULE_CAPABILITIES, auraDateRange, resolveAuraIntent } from '../_shared/aura-query.ts';
+import { AURA_SEASON_SOURCES } from '../_shared/aura-capabilities.ts';
 
 Deno.test('item identifiers keep leading zeros before size, bay and lot normalization', () => {
   const q = resolveAuraIntent('Where are itemcode 00123 in D.10 bay 021 lot 27.F1?');
@@ -112,6 +113,56 @@ Deno.test('historical season/year and spoken season labels are explicit', () => 
   assertEquals(q.filters.season, 'S1'); assertEquals(q.filters.salesYear, 27);
   assertEquals(q.filters.productText, 'roses');
   assertEquals(resolveAuraIntent('How many roses for eff one?').filters.season, 'F1');
+});
+Deno.test('season source mapping distinguishes persisted history from mutable master lineage', () => {
+  assertEquals(AURA_SEASON_SOURCES.request_history.historicInventoryFallback, false);
+  assertEquals(AURA_SEASON_SOURCES.request_history.yearPolicy, 'persisted-season-only');
+  assertEquals(AURA_SEASON_SOURCES.sales_orders.seasonalSeasonPolicy, 'state-required-no-master-fallback');
+  assertEquals(AURA_SEASON_SOURCES.sales_orders.nonseasonalSeasonPolicy, 'exact-master_id-link');
+  assertEquals(AURA_SEASON_SOURCES.request_queue.seasonJoin, 'master_id -> ph_master_inventory.unique_id');
+  assertEquals(AURA_SEASON_SOURCES.credits.yearPolicy, 'season-only');
+});
+Deno.test('explicit sales-year cues are parsed independently and invalid years clarify', () => {
+  const salesYear = resolveAuraIntent('Show request history for season F1 sales year 27');
+  assertEquals(salesYear.filters.season, 'F1'); assertEquals(salesYear.filters.salesYear, 27);
+  assertEquals(salesYear.filters.productText, undefined); assertEquals(salesYear.clarification, undefined);
+  const calendarYear = resolveAuraIntent('Show credits in F1 in 2027');
+  assertEquals(calendarYear.filters.season, 'F1'); assertEquals(calendarYear.filters.salesYear, 27);
+  assertEquals(calendarYear.filters.productText, undefined); assertEquals(calendarYear.clarification, undefined);
+  assert(resolveAuraIntent('Show active requests salesyear 150').clarification);
+  assert(resolveAuraIntent('Show active requests season 2150F1').clarification);
+  assert(resolveAuraIntent('Show active requests season 27F1 sales year 28').clarification);
+});
+Deno.test('relative season phrases are explicit query-time references and literal seasons win', () => {
+  for (const phrase of ['current season', 'this season']) {
+    const q = resolveAuraIntent(`How many roses in the ${phrase}?`);
+    assertEquals(q.filters.seasonReference, 'current', phrase);
+    assertEquals(q.filters.season, undefined, phrase);
+  }
+  const next = resolveAuraIntent('How many roses for next season?');
+  assertEquals(next.filters.seasonReference, 'next');
+  assertEquals(next.filters.season, undefined);
+  const nextExplicitYear = resolveAuraIntent('How many roses for next season sales year 28?');
+  assertEquals(nextExplicitYear.filters.seasonReference, 'next');
+  assertEquals(nextExplicitYear.filters.salesYear, 28);
+
+  const explicitWins = resolveAuraIntent('How many roses for current season 27S1?');
+  assertEquals(explicitWins.filters.season, 'S1');
+  assertEquals(explicitWins.filters.salesYear, 27);
+  assertEquals(explicitWins.filters.seasonReference, undefined);
+
+  const literalName = resolveAuraIntent('How many common name "Next Season Rose"?');
+  assertEquals(literalName.filters.commonName, 'Next Season Rose');
+  assertEquals(literalName.filters.seasonReference, undefined);
+  const unquotedName = resolveAuraIntent('Show common name rose next season');
+  assertEquals(unquotedName.filters.commonName, 'rose');
+  assertEquals(unquotedName.filters.seasonReference, 'next');
+  const quotedNameWithRelativeSeason = resolveAuraIntent('Show common name "Next Season" current season');
+  assertEquals(quotedNameWithRelativeSeason.filters.commonName, 'Next Season');
+  assertEquals(quotedNameWithRelativeSeason.filters.seasonReference, 'current');
+  const nameAndYear = resolveAuraIntent('Show common name rose sales year 27');
+  assertEquals(nameAndYear.filters.commonName, 'rose');
+  assertEquals(nameAndYear.filters.salesYear, 27);
 });
 Deno.test('domain routes remove their nouns and preserve status, date and search predicates', () => {
   assertEquals(resolveAuraIntent('Show pending sales credits').capability, 'credits');

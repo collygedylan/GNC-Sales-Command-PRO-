@@ -60,7 +60,7 @@ function commonNameEntity(question: string) {
   } else {
     // Only recognized filter syntax ends an unquoted name: "of the" and "in"
     // can be part of names such as Lily of the Valley and Love in a Mist.
-    const boundary = /[?!;,]|\s+(?=(?:(?:in|at|from|inside|outside|within)\s+(?:the\s+)?(?:[a-z]\.\d{2}|perennial\s+(?:area|zone))\b|(?:for\s+)?(?:season\s+)?(?:20\d{2}|\d{2})?(?:S1|F1|U1|U2|U3|X|Y|Z)\b|(?:item\s*code|itemcode|genus|lot(?:\s*code)?|bay|owned by|assigned to|assignee|worker|season)\b|(?:in\s+)?open stock\b|on[ -]hand\b|available\b|#\s*\d|hash\s+(?:\d|[a-z]+)\b|(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:gallons?|gal|deep\s+pee|dp|inches?|feet|foot|ft|quarts?|qt|pints?|pt|cells?|trays?)\b))/i.exec(tail);
+    const boundary = /[?!;,]|\s+(?=(?:(?:in|at|from|inside|outside|within)\s+(?:the\s+)?(?:[a-z]\.\d{2}|perennial\s+(?:area|zone))\b|(?:for\s+)?(?:season\s+)?(?:20\d{2}|\d{2})?(?:S1|F1|U1|U2|U3|X|Y|Z)\b|(?:for\s+|in\s+)?(?:current|this|next)\s+season\b|(?:sales\s+)?year\s+(?:20\d{2}|\d{2})\b|(?:item\s*code|itemcode|genus|lot(?:\s*code)?|bay|owned by|assigned to|assignee|worker|season)\b|(?:in\s+)?open stock\b|on[ -]hand\b|available\b|#\s*\d|hash\s+(?:\d|[a-z]+)\b|(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)\s*(?:gallons?|gal|deep\s+pee|dp|inches?|feet|foot|ft|quarts?|qt|pints?|pt|cells?|trays?)\b))/i.exec(tail);
     consumed = boundary?.index ?? tail.length;
     value = tail.slice(0, consumed).replace(/[.]+$/, '').trim();
   }
@@ -112,11 +112,36 @@ export function resolveAuraIntent(raw: unknown, context: Record<string, unknown>
   const sizes = [...remaining.matchAll(/(?:^|\s)(#\d+(?:\.\d+)?|\d+(?:\.\d+)?DP|\d+(?:\.\d+)?\s+(?:IN|FT|QT|PT|CELL|TRAY))(?=\s|$|[?,.!])/gi)];
   if (sizes.length > 1) return clarify('Please choose one container size for this query.');
   if (sizes[0]) { f.contSize = canonicalAuraSize(sizes[0][1]); remaining = remaining.replace(sizes[0][0], ' '); delete f.selectionId; }
-  const season = remove(/\b(?:season\s+)?((?:20)?\d{2}[.\s-]?)?(S1|F1|U1|U2|U3|X|Y|Z)\b/i);
+  const season = remove(/\b(?:season\s+)?((?:\d{4}|\d{2})[.\s-]?)?(S1|F1|U1|U2|U3|X|Y|Z)\b/i);
   if (season) {
     f.season = season[2].toUpperCase();
-    if (season[1]) f.salesYear = Number(season[1].replace(/\D/g, '')) % 100;
+    if (season[1]) {
+      const parsedYear = Number(season[1].replace(/\D/g, ''));
+      if (parsedYear > 99 && (parsedYear < 2000 || parsedYear > 2099)) return clarify('Please provide a sales year from 1 to 99 or a four-digit year from 2000 to 2099.');
+      f.salesYear = parsedYear > 99 ? parsedYear % 100 : parsedYear;
+    }
     else delete f.salesYear;
+  }
+  const explicitYear = remove(/\b(?:sales\s*year|salesyear|year|in)\s*(?:is\s*)?(\d{1,4})\b/i);
+  if (explicitYear) {
+    const parsedYear = Number(explicitYear[1]);
+    if (parsedYear > 99 && (parsedYear < 2000 || parsedYear > 2099) || parsedYear < 1) {
+      return clarify('Please provide a sales year from 1 to 99 or a four-digit year from 2000 to 2099.');
+    }
+    const normalizedYear = parsedYear > 99 ? parsedYear % 100 : parsedYear;
+    if (f.salesYear != null && Number(f.salesYear) !== normalizedYear) return clarify('Please choose one sales year for this query.');
+    f.salesYear = normalizedYear;
+  }
+  const relativeInQuotes = /["“'‘][^"”'’]*(?:current|this|next)\s+season[^"”'’]*["”'’]/i.test(syntaxQuestion);
+  const relativeSeason = relativeInQuotes ? null : remove(/\b(current|this|next)\s+season\b/i);
+  if (season) {
+    // An explicit literal season/year is the narrower instruction and clears
+    // any remembered relative-season scope from an earlier turn.
+    delete f.seasonReference;
+  } else if (relativeSeason) {
+    f.seasonReference = relativeSeason[1].toLowerCase() === 'next' ? 'next' : 'current';
+    delete f.season;
+    if (!explicitYear) delete f.salesYear;
   }
   const zone = remove(/\b(?:(outside|inside|in|within)\s+(?:the\s+)?)?perennial\s+(?:area|zone)\b/i);
   if (zone) f.zone = zone[1]?.toLowerCase() === 'outside' ? 'OUTSIDE' : 'perennial';

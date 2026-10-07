@@ -1075,6 +1075,52 @@ async function resolveActiveSessionProfile(
   return profile as Record<string, unknown>;
 }
 
+async function handleManagerSeasonSettings(
+  req: Request,
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  const forbidden = () => errorResponse("An authorized Managers account is required.", 403, { code: "AURA_MANAGER_SETTINGS_FORBIDDEN" });
+  const authorization = String(req.headers.get("authorization") || "").trim();
+  if (!session?.authUserId || session.mustChangePassword || !/^Bearer\s+\S+$/i.test(authorization)) return forbidden();
+  let actor: Record<string, unknown>;
+  try {
+    // This operation requires native Auth even during the app's legacy-session window.
+    const { data, error } = await supabase.auth.getUser(authorization.replace(/^Bearer\s+/i, ""));
+    if (error || !data?.user?.id || data.user.id !== session.authUserId) return forbidden();
+    actor = await resolveActiveSessionProfile(session);
+    if (actor.id !== data.user.id || !FULL_ACCESS_USER_KEYS.has(String(actor.username || ""))) return forbidden();
+  } catch { return forbidden(); }
+  const operation = payload.operation;
+  const allowed = operation === "read" ? new Set(["action", "operation"])
+    : new Set(["action", "operation", "seasonCode", "salesYear", "expectedRevision"]);
+  if (!["read", "save"].includes(String(operation)) || Object.keys(payload).some(key => !allowed.has(key))
+    || (operation === "save" && (!Number.isSafeInteger(payload.expectedRevision) || Number(payload.expectedRevision) < 0
+      || !["S1", "F1"].includes(String(payload.seasonCode)) || !Number.isInteger(payload.salesYear)
+      || Number(payload.salesYear) < 1 || Number(payload.salesYear) > 99))) {
+    return errorResponse("Choose S1 or F1, a sales year from 1 to 99, and reload the setting before saving.", 400, { code: "AURA_MANAGER_SETTINGS_INPUT_INVALID" });
+  }
+  try {
+    const { data, error } = await supabase.rpc("aura_manager_season_settings_v1", {
+      p_actor_id: actor.id, p_operation: operation,
+      p_expected_revision: operation === "save" ? payload.expectedRevision : null,
+      p_season_code: operation === "save" ? payload.seasonCode : null,
+      p_sales_year: operation === "save" ? payload.salesYear : null,
+    });
+    if (error) throw error;
+    if (!data || !["S1", "F1"].includes(data.seasonCode) || !Number.isInteger(data.salesYear)
+      || data.salesYear < 1 || data.salesYear > 99 || !Number.isSafeInteger(data.revision) || data.revision < 0) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+    return jsonResponse({ ok: true, data });
+  } catch (error) {
+    const detail = error as { code?: string; message?: string };
+    if (detail.code === "42501") return forbidden();
+    if (detail.code === "40001" || detail.message === "AURA_MANAGER_SETTINGS_CONFLICT") {
+      return errorResponse("Another manager changed the season. Reload the current setting and review your update.", 409, { code: "AURA_MANAGER_SETTINGS_CONFLICT" });
+    }
+    return errorResponse("Current season settings are unavailable. Reload and try again; no update has been confirmed.", 503, { code: "AURA_SEASON_SETTINGS_UNAVAILABLE" });
+  }
+}
+
 function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
   const sourceInput = payload.source && typeof payload.source === "object" && !Array.isArray(payload.source)
     ? payload.source as Record<string, unknown>
@@ -4507,6 +4553,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
 
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
+
+  if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
 
   if (action === "request_history" || action === "sales_credit") {
     return await handleSalesWorkflow({ session, payload, supabase, resolveActiveSessionProfile, headers: corsHeaders });

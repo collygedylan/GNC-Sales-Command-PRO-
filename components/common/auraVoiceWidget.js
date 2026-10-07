@@ -24,6 +24,7 @@ const CSS = `
 [data-aura-root] *{box-sizing:border-box}
 [data-aura-root] .aura-fab{position:fixed;z-index:10040;right:max(16px,env(safe-area-inset-right));bottom:calc(94px + env(safe-area-inset-bottom));width:56px;height:56px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.28);border-radius:50%;color:#f0fdf4;background:linear-gradient(145deg,rgba(16,43,29,.94),rgba(5,14,9,.96));box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 8px 28px rgba(0,0,0,.38),0 0 20px -4px rgba(34,197,94,.3);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);cursor:pointer;transition:transform 150ms cubic-bezier(.4,0,.2,1),opacity 150ms cubic-bezier(.4,0,.2,1)}
 [data-aura-root] .aura-fab:hover{transform:translateY(-2px)}[data-aura-root] .aura-fab:focus-visible,[data-aura-root] button:focus-visible,[data-aura-root] input:focus-visible{outline:3px solid #4ade80;outline-offset:2px}
+[data-aura-root] .aura-fab[data-microphone-active="true"]{border-color:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.35),0 8px 28px rgba(0,0,0,.38),0 0 20px -4px rgba(34,197,94,.45)}
 [data-aura-root] .aura-orb{font-size:22px;font-weight:750;letter-spacing:-.08em;text-shadow:0 0 12px rgba(34,197,94,.55)}
 [data-aura-root] .aura-panel{position:fixed;z-index:10041;right:max(12px,env(safe-area-inset-right));bottom:calc(160px + env(safe-area-inset-bottom));width:min(420px,calc(100vw - 24px));max-height:min(72dvh,calc(100dvh - 176px - env(safe-area-inset-bottom)),720px);display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--aura-border);border-radius:20px;color:var(--aura-text);background:var(--aura-bg);background:linear-gradient(145deg,color-mix(in srgb,var(--aura-bg) 94%,white 6%),var(--aura-bg) 58%,color-mix(in srgb,var(--aura-bg) 94%,#16a34a 6%));box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 18px 54px rgba(0,0,0,.5),0 0 22px -8px rgba(34,197,94,.2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
 [data-aura-root] .aura-panel[hidden]{display:none}
@@ -31,7 +32,7 @@ const CSS = `
 [data-aura-root] .aura-head>div:nth-child(2){flex:1 1 auto;min-width:0}
 [data-aura-root] .aura-mark{display:grid;place-items:center;width:36px;height:36px;border:1px solid rgba(74,222,128,.55);border-radius:12px;color:#4ade80;font-weight:800;box-shadow:0 0 14px -5px rgba(34,197,94,.55)}
 [data-aura-root] .aura-title{font-size:15px;font-weight:800;letter-spacing:.12em}[data-aura-root] .aura-status{display:block;color:var(--aura-muted);font-size:12px;letter-spacing:0;font-weight:500}
-[data-aura-root] .aura-mode{display:inline-block;max-width:100%;margin-top:4px;padding:3px 7px;border:1px solid var(--aura-border);border-radius:999px;color:var(--aura-muted);font-size:11px;line-height:1.3;letter-spacing:0;font-weight:650;white-space:normal;overflow-wrap:anywhere}
+[data-aura-root] .aura-mode{display:none}
 [data-aura-root] .aura-mode[data-mode="local"]{color:var(--aura-text);border-color:rgba(34,197,94,.38)}
 [data-aura-root] .aura-mode[data-mode="browser"]{color:var(--aura-text);border-color:rgba(245,158,11,.55);background:rgba(245,158,11,.08)}
 [data-aura-root] .aura-close{margin-left:auto;flex:0 0 44px;min-width:44px;width:44px;height:44px;border:1px solid var(--aura-border);border-radius:12px;color:var(--aura-text);background:transparent;cursor:pointer;font-size:20px}
@@ -64,7 +65,7 @@ const CSS = `
 `;
 
 /** Mount after the shell has verified Dylan's native session; this module never authenticates users itself. */
-export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, requestAssistant, openAssistantAction, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false } = {}) {
+export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, requestAssistant, openAssistantAction, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false, userId = "", handsFreeAutostart = false, onHandsFreePreferenceChange = () => {} } = {}) {
   if (typeof document === "undefined" || !host || !isAuthorized()) return { destroy() {} };
   let destroyed = false;
   let panelOpen = false;
@@ -89,6 +90,25 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   let busy = false;
   let operationEpoch = 0;
   let inactivityTimer = null;
+  let handsFreeQuietTimer = null;
+  let handsFreeWakeTimer = null;
+  let handsFreeCaptureTimer = null;
+  let handsFreeCaptureStarted = false;
+  let handsFreeResultGeneration = 0;
+  const consumedHandsFreeWakeKeys = new Set();
+  const activeWakeOscillators = new Set();
+  let wakeAudioContext = null;
+  let handsFreeEnabled = false;
+  let handsFreeWakeAt = 0;
+  let handsFreeCommand = "";
+  let voiceReplyMode = false;
+  const audioOwners = new Set();
+  const handsFreeStorageKey = userId ? `aura.handsFree.autostart:${userId}` : "";
+  const readHandsFreePreference = () => {
+    try { return handsFreeStorageKey ? window.localStorage.getItem(handsFreeStorageKey) === "true" : handsFreeAutostart === true; }
+    catch { return handsFreeAutostart === true; }
+  };
+  let handsFreeAutostartEnabled = readHandsFreePreference();
   let voiceStatus = { status: "idle", message: "" };
   let recognitionMode = null;
   const root = make("div");
@@ -126,11 +146,14 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       if (metadata.recognitionMode !== "browser" || !current()) return;
       if (completedBrowserRecognitionId === metadata.recognitionId) return;
       completedBrowserRecognitionId = metadata.recognitionId;
-      const command = String(text || "").replace(/^.*?\bhey\s+aura\b[\s,:-]*/i, "").trim();
+      if (metadata.handsFree) return;
+      const command = String(text || "").replace(/^.*?\b(?:hey|okay)\s+aura\b[\s,:-]*/i, "").trim();
       input.value = command;
       if (command && (!busy || /^(?:stop|cancel(?: that)?|never\s?mind)$/i.test(command))) void submitCommand(command, { source: "voice" });
     },
   });
+  void session.prepare();
+  function setRecognitionBusy(value) { session.setBusy(Boolean(value) || audioOwners.size > 0); }
 
   const panel = make("section", "aura-panel");
   panel.hidden = true;
@@ -151,7 +174,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   closeButton.setAttribute("aria-label", "Close AURA");
   head.append(closeButton);
   const content = make("div", "aura-content");
-  const message = make("p", "aura-message", "Ask about open stock, prepare a Bloom Picker order, or log a scouting issue.");
+  const message = make("p", "aura-message", "Ask Aura a question.");
   content.append(message);
   const inputbar = make("form", "aura-inputbar");
   const input = make("input");
@@ -171,12 +194,28 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   const sendButton = make("button", "aura-action primary", "Go");
   sendButton.type = "submit";
   inputbar.append(input, micButton, sendButton);
-  panel.append(head, content, inputbar);
+  const voiceControls = make("div", "aura-actions aura-chat-toolbar");
+  const handsFreeButton = make("button", "aura-action", "Hands-Free Mode: Off");
+  handsFreeButton.type = "button";
+  handsFreeButton.setAttribute("aria-pressed", "false");
+  handsFreeButton.addEventListener("click", () => {
+    if (handsFreeEnabled) {
+      handsFreeEnabled = false; clearHandsFreeTimers(); suspendWakeAudio(); session.stop();
+    } else startHandsFreeFromGesture();
+    renderStatus();
+  });
+  const resumeVoiceButton = make("button", "aura-action", "Tap to resume");
+  resumeVoiceButton.type = "button";
+  resumeVoiceButton.hidden = true;
+  resumeVoiceButton.addEventListener("click", startHandsFreeFromGesture);
+  voiceControls.append(handsFreeButton, resumeVoiceButton);
+  panel.append(head, voiceControls, content, inputbar);
   root.append(panel);
   const queryPanel = typeof requestAssistant === "function" ? mountAuraQueryPanel({
     panel, content, input, request: requestAssistant, isAuthorized: current,
-    speak: text => session.speak(text),
-    setBusy: value => { busy = value; session.setBusy(value); },
+    speak: text => speakReply(text),
+    cancelSpeech: () => cancelAuraSpeech(),
+    setBusy: value => { busy = value; setRecognitionBusy(value); },
     openAction: async action => {
       if (typeof openAssistantAction !== "function") throw new Error("Open the relevant app screen to review this request.");
       await openAssistantAction(action); togglePanel(false);
@@ -202,22 +241,152 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   }
 
   function renderStatus() {
-    const micOpen = session.enabled && (voiceStatus.status === "listening" || voiceStatus.status === "hearing");
+    const micOpen = session.listening;
+    handsFreeButton.setAttribute("aria-pressed", String(handsFreeEnabled));
+    handsFreeButton.textContent = "Hands-Free Mode: " + (handsFreeEnabled ? "On" : "Off");
+    resumeVoiceButton.hidden = !handsFreeEnabled || session.enabled || busy || audioOwners.size > 0 || document.visibilityState !== "visible";
     micButton.setAttribute("aria-pressed", micOpen ? "true" : "false");
+    fab.dataset.handsFreeListening = String(handsFreeEnabled && micOpen);
+    fab.dataset.microphoneActive = String(micOpen);
+    fab.setAttribute("aria-description", micOpen ? handsFreeEnabled ? "Hands-free microphone is listening" : "Microphone is listening" : "");
     const paused = voiceStatus.status === "paused" || conversation.auraMode === "PAUSED";
     micButton.setAttribute("aria-label", paused ? "Resume voice input" : session.enabled ? "Pause voice input" : "Start voice input");
-    if (voiceStatus.status === "idle" && recognitionMode === "browser") {
-      status.textContent = `Tap the microphone for your next command.${conversation.party ? " Your current draft is still here." : ""}`;
-    } else if (voiceStatus.message) status.textContent = voiceStatus.message;
-    else if (voiceStatus.status === "listening") status.textContent = recognitionMode === "local" ? "Listening on this device…" : recognitionMode === "browser" ? "Listening with browser speech…" : "Listening…";
-    else if (voiceStatus.status === "hearing") status.textContent = "Processing speech…";
-    else if (voiceStatus.status === "starting") status.textContent = recognitionMode === "local" ? "Starting on-device speech…" : recognitionMode === "browser" ? "Starting browser speech…" : "Starting voice input…";
-    else if (voiceStatus.status === "restarting") status.textContent = recognitionMode === "local" ? "Reconnecting to on-device speech…" : recognitionMode === "browser" ? "Reconnecting to browser speech…" : "Reconnecting to speech…";
+    if (handsFreeEnabled && wakeArmed) status.textContent = "Listening for your command…";
+    else if (handsFreeEnabled && micOpen) status.textContent = "Hands-free listening";
+    else if (voiceStatus.status === "idle" && recognitionMode === "browser") status.textContent = "Tap mic to speak";
+    else if (voiceStatus.status === "error" || voiceStatus.status === "unavailable") status.textContent = voiceStatus.message || "Voice unavailable. Tap mic to retry.";
+    else if (voiceStatus.status === "paused") status.textContent = "Paused while app is hidden";
+    else if (voiceStatus.status === "speaking") status.textContent = "Aura responding…";
+    else if (voiceStatus.status === "hearing") status.textContent = "Checking request…";
+    else if (voiceStatus.status === "listening") status.textContent = handsFreeEnabled ? "Hands-free listening" : "Listening…";
+    else if (voiceStatus.status === "starting") status.textContent = "Starting voice…";
+    else if (voiceStatus.status === "restarting") status.textContent = "Reconnecting…";
+    else if (voiceStatus.message && !/^checking speech recognition|starting on-device|starting browser|on-device english recognition is ready|using browser speech recognition/i.test(voiceStatus.message)) status.textContent = voiceStatus.message;
     else if (voiceStatus.status === "speaking") status.textContent = "AURA is responding…";
     else if (voiceStatus.status === "paused") status.textContent = "Paused while the app is hidden.";
-    else if (wakeArmed) status.textContent = "AURA heard you. Say the command.";
+    else if (wakeArmed) status.textContent = "Say your command";
     else status.textContent = "Ready when you are.";
   }
+
+  function prepareWakeAudio() {
+    try {
+      const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextCtor) return;
+      wakeAudioContext ||= new AudioContextCtor();
+      if (wakeAudioContext.state === "suspended") void wakeAudioContext.resume().catch(() => {});
+    } catch { /* Audio feedback is optional. */ }
+  }
+
+  function playWakeChime() {
+    try {
+      prepareWakeAudio();
+      const context = wakeAudioContext;
+      if (!context) return;
+      const now = context.currentTime;
+      for (const [index, frequency] of [660, 880].entries()) {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.0001, now + index * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + index * 0.1 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.1 + 0.11);
+        oscillator.connect(gain); gain.connect(context.destination);
+        activeWakeOscillators.add(oscillator);
+        oscillator.onended = () => activeWakeOscillators.delete(oscillator);
+        oscillator.start(now + index * 0.1); oscillator.stop(now + index * 0.1 + 0.12);
+      }
+    } catch { /* Wake feedback is optional on restricted browsers. */ }
+  }
+
+  function submitHandsFreeCommand(command) {
+    if (!handsFreeEnabled || !current() || !command || busy || document.visibilityState !== "visible" || audioOwners.size) return;
+    handsFreeWakeAt = 0;
+    handsFreeCommand = "";
+    wakeArmed = false;
+    clearTimeout(handsFreeQuietTimer); handsFreeQuietTimer = null;
+    clearTimeout(handsFreeWakeTimer); handsFreeWakeTimer = null;
+    clearTimeout(handsFreeCaptureTimer); handsFreeCaptureTimer = null;
+    handsFreeCaptureStarted = false;
+    input.value = command;
+    renderStatus();
+    void submitCommand(command, { source: "voice" });
+  }
+
+  function handleHandsFreeRecognition({ results = [], previewText = null, text = "", recognitionId = "" } = {}) {
+    if (!handsFreeEnabled || !current()) return;
+    const fullText = String(previewText ?? text).trim();
+    if (!fullText) return;
+    clearTimeout(handsFreeQuietTimer); handsFreeQuietTimer = null;
+    const eventGeneration = ++handsFreeResultGeneration;
+    const wakePattern = /\b(?:hey|okay)\s+aura\b[\s,:-]*/ig;
+    let wake = null, match;
+    while ((match = wakePattern.exec(fullText)) !== null) wake = match;
+    let wakeResultIndex = 0;
+    if (wake && results.length) {
+      let accumulated = "";
+      for (const [index, result] of results.entries()) {
+        accumulated += ` ${String(result?.transcript || "").trim()}`;
+        if (accumulated.length >= wake.index + wake[0].length) { wakeResultIndex = index; break; }
+      }
+    }
+    const wakePhrase = wake ? fullText.slice(wake.index).match(/^(?:hey|okay)\s+aura/i)?.[0].toLowerCase() || "" : "";
+    const wakeKey = wake ? `${recognitionId}:${wakeResultIndex}:${wakePhrase}` : "";
+    if (wake && !handsFreeWakeAt && wakeKey && !consumedHandsFreeWakeKeys.has(wakeKey)) {
+      handsFreeWakeAt = Date.now();
+      handsFreeCommand = "";
+      handsFreeCaptureStarted = false;
+      consumedHandsFreeWakeKeys.add(wakeKey);
+      if (consumedHandsFreeWakeKeys.size > 50) consumedHandsFreeWakeKeys.delete(consumedHandsFreeWakeKeys.values().next().value);
+      wakeArmed = true;
+      playWakeChime();
+      if (!panelOpen) togglePanel(true);
+      clearTimeout(handsFreeWakeTimer);
+      clearTimeout(handsFreeCaptureTimer);
+      handsFreeWakeTimer = setTimeout(() => {
+        if (handsFreeWakeAt && !handsFreeCommand) {
+          clearHandsFreeTimers(); renderStatus();
+        }
+      }, 8000);
+      handsFreeCaptureTimer = setTimeout(() => {
+        clearHandsFreeTimers(); renderStatus();
+      }, 30_000);
+    }
+    if (!handsFreeWakeAt) return;
+    const marker = wake || fullText.match(/\b(?:hey|okay)\s+aura\b[\s,:-]*/i);
+    if (!marker) return;
+    const command = fullText.slice(marker.index + marker[0].length).trim();
+    if (!command) return;
+    clearTimeout(handsFreeWakeTimer);
+    handsFreeWakeTimer = setTimeout(() => {
+      if (handsFreeWakeAt) { clearHandsFreeTimers(); renderStatus(); }
+    }, 8000);
+    handsFreeCommand = command;
+    input.value = command;
+    handsFreeCaptureStarted = true;
+    const relevant = results.filter(result => String(result?.[0]?.transcript || result?.transcript || "").trim());
+    if (!relevant.length || !relevant.every(result => result.isFinal === true)) return;
+    const finalizedCommand = command;
+    handsFreeQuietTimer = setTimeout(() => {
+      if (eventGeneration === handsFreeResultGeneration && finalizedCommand === handsFreeCommand) submitHandsFreeCommand(finalizedCommand);
+    }, 800);
+  }
+
+  function speakReply(text) {
+    if (audioOwners.size || !voiceReplyMode || !handsFreeEnabled && !panelOpen) return false;
+    return session.speak(String(text || ""));
+  }
+
+  function suspendWakeAudio() {
+    for (const oscillator of activeWakeOscillators) { try { oscillator.stop(); } catch { /* Already ended. */ } }
+    activeWakeOscillators.clear();
+    try { if (wakeAudioContext?.state === "running") void wakeAudioContext.suspend().catch(() => {}); } catch { /* Optional audio resource. */ }
+  }
+
+  function resumeWakeAudio() {
+    try { if (wakeAudioContext?.state === "suspended") void wakeAudioContext.resume().catch(() => {}); } catch { /* Optional audio resource. */ }
+  }
+
+  function cancelAuraSpeech() { session.cancelSpeech({ resume: audioOwners.size === 0 }); }
 
   function armInactivityPause() {
     if (inactivityTimer != null) clearTimeout(inactivityTimer);
@@ -230,7 +399,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         commandController = null;
         operationEpoch += 1;
         busy = false;
-        session.setBusy(false);
+        setRecognitionBusy(false);
         if (conversation.auraMode !== "IDLE") conversation = reduceAuraConversation(conversation, { type: "PAUSE" });
         renderCartControls();
         voiceStatus = { status: "paused", message: "Paused after two quiet minutes. Tap Resume to listen again." };
@@ -255,8 +424,9 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     return { text, spans };
   }
 
-  function handleRecognition({ results = [], text = "", previewText = null, resultIndex = 0, epoch = null, recognitionId = null, recognitionMode: resultMode = null } = {}) {
+  function handleRecognition({ results = [], text = "", previewText = null, resultIndex = 0, epoch = null, recognitionId = null, recognitionMode: resultMode = null, handsFree = false, tapToTalk = false } = {}) {
     if (!current()) return;
+    if (handsFree) { handleHandsFreeRecognition({ results, text, previewText, recognitionId }); return; }
     epoch = recognitionId ?? epoch;
     if (recognitionEpoch !== epoch) {
       recognitionEpoch = epoch;
@@ -270,12 +440,12 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     if (results.length && !freshResults.length) return;
     const stream = joinedResults(freshResults);
     const fullText = resultMode === "browser" ? String(previewText ?? text).trim() : stream.text || String(text ?? "").trim();
-    if (resultMode === "browser") input.value = fullText.replace(/^.*?\bhey\s+aura\b[\s,:-]*/i, "").trim();
+    if (resultMode === "browser") input.value = fullText.replace(/^.*?\b(?:hey|okay)\s+aura\b[\s,:-]*/i, "").trim();
     if (!fullText) return;
 
     let commandText = "";
     let commandStart = 0;
-    const wakeMatch = fullText.match(/\bhey\s+aura\b[\s,:-]*/i);
+    const wakeMatch = fullText.match(/\b(?:hey|okay)\s+aura\b[\s,:-]*/i);
     if (resultMode === "browser") {
       // A browser-mode microphone tap is the activation. Wake words are
       // optional because browser speech is one utterance per explicit tap.
@@ -285,6 +455,15 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       } else {
         commandText = fullText;
       }
+      wakeArmed = false;
+      if (!panelOpen) togglePanel(true);
+    } else if (tapToTalk) {
+      // A direct mic tap is the activation for this one-shot turn. A wake
+      // phrase is optional, and any one present is stripped from the command.
+      if (wakeMatch) {
+        commandStart = wakeMatch.index + wakeMatch[0].length;
+        commandText = fullText.slice(commandStart).trim();
+      } else commandText = fullText;
       wakeArmed = false;
       if (!panelOpen) togglePanel(true);
     } else if (wakeMatch) {
@@ -371,7 +550,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     }
     operationEpoch += 1;
     busy = true;
-    session.setBusy(true);
+    setRecognitionBusy(true);
     return signal;
   }
 
@@ -556,7 +735,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       : String(response.reply || "I checked the current inventory.").slice(0, 1200);
     setMessage(reply);
     const numericActions = prepared.filter(action => action.type === "inventory_result" && action.operation !== "lot_lookup");
-    if (!incompleteData && !numericActions.some(action => !action.trustedTotal) && response.speech) session.speak(String(response.speech).slice(0, 600));
+    if (!incompleteData && !numericActions.some(action => !action.trustedTotal) && response.speech) speakReply(String(response.speech));
     for (const action of prepared) {
       if (action.type === "inventory_result") {
         const data = action.data;
@@ -607,7 +786,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     clearTimeout(commandBudgets.get(signal)?.timer);
     if (commandController?.signal !== signal) return;
     busy = false;
-    session.setBusy(false);
+    setRecognitionBusy(false);
     if (recognitionMode === "browser" && !session.enabled && voiceStatus.status !== "speaking") {
       voiceStatus = { status: "idle", message: "" };
       renderStatus();
@@ -711,7 +890,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       conversation = reduceAuraConversation(conversation, { type: "STARTED", party: selected });
       setMessage(`Request started for ${selected.label || selected.customerName}. What items would you like?`);
       renderCartControls();
-      session.speak("Request started. What items would you like?");
+      speakReply("Request started. What items would you like?");
       return;
     }
     if (choice.kind === "privacy-party") {
@@ -753,7 +932,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     const reply = existing
       ? `Updated the request to ${cumulativeQuantity} ${match.contsize} ${match.commonname}.`
       : `Added ${intent.quantity} ${match.contsize} ${match.commonname} from ${lot.locationcode || "the selected location"}.`;
-    setMessage(reply); session.speak(reply);
+    setMessage(reply); speakReply(reply);
   }
 
   async function continueMatchedIntent(intent, match, parentSignal = null) {
@@ -769,7 +948,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         const scope = `${intent.locationCode ? ` in ${intent.locationCode}` : ""} for ${intent.season || data.season || "the current season"}`;
         const kind = metricFor(intent) === "ptronhand" ? "on hand" : "available";
         const reply = `${formatQuantity(data.total)} ${match.contsize} ${match.commonname}${scope} ${kind}.`;
-        setMessage(reply); session.speak(reply);
+        setMessage(reply); speakReply(reply);
         if (Array.isArray(data.rows) && data.rows.length) { showRows(data.rows); renderCartControls(); }
       }
     } catch (error) { showCommandError(error, signal, () => continueMatchedIntent(intent, match)); }
@@ -786,7 +965,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       if (!current() || signal.aborted) return;
       if (staged?.ok === false) throw new Error(staged.message || "The request could not be staged for review.");
       const message = staged?.message || (typeof staged === "string" ? staged : "Draft opened in Bloom Picker. Review it there before submitting.");
-      setMessage(message); session.speak("Draft is ready for your review. Nothing has been submitted.");
+      setMessage(message); speakReply("Draft is ready for your review. Nothing has been submitted.");
       conversation = reduceAuraConversation(conversation, { type: "HANDED_OFF" }); renderCartControls();
       partyRef = null;
       togglePanel(false);
@@ -819,6 +998,8 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   async function submitCommand(rawText, { source = "typed" } = {}) {
     if (!current()) return;
+    cancelAuraSpeech();
+    voiceReplyMode = source === "voice";
     if (queryPanel) { await queryPanel.submit(rawText, source); return; }
     if (String(rawText || "").length > 2000) {
       setMessage("AURA commands can be up to 2,000 characters. Shorten the command and try again.");
@@ -845,7 +1026,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       content.querySelectorAll(".aura-choice").forEach((node) => node.remove());
     }
     if (intent.type === "CANCEL_REQUEST") {
-      commandController?.abort(); commandController = null; busy = false; operationEpoch += 1; session.setBusy(false); pendingChoice = null;
+      commandController?.abort(); commandController = null; busy = false; operationEpoch += 1; setRecognitionBusy(false); pendingChoice = null;
       conversation = reduceAuraConversation(conversation, { type: "CANCEL" }); renderCartControls();
       partyRef = null;
       selectedPrivacyParty = null;
@@ -868,7 +1049,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       if (intent.recipientType === "department") {
         const unavailable = "Department recipients aren’t configured yet, so I didn’t send anything.";
         setMessage(unavailable);
-        session.speak(unavailable);
+        speakReply(unavailable);
         return;
       }
       if (typeof sendMessage !== "function") {
@@ -885,7 +1066,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         const recipient = response?.recipientName || intent.recipientName;
         const confirmation = `Message sent to ${recipient}.`;
         setMessage(confirmation);
-        session.speak(confirmation);
+        speakReply(confirmation);
       } catch (error) {
         if (!current() || signal.aborted) return;
         setMessage(error?.message || "The message was not sent. You can retry explicitly.");
@@ -908,7 +1089,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
           partyRef = null;
           conversation = reduceAuraConversation(conversation, { type: "STARTED", party: parties[0] });
           const reply = `Request started for ${parties[0].label || parties[0].customerName}. What items would you like?`;
-          setMessage(reply); session.speak(reply); return;
+          setMessage(reply); speakReply(reply); return;
         }
         pendingChoice = { intent };
         conversation = reduceAuraConversation(conversation, { type: "CHOICES", kind: "party", intent, items: parties });
@@ -1007,7 +1188,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
         const season = intent.season || data.season || "current season";
         const scope = intent.locationCode ? ` in ${intent.locationCode}` : "";
         const reply = winner ? `The largest ${season}${scope} ${metricLabel} value is ${winner.commonname}, ${winner.contsize}: ${formatQuantity(winner.total)}${Number(data.tieCount) > 1 ? `, tied with ${Number(data.tieCount) - 1} other item${Number(data.tieCount) === 2 ? "" : "s"}` : ""}.` : `No complete inventory result was available for ${season}${scope}.`;
-        setMessage(reply); session.speak(reply);
+        setMessage(reply); speakReply(reply);
       } catch (error) { showCommandError(error, signal); }
       finally { finishSignal(signal); }
       return;
@@ -1049,13 +1230,13 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
           content.append(make("p", "aura-message", `Showing ${rows.length} matching rows. More rows are available in the inventory view.`));
         }
         if (rows.length) showRows(rows);
-        session.speak(summary);
+        speakReply(summary);
         return;
       }
       if (!rows.length) {
         const summary = intent.type === "order" ? "No eligible lot has enough available quantity for that order." : "I couldn’t find an exact inventory row at that location.";
         setMessage(summary);
-        session.speak(summary);
+        speakReply(summary);
         return;
       }
       const noun = intent.type === "order" ? "eligible lot" : "matching location";
@@ -1083,7 +1264,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
           if (!current() || signal.aborted) return;
           if (result?.ok === false) throw new Error(result.message || "Bloom Picker could not prepare that draft.");
           setMessage(typeof result === "string" && result ? result : result?.message || "Order details are ready in Bloom Picker. Review them there, then submit when they look right.");
-          session.speak("Order draft is staged. Give it a quick review, then you’re clear to submit.");
+          speakReply("Order draft is staged. Give it a quick review, then you’re clear to submit.");
           togglePanel(false);
         } catch (error) { if (!signal.aborted) setMessage(error?.message || "I couldn’t open the Bloom Picker draft."); }
         finally { finishSignal(signal); review.disabled = false; }
@@ -1107,7 +1288,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
           await saveScout(pendingIntent, row, { signal, idempotencyKey: idempotencyKeys.get(inventoryUid) });
           if (!current() || signal.aborted) return;
           setMessage("Scouting log sent for review. No inventory was changed.");
-          session.speak("Scouting note logged for review. That row is flagged.");
+          speakReply("Scouting note logged for review. That row is flagged.");
           actions.remove();
         } catch (error) {
           if (!current() || signal.aborted) return;
@@ -1128,6 +1309,63 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     if (panelOpen) input.focus({ preventScroll: true });
   }
 
+  function clearHandsFreeTimers() {
+    for (const timer of [handsFreeQuietTimer, handsFreeWakeTimer, handsFreeCaptureTimer]) if (timer != null) clearTimeout(timer);
+    handsFreeQuietTimer = handsFreeWakeTimer = handsFreeCaptureTimer = null;
+    handsFreeWakeAt = 0; handsFreeCommand = ""; handsFreeCaptureStarted = false; wakeArmed = false;
+  }
+
+  function resumeHandsFree() {
+    if (!handsFreeEnabled || destroyed || !current() || document.visibilityState !== "visible" || audioOwners.size || busy) return false;
+    void session.startHandsFree();
+    return true;
+  }
+
+  function startHandsFreeFromGesture() {
+    if (destroyed || !current() || busy || document.visibilityState !== "visible" || audioOwners.size) return false;
+    const wasHandsFree = handsFreeEnabled;
+    handsFreeEnabled = true;
+    prepareWakeAudio();
+    if (inactivityTimer != null) clearTimeout(inactivityTimer);
+    inactivityTimer = null;
+    // Keep the call in the trusted event stack so browsers can grant mic access.
+    if (!wasHandsFree && session.enabled) session.stop();
+    void session.startHandsFree();
+    return true;
+  }
+
+  function setHandsFreeAutoStart(enabled) {
+    handsFreeAutostartEnabled = Boolean(enabled);
+    try { if (handsFreeStorageKey) window.localStorage.setItem(handsFreeStorageKey, String(handsFreeAutostartEnabled)); } catch { /* Storage can be disabled. */ }
+    try { onHandsFreePreferenceChange(handsFreeAutostartEnabled); } catch { /* Settings synchronization is optional. */ }
+    if (handsFreeAutostartEnabled) startHandsFreeFromGesture();
+    else { handsFreeEnabled = false; clearHandsFreeTimers(); session.stop(); }
+    return handsFreeAutostartEnabled;
+  }
+
+  function onFirstTrustedGesture(event) {
+    if (!handsFreeAutostartEnabled || event.isTrusted !== true || document.visibilityState !== "visible" || audioOwners.size || busy || !current()) return;
+    document.removeEventListener("pointerdown", onFirstTrustedGesture, true);
+    document.removeEventListener("keydown", onFirstTrustedGesture, true);
+    document.removeEventListener("touchstart", onFirstTrustedGesture, true);
+    startHandsFreeFromGesture();
+  }
+
+  const audioCoordinator = {
+    claim(owner = "external") {
+      const key = String(owner);
+      const wasEmpty = audioOwners.size === 0;
+      audioOwners.add(key);
+      if (wasEmpty) { clearHandsFreeTimers(); suspendWakeAudio(); session.stop(); }
+      return () => audioCoordinator.release(key);
+    },
+    release(owner = "external") {
+      audioOwners.delete(String(owner));
+      if (!audioOwners.size) { setRecognitionBusy(busy); resumeWakeAudio(); resumeHandsFree(); }
+    },
+  };
+  try { window.GncAuraAudio = audioCoordinator; } catch { /* Exposed only where a window exists. */ }
+
   function onSubmit(event) {
     event.preventDefault();
     const value = input.value.trim();
@@ -1135,38 +1373,49 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     submitCommand(value);
   }
   function onMicClick() {
-    if (!current() || busy) return;
-    if (session.enabled) { session.stop(); if (inactivityTimer != null) clearTimeout(inactivityTimer); inactivityTimer = null; }
+    if (!current() || busy || audioOwners.size) return;
+    if (session.enabled && handsFreeEnabled) {
+      handsFreeEnabled = false; clearHandsFreeTimers(); session.stop();
+      void session.startTapToTalk(); armInactivityPause();
+    }
+    else if (session.enabled) { handsFreeEnabled = false; clearHandsFreeTimers(); session.stop(); if (inactivityTimer != null) clearTimeout(inactivityTimer); inactivityTimer = null; }
     else {
+      handsFreeEnabled = false;
       if (conversation.auraMode === "PAUSED") conversation = reduceAuraConversation(conversation, { type: "RESUME" });
       if (conversation.auraMode === "CHOOSING" && conversation.choice) renderChoiceButtons(conversation.choice.items, selectChoice);
       renderCartControls();
-      void session.start(); armInactivityPause();
+      void session.startTapToTalk(); armInactivityPause();
     }
   }
 
   function onWidgetVisibilityChange() {
     if (document.visibilityState === "hidden") {
+      clearHandsFreeTimers();
+      suspendWakeAudio();
       void queryPanel?.cancel();
       session.stop();
       commandController?.abort();
       commandController = null;
       busy = false;
       operationEpoch += 1;
-      session.setBusy(false);
+      setRecognitionBusy(false);
       wakeArmed = false;
       if (conversation.auraMode !== "IDLE") conversation = reduceAuraConversation(conversation, { type: "PAUSE" });
       if (inactivityTimer != null) clearTimeout(inactivityTimer);
       inactivityTimer = null;
       renderCartControls();
-    }
+    } else { resumeWakeAudio(); if (handsFreeEnabled) resumeHandsFree(); }
   }
 
   fab.addEventListener("click", () => togglePanel());
+  root.addEventListener("click", () => { voiceReplyMode = false; }, true);
   closeButton.addEventListener("click", () => togglePanel(false));
   inputbar.addEventListener("submit", onSubmit);
   micButton.addEventListener("click", onMicClick);
   document.addEventListener("visibilitychange", onWidgetVisibilityChange);
+  document.addEventListener("pointerdown", onFirstTrustedGesture, true);
+  document.addEventListener("keydown", onFirstTrustedGesture, true);
+  document.addEventListener("touchstart", onFirstTrustedGesture, true);
   renderVoiceMode();
   renderStatus();
 
@@ -1190,7 +1439,13 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     message.textContent = "";
     if (inactivityTimer != null) clearTimeout(inactivityTimer);
     document.removeEventListener("visibilitychange", onWidgetVisibilityChange);
+    document.removeEventListener("pointerdown", onFirstTrustedGesture, true);
+    document.removeEventListener("keydown", onFirstTrustedGesture, true);
+    document.removeEventListener("touchstart", onFirstTrustedGesture, true);
+    clearHandsFreeTimers();
+    try { if (wakeAudioContext) void wakeAudioContext.close().catch(() => {}); } catch { /* Optional audio resource. */ }
     session.destroy();
+    if (window.GncAuraAudio === audioCoordinator) delete window.GncAuraAudio;
     root.remove();
     if (ownsStyle) style?.remove();
   }
@@ -1199,6 +1454,11 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     destroy,
     // Starts listening only if microphone permission is already granted; it never prompts.
     startIfAllowed: () => session.startIfAllowed(),
+    startHandsFreeFromGesture,
+    getHandsFreeAutoStart: () => handsFreeAutostartEnabled,
+    setHandsFreeAutoStart,
+    claimAudio: audioCoordinator.claim,
+    releaseAudio: audioCoordinator.release,
   };
 }
 

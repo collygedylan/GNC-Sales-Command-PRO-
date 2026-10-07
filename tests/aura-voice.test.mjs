@@ -146,6 +146,65 @@ test("AURA starts only with existing permission and prefers continuous local rec
   } finally { await browser.restore(); }
 });
 
+test("tap-to-talk is one local utterance and never auto-restarts after final speech or TTS", async () => {
+  const env = fakeRecognitionEnvironment();
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({ onTranscript: (text, metadata) => transcripts.push({ text, metadata }) });
+    assert.equal(await session.startTapToTalk(), true);
+    assert.equal(env.engines.length, 1);
+    const engine = env.engines[0];
+    assert.equal(engine.processLocally, true);
+    assert.equal(engine.continuous, false, "local tap-to-talk should capture one utterance");
+    engine.onresult({ results: [speechResult("How many roses?", true)], resultIndex: 0 });
+    assert.equal(transcripts.length, 1);
+    engine.onend();
+    assert.equal(session.enabled, false, "the final turn closes the one-shot session");
+    session.setBusy(true);
+    session.setBusy(false);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(env.engines.length, 1, "completion and busy release must not reopen the one-shot mic");
+    session.destroy();
+  } finally { await env.restore(); }
+});
+
+test("tap-to-talk browser fallback remains one-shot", async () => {
+  const env = fakeRecognitionEnvironment({ available: "unavailable" });
+  const transcripts = [];
+  try {
+    const session = createAuraVoiceSession({ onTranscript: (text, metadata) => transcripts.push({ text, metadata }) });
+    assert.equal(await session.startTapToTalk(), true);
+    const engine = env.engines[0];
+    assert.equal(engine.processLocally, false);
+    assert.equal(engine.continuous, false);
+    engine.onresult({ results: [speechResult("Hey Aura, show roses", true)], resultIndex: 0 });
+    engine.onend();
+    assert.equal(session.enabled, false);
+    assert.equal(transcripts.length, 1);
+    assert.equal(transcripts[0].metadata.recognitionMode, "browser");
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(env.engines.length, 1, "browser fallback should not reopen after a tap");
+    session.destroy();
+  } finally { await env.restore(); }
+});
+
+test("hands-free can use continuous browser recognition and identifies preview results", async () => {
+  const env = fakeRecognitionEnvironment({ available: "unavailable", supportsProcessLocally: true });
+  const states = [], previews = [];
+  const session = createAuraVoiceSession({ onState: state => states.push(state), onRecognition: event => previews.push(event) });
+  try {
+    assert.equal(await session.startHandsFree(), true);
+    await flush();
+    const engine = env.engines[0];
+    assert.equal(engine.continuous, true);
+    assert.equal(engine.processLocally, false);
+    engine.onresult({ resultIndex: 0, results: [speechResult("Okay Aura", false)] });
+    assert.equal(previews[0].handsFree, true);
+    assert.equal(previews[0].recognitionMode, "browser");
+    assert.equal(session.enabled, true);
+  } finally { session.destroy(); await env.restore(); }
+});
+
 test("permission denial stays terminal and startIfAllowed never opens browser recognition", async () => {
   const denied = fakeRecognitionEnvironment({ permission: "prompt" });
   try {
@@ -713,6 +772,51 @@ test("Stop fences a late synthesis completion from restarting the microphone", a
   } finally { await browser.restore(); }
 });
 
+test("native speech splits long answers sequentially and cancelSpeech fences remaining chunks", async () => {
+  const env = fakeRecognitionEnvironment();
+  const utterances = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
+    getVoices: () => [{ name: "Local English", lang: "en-US", localService: true }],
+    cancel() {}, speak(value) { utterances.push(value); },
+  } });
+  Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
+  const session = createAuraVoiceSession();
+  try {
+    const answer = Array.from({ length: 40 }, (_, index) => `Inventory detail ${index + 1}.`).join(" ");
+    assert.equal(session.speak(answer), true);
+    assert.equal(utterances.length, 1, "only the first speech chunk is queued initially");
+    assert.ok(utterances[0].text.length <= 220);
+    let guard = 0;
+    while (utterances.at(-1)?.onend && guard++ < 30) utterances.at(-1).onend();
+    assert.ok(utterances.length > 2);
+    assert.ok(utterances.every(item => item.text.length <= 220));
+
+    assert.equal(session.speak(answer), true);
+    const queued = utterances.length;
+    session.cancelSpeech();
+    utterances.at(-1).onend?.();
+    assert.equal(utterances.length, queued, "cancelled speech cannot enqueue another answer chunk");
+  } finally { session.destroy(); await env.restore(); }
+});
+
+test("native speech uses the browser default English voice while the voice list is empty", async () => {
+  const env = fakeRecognitionEnvironment();
+  const utterances = [];
+  class FakeUtterance { constructor(text) { this.text = text; } }
+  Object.defineProperty(window, "speechSynthesis", { configurable: true, value: {
+    getVoices: () => [], cancel() {}, speak(value) { utterances.push(value); },
+  } });
+  Object.defineProperty(window, "SpeechSynthesisUtterance", { configurable: true, value: FakeUtterance });
+  const session = createAuraVoiceSession();
+  try {
+    assert.equal(session.speak("Ready."), true, "an empty voice list should fall back to native browser synthesis");
+    assert.equal(utterances.length, 1);
+    assert.equal(utterances[0].voice, undefined);
+    assert.equal(utterances[0].lang, "en-US");
+  } finally { session.destroy(); await env.restore(); }
+});
+
 test("onend restart uses capped exponential delay and stops after repeated failures", async () => {
   const browser = fakeRecognitionEnvironment();
   const originalSetTimeout = globalThis.setTimeout;
@@ -895,7 +999,7 @@ test("AURA V2 rechecks cumulative SKU quantities and handles zero counts without
   } finally { widget.destroy(); await browser.restore(); }
 });
 
-test("AURA V2 accepts follow-up items without another wake word and consumes final results once", async () => {
+test("AURA V2 accepts follow-up items on a fresh tap without another wake word", async () => {
   const browser = fakeRecognitionEnvironment();
   const calls = [];
   const widget = mountAuraWidget({
@@ -915,12 +1019,14 @@ test("AURA V2 accepts follow-up items without another wake word and consumes fin
     const onresult = engine.onresult;
     onresult({ results: [speechResult("Hey Aura, start a request for Megan", true)], resultIndex: 0 });
     await flush();
+    document.querySelector(".aura-mic").click(); await flush();
     const followupEngine = browser.engines.at(-1);
     followupEngine.onresult({ results: [speechResult("50 three deep pee Limelight", true)], resultIndex: 0 });
     await flush();
     await chooseAuraStandardFallback();
     assert.deepEqual(calls.filter(call => call.operation === "lots").map(call => call.quantity), [50], document.querySelector(".aura-message")?.textContent);
     assert.match(document.querySelector(".aura-message").textContent, /added 50 3DP Limelight/i);
+    document.querySelector(".aura-mic").click(); await flush();
     const repeatedIntentEngine = browser.engines.at(-1);
     repeatedIntentEngine.onresult({ results: [speechResult("50 three deep pee Limelight", true)], resultIndex: 0 });
     await flush();

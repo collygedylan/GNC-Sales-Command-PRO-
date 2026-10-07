@@ -1,5 +1,79 @@
 import { expect, test } from '@playwright/test';
 
+for (const theme of ['light', 'dark'] as const) {
+  test(`Queue and Item Detail respect ${theme} app preference with opposite OS preference`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: theme === 'dark' ? 'light' : 'dark' });
+    const html = await (await page.request.get('/index.html')).text();
+    await page.goto('/tests/fixtures/ops-precision-browser.html');
+    await page.evaluate(({ html, theme }) => {
+      const source = new DOMParser().parseFromString(html, 'text/html');
+      const opsSheet = document.querySelector('link[href*="ops-precision-pilot.css"]')!;
+      // Use production inline selectors as well as its compiled Tailwind sheet.
+      for (const style of source.querySelectorAll('style')) document.head.insertBefore(style.cloneNode(true), opsSheet);
+      const sheet = document.createElement('link'); sheet.rel = 'stylesheet';
+      sheet.href = '/assets/live-tailwind-v2026082010.min.css';
+      document.head.insertBefore(sheet, opsSheet);
+      document.body.dataset.opsTheme = theme;
+      const host = document.querySelector('#view-wrapper')!;
+      host.innerHTML = '<section id="view-request"></section><section id="view-detail" class="detail-request-mode"><div id="det-season-content"></div><div id="det-request-content"></div></section>';
+      const copy = (id: string, target: string) => {
+        const original = source.getElementById(id);
+        if (!original) throw new Error('Missing production control: ' + id);
+        const node = original.cloneNode(true) as HTMLElement;
+        for (const element of [node, ...node.querySelectorAll('*')]) {
+          for (const attribute of [...element.attributes]) if (attribute.name.startsWith('on')) element.removeAttribute(attribute.name);
+        }
+        node.classList.remove('hidden');
+        host.querySelector(target)!.appendChild(node);
+      };
+      copy('request-search', '#view-request');
+      copy('detail-overview-drive-fields', '#det-season-content');
+      copy('req-spec', '#det-request-content');
+      copy('req-av-note-wrap', '#det-request-content');
+      copy('req-comments-wrap', '#det-request-content');
+      copy('inventory-edit-route-type', '#det-request-content');
+      copy('inventory-edit-reason', '#det-request-content');
+      (host.querySelector('#req-comments') as HTMLTextAreaElement).disabled = true;
+      const nested = document.createElement('div');
+      nested.innerHTML = '<div class="request-av-option-full-card is-disabled"><div class="request-av-option-selectbar"><span class="request-av-option-selectbar-main">AV Options</span><span class="request-av-option-selectbar-reason">Unavailable</span></div></div><div class="crop-roll-form-card"><label>Inventory Checks<input id="nested-inventory-check" class="crop-roll-field-control" placeholder="No recorded check" disabled></label><div class="app-empty-state">No checks recorded</div></div>';
+      host.querySelector('#det-request-content')!.appendChild(nested);
+      const probe = document.createElement('div');
+      probe.id = 'dark-variant-probe'; probe.className = source.getElementById('detail-overview-drive-fields')!.className;
+      // Remove legacy bg-white mapping to prove the actual compiled dark utility activates.
+      probe.classList.remove('bg-white', 'hidden'); probe.textContent = 'Inventory Checks';
+      host.querySelector('#det-request-content')!.appendChild(probe);
+      host.querySelectorAll<HTMLElement>('#view-request,#view-detail,#det-request-content,#det-season-content').forEach(node => { node.style.display = 'block'; });
+    }, { html, theme });
+    await page.locator('#req-spec').focus();
+    await expect.poll(() => page.locator('#req-spec').evaluate(node => getComputedStyle(node).backgroundColor))
+      .toBe(theme === 'dark' ? 'rgb(10, 18, 14)' : 'rgb(255, 255, 255)');
+    for (const selector of ['#request-search', '#req-av-note', '#req-comments', '#detail-overview-drive-fields', '#inventory-edit-route-type', '#inventory-edit-reason']) {
+      const colors = await page.locator(selector).evaluate(node => {
+        const style = getComputedStyle(node);
+        return { background: style.backgroundColor, text: style.color };
+      });
+      expect(colors.background).not.toBe('rgba(0, 0, 0, 0)');
+      expect(colors.background).not.toBe(colors.text);
+      if (theme === 'dark') expect(colors.background).not.toBe('rgb(255, 255, 255)');
+    }
+    await expect(page.locator('#nested-inventory-check')).toBeDisabled();
+    for (const selector of ['.request-av-option-full-card', '.request-av-option-selectbar', '#nested-inventory-check']) {
+      const color = await page.locator(selector).evaluate(node => getComputedStyle(node).backgroundColor);
+      expect(color).not.toBe('rgba(0, 0, 0, 0)');
+      if (theme === 'dark') expect(color).not.toMatch(/rgb\((?:255, 255, 255|248, 250, 252|236, 253, 245)\)/);
+    }
+    if (theme === 'dark') {
+      // This independent probe has no legacy bg-white override or ID-specific surface rule.
+      await page.locator('#dark-variant-probe').evaluate(node => document.querySelector('#view-request')!.appendChild(node));
+      await expect.poll(() => page.locator('#dark-variant-probe').evaluate(node => getComputedStyle(node).backgroundColor)).toBe('rgb(10, 18, 14)');
+    }
+    const screenshotPath = testInfo.outputPath(`queue-detail-${theme}.png`);
+    await page.screenshot({ path: screenshotPath });
+    await testInfo.attach(`queue-detail-${theme}`, { path: screenshotPath, contentType: 'image/png' });
+  });
+}
+
 for (const width of [320, 390, 430]) {
   for (const theme of ['light', 'dark'] as const) {
     test(`.011 ${theme} materials stay usable at ${width}px`, async ({ page }, testInfo) => {
