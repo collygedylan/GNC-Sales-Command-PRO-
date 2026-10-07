@@ -23,5 +23,6 @@ These are single-run development measurements, not a production latency guarante
 
 - Focused unit/component checks cover memoization, bounded shell output, sibling controls, retained edits, duplicate/retried commands, concurrent saves, account changes, focus, layout observers, and release assets.
 - Browser coverage checks responsive cards/table, complete search/export semantics, filters, low-stock editing, override badges, and 10,000/25,000-row virtualization.
-- Local source-adapter browser checks passed for responsive rendering, complete-list search, and stress scrolling. The older perennial fixture's exact-row resolver assertion still failed in that adapter; the assertion is retained for the required compiled cloud matrix.
+- Local source-adapter browser checks passed for responsive rendering, complete-list search, and stress scrolling. Focused checks against the downloaded cloud-built artifact also passed for filters/export/sorting, perennial overrides and exact-row resolution, and 25,000-row scrolling after the first CI repair. The earlier source-adapter resolver failure did not reproduce against the compiled artifact.
+- The first CI run caught toolbar state retained while an action button held focus; refresh deferral now applies only to editable fields. Its scroll fixture now makes up to four bounded bottom-scroll attempts as variable-height measurements settle, retaining final-record, bounded-DOM, and no-recomputation assertions.
 - The required cloud release suites remain the publication gate. No tests are skipped or quarantined.

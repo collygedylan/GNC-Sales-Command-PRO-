@@ -134914,7 +134914,9 @@ C.14.043 C.15.000
             const template = document.createElement('template'); template.innerHTML = html;
             const chrome = template.content.querySelector('[data-manager-assigned-chrome]');
             if (!chrome) return true; // Retain the last complete view while a refresh is loading.
-            if (!current.contains(document.activeElement)) {
+            const editingToolbarValue = current.contains(document.activeElement)
+                && document.activeElement.matches('input,select,textarea');
+            if (!editingToolbarValue) {
                 const bulkValue = current.querySelector('#manager-eval-bulk-assignee')?.value;
                 current.replaceChildren(...chrome.childNodes);
                 const bulk = current.querySelector('#manager-eval-bulk-assignee');
