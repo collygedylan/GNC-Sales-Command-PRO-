@@ -56,6 +56,18 @@ test('Eval Reports #2 projects each lot from its exact source UID', () => {
   assert.match(consumers, /ROW_ASSIGNMENT_EVAL_REPORT_PROJECTION_SOURCE_MISMATCH/);
 });
 
+test('Eval Reports migration matches one exact LF or CRLF fragment without normalizing the stored function', () => {
+  const projection = consumers.slice(consumers.indexOf('-- Eval Reports #2'), consumers.indexOf('-- Review setup'));
+  assert.match(projection, /old_projection := replace\(old_projection, chr\(13\) \|\| chr\(10\), chr\(10\)\)/);
+  assert.match(projection, /crlf_projection := replace\(old_projection, chr\(10\), chr\(13\) \|\| chr\(10\)\)/);
+  assert.match(projection, /if lf_matches \+ crlf_matches <> 1 then/);
+  assert.match(projection, /if crlf_matches = 1 then[\s\S]*old_projection := crlf_projection/);
+  assert.match(projection, /execute replace\(definition, old_projection, new_projection\)/);
+  assert.doesNotMatch(projection, /definition := (?:replace|regexp_replace)/);
+  const workflow = read('../.github/workflows/release-database.yml');
+  assert.match(workflow, /node supabase\/ci\/inventory_row_assignment_line_endings_pglite\.mjs --pglite-root "\$pglite_root"/);
+});
+
 test('new Eval Work uses exact recipients and issued work preserves its saved authorization', () => {
   assert.match(consumers, /create or replace function private\.eval_work_assignment_users_v1\(p_itemcode text\)[\s\S]*?a\.master_unique_id = m\.unique_id/);
   assert.match(consumers, /old_owner_gate text := \$old\$[\s\S]*?eval_work_match_assignment_users_v1\(work\.itemcode, selected_filters\)/);

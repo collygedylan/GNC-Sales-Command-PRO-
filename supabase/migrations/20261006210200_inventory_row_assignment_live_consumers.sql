@@ -72,6 +72,9 @@ $migration$;
 do $migration$
 declare
   definition text;
+  crlf_projection text;
+  lf_matches integer;
+  crlf_matches integer;
   old_projection text := $old$
         'assignedToUsers', coalesce((
           select jsonb_agg(distinct coalesce(nullif(private.eval_normalize_user_v2(a.assignedto), ''), 'unassigned'))
@@ -89,8 +92,19 @@ $old$;
 $new$;
 begin
   select pg_get_functiondef('public.list_eval_report2_itemcodes_v1(jsonb)'::regprocedure) into definition;
-  if position(old_projection in definition) = 0 then
+  -- Stored function bodies may retain CRLF while pg_get_functiondef's header
+  -- uses LF. Match only this exact fragment; leave all other source bytes alone.
+  old_projection := replace(old_projection, chr(13) || chr(10), chr(10));
+  new_projection := replace(new_projection, chr(13) || chr(10), chr(10));
+  crlf_projection := replace(old_projection, chr(10), chr(13) || chr(10));
+  lf_matches := (length(definition) - length(replace(definition, old_projection, ''))) / length(old_projection);
+  crlf_matches := (length(definition) - length(replace(definition, crlf_projection, ''))) / length(crlf_projection);
+  if lf_matches + crlf_matches <> 1 then
     raise exception using errcode = '55000', message = 'ROW_ASSIGNMENT_EVAL_REPORT_PROJECTION_SOURCE_MISMATCH';
+  end if;
+  if crlf_matches = 1 then
+    old_projection := crlf_projection;
+    new_projection := replace(new_projection, chr(10), chr(13) || chr(10));
   end if;
   execute replace(definition, old_projection, new_projection);
 end
