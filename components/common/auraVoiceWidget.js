@@ -1,7 +1,8 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.06.004";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.06.004";
-import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.06.004";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.06.004";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.06.005";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.06.005";
+import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.06.005";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.06.005";
+import { mountAuraQueryPanel } from "./auraQueryPanel.js?v=V2026.10.06.005";
 
 const STYLE_ID = "aura-voice-widget-styles";
 
@@ -44,6 +45,13 @@ const CSS = `
 [data-aura-root] .aura-choice{display:block;width:100%;text-align:left;margin:6px 0}
 [data-aura-root] .aura-action.primary{color:#052e16;background:#4ade80;border-color:#4ade80}
 [data-aura-root] .aura-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+[data-aura-root] .aura-chat-toolbar{padding:0 12px 10px;border-bottom:1px solid var(--aura-border)}
+[data-aura-root] .aura-chat-title{display:block;width:100%;font-size:12px;color:var(--aura-muted)}
+[data-aura-root] .aura-chat-history p{margin:6px 0;overflow-wrap:anywhere}
+[data-aura-root] .aura-chat-history dt{font-size:11px;color:var(--aura-muted)}
+[data-aura-root] .aura-chat-history dd{margin:0 0 5px;overflow-wrap:anywhere}
+[data-aura-root] .aura-chat-user{border-left:3px solid var(--aura-accent)}
+[data-aura-root] .aura-chat-history .aura-action{margin:4px;min-height:44px}
 [data-aura-root] .aura-inputbar{display:grid;grid-template-columns:minmax(0,1fr) 48px 48px;gap:8px;padding:12px;border-top:1px solid var(--aura-border);background:rgba(0,0,0,.12)}
 [data-aura-root] input{width:100%;min-width:0;min-height:48px;padding:10px 12px;border:1px solid var(--aura-border);border-radius:12px;color:var(--aura-text);background:rgba(0,0,0,.16);font:16px/1.3 system-ui,sans-serif}
 [data-aura-root] .aura-mic{position:relative;overflow:hidden;width:48px;height:48px;border:1px solid rgba(74,222,128,.7);border-radius:14px;color:#f0fdf4;background:rgba(34,197,94,.12);cursor:pointer}
@@ -56,7 +64,7 @@ const CSS = `
 `;
 
 /** Mount after the shell has verified Dylan's native session; this module never authenticates users itself. */
-export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false } = {}) {
+export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, requestAssistant, openAssistantAction, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false } = {}) {
   if (typeof document === "undefined" || !host || !isAuthorized()) return { destroy() {} };
   let destroyed = false;
   let panelOpen = false;
@@ -120,7 +128,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       completedBrowserRecognitionId = metadata.recognitionId;
       const command = String(text || "").replace(/^.*?\bhey\s+aura\b[\s,:-]*/i, "").trim();
       input.value = command;
-      if (command && !busy) void submitCommand(command, { source: "voice" });
+      if (command && (!busy || /^(?:stop|cancel(?: that)?|never\s?mind)$/i.test(command))) void submitCommand(command, { source: "voice" });
     },
   });
 
@@ -165,6 +173,15 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   inputbar.append(input, micButton, sendButton);
   panel.append(head, content, inputbar);
   root.append(panel);
+  const queryPanel = typeof requestAssistant === "function" ? mountAuraQueryPanel({
+    panel, content, input, request: requestAssistant, isAuthorized: current,
+    speak: text => session.speak(text),
+    setBusy: value => { busy = value; session.setBusy(value); },
+    openAction: async action => {
+      if (typeof openAssistantAction !== "function") throw new Error("Open the relevant app screen to review this request.");
+      await openAssistantAction(action); togglePanel(false);
+    },
+  }) : null;
 
   function setMessage(text) {
     message.textContent = text;
@@ -208,6 +225,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
       inactivityTimer = null;
       if (current() && (session.enabled || conversation.auraMode !== "IDLE")) {
         session.stop();
+        void queryPanel?.cancel();
         commandController?.abort();
         commandController = null;
         operationEpoch += 1;
@@ -801,6 +819,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   async function submitCommand(rawText, { source = "typed" } = {}) {
     if (!current()) return;
+    if (queryPanel) { await queryPanel.submit(rawText, source); return; }
     if (String(rawText || "").length > 2000) {
       setMessage("AURA commands can be up to 2,000 characters. Shorten the command and try again.");
       input.value = String(rawText || "").slice(0, 2000);
@@ -1128,6 +1147,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   function onWidgetVisibilityChange() {
     if (document.visibilityState === "hidden") {
+      void queryPanel?.cancel();
       session.stop();
       commandController?.abort();
       commandController = null;
@@ -1152,6 +1172,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   function destroy() {
     if (destroyed) return;
+    queryPanel?.destroy();
     destroyed = true;
     commandController?.abort();
     commandController = null;
