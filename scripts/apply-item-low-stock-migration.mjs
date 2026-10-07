@@ -16,6 +16,7 @@ export const auraInventoryV2MigrationName = '20261002121446_aura_inventory_v2_00
 export const auraInventoryMatchMigrationName = '20261002204108_aura_inventory_match_010.sql';
 export const auraLlmFreeTierMigrationName = '20261003025749_aura_llm_free_tier_011.sql';
 export const auraInternalQueryMigrationName = '20261007041448_aura_internal_query_conversation_inventory.sql';
+export const auraCommonNamePriorityMigrationName = '20261007123459_aura_inventory_common_name_priority.sql';
 export const nellyAccessAuditMigrationName = '20261002134138_nelly_access_audit_baseline_repair_007.sql';
 export const evalDeliveryArchiveHealthMigrationName = '20261002155017_eval_delivery_archive_health_007.sql';
 export const suspendTagApprovalMigrationName = '20261005194158_suspend_tag_approval_loop.sql';
@@ -29,7 +30,7 @@ export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -191,6 +192,15 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === auraCommonNamePriorityMigrationName) return `select
+    exists(select 1 from pg_proc where oid=to_regprocedure('public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)')
+      and prosecdef and array_to_string(proconfig,',') like '%statement_timeout=5s%'
+      and prosrc like '%commonName%' and prosrc like '%product_priority%'
+      and prosrc like '%common_score%')
+    and to_regclass('public.idx_ph_master_inventory_aura_name_trgm') is not null
+    and not has_function_privilege('anon','public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)','execute')
+    and not has_function_privilege('authenticated','public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)','execute')
+    and has_function_privilege('service_role','public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)','execute') as installed`;
   if (name === auraInternalQueryMigrationName) {
     const helpers = [
       'public.aura_query_conversation_v1(uuid,text,uuid,uuid,integer,jsonb)',

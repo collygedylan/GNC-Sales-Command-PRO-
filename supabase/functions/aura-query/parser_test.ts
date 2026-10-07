@@ -14,6 +14,59 @@ Deno.test('spoken nursery sizes reuse the existing normalizers', () => {
   }
   assertEquals(resolveAuraIntent('How many three deep pee roses?').filters.contSize, '3DP');
 });
+Deno.test('explicit common-name entities preserve multiword names and inventory stopwords', () => {
+  for (const cue of ['common name', 'commonname', 'common-name']) {
+    const q = resolveAuraIntent(`Where is ${cue}: Lily of the Valley in C.06?`);
+    assertEquals(q.filters.commonName, 'Lily of the Valley');
+    assertEquals(q.filters.productText, undefined); assertEquals(q.filters.locationCode, 'C.06');
+    assertEquals(q.clarification, undefined);
+  }
+  assertEquals(resolveAuraIntent('Find common-name is Love in a Mist').filters.commonName, 'Love in a Mist');
+  assertEquals(resolveAuraIntent("Show inventory common name: Baby's Tears").filters.commonName, "Baby's Tears");
+  assertEquals(resolveAuraIntent('Find common name: "Lily of the Valley"').filters.commonName, 'Lily of the Valley');
+  assertEquals(resolveAuraIntent('Where are Baby Gem in C.06?').filters.productText, 'Baby Gem');
+});
+Deno.test('unsupported app areas clarify instead of discarding a common-name field filter', () => {
+  for (const q of ['Show sales credits for common name "Rose"', 'Show Location Work common name "Rose"', 'Read chat common name "Rose"']) {
+    assert(resolveAuraIntent(q).clarification, q);
+  }
+});
+Deno.test('quoted common names are protected before dates, status, sizes and module routing', () => {
+  for (const name of ['In the Pink', 'Yesterday Today and Tomorrow', 'Open Stock', 'Sales Office Rose', 'Three Gallon Rose']) {
+    for (const [left, right] of [['"', '"'], ["'", "'"], ['“', '”'], ['‘', '’']]) {
+      const q = resolveAuraIntent(`How many common name ${left}${name}${right} in open stock #3 season 27S1?`);
+      assertEquals(q.filters.commonName, name); assertEquals(q.mode, 'inventory');
+      assertEquals(q.filters.openStockOnly, true); assertEquals(q.filters.contSize, '#3');
+      assertEquals(q.filters.season, 'S1'); assertEquals(q.filters.salesYear, 27);
+      assertEquals(q.filters.status, undefined); assertEquals(q.filters.dateFrom, undefined);
+      assertEquals(q.clarification, undefined);
+    }
+  }
+  assertEquals(resolveAuraIntent("Find common name 'St. John's Wort'").filters.commonName, "St. John's Wort");
+  assert(resolveAuraIntent('Find common name "Baby Gem').clarification);
+  assert(resolveAuraIntent('Find common name:').clarification);
+});
+Deno.test('common-name filters retain explicit itemcode, genus, size, season and location', () => {
+  const q = resolveAuraIntent('Where is itemcode 00123 common name Baby Gem genus Buxus #3 season 27S1 in D.10 bay 021?');
+  assertEquals(q.filters.commonName, 'Baby Gem'); assertEquals(q.filters.itemcode, '00123');
+  assertEquals(q.filters.genus, 'Buxus'); assertEquals(q.filters.contSize, '#3');
+  assertEquals(q.filters.season, 'S1'); assertEquals(q.filters.locationCode, 'D.10.021');
+  assertEquals(q.filters.productText, undefined); assertEquals(q.clarification, undefined);
+});
+Deno.test('common-name follow-ups carry scope and replace stale selected product identity', () => {
+  const first = resolveAuraIntent('Where are #3 Baby Gem in C.06?');
+  first.filters.selectionId = 'old-selection';
+  const named = resolveAuraIntent('And common name "In the Pink"', { lastIntent: first });
+  assertEquals(named.filters.commonName, 'In the Pink'); assertEquals(named.filters.productText, undefined);
+  assertEquals(named.filters.selectionId, undefined); assertEquals(named.filters.contSize, '#3');
+  assertEquals(named.filters.locationCode, 'C.06'); assertEquals(named.clarification, undefined);
+  const count = resolveAuraIntent('How many of those?', { lastIntent: named });
+  assertEquals(count.filters.commonName, 'In the Pink');
+  for (const phrase of ['And itemcode 00456', 'And genus Acer', 'What about roses?']) {
+    const next = resolveAuraIntent(phrase, { lastIntent: named });
+    assertEquals(next.filters.commonName, undefined, phrase); assertEquals(next.clarification, undefined, phrase);
+  }
+});
 Deno.test('where, who, broad ownership and quantity questions remain distinct', () => {
   assertEquals(resolveAuraIntent('Who is assigned to Acer?').operation, 'ownership');
   assertEquals(resolveAuraIntent('Who is assigned to Acer?').filters.productText, 'Acer');
