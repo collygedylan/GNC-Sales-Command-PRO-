@@ -69,6 +69,13 @@ test('toolbar refresh retains the connected list root and native input focus', (
   assert.equal(panel.querySelector('[data-manager-assigned-chrome]').textContent,'New toolbar');
   assert.equal(ctx.patchManagerAssignedItemsShell(panel,'<p>Loading refreshed assignments...</p>'),true);
   assert.equal(document.activeElement,input);
+  const clear = document.createElement('button');
+  clear.className = 'assigned-filter-clear';
+  panel.querySelector('[data-manager-assigned-chrome]').append(clear);
+  clear.focus();
+  assert.equal(ctx.patchManagerAssignedItemsShell(panel,'<div data-manager-assigned-chrome>Filters cleared</div>'),true);
+  assert.equal(panel.querySelector('.assigned-filter-clear'),null,'action buttons must not postpone toolbar state updates');
+  assert.equal(document.getElementById('manager-assigned-items-root'),root);
   dom.window.close();
 });
 

@@ -1436,9 +1436,11 @@ test('Assigned Items renders 10k and 25k records with bounded DOM and scrolls to
     const domNodeCount25k = host.querySelectorAll('*').length;
     const beforeScrollTransforms = window.__assignedVirtualTransforms;
     const scroll = host;
-    scroll.scrollTop = scroll.scrollHeight;
-    scroll.dispatchEvent(new Event('scroll'));
-    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    for (let attempt = 0; attempt < 4 && !host.querySelector('[data-inventory-id="stress-24999"]'); attempt++) {
+      scroll.scrollTop = scroll.scrollHeight;
+      scroll.dispatchEvent(new Event('scroll'));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
     return {
       elapsed10kMs, dom10k, domNodeCount10k, elapsed25kMs, dom25k, domNodeCount25k,
       logical25k: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
