@@ -19,6 +19,8 @@ export const auraInternalQueryMigrationName = '20261007041448_aura_internal_quer
 export const auraCommonNamePriorityMigrationName = '20261007123459_aura_inventory_common_name_priority.sql';
 export const auraDynamicSeasonScopeMigrationName = '20261007145433_aura_dynamic_season_scope.sql';
 export const auraInventoryExplicitProjectionMigrationName = '20261007153351_aura_inventory_explicit_projection.sql';
+export const sqlFunctionCorrectnessRepairsMigrationName = '20261007211325_sql_function_correctness_repairs.sql';
+export const sqlLintRuntimeContextMigrationName = '20261007211340_sql_lint_runtime_context.sql';
 export const nellyAccessAuditMigrationName = '20261002134138_nelly_access_audit_baseline_repair_007.sql';
 export const evalDeliveryArchiveHealthMigrationName = '20261002155017_eval_delivery_archive_health_007.sql';
 export const suspendTagApprovalMigrationName = '20261005194158_suspend_tag_approval_loop.sql';
@@ -32,7 +34,7 @@ export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -194,6 +196,33 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === sqlLintRuntimeContextMigrationName) return `select
+    exists(select 1 from pg_proc where oid=to_regprocedure('private.transfer_remaining_handover_assignments_v1(text,integer)')
+      and prosecdef and array_to_string(proconfig,',') like '%search_path=%'
+      and prosrc like '%for dynamic_row_key,dynamic_before_values in execute%'
+      and prosrc like '%shear_entry public.ph_shear_location_inquiries%rowtype%'
+      and prosrc like '%assignment_entry public.ph_master_inventory_user_assignments%rowtype%'
+      and prosrc like '%app.scheduled_handover_default_owner%'
+      and prosrc like '%gnc-reconcile-eval-itemcodes-v2%'
+      and position('entry record' in prosrc)=0)
+    and not has_function_privilege('anon','private.transfer_remaining_handover_assignments_v1(text,integer)','execute')
+    and not has_function_privilege('authenticated','private.transfer_remaining_handover_assignments_v1(text,integer)','execute')
+    and has_function_privilege('service_role','private.transfer_remaining_handover_assignments_v1(text,integer)','execute') as installed`;
+  if (name === sqlFunctionCorrectnessRepairsMigrationName) return `select
+    exists(select 1 from pg_proc where oid=to_regprocedure('public.hl_order_inventory_availability(text[])')
+      and prosecdef and prosrc like '%sum(inventory_rows.available)%')
+    and exists(select 1 from pg_proc where oid=to_regprocedure('public.submit_manager_season_priority_v1(uuid,text,integer,text,text)')
+      and prosecdef and prosrc like '%resolution_snapshot_hash = v_before_state_hash%')
+    and exists(select 1 from pg_proc where oid=to_regprocedure('public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)')
+      and prosecdef and prosrc like '%AURA_BUNCH_CREATION_DATE_UNAVAILABLE%'
+      and position('j.created_at' in prosrc)=0)
+    and exists(select 1 from pg_proc where oid=to_regprocedure('bunch_note_private.card_command(uuid,text,jsonb,uuid,bigint)')
+      and prosecdef and position('card.row_ids @> (action->''row_ids'')' in prosrc)>0)
+    and exists(select 1 from pg_proc where oid=to_regprocedure('suspend_tag_private.command(uuid,text,jsonb,uuid,bigint)')
+      and prosecdef and prosrc like '%where outbox.event_id in%' and prosrc like '%outbox.status=''failed''%')
+    and not has_function_privilege('anon','public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)','execute')
+    and not has_function_privilege('authenticated','public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)','execute')
+    and has_function_privilege('service_role','public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)','execute') as installed`;
   if (name === auraCommonNamePriorityMigrationName) return `select
     exists(select 1 from pg_proc where oid=to_regprocedure('public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)')
       and prosecdef and array_to_string(proconfig,',') like '%statement_timeout=5s%'

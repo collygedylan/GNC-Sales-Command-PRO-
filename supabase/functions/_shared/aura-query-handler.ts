@@ -1,13 +1,13 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+import { jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
+import { contracts } from "../../../services/database-contracts.generated.ts";
 import { isAppAccountActive, normalizeUsername, readSupabaseOrAppSessionFromRequest } from "./app-auth.ts";
 import { auraInventoryV2ProfileMatches } from "./aura-auth.ts";
 import { AURA_MODULE_CAPABILITIES, AURA_READ_CAPABILITIES, capabilityForIntent, escapeAuraLike, resolveAuraIntent, type AuraCapability, type AuraIntent } from "./aura-query.ts";
 
-type QueryClient = {
-  auth: { getUser: (token: string) => Promise<any> };
-  from: (table: string) => any;
-  rpc: (name: string, args: Record<string, unknown>) => any;
-};
+type QueryClient = SupabaseClient<Database>;
 export type AuraQueryDeps = {
   adminClient?: QueryClient;
   userClient?: QueryClient;
@@ -16,6 +16,7 @@ export type AuraQueryDeps = {
 type AuthResult = { actorId: string; username: "dylan_collyge"; session: Record<string, unknown> };
 type QueryAction = Record<string, unknown>;
 type QueryContext = Record<string, unknown>;
+function jsonRecord(value: unknown): Json { return jsonValue(record(value)); }
 
 const MAX_BODY_BYTES = 64_000;
 const MAX_TEXT_CHARS = 2_000;
@@ -74,10 +75,15 @@ function resetContinuation(context: QueryContext): QueryContext {
   return next;
 }
 function record(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  return value && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value)) : {};
 }
+type PublicTableName = keyof Database["public"]["Tables"] & string;
+function isPublicTableName(value: string): value is PublicTableName { return Object.hasOwn(contracts.tables, value); }
 function text(value: unknown, max: number) {
-  const valueText = String(value || "").normalize("NFKC").replace(/[\x00-\x1f\x7f]/g, " ").replace(/\s+/g, " ").trim();
+  const valueText = String(value || "").normalize("NFKC").split("").map((character) => {
+    const code = character.charCodeAt(0);
+    return code < 32 || code === 127 ? " " : character;
+  }).join("").replace(/\s+/g, " ").trim();
   if (!valueText || valueText.length > max) throw new Error("AURA_QUERY_REQUEST_INVALID");
   return valueText;
 }
@@ -109,7 +115,7 @@ function boundedCursor(value: unknown) {
   if (value == null) return null;
   const cursor = record(value);
   if (Object.keys(cursor).length > 8 || JSON.stringify(cursor).length > 500) throw new Error("AURA_QUERY_REQUEST_INVALID");
-  return cursor;
+  return jsonValue(cursor);
 }
 function inventoryFilters(filters: Record<string, unknown>) {
   if (filters.status || filters.dateFrom || filters.dateTo || filters.bay || filters.recordId || filters.quantity != null) {
@@ -129,11 +135,11 @@ function clients(deps: AuraQueryDeps, bearer: string) {
   const anonKey = envValue(deps, "SUPABASE_ANON_KEY");
   if (!url || !serviceKey || !anonKey) throw new Error("AURA_QUERY_CONFIGURATION_UNAVAILABLE");
   return {
-    admin: createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } }) as unknown as QueryClient,
-    user: createClient(url, anonKey, {
+    admin: createClient<Database>(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } }),
+    user: createClient<Database>(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${bearer}` } },
-    }) as unknown as QueryClient,
+    }),
   };
 }
 function bearerFrom(request: Request) {
@@ -167,7 +173,7 @@ async function authorize(request: Request, admin: QueryClient): Promise<AuthResu
     || (Number.isFinite(lockedUntil) && lockedUntil > Date.now())
     || !auraInventoryV2ProfileMatches(session, profile)
     || !await isAppAccountActive(admin, { id: actorId })) return null;
-  return { actorId, username: "dylan_collyge", session: session as unknown as Record<string, unknown> };
+  return { actorId, username: "dylan_collyge", session: { ...session } };
 }
 async function readBody(request: Request) {
   const declared = Number(request.headers.get("content-length") || 0);
@@ -200,10 +206,11 @@ function safeErrorCode(error: unknown) {
   const candidate = String(value.code || (error instanceof Error ? error.message : ""));
   return /^[A-Z0-9_]{2,80}$/.test(candidate) ? candidate : "AURA_QUERY_UNAVAILABLE";
 }
-async function rpc(client: QueryClient, name: string, args: Record<string, unknown>, signal?: AbortSignal) {
+type RpcName = keyof Database["public"]["Functions"];
+async function rpc<N extends RpcName>(client: QueryClient, name: N, args: Database["public"]["Functions"][N]["Args"] | undefined, signal?: AbortSignal) {
   return record(await rpcValue(client, name, args, signal));
 }
-async function rpcValue(client: QueryClient, name: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+async function rpcValue<N extends RpcName>(client: QueryClient, name: N, args: Database["public"]["Functions"][N]["Args"] | undefined, signal?: AbortSignal): Promise<unknown> {
   let query = client.rpc(name, args);
   if (signal && typeof query.abortSignal === "function") query = query.abortSignal(signal);
   const { data, error } = await query;
@@ -260,32 +267,36 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
       };
       const table = String(descriptor.table); const key = String(descriptor.key);
       if (safeTables[table] !== key) return false;
-      let query = user.from(table).select(key).in(key, ids).limit(200);
+      if (table !== "ph_location_work_jobs" && table !== "ph_location_work_lines") return false;
+      let query = table === "ph_location_work_jobs"
+        ? user.from("ph_location_work_jobs").select("id").in("id", ids).limit(200)
+        : user.from("ph_location_work_lines").select("id").in("id", ids).limit(200);
       if (signal && typeof query.abortSignal === "function") query = query.abortSignal(signal);
       const { data, error } = await query;
       if (error) throw error;
-      const found = new Set(Array.isArray(data) ? data.map((row: Record<string, unknown>) => String(row[key] || "")) : []);
+      const found = new Set(Array.isArray(data) ? data.map((row) => String(record(row).id || "")) : []);
       if (ids.some((id) => !found.has(id))) return false;
       continue;
     }
     if (!capability) return false;
     if (capability.reader === "inventory") {
       const query = record(descriptor.query);
-      const data = await rpc(admin, "aura_query_inventory_v1", { p_actor_id: actorId, p_operation: query.operation || "stock",
-        p_filters: record(query.filters), p_cursor: boundedCursor(query.cursor), p_limit: 200 }, signal);
+      const data = await rpc(admin, "aura_query_inventory_v1", { p_actor_id: actorId, p_operation: String(query.operation || "stock"),
+        p_filters: jsonRecord(query.filters), p_cursor: boundedCursor(query.cursor), p_limit: 200 }, signal);
       if (data.ok !== true) return false;
       const returned = Array.isArray(data.rows) ? data.rows.map((row) => String(record(row).selectionId || record(row).uniqueId || "")) : [];
       if (ids.length && ids.some((id) => !returned.includes(id))) return false;
       continue;
     }
     if (capability.reader === "low_stock") {
-      const data = await rpcValue(user, "get_eval_item_low_stock_targets_v1", { p_itemcodes: ids, p_after_itemcode: null, p_limit: Math.min(200, Math.max(1, ids.length)) }, signal);
+      const data = await rpcValue(user, "get_eval_item_low_stock_targets_v1", { p_itemcodes: ids, p_limit: Math.min(200, Math.max(1, ids.length)) }, signal);
       const returned = Array.isArray(data) ? new Set(data.map((row) => String(record(row).itemcode_normalized || ""))) : new Set<string>();
       if (ids.some((id) => !returned.has(id))) return false;
       continue;
     }
     if (capability.reader === "operations") {
-      const data = await rpcValue(user, "list_codex_ops_tasks_v1", { p_before: record(descriptor.query).before || null, p_limit: 50 }, signal);
+      const before = record(descriptor.query).before;
+      const data = await rpcValue(user, "list_codex_ops_tasks_v1", { ...(typeof before === "string" ? { p_before: before } : {}), p_limit: 50 }, signal);
       const returned = Array.isArray(data) ? new Set(data.map((row) => String(record(row).id || ""))) : new Set<string>();
       if (ids.some((id) => !returned.has(id))) return false;
       continue;
@@ -295,8 +306,8 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
       for (const rowNumber of ids) {
         const sourceRow = Number(rowNumber);
         const data = record(await rpcValue(admin, "production_schedule_read_rows_v1", {
-          p_sheet_index: Number(query.sheetIndex), p_snapshot_id: query.snapshotId || null,
-          p_cursor: Math.max(0, sourceRow - 1), p_limit: 1, p_search: "", p_filters: {},
+          p_sheet_index: Number(query.sheetIndex), ...(typeof query.snapshotId === "string" ? { p_snapshot_id: query.snapshotId } : {}),
+          p_cursor: Math.max(0, sourceRow - 1), p_limit: 1, p_search: "", p_filters: jsonRecord({}),
         }, signal));
         if (!Array.isArray(data.rows) || !data.rows.some((row) => Number(record(row).sourceRow) === sourceRow)) return false;
       }
@@ -304,8 +315,8 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
     }
     if (capability.reader === "hl_orders") {
       const query = record(descriptor.query);
-      const data = await rpc(admin, "aura_query_hl_order_v1", { p_actor_id: actorId, p_operation: query.operation || "orders",
-        p_filters: record(query.filters), p_cursor: boundedCursor(query.cursor), p_limit: 200 }, signal);
+      const data = await rpc(admin, "aura_query_hl_order_v1", { p_actor_id: actorId, p_operation: String(query.operation || "orders"),
+        p_filters: jsonRecord(query.filters), p_cursor: boundedCursor(query.cursor), p_limit: 200 }, signal);
       const idField = query.operation === "receipts" ? "receiptId" : query.operation === "balances" ? "poId" : "orderId";
       const returned = Array.isArray(data.rows) ? new Set(data.rows.map((row) => String(record(row)[idField] || record(row).selectionId || record(row).id || ""))) : new Set<string>();
       if (ids.some((id) => !returned.has(id))) return false;
@@ -316,7 +327,7 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
       const idsToCheck = ids;
       for (const recordId of idsToCheck) {
         const filters = { ...record(query.filters), recordId };
-        const data = await rpc(admin, "aura_query_bunch_v1", { p_actor_id: actorId, p_operation: "get", p_filters: filters, p_cursor: null, p_limit: 1 }, signal);
+        const data = await rpc(admin, "aura_query_bunch_v1", { p_actor_id: actorId, p_operation: "get", p_filters: jsonRecord(filters), p_limit: 1 }, signal);
         if (data.ok !== true || !Array.isArray(data.rows) || !data.rows.some((row) => String(record(row).recordId || record(row).id || "") === recordId)) return false;
       }
       continue;
@@ -324,7 +335,7 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
     if (capability.reader === "seasonal_records") {
       const query = record(descriptor.query);
       const data = await rpc(admin, "aura_query_seasonal_records_v1", {
-        p_actor_id: actorId, p_capability: capability.id, p_filters: record(query.filters),
+        p_actor_id: actorId, p_capability: capability.id || "", p_filters: jsonRecord(query.filters),
         p_cursor: boundedCursor(query.cursor), p_limit: 200,
       }, signal);
       if (data.ok !== true) return false;
@@ -339,17 +350,21 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
       continue;
     }
     if (capability.reader === "settings") {
-      const data = record(await rpcValue(user, "get_eval_report_settings", {}, signal));
+      const data = record(await rpcValue(user, "get_eval_report_settings", undefined, signal));
       if (ids.some((id) => !Object.hasOwn(data, id))) return false;
       continue;
     }
     if (capability.table && capability.key && ids.length) {
-      let query = user.from(capability.table).select(capability.key).in(capability.key, ids).limit(200);
+      const table = capability.table;
+      if (!isPublicTableName(table)) return false;
+      if (!capability.key) return false;
+      let query = user.from(table).select(capability.fields).limit(200);
+      query = query.filter(capability.key, "in", `(${ids.map((id) => `"${id.replaceAll('"', '\\"')}"`).join(",")})`);
       for (const [field, value] of Object.entries(capability.fixedFilters || {})) query = query.eq(field, value);
       if (signal && typeof query.abortSignal === "function") query = query.abortSignal(signal);
       const { data, error } = await query;
       if (error) throw error;
-      const found = new Set(Array.isArray(data) ? data.map((row: Record<string, unknown>) => String(row[capability.key] || "")) : []);
+      const found = new Set(Array.isArray(data) ? data.map((row) => String(record(row)[capability.key] || "")) : []);
       if (ids.some((id) => !found.has(id))) return false;
     }
   }
@@ -386,8 +401,10 @@ function assertDomainFilters(capability: AuraCapability, filters: Record<string,
     if (!allowedByReader[reader].has(key)) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
   }
 }
-function applyFilters(query: any, capability: AuraCapability, intent: AuraIntent) {
-  let result = query;
+type FilterPart = { field: string; operator: "eq" | "like" | "ilike" | "gte" | "lt"; value: string };
+function applyFilters(capability: AuraCapability, intent: AuraIntent): FilterPart[] {
+  const result: FilterPart[] = [];
+  const add = (field: string, operator: FilterPart["operator"], value: unknown) => result.push({ field, operator, value: String(value) });
   const f = intent.filters;
   if (f.zone || f.bay || f.quantity != null) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
   if (f.commonName || f.genus || f.openStockOnly === true || f.countMode && f.countMode !== "quantity" || f.metric && f.metric !== "ptravailable"
@@ -409,48 +426,57 @@ function applyFilters(query: any, capability: AuraCapability, intent: AuraIntent
     if (filter === "season" && (capability.id === "po_fall" || capability.id === "po_spring")) continue;
     const field = options.find((candidate) => capability.filterFields.includes(candidate));
     if (!field) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
-    if (filter === "locationCode" && f.locationMode === "prefix") result = result.like(field, `${escapeAuraLike(String(f[filter]))}%`);
-    else if (filter === "locationCode" && f.locationMode === "contains") result = result.ilike(field, `%${escapeAuraLike(String(f[filter]))}%`);
-    else result = result.eq(field, f[filter]);
+    if (filter === "locationCode" && f.locationMode === "prefix") add(field, "like", `${escapeAuraLike(String(f[filter]))}%`);
+    else if (filter === "locationCode" && f.locationMode === "contains") add(field, "ilike", `%${escapeAuraLike(String(f[filter]))}%`);
+    else add(field, "eq", f[filter]);
   }
   if (f.assignee) {
     const key = ["assignedto", "assignee_username", "assigned_to_username", "requested_by_username", "created_by_username"]
       .find((candidate) => capability.filterFields.includes(candidate));
     if (!key) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
-    result = result.ilike(key, escapeAuraLike(String(f.assignee)));
+    add(key, "ilike", escapeAuraLike(String(f.assignee)));
   }
   if (f.recordId) {
     const key = [capability.key, "id", "unique_id", "event_key"].find((candidate) => candidate && capability.filterFields.includes(candidate));
     if (!key) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
-    result = result.eq(key, f.recordId);
+    add(key, "eq", f.recordId);
   }
   if (f.status) {
     const key = ["status", "req_status", "order_status", "workflow_status", "issue_state", "review_status", "credit_status", "row_status", "stage"].find((candidate) => capability.filterFields.includes(candidate));
     if (!key) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
-    result = result.ilike(key, String(f.status));
+    add(key, "ilike", String(f.status));
   }
   if (f.dateFrom != null || f.dateTo != null) {
     if (!capability.dateField) throw new Error("AURA_QUERY_FILTER_NEEDS_CLARIFICATION");
-    if (f.dateFrom != null) result = result.gte(capability.dateField, f.dateFrom);
-    if (f.dateTo != null) result = result.lt(capability.dateField, f.dateTo);
+    if (f.dateFrom != null) add(capability.dateField, "gte", f.dateFrom);
+    if (f.dateTo != null) add(capability.dateField, "lt", f.dateTo);
   }
   return result;
 }
 async function readCapability(user: QueryClient, capability: AuraCapability, intent: AuraIntent, context: QueryContext, signal?: AbortSignal) {
   const queryText = searchTerm(intent);
   const searchFields = queryText ? capability.searchFields : [""];
+  const table = capability.table;
+  if (!isPublicTableName(table)) throw new Error("AURA_QUERY_CAPABILITY_UNAVAILABLE");
+  const projection = capability.fields.split(",").map((field) => field.trim()).filter(Boolean);
+  const tableSchema = contracts.tables[table].row;
+  if (!tableSchema || typeof tableSchema !== "object" || !("object" in tableSchema)
+    || projection.some((field) => !Object.hasOwn(tableSchema.object, field))) throw new Error("AURA_QUERY_CAPABILITY_UNAVAILABLE");
+  const filters = applyFilters(capability, intent);
   const pagesCursor = record(record(context.nextCursor).pages);
   const pageCursor = record(pagesCursor[capability.id || ""]);
   const pages = await Promise.all(searchFields.map(async (field) => {
-    let query = user.from(capability.table).select(capability.fields, { count: "exact" }).order(capability.key, { ascending: false }).limit(MAX_PAGE + 1);
+    let query = user.from(table).select(projection.join(","), { count: "exact" }).order(capability.key, { ascending: false }).limit(MAX_PAGE + 1);
     if (pageCursor.key != null) query = query.lt(capability.key, pageCursor.key);
     for (const [field, value] of Object.entries(capability.fixedFilters || {})) query = query.eq(field, value);
-    query = applyFilters(query, capability, intent);
+    for (const filter of filters) query = query.filter(filter.field, filter.operator, filter.value);
     if (field) query = query.ilike(field, `%${escapeAuraLike(queryText)}%`);
     if (signal && typeof query.abortSignal === "function") query = query.abortSignal(signal);
     const { data, error, count } = await query;
     if (error) throw error;
-    return { rows: Array.isArray(data) ? data as Record<string, unknown>[] : [], count: Number.isFinite(count) ? Number(count) : null };
+    const selected = Array.isArray(data) ? data.map(record) : [];
+    const rows = selected.map((row) => Object.fromEntries(projection.filter((field) => Object.hasOwn(row, field)).map((field) => [field, row[field]])));
+    return { rows, count: Number.isFinite(count) ? Number(count) : null };
   }));
   const unique = new Map<string, Record<string, unknown>>();
   for (const page of pages) for (const row of page.rows) unique.set(String(row[capability.key] || JSON.stringify(row)), row);
@@ -489,9 +515,9 @@ async function readLocationWork(user: QueryClient, intent: AuraIntent, context: 
   let jobsQuery = user.from("ph_location_work_jobs")
     .select("id,title,status,revision,line_count,resolved_line_count,assigned_usernames,created_by_username,created_at,updated_at,completed_by_username,completed_at")
     .order("updated_at", { ascending: false }).order("id", { ascending: false }).range(offset, offset + MAX_PAGE);
-  if (filter.status) jobsQuery = jobsQuery.eq("status", filter.status);
+  if (filter.status) jobsQuery = jobsQuery.eq("status", String(filter.status));
   else if (/\b(open|pending|in progress|active)\b/i.test(intent.question)) jobsQuery = jobsQuery.in("status", ["open", "in_progress"]);
-  if (filter.recordId) jobsQuery = jobsQuery.eq("id", filter.recordId);
+  if (filter.recordId) jobsQuery = jobsQuery.eq("id", String(filter.recordId));
   if (filter.dateFrom) jobsQuery = jobsQuery.gte("created_at", filter.dateFrom);
   if (filter.dateTo) jobsQuery = jobsQuery.lt("created_at", filter.dateTo);
   const assignee = String(filter.assignee || "").trim();
@@ -543,7 +569,7 @@ async function readPrivateChat(user: QueryClient, intent: AuraIntent, context: Q
   const offset = Number(context.nextCursor || 0);
   if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000) throw new Error("AURA_QUERY_REQUEST_INVALID");
   let membership = user.from("ph_chat_participants").select("conversation_id").eq("username", "dylan_collyge").limit(500);
-  if (filter.recordId) membership = membership.eq("conversation_id", filter.recordId);
+  if (filter.recordId) membership = membership.eq("conversation_id", String(filter.recordId));
   if (signal && typeof membership.abortSignal === "function") membership = membership.abortSignal(signal);
   const { data, error } = await membership;
   if (error) throw error;
@@ -621,13 +647,13 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
     return responseForRows(intent, rows.slice(0, MAX_PAGE), rows.length > MAX_PAGE);
   }
   if (reader === "settings") {
-    const data = record(await rpcValue(user, "get_eval_report_settings", {}, signal));
+    const data = record(await rpcValue(user, "get_eval_report_settings", undefined, signal));
     const rows = Object.entries(data).map(([key, value]) => ({ setting: key, value }));
     return responseForRows(intent, rows.slice(0, MAX_PAGE), rows.length > MAX_PAGE);
   }
   if (reader === "operations") {
-    const before = context.nextCursor == null ? null : text(context.nextCursor, 80);
-    const data = await rpcValue(user, "list_codex_ops_tasks_v1", { p_before: before, p_limit: MAX_PAGE }, signal);
+    const before = context.nextCursor == null ? undefined : text(context.nextCursor, 80);
+    const data = await rpcValue(user, "list_codex_ops_tasks_v1", { ...(before ? { p_before: before } : {}), p_limit: MAX_PAGE }, signal);
     const rows = Array.isArray(data) ? data.map(record) : [];
     const visible = rows.slice(0, MAX_PAGE);
     const nextCursor = rows.length >= MAX_PAGE ? visible[visible.length - 1]?.createdAt || null : null;
@@ -637,8 +663,8 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
   if (reader === "low_stock") {
     const productCode = String(intent.filters.itemcode || "").trim().toUpperCase();
     const data = await rpcValue(user, "get_eval_item_low_stock_targets_v1", {
-      p_itemcodes: productCode ? [productCode] : null,
-      p_after_itemcode: context.nextCursor == null ? null : text(context.nextCursor, 100), p_limit: MAX_PAGE,
+      ...(productCode ? { p_itemcodes: [productCode] } : {}),
+      ...(context.nextCursor == null ? {} : { p_after_itemcode: text(context.nextCursor, 100) }), p_limit: MAX_PAGE,
     }, signal);
     const rows = Array.isArray(data) ? data.map(record) : [];
     const visible = rows.slice(0, MAX_PAGE);
@@ -662,7 +688,7 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
     if (productText) filters.productText = productText;
     if (/\bpending\b/i.test(intent.question)) filters.status = "pending";
     const data = await rpc(admin, "aura_query_hl_order_v1", {
-      p_actor_id: actorId, p_operation: operation, p_filters: filters,
+      p_actor_id: actorId, p_operation: operation, p_filters: jsonRecord(filters),
       p_cursor: boundedCursor(context.nextCursor), p_limit: MAX_PAGE,
     }, signal);
     if (data.ok === false) throw Object.assign(new Error(String(data.code || "AURA_HL_ORDER_UNAVAILABLE")), { status: 503 });
@@ -676,7 +702,7 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
       if (intent.filters[key] != null) filters[key] = intent.filters[key];
     const operation = filters.recordId ? "get" : "list";
     const cursor = boundedCursor(context.nextCursor);
-    const data = await rpc(admin, "aura_query_bunch_v1", { p_actor_id: actorId, p_operation: operation, p_filters: filters, p_cursor: cursor, p_limit: MAX_PAGE }, signal);
+    const data = await rpc(admin, "aura_query_bunch_v1", { p_actor_id: actorId, p_operation: operation, p_filters: jsonRecord(filters), p_cursor: cursor, p_limit: MAX_PAGE }, signal);
     if (data.ok !== true) throw Object.assign(new Error(String(data.code || "AURA_BUNCH_READ_UNAVAILABLE")), { status: 503 });
     const rows = Array.isArray(data.rows) ? data.rows.map(record) : [];
     const response = responseForRows(intent, rows, data.hasMore === true);
@@ -693,7 +719,7 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
       if (intent.filters[key] != null) filters[key] = intent.filters[key];
     const cursor = boundedCursor(context.nextCursor);
     const data = await rpc(admin, "aura_query_seasonal_records_v1", {
-      p_actor_id: actorId, p_capability: capability.id, p_filters: filters, p_cursor: cursor, p_limit: MAX_PAGE,
+      p_actor_id: actorId, p_capability: capability.id || "", p_filters: jsonRecord(filters), p_cursor: cursor, p_limit: MAX_PAGE,
     }, signal);
     if (data.ok !== true) throw Object.assign(new Error(String(data.code || "AURA_SEASONAL_READ_UNAVAILABLE")), { status: 503 });
     if (data.yearCoverage === "season-only" && intent.filters.salesYear != null) throw new Error("AURA_SEASON_YEAR_UNAVAILABLE");
@@ -725,7 +751,7 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
 }
 
 async function readProductionSchedule(admin: QueryClient, intent: AuraIntent, context: QueryContext, signal?: AbortSignal) {
-  const metadata = record(await rpcValue(admin, "production_schedule_read_metadata_v1", {}, signal));
+  const metadata = record(await rpcValue(admin, "production_schedule_read_metadata_v1", undefined, signal));
   const sheets = Array.isArray(metadata.sheets) ? metadata.sheets.map(record) : [];
   const selectedId = String(context.selectionId || intent.filters.selectionId || "");
   let selected = sheets.find((sheet) => String(sheet.id ?? sheet.index ?? "") === selectedId);
@@ -759,7 +785,8 @@ async function readProductionSchedule(admin: QueryClient, intent: AuraIntent, co
   const cursor = context.nextCursor == null ? 0 : Number(context.nextCursor);
   if (!Number.isSafeInteger(cursor) || cursor < 0) throw new Error("AURA_QUERY_REQUEST_INVALID");
   const result = record(await rpcValue(admin, "production_schedule_read_rows_v1", {
-    p_sheet_index: Number(selected.id ?? selected.index), p_snapshot_id: record(metadata.snapshot).id || null,
+    p_sheet_index: Number(selected.id ?? selected.index),
+    ...(typeof record(metadata.snapshot).id === "string" ? { p_snapshot_id: String(record(metadata.snapshot).id) } : {}),
     p_cursor: cursor, p_limit: MAX_PAGE, p_search: queryText, p_filters: filters,
   }, signal));
   const headerValues = Array.isArray(selected.columns) ? selected.columns : [];
@@ -851,8 +878,9 @@ async function handleMemoryMode(mode: string, body: Record<string, unknown>, adm
     payload.cursor = boundedCursor(body.cursor);
   }
   const result = await rpc(admin, "aura_query_conversation_v1", {
-    p_actor_id: actorId, p_operation: mode, p_conversation_id: conversationId, p_turn_id: turnId,
-    p_expected_revision: body.expectedRevision == null ? null : Number(body.expectedRevision), p_payload: payload,
+    p_actor_id: actorId, p_operation: mode,
+    ...(conversationId ? { p_conversation_id: conversationId } : {}), ...(turnId ? { p_turn_id: turnId } : {}),
+    ...(body.expectedRevision == null ? {} : { p_expected_revision: Number(body.expectedRevision) }), p_payload: jsonRecord(payload),
   }, signal);
   // Stored answers can contain rows that were readable when they were created.
   // Re-check each source before returning transcript content.
@@ -898,7 +926,7 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
     const filters = inventoryFilters({ ...intent.filters });
     const pageCursor = intent.question.toLowerCase().includes("show more") ? boundedCursor(context.nextCursor) : null;
     const data = await rpc(admin, "aura_query_inventory_v1", {
-      p_actor_id: actorId, p_operation: operation, p_filters: filters, p_cursor: pageCursor, p_limit: MAX_PAGE,
+      p_actor_id: actorId, p_operation: operation, p_filters: jsonRecord(filters), p_cursor: pageCursor, p_limit: MAX_PAGE,
     }, signal);
     if (data.ok === false) throw Object.assign(new Error(String(data.code || "AURA_QUERY_INVENTORY_UNAVAILABLE")), { status: 503 });
     const rows = Array.isArray(data.rows) ? data.rows.map(record) : [];
@@ -970,8 +998,8 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
   const expectedRevision = body.expectedRevision == null ? null : Number(body.expectedRevision);
   if (expectedRevision != null && (!Number.isSafeInteger(expectedRevision) || expectedRevision < 0)) throw new Error("AURA_QUERY_REQUEST_INVALID");
   const begin = await rpc(admin, "aura_query_conversation_v1", {
-    p_actor_id: actorId, p_operation: "begin", p_conversation_id: conversationId, p_turn_id: turnId,
-    p_expected_revision: expectedRevision, p_payload: { text: question, source },
+      p_actor_id: actorId, p_operation: "begin", ...(conversationId ? { p_conversation_id: conversationId } : {}), p_turn_id: turnId,
+      ...(expectedRevision == null ? {} : { p_expected_revision: expectedRevision }), p_payload: jsonValue({ text: question, source }),
   }, signal);
   const resolvedConversationId = String(begin.conversationId || begin.conversation_id || "");
   const revision = Number(begin.revision || 0);
@@ -1011,7 +1039,7 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
       hasMore: false, nextCursor: context.nextCursor || null };
     const completed = await rpc(admin, "aura_query_conversation_v1", {
       p_actor_id: actorId, p_operation: "complete", p_conversation_id: resolvedConversationId, p_turn_id: turnId,
-      p_expected_revision: revision, p_payload: { response: result, context, sources: [] },
+      p_expected_revision: revision, p_payload: jsonValue({ response: result, context, sources: [] }),
     }, signal);
     return { ...result, revision: Number(completed.revision || revision) };
   }
@@ -1022,7 +1050,7 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
       actions: [], context, interpretation: { intent: "pagination", entities: {} }, source: sourceInfo(source), hasMore: false, nextCursor: null };
     const completed = await rpc(admin, "aura_query_conversation_v1", {
       p_actor_id: actorId, p_operation: "complete", p_conversation_id: resolvedConversationId, p_turn_id: turnId,
-      p_expected_revision: revision, p_payload: { response: result, context, sources: [] },
+      p_expected_revision: revision, p_payload: jsonValue({ response: result, context, sources: [] }),
     }, signal);
     return { ...result, revision: Number(completed.revision || revision) };
   }
@@ -1082,7 +1110,7 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
   };
   const completed = await rpc(admin, "aura_query_conversation_v1", {
     p_actor_id: actorId, p_operation: "complete", p_conversation_id: resolvedConversationId, p_turn_id: turnId,
-    p_expected_revision: revision, p_payload: { response: result, context: result.context, sources: Array.isArray(outcome.sources) ? outcome.sources : [] },
+     p_expected_revision: revision, p_payload: jsonValue({ response: result, context: result.context, sources: Array.isArray(outcome.sources) ? outcome.sources : [] }),
   }, signal);
   return { ...result, revision: Number(completed.revision || revision) };
   } catch (error) {
@@ -1144,6 +1172,7 @@ export async function handleAuraQueryRequest(request: Request, deps: AuraQueryDe
       : /^AURA_[A-Z0-9_]+$/.test(databaseMessage) ? databaseMessage : safeErrorCode(error);
     if (code === "AURA_SEASON_SETTINGS_UNAVAILABLE" || code === "AURA_MANAGER_SETTINGS_REVISION_INVALID") return fail("The Managers current season setting is missing or invalid. Ask an authorized manager to save a valid season and sales year.", 503, "AURA_SEASON_SETTINGS_UNAVAILABLE");
     if (code === "AURA_SEASON_YEAR_UNAVAILABLE") return fail("This source stores season only and cannot honor an explicit sales-year filter. Ask for a season without a year.", 400, code);
+    if (code === "AURA_BUNCH_CREATION_DATE_UNAVAILABLE") return fail("Bunch Notes do not have a reliable creation timestamp, so AURA cannot filter them by creation date. Ask without a date range.", 400, code);
     if (code === "AURA_SEASON_SCOPE_CHANGED") return fail("The Managers season setting changed during the query. Please ask again to restart with the current scope.", 409, code);
     const status = Number(failure.status) || (code === "AURA_FORBIDDEN" ? 403
       : /INVALID|REQUIRED|MODE/.test(code) ? 400 : /CONFLICT|REVISION|LEASE/.test(code) ? 409 : 503);

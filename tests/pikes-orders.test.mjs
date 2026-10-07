@@ -1,3 +1,4 @@
+import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -153,9 +154,9 @@ test('assignment reconciliation is incremental, indexed, and overlap-safe', () =
   assert.match(repairMigration, /on conflict \(assignment_key\)[\s\S]*do update set[\s\S]*where public\.ph_warehouse_assigned_items/);
   assert.match(repairMigration, /not exists \([\s\S]*private\.normalize_eval_assignment_key\(m\.itemcode, m\.genusname\) = a\.assignment_key/);
   assert.doesNotMatch(repairMigration, /set present_in_drive = false, updated_at = now\(\)\s*where assignment_key is not null/);
-  assert.match(performanceWorkflow, /20260831224251_repair_pikes_assignments_and_maintenance\.sql/);
-  assert.match(performanceWorkflow, /20260831230825_harden_pikes_assignment_repair_audit\.sql/);
-  assert.match(performanceWorkflow, /20260902141956_repair_pikes_assignment_health_rpc_privilege\.sql/);
+  assertHistoricalMigration('20260831224251_repair_pikes_assignments_and_maintenance.sql');
+  assertHistoricalMigration('20260831230825_harden_pikes_assignment_repair_audit.sql');
+  assertHistoricalMigration('20260902141956_repair_pikes_assignment_health_rpc_privilege.sql');
   assert.match(boundedMaintenanceRepair, /pg_try_advisory_xact_lock/);
   assert.match(boundedMaintenanceRepair, /MAINTENANCE_DEFERRED/);
   assert.match(boundedMaintenanceRepair, /with normalized_drive as materialized/);
@@ -165,21 +166,21 @@ test('assignment reconciliation is incremental, indexed, and overlap-safe', () =
   assert.doesNotMatch(boundedMaintenanceRepair, /private\.normalize_eval_assignment_key/);
   assert.match(boundedMaintenanceRepair, /revoke all on function public\.reconcile_eval_itemcodes\(\)[\s\S]*from public, anon, authenticated/);
   assert.match(boundedMaintenanceRepair, /grant execute on function public\.reconcile_eval_itemcodes\(\)[\s\S]*to service_role/);
-  assert.match(performanceWorkflow, /20260902151444_optimize_bounded_request_maintenance\.sql/);
+  assertHistoricalMigration('20260902151444_optimize_bounded_request_maintenance.sql');
   assert.match(boundedDeltaRepair, /with normalized_drive as materialized/);
   assert.match(boundedDeltaRepair, /drive_codes as materialized/);
   assert.match(boundedDeltaRepair, /changed_codes as materialized/);
   assert.match(boundedDeltaRepair, /from changed_codes d[\s\S]*on conflict \(assignment_key\)/);
   assert.match(boundedDeltaRepair, /removed_rows as \([\s\S]*from drive_codes d[\s\S]*d\.assignment_key = a\.assignment_key/);
   assert.doesNotMatch(boundedDeltaRepair, /private\.normalize_eval_assignment_key/);
-  assert.match(performanceWorkflow, /20260902152210_bound_eval_assignment_delta\.sql/);
+  assertHistoricalMigration('20260902152210_bound_eval_assignment_delta.sql');
   assert.match(separateHealthAudit, /assignment_result := public\.reconcile_eval_itemcodes\(\)/);
   assert.match(separateHealthAudit, /expired_count := private\.expire_shared_av_results\(\)/);
   assert.doesNotMatch(separateHealthAudit, /private\.record_request_health_audit\(\)/);
   assert.match(separateHealthAudit, /'operation', 'get_hosted_health_snapshot'/);
   assert.match(separateHealthAudit, /revoke all on function public\.run_request_integrity_maintenance\(\)[\s\S]*from public, anon, authenticated/);
   assert.match(separateHealthAudit, /grant execute on function public\.run_request_integrity_maintenance\(\)[\s\S]*to service_role/);
-  assert.match(performanceWorkflow, /20260902152707_separate_request_health_audit\.sql/);
+  assertHistoricalMigration('20260902152707_separate_request_health_audit.sql');
   assert.match(performanceWorkflow, /REQUIRE_BOUNDED_MAINTENANCE: '1'/);
 });
 
@@ -196,8 +197,8 @@ test('Orders data is manager-read-only and service-write-only', () => {
   assert.match(migration, /'manager\.orders\.view'/);
   assert.match(migration, /limit safe_limit \+ 1/);
   assert.match(migration, /limit 200/);
-  assert.match(performanceWorkflow, /20260831165043_pikes_orders_manager_history\.sql/);
-  assert.match(performanceWorkflow, /pikes_orders_rls_test\.sql/);
+  assertHistoricalMigration('20260831165043_pikes_orders_manager_history.sql');
+  assertIsolatedSqlTest('pikes_orders_rls_test.sql');
   assert.match(rlsTest, /active Admin can view Orders/);
   assert.match(rlsTest, /locked Manager cannot view Orders/);
   assert.match(rlsTest, /every matching Drive row is frozen once/);

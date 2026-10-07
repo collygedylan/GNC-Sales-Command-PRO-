@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @production-schedule
 
-test('mobile schedule keeps one search row, honest filters, and each sheet state', async ({ page }, testInfo) => {
+
+
+test('mobile schedule keeps one search row, honest filters, and each sheet state', {"tag":["@production-schedule"]}, async ({ page }, testInfo) => {
   await page.setContent('<body class="ops-precision-pilot"><main id="view-managers"><div id="manager-production-schedule-root"></div></main></body>');
   await page.addStyleTag({ path: 'styles/production-schedule.css' });
   await page.addScriptTag({ path: 'assets/production-schedule.js' });

@@ -1,3 +1,4 @@
+// @test-group: local-validation
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { runReleaseCandidate } from '../scripts/release-candidate.mjs';

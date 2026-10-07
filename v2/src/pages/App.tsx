@@ -436,7 +436,7 @@ export function App() {
                 const row = undoRemove;
                 setRows(current => current.map(item => uniqueId(item) === uniqueId(row) ? { ...item, REQ_ARCHIVED: false, REQ_ARCHIVED_AT: null } : item));
                 if (!SANDBOX_ONLY && !demoMode && session) {
-                  void patchRow(session, REQUEST_TABLE, uniqueId(row), { REQ_ARCHIVED: false, REQ_ARCHIVED_AT: null });
+                  void patchRow(session, REQUEST_TABLE, uniqueId(row), { REQ_ARCHIVED: false });
                 }
                 setUndoRemove(null);
                 setToast('Row restored.');
@@ -843,8 +843,10 @@ function RequestDetail(props: {
       LOC_MATCH: draft.locMatch,
       AV_NOTE: draft.avNote,
       PICK_NOTE: draft.pickNote,
-      AV_OPTION_UNIQUE_ID: selectedAvRowId || null,
-      AV_SELECTED_LOCATION: selectedAvRow ? avValue(selectedAvRow, 'LOCATIONCODE', 'locationcode') : null,
+      ...(selectedAvRowId || props.demoMode ? {
+        AV_OPTION_UNIQUE_ID: selectedAvRowId || null,
+        AV_SELECTED_LOCATION: selectedAvRow ? avValue(selectedAvRow, 'LOCATIONCODE', 'locationcode') : null,
+      } : {}),
       ...(complete ? { REQ_STATUS: 'Complete', DATE_COMPLETED: new Date().toISOString() } : {})
     };
     setBusy(true);
@@ -1029,7 +1031,7 @@ function removeRow(
   setUndoRemove(row);
   setToast('Row removed.');
   if (!demoMode && session) {
-    patchRow(session, REQUEST_TABLE, id, { REQ_ARCHIVED: true, REQ_ARCHIVED_AT: new Date().toISOString() }).catch(err => setToast(err instanceof Error ? err.message : 'Remove failed'));
+    patchRow(session, REQUEST_TABLE, id, { REQ_ARCHIVED: true }).catch(err => setToast(err instanceof Error ? err.message : 'Remove failed'));
   }
 }
 

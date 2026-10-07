@@ -1,11 +1,14 @@
 // Optional, isolated PostgreSQL WASM verification when native Postgres is absent.
-// Pass an installed @electric-sql/pglite/dist/index.js path (tested with 0.3.10).
+// Pass the installed PGlite dependency root with --pglite-root.
 // This does not exercise Supabase Auth, transport, or concurrent connections.
 import { readFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
-const modulePath = process.argv[2];
-if (!modulePath) throw new Error('Pass the installed @electric-sql/pglite dist/index.js path.');
-const { PGlite } = await import(pathToFileURL(modulePath));
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { discoverTests } from '../../scripts/test-discovery.mjs';
+const args = process.argv.slice(2);
+const dependencyRoot = args[args.indexOf('--pglite-root') + 1];
+if (!args.includes('--pglite-root') || !dependencyRoot) throw new Error('Pass --pglite-root with the installed PGlite package.');
+const { PGlite } = createRequire(path.join(path.resolve(dependencyRoot), 'package.json'))('@electric-sql/pglite');
 const db = await PGlite.create();
 const migration = 'supabase/archive_migrations/20260908231650_retain_season_sales_office_av_notes.sql';
 const resetMigration = 'supabase/archive_migrations/20260909004018_align_season_sales_av_note_shared_resets.sql';
@@ -23,7 +26,9 @@ const files = [
   'supabase/archive_migrations/20260906154833_repair_season_sales_done_lifecycle.sql',
   'supabase/archive_migrations/20260907212041_enforce_photo_evidence_projection.sql',
 ];
-const read = file => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8');
+// Keep CREATE FUNCTION bodies and later exact patch text on the same newline
+// convention when this harness runs on Windows or a CRLF checkout.
+const read = file => readFileSync(new URL(`../../${file}`, import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 try {
   for (const file of files) {
     await db.exec(read(file));
@@ -62,12 +67,15 @@ try {
   console.log('PASS migration backfill: existing open note, explicit blank, completed note, missing master');
   await db.exec(read(resetMigration));
   console.log(`PASS ${resetMigration}`);
+  const conflictMigration = 'supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql';
+  await db.exec(read(conflictMigration));
+  console.log(`PASS ${conflictMigration}`);
   const captureDefinition = await db.query("select pg_get_functiondef('private.capture_season_sales_av_note_v1()'::regprocedure) as definition");
   if (!/for\s+share/i.test(captureDefinition.rows[0].definition)) {
     throw new Error('Installed note capture does not lock the source master row FOR SHARE.');
   }
   console.log('PASS installed capture function locks source master FOR SHARE');
-  for (const test of ['supabase/tests/season_sales_av_note_retention_test.sql', 'supabase/tests/season_sales_av_note_reset_test.sql']) {
+  for (const test of discoverTests({ group: 'sql-secondary-harness', harness: 'season-av' })) {
     const results = await db.exec(read(test));
     console.log(`PASS ${test}`);
     for (const result of results) for (const row of result.rows ?? []) if (row.tap) console.log(row.tap);

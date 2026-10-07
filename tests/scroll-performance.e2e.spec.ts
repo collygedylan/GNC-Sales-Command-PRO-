@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-timing
 
-test('main scrolling avoids forced layout reads and universal style invalidation', async ({ page }) => {
+
+
+test('main scrolling avoids forced layout reads and universal style invalidation', {"tag":["@local-e2e","@release-timing"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=scroll-performance', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getCurrentVisibleViewId === 'function');
@@ -75,7 +78,7 @@ test('main scrolling avoids forced layout reads and universal style invalidation
   expect(result.p95FrameGapMs).toBeLessThan(55);
 });
 
-test('realtime UI decoration is scoped to newly added content', async ({ page }) => {
+test('realtime UI decoration is scoped to newly added content', {"tag":["@local-e2e","@release-timing"]}, async ({ page }) => {
   await page.goto('/tests/fixtures/ops-precision-browser.html?view=drive&pilot=1&monitoring=0', { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.locator('body').getAttribute('data-qa-ready')).toBe('true');
 

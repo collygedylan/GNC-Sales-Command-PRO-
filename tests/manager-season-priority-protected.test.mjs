@@ -150,7 +150,7 @@ test('app API exposes only the three actor-bound Season Priority operations', ()
   for (const rpc of ['manager_season_priority_list_v1', 'submit_manager_season_priority_v1', 'manager_season_priority_state_v1']) {
     assert.match(api, new RegExp(`supabase\\.rpc\\("${rpc}"`));
   }
-  assert.match(api, /p_actor_id: activeProfile\.id/);
+  assert.match(api, /p_actor_id: String\(activeProfile\.id\)/);
   assert.match(api, /function seasonPriorityErrorResponse/);
   assert.match(api, /hasOwnProperty\.call\(manualTransaction, "seasonPriority"\)[\s\S]*SEASON_PRIORITY_MARKER_RESERVED/);
   assert.doesNotMatch(api.slice(api.indexOf('if (operation === "season_priority_submit")'), api.indexOf('if (operation === "create")')), /actorUsername|recipientEmails|recipients/);

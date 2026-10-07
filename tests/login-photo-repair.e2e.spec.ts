@@ -1,7 +1,10 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test, type Page } from '@playwright/test';
+// @test-group: @local-e2e,@login-photo,@release-android,@release-timing
 
-test('login tracing separates SDK wait from network wait without retaining credentials', async ({ page }) => {
+
+
+test('login tracing separates SDK wait from network wait without retaining credentials', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page }) => {
   await page.route('https://kzrnyjsosryejjejliii.supabase.co/auth/v1/token**', async route => {
     const headers = {
       'access-control-allow-origin': '*',
@@ -63,7 +66,7 @@ test('login tracing separates SDK wait from network wait without retaining crede
   expect(download.suggestedFilename()).toMatch(/login.*\.json$/);
 });
 
-test('phone login keeps both fields and the submit action visible', async ({ page }) => {
+test('phone login keeps both fields and the submit action visible', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'load' });
 
@@ -78,7 +81,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
 });
 
-test('Kayla receives standard Admin Request, Drive, and photo access', async ({ page }) => {
+test('Kayla receives standard Admin Request, Drive, and photo access', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const permissions = await page.evaluate(() => {
@@ -107,7 +110,7 @@ test('Kayla receives standard Admin Request, Drive, and photo access', async ({ 
   });
 });
 
-test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
+test('Request AV sheet preserves swipe intent before selecting a later option', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
@@ -144,14 +147,14 @@ test('Request AV sheet preserves swipe intent before selecting a later option', 
   await expect(page.locator('#req-av-note')).toHaveValue('OPTION 39');
 });
 
-test.describe('September 9 photo processing', () => {
+test.describe('September 9 photo processing', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, () => {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/?e2e=photo-egress-v1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getDirectImageUrl === 'function');
 });
 
-test('legacy and V2 card URLs never point at the original object', async ({ page }) => {
+test('legacy and V2 card URLs never point at the original object', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page }) => {
   const urls = await page.evaluate(() => {
     const hash = 'a'.repeat(64);
     const legacy = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/2026-09-04/legacy.webp';
@@ -170,7 +173,7 @@ test('legacy and V2 card URLs never point at the original object', async ({ page
   expect(urls.fallback).toBe('');
 });
 
-test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnails', async ({ page }) => {
+test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnails', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page }) => {
   const result = await page.evaluate(async () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1400;
@@ -272,7 +275,7 @@ async function drivePhotoHarness(page: Page, baseURL: string) {
   })()`));
 }
 
-test('Drive photos remain pending until saved, append during a held save, and persist on reload', async ({ page, baseURL }) => {
+test('Drive photos remain pending until saved, append during a held save, and persist on reload', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page, baseURL }) => {
   await drivePhotoHarness(page, baseURL!);
   await page.evaluate(() => window.eval(`__photoTest.held = true; __photoTest.add('one.webp');`));
   await expect.poll(() => page.evaluate(() => (window as any).__photoTest.calls.length)).toBe(1);
@@ -296,7 +299,7 @@ test('Drive photos remain pending until saved, append during a held save, and pe
   expect(await page.evaluate(() => (window as any).__photoTest.row.photo_link.split(',').length)).toBe(3);
 });
 
-test('Drive photo failure retains preview and retries the same attachment without reuploading', async ({ page, baseURL }) => {
+test('Drive photo failure retains preview and retries the same attachment without reuploading', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page, baseURL }) => {
   await drivePhotoHarness(page, baseURL!);
   await page.evaluate(() => window.eval(`__photoTest.fail = true; __photoTest.add('retry.webp');`));
   const retry = page.getByRole('button', { name: 'Retry photo', exact: true });
@@ -312,7 +315,7 @@ test('Drive photo failure retains preview and retries the same attachment withou
   await expect(page.locator('#ssn-photo-list-container img')).toHaveCount(1);
 });
 
-test('Drive photo queued behind a save lock cannot write after the account changes', async ({ page, baseURL }) => {
+test('Drive photo queued behind a save lock cannot write after the account changes', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page, baseURL }) => {
   await drivePhotoHarness(page, baseURL!);
   await page.evaluate(() => window.eval(`
     runWithDriveEvidenceCrossTabLock = async (uid, run) => { await new Promise(resolve => { __photoTest.gate = resolve; }); return run(); };
@@ -325,7 +328,7 @@ test('Drive photo queued behind a save lock cannot write after the account chang
   expect(await page.evaluate(() => window.eval('drivePhotoAttachments.size'))).toBe(0);
 });
 
-test('Drive photo replay and a canonical-already-attached conflict do not duplicate or lose photos', async ({ page, baseURL }) => {
+test('Drive photo replay and a canonical-already-attached conflict do not duplicate or lose photos', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page, baseURL }) => {
   await drivePhotoHarness(page, baseURL!);
   await page.evaluate(() => window.eval(`__photoTest.loseAck = true; __photoTest.add('uncertain.webp');`));
   await expect(page.getByRole('button', { name: 'Retry photo', exact: true })).toBeVisible();
@@ -342,7 +345,7 @@ test('Drive photo replay and a canonical-already-attached conflict do not duplic
   await expect(page.locator('#ssn-photo-list-container img')).toHaveCount(2);
 });
 
-test('Drive photo file selection appends every image and preserves an unsaved note', async ({ page, baseURL }) => {
+test('Drive photo file selection appends every image and preserves an unsaved note', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page, baseURL }) => {
   await drivePhotoHarness(page, baseURL!);
   await page.evaluate(() => window.eval(`handlePhotoUpload({ files: ['batch-a.webp','batch-b.webp','batch-c.webp'].map(name => new File(['isolated'], name, { type: 'image/webp' })), value: '' }, 'ssn-');`));
   await expect.poll(() => page.evaluate(() => (window as any).__photoTest.calls.length)).toBe(3);

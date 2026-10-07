@@ -1,3 +1,4 @@
+// @test-group: eval
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -15,6 +16,11 @@ function fixture({ active = true, manager = true, rpcError = null } = {}) {
   const setup = { evaluator: { username: 'charley_robertson', displayName: 'Charley Robertson', email: 'charley@example.invalid' }, assignmentRevision: 'frozen-revision' };
   const work = { id: 'frozen-review', assignee_username: 'charley_robertson', completion_recipients: ['charley@example.invalid'], delivery: {} };
   const context = {
+    jsonValue: (value) => value,
+    jsonObject: (value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     isEvalWorkManager: () => manager,
     resolveActiveSessionProfile: async () => active ? { id: 'actor-profile' } : null,

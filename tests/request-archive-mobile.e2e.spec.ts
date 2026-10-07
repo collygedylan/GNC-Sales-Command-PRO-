@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional,@request-archive
+
+
 
 async function appEval<T = any>(page: Page, script: string): Promise<T> {
   return page.evaluate(source => (window as any).__requestArchiveTestEval(source), script);
@@ -121,7 +124,7 @@ async function swipe(page: Page, uid: string, direction: 'left' | 'right') {
   return debug;
 }
 
-test('Request archive swipe is reversible, confirmed, responsive, and preserves vertical scrolling', async ({ page }) => {
+test('Request archive swipe is reversible, confirmed, responsive, and preserves vertical scrolling', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   for (const width of [320, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
@@ -150,7 +153,7 @@ test('Request archive swipe is reversible, confirmed, responsive, and preserves 
   }
 });
 
-test('Request archive confirmation cancellation and terminal permission failure restore the row', async ({ page }) => {
+test('Request archive confirmation cancellation and terminal permission failure restore the row', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');
@@ -166,7 +169,7 @@ test('Request archive confirmation cancellation and terminal permission failure 
     .toEqual({ calls: 1, archived: false, visible: true });
 });
 
-test('Vertical Request gestures remain scroll gestures and do not archive', async ({ page }) => {
+test('Vertical Request gestures remain scroll gestures and do not archive', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');
@@ -184,7 +187,7 @@ test('Vertical Request gestures remain scroll gestures and do not archive', asyn
     .toEqual({ calls: 0, archived: false, visible: true });
 });
 
-test('Cancelled touch and pointer swipes never archive or prompt', async ({ page }) => {
+test('Cancelled touch and pointer swipes never archive or prompt', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');

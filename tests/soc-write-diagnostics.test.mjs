@@ -21,13 +21,13 @@ test('SOC PATCH denial preserves the write contract, reports safe diagnostics, a
     normalizeAppTableName: value => value,
     isRetiredSupabaseRuntimeTable: () => false,
     getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer private-token' }),
+    window: { GncDatabase: { fetchTable: async (...args) => {
+      calls.push(args);
+      return { ok: false, headers: { get: key => key === 'sb-request-id' ? 'request-1234' : null } };
+    } } },
     startGlobalProgress() {}, stopGlobalProgress() {},
     normalizeSupabaseWriteBodyForTable: (_table, _method, body) => body,
     SUPABASE_WRITE_TIMEOUT_MS: 10000, SUPABASE_KEY: 'configured', SUPABASE_URL: 'https://example.invalid',
-    fetchWithTimeout: async (...args) => {
-      calls.push(args);
-      return { ok: false, headers: { get: key => key === 'sb-request-id' ? 'request-1234' : null } };
-    },
     createSupabaseReadResponseError: async () => denied,
     reportSemanticHealthEvent: (...args) => { health.push(args); return Promise.resolve(true); },
   });
@@ -35,9 +35,11 @@ test('SOC PATCH denial preserves the write contract, reports safe diagnostics, a
   const patch = { suspend: 'SUSPEND', suspend_to: 'DC' };
   await assert.rejects(ctx.supabaseFetch('ph_soc_master', 'PATCH', patch, 'unique_id=eq.private-row'), error => error === denied);
   assert.equal(calls.length, 1);
-  assert.equal(calls[0][1].method, 'PATCH');
-  assert.equal(calls[0][1].body, JSON.stringify(patch));
-  assert.equal(calls[0][1].headers.Authorization, 'Bearer private-token');
+  assert.equal(calls[0][1], 'ph_soc_master');
+  assert.equal(calls[0][2], 'unique_id=eq.private-row');
+  assert.equal(calls[0][3].method, 'PATCH');
+  assert.equal(calls[0][3].body, JSON.stringify(patch));
+  assert.equal(calls[0][3].headers.Authorization, 'Bearer private-token');
   assert.equal(warnings.length, 1);
   assert.equal(warnings[0][1].status, 403);
   assert.equal(warnings[0][1].sqlState, '42501');

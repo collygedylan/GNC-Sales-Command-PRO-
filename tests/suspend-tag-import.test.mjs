@@ -1,3 +1,4 @@
+// @test-group: suspend
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';

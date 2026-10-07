@@ -5,7 +5,8 @@ const baseURL = remoteBaseURL || 'http://127.0.0.1:43120';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /suspend-tag-completion\.e2e\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@suspend-tag/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

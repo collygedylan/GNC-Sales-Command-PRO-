@@ -6,10 +6,8 @@ import base from './playwright.config';
 export default defineConfig({
   ...base,
   workers: 1,
-  testIgnore: [
-    /request-integrity-local\.spec\.js$/,
-    /(?:scroll-performance|login-photo-repair|module-loading-perennial|eval-report2-async-index)\.e2e\.spec\.ts$/,
-  ],
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@release-functional/,
   webServer: {
     command: 'node scripts/serve-release-tests.mjs',
     url: 'http://127.0.0.1:43116',

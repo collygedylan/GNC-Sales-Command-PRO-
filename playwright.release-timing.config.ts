@@ -5,7 +5,8 @@ import base from './playwright.config';
 // serially, without competing browser workers or per-request server logging.
 export default defineConfig({
   ...base,
-  testMatch: /(?:scroll-performance|login-photo-repair|module-loading-perennial|eval-report2-async-index)\.e2e\.spec\.ts$/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@release-timing/,
   fullyParallel: false,
   workers: 1,
   webServer: {

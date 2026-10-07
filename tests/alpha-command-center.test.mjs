@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const read = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const component = read('components/command-center/fieldCommandCenter.jsx');
+const database = read('services/commandCenterDatabase.ts');
 const shell = read('index.html');
 const builder = read('scripts/build-alpha-command-center.mjs');
 const pushSender = read('supabase/functions/send-push-alert/index.ts');
@@ -47,12 +48,13 @@ test('weekly labor keeps separate job-code rows and autosaves each selected code
   assert.match(component, /localEntriesRef\.current = updated/);
   assert.match(component, /const row = localEntriesRef\.current\.find\(item => item\.key === key\)/);
   assert.match(component, /localEntries\.map\(row =>/);
-  assert.match(component, /onConflict: 'employee_id,work_date,job_code'/);
+  assert.match(database, /onConflict: 'employee_id,work_date,job_code'/);
   assert.match(component, /const timerKey = `\$\{key\}:\$\{field\}`/);
   assert.match(component, /await onSave\(\{ employee_id: employee\.id, work_date: field, job_code: row\.job_code, hours: Number\(value\) \}\)/);
   assert.match(component, /persisted: true/);
   assert.match(component, /disabled=\{row\.persisted\}/);
-  assert.match(component, /created_by_profile_id: deps\.profileId/);
+  assert.match(component, /commandCenterDatabase\.saveTimesheet\(deps\.client, entry, deps\.profileId\)/);
+  assert.match(database, /created_by_profile_id: z\.string\(\)\.uuid\(\)\.parse\(profileId\)/);
   assert.match(component, /entries\.filter\(row => row\.employee_id === employee\.id && dates\.includes\(row\.work_date\)\)/);
   assert.match(component, /employee_id: employee\.id, work_date: field, job_code: row\.job_code/);
 });

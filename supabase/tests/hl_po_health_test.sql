@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Disposable fixtures: health reads must never refresh source dates or balances.
 begin;
 select set_config('request.jwt.claims','{"role":"service_role"}',true);

@@ -1,3 +1,4 @@
+// @test-group: inventory
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -114,6 +115,11 @@ function appApiHarness({ moduleAllowed = true } = {}) {
   }).outputText;
   const queries = [];
   const context = vm.createContext({
+    jsonValue: value => value,
+    jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
     hasTableReadAccess: (role, _table, username) => ['admin', 'qc supervisor', 'rep'].includes(String(role || '').toLowerCase())
@@ -236,6 +242,7 @@ test('inventory_read applies fixed projections, capped pagination, module access
   });
   assert.equal(allowedAssignment.status, 200);
   assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'app_tab_assignment' && value === 'ncr_approval_new_crop_dylan'));
+  assert.ok(queries.at(-1).calls.some(([method, fields]) => method === 'select' && fields.includes('unique_id') && fields.includes('locationcode') && !fields.includes('*')));
 
   const recount = await handler({ actor: { username: 'dylan_collyge', role: 'staff' } }, { operation: 'recount_queue' });
   assert.equal(recount.status, 200);

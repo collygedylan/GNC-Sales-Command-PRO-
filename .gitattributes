@@ -1,1 +1,8 @@
 assets/vendor/supabase-browser-*.min.js binary
+**/database.types.ts text eol=lf linguist-generated=true
+**/sandbox.database.types.ts text eol=lf linguist-generated=true
+**/*contracts.generated.ts text eol=lf linguist-generated=true
+supabase/schema/*.catalog.json text eol=lf linguist-generated=true
+# Bundled dependencies contain intentional whitespace inside generated strings.
+assets/alpha-command-center.js whitespace=-blank-at-eol linguist-generated=true
+.husky/* text eol=lf

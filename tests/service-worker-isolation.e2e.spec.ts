@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @sw-isolation
+
+
 
 const localOrigin = 'http://127.0.0.1:43126';
 const partnerUrl = `${localOrigin}/v2/#bloom`;
 
-test('root worker activation preserves the open AgMetric partner workspace, its caches, and native sign-in', async ({ context, page, request, browserName }) => {
+test('root worker activation preserves the open AgMetric partner workspace, its caches, and native sign-in', {"tag":["@sw-isolation"]}, async ({ context, page, request, browserName }) => {
   // Confirm the supplied fixture server, before allowing any browser navigation.
   const fixture = await request.get(`${localOrigin}/`);
   expect(fixture.ok()).toBe(true);

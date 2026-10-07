@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional,sales
+
+
 
 for (const username of ['madison_austin', 'madelyn_gray']) {
-  test(`${username} sees shared AV Blanks but only Season Sales Notes`, async ({ page }) => {
+  test(`${username} sees shared AV Blanks but only Season Sales Notes`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     // No real accounts, customer data, or production writes are used.
     const fixtureRows = async (table: string) => page.evaluate(table => {

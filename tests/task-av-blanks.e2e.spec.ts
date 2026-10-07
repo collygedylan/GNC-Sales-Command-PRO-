@@ -2,9 +2,12 @@
 // See docs/rollback-sep09-validation.md for deliberately removed later contracts.
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 import { expect, test } from '@playwright/test';
+// @test-group: @task-av-blanks,av-blanks
+
+
 
 for (const username of ['madison_austin', 'madelyn_gray']) {
-  test(`${username} sees shared AV Blanks but only Season Sales Notes`, async ({ page }) => {
+  test(`${username} sees shared AV Blanks but only Season Sales Notes`, {"tag":["@task-av-blanks"]}, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     // No real accounts, customer data, or production writes are used.
     const fixtureRows = async (table: string) => page.evaluate(table => {
@@ -100,7 +103,7 @@ async function settleIosShellVersion(page: import('@playwright/test').Page, proj
     && window.eval('hasAppliedInitialHomeView === true'));
 }
 
-test('AV loads through app-api with raw reads blocked and shows release GNC.001', async ({ page, baseURL }, testInfo) => {
+test('AV loads through app-api with raw reads blocked and shows release GNC.001', {"tag":["@task-av-blanks"]}, async ({ page, baseURL }, testInfo) => {
   const rawReads: string[] = [], datasets = new Set<string>();
   page.on('request', request => {
     if (request.method() === 'GET' && /\/rest\/v1\/(ph_reserves|ph_av_notes|ph_view_av_hot_price_keys)(?:\?|$)/.test(request.url())) rawReads.push(request.url());
@@ -139,7 +142,7 @@ test('AV loads through app-api with raw reads blocked and shows release GNC.001'
   expect(fixture.errors).toEqual([]);
 });
 
-test('AV cards keep readable priority, stock and actions across themes and widths', async ({ page, baseURL }, testInfo) => {
+test('AV cards keep readable priority, stock and actions across themes and widths', {"tag":["@task-av-blanks"]}, async ({ page, baseURL }, testInfo) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_priority_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
   // Exercise the compiled renderer with cached rows. The fixture blocks production writes.
@@ -271,7 +274,7 @@ test('AV cards keep readable priority, stock and actions across themes and width
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('photo modal reserves its layout before delayed photos load and keeps the selected slide', async ({ page, baseURL }, testInfo) => {
+test('photo modal reserves its layout before delayed photos load and keeps the selected slide', {"tag":["@task-av-blanks"]}, async ({ page, baseURL }, testInfo) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_photo_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
   await page.setViewportSize({ width: 390, height: 844 });
@@ -321,7 +324,7 @@ test('photo modal reserves its layout before delayed photos load and keeps the s
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('ordinary compact AV cards stay within the row budget', async ({ page, baseURL }, testInfo) => {
+test('ordinary compact AV cards stay within the row budget', {"tag":["@task-av-blanks"]}, async ({ page, baseURL }, testInfo) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_compact_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
   await page.route('**/storage/v1/object/public/request_photos/**', route => route.fulfill({
@@ -417,7 +420,7 @@ test('ordinary compact AV cards stay within the row budget', async ({ page, base
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('AV cached card refreshes priority and preserves photo and picker hooks offline', async ({ page, context, baseURL }, testInfo) => {
+test('AV cached card refreshes priority and preserves photo and picker hooks offline', {"tag":["@task-av-blanks"]}, async ({ page, context, baseURL }, testInfo) => {
   const activate = async (control: import('@playwright/test').Locator) => {
     if (!testInfo.project.name.includes('iphone')) return control.click();
     await expect(control).toBeInViewport();

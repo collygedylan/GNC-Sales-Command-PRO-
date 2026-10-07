@@ -268,11 +268,11 @@ jobs:
           - suite: requests
             project: production-chromium
             browsers: chromium
-            command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts --project=production-chromium --workers=1 --max-failures=1
+            command: npx playwright test --config playwright.production.config.ts --project=production-chromium --workers=1 --max-failures=1
           - suite: requests
             project: production-iphone-webkit
             browsers: webkit
-            command: npx playwright test --config playwright.production.config.ts tests/production-request-canary.spec.ts --project=production-iphone-webkit --workers=1 --max-failures=1
+            command: npx playwright test --config playwright.production.config.ts --project=production-iphone-webkit --workers=1 --max-failures=1
           - suite: session
             project: session-chromium
             browsers: chromium

@@ -1,3 +1,6 @@
+\set ON_ERROR_STOP on
+-- @test-runtime: isolated-acceptance
+-- @test-harness: sales-mobile
 begin;
 create temporary table navigation_checks(description text);
 create function pg_temp.nav_check(ok boolean,description text) returns void language plpgsql as $$
@@ -53,4 +56,10 @@ begin
   perform pg_temp.nav_check(not has_table_privilege('authenticated','private.navigation_view_overrides','select'),'other user overrides not directly readable');
 end $$;
 select count(*) as navigation_checks_passed from navigation_checks;
+
+create extension if not exists pgtap with schema extensions;
+set local search_path = public,extensions,pg_temp;
+select plan(1);
+select ok((select count(*) > 0 from navigation_checks), 'navigation_preferences_test.sql: all exception assertions completed');
+select * from finish();
 rollback;

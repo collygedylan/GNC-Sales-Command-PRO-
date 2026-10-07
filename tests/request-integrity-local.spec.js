@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+// @test-group: @database,@local-e2e
+
+
 
 const localUrl = String(process.env.SUPABASE_LOCAL_URL || '').replace(/\/$/, '');
 const anonKey = String(process.env.SUPABASE_LOCAL_ANON_KEY || '');
@@ -7,7 +10,7 @@ const serviceKey = String(process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY || '');
 async function jsonFetch(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
-  let body = null;
+  let body;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
   return { response, body };
 }
@@ -63,10 +66,10 @@ async function rpc(name, token, payload) {
   });
 }
 
-test.describe('Drive-canonical request transactions', () => {
-  test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
+test.describe('Drive-canonical request transactions', {"tag":["@database","@local-e2e"]}, () => {
+  test.skip(!localUrl || !anonKey || !serviceKey, {"tag":["@database","@local-e2e"]}, 'Local Supabase environment is required.');
 
-  test('roles, retries, History/outbox, push, assignments, and browser outbox', async ({ page }) => {
+  test('roles, retries, History/outbox, push, assignments, and browser outbox', {"tag":["@database","@local-e2e"]}, async ({ page }) => {
     const suffix = Date.now().toString(36);
     const password = 'Request-test-2026!';
     const rep = await createUser(`rep_${suffix}@example.com`, password, `rep_${suffix}`, 'REP');

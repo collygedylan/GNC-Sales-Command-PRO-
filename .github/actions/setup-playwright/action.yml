@@ -33,7 +33,7 @@ runs:
         RELEASE_TEST_BROWSERS: ${{ steps.platform.outputs.browsers }}
       run: |
         set -euo pipefail
-        node --test tests/prepare-ci-playwright-apt.test.mjs
+        node scripts/run-discovered-tests.mjs node-unit --tag playwright-setup
         PLAYWRIGHT_CI_NODE="$(command -v node)"
         test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
         sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs

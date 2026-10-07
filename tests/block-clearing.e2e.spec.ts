@@ -1,5 +1,8 @@
 import { createBackend } from './helpers/block-clearing-pdf-harness.mjs';
 import { expect, test, type Page } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional
+
+
 
 // WebKit page startup can consume most of the scenario's timeout before the
 // app is loaded. Bound that environment setup separately; navigation, rendering,
@@ -479,7 +482,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing groups full bucket ITEMCODEs and retains all source rows through search at ${width}px`, async ({ page }) => {
+  test(`Block Clearing groups full bucket ITEMCODEs and retains all source rows through search at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await openSource(page);
     const groups = await appEval(page, `getManagerBlockClearingItemGroupsForSelectedLocation().map(group => ({ itemcode: group.itemcode, ids: group.rows.map(row => row.UNIQUE_ID).sort(), total: group.totalOnHand }))`);
@@ -500,7 +503,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing has one header Back with draft and search retention at ${width}px`, async ({ page }) => {
+  test(`Block Clearing has one header Back with draft and search retention at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await openSource(page);
     await page.locator('#managers-search').fill('Clearing Rose');
@@ -532,7 +535,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing destinations use all source years, search full codes and invalidate stale choices at ${width}px`, async ({ page }) => {
+  test(`Block Clearing destinations use all source years, search full codes and invalidate stale choices at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await selectRoseAndOpenInstructions(page);
     await page.locator('[data-block-clearing-action]').selectOption('move');
@@ -564,7 +567,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing validates each action quantity before the PDF request at ${width}px`, async ({ page }) => {
+  test(`Block Clearing validates each action quantity before the PDF request at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await selectRoseAndOpenInstructions(page);
     await installPdfFetch(page, 'success');
@@ -597,7 +600,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing PDF download sends one versioned report and never opens email at ${width}px`, async ({ page }) => {
+  test(`Block Clearing PDF download sends one versioned report and never opens email at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await openSource(page);
     await page.locator('[data-block-clearing-itemcode="BC.ROSE"] input[type="checkbox"]').check();
@@ -628,7 +631,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing PDF and email failures retain draft and never report success at ${width}px`, async ({ page }) => {
+  test(`Block Clearing PDF and email failures retain draft and never report success at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await selectRoseAndOpenInstructions(page);
     await setDecision(page, 'action', 'ta');
@@ -655,7 +658,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing real manager renderer preserves focused input and Back scroll at ${width}px`, async ({ page }) => {
+  test(`Block Clearing real manager renderer preserves focused input and Back scroll at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await selectRoseAndOpenInstructions(page);
     await setDecision(page, 'action', 'ta');
@@ -699,7 +702,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing email retry replays its frozen report after live stock changes at ${width}px`, async ({ page }) => {
+  test(`Block Clearing email retry replays its frozen report after live stock changes at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await selectRoseAndOpenInstructions(page);
     await setDecision(page, 'action', 'ta');
@@ -736,7 +739,7 @@ for (const width of [390, 1280]) {
     await assertInventoryUnchanged(page);
   });
 
-  test(`Block Clearing late email success does not erase another location draft at ${width}px`, async ({ page }) => {
+  test(`Block Clearing late email success does not erase another location draft at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await setupBlockClearing(page, width);
     await selectRoseAndOpenInstructions(page);
     await setDecision(page, 'action', 'ta');
@@ -769,7 +772,7 @@ for (const width of [390, 1280]) {
 }
 
 
-test('base and bay cards retain exact PDF scope and full nonstandard location identities', async ({page}) => {
+test('base and bay cards retain exact PDF scope and full nonstandard location identities', {"tag":["@local-e2e","@release-functional"]}, async ({page}) => {
   await setupBlockClearing(page, 390, {realShell:true});
   await page.locator('#managers-content button[onclick*=selectManagerBlockClearingBlock]').filter({hasText:/^Block AlphaA/}).click();
   await page.getByRole('button',{name:'Open location A.05',exact:true}).click();

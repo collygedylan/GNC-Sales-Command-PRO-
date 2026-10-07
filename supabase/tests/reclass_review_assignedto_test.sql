@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Disposable isolated local/CI database only. Every fixture and outbox event
 -- rolls back; this is not a production data repair or delivery canary.
 begin;

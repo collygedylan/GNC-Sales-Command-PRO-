@@ -5,6 +5,10 @@ import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/na
 import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "../_shared/database.types.ts";
+import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../services/databaseRest.ts";
+import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
+import { suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
@@ -28,6 +32,10 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
   "Cache-Control": "private, no-store",
 };
+const databaseBridge = createDatabaseRestBridge(async (url, init, timeout) => fetch(url, {
+  ...init,
+  signal: AbortSignal.timeout(timeout),
+}), legacyDatabaseTableAliases);
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
@@ -321,7 +329,7 @@ const QC_WRITE_TABLES = new Set([
 ]);
 const MASTER_QC_WRITABLE_FIELDS = new Set(["dock_note"]);
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
@@ -403,7 +411,6 @@ async function restRequest(table: string, method = "GET", query = "", body: unkn
   const normalizedTable = normalizeTableName(table);
   const querySuffix = String(query || "").trim();
   const request = async (tableName: string) => {
-    const url = `${SUPABASE_URL}/rest/v1/${tableName}${querySuffix ? `?${querySuffix}` : ""}`;
     const options: RequestInit = {
       method,
       headers: buildRestHeaders(method, tableName),
@@ -411,7 +418,7 @@ async function restRequest(table: string, method = "GET", query = "", body: unkn
     if (body !== null && body !== undefined && method !== "GET") {
       options.body = JSON.stringify(body);
     }
-    return await fetch(url, options);
+    return await databaseBridge.fetchTable(SUPABASE_URL, tableName, querySuffix, options, 30_000, "app-api.rest-request");
   };
   const response = await request(normalizedTable);
   if (!response.ok && normalizedTable.startsWith("ph_") && await responseLooksLikeMissingRelation(response)) {
@@ -496,7 +503,8 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   ph_dock_issue_allocations: "allocation_unique_id,issue_source_unique_id,alt_master_unique_id,alt_master_id,allocated_qty,alt_locationcode,alt_lotcode,alt_itemcode,alt_commonname,alt_contsize,alt_ptravailable,updated_by,updated_at",
   ph_productivity_history: "id,event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot",
 };
-const DATASET_READ_SOURCES: Record<string, { table: string; permission: string; key: string; fields: string; signatures?: string; filterFields: Set<string>; orderFields: Set<string> }> = {
+type DatasetReadRelation = (keyof Database["public"]["Tables"] | keyof Database["public"]["Views"]) & string;
+const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permission: string; key: string; fields: string; signatures?: string; filterFields: Set<string>; orderFields: Set<string> }> = {
   inventory_edits: {
     table: "ph_inventory_edit_requests", permission: "ph_inventory_edit_requests", key: "id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_inventory_edit_requests,
     filterFields: new Set(["id", "status", "workflow_stage", "stage", "source_unique_id", "master_unique_id", "itemcode", "locationcode", "lotcode", "stage_updated_at", "updated_at"]),
@@ -593,7 +601,7 @@ function validateDatasetReadParams(payload: Record<string, unknown>) {
 function datasetReadScalar(value: unknown) {
   if (value === null || typeof value === "boolean") return value;
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.length <= 500 && !/[\x00-\x1f]/.test(value)) return value;
+  if (typeof value === "string" && value.length <= 500 && ![...value].some((character) => character.charCodeAt(0) < 32)) return value;
   throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
 }
 
@@ -657,22 +665,20 @@ async function handleDatasetRead(
 
   if (parsed.projection === "signature" && !source.signatures) return errorResponse("This dataset has no signature projection.", 400, { code: "DATASET_READ_PROJECTION_INVALID" });
   const fields = parsed.projection === "ids" ? source.key : parsed.projection === "signature" ? source.signatures! : source.fields;
-  let query: any = supabase.from(source.table).select(fields, { count: "exact" });
   try {
+    const query = new URLSearchParams();
+    query.set("select", fields);
     const filters = datasetReadFilterParts(source, parsed.filters);
     for (const filter of filters) {
-      if (filter.op === "in") query = query.in(filter.field, filter.value);
-      else if (filter.op === "is") query = query.is(filter.field, filter.value);
-      else if (filter.op === "not.is") query = query.not(filter.field, "is", filter.value);
-      else if (filter.op === "not.ilike") query = query.not(filter.field, "ilike", filter.value);
-      else query = query.filter(filter.field, filter.op, filter.value);
+      const value = Array.isArray(filter.value) ? `(${filter.value.map(datasetReadOrLiteral).join(",")})` : datasetReadOrLiteral(filter.value);
+      query.append(filter.field, `${filter.op}.${value}`);
     }
     if (dataset === "suspend_tag") {
       // Mirror the Suspend Tag eligibility normalization in index.html, but
       // enforce it in PostgREST before exact count/paging so callers cannot
       // widen the result or receive inconsistent page totals.
-      query = query.filter("suspend", "imatch", "^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$")
-        .filter("suspend_to", "imatch", "^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$");
+      query.append("suspend", "imatch.^[[:space:]\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]*[s\\u017f]uspend[[:space:]\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]*$");
+      query.append("suspend_to", "imatch.^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$");
     }
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
@@ -691,9 +697,9 @@ async function handleDatasetRead(
       if (!patterns.size) return errorResponse("Your sales representative profile is incomplete.", 403, { code: "DATASET_READ_REP_IDENTITY_REQUIRED" });
       const repScope = [...patterns].map((pattern) => `salesrepname.ilike.${datasetReadOrLiteral(pattern)}`).join(",");
       const anyOfScope = anyOf.length ? `or(${anyOf.map(datasetReadOrCondition).join(",")})` : "";
-      query = query.or(anyOfScope ? `and(or(${repScope}),${anyOfScope})` : repScope);
+      query.set("or", anyOfScope ? `and(or(${repScope}),${anyOfScope})` : repScope);
     } else if (anyOf.length) {
-      query = query.or(anyOf.map(datasetReadOrCondition).join(","));
+      query.set("or", `(${anyOf.map(datasetReadOrCondition).join(",")})`);
     }
 
     for (const raw of parsed.order) {
@@ -702,23 +708,35 @@ async function handleDatasetRead(
       if (Object.keys(order).some((key) => !["field", "ascending"].includes(key)) || typeof order.ascending !== "boolean") throw new Error("DATASET_READ_ORDER_INVALID");
       const field = String(order.field || "");
       if (!source.orderFields.has(field)) throw new Error("DATASET_READ_ORDER_INVALID");
-      query = query.order(field, { ascending: order.ascending });
+      query.append("order", `${field}.${order.ascending ? "asc" : "desc"}`);
     }
     if (!parsed.order.some((entry) => entry && typeof entry === "object" && (entry as Record<string, unknown>).field === source.key)) {
-      query = query.order(source.key, { ascending: true });
+      query.append("order", `${source.key}.asc`);
     }
-    const { data, error, count } = await query.range(parsed.offset, parsed.offset + parsed.limit - 1);
-    if (error) return databaseFailureResponse("Dataset read failed.", error, "DATASET_READ_UNAVAILABLE");
-    if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    query.set("offset", String(parsed.offset));
+    query.set("limit", String(parsed.limit));
+    const response = await databaseBridge.fetchTable(SUPABASE_URL, source.table, query.toString(), {
+      method: "GET", headers: { ...buildRestHeaders("GET", source.table), Prefer: "count=exact" },
+    }, 30_000, "app-api.dataset-read");
+    const responseData = await readResponsePayload(response);
+    if (!response.ok) return databaseFailureResponse("Dataset read failed.", responseData, "DATASET_READ_UNAVAILABLE");
+    const checkedData = jsonValue(responseData);
+    if (!Array.isArray(checkedData) || checkedData.some((row) => !row || typeof row !== "object" || Array.isArray(row))) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    const data: Array<Record<string, Json | undefined>> = checkedData.map((row) => jsonObject(row));
+    const range = response.headers.get("content-range") || "";
+    const total = Number(range.match(/\/(\d+)$/)?.[1]);
+    if (!Number.isInteger(total) || total < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
     if (dataset === "suspend_tag") {
-      const state = await handleSuspendTag(supabase, actor, { operation: "rows", payload: { ids: data.map((row: Record<string, unknown>) => row.unique_id) } }) as { rows: Record<string, unknown>[] };
-      const byId = new Map(state.rows.map(row => [row.unique_id, row]));
+      const ids = data.map((row) => row.unique_id).filter((value): value is string => typeof value === "string");
+      const state = await handleSuspendTag(supabase, actor, { operation: "rows", payload: { ids } });
+      const stateRows = suspendTagRowsFromResult(state);
+      const byId = new Map(stateRows.map((item) => { const row = jsonObject(item); return [String(row.unique_id || ""), row] as const; }));
       for (const row of data) {
-        const current = byId.get(row.unique_id);
+        const current = typeof row.unique_id === "string" ? byId.get(row.unique_id) : undefined;
         if (current) for (const [key, value] of Object.entries(current)) if (key.startsWith("suspend_tag_") || key in row) row[key] = value;
       }
     }
-    return jsonResponse({ ok: true, data: { rows: data, total: count, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < count } });
+    return jsonResponse({ ok: true, data: { rows: data, total, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total } });
   } catch (error) {
     const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
     if (dataset === "suspend_tag" && code.includes("SUSPEND_TAG_")) {
@@ -734,11 +752,13 @@ async function handleRequestArchive(session: Awaited<ReturnType<typeof readSupab
     let actor: Record<string, unknown>;
     try { actor = await resolveActiveSessionProfile(session); }
     catch { return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" }); }
+    const actorId = typeof actor.id === "string" ? actor.id : "";
+    if (!actorId) return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" });
     const operation = String(payload.operation || "");
     if (operation === "list") {
       const offset = Number(payload.offset ?? 0), limit = Number(payload.limit ?? 100);
       if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) return errorResponse("Invalid archive page.", 400);
-      const { data, error } = await supabase.rpc("request_archive_list_v1", { p_actor_id: actor.id, p_offset: offset, p_limit: Math.min(limit, 500) });
+      const { data, error } = await supabase.rpc("request_archive_list_v1", { p_actor_id: actorId, p_offset: offset, p_limit: Math.min(limit, 500) });
       if (error) return databaseFailureResponse("Archived requests could not be loaded.", error, "REQUEST_ARCHIVE_READ_FAILED");
       return jsonResponse({ ok: true, data });
     }
@@ -747,7 +767,7 @@ async function handleRequestArchive(session: Awaited<ReturnType<typeof readSupab
       return errorResponse("Invalid archive command.", 400, { code: "REQUEST_ARCHIVE_COMMAND_INVALID" });
     }
     const { data, error } = await supabase.rpc("request_archive_command_v1", {
-      p_actor_id: actor.id, p_uid: uid, p_operation: operation, p_idempotency_key: key,
+      p_actor_id: actorId, p_uid: uid, p_operation: operation, p_idempotency_key: key,
     });
     if (error) return databaseFailureResponse("The archive change was not accepted. Refresh the request and retry.", error, "REQUEST_ARCHIVE_FAILED");
     return jsonResponse({ ok: true, data });
@@ -850,9 +870,12 @@ async function handleProductionScheduleAction(
   if (parsed.operation === "metadata") {
     const { data, error } = await supabase.rpc("production_schedule_read_metadata_v1");
     if (error) return databaseFailureResponse("Production Schedule metadata is unavailable.", error, "PRODUCTION_SCHEDULE_METADATA_UNAVAILABLE");
-    return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { snapshot: null, sheets: [] }) });
+    const metadata = data && typeof data === "object" && !Array.isArray(data) ? jsonObject(data) : { snapshot: null, sheets: [] };
+    return jsonResponse({ ok: true, ...metadata });
   }
   if (parsed.operation === "rows") {
+    if (!Number.isInteger(parsed.sheetId) || typeof parsed.cursor !== "number" || typeof parsed.limit !== "number"
+      || typeof parsed.q !== "string" || !parsed.filters || !parsed.snapshotId) return errorResponse("Invalid schedule request.", 400);
     const { data, error } = await supabase.rpc(parsed.projection === "cards" ? "production_schedule_read_cards_v1" : "production_schedule_read_rows_v1", {
       p_sheet_index: parsed.sheetId,
       p_snapshot_id: parsed.snapshotId,
@@ -866,6 +889,7 @@ async function handleProductionScheduleAction(
     return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { rows: [], nextCursor: null, total: 0, snapshotId: null, hasMore: false }) });
   }
   if (parsed.operation === "row_detail") {
+    if (!parsed.snapshotId || typeof parsed.sheetId !== "number" || typeof parsed.sourceRow !== "number") return errorResponse("Invalid schedule row.", 400);
     // Pin the detail to the same published snapshot as its card. A staged or
     // failed import must never leak into an otherwise complete page.
     const snapshot = await supabase.from("production_schedule_snapshots").select("id")
@@ -883,9 +907,9 @@ async function handleProductionScheduleAction(
     if (runId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId)) {
       return errorResponse("Production Schedule run ID is invalid.", 400, { code: "PRODUCTION_SCHEDULE_RUN_INVALID" });
     }
-    const { data, error } = await supabase.rpc("production_schedule_read_status_v1", { p_snapshot_id: runId || null });
+    const { data, error } = await supabase.rpc("production_schedule_read_status_v1", runId ? { p_snapshot_id: runId } : {});
     if (error) return databaseFailureResponse("Production Schedule status is unavailable.", error, "PRODUCTION_SCHEDULE_STATUS_UNAVAILABLE");
-    return jsonResponse({ ok: true, run: data && typeof data === "object" ? data : { id: null, status: "empty" } });
+    return jsonResponse({ ok: true, run: data && typeof data === "object" ? jsonObject(data) : { id: null, status: "empty" } });
   }
 
   if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
@@ -950,12 +974,12 @@ async function handleAppendProductivityHistory(
   if (Object.keys(payload).some((key) => !["action", "entries"].includes(key)) || !Array.isArray(payload.entries) || payload.entries.length < 1 || payload.entries.length > 500) {
     return errorResponse("Productivity history entries are invalid.", 400, { code: "PRODUCTIVITY_HISTORY_PAYLOAD_INVALID" });
   }
-  const entries: Record<string, unknown>[] = [];
+  const entries: Database["public"]["Tables"]["ph_productivity_history"]["Insert"][] = [];
   const keys = new Set<string>();
   try {
     for (const raw of payload.entries) {
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("PRODUCTIVITY_HISTORY_ENTRY_INVALID");
-      const entry = raw as Record<string, unknown>;
+      const entry = jsonObject(raw);
       if (Object.keys(entry).some((key) => !PRODUCTIVITY_HISTORY_ENTRY_FIELDS.has(key))) throw new Error("PRODUCTIVITY_HISTORY_ENTRY_INVALID");
       const eventKey = String(entry.event_key || "").trim();
       const completedBy = normalizeUsername(String(entry.completed_by_username || ""));
@@ -970,7 +994,7 @@ async function handleAppendProductivityHistory(
       const expectedEventKey = `${sourceTable}|${sourceKind}|${sourceUid}|${completedAt}|${completedBy}`;
       if (eventKey !== expectedEventKey || keys.has(eventKey)) throw new Error("PRODUCTIVITY_HISTORY_IDEMPOTENCY_KEY_INVALID");
       keys.add(eventKey);
-      const snapshot = entry.snapshot && typeof entry.snapshot === "object" && !Array.isArray(entry.snapshot) ? entry.snapshot : {};
+      const snapshot = entry.snapshot && typeof entry.snapshot === "object" && !Array.isArray(entry.snapshot) ? jsonObject(entry.snapshot) : {};
       if (JSON.stringify(snapshot).length > 40000) throw new Error("PRODUCTIVITY_HISTORY_SNAPSHOT_TOO_LARGE");
       entries.push({
         event_key: eventKey,
@@ -988,7 +1012,7 @@ async function handleAppendProductivityHistory(
         lotcode: String(entry.lotcode || "").trim().slice(0, 160) || null,
         customer_name: String(entry.customer_name || "").trim().slice(0, 300) || null,
         request_folder: String(entry.request_folder || "").trim().slice(0, 200) || null,
-        snapshot,
+        snapshot: jsonValue(snapshot),
       });
     }
     const { data, error } = await supabase.from("ph_productivity_history")
@@ -1089,9 +1113,10 @@ async function handleManagerSeasonSettings(
     const { data, error } = await supabase.auth.getUser(authorization.replace(/^Bearer\s+/i, ""));
     if (error || !data?.user?.id || data.user.id !== session.authUserId) return forbidden();
     actor = await resolveActiveSessionProfile(session);
-    if (actor.id !== data.user.id || !FULL_ACCESS_USER_KEYS.has(String(actor.username || ""))) return forbidden();
+    if (typeof actor.id !== "string" || actor.id !== data.user.id || !FULL_ACCESS_USER_KEYS.has(String(actor.username || ""))) return forbidden();
   } catch { return forbidden(); }
-  const operation = payload.operation;
+  const operation = payload.operation === "read" || payload.operation === "save" ? payload.operation : null;
+  if (!operation) return errorResponse("Choose read or save.", 400, { code: "AURA_MANAGER_SETTINGS_INPUT_INVALID" });
   const allowed = operation === "read" ? new Set(["action", "operation"])
     : new Set(["action", "operation", "seasonCode", "salesYear", "expectedRevision"]);
   if (!["read", "save"].includes(String(operation)) || Object.keys(payload).some(key => !allowed.has(key))
@@ -1102,15 +1127,20 @@ async function handleManagerSeasonSettings(
   }
   try {
     const { data, error } = await supabase.rpc("aura_manager_season_settings_v1", {
-      p_actor_id: actor.id, p_operation: operation,
-      p_expected_revision: operation === "save" ? payload.expectedRevision : null,
-      p_season_code: operation === "save" ? payload.seasonCode : null,
-      p_sales_year: operation === "save" ? payload.salesYear : null,
+    p_actor_id: String(actor.id), p_operation: operation,
+      p_expected_revision: operation === "save" ? Number(payload.expectedRevision) : undefined,
+      p_season_code: operation === "save" ? String(payload.seasonCode) : undefined,
+      p_sales_year: operation === "save" ? Number(payload.salesYear) : undefined,
     });
     if (error) throw error;
-    if (!data || !["S1", "F1"].includes(data.seasonCode) || !Number.isInteger(data.salesYear)
-      || data.salesYear < 1 || data.salesYear > 99 || !Number.isSafeInteger(data.revision) || data.revision < 0) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
-    return jsonResponse({ ok: true, data });
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+    const setting = jsonObject(data);
+    const seasonCode = setting.seasonCode;
+    const salesYear = setting.salesYear;
+    const revision = setting.revision;
+    if (typeof seasonCode !== "string" || !["S1", "F1"].includes(seasonCode) || typeof salesYear !== "number" || !Number.isInteger(salesYear)
+      || salesYear < 1 || salesYear > 99 || typeof revision !== "number" || !Number.isSafeInteger(revision) || revision < 0) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+    return jsonResponse({ ok: true, data: { seasonCode, salesYear, revision } });
   } catch (error) {
     const detail = error as { code?: string; message?: string };
     if (detail.code === "42501") return forbidden();
@@ -1183,17 +1213,21 @@ async function handlePhotoHistoryAction(
   }
   // The session supplies the actor. RPCs freeze recipients and asset references themselves.
   const input = payload.input && typeof payload.input === 'object' && !Array.isArray(payload.input)
-    ? payload.input as Record<string, unknown> : {};
+    ? jsonObject(payload.input) : {};
   try {
+    if (typeof profile.id !== "string") throw new Error("PHOTO_HISTORY_PROFILE_INVALID");
     const { data, error } = await supabase.rpc('photo_history_gallery_v1', {
       p_actor_id: profile.id, p_operation: operation, p_input: input,
     });
     if (error) throw new Error(error.message);
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("PHOTO_HISTORY_RESPONSE_INVALID");
+    const result = jsonObject(data);
     if (operation === 'search') {
-      return jsonResponse({ ...data, photos: (data.photos || []).map((a: Record<string, unknown>) => publicHistoryPhoto(SUPABASE_URL, a)) });
+      const photos = Array.isArray(result.photos) ? result.photos.map((value) => publicHistoryPhoto(SUPABASE_URL, jsonObject(value))) : [];
+      return jsonResponse({ ...result, photos });
     }
     if (operation === 'asset') {
-      const asset = data.asset as Record<string, unknown>;
+      const asset = jsonObject(result.asset);
       if (input.open === true) {
         const url = asset.storage_available ? historyPhotoUrl(SUPABASE_URL, asset, true)
           : `https://drive.google.com/file/d/${encodeURIComponent(String(asset.drive_file_id || ''))}/view`;
@@ -1202,7 +1236,7 @@ async function handlePhotoHistoryAction(
       if (asset.storage_available) return jsonResponse({ ok: true, thumbnail: historyPhotoUrl(SUPABASE_URL, asset) });
       return jsonResponse(await readArchivedHistoryThumbnail(asset));
     }
-    return jsonResponse(data);
+    return jsonResponse(result);
   } catch (error) {
     const raw = String(error instanceof Error ? error.message : '');
     const codes: Record<string, string> = {
@@ -1234,7 +1268,7 @@ async function handleDriveReclassAction(
     if (operation === "season_priority_list") {
       const assignedTo = String(payload.assignedTo || payload.assigned_to || "all").trim().slice(0, 120);
       const { data, error } = await supabase.rpc("manager_season_priority_list_v1", {
-        p_actor_id: activeProfile.id,
+        p_actor_id: String(activeProfile.id),
         p_assigned_to: assignedTo,
       });
       if (error) return seasonPriorityErrorResponse(error.message || "");
@@ -1243,7 +1277,7 @@ async function handleDriveReclassAction(
     if (operation === "season_priority_submit") {
       const expectedPriority = Number(payload.expectedPriority ?? payload.expected_priority);
       const { data, error } = await supabase.rpc("submit_manager_season_priority_v1", {
-        p_actor_id: activeProfile.id,
+        p_actor_id: String(activeProfile.id),
         p_source_unique_id: String(payload.sourceUid || payload.source_uid || "").trim(),
         p_expected_priority: Number.isInteger(expectedPriority) ? expectedPriority : 0,
         p_scope_fingerprint: String(payload.scopeFingerprint || payload.scope_fingerprint || "").trim().toLowerCase(),
@@ -1257,8 +1291,8 @@ async function handleDriveReclassAction(
         ? payload.itemcodes.slice(0, 101).map((value) => String(value || "").trim()).filter(Boolean)
         : null;
       const { data, error } = await supabase.rpc("manager_season_priority_state_v1", {
-        p_actor_id: activeProfile.id,
-        p_itemcodes: itemcodes,
+        p_actor_id: String(activeProfile.id),
+        ...(itemcodes ? { p_itemcodes: itemcodes } : {}),
       });
       if (error) return seasonPriorityErrorResponse(error.message || "");
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, requests: [] });
@@ -1279,7 +1313,7 @@ async function handleDriveReclassAction(
       const enqueueRpc = protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
         ? "enqueue_drive_reclass_inquiry_v4"
         : "enqueue_drive_reclass_inquiry_v1";
-      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: protectedPayload });
+      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: jsonValue(protectedPayload) });
       if (error) return driveReclassErrorResponse(error.message || "");
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
     }
@@ -1596,12 +1630,12 @@ async function handleShearLocationAction(
       });
       const recipients = await resolveShearRecipients(payload.recipientProfileIds);
       const { data, error } = await supabase.rpc("create_shear_location_inquiries_v1", {
-        p_payload: {
+        p_payload: jsonValue({
           actorUsername: actor,
           idempotencyKey: String(payload.idempotencyKey || "").trim(),
           selections,
           recipients,
-        },
+        }),
       });
       if (error) throw error;
       return jsonResponse({ ok: true, data });
@@ -1786,7 +1820,7 @@ async function handleLocationWorkAction(
       const completionRecipient = directory.find((entry) => entry.username === LOCATION_WORK_CREATOR);
       if (!completionRecipient) throw new Error("location_work_completion_recipient_invalid");
       const { data, error } = await supabase.rpc("create_location_work_job_v1", {
-        p_payload: {
+        p_payload: jsonValue({
           actorUsername: actor,
           idempotencyKey: String(payload.idempotencyKey || "").trim(),
           title: String(payload.title || "").trim(),
@@ -1794,7 +1828,7 @@ async function handleLocationWorkAction(
           lines,
           recipients,
           completionRecipient,
-        },
+        }),
       });
       if (error) throw error;
       return jsonResponse({ ok: true, data });
@@ -1817,7 +1851,7 @@ async function handleLocationWorkAction(
         p_actor_username: actor,
         p_expected_revision: expectedRevision,
         p_resolution_status: resolutionStatus,
-        p_actual_qty: actualQty,
+        p_actual_qty: actualQty ?? undefined,
         p_not_completed_reason: String(payload.notCompletedReason || "").trim(),
         p_variance_confirmed: payload.varianceConfirmed === true,
       });
@@ -1849,14 +1883,11 @@ async function handleLocationWorkAction(
       const jobId = String(payload.jobId || "").trim();
       const expectedRevision = Number(payload.expectedRevision);
       if (!jobId || !Number.isInteger(expectedRevision) || expectedRevision < 1) throw new Error("location_work_revision_conflict");
-      const rpcName = operation === "cancel" ? "cancel_location_work_job_v1" : "retry_location_work_delivery_v1";
-      const args: Record<string, unknown> = {
-        p_job_id: jobId,
-        p_actor_username: actor,
-        p_expected_revision: expectedRevision,
-      };
-      if (operation === "retry") args.p_delivery_kind = String(payload.deliveryKind || "assignment").trim().toLowerCase();
-      const { data, error } = await supabase.rpc(rpcName, args);
+      const result = operation === "cancel"
+        ? await supabase.rpc("cancel_location_work_job_v1", { p_job_id: jobId, p_actor_username: actor, p_expected_revision: expectedRevision })
+        : await supabase.rpc("retry_location_work_delivery_v1", { p_job_id: jobId, p_actor_username: actor,
+          p_expected_revision: expectedRevision, p_delivery_kind: String(payload.deliveryKind || "assignment").trim().toLowerCase() });
+      const { data, error } = result;
       if (error) throw error;
       return jsonResponse({ ok: true, data });
     }
@@ -1931,13 +1962,13 @@ async function handleDockTripStatusAction(
     }
     const { data, error } = await supabase.rpc("save_dock_trip_status_v1", {
       p_tripnumber: tripnumber,
-      p_dock_num: dockNum || null,
-      p_checker: checker || null,
-      p_inspector: inspector || null,
-      p_mistake: mistake || null,
+      p_dock_num: dockNum,
+      p_checker: checker,
+      p_inspector: inspector,
+      p_mistake: mistake,
       p_status: dockStatus,
       p_actor_username: actor,
-      p_expected_revision: expectedRevision,
+      p_expected_revision: expectedRevision ?? undefined,
     });
     if (error) throw error;
     const savedStatus = Array.isArray(data) ? data[0] : data;
@@ -2291,7 +2322,7 @@ async function handleEvalWorkAction(
           source,
           inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
         };
-        const { data, error } = await supabase.rpc("create_eval_work_legacy_sep09_v1", { p_payload: rpcPayload });
+        const { data, error } = await supabase.rpc("create_eval_work_legacy_sep09_v1", { p_payload: jsonValue(rpcPayload) });
         if (error) throw error;
         return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
       }
@@ -2307,7 +2338,7 @@ async function handleEvalWorkAction(
         source,
         inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
       };
-      const { data, error } = await supabase.rpc("create_eval_work_multi_v1", { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc("create_eval_work_multi_v1", { p_payload: jsonValue(rpcPayload) });
       if (error) throw error;
       return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
     }
@@ -2395,7 +2426,7 @@ async function handleEvalWorkAction(
       const rpcName = report2ItemCount === items.length
         ? "create_eval_report2_batch_v1"
         : "create_eval_work_batch_multi_v2";
-      const { data, error } = await supabase.rpc(rpcName, { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc(rpcName, { p_payload: jsonValue(rpcPayload) });
       if (error) throw error;
       const report2Result = report2ItemCount === items.length && data && typeof data === "object" && !Array.isArray(data)
         ? data as Record<string, unknown>
@@ -2424,9 +2455,6 @@ async function handleEvalWorkAction(
         return errorResponse("Only an assigned evaluator can update this work.", 403, { code: "eval_work_edit_forbidden" });
       }
       const isV2 = String(row.contract_version || "") === "eval-work-v2-multi-origin";
-      const rpcName = isV2
-        ? (operation === "submit" ? "submit_eval_work_v2" : "save_eval_work_v2")
-        : (operation === "submit" ? "submit_eval_work_v1" : "save_eval_work_v1");
       let evidence: Record<string, unknown> = {};
       if (isV2) {
         const input = payload.evidenceByOrigin && typeof payload.evidenceByOrigin === "object"
@@ -2438,14 +2466,20 @@ async function handleEvalWorkAction(
       } else {
         evidence = normalizeEvalWorkEvidence(workId, payload.evidence && typeof payload.evidence === "object" ? payload.evidence : {});
       }
-      const { data, error } = await supabase.rpc(rpcName, {
+      const args = {
         p_work_id: workId,
         p_actor_username: actor,
         p_expected_version: Number(payload.expectedVersion),
-        p_inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft,
-        ...(isV2 ? { p_evidence_by_origin: evidence } : { p_evidence: evidence }),
-        ...(operation === "submit" ? { p_submission_token: String(payload.submissionToken || "").trim() } : {}),
-      });
+        p_inquiry: jsonValue(payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft ?? {}),
+      };
+      const result = isV2
+        ? operation === "submit"
+          ? await supabase.rpc("submit_eval_work_v2", { ...args, p_evidence_by_origin: jsonValue(evidence), p_submission_token: String(payload.submissionToken || "").trim() })
+          : await supabase.rpc("save_eval_work_v2", { ...args, p_evidence_by_origin: jsonValue(evidence) })
+        : operation === "submit"
+          ? await supabase.rpc("submit_eval_work_v1", { ...args, p_evidence: jsonValue(evidence), p_submission_token: String(payload.submissionToken || "").trim() })
+          : await supabase.rpc("save_eval_work_v1", { ...args, p_evidence: jsonValue(evidence) });
+      const { data, error } = result;
       if (error) throw error;
       const withDelivery = await withEvalWorkDeliveryStatus(data as Record<string, unknown>);
       return jsonResponse({ ok: true, data: (await withEvalWorkOrigins([withDelivery]))[0] });
@@ -2968,7 +3002,7 @@ async function handlePasswordChange(
     const fingerprint = await passwordChangeFingerprint(newPassword);
     const prepare = async (authUserId: string | null) => {
       const { data, error } = await supabase.rpc("prepare_password_change_profile", {
-        p_username: username, p_auth_user_id: authUserId, p_password_fingerprint: fingerprint,
+        p_username: username, ...(authUserId ? { p_auth_user_id: authUserId } : {}), p_password_fingerprint: fingerprint,
       });
       const row = Array.isArray(data) ? data[0] : data;
       return { row: row as Record<string, unknown> | null, error };
@@ -3217,8 +3251,8 @@ function inventoryActorQueueAssignments(username: string) {
   return allowed;
 }
 
-function inventoryReadQuery(table: string, fields: string, actor: Record<string, unknown>, includeCount = true) {
-  let query: any = supabase.from(table).select(fields, includeCount ? { count: "exact" } : {});
+function inventoryReadQuery(actor: Record<string, unknown>, fields: string, includeCount = true) {
+  let query = supabase.from("ph_master_inventory").select(fields, includeCount ? { count: "exact" } : {});
   const role = String(actor.role || "").trim();
   const access = getRoleAccessState(role);
   const compactRole = role.toUpperCase().replace(/[^A-Z0-9]+/g, "");
@@ -3229,6 +3263,14 @@ function inventoryReadQuery(table: string, fields: string, actor: Record<string,
     query = query.or("season.is.null,season.not.ilike.U3").or("lotcode.is.null,lotcode.not.ilike.%.U3");
   }
   return query;
+}
+function projectInventoryRows(rows: unknown, fields: string): Json[] {
+  if (!Array.isArray(rows)) return [];
+  const allowed = fields === "*" ? null : new Set(fields.split(",").map((field) => field.trim()).filter(Boolean));
+  return rows.map((row) => {
+    const value = jsonObject(jsonValue(row));
+    return allowed ? Object.fromEntries(Object.entries(value).filter(([key]) => allowed.has(key))) : value;
+  });
 }
 
 async function handleInventoryRead(
@@ -3251,13 +3293,13 @@ async function handleInventoryRead(
   try {
     if (operation === "source_freshness") {
       inventoryReadParams(payload, []);
-      const { data, error } = await inventoryReadQuery("ph_master_inventory", "filename,last_updated", actor, false)
+      const { data, error } = await inventoryReadQuery(actor, "filename,last_updated", false)
         .not("last_updated", "is", null)
         .order("last_updated", { ascending: false, nullsFirst: false })
         .limit(1);
       if (error) throw error;
-      const row = Array.isArray(data) ? data[0] || null : null;
-      return jsonResponse({ ok: true, data: { filename: row?.filename ?? null, last_updated: row?.last_updated ?? null } });
+      const row = projectInventoryRows(data, "filename,last_updated")[0];
+      return jsonResponse({ ok: true, data: { filename: row && !Array.isArray(row) && typeof row === "object" ? row.filename ?? null : null, last_updated: row && !Array.isArray(row) && typeof row === "object" ? row.last_updated ?? null : null } });
     }
 
     if (operation === "schema_capabilities") {
@@ -3290,7 +3332,7 @@ async function handleInventoryRead(
       const fields = projection === "browse" ? INVENTORY_MASTER_BROWSE_FIELDS
         : dataset === "avOpen" || projection === "full" ? INVENTORY_MASTER_FULL_FIELDS
         : projection === "initial_base" ? INVENTORY_MASTER_INITIAL_BASE_FIELDS : INVENTORY_MASTER_INITIAL_FIELDS;
-      let response = inventoryReadQuery("ph_master_inventory", fields, actor);
+      let response = inventoryReadQuery(actor, fields);
       if (dataset === "avOpen") response.in("season", ["F1", "S1", "U1", "U2"]);
       if (dataset === "lookup") {
         if (uniqueId) response.eq("unique_id", uniqueId);
@@ -3303,7 +3345,7 @@ async function handleInventoryRead(
       response = response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, fields);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count,
         projection, fieldCoverage: projection === "browse" ? "browse" : dataset === "avOpen" || projection === "full" ? "full" : "initial", columns: fields.split(",") } });
     }
@@ -3313,12 +3355,12 @@ async function handleInventoryRead(
       const { limit, offset } = inventoryReadPageBounds(params);
       const since = String(params.since || "").trim();
       if (!since || !Number.isFinite(Date.parse(since))) throw new Error("INVENTORY_READ_SINCE_INVALID");
-      const response = inventoryReadQuery("ph_master_inventory", INVENTORY_MASTER_FULL_FIELDS, actor);
+      const response = inventoryReadQuery(actor, INVENTORY_MASTER_FULL_FIELDS);
       response.gt("last_updated", since);
       response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, INVENTORY_MASTER_FULL_FIELDS);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
     }
 
@@ -3329,12 +3371,12 @@ async function handleInventoryRead(
       const contSize = String(params.contSize || "").trim();
       if (!itemCode || !contSize) throw new Error("PO_DETAIL_FILTER_REQUIRED");
       if (!await resolveModuleAllowed(supabase, actor, "po-management")) return errorResponse("Forbidden", 403, { code: "PO_ACCESS_FORBIDDEN" });
-      const response = inventoryReadQuery("ph_master_inventory", INVENTORY_PO_DETAIL_FIELDS, actor);
+      const response = inventoryReadQuery(actor, INVENTORY_PO_DETAIL_FIELDS);
       response.eq("itemcode", itemCode).eq("contsize", contSize);
       response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, INVENTORY_PO_DETAIL_FIELDS);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
     }
 
@@ -3344,7 +3386,7 @@ async function handleInventoryRead(
       const params = inventoryReadParams(payload, allowedParams);
       const { limit, offset } = inventoryReadPageBounds(params);
       let assignment = "ncr_inventory_recount";
-      let fields = "*";
+      let fields = INVENTORY_MASTER_FULL_FIELDS;
       let updatedAtFirst = true;
       if (operation === "ncr_queue") {
         const queueType = String(params.queueType || "").trim();
@@ -3367,12 +3409,12 @@ async function handleInventoryRead(
       } else if (!FULL_ACCESS_USER_KEYS.has(username) && !getRoleAccessState(role).isAdmin && !getRoleAccessState(role).isQcSupervisor) {
         return errorResponse("Forbidden", 403, { code: "QUEUE_ASSIGNMENT_FORBIDDEN" });
       }
-      let query: any = supabase.from("ph_master_inventory").select(fields, { count: "exact" }).eq("app_tab_assignment", assignment);
-      query = updatedAtFirst ? query.order("last_updated", { ascending: false, nullsFirst: false }).order("unique_id", { ascending: true })
-        : query.order("unique_id", { ascending: true });
+      let query = supabase.from("ph_master_inventory").select(fields, { count: "exact" }).eq("app_tab_assignment", assignment);
+      if (updatedAtFirst) query = query.order("last_updated", { ascending: false, nullsFirst: false }).order("unique_id", { ascending: true });
+      else query = query.order("unique_id", { ascending: true });
       const { data, error, count } = await query.range(offset, offset + limit - 1);
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, fields);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
     }
 
@@ -3388,7 +3430,7 @@ async function handleInventoryRead(
       if (kind === "not_on_inventory" && !INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS.has(assignment)) throw new Error("INVENTORY_ROW_VERIFICATION_INVALID");
       const { data, error } = await supabase.from("ph_master_inventory").select("unique_id,app_tab_assignment,assignedto").eq("unique_id", uniqueId).maybeSingle();
       if (error) throw error;
-      const row = data as Record<string, unknown> | null;
+      const row = data;
       if (!row) return jsonResponse({ ok: true, data: { status: "missing", matches: false } });
       const assignmentMatches = String(row.app_tab_assignment || "").trim().toLowerCase() === assignment;
       const assigneeMatches = !Object.prototype.hasOwnProperty.call(params, "expectedAssignee")
@@ -3503,20 +3545,25 @@ export async function handleAuraInventoryV2(
     timeoutStage = "database";
     const { data, error } = await auraInventoryV2Rpc(supabase, input, rpcSignal);
     if (error) throw error;
-    if (!data || typeof data !== "object" || data.ok !== true) {
-      return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: String(data?.code || "AURA_V2_RESULT_INVALID"), data });
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: "AURA_V2_RESULT_INVALID", data });
     }
-    if (data.code === "AURA_ACTIVE_SEASON_REQUIRED") {
+    const resultData = jsonObject(data);
+    if (resultData.ok !== true) {
+      return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: String(resultData.code || "AURA_V2_RESULT_INVALID"), data: resultData });
+    }
+    if (resultData.code === "AURA_ACTIVE_SEASON_REQUIRED") {
       return errorResponse("The active season changed. Refresh the inventory and review the draft again.", 409, { code: "AURA_ACTIVE_SEASON_REQUIRED", data });
     }
 
-    if (input.operation !== "validate_draft" || data.valid !== true || !Array.isArray(data.rows) || !data.rows.length) {
-      return jsonResponse({ ok: true, data });
+    if (input.operation !== "validate_draft" || resultData.valid !== true || !Array.isArray(resultData.rows) || !resultData.rows.length) {
+      return jsonResponse({ ok: true, data: resultData });
     }
+    const resultRows = resultData.rows.map((row) => jsonObject(row));
 
     const currentSettings = await readAuraSeasonSettings();
-    if (currentSettings.season !== String(data.season || "").toUpperCase()
-      || currentSettings.salesYear !== Number(data.salesYear)) {
+    if (currentSettings.season !== String(resultData.season || "").toUpperCase()
+      || currentSettings.salesYear !== Number(resultData.salesYear)) {
       return errorResponse("The active season or sales year changed. Refresh the inventory and review the draft again.", 409, {
         code: "AURA_ACTIVE_SEASON_REQUIRED",
       });
@@ -3525,8 +3572,8 @@ export async function handleAuraInventoryV2(
     // Re-read full inventory fields for the <=50 explicitly selected IDs so
     // the existing Bloom Picker editor receives its ordinary row contract.
     // This avoids returning every column through the SQL validation function.
-    const selectedIds = data.rows.map((row: Record<string, unknown>) => String(row.unique_id || "").trim()).filter(Boolean);
-    if (selectedIds.length !== data.rows.length || selectedIds.length > 50) {
+    const selectedIds = resultRows.map((row) => String(row.unique_id || "").trim()).filter(Boolean);
+    if (selectedIds.length !== resultRows.length || selectedIds.length > 50) {
       return errorResponse("AURA could not safely prepare those inventory rows. Review the selection again.", 409, { code: "AURA_V2_DRAFT_RESULT_INVALID" });
     }
     const fullRowsQuery = supabase.from("ph_master_inventory")
@@ -3535,11 +3582,12 @@ export async function handleAuraInventoryV2(
       ? fullRowsQuery.abortSignal(options.signal)
       : fullRowsQuery);
     if (fullRowsError) throw fullRowsError;
-    const fullInventoryRows = (Array.isArray(fullRows) ? fullRows : []) as unknown as Record<string, unknown>[];
+    const fullInventoryRows = Array.isArray(fullRows) ? fullRows.map((row) => jsonObject(jsonValue(row))) : [];
     const freshById = new Map(fullInventoryRows.map(row => [String(row.unique_id || ""), row]));
     const validatedRows: Record<string, unknown>[] = [];
-    const failures = [...(Array.isArray(data.failures) ? data.failures : [])] as Record<string, unknown>[];
-    for (const requested of input.lines as Record<string, unknown>[]) {
+    const failures = Array.isArray(resultData.failures) ? resultData.failures.map((row) => jsonObject(row)) : [];
+    for (const line of input.lines || []) {
+      const requested = jsonObject(line);
       const uid = String(requested.unique_id || "").trim();
       const row = freshById.get(uid);
       if (!row
@@ -3548,8 +3596,8 @@ export async function handleAuraInventoryV2(
         || auraCanonicalSize(row.contsize) !== auraCanonicalSize(requested.contsize)
         || String(row.locationcode || "").trim().toUpperCase() !== String(requested.locationcode || "").trim().toUpperCase()
         || String(row.lotcode || "").trim().toUpperCase() !== String(requested.lotcode || "").trim().toUpperCase()
-        || auraCanonicalName(row.season) !== auraCanonicalName(data.season)
-        || auraComparableSalesYear(row.saleyear) == null || auraComparableSalesYear(row.saleyear)! > Number(data.salesYear)
+         || auraCanonicalName(row.season) !== auraCanonicalName(resultData.season)
+         || auraComparableSalesYear(row.saleyear) == null || auraComparableSalesYear(row.saleyear)! > Number(resultData.salesYear)
         || auraNumber(row.ptravailable) == null || auraNumber(row.s_lts) == null || auraNumber(row.s_lts)! <= 0
         || auraNumber(requested.quantity) == null || !Number.isInteger(auraNumber(requested.quantity))
         || auraNumber(requested.quantity)! < 1 || auraNumber(requested.quantity)! > 999_999
@@ -3562,7 +3610,7 @@ export async function handleAuraInventoryV2(
       validatedRows.push({ ...row, quantity: Number(requested.quantity) });
     }
     return jsonResponse({ ok: true, data: {
-      ...data,
+      ...resultData,
       complete: failures.length === 0,
       valid: failures.length === 0,
       rows: failures.length === 0 ? validatedRows : [],
@@ -4170,8 +4218,8 @@ async function auraChatSend(session: DylanSession, payload: Record<string, unkno
   const suppliedConversation = String(payload.conversationId || "").trim();
   if (!body || body.length > 4000 || !/^[A-Za-z0-9_-]{8,120}$/.test(clientId)) return errorResponse("AURA needs a message and a valid idempotency key.", 400, { code: "AURA_CHAT_INVALID" });
 
-  let recipientUsername = "";
-  let recipientName = "";
+  let recipientUsername: string;
+  let recipientName: string;
   let conversationId = suppliedConversation;
   if (suppliedConversation) {
     if (!await alphaConversationAccess(suppliedConversation)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
@@ -4602,13 +4650,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
     try {
       const actor = await resolveActiveSessionProfile(session);
+      if (typeof actor.id !== "string") throw new Error("BUNCH_NOTE_ACTOR_INVALID");
       const allowed = new Set(["action", "operation", "payload", "commandId", "expectedRevision"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("BUNCH_NOTE_PAYLOAD_INVALID");
       const operation = String(payload.operation || "");
       const { data, error } = await supabase.rpc("bunch_note_command_v1", {
         p_actor_id: actor.id, p_operation: operation,
-        p_payload: payload.payload || {}, p_command_id: payload.commandId || null,
-        p_expected_revision: payload.expectedRevision ?? null,
+        p_payload: jsonValue(payload.payload || {}), ...(typeof payload.commandId === "string" && payload.commandId ? { p_command_id: payload.commandId } : {}),
+        ...(typeof payload.expectedRevision === "number" ? { p_expected_revision: payload.expectedRevision } : {}),
       });
       if (error) throw error;
       return jsonResponse({ ok: true, data });

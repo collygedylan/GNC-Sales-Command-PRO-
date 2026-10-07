@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
+
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+// @test-group: @home-role,home
+
 
 const salesViews = ['drive', 'sales', 'av', 'request', 'tasks', 'weather-hold', 'department-calendar', 'chat', 'sales-office', 'office'];
 const adminViews = ['drive', 'av', 'sales-office', 'sales', 'managers', 'qc', 'office', 'sales-inventory', 'production'];
@@ -189,7 +192,7 @@ async function harness(page: Page, baseURL: string) {
   return { seed, assertTiles, assertClean };
 }
 
-test('authorized manual import control is reachable before imported metadata loads', async ({ page, baseURL }) => {
+test('authorized manual import control is reachable before imported metadata loads', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.seed('dylan_collyge', 'ADMIN');
   const button = page.locator('#run-google-script-btn');
@@ -210,7 +213,7 @@ test('authorized manual import control is reachable before imported metadata loa
 // All role, theme, far-tile reachability, and native navigation assertions stay identical.
 for (let offset = 0; offset < roleCases.length; offset += 4) {
   const group = roleCases.slice(offset, offset + 4);
-  test(`authorized Home tiles are visible and reachable for roles ${offset + 1}-${offset + group.length}`, async ({ page, baseURL, isMobile }) => {
+  test(`authorized Home tiles are visible and reachable for roles ${offset + 1}-${offset + group.length}`, {"tag":["@home-role"]}, async ({ page, baseURL, isMobile }) => {
     const app = await harness(page, baseURL!);
     for (const entry of group) {
       await test.step(`${entry.role}: visible modules and native return Home`, async () => {
@@ -246,7 +249,7 @@ for (let offset = 0; offset < roleCases.length; offset += 4) {
   });
 }
 
-test('REP Home preserves module denials and shows Request loading and retry states', async ({ page, baseURL }) => {
+test('REP Home preserves module denials and shows Request loading and retry states', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   const denied = ['drive', 'office', 'chat'];
   await app.seed('tony_bono', 'REP', denied);
@@ -270,7 +273,7 @@ test('REP Home preserves module denials and shows Request loading and retry stat
   app.assertClean();
 });
 
-test('REP Home parity rejects wrong module identity and missing cards without relying on count alone', async ({ page, baseURL }) => {
+test('REP Home parity rejects wrong module identity and missing cards without relying on count alone', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.seed('tony_bono', 'REP');
   await app.assertTiles(salesViews, true, false);
@@ -292,7 +295,7 @@ test('REP Home parity rejects wrong module identity and missing cards without re
   app.assertClean();
 });
 
-test('HL Order Home tile requires the active Dylan native profile and disappears on disable or account change', async ({ page, baseURL }) => {
+test('HL Order Home tile requires the active Dylan native profile and disappears on disable or account change', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.seed('dylan_collyge', 'ADMIN');
   await app.assertTiles(adminViews, false);

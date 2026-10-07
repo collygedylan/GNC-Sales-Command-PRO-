@@ -1,4 +1,5 @@
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
+import { discoverTests } from '../scripts/test-discovery.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
@@ -37,7 +38,10 @@ test('Pages workflow publishes and gates the production deployment fingerprint',
   assert.match(workflow, /write-deployment-fingerprint\.mjs/);
   assert.match(workflow, /post-deployment-canary:\s+needs: \[deploy, exact-live\]/);
   assert.match(workflow, /wait-for-live-release\.mjs/);
-  assert.match(workflow, /production-request-canary\.spec\.ts/);
+  assert.match(workflow, /playwright test --config playwright\.production\.config\.ts/);
+  assert.ok(discoverTests({ group: 'playwright' }).includes('tests/production-request-canary.spec.ts'));
+  assert.match(fs.readFileSync(new URL('../playwright.production.config.ts', import.meta.url), 'utf8'), /grep: \/@production-canary\//);
+  assert.match(canary, /["']?tag["']?:.*@production-canary/);
   assert.match(canary, /live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionable without mutations/);
   assert.match(canary, /data-role="manager-eval2-selection-toggle"/);
   assert.match(canary, /manager-eval2-drive-controls/);

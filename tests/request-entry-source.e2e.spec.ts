@@ -1,7 +1,10 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test } from '@playwright/test';
+// @test-group: @request-reliability,requests
 
-test('Request rep selection always renders customer choices or a recoverable error state', async ({ page }) => {
+
+
+test('Request rep selection always renders customer choices or a recoverable error state', {"tag":["@request-reliability"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).selectRepForRequest === 'function');
@@ -103,7 +106,7 @@ test('Request rep selection always renders customer choices or a recoverable err
   expect(JSON.stringify(result.failure.diagnostic)).not.toContain('sensitive raw failure');
 });
 
-test('Queue tab changes load only the canonical datasets needed by that tab', async ({ page }) => {
+test('Queue tab changes load only the canonical datasets needed by that tab', {"tag":["@request-reliability"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRequestViewLoadingConfig === 'function');
   const configs = await page.evaluate(() => {
@@ -137,7 +140,7 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
   expect(configs.avCheck).toEqual({ required: [], background: ['requests:full'] });
 });
 
-test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', async ({ page }) => {
+test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', {"tag":["@request-reliability"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRequestChunkRenderOptions === 'function'

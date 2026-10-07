@@ -1,3 +1,5 @@
+// @test-runtime: postgres-concurrency
+// @test-db-env: HL_ORDER_TEST_DB_URL
 import assert from 'node:assert/strict';
 import { randomUUID, createHash } from 'node:crypto';
 import pg from 'pg';

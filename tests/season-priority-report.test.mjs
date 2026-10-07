@@ -1,3 +1,4 @@
+// @test-group: season-priority
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadSeasonPriorityReport, seasonPriorityFixture, buildSeasonPriorityReportFixture } from './fixtures/season-priority-report.mjs';
@@ -42,9 +43,10 @@ test('generated contract rejects missing expectations, ambiguous lineage, incorr
   for (const mutate of mutations) {
     const server = loadSeasonPriorityReport(), fixture = seasonPriorityFixture();
     mutate(fixture);
-    let rejected = false;
-    try { rejected = server.buildReclassInquiryActionRowsV3_(fixture.transaction, fixture.rows, fixture.overlays, {}).ok === false; }
-    catch (error) { assert.match(error.message, /Season Priority/); rejected = true; }
+    const rejected = (() => {
+      try { return server.buildReclassInquiryActionRowsV3_(fixture.transaction, fixture.rows, fixture.overlays, {}).ok === false; }
+      catch (error) { assert.match(error.message, /Season Priority/); return true; }
+    })();
     assert.equal(rejected, true);
   }
   for (const key of ['source', 'contsize', 'desigitem', 'ptravailable']) {

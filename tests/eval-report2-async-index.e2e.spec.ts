@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-timing,eval
 
-test('large Eval Report2 cache rebuild stays off the render path and preserves exact rows', async ({ page, browserName, baseURL }, testInfo) => {
+
+
+test('large Eval Report2 cache rebuild stays off the render path and preserves exact rows', {"tag":["@local-e2e","@release-timing"]}, async ({ page, browserName, baseURL }, testInfo) => {
   const localOrigin = new URL(baseURL!).origin;
   // Every external request, including telemetry and writes, remains intercepted.
   await page.route('**/*', route => {

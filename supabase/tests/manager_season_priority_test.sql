@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Isolated acceptance coverage for Manager Season Priority. All fixtures roll back.
 begin;
 create temporary table season_priority_checks(description text);
@@ -244,6 +245,20 @@ begin
   perform pg_temp.sp_check((select value#>>'{proposals,0,priority}'='2' from jsonb_array_elements(overlays) value where value->>'unique_id'='SP-4-1'),'Priority 4 rotation maps 1 to 2');
   perform pg_temp.sp_check((select value#>>'{proposals,0,priority}'='3' from jsonb_array_elements(overlays) value where value->>'unique_id'='SP-4-2'),'Priority 4 rotation maps 2 to 3');
   perform pg_temp.sp_check((select value#>>'{proposals,0,priority}'='4' from jsonb_array_elements(overlays) value where value->>'unique_id'='SP-4-3'),'Priority 4 rotation maps 3 to 4');
+  update public.ph_request_delivery_outbox set status='failed',sanitized_error_code='RECLASS_CONFLICT_FIXTURE'
+    where event_id=(result->>'eventId')::uuid;
+  result:=public.submit_manager_season_priority_v1(manager1,'SP-4-4',4,fingerprint,'season-priority-token-rank4-conflict');
+  perform pg_temp.sp_check((select resolution='stale' and resolution_snapshot_hash=private.manager_season_priority_state_hash_v1('SP-ITEM-4')
+    from private.manager_season_priority_receipts where event_id=(result->>'eventId')::uuid),
+    'conflicting delivery resolves the prior receipt with the current state hash');
+  update public.ph_request_delivery_outbox set status='failed',sanitized_error_code='RECLASS_CONFLICT_FIXTURE'
+    where event_id=(result->>'eventId')::uuid;
+  -- Retry with the original idempotency token: the conflict branch marks the
+  -- original receipt stale but does not bind a second token to that receipt.
+  result:=public.submit_manager_season_priority_v1(manager1,'SP-4-4',4,fingerprint,'season-priority-token-rank4');
+  perform pg_temp.sp_check((select resolution='stale' and resolution_snapshot_hash=private.manager_season_priority_state_hash_v1('SP-ITEM-4')
+    from private.manager_season_priority_receipts where event_id=(result->>'eventId')::uuid),
+    'replaying the original token retains the stale receipt and its resolution hash');
 
   fingerprint:=private.manager_season_priority_scope_fingerprint_v1('SP-ITEM-AMBIG');
   perform pg_temp.sp_reject(format('select public.submit_manager_season_priority_v1(%L,%L,%L,%L,%L)',manager1,'SP-A-1',3,fingerprint,'season-priority-token-ambig'),'SEASON_PRIORITY_LINEAGE_AMBIGUOUS');
@@ -273,6 +288,6 @@ end $$;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public,extensions,pg_temp;
 select plan(1);
-select ok((select count(*) >= 41 from season_priority_checks), 'Manager Season Priority acceptance checks completed');
+select ok((select count(*) >= 42 from season_priority_checks), 'Manager Season Priority acceptance checks completed');
 select * from finish();
 rollback;

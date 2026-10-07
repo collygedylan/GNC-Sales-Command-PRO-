@@ -267,7 +267,10 @@ function transportFixture(overrides = {}) {
         REQUEST_HISTORY_TABLE: 'ph_request_history', SALES_CREDIT_REQUESTS_TABLE: 'ph_sales_credit_requests',
         productionLiveSyncNavigation: navigation, SUPABASE_READ_TIMEOUT_MS: 1000, SUPABASE_URL: 'https://fixture.invalid',
         normalizeAppTableName: value => value, getNativeAuthRequestHeaders: async () => ({ Authorization: 'synthetic' }),
-        fetchWithTimeout: async (url, options) => { calls.push({ url, options }); return { ok: true, text: async () => '[{"id":1},{"id":2}]' }; },
+        window: { GncDatabase: { fetchTable: async (baseUrl, table, query, options) => {
+            calls.push({ url: `${baseUrl}/rest/v1/${table}?${query}`, options });
+            return new Response('[{"id":1},{"id":2}]', { headers: { 'content-type': 'application/json' } });
+        } } },
         parseSupabaseContentRangeTotal: () => 6,
         startGlobalProgress() {}, stopGlobalProgress() {}, beginInternalPerfMeasure: () => 0,
         getFullDatasetPageLimit: () => 2, getFullDatasetPageConcurrency: () => 1, yieldToUiFrame: async () => {},

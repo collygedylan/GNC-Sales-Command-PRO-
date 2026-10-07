@@ -1,3 +1,5 @@
+import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
+// @test-group: module-hubs
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -1482,7 +1484,7 @@ test('request completion delivery is leased, idempotent, threaded, and independe
   assert.match(deliveryWorker, /stableMessageId/);
   assert.match(deliveryWorker, /REQUEST_DELIVERY_SIGNING_SECRET/);
   assert.match(deliveryWorker, /record_request_delivery_channel_result/);
-  assert.match(deliveryWorker, /request_completed" \? "ph_request_history"/);
+  assert.match(deliveryWorker, /eventType === "request_completed"\s*\? await supabase\.from\("ph_request_history"\)/);
   assert.match(deliveryWorker, /\["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"\]\.includes\(eventType\)/);
   assert.match(deliveryWorker, /payload: event\.payload/);
   assert.match(deliveryWorker, /failEventPermanent/);
@@ -1545,7 +1547,8 @@ test('V08 compaction preparation never copies, swaps, truncates, or drops produc
 test('hosted performance monitoring pins CLI and emits bounded anonymous function logs', () => {
   assert.match(performanceWorkflow, /version: 2\.111\.0/);
   assert.match(performanceWorkflow, /supabase(?:\s+--workdir[^\n]+)?\s+test db/);
-  assert.match(performanceWorkflow, /deno test --node-modules-dir=auto --allow-env --allow-net supabase\/functions/);
+  assert.match(performanceWorkflow, /node scripts\/test-discovery\.mjs deno-tests/);
+  assert.match(performanceWorkflow, /deno test --node-modules-dir=auto --allow-env --allow-net "\$\{tests\[@\]\}"/);
   assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
   assert.match(performanceWorkflow, /Lighthouse/);
   assert.match(performanceWorkflow, /node scripts\/prepare-release-site\.mjs/);
@@ -1805,9 +1808,9 @@ test('Managers Historical Report browses immediately with secured server filteri
   assert.match(appsScriptBackend, /source_schema_version: DRIVE_AROUND_HISTORY_SOURCE_SCHEMA_VERSION/);
   assert.match(historicalSourceColumnsMigration, /requeued_source_schema_version/);
   assert.doesNotMatch(historicalSourceColumnsMigration, /delete from public\.ph_drive_around_report_rows/i);
-  assert.match(performanceWorkflow, /20260823013134_expand_historical_report_source_columns\.sql/);
-  assert.match(performanceWorkflow, /historical_report_baseline\.sql/);
-  assert.match(performanceWorkflow, /20260821202202_manager_historical_report\.sql/);
+  assertHistoricalMigration('20260823013134_expand_historical_report_source_columns.sql');
+  assertHistoricalMigration('historical_report_baseline.sql');
+  assertHistoricalMigration('20260821202202_manager_historical_report.sql');
   assert.match(historicalCursorIndexMigration, /\(itemcode, report_date desc, unique_id desc\)/);
   assert.match(historicalCursorIndexMigration, /where report_date is not null/);
   assert.match(historicalRowsRpcRepair, /selected_itemcodes as materialized/);
@@ -1818,8 +1821,8 @@ test('Managers Historical Report browses immediately with secured server filteri
   assert.doesNotMatch(historicalRowsRpcRepair, /result_rows := result_rows \|\|/);
   assert.match(historicalRowsRpcRepair, /security invoker/);
   assert.doesNotMatch(historicalRowsRpcRepair, /security definer/);
-  assert.match(performanceWorkflow, /20260902153652_historical_report_cursor_index\.sql/);
-  assert.match(performanceWorkflow, /20260902153654_optimize_historical_report_rows_rpc\.sql/);
+  assertHistoricalMigration('20260902153652_historical_report_cursor_index.sql');
+  assertHistoricalMigration('20260902153654_optimize_historical_report_rows_rpc.sql');
   const historyRowsRpc = historicalReportMigration.slice(
     historicalReportMigration.indexOf('create or replace function public.get_historical_inventory_rows'),
     historicalReportMigration.indexOf('revoke all on function public.search_historical_inventory_common_names')

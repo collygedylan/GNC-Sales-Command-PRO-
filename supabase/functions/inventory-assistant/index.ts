@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { withObservedRequest } from "../_shared/observability.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "../_shared/database.types.ts";
 import { getRoleAccessState, normalizeUsername, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 
 const corsHeaders = {
@@ -16,7 +17,7 @@ const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY
 const OPENAI_API_KEY = String(Deno.env.get("OPENAI_API_KEY") || "").trim();
 const OPENAI_MODEL = String(Deno.env.get("LEAF_ASSISTANT_MODEL") || "gpt-4.1-mini").trim();
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
@@ -120,7 +121,7 @@ const TABLE_LABELS: Record<DatasetKey, string> = {
   future: "Future Crop",
 };
 
-const TABLE_NAMES: Record<DatasetKey, string> = {
+const TABLE_NAMES = {
   master: "ph_master_inventory",
   reserves: "ph_reserves",
   requests: "ph_active_request",
@@ -128,7 +129,8 @@ const TABLE_NAMES: Record<DatasetKey, string> = {
   docks: "ph_soc_master",
   "dock-team": "ph_dock_team_status",
   future: "ph_master_inventory",
-};
+} as const satisfies Record<DatasetKey, string>;
+type AssistantTableName = (typeof TABLE_NAMES)[DatasetKey];
 
 const NUMBER_WORDS: Record<string, string> = {
   zero: "0",
@@ -499,7 +501,7 @@ function mapTableToDataset(tableName: string): DatasetKey {
   return (entry?.[0] || "master") as DatasetKey;
 }
 
-async function fetchRows(tableName: string, intent: Intent) {
+async function fetchRows(tableName: AssistantTableName, intent: Intent): Promise<object[]> {
   let query = supabase.from(tableName).select("*").limit(tableName === "ph_master_inventory" ? 650 : 500);
   const searchTokens = Array.from(new Set(expandAliasTokens(intent.itemTokens || []).filter(Boolean)))
     .sort((left, right) => right.length - left.length || left.localeCompare(right))
@@ -541,56 +543,60 @@ async function fetchRows(tableName: string, intent: Intent) {
     query = query.ilike(customerFieldMap[tableName], `%${intent.customer}%`);
   }
   if (intent.size && tableName !== "ph_dock_team_status") query = query.ilike("contsize", `%${intent.size}%`);
-  if (intent.priority && tableName !== "ph_dock_team_status") query = query.eq("priority", intent.priority);
+  if (intent.priority && tableName !== "ph_dock_team_status") query = query.filter("priority", "eq", intent.priority);
   if (intent.lot && tableName !== "ph_dock_team_status") query = query.ilike("lotcode", `%${intent.lot}%`);
   const { data, error } = await query;
   if (error) throw new Error(`${tableName} query failed: ${String(error.message || error || "").trim()}`);
   return Array.isArray(data) ? data : [];
 }
 
-function normalizeMatchRow(row: Record<string, unknown>, datasetKey: DatasetKey): MatchRow {
+function rowField(row: object, key: string): unknown {
+  return Reflect.get(row, key);
+}
+
+function normalizeMatchRow(row: object, datasetKey: DatasetKey): MatchRow {
   const qtySource = firstNonEmpty(
-    row.quantityordered, row.QUANTITYORDERED,
-    row.req_qty, row.REQ_QTY,
-    row.ptravailable, row.PTRAVAILABLE,
-    row.s_lts, row.S_LTS,
+    rowField(row, "quantityordered"), rowField(row, "QUANTITYORDERED"),
+    rowField(row, "req_qty"), rowField(row, "REQ_QTY"),
+    rowField(row, "ptravailable"), rowField(row, "PTRAVAILABLE"),
+    rowField(row, "s_lts"), rowField(row, "S_LTS"),
   );
   const qtyValue = asNumber(qtySource);
   return {
     dataset: TABLE_LABELS[datasetKey] || datasetKey,
     datasetKey,
-    uniqueId: firstNonEmpty(row.unique_id, row.UNIQUE_ID),
-    masterId: firstNonEmpty(row.master_id, row.MASTER_ID, row.unique_id, row.UNIQUE_ID),
-    commonName: firstNonEmpty(row.commonname, row.COMMONNAME),
-    itemCode: firstNonEmpty(row.itemcode, row.ITEMCODE),
-    contSize: firstNonEmpty(row.contsize, row.CONTSIZE).toUpperCase(),
-    location: firstNonEmpty(row.locationcode, row.LOCATIONCODE),
-    lot: firstNonEmpty(row.lotcode, row.LOTCODE).toUpperCase(),
-    priority: firstNonEmpty(row.priority, row.PRIORITY),
+    uniqueId: firstNonEmpty(rowField(row, "unique_id"), rowField(row, "UNIQUE_ID")),
+    masterId: firstNonEmpty(rowField(row, "master_id"), rowField(row, "MASTER_ID"), rowField(row, "unique_id"), rowField(row, "UNIQUE_ID")),
+    commonName: firstNonEmpty(rowField(row, "commonname"), rowField(row, "COMMONNAME")),
+    itemCode: firstNonEmpty(rowField(row, "itemcode"), rowField(row, "ITEMCODE")),
+    contSize: firstNonEmpty(rowField(row, "contsize"), rowField(row, "CONTSIZE")).toUpperCase(),
+    location: firstNonEmpty(rowField(row, "locationcode"), rowField(row, "LOCATIONCODE")),
+    lot: firstNonEmpty(rowField(row, "lotcode"), rowField(row, "LOTCODE")).toUpperCase(),
+    priority: firstNonEmpty(rowField(row, "priority"), rowField(row, "PRIORITY")),
     qty: Number.isFinite(qtyValue) ? qtyValue : 0,
     rawQty: qtySource,
-    sLts: asNumber(firstNonEmpty(row.s_lts, row.S_LTS)),
-    hold: firstNonEmpty(row.holdstopcode, row.HOLDSTOPCODE, row.holdstopreason, row.HOLDSTOPREASON),
-    customer: firstNonEmpty(row.customername, row.CUSTOMERNAME, row.req_customer, row.REQ_CUSTOMER, row.order_customer, row.ORDER_CUSTOMER),
-    consignee: firstNonEmpty(row.consigneename, row.CONSIGNEENAME),
-    salesRep: firstNonEmpty(row.salesrepname, row.SALESREPNAME, row.requested_by, row.REQUESTED_BY),
-    requestFolder: firstNonEmpty(row.request_folder, row.REQUEST_FOLDER, row.order_folder, row.ORDER_FOLDER),
-    dockNum: firstNonEmpty(row.dock_num, row.DOCK_NUM, row.dock, row.DOCK),
-    stopNumber: firstNonEmpty(row.stopnumber, row.STOPNUMBER),
-    tripNumber: firstNonEmpty(row.tripnumber, row.TRIPNUMBER),
+    sLts: asNumber(firstNonEmpty(rowField(row, "s_lts"), rowField(row, "S_LTS"))),
+    hold: firstNonEmpty(rowField(row, "holdstopcode"), rowField(row, "HOLDSTOPCODE"), rowField(row, "holdstopreason"), rowField(row, "HOLDSTOPREASON")),
+    customer: firstNonEmpty(rowField(row, "customername"), rowField(row, "CUSTOMERNAME"), rowField(row, "req_customer"), rowField(row, "REQ_CUSTOMER"), rowField(row, "order_customer"), rowField(row, "ORDER_CUSTOMER")),
+    consignee: firstNonEmpty(rowField(row, "consigneename"), rowField(row, "CONSIGNEENAME")),
+    salesRep: firstNonEmpty(rowField(row, "salesrepname"), rowField(row, "SALESREPNAME"), rowField(row, "requested_by"), rowField(row, "REQUESTED_BY")),
+    requestFolder: firstNonEmpty(rowField(row, "request_folder"), rowField(row, "REQUEST_FOLDER"), rowField(row, "order_folder"), rowField(row, "ORDER_FOLDER")),
+    dockNum: firstNonEmpty(rowField(row, "dock_num"), rowField(row, "DOCK_NUM"), rowField(row, "dock"), rowField(row, "DOCK")),
+    stopNumber: firstNonEmpty(rowField(row, "stopnumber"), rowField(row, "STOPNUMBER")),
+    tripNumber: firstNonEmpty(rowField(row, "tripnumber"), rowField(row, "TRIPNUMBER")),
     note: firstNonEmpty(
-      row.dock_note, row.DOCK_NOTE,
-      row.dock_issue_note, row.DOCK_ISSUE_NOTE,
-      row.sales_note, row.SALES_NOTE,
-      row.av_note, row.AV_NOTE,
-      row.mistake, row.MISTAKE,
-      row.status, row.STATUS,
+      rowField(row, "dock_note"), rowField(row, "DOCK_NOTE"),
+      rowField(row, "dock_issue_note"), rowField(row, "DOCK_ISSUE_NOTE"),
+      rowField(row, "sales_note"), rowField(row, "SALES_NOTE"),
+      rowField(row, "av_note"), rowField(row, "AV_NOTE"),
+      rowField(row, "mistake"), rowField(row, "MISTAKE"),
+      rowField(row, "status"), rowField(row, "STATUS"),
     ),
     score: 0,
   };
 }
 
-function scoreMatchRow(match: MatchRow, intent: Intent, rawRow: Record<string, unknown>) {
+function scoreMatchRow(match: MatchRow, intent: Intent, rawRow: object) {
   const rowTokens = tokenize([
     match.commonName,
     match.itemCode,
@@ -605,7 +611,7 @@ function scoreMatchRow(match: MatchRow, intent: Intent, rawRow: Record<string, u
     match.stopNumber,
     match.tripNumber,
     match.note,
-    firstNonEmpty(rawRow.status, rawRow.STATUS, rawRow.mistake, rawRow.MISTAKE, rawRow.checker, rawRow.CHECKER, rawRow.inspector, rawRow.INSPECTOR)
+    firstNonEmpty(rowField(rawRow, "status"), rowField(rawRow, "STATUS"), rowField(rawRow, "mistake"), rowField(rawRow, "MISTAKE"), rowField(rawRow, "checker"), rowField(rawRow, "CHECKER"), rowField(rawRow, "inspector"), rowField(rawRow, "INSPECTOR"))
   ].join(" "));
   const haystack = rowTokens.join(" ");
   const primaryName = normalizeText([match.commonName, match.itemCode, match.contSize].join(" "));
@@ -640,7 +646,7 @@ function isStrongMatch(match: MatchRow, intent: Intent) {
   return match.score >= 12;
 }
 
-function scoreRows(rows: Record<string, unknown>[], datasetKey: DatasetKey, intent: Intent) {
+function scoreRows(rows: object[], datasetKey: DatasetKey, intent: Intent) {
   return rows.map((row) => {
     const normalized = normalizeMatchRow(row, datasetKey);
     normalized.score = scoreMatchRow(normalized, intent, row);

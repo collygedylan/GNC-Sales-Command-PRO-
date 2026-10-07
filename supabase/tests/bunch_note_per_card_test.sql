@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 begin;
 create temporary table bn_card_checks(description text);
 create function pg_temp.bn_card_check(ok boolean, description text) returns void language plpgsql as $$
@@ -114,6 +115,11 @@ begin
  result:=pg_temp.bn_card_call(w1,'claim_card',jsonb_build_object('job_id',job_a,'card_id',card_a),1,command_id);
  replay:=pg_temp.bn_card_call(w1,'claim_card',jsonb_build_object('job_id',job_a,'card_id',card_a),1,command_id);
  perform pg_temp.bn_card_check(result=replay and (select revision=2 and owner_id=w1 from bunch_note_private.bunch_note_work_cards where bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_a) and card_id=card_a),'claim retry is idempotent and increments only the selected card revision');
+ perform pg_temp.bn_card_reject(w1,'add_action',jsonb_build_object('job_id',job_a,'card_id',card_a,'action',jsonb_build_object(
+  'id','cross-card-action','card_id',card_a,'option_id',ta.id,'group',ta.category,'kind',ta.kind,'label',ta.label,
+  'instructions',ta.label,'scope','rows','row_ids',jsonb_build_array('BN-CARD-B'))),2,gen_random_uuid(),'BUNCH_NOTE_ACTION_CARD_ROWS_INVALID');
+ perform pg_temp.bn_card_check(not exists(select 1 from bunch_note_private.worker_actions where job_id=job_a and action->>'id'='cross-card-action'),
+  'rejected cross-card row scope does not persist a worker action');
  perform pg_temp.bn_card_reject(other,'get',jsonb_build_object('job_id',job_a),null,gen_random_uuid(),'BUNCH_NOTE_NOT_FOUND');
  perform pg_temp.bn_card_reject(w1,'progress',jsonb_build_object('job_id',job_a,'card_id',card_a,'action_id','card-action-a','status','done'),1,gen_random_uuid(),'BUNCH_NOTE_REVISION_CONFLICT');
  perform pg_temp.bn_card_reject(w1,'progress',jsonb_build_object('job_id',job_a,'card_id',card_a,'action_id','card-action-b','status','done'),2,gen_random_uuid(),'BUNCH_NOTE_ACTION_CARD_INVALID');

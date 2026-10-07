@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { jsonObject, jsonValue } from "../../../services/database-contract-runtime.ts";
 import {
   CODEX_OPS_BUCKET,
   jsonResponse,
@@ -23,9 +24,9 @@ function decodeBase64Url(value: string) {
 }
 
 function decodeJwtJson(value: string) {
-  return JSON.parse(
+  return jsonObject(JSON.parse(
     new TextDecoder().decode(decodeBase64Url(value)),
-  ) as JsonRecord;
+  ));
 }
 
 function expectedRepo() {
@@ -147,19 +148,19 @@ async function serviceEvent(
     ? await admin.rpc("apply_codex_ops_repair_result_service_v2", {
       p_task_id: taskId,
       p_expected_revision: revision,
-      p_payload: payload,
+      p_payload: jsonValue(payload),
     })
     : await admin.rpc("apply_codex_ops_service_event_v1", {
       p_task_id: taskId,
       p_expected_revision: revision,
       p_action: action,
-      p_payload: payload,
+      p_payload: jsonValue(payload),
     });
   if (error)
     throw new Error(
       String(error.message || error.code || "CODEX_OPS_SERVICE_EVENT_FAILED"),
     );
-  return data as JsonRecord;
+  return jsonObject(data);
 }
 
 async function runnerContext(
@@ -179,9 +180,9 @@ async function runnerContext(
   );
   if (error || !data)
     throw new Error(String(error?.message || "CODEX_OPS_CONTEXT_FAILED"));
-  const context = data as JsonRecord;
+  const context = jsonObject(data);
   const attachments = Array.isArray(context.attachments)
-    ? (context.attachments as JsonRecord[])
+    ? context.attachments.map(jsonObject)
     : [];
   context.attachments = await Promise.all(
     attachments.map(async (attachment) => {
@@ -233,7 +234,7 @@ async function cleanupExpiredEvidence() {
     { p_limit: 100 },
   );
   if (error) throw new Error("CODEX_OPS_CLEANUP_LIST_FAILED");
-  const rows = Array.isArray(data) ? (data as JsonRecord[]) : [];
+  const rows = Array.isArray(data) ? data.map(jsonObject) : [];
   let deleted = 0;
   for (const row of rows) {
     const taskId = String(row.taskId || "");
@@ -255,7 +256,7 @@ serve(async (req) => {
     return jsonResponse({ error: "METHOD_NOT_ALLOWED" }, 405);
   try {
     const claims = await verifyGithubOidc(req);
-    const body = (await req.json()) as JsonRecord;
+    const body = jsonObject(await req.json());
     const operation = String(body.operation || "");
     const taskId = String(body.taskId || "");
     const revision = Number(body.revision || 0);
@@ -284,13 +285,14 @@ serve(async (req) => {
         ),
       );
     if (operation === "rollback-merge") {
-      const { data: context, error } = await admin.rpc(
+      const { data, error } = await admin.rpc(
         "get_codex_ops_runner_context_service_v1",
         {
           p_task_id: taskId,
           p_expected_revision: revision,
         },
       );
+      const context = data ? jsonObject(data) : null;
       if (
         error ||
         !context ||
@@ -329,7 +331,7 @@ serve(async (req) => {
         taskId,
         revision,
         action,
-        sanitizedAgentPayload((body.result || {}) as JsonRecord),
+        sanitizedAgentPayload(jsonObject(body.result || {})),
       );
       const status = String(result.status || "");
       if (status === "needs_input")

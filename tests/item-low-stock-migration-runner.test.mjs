@@ -6,12 +6,14 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
+import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
+import { discoverTests } from '../scripts/test-discovery.mjs';
 
 test('migration target is the configured Supabase project and never a browser key', () => {
   const api='https://testproject.supabase.co';
@@ -30,6 +32,21 @@ test('handover release requires an armed minute job or an already completed Auth
   assert.match(query, /completed_at is not null and auth_banned_at is not null/);
   assert.match(query, /jobname='scheduled_handover_kayla_nelly_20261002' and active and schedule='\* \* \* \* \*'/);
   assert.match(query, /command='select private\.scheduled_handover_dispatch_v1\(\);'/);
+});
+
+test('approved SQL repair contracts verify every repaired body and retain restricted execution', () => {
+  assert.deepEqual(releaseDatabaseMigrations.slice(-2), [sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName]);
+  const functions = migrationContractQuery(sqlFunctionCorrectnessRepairsMigrationName);
+  for (const marker of ['inventory_rows.available', 'v_before_state_hash', 'AURA_BUNCH_CREATION_DATE_UNAVAILABLE',
+    "card.row_ids @> (action->''row_ids'')", 'outbox.event_id']) assert.ok(functions.includes(marker), marker);
+  const handover = migrationContractQuery(sqlLintRuntimeContextMigrationName);
+  for (const marker of ['dynamic_row_key,dynamic_before_values', 'shear_entry', 'assignment_entry',
+    'app.scheduled_handover_default_owner', 'gnc-reconcile-eval-itemcodes-v2']) assert.ok(handover.includes(marker), marker);
+  for (const query of [functions, handover]) {
+    assert.match(query, /not has_function_privilege\('anon'/);
+    assert.match(query, /not has_function_privilege\('authenticated'/);
+    assert.match(query, /has_function_privilege\('service_role'/);
+  }
 });
 test('Postgres client pins the Supabase CA and ignores URI TLS overrides while preserving connection identity', () => {
   const api='https://testproject.supabase.co';
@@ -140,7 +157,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName]);
   assert.match(migrationContractQuery(auraCommonNamePriorityMigrationName),/common_score/);
   assert.match(migrationContractQuery(auraInventoryExplicitProjectionMigrationName),/m\.unique_id,m\.itemcode,m\.commonname/);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
@@ -335,8 +352,9 @@ test('password reconciliation is additive and verified before the existing backe
   assert.equal(calls.at(-1).sql, 'commit');
   assert.equal(calls.find(call => call.sql.startsWith('insert into supabase_migrations')).params[1], 'password_change_profile_reconciliation');
   const workflow = fs.readFileSync('.github/workflows/release-database.yml', 'utf8');
-  assert.ok(workflow.includes(passwordReconciliationMigrationName));
-  assert.ok(workflow.includes('password_change_profile_reconciliation_test.sql'));
+  assert.match(workflow, /node scripts\/historical-database-fixture\.mjs/);
+  assert.ok(readHistoricalMigrationManifest().some(entry => entry.destination === passwordReconciliationMigrationName));
+  assert.ok(discoverTests({ group: 'sql-isolated-supabase' }).includes('supabase/tests/password_change_profile_reconciliation_test.sql'));
 });
 test('perennial preview withholds proposed owner details while a master import is partial',async()=>{
   const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'23',inventory_state:'importing',preview_ready:false,

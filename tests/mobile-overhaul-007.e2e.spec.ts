@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional
+
+
 
 for (const width of [320, 390, 460]) {
-  test(`Grower inventory and browse filters stay compact at ${width}px`, async ({ page }) => {
+  test(`Grower inventory and browse filters stay compact at ${width}px`, {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.goto('/?e2e=grower-density-007&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => typeof (window as any).renderGrowerInventoryPanel === 'function');
@@ -67,7 +70,7 @@ for (const width of [320, 390, 460]) {
   });
 }
 
-test('Manager report toggles retain NotInF1 and allow an empty selection', async ({ page }) => {
+test('Manager report toggles retain NotInF1 and allow an empty selection', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=manager-report-persistence-007&post_deploy_access_canary=1', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).setManagerEvalReport2Reports === 'function');
   const states = await page.evaluate(() => window.eval(`(() => {

@@ -1,3 +1,4 @@
+// @test-group: foundation
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -530,3 +531,4 @@ for (const [name, stateKey, args] of [
     await context[name](...args); await context[name](...args);
     assert.deepEqual(calls, [true, false]);
 });
+// @test-group: foundation

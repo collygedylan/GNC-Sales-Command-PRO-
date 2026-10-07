@@ -1,3 +1,4 @@
+// @test-group: local-validation
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -6,22 +7,26 @@ import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import { focusedPlan, runLocalChecks } from '../scripts/check-local.mjs';
 import { sourceDigest, siteDigest, assertLocalValidation } from '../scripts/local-validation-evidence.mjs';
-import { selectFocusedTests } from '../scripts/select-focused-tests.mjs';
+import { selectAffectedTests } from '../scripts/select-focused-tests.mjs';
+import { gitRepositoryContextEnvironment } from '../scripts/git-repository-context.mjs';
 
 const map = JSON.parse(fs.readFileSync(new URL('../live-src/change-impact.json', import.meta.url), 'utf8'));
-test('mapped features, shared edits, docs and unknown files select bounded relevant coverage', () => {
-  assert.deepEqual(selectFocusedTests(['assets/bunch-note.js'], map).modules, ['bunch-notes']);
-  assert.ok(selectFocusedTests(['index.html'], map).commands.some(c => c.includes('home-native-startup')));
-  assert.ok(selectFocusedTests(['assets/unmapped.js'], map).commands.some(c => c.includes('session-recovery')));
-  assert.deepEqual(selectFocusedTests(['docs/example.md'], map).commands, ['npm run check:foundation']);
-  const plan = focusedPlan(map.modules.flatMap(m => m.commands).concat(map.fallbackCommands));
+test('mapped features, shared edits, docs and unknown files select discovered coverage', () => {
+  const bunch = selectAffectedTests(['assets/bunch-note.js'], { map });
+  assert.deepEqual(bunch.modules, ['bunch-notes']);
+  assert.ok(bunch.nodeUnit.includes('tests/bunch-note.test.mjs'));
+  assert.ok(bunch.playwrightTags.includes('@bunch-note'));
+  assert.equal(selectAffectedTests(['docs/example.md'], { map }).nodeUnit.length, 0);
+  const unknown = selectAffectedTests(['assets/unmapped.js'], { map });
+  assert.ok(unknown.nodeUnit.length > 0);
+  assert.ok(unknown.vitest.length > 0);
+  const plan = focusedPlan({ nodeUnit: bunch.nodeUnit, vitest: [], playwrightTags: bunch.playwrightTags });
   assert.ok(plan.browsers.length);
   assert.equal(plan.unit.length, new Set(plan.unit).size);
 });
-test('foundation is not scheduled twice and arbitrary shell commands cannot run', () => {
-  const plan = focusedPlan(['npm run check:foundation', 'node --test tests/release-app-lifecycle.test.mjs tests/bunch-note.test.mjs', 'node --test tests/bunch-note.test.mjs']);
-  assert.deepEqual(plan, { unit: ['tests/bunch-note.test.mjs'], browsers: [] });
-  assert.throws(() => focusedPlan(['npm run build:live && echo done']), /UNSUPPORTED/);
+test('foundation is excluded from focused unit selection', () => {
+  const plan = focusedPlan({ nodeUnit: ['tests/release-app-lifecycle.test.mjs', 'tests/bunch-note.test.mjs', 'tests/bunch-note.test.mjs'], vitest: [], playwrightTags: [] });
+  assert.deepEqual(plan, { unit: ['tests/bunch-note.test.mjs'], vitest: [], browsers: [] });
 });
 
 function fixture(t) {
@@ -30,13 +35,14 @@ function fixture(t) {
   const write = (file, value) => { fs.mkdirSync(path.dirname(path.join(cwd, file)), { recursive: true }); fs.writeFileSync(path.join(cwd, file), value); };
   write('.gitignore', '.gnc-local/\n');
   write('index.html', 'source');
-  write('live-src/change-impact.json', JSON.stringify({ schemaVersion: 'gnc-change-impact-v1', fallbackCommands: [], modules: [{ id: 'fixture', paths: ['index.html'], commands: [
-    'npm run check:foundation', 'node --test tests/bunch-note.test.mjs', 'npx playwright test --config playwright.bunch-note.config.ts',
-  ] }] }));
-  const git = args => execFileSync('git', args, { cwd, stdio: 'pipe' });
+  write('assets/bunch-note.js', 'source');
+  write('tests/bunch-note.test.mjs', '// @test-group: bunch-notes\n');
+  write('tests/bunch-note.e2e.spec.ts', '// @test-group: @local-e2e,bunch-notes\nimport { test } from \'@playwright/test\';\ntest("fixture", {tag:["@local-e2e"]}, async()=>{});\n');
+  write('live-src/change-impact.json', JSON.stringify({ schemaVersion: 'gnc-change-impact-v1', modules: [{ id: 'bunch-notes', paths: ['assets/bunch-note.js'] }] }));
+  const git = args => execFileSync('git', args, { cwd, stdio: 'pipe', env: gitRepositoryContextEnvironment() });
   git(['init', '--quiet']); git(['add', '.']);
   git(['-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '--quiet', '-m', 'base']);
-  write('index.html', 'current source');
+  write('assets/bunch-note.js', 'current source');
   const calls = [];
   const spawn = (exe, args, options) => {
     calls.push({ args, env: options.env });
@@ -49,7 +55,7 @@ function fixture(t) {
   };
   return { cwd, write, calls, spawn };
 }
-test('one build feeds foundation and focused browsers; success is tied to unchanged source and artifact', t => {
+test('one build feeds dynamically discovered focused tests and browsers', t => {
   const f = fixture(t);
   const result = runLocalChecks({ ...f, npm: 'npm-cli.js', print: () => {} });
   assert.equal(result.ok, true);

@@ -1,5 +1,8 @@
 import { expect, test, type Route } from '@playwright/test';
+
 import { readFileSync } from 'node:fs';
+// @test-group: @production-canary
+
 
 const expectedCommit = String(process.env.EXPECTED_COMMIT || process.env.GITHUB_SHA || '').trim().toLowerCase();
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
@@ -90,7 +93,7 @@ async function fulfillScopedDataRead(route: Route) {
   return true;
 }
 
-test('live Request rep to customer, consignee, folder, and quantity flow remains actionable', async ({ page }) => {
+test('live Request rep to customer, consignee, folder, and quantity flow remains actionable', {"tag":["@production-canary"]}, async ({ page }) => {
   const blockedMutations: string[] = [];
   const pageErrors: string[] = [];
   let collectPageErrors = false;
@@ -192,7 +195,7 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
   await expect(modal).toBeHidden();
 });
 
-test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionable without mutations', async ({ page }) => {
+test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionable without mutations', {"tag":["@production-canary"]}, async ({ page }) => {
   const blockedMutations: string[] = [];
   const pageErrors: string[] = [];
   let collectPageErrors = false;
@@ -413,7 +416,7 @@ test('live Eval Reports #2 flat ITEMCODE cards and multi-select remain actionabl
   expect(blockedMutations, `production mutation attempted: ${JSON.stringify(blockedMutations)}`).toEqual([]);
 });
 
-test('live PO Management uses authenticated PostgREST and never the retired database proxy', async ({ page }) => {
+test('live PO Management uses authenticated PostgREST and never the retired database proxy', {"tag":["@production-canary"]}, async ({ page }) => {
   const blockedMutations: string[] = [];
   const poRequests: string[] = [];
   const pageErrors: string[] = [];
@@ -478,7 +481,7 @@ test('live PO Management uses authenticated PostgREST and never the retired data
   expect(pageErrors, `sanitized page errors: ${JSON.stringify(pageErrors)}`).toEqual([]);
 });
 
-test('live authorized Admin opens Access Control from the manager module card without mutation', async ({ page, isMobile }) => {
+test('live authorized Admin opens Access Control from the manager module card without mutation', {"tag":["@production-canary"]}, async ({ page, isMobile }) => {
   const blockedMutations: string[] = [];
   const accessRequests: string[] = [];
   const codexReadRequests: string[] = [];

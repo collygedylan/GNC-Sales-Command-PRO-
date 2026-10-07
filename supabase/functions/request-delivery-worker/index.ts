@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database, Json } from "../_shared/database.types.ts";
 import { withObservedRequest } from "../_shared/observability.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -10,11 +11,17 @@ const APPS_SCRIPT_WEB_APP_URL = Deno.env.get("APPS_SCRIPT_WEB_APP_URL") || "";
 const WORKER_ID = Deno.env.get("REQUEST_DELIVERY_WORKER_ID") || "edge-request-delivery-v1";
 const CLAIM_LIMIT = Math.max(1, Math.min(50, Number(Deno.env.get("REQUEST_DELIVERY_CLAIM_LIMIT") || "12") || 12));
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
 });
 
-type JsonRecord = Record<string, unknown>;
+type JsonRecord = { [key: string]: Json | undefined };
+
+function asJsonRecord(value: unknown): JsonRecord {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as JsonRecord
+    : {};
+}
 
 function isBunchNoteEvent(event: JsonRecord) {
   return String(event.event_type || "") === "bunch_note_submission";
@@ -126,8 +133,10 @@ async function loadRequestRows(event: JsonRecord) {
   }
   const ids = requestIdsForEvent(event);
   if (!ids.length) return [];
-  const table = eventType === "request_completed" ? "ph_request_history" : "ph_active_request_live_rows";
-  const { data, error } = await supabase.from(table).select("*").in("unique_id", ids);
+  const result = eventType === "request_completed"
+    ? await supabase.from("ph_request_history").select("*").in("unique_id", ids)
+    : await supabase.from("ph_active_request_live_rows").select("*").in("unique_id", ids);
+  const { data, error } = result;
   if (error) throw new Error(`REQUEST_SNAPSHOT_LOAD_FAILED:${error.code || "unknown"}`);
   return Array.isArray(data) ? data : [];
 }
@@ -236,7 +245,7 @@ async function recordChannels(eventId: string, leaseToken: string, channelResult
     p_channel_results: channelResults
   });
   if (error) throw new Error(`DELIVERY_CHANNEL_RECORD_FAILED:${error.code || "unknown"}`);
-  return data as JsonRecord;
+  return asJsonRecord(data);
 }
 
 async function finishEvent(eventId: string, leaseToken: string, channelResults: JsonRecord) {
@@ -307,7 +316,7 @@ async function heartbeat(claimed: number, delivered: number, failed: number, can
     p_delivered: delivered,
     p_failed: failed,
     p_canary: canary,
-    p_error_code: errorCode || null
+    ...(errorCode ? { p_error_code: errorCode } : {})
   });
 }
 
@@ -353,12 +362,15 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
         if (["suspend_tag_approval_requested", "suspend_tag_approval_decided"].includes(eventType)) {
           const { data: prepared, error } = await supabase.rpc("prepare_suspend_tag_delivery_v1", { p_event_id: eventId, p_lease_token: leaseToken });
           if (error) throw new Error(error.message);
-          if (prepared?.suppressed) continue;
-          const approval = prepared.approval as JsonRecord;
-          const snapshot = approval.snapshot as JsonRecord;
-          event.payload = { approval, thread: prepared.thread };
+          const preparedRecord = asJsonRecord(prepared);
+          if (preparedRecord.suppressed === true) continue;
+          const approval = asJsonRecord(preparedRecord.approval);
+          const snapshot = asJsonRecord(approval.snapshot);
+          if (!Object.keys(approval).length || !Object.keys(snapshot).length) throw new Error("SUSPEND_TAG_APPROVAL_SNAPSHOT_MISSING");
+          const thread = preparedRecord.thread;
+          event.payload = { approval, thread };
           if (!event.email_delivered_at) {
-            const result = await callAppsScript(event, [snapshot], prepared.thread);
+            const result = await callAppsScript(event, [snapshot], thread);
             if (!result.gmailMessageId || !result.threadId || !result.messageIdHeader) throw new Error("SUSPEND_TAG_EMAIL_RECEIPT_MISSING");
             channelResults.email = {
               delivered_at: new Date().toISOString(), recipients: result.recipients,
@@ -486,10 +498,12 @@ serve((req) => withObservedRequest("request-delivery-worker", req, async () => {
         if (isBunchNoteEvent(event)) {
           // Gmail can succeed while its HTTP acknowledgement is lost. Prefer
           // the durable receipt over the transport error, without sending again.
-          const { data: saved, error: lookupError } = await supabase.rpc("bunch_note_delivery_lookup_v1", { p_event_id: eventId });
-          if (!lookupError && saved?.delivery_status === "sent" && saved?.receipt?.gmail_message_id) {
-            channelResults.email = saved.receipt;
-            await recordChannels(eventId, leaseToken, { email: saved.receipt });
+          const { data: savedData, error: lookupError } = await supabase.rpc("bunch_note_delivery_lookup_v1", { p_event_id: eventId });
+          const saved = asJsonRecord(savedData);
+          const savedReceipt = asJsonRecord(saved.receipt);
+          if (!lookupError && saved.delivery_status === "sent" && savedReceipt.gmail_message_id) {
+            channelResults.email = savedReceipt;
+            await recordChannels(eventId, leaseToken, { email: savedReceipt });
             await finishEvent(eventId, leaseToken, channelResults);
             delivered += 1;
             continue;

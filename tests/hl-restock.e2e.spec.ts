@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
+
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
+// @test-group: @hl-restock
+
 
 const stock = (changes = {}) => ({ itemcode: 'SYNTH.003', size: '#3', commonname: 'Synthetic HL Holly',
   po_ordered: 100, target: 30, available: 12, status: 'ready', receipt_watermark: null, can_confirm_inventory: false,
@@ -31,7 +34,7 @@ const isolated = (fixture: any) => { expect(fixture.errors).toEqual([]); expect(
 
 test.beforeEach(async ({ page }) => { await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); }); });
 
-test('Restocking preserves verified Drive facts and excludes other lots', async ({ page, baseURL }) => {
+test('Restocking preserves verified Drive facts and excludes other lots', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({
     master: [hlMaster('stock-a', { commonname: 'Blue Point Juniper', ptravailable: '315', ptronhand: '315', s_lts: '311' }),
       hlMaster('stock-zero', { commonname: 'Blue Point Juniper', locationcode: 'C.14.001', ptravailable: '0', ptronhand: '0', s_lts: '0' }),
@@ -52,7 +55,7 @@ test('Restocking preserves verified Drive facts and excludes other lots', async 
   isolated(fixture);
 });
 
-test('negative PO source balances remain visible and cannot be ordered', async ({ page, baseURL }) => {
+test('negative PO source balances remain visible and cannot be ordered', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({
     restockItems: [stock({ target: null, basis_quantity: null, status: 'po_unknown', po_balance: { status: 'review', remaining: -831 } })]
   }));
@@ -63,7 +66,7 @@ test('negative PO source balances remain visible and cannot be ordered', async (
   isolated(fixture);
 });
 
-test('unchanged refresh cycles preserve Restocking cards and entered quantities', async ({ page, baseURL }) => {
+test('unchanged refresh cycles preserve Restocking cards and entered quantities', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup());
   await openRestock(page);
   await expect(item(page).locator('[data-hl-restock-quantity]')).toHaveValue('18');
@@ -82,7 +85,7 @@ test('unchanged refresh cycles preserve Restocking cards and entered quantities'
   isolated(fixture);
 });
 
-test('Restocking loads on demand without SOC demand and shows verified server quantities', async ({ page, baseURL }) => {
+test('Restocking loads on demand without SOC demand and shows verified server quantities', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ restockItems: [stock(), stock({ itemcode: 'UNKNOWN', available: null, status: 'unknown' })] }));
   expect(fixture.restockReads).toBe(0);
   await openRestock(page);
@@ -94,7 +97,7 @@ test('Restocking loads on demand without SOC demand and shows verified server qu
   isolated(fixture);
 });
 
-test('Restocking retries once when initial permission metadata arrives during its protected read', async ({ page, baseURL }) => {
+test('Restocking retries once when initial permission metadata arrives during its protected read', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ holdInitialMetadataRead: true }));
   await fixture.waitForHeldInitialMetadataRead();
   await openHl(page);
@@ -112,7 +115,7 @@ test('Restocking retries once when initial permission metadata arrives during it
   isolated(fixture);
 });
 
-test('a partial restocking draft persists after reload and sends the selected snapshot and ship date', async ({ page, baseURL }) => {
+test('a partial restocking draft persists after reload and sends the selected snapshot and ship date', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ metadataDelayMs: 150 }));
   await openRestock(page); await saveRestock(page);
   await expect.poll(() => fixture.state.draft.length).toBe(1);
@@ -139,7 +142,7 @@ test('a partial restocking draft persists after reload and sends the selected sn
   expect(fixture.state.draft[0].source.source_kind).toBe('restock'); isolated(fixture);
 });
 
-test('same-date restocking previews additions under the existing HL number', async ({ page, baseURL }) => {
+test('same-date restocking previews additions under the existing HL number', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const options: any = setup({ seedOrder: true }); delete options.rows;
   const fixture = await installHlOrderFixture(page, baseURL!, options);
   const orderNumber = fixture.state.orders[0].order_number;
@@ -154,7 +157,7 @@ test('same-date restocking previews additions under the existing HL number', asy
   await expect(page.locator('#hl-tags-preview-content')).toContainText(/restocking/i); isolated(fixture);
 });
 
-test('received restocking stays paused until explicit confirmation of the updated inventory', async ({ page, baseURL }) => {
+test('received restocking stays paused until explicit confirmation of the updated inventory', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ restockItems: [stock({ status: 'receipt_pending', can_confirm_inventory: true,
     receipt_watermark: 'receipt-1', receipts: [{ id: 'receipt-1', quantity_delta: 5, received_quantity: 5, created_at: '2026-09-12T11:00:00Z' }] })] }));
   await openRestock(page);
@@ -169,7 +172,7 @@ test('received restocking stays paused until explicit confirmation of the update
   isolated(fixture);
 });
 
-test('other administrators cannot load or order restocking', async ({ page, baseURL }) => {
+test('other administrators cannot load or order restocking', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ username: 'jd_jones' }));
   await expect(page.locator('#home-tile-hl-order')).toBeHidden();
   await page.evaluate(() => window.eval('switchView("hl-order")'));
@@ -177,7 +180,7 @@ test('other administrators cannot load or order restocking', async ({ page, base
   expect(fixture.restockReads).toBe(0); expect(fixture.commands).toHaveLength(0); isolated(fixture);
 });
 
-test('season changes preserve F1 input while S1 orders and target reviews remain isolated', async ({ page, baseURL }) => {
+test('season changes preserve F1 input while S1 orders and target reviews remain isolated', {"tag":["@hl-restock"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, setup({ restockItems: [stock({ basis_quantity: 100, target_initialized: true }), stock({ lot: '27.S1', available: 5, basis_quantity: 794, target: 239, target_initialized: true, po_balance: { status: 'ready', remaining: 794 } })] }));
   await openRestock(page);
   await item(page).locator('[data-hl-restock-quantity]').fill('7');

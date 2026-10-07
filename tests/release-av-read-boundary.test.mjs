@@ -3,11 +3,22 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import { buildSync } from 'esbuild';
 import { createClient } from '@supabase/supabase-js';
+import { databaseContracts } from '../scripts/generate-database-contracts.mjs';
 
 const source = fs.readFileSync(new URL('../supabase/functions/_shared/av-read.ts', import.meta.url), 'utf8');
-const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
-const { readAvPage } = await import(`data:text/javascript;base64,${Buffer.from(js).toString('base64')}`);
+const root = fileURLToPath(new URL('../', import.meta.url));
+const require = createRequire(new URL('../package.json', import.meta.url));
+const builtAv = buildSync({ absWorkingDir: root, entryPoints: ['supabase/functions/_shared/av-read.ts'], bundle: true,
+  platform: 'node', format: 'cjs', write: false, logLevel: 'silent' });
+const avModule = { exports: {} };
+new Function('require', 'module', 'exports', builtAv.outputFiles[0].text)(require, avModule, avModule.exports);
+const { readAvPage } = avModule.exports;
+const database = databaseContracts(fs.readFileSync(new URL('../supabase/functions/_shared/database.types.ts', import.meta.url), 'utf8'));
 const reserveColumns = [...source.matchAll(/const RESERVE_FULL_SELECT_FIELDS = \[([\s\S]*?)\].join/g)].flatMap(match => [...match[1].matchAll(/"([a-z0-9_]+)"/g)].map(item => item[1])).join(',');
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const edge = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
@@ -17,19 +28,55 @@ const directoryMigration = fs.readFileSync(new URL('../supabase/migrations/20261
 
 function fixture(overrides = {}) {
   const calls = [];
-  const result = { data: [{ unique_id: 'one' }], count: 1, error: null };
+  const result = { data: [], count: 1, error: null };
   const builder = Object.fromEntries(['select', 'filter', 'or', 'eq', 'order', 'range'].map(method => [method, (...args) => { calls.push([method, ...args]); return builder; }]));
   builder.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
   const context = { supabase: { from: table => { calls.push(['from', table]); return builder; } },
     actor: { username: 'riley_sales', display_name: 'Riley Sales' },
     canRead: () => true, restrictRep: false, ...overrides };
-  return { calls, result, read: payload => readAvPage({ ...context, payload: { action: 'av_read', dataset: 'reserves', ...payload } }) };
+  const read = payload => {
+    const request = { action: 'av_read', dataset: 'reserves', ...payload };
+    const fullFields = request.dataset === 'reserves' ? reserveColumns
+      : request.dataset === 'notes' ? 'unique_id,commonname,salesnote'
+      : request.dataset === 'hot_prices' ? 'itemcode_key,cav_itemcode,hot_price,cav_filename,cav_last_updated'
+      : 'key,value,updated_by,updated_at';
+    const params = new URLSearchParams(String(request.query || ''));
+    const selected = params.get('select') || fullFields;
+    const fields = selected === '*' ? fullFields : selected;
+    const schema = database.tables[
+      request.dataset === 'reserves' ? 'ph_reserves'
+        : request.dataset === 'notes' ? 'ph_av_notes'
+        : request.dataset === 'hot_prices' ? 'ph_view_av_hot_price_keys' : 'ph_app_settings'
+    ].row.object;
+    const sample = field => {
+      const value = field?.schema ?? field;
+      if (value === 'string') return 'fixture';
+      if (value === 'number') return 1;
+      if (value === 'boolean') return true;
+      if (value === 'null') return null;
+      if (value === 'json') return {};
+      if (value === 'never') throw new Error('No sample for never schema');
+      if (value?.oneOf) return sample(value.oneOf.find(variant => variant !== 'null') ?? value.oneOf[0]);
+      if (value?.array) return [];
+      if (value?.object) return Object.fromEntries(Object.entries(value.object).map(([key, item]) => [key, sample(item)]));
+      throw new Error(`Unsupported fixture schema: ${JSON.stringify(value)}`);
+    };
+    result.data = Object.hasOwn(overrides, 'data') ? overrides.data
+      : [Object.fromEntries(fields.split(',').flatMap(field => schema[field] ? [[field, sample(schema[field])]] : []))];
+    if (!Object.hasOwn(overrides, 'data') && schema.unique_id && result.data[0]) result.data[0].unique_id = 'one';
+    return readAvPage({ ...context, payload: request });
+  };
+  return { calls, result, read };
 }
 
 test('AV pages use the fixed source, exact totals, stable ordering and a 500-row cap', async () => {
   const f = fixture();
   const page = await f.read({ query: 'select=*&limit=7000&offset=500' });
-  assert.deepEqual(page, { rows: [{ unique_id: 'one' }], total: 1, offset: 500, limit: 500, hasMore: false });
+  assert.deepEqual(page.rows[0].unique_id, 'one');
+  assert.equal(page.total, 1);
+  assert.equal(page.offset, 500);
+  assert.equal(page.limit, 500);
+  assert.equal(page.hasMore, false);
   assert.deepEqual(f.calls, [['from', 'ph_reserves'], ['select', reserveColumns, { count: 'exact' }], ['order', 'unique_id', { ascending: true }], ['range', 500, 999]]);
 });
 
@@ -42,6 +89,13 @@ test('AV denies unauthorized datasets, relation embedding, arbitrary operators a
     { query: 'offset=1.5' }, { query: 'or=(itemcode.eq.A),salesrepname.ilike.*)' }, { query: 'rpc=evil' }]) {
     await assert.rejects(fixture().read(payload), { message: 'AV_READ_QUERY_INVALID' });
   }
+});
+
+test('AV validates successful row projections and finite JSONB values before returning data', async () => {
+  await assert.rejects(fixture({ data: [{ unique_id: 12 }] }).read({ query: 'select=unique_id' }),
+    { message: 'AV_READ_INVALID_PAGE' });
+  await assert.rejects(fixture({ data: [{ key: 'current_season_salesyear', value: Number.NaN }] })
+    .read({ dataset: 'settings', query: 'select=key,value' }), { message: 'AV_READ_INVALID_PAGE' });
 });
 
 test('rep scope is derived from the active actor and ANDed with requested filters', async () => {
@@ -60,7 +114,7 @@ test('real PostgREST builder sends one combined filter and an exact-count reques
       headers: { 'content-type': 'application/json', 'content-range': '0-0/1' } });
   } } });
   const f = fixture({ supabase, restrictRep: true });
-  const page = await f.read({ query: 'select=*&or=(itemcode.eq.A,itemcode.eq.B)&limit=500' });
+  const page = await f.read({ query: 'select=unique_id&or=(itemcode.eq.A,itemcode.eq.B)&limit=500' });
   assert.equal(page.total, 1);
   assert.equal(requests.length, 1);
   assert.equal(requests[0].url.pathname, '/rest/v1/ph_reserves');

@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
-test('deployed shell footer opens cold and warm views and returns from Menu with native input', async ({ page, baseURL, isMobile }) => {
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+// @test-group: @footer,navigation
+
+
+test('deployed shell footer opens cold and warm views and returns from Menu with native input', {"tag":["@footer"]}, async ({ page, baseURL, isMobile }) => {
   const appOrigin = new URL(baseURL!).origin;
   const attemptedMutations: string[] = [];
   const blockedReadOnlyAppApiCalls: string[] = [];

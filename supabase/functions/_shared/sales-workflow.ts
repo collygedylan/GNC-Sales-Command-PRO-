@@ -1,4 +1,7 @@
 import type { AppSessionClaims } from "./app-auth.ts";
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+import { jsonObject, jsonValue } from "../../../services/database-contract-runtime.ts";
 
 export const SALES_CREDIT_BUCKET = "sales-credit-evidence";
 export const SALES_CREDIT_PHOTO_LIMIT = 8 * 1024 * 1024;
@@ -36,6 +39,7 @@ export function decodeCreditPhoto(payload: Record<string, unknown>) {
 
 export function salesErrorStatus(error: { code?: string; message?: string }) {
   const message = String(error.message || "");
+  if (message === "SALES_WORKFLOW_RESPONSE_INVALID") return 503;
   if (error.code === "42501" || /FORBIDDEN|NOT_ACTIVE/.test(message)) return 403;
   if (/CONFLICT|CHANGED|ALREADY|AUTHORIZATION_REQUIRED|REVIEW_REQUIRED/.test(message)) return 409;
   if (/NOT_FOUND/.test(message)) return 404;
@@ -46,7 +50,7 @@ export function salesErrorStatus(error: { code?: string; message?: string }) {
 type Dependencies = {
   session: AppSessionClaims | null;
   payload: Record<string, unknown>;
-  supabase: any;
+  supabase: Pick<SupabaseClient<Database>, "rpc" | "storage">;
   resolveActiveSessionProfile: (session: AppSessionClaims | null) => Promise<Record<string, unknown>>;
   headers?: HeadersInit;
 };
@@ -56,6 +60,11 @@ async function hashBytes(bytes: Uint8Array) {
   return Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
+function requireResponseObject(input: unknown) {
+  try { return jsonObject(jsonValue(input)); }
+  catch { throw Object.assign(new Error("SALES_WORKFLOW_RESPONSE_INVALID"), { status: 503 }); }
+}
+
 /** Actor UUID comes only from a verified session and freshly loaded trusted profile. */
 export async function handleSalesWorkflow(deps: Dependencies): Promise<Response> {
   const respond = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { ...Object.fromEntries(new Headers(deps.headers)), "content-type": "application/json" } });
@@ -63,31 +72,52 @@ export async function handleSalesWorkflow(deps: Dependencies): Promise<Response>
   try {
     const { action, operation, payload } = validateSalesEnvelope(deps.payload);
     const actor = await deps.resolveActiveSessionProfile(deps.session);
+    const actorId = typeof actor.id === "string" && UUID.test(actor.id) ? actor.id : "";
+    if (!actorId) throw new Error("ACTIVE_PROFILE_REQUIRED");
     const call = async (op: string, body: Record<string, unknown>, attachment = false) => {
-      const { data, error } = await deps.supabase.rpc(attachment ? "sales_credit_attachment_v1" : action === "request_history" ? "request_history_command_v1" : "sales_credit_command_v1", {
-        p_actor_id: actor.id, p_operation: op, p_payload: body,
-        ...(!attachment ? { p_command_id: deps.payload.commandId || null, p_expected_revision: deps.payload.expectedRevision ?? null } : {}),
-      });
-      if (error) throw error;
-      return data;
+      const payloadJson = jsonValue(body);
+      const commandId = typeof deps.payload.commandId === "string" ? deps.payload.commandId : undefined;
+      const expectedRevision = typeof deps.payload.expectedRevision === "number" ? deps.payload.expectedRevision : undefined;
+      const args = attachment
+        ? { p_actor_id: actorId, p_operation: op, p_payload: payloadJson }
+        : {
+          p_actor_id: actorId, p_operation: op, p_payload: payloadJson,
+          ...(commandId ? { p_command_id: commandId } : {}),
+          ...(expectedRevision === undefined ? {} : { p_expected_revision: expectedRevision }),
+        };
+      const result = attachment
+        ? await deps.supabase.rpc("sales_credit_attachment_v1", args)
+        : action === "request_history"
+          ? await deps.supabase.rpc("request_history_command_v1", args)
+          : await deps.supabase.rpc("sales_credit_command_v1", args);
+      if (result.error) throw result.error;
+      try { return jsonValue(result.data); }
+      catch { throw Object.assign(new Error("SALES_WORKFLOW_RESPONSE_INVALID"), { status: 503 }); }
     };
     if (operation === "attachment_upload") {
       const photo = decodeCreditPhoto(payload);
       const sha256 = await hashBytes(photo.bytes);
-      const attachment = await call("reserve", { id: deps.payload.commandId, sourceId: payload.sourceId, mime: photo.mime, size: photo.bytes.length, sha256, extension: photo.extension }, true);
-      const { error } = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).upload(attachment.object_path, photo.bytes, { contentType: photo.mime, upsert: false, cacheControl: "private, max-age=0" });
+      const reserved = requireResponseObject(await call("reserve", { id: deps.payload.commandId, sourceId: payload.sourceId, mime: photo.mime, size: photo.bytes.length, sha256, extension: photo.extension }, true));
+      const objectPath = typeof reserved.object_path === "string" ? reserved.object_path : "";
+      const attachmentId = typeof reserved.id === "string" ? reserved.id : "";
+      if (!objectPath || !attachmentId) throw Object.assign(new Error("SALES_WORKFLOW_RESPONSE_INVALID"), { status: 503 });
+      const { error } = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).upload(objectPath, photo.bytes, { contentType: photo.mime, upsert: false, cacheControl: "private, max-age=0" });
       if (error) {
         // A lost acknowledgement may leave an immutable object in place. Verify it,
         // rather than overwrite evidence or ask the user to retake the photograph.
-        const existing = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).download(attachment.object_path);
+        const existing = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).download(objectPath);
         if (existing.error || !existing.data || await hashBytes(new Uint8Array(await existing.data.arrayBuffer())) !== sha256) throw new Error("CREDIT_PHOTO_UPLOAD_FAILED_RETRY_SAME_PHOTO");
       }
-      const saved = await call("finish", { id: attachment.id, sha256 }, true);
+      const saved = requireResponseObject(await call("finish", { id: attachmentId, sha256 }, true));
+      if (typeof saved.id !== "string" || typeof saved.source_id !== "string" || typeof saved.mime !== "string"
+        || typeof saved.byte_count !== "number" || !Number.isFinite(saved.byte_count)) throw Object.assign(new Error("SALES_WORKFLOW_RESPONSE_INVALID"), { status: 503 });
       return respond({ ok: true, data: { attachmentId: saved.id, sourceId: saved.source_id, mime: saved.mime, size: saved.byte_count } });
     }
     if (operation === "attachment_download") {
-      const attachment = await call("download", payload, true);
-      const { data, error } = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).createSignedUrl(attachment.object_path, 60);
+      const attachment = requireResponseObject(await call("download", payload, true));
+      const objectPath = typeof attachment.object_path === "string" ? attachment.object_path : "";
+      if (!objectPath) throw Object.assign(new Error("SALES_WORKFLOW_RESPONSE_INVALID"), { status: 503 });
+      const { data, error } = await deps.supabase.storage.from(SALES_CREDIT_BUCKET).createSignedUrl(objectPath, 60);
       if (error) throw error;
       return respond({ ok: true, data: { url: data.signedUrl, expiresIn: 60 } });
     }

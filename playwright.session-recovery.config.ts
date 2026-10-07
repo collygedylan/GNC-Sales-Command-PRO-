@@ -4,7 +4,8 @@ const remote = String(process.env.SESSION_RECOVERY_BASE_URL || '').trim().replac
 const baseURL = remote || 'http://127.0.0.1:43126';
 
 export default defineConfig({
-  testDir: './tests', testMatch: /session-recovery\.e2e\.spec\.ts/,
+  testDir: './tests', testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@session-recovery/,
   outputDir: './artifacts/session-recovery-browser', fullyParallel: true, workers: 2,
   forbidOnly: Boolean(process.env.CI), retries: process.env.CI ? 2 : 0, timeout: 60_000,
   reporter: process.env.CI ? 'github' : 'list', expect: { timeout: 12_000 },

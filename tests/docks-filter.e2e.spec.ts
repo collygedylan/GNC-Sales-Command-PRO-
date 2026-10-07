@@ -1,7 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
+
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+// @test-group: @docks-filter,docks
+
 
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
 const moduleHashes = new Map(['registry', 'adapters', 'coordinator'].map(name => {
@@ -215,7 +218,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], customCustomers
   return { seed, importRows, assertClean: () => expect(errors).toEqual([]) };
 }
 
-test('compact filter rail remains usable across themes, larger text and shortened phone height', async ({ page, baseURL }, testInfo) => {
+test('compact filter rail remains usable across themes, larger text and shortened phone height', {"tag":["@docks-filter"]}, async ({ page, baseURL }, testInfo) => {
   const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
   await expectDockCounts(page, 55, 117);
   await assertCompactDockLayout(page, testInfo);
@@ -224,7 +227,7 @@ test('compact filter rail remains usable across themes, larger text and shortene
   session.assertClean();
 });
 
-test('Docks cached display layout and filters fit 320, 390 and 430 pixel phones', async ({ page, baseURL }) => {
+test('Docks cached display layout and filters fit 320, 390 and 430 pixel phones', {"tag":["@docks-filter"]}, async ({ page, baseURL }) => {
   const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
   for (const width of [320, 390, 430]) {
     await page.setViewportSize({ width, height: 844 });
@@ -237,7 +240,7 @@ test('Docks cached display layout and filters fit 320, 390 and 430 pixel phones'
   session.assertClean();
 });
 
-test('two sessions retain local choices, converge after clear, and keep All inclusive after import/relaunch', async ({ page, browser, baseURL }, testInfo) => {
+test('two sessions retain local choices, converge after clear, and keep All inclusive after import/relaunch', {"tag":["@docks-filter"]}, async ({ page, browser, baseURL }, testInfo) => {
   // A separate context is essential: filters are intentionally isolated per device.
   const use = testInfo.project.use;
   const secondContext = await browser.newContext({ baseURL, viewport: use.viewport, userAgent: use.userAgent,
@@ -400,7 +403,7 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
   await page.screenshot({path:test.info().outputPath('native-search-clear.png')});
 }
 
-test('cached native Docks cohort renders from saved snapshots before revisions finish', async ({ page, baseURL }) => {
+test('cached native Docks cohort renders from saved snapshots before revisions finish', {"tag":["@docks-filter"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!, dock28);
   await enableNativeCoordinator(page, dock28);
   await expectDockCounts(page, 117, 117);
@@ -493,7 +496,7 @@ test('cached native Docks cohort renders from saved snapshots before revisions f
   app.assertClean();
 });
 
-test('native shared coordinator preserves filtered sessions, stages import races and resumes after a lost connection', async ({ page, browser, baseURL }, testInfo) => {
+test('native shared coordinator preserves filtered sessions, stages import races and resumes after a lost connection', {"tag":["@docks-filter"]}, async ({ page, browser, baseURL }, testInfo) => {
   const use = testInfo.project.use;
   const secondContext = await browser.newContext({ baseURL, viewport: use.viewport, userAgent: use.userAgent,
     isMobile: use.isMobile, hasTouch: use.hasTouch, deviceScaleFactor: use.deviceScaleFactor, serviceWorkers: 'block' });
@@ -562,7 +565,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
   }
 });
 
-test('real customer controls expose empty Custom, All and device-saved selections', async ({ page, baseURL }) => {
+test('real customer controls expose empty Custom, All and device-saved selections', {"tag":["@docks-filter"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!, [row('a', 'Customer A'), row('b', 'Customer B', '29')]);
   await openCompactFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
@@ -585,7 +588,7 @@ test('real customer controls expose empty Custom, All and device-saved selection
   app.assertClean();
 });
 
-test('native refresh preserves an open Dock draft and reloads changed query and identity scopes', async ({ page, baseURL }) => {
+test('native refresh preserves an open Dock draft and reloads changed query and identity scopes', {"tag":["@docks-filter"]}, async ({ page, baseURL }) => {
   const initial = [row('draft-a', 'Customer A')];
   const app = await harness(page, baseURL!, initial);
   // The editor display case requires a foreground page after multi-context tests.

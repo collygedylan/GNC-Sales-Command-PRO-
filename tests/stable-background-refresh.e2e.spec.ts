@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 
-test('unchanged verification preserves Drive demand cards across three refresh cycles', async ({ page, baseURL }, testInfo) => {
+import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
+// @test-group: @stable-background-refresh
+
+
+test('unchanged verification preserves Drive demand cards across three refresh cycles', {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }, testInfo) => {
   await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
   const fixture = await installHlOrderFixture(page, baseURL!, {
     reserveRows: Array.from({ length: 8 }, (_, i) => ({ unique_id: `steady-reserve-${i}`, itemcode: 'SYNTH.003', lotcode: '27.F1', customername: 'Steady Reserve', quantityordered: '0' })),
@@ -76,7 +79,7 @@ test('unchanged verification preserves Drive demand cards across three refresh c
 
 const itemCount = 18;
 
-test('unchanged HL reads preserve detail and Bloom inputs and same-revision balance updates remain visible', async ({ page, baseURL }) => {
+test('unchanged HL reads preserve detail and Bloom inputs and same-revision balance updates remain visible', {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }) => {
   await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
   const fixture = await installHlOrderFixture(page, baseURL!);
   await expect(page.locator('#view-login')).toBeHidden();
@@ -119,7 +122,7 @@ test('unchanged HL reads preserve detail and Bloom inputs and same-revision bala
   expect(fixture.errors).toEqual([]);
 });
 
-test('unchanged shared checks preserve Drive Tasks Que and Docks content', async ({ page, baseURL }) => {
+test('unchanged shared checks preserve Drive Tasks Que and Docks content', {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }) => {
   await page.addInitScript(() => { Reflect.deleteProperty(window, 'PushManager'); });
   const fixture = await installHlOrderFixture(page, baseURL!);
   await expect(page.locator('#view-login')).toBeHidden();
@@ -255,7 +258,7 @@ async function setupEval2Location(page: any, baseURL: string) {
   return fixture;
 }
 
-test('verified background refresh keeps Eval Reports #2 LowStock location cards and their scroll anchor', async ({ page, baseURL }, testInfo) => {
+test('verified background refresh keeps Eval Reports #2 LowStock location cards and their scroll anchor', {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }, testInfo) => {
   const fixture = await setupEval2Location(page, baseURL!);
   // Scrolling changes the hovered card on desktop. Wait for that interaction's
   // real transform transition before measuring a settled refresh anchor.
@@ -394,8 +397,8 @@ test('verified background refresh keeps Eval Reports #2 LowStock location cards 
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Eval Reports #2 loading status preserves card geometry when its message wraps', async ({ page, baseURL }, testInfo) => {
-  test.skip(!/(android|iphone)/.test(testInfo.project.name), 'exercise narrow status wrapping on mobile');
+test('Eval Reports #2 loading status preserves card geometry when its message wraps', {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }, testInfo) => {
+  test.skip(!/(android|iphone)/.test(testInfo.project.name), {"tag":["@stable-background-refresh"]}, 'exercise narrow status wrapping on mobile');
   await setupEval2Location(page, baseURL!);
   const measurements = [];
   for (const width of [320, 360, 390]) {
@@ -424,8 +427,8 @@ test('Eval Reports #2 loading status preserves card geometry when its message wr
 });
 
 for (const overlapRecordsRender of [false, true]) {
-test(`touch-held Eval Reports #2 refresh keeps location cards in place until the gesture ends${overlapRecordsRender ? ' with a queued records render' : ''}`, async ({ page, baseURL }, testInfo) => {
-  test.skip(!/(android|iphone)/.test(testInfo.project.name), 'exercise the touch-specific scheduler on mobile profiles');
+test(`touch-held Eval Reports #2 refresh keeps location cards in place until the gesture ends${overlapRecordsRender ? ' with a queued records render' : ''}`, {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }, testInfo) => {
+  test.skip(!/(android|iphone)/.test(testInfo.project.name), {"tag":["@stable-background-refresh"]}, 'exercise the touch-specific scheduler on mobile profiles');
   const fixture = await setupEval2Location(page, baseURL!);
   const scroller = page.locator('#main-scroll-area');
   await page.evaluate(() => window.eval(`(() => {
@@ -507,7 +510,7 @@ test(`touch-held Eval Reports #2 refresh keeps location cards in place until the
 });
 }
 
-test('only a complete verified refresh may leave a removed Eval Reports #2 location', async ({ page, baseURL }) => {
+test('only a complete verified refresh may leave a removed Eval Reports #2 location', {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }) => {
   const fixture = await setupEval2Location(page, baseURL!);
   // Progressive preview may show newer source data, but must retain the drill
   // until the complete verified reconciliation can prove this branch vanished.

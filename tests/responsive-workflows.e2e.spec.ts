@@ -1,10 +1,13 @@
 import { expect, test } from '@playwright/test';
+
 import { installDriveCardLayoutFixture, renderDriveLayoutCard, renderSharedHlDriveLayoutCard } from './fixtures/drive-card-layout';
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
+// @test-group: @local-e2e,@release-functional
+
 
 const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
-test('Drive search stays inside the selected location and preserves it when cleared', async ({ page, baseURL }) => {
+test('Drive search stays inside the selected location and preserves it when cleared', {"tag":["@local-e2e","@release-functional"]}, async ({ page, baseURL }) => {
   test.setTimeout(90_000);
   const fixture = await installHlOrderFixture(page, baseURL!, { role: 'ADMIN', username: 'dylan_collyge', master: [
     hlMaster('scope-c', { itemcode: 'SCOPE.C', commonname: 'Scoped Rose', blockalpha: 'C', locationcode: 'C.06.001' }),
@@ -46,7 +49,7 @@ test('Drive search stays inside the selected location and preserves it when clea
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Drive inventory cards use AV-density layout at desktop and tablet widths without restyling shared HL cards', async ({ page, baseURL }) => {
+test('Drive inventory cards use AV-density layout at desktop and tablet widths without restyling shared HL cards', {"tag":["@local-e2e","@release-functional"]}, async ({ page, baseURL }) => {
   test.setTimeout(90_000);
   const fixture = await installDriveCardLayoutFixture(page, baseURL!);
   for (const theme of ['light', 'dark', 'outdoor'] as const) {
@@ -144,7 +147,7 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
   expect(fixture.errors).toEqual([]);
 });
 
-test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
+test('Request AV sheet preserves swipe intent before selecting a later option', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
@@ -181,7 +184,7 @@ test('Request AV sheet preserves swipe intent before selecting a later option', 
   await expect(page.locator('#req-av-note')).toHaveValue('OPTION 39');
 });
 
-test('phone login keeps both fields and the submit action visible', async ({ page }) => {
+test('phone login keeps both fields and the submit action visible', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'load' });
 
@@ -196,7 +199,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
 });
 
-test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
+test('Brandt receives admin access without any Managers entry point or direct view access', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -226,7 +229,7 @@ test('Brandt receives admin access without any Managers entry point or direct vi
   });
 });
 
-test('Eval assignment dropdown exposes the full managed roster and Itemcode default key', async ({ page }) => {
+test('Eval assignment dropdown exposes the full managed roster and Itemcode default key', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalAssigneeOptionsHtml === 'function');
   const result = await page.evaluate(() => {
@@ -264,7 +267,7 @@ test('Eval assignment dropdown exposes the full managed roster and Itemcode defa
   expect(result.sheetTypoAlias).toBe('bobby_adair');
 });
 
-test('Dylan and Megan alone receive cached Manager Eval Reports without an inventory refetch', async ({ page }) => {
+test('Dylan and Megan alone receive cached Manager Eval Reports without an inventory refetch', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.21.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalReportIndex === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -307,7 +310,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
   expect(result.inventoryFetches).toBe(0);
 });
 
-test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
+test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -435,7 +438,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
 });
 
-test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', async ({ page }) => {
+test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-direct-multiselect', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -537,7 +540,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
-test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Load More action', async ({ page }) => {
+test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Load More action', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-auto-all', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReport2Records === 'function');
@@ -627,7 +630,7 @@ test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Lo
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
-test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page }) => {
+test.skip('legacy Eval Reports #2 synchronous workbook delivery', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
@@ -944,7 +947,7 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
   expect(result.controlsFit).toBe(true);
 });
 
-test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per selected ITEMCODE', async ({ page }) => {
+test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per selected ITEMCODE', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openManagerEvalReport2BatchSetup === 'function');
@@ -1096,7 +1099,7 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
   });
 });
 
-test('Eval Work batch confirmation stays above the phone setup sheet and accepts the create action', async ({ page }) => {
+test('Eval Work batch confirmation stays above the phone setup sheet and accepts the create action', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval-work-confirm-layer', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).showAppConfirm === 'function'
@@ -1129,7 +1132,7 @@ test('Eval Work batch confirmation stays above the phone setup sheet and accepts
   await expect(prompt).toBeHidden();
 });
 
-test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', async ({ page }) => {
+test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=eval2-authoritative-user-filter', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyManagerEvalReport2UserFilter === 'function');
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
@@ -1204,7 +1207,7 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
   });
 });
 
-test('Eval Reports #2 manager search refreshes while the search field remains active', async ({ page }) => {
+test('Eval Reports #2 manager search refreshes while the search field remains active', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-manager-search', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -1245,7 +1248,7 @@ test('Eval Reports #2 manager search refreshes while the search field remains ac
   expect(result.regionRefreshCalls).toBeGreaterThan(0);
 });
 
-test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }, testInfo) => {
+test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', {"tag":["@local-e2e","@release-functional"]}, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
@@ -1337,7 +1340,7 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   await page.screenshot({ path: '.gnc-local/assigned-virtual-desktop.png' });
 });
 
-test('Assigned Items virtualizes the full list while preserving complete search results', async ({ page }) => {
+test('Assigned Items virtualizes the full list while preserving complete search results', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
@@ -1439,7 +1442,7 @@ test('Assigned Items virtualizes the full list while preserving complete search 
   expect(phoneSearch.status).toContain('Search checks the complete 125-row list');
 });
 
-test('Assigned Items renders 10k and 25k records with bounded DOM and scrolls to the final row', async ({ page }, testInfo) => {
+test('Assigned Items renders 10k and 25k records with bounded DOM and scrolls to the final row', {"tag":["@local-e2e","@release-functional"]}, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/?e2e=assigned-items-virtualization', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).mountManagerAssignedItemsView === 'function');
@@ -1505,7 +1508,7 @@ test('Assigned Items renders 10k and 25k records with bounded DOM and scrolls to
   await expect(page.locator('#assigned-items-virtual-benchmark-host [data-inventory-id="stress-24999"]')).toContainText('STRESS-24999');
 });
 
-test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
+test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
@@ -1574,7 +1577,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
   expect(result.busyAfter).toBe(false);
 });
 
-test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
+test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
@@ -1668,7 +1671,7 @@ test('Manager Historical Report loads Common Names immediately, drills to ContSi
   expect(result.canOther).toBe(false);
 });
 
-test('an acknowledged assignment immediately leaves the Unassigned filter', async ({ page }) => {
+test('an acknowledged assignment immediately leaves the Unassigned filter', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyAcknowledgedEvalAssignmentResults === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -1702,7 +1705,7 @@ test('an acknowledged assignment immediately leaves the Unassigned filter', asyn
   });
 });
 
-test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', async ({ page }) => {
+test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRequestChunkRenderOptions === 'function'
@@ -1748,7 +1751,7 @@ test('iPhone Request Queue renders all 19 rows instead of only the first adaptiv
   expect(result.renderedRows).toBe(19);
 });
 
-test('Queue tab changes load only the canonical datasets needed by that tab', async ({ page }) => {
+test('Queue tab changes load only the canonical datasets needed by that tab', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRequestViewLoadingConfig === 'function');
   const configs = await page.evaluate(() => {
@@ -1782,7 +1785,7 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
   expect(configs.avCheck).toEqual({ required: [], background: ['requests:full'] });
 });
 
-test('Kayla receives standard Admin Request, Drive, and photo access', async ({ page }) => {
+test('Kayla receives standard Admin Request, Drive, and photo access', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const permissions = await page.evaluate(() => {
@@ -1811,7 +1814,7 @@ test('Kayla receives standard Admin Request, Drive, and photo access', async ({ 
   });
 });
 
-test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
+test('iOS Request cards keep a working left-swipe surface for Kayla', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).handleRequestSwipeStart === 'function');
@@ -1862,7 +1865,7 @@ test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ p
   });
 });
 
-test('saved Dark theme owns the first two seconds without a white frame', async ({ page }) => {
+test('saved Dark theme owns the first two seconds without a white frame', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.setItem('gnc_last_theme_v1', 'dark'));
@@ -1895,7 +1898,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
   expect(visibleSamples.every((sample) => sample.theme === 'dark')).toBe(true);
 });
 
-test('Drive Common Name search keeps the grouped drill-down', async ({ page }) => {
+test('Drive Common Name search keeps the grouped drill-down', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).shouldRenderDriveUniversalDetailedSearch === 'function');
   const result = await page.evaluate(() => {
@@ -1917,7 +1920,7 @@ test('Drive Common Name search keeps the grouped drill-down', async ({ page }) =
   });
 });
 
-test('Android keyboard viewport changes retain Drive search focus, node identity, value, and caret', async ({ page }) => {
+test('Android keyboard viewport changes retain Drive search focus, node identity, value, and caret', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=drive&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
   const search = page.locator('#drive-search');
@@ -1957,7 +1960,7 @@ test('Android keyboard viewport changes retain Drive search focus, node identity
   });
 });
 
-test('Home adaptively fits all 12 launch modules without scrolling or quick-bar overlap', async ({ page }) => {
+test('Home adaptively fits all 12 launch modules without scrolling or quick-bar overlap', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const viewports = [
     { width: 320, height: 568 },
     { width: 390, height: 844 },
@@ -2043,7 +2046,7 @@ test('Home adaptively fits all 12 launch modules without scrolling or quick-bar 
   }
 });
 
-test('Home refits after resize, orientation, and 125–200 percent viewport reflow', async ({ page }) => {
+test('Home refits after resize, orientation, and 125–200 percent viewport reflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const reflowViewports = [
     { width: 1536, height: 864 },
     { width: 1097, height: 617 },
@@ -2080,7 +2083,7 @@ test('Home refits after resize, orientation, and 125–200 percent viewport refl
   }
 });
 
-test('phone Chat composer fills the shell and never overlaps quick navigation', async ({ page }) => {
+test('phone Chat composer fills the shell and never overlaps quick navigation', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=chat&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
 
@@ -2105,7 +2108,7 @@ test('phone Chat composer fills the shell and never overlaps quick navigation', 
   expect(desktopComposer!.y + desktopComposer!.height).toBeLessThanOrEqual(desktopNav!.y);
 });
 
-test('Item Inquiry preserves the compact desktop and tablet worksheet', async ({ page }) => {
+test('Item Inquiry preserves the compact desktop and tablet worksheet', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   const viewports = [
     { width: 768, height: 1024 },
@@ -2225,7 +2228,7 @@ test('Item Inquiry preserves the compact desktop and tablet worksheet', async ({
   }
 });
 
-test('Phone Item Inquiry uses one readable summary-first scroll with synchronized tabs', async ({ page }) => {
+test('Phone Item Inquiry uses one readable summary-first scroll with synchronized tabs', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const viewports = [
     { width: 390, height: 844 },
     { width: 430, height: 932 },
@@ -2318,7 +2321,7 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
   }
 });
 
-test('Phone Reclass inquiry fits narrow screens and preserves optional location drafts', async ({ page }) => {
+test('Phone Reclass inquiry fits narrow screens and preserves optional location drafts', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=reclass-mobile-density', { waitUntil: 'domcontentloaded' });
@@ -2392,7 +2395,7 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
   await expect(modal).toBeHidden();
 });
 
-test('Desktop Reclass row actions preserve combined requests and disclose inquiry-wide Hold / Stop scope', async ({ page }) => {
+test('Desktop Reclass row actions preserve combined requests and disclose inquiry-wide Hold / Stop scope', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   page.on('dialog', dialog => dialog.accept());
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -2445,7 +2448,7 @@ test('Desktop Reclass row actions preserve combined requests and disclose inquir
   await expect(old.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveValue('');
 });
 
-test('Phone Reclass V3 supports all eight direct actions without row checkboxes or horizontal overflow', async ({ page }) => {
+test('Phone Reclass V3 supports all eight direct actions without row checkboxes or horizontal overflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
@@ -2657,7 +2660,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
   }
 });
 
-test('Phone Drive Reclass skips the recipient picker and strips browser recipient fields', async ({ page }) => {
+test('Phone Drive Reclass skips the recipient picker and strips browser recipient fields', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
@@ -2678,7 +2681,7 @@ test('Phone Drive Reclass skips the recipient picker and strips browser recipien
   expect(payload.emailRecipients).toBeUndefined();
 });
 
-test('Phone Reclass hides intermediate delivery state and persists only the terminal result', async ({ page }) => {
+test('Phone Reclass hides intermediate delivery state and persists only the terminal result', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
@@ -2725,7 +2728,7 @@ test('Phone Reclass hides intermediate delivery state and persists only the term
   await expect(page.locator('#reclass-delivery-status-tray button')).toHaveText('Dismiss');
 });
 
-test('Drive Grid is a readable spreadsheet and every control stays on one rail', async ({ page }) => {
+test('Drive Grid is a readable spreadsheet and every control stays on one rail', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=drive&display=grid&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.drive-grid-table')).toHaveCount(0);
@@ -2775,7 +2778,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
   await expect(page.getByText('Season Sales Notes', { exact: true })).toHaveCount(0);
 });
 
-test('Request rep selection always renders customer choices or a recoverable error state', async ({ page }) => {
+test('Request rep selection always renders customer choices or a recoverable error state', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).selectRepForRequest === 'function');
@@ -2877,7 +2880,7 @@ test('Request rep selection always renders customer choices or a recoverable err
   expect(JSON.stringify(result.failure.diagnostic)).not.toContain('sensitive raw failure');
 });
 
-test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
+test('dark phone Request creation keeps headings, labels, and fields readable', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
@@ -2930,7 +2933,7 @@ test('dark phone Request creation keeps headings, labels, and fields readable', 
   expect(state.overflow).toBe(0);
 });
 
-test('Request quantity and spec fields stay high-contrast and responsive on phones', async ({ page }) => {
+test('Request quantity and spec fields stay high-contrast and responsive on phones', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // Exercise responsive styles on one fully initialized app instead of
   // repeatedly tearing down Firefox's app runtime between measurements.
@@ -3006,7 +3009,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
   }
 });
 
-test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
+test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.09.04.04&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
@@ -3112,7 +3115,7 @@ test('Request reusable evidence prompt accepts partial exact-row data without au
   expect(storedChoice).toBe('YES');
 });
 
-test('toast can be closed or swiped up without blocking the rest of the screen', async ({ page }) => {
+test('toast can be closed or swiped up without blocking the rest of the screen', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).showToast === 'function');
@@ -3152,7 +3155,7 @@ test('toast can be closed or swiped up without blocking the rest of the screen',
   await expect(toast).toHaveAttribute('data-dismiss-reason', 'swipe-up');
 });
 
-test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', async ({ page }) => {
+test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
@@ -3224,8 +3227,8 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
   }
 });
 
-test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
-  test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
+test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', {"tag":["@local-e2e","@release-functional"]}, async ({ page, browserName }) => {
+  test.skip(browserName !== 'webkit', {"tag":["@local-e2e","@release-functional"]}, 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.09.04.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');
@@ -3293,7 +3296,7 @@ test('iPhone Request fields keep native focus and draft values through viewport 
   await expect(page.locator('#req-match')).toHaveAttribute('inputmode', 'decimal');
 });
 
-test('desktop Request detail is one readable single-column workflow', async ({ page }) => {
+test('desktop Request detail is one readable single-column workflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
@@ -3363,7 +3366,7 @@ test('desktop Request detail is one readable single-column workflow', async ({ p
   }
 });
 
-test('module filters sit below the command search with responsive breathing room', async ({ page }) => {
+test('module filters sit below the command search with responsive breathing room', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const cases = [
     { width: 390, height: 844, minGap: 20, maxGap: 44 },
     { width: 768, height: 1024, minGap: 42, maxGap: 62 },
@@ -3394,7 +3397,7 @@ test('module filters sit below the command search with responsive breathing room
   }
 });
 
-test('light and dark navigation use explicit semantic fallback colors', async ({ page }) => {
+test('light and dark navigation use explicit semantic fallback colors', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   for (const theme of ['light', 'dark']) {
     await page.goto(`${fixtureUrl}?view=drive&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
     await expect.poll(() => page.locator('body').getAttribute('data-ops-theme')).toBe(theme);
@@ -3452,7 +3455,7 @@ test('light and dark navigation use explicit semantic fallback colors', async ({
   }
 });
 
-test('anonymous monitoring activates for non-Dylan sessions without PII', async ({ page }) => {
+test('anonymous monitoring activates for non-Dylan sessions without PII', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto(`${fixtureUrl}?pilot=0&monitoring=1&theme=dark`, { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.locator('body').getAttribute('data-qa-ready')).toBe('true');
   expect(await page.locator('body').getAttribute('data-qa-sentry-pii')).toBe('false');
@@ -3464,7 +3467,7 @@ test('anonymous monitoring activates for non-Dylan sessions without PII', async 
   expect(payload).not.toContain('ABC-123456');
 });
 
-test('non-Dylan users receive Appearance controls with phone-safe Grid behavior', async ({ page }) => {
+test('non-Dylan users receive Appearance controls with phone-safe Grid behavior', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?pilot=1&monitoring=0&theme=light&display=cards&reset=1`, { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.locator('body').getAttribute('data-qa-ready')).toBe('true');

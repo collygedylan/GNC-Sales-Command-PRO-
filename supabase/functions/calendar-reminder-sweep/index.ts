@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "../_shared/database.types.ts";
 import { withObservedRequest } from "../_shared/observability.ts";
 
 const corsHeaders = {
@@ -12,7 +13,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
@@ -83,7 +84,7 @@ serve((req) => withObservedRequest("calendar-reminder-sweep", req, async () => {
     const { error: finishError } = await supabase.rpc("hr_finish_calendar_reminder_v1", {
       p_id: String(row.id || ""),
       p_delivered: sent,
-      p_error_code: sent ? null : safeCode,
+      ...(!sent ? { p_error_code: safeCode } : {}),
     });
     if (finishError || !sent) failed += 1;
     else delivered += 1;

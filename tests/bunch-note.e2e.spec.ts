@@ -1,5 +1,8 @@
 import {test,expect} from '@playwright/test';
+
 import {installHlOrderFixture,hlUserId} from './fixtures/hl-order-state.mjs';
+// @test-group: @bunch-note,bunch-notes
+
 
 const plant=(id:string,location:string)=>({unique_id:id,blockalpha:'FULL.BLOCK',locationcode:location,itemcode:'BN-I',commonname:'Bunch Plant',contsize:'#3',lotcode:'27.F1',salesyear:'27',season:'27.Y',desigitem:'',stock:'10',review:'0',available:null,flags:'Blue',location_notes:'Wide aisles'});
 function fixturePdf() {
@@ -23,7 +26,7 @@ async function fixture(page:any,baseURL:string,worker=false) {
  await page.route('**/functions/v1/app-api',async(route:any)=>{
   if(route.request().method()!=='POST')return route.fallback();
   const body=route.request().postDataJSON(); if(body?.action!=='bunch_note')return route.fallback();
-  const p=body.payload||{};commands.push(body);let data:any={};
+  const p=body.payload||{};commands.push(body);let data:any;
   if(body.operation==='save'&&saveFailures-->0){await route.fulfill({status:503,headers,contentType:'application/json',body:JSON.stringify({ok:false,message:'Save unavailable. Your draft is retained.'})});return;}
   if(body.operation==='catalog')data={options,locations:['C.12.001','C.12.002','D.08.001']};
   else if(body.operation==='option_add'){if(worker){expect(p.job_id).toBe(jobs[0].id);expect(body.expectedRevision).toBe(jobs[0].revision);}const option={id:'custom'+options.length,category:p.category,label:p.label,kind:p.kind,active:true,revision:1};options.push(option);data={option};}
@@ -80,7 +83,7 @@ async function openAuthorLocation(page:any, location:string) {
  await section.getByRole('button',{name:'Location instructions',exact:true}).first().click();
 }
 
-test('structured worksheet saves ordered houses, custom crew tags and freeform routing without losing failed edits',async({page,baseURL})=>{
+test('structured worksheet saves ordered houses, custom crew tags and freeform routing without losing failed edits', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
@@ -126,7 +129,7 @@ test('structured worksheet saves ordered houses, custom crew tags and freeform r
  expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('author includes one location card explicitly, assigns it, and limits planned Move to its lot rows',async({page,baseURL})=>{
+test('author includes one location card explicitly, assigns it, and limits planned Move to its lot rows', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
@@ -159,7 +162,7 @@ test('author includes one location card explicitly, assigns it, and limits plann
  expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('structured queue shows house directions and survives refresh before opening linked work',async({page,baseURL})=>{
+test('structured queue shows house directions and survives refresh before opening linked work', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!,true),j=f.jobs[0];
  j.body.direction='West to East';j.body.target_houses='South house only';
  j.body.house_sections=[{id:'north',name:'North House',direction:'East to West'}];
@@ -178,7 +181,7 @@ test('structured queue shows house directions and survives refresh before openin
  expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('creator actions drill through themed block and location cards',async({page,baseURL},testInfo)=>{
+test('creator actions drill through themed block and location cards', {"tag":["@bunch-note"]},async({page,baseURL},testInfo)=>{
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
  await page.evaluate(project=>{
@@ -241,7 +244,7 @@ test('creator actions drill through themed block and location cards',async({page
  expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('creator adds a whole-location action on the second location card',async({page,baseURL})=>{
+test('creator adds a whole-location action on the second location card', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);f.options.push({id:'custom-walkway',category:'sequence',label:'Check walkway',kind:'instruction',active:true,revision:1});
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
@@ -277,7 +280,7 @@ function savedMultiLocationDraft(rows:any[]) {
  ]}};
 }
 
-test('saved multi-location batch preserves actions through Bunch and completed-work PDFs',async({page,baseURL})=>{
+test('saved multi-location batch preserves actions through Bunch and completed-work PDFs', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);f.drafts.push(savedMultiLocationDraft(f.rows));
  await openBunchNotesFromInventory(page);
  await expect(page.getByRole('button',{name:'Open batch FULL.BLOCK',exact:true})).toBeVisible();
@@ -334,7 +337,7 @@ test('saved multi-location batch preserves actions through Bunch and completed-w
  expect(f.control.blockedMutations).toEqual([]);
 });
 
-test('shell repaint during Back retains creator state without reloading metadata',async({page,baseURL})=>{
+test('shell repaint during Back retains creator state without reloading metadata', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
@@ -353,7 +356,7 @@ test('shell repaint during Back retains creator state without reloading metadata
   await expect(page.locator('.bn-card-board__location h3',{hasText:'C.12.002'})).toBeVisible();
 });
 
-test('combined move keeps its full destination and opens destination instructions',async({page,baseURL})=>{
+test('combined move keeps its full destination and opens destination instructions', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();
@@ -393,7 +396,7 @@ test('combined move keeps its full destination and opens destination instruction
  await expect(page.getByRole('button',{name:'Open location C.12.001',exact:true})).toBeVisible();
  expect(f.control.blockedMutations).toEqual([]);
 });
-test('worker without Request permission sees Bunch-only Queue, claims and completes without email',async({page,baseURL})=>{
+test('worker without Request permission sees Bunch-only Queue, claims and completes without email', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!,true);
  await page.evaluate(()=>window.eval(`getRequestCapabilities = () => ({canViewQueue:false}); canSeeEvalWorkRequestTab = () => false; switchView('request');`));
  await expect(page.locator('#home-tile-bunch-note')).toHaveCount(0);
@@ -480,7 +483,7 @@ test('worker without Request permission sees Bunch-only Queue, claims and comple
  expect(f.commands.some(c=>['send','publish','preview','retry'].includes(c.operation))).toBe(false);
 });
 
-test('worker claims and completes only the selected published inventory card',async({page,baseURL})=>{
+test('worker claims and completes only the selected published inventory card', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!,true),job=f.jobs[0];
  job.cards=[
   {id:'card-a',kind:'inventory',itemcode:'BN-I',commonname:'Bunch Plant',contsize:'#3',row_ids:['a'],owner_id:null,owner_name:null,house:'North House',direction:'West to East',status:'open',revision:4},
@@ -511,7 +514,7 @@ test('worker claims and completes only the selected published inventory card',as
 });
 
 
-test('phone steps retain failed saves and make mixed-year and unknown-year destinations reachable',async({page,baseURL})=>{
+test('phone steps retain failed saves and make mixed-year and unknown-year destinations reachable', {"tag":["@bunch-note"]},async({page,baseURL})=>{
  const f=await fixture(page,baseURL!);f.rows[1].salesyear='';
  await openBunchNotesFromInventory(page);
  await page.getByRole('button',{name:'Open block FULL.BLOCK',exact:true}).click();

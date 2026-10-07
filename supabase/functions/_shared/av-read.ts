@@ -1,3 +1,8 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+import { validateSchema, jsonValue, type Schema } from "../../../services/database-contract-runtime.ts";
+import { contracts } from "../../../services/database-contracts.generated.ts";
+
 const RESERVE_FULL_SELECT_FIELDS = [
   "unique_id", "concat", "last_updated", "assigned_to", "assignedto", "spec", "caliper",
   "pic_note", "sales_note", "av_note", "photo_link", "photo_name", "dock_spec", "dock_caliper",
@@ -25,12 +30,21 @@ const RESERVE_FULL_SELECT_FIELDS = [
 
 // Service-role reads for AV dependencies whose browser SELECT grants are revoked.
 // Only these datasets and simple same-table filters can cross this boundary.
-const SOURCES: Record<string, { table: string; permission: string; key: string; fields: string }> = {
+type Relation = keyof Database["public"]["Tables"] | keyof Database["public"]["Views"];
+type Source = { table: Relation; permission: string; key: string; fields: string };
+type AvFilterQuery = {
+  filter(column: string, operator: string, value: unknown): AvFilterQuery;
+  or(filters: string): AvFilterQuery;
+  eq(column: string, value: unknown): AvFilterQuery;
+  order(column: string, options?: { ascending?: boolean; nullsFirst?: boolean }): AvFilterQuery;
+  range(from: number, to: number): PromiseLike<{ data: unknown; error: { code: string } | null; count: number | null; status: number }>;
+};
+const SOURCES = {
   reserves: { table: "ph_reserves", permission: "ph_reserves", key: "unique_id", fields: RESERVE_FULL_SELECT_FIELDS },
   notes: { table: "ph_av_notes", permission: "ph_av_notes", key: "unique_id", fields: "unique_id,commonname,salesnote" },
   hot_prices: { table: "ph_view_av_hot_price_keys", permission: "ph_cav_import", key: "itemcode_key", fields: "itemcode_key,cav_itemcode,hot_price,cav_filename,cav_last_updated" },
   settings: { table: "ph_app_settings", permission: "ph_app_settings", key: "key", fields: "key,value,updated_by,updated_at" },
-};
+} as const satisfies Record<string, Source>;
 const FILTER_FIELDS = new Set(["unique_id", "itemcode", "itemcode_key", "lotcode", "season", "salesrepname", "customername", "consigneename", "key", "holdstopreason"]);
 const invalid = () => Object.assign(new Error("AV_READ_QUERY_INVALID"), { status: 400 });
 
@@ -52,6 +66,8 @@ function splitConditions(input: string) {
 }
 
 function validateLogic(input: string, depth = 0): string {
+  // Reject control characters so they cannot alter PostgREST filter parsing.
+  // eslint-disable-next-line no-control-regex
   if (depth > 4 || !input || input.length > 12000 || /[\x00-\x1f]/.test(input)) throw invalid();
   for (const term of splitConditions(input)) {
     const group = term.match(/^(and|or)\((.*)\)$/);
@@ -63,13 +79,14 @@ function validateLogic(input: string, depth = 0): string {
 }
 
 export async function readAvPage({ supabase, actor, payload, canRead, restrictRep }: {
-  supabase: any; actor: Record<string, unknown>; payload: Record<string, unknown>;
+  supabase: Pick<SupabaseClient<Database>, "from">; actor: Record<string, unknown>; payload: Record<string, unknown>;
   canRead: (table: string) => boolean; restrictRep: boolean;
 }) {
   if (Object.keys(payload).some(key => !["action", "dataset", "query"].includes(key))) throw invalid();
   const dataset = String(payload.dataset || "");
   if (!Object.hasOwn(SOURCES, dataset)) throw invalid();
-  const source = SOURCES[dataset];
+  const datasetKey = dataset as keyof typeof SOURCES;
+  const source = SOURCES[datasetKey];
   if (!canRead(source.permission)) throw Object.assign(new Error("AV_READ_FORBIDDEN"), { status: 403, stage: "authorization" });
   const raw = String(payload.query || "");
   if (raw.length > 16000) throw invalid();
@@ -81,9 +98,9 @@ export async function readAvPage({ supabase, actor, payload, canRead, restrictRe
   const requestedFields = params.get("select") || source.fields;
   if (requestedFields !== "*" && !/^[a-z_][a-z0-9_]*(,[a-z_][a-z0-9_]*)*$/.test(requestedFields)) throw invalid();
   const fields = requestedFields === "*" ? source.fields : requestedFields;
-  if (source.fields !== "*" && fields.split(",").some(field => !source.fields.split(",").includes(field))) throw invalid();
-  let query = supabase.from(source.table).select(fields, { count: "exact" });
+  if (source.fields !== "*" && fields.split(",").some((field: string) => !source.fields.split(",").includes(field))) throw invalid();
   const logic: string[] = [];
+  const filterEntries: Array<[string, string]> = [];
   for (const [key, value] of params) {
     if (["select", "limit", "offset", "order"].includes(key)) continue;
     if (key === "or" || key === "and") {
@@ -92,8 +109,10 @@ export async function readAvPage({ supabase, actor, payload, canRead, restrictRe
       logic.push(`${key}(${expression})`);
     } else {
       const match = value.match(/^(eq|ilike|is|in|not\.is)\.(.+)$/);
+      // Reject control characters so they cannot alter PostgREST filter parsing.
+      // eslint-disable-next-line no-control-regex
       if (!FILTER_FIELDS.has(key) || !match || /[\x00-\x1f]/.test(value)) throw invalid();
-      query = query.filter(key, match[1], match[2]);
+      filterEntries.push([key, value]);
     }
   }
   // A client filter may narrow this scope, but can never replace it.
@@ -109,23 +128,42 @@ export async function readAvPage({ supabase, actor, payload, canRead, restrictRe
     if (!names.size) throw Object.assign(new Error("AV_READ_REP_IDENTITY_REQUIRED"), { status: 403 });
     logic.push(`or(${[...names].map(name => `salesrepname.ilike.${name}`).join(",")})`);
   }
-  if (logic.length) query = query.or(logic.length === 1 && logic[0].startsWith("or(")
-    ? logic[0].slice(3, -1) : `and(${logic.join(",")})`);
+  const logicExpression = logic.length ? logic.length === 1 && logic[0].startsWith("or(")
+    ? logic[0].slice(3, -1) : `and(${logic.join(",")})` : "";
   // AV needs the public season setting, never arbitrary operational settings.
-  if (payload.dataset === "settings") query = query.eq("key", "current_season_salesyear");
+  const forceCurrentSeasonSetting = datasetKey === "settings";
   const order = params.get("order");
+  const requestedOrder: Array<{ field: string; ascending: boolean; nullsFirst: boolean }> = [];
   if (order) {
     for (const part of order.split(",")) {
       const match = part.match(/^([a-z_][a-z0-9_]*)(?:\.(asc|desc))?(?:\.(nullsfirst|nullslast))?$/);
       if (!match || (source.fields !== "*" && !source.fields.split(",").includes(match[1]))) throw invalid();
-      query = query.order(match[1], { ascending: match[2] !== "desc", nullsFirst: match[3] === "nullsfirst" });
+      requestedOrder.push({ field: match[1], ascending: match[2] !== "desc", nullsFirst: match[3] === "nullsfirst" });
     }
   }
-  query = query.order(source.key, { ascending: true }).range(offset, offset + pageSize - 1);
-  const { data, error, count, status: responseStatus } = await query;
+  const executeQuery = async (initial: AvFilterQuery) => {
+    let query = initial;
+    for (const [key, value] of filterEntries) {
+      const match = value.match(/^(eq|ilike|is|in|not\.is)\.(.+)$/);
+      if (!match) throw invalid();
+      query = query.filter(key, match[1], match[2]);
+    }
+    if (logicExpression) query = query.or(logicExpression);
+    if (forceCurrentSeasonSetting) query = query.eq("key", "current_season_salesyear");
+    for (const item of requestedOrder) query = query.order(item.field, { ascending: item.ascending, nullsFirst: item.nullsFirst });
+    return await query.order(source.key, { ascending: true }).range(offset, offset + pageSize - 1);
+  };
+  let result;
+  switch (datasetKey) {
+    case "reserves": result = await executeQuery(supabase.from("ph_reserves").select(fields, { count: "exact" })); break;
+    case "notes": result = await executeQuery(supabase.from("ph_av_notes").select(fields, { count: "exact" })); break;
+    case "hot_prices": result = await executeQuery(supabase.from("ph_view_av_hot_price_keys").select(fields, { count: "exact" })); break;
+    case "settings": result = await executeQuery(supabase.from("ph_app_settings").select(fields, { count: "exact" })); break;
+  }
+  const { data, error, count, status: responseStatus } = result!;
   if (error) {
-    const code = String(error.code || error.sqlState || error.sqlstate || "").trim().toUpperCase();
-    const reportedStatus = Number(error.status || responseStatus) || 0;
+    const code = String(error.code || "").trim().toUpperCase();
+    const reportedStatus = Number(responseStatus) || 0;
     const status = code === "42501" ? 403 : code === "40001" || code === "PT409" ? 409
       : [401, 403].includes(reportedStatus) ? reportedStatus
       : reportedStatus >= 400 && reportedStatus < 600 ? reportedStatus : 503;
@@ -135,6 +173,22 @@ export async function readAvPage({ supabase, actor, payload, canRead, restrictRe
       stage: "database",
     });
   }
-  if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 });
-  return { rows: data, total: count, offset, limit: pageSize, hasMore: offset + data.length < count };
+  let safeData: unknown;
+  try { safeData = jsonValue(data); }
+  catch { throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 }); }
+  if (!Array.isArray(safeData) || count === null || !Number.isInteger(count) || count < 0) throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 });
+  const rowContract = contracts.tables[source.table].row;
+  if (!rowContract || typeof rowContract !== "object" || !("object" in rowContract)) throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 });
+  const projection: Record<string, { schema: Schema }> = {};
+  for (const field of fields.split(",")) {
+    const fieldContract = rowContract.object[field];
+    if (!fieldContract) throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 });
+    projection[field] = fieldContract;
+  }
+  try {
+    for (const row of safeData) validateSchema({ object: projection }, row, "AV read row");
+  } catch {
+    throw Object.assign(new Error("AV_READ_INVALID_PAGE"), { status: 503 });
+  }
+  return { rows: safeData, total: count, offset, limit: pageSize, hasMore: offset + safeData.length < count };
 }

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "../_shared/database.types.ts";
 import { isAppAccountActive, normalizeUsername } from "../_shared/app-auth.ts";
 import { withObservedRequest } from "../_shared/observability.ts";
 
@@ -13,7 +14,7 @@ const corsHeaders = {
 
 const supabaseUrl = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const serviceRoleKey = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
-const admin = createClient(supabaseUrl, serviceRoleKey, {
+const admin = createClient<Database>(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 

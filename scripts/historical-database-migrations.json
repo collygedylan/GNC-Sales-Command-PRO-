@@ -1,0 +1,694 @@
+[
+  {
+    "source": "supabase/ci/request_workflow_baseline.sql",
+    "destination": "20260803100000_request_workflow_baseline.sql"
+  },
+  {
+    "source": "supabase/ci/historical_report_baseline.sql",
+    "destination": "20260803105000_historical_report_baseline.sql"
+  },
+  {
+    "source": "supabase/ci/native_auth_legacy_user_baseline.sql",
+    "destination": "20260803110000_native_auth_legacy_user_baseline.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260803121000_add_request_note_to_ph_active_request.sql",
+    "destination": "20260803121000_add_request_note_to_ph_active_request.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260803225959_add_csr_request_audit_fields.sql",
+    "destination": "20260803225959_add_csr_request_audit_fields.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260809011735_ph_27f1_hl_po.sql",
+    "destination": "20260809011735_ph_27f1_hl_po.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260815043342_dylan_live_pilot_preferences.sql",
+    "destination": "20260815043342_dylan_live_pilot_preferences.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260816172822_native_auth_profiles.sql",
+    "destination": "20260816172822_native_auth_profiles.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260816172823_pwa_containment_flags.sql",
+    "destination": "20260816172823_pwa_containment_flags.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260816172825_database_compaction_shadow.sql",
+    "destination": "20260816172825_database_compaction_shadow.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260817154154_restore_native_request_workflow.sql",
+    "destination": "20260817154154_restore_native_request_workflow.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820114722_request_integrity_and_eval_assignments.sql",
+    "destination": "20260820114722_request_integrity_and_eval_assignments.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820133000_request_integrity_health_profile_index.sql",
+    "destination": "20260820133000_request_integrity_health_profile_index.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820134500_profiles_service_role_grant.sql",
+    "destination": "20260820134500_profiles_service_role_grant.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820140000_master_inventory_service_role_grant.sql",
+    "destination": "20260820140000_master_inventory_service_role_grant.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820143000_suppress_initial_eval_event_fanout.sql",
+    "destination": "20260820143000_suppress_initial_eval_event_fanout.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820150000_legacy_completion_atomic_guard.sql",
+    "destination": "20260820150000_legacy_completion_atomic_guard.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820160000_eval_assignment_roster_and_sheet_cutover.sql",
+    "destination": "20260820160000_eval_assignment_roster_and_sheet_cutover.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820190857_acknowledge_stale_completed_request_work.sql",
+    "destination": "20260820190857_acknowledge_stale_completed_request_work.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820195456_complete_eval_assignment_sheet_import.sql",
+    "destination": "20260820195456_complete_eval_assignment_sheet_import.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820202902_reconcile_exact_assignment_sheet.sql",
+    "destination": "20260820202902_reconcile_exact_assignment_sheet.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260820230245_reliable_request_delivery_worker.sql",
+    "destination": "20260820230245_reliable_request_delivery_worker.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260821011223_hosted_health_auto_repair.sql",
+    "destination": "20260821011223_hosted_health_auto_repair.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260821012500_restore_request_email_threads_schema.sql",
+    "destination": "20260821012500_restore_request_email_threads_schema.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260821040617_manager_eval_report_settings.sql",
+    "destination": "20260821040617_manager_eval_report_settings.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260821040854_harden_eval_report_settings_rpc.sql",
+    "destination": "20260821040854_harden_eval_report_settings_rpc.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260821202202_manager_historical_report.sql",
+    "destination": "20260821202202_manager_historical_report.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260821223421_historical_report_default_browse.sql",
+    "destination": "20260821223421_historical_report_default_browse.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260823013134_expand_historical_report_source_columns.sql",
+    "destination": "20260823013134_expand_historical_report_source_columns.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260825222325_stabilize_request_capabilities.sql",
+    "destination": "20260825222325_stabilize_request_capabilities.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260825223040_grant_request_policy_helper.sql",
+    "destination": "20260825223040_grant_request_policy_helper.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260826133016_allow_chance_alldredge_request_create_own.sql",
+    "destination": "20260826133016_allow_chance_alldredge_request_create_own.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260826170020_request_capabilities_v2_restore_kayla.sql",
+    "destination": "20260826170020_request_capabilities_v2_restore_kayla.sql"
+  },
+  {
+    "source": "supabase/ci/request_eval_drive_reliability_baseline.sql",
+    "destination": "20260827000000_request_eval_drive_reliability_baseline.sql"
+  },
+  {
+    "source": "supabase/ci/sales_office_baseline.sql",
+    "destination": "20260827000001_sales_office_baseline.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260827005258_eval_work_v1.sql",
+    "destination": "20260827005258_eval_work_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260827161513_eval_work_create_batch_v1.sql",
+    "destination": "20260827161513_eval_work_create_batch_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260828024750_centralized_access_control_audit_v1.sql",
+    "destination": "20260828024750_centralized_access_control_audit_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260828070741_access_control_manager_read_v2.sql",
+    "destination": "20260828070741_access_control_manager_read_v2.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260828213612_multi_origin_eval_work_folder_completion_v2.sql",
+    "destination": "20260828213612_multi_origin_eval_work_folder_completion_v2.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260829042809_itemcode_wide_eval_work.sql",
+    "destination": "20260829042809_itemcode_wide_eval_work.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260830021512_mobile_codex_operations_v1.sql",
+    "destination": "20260830021512_mobile_codex_operations_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260830022003_codex_ops_terra_escalation_v2.sql",
+    "destination": "20260830022003_codex_ops_terra_escalation_v2.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260830023800_codex_ops_access_audit_baseline_v1.sql",
+    "destination": "20260830023800_codex_ops_access_audit_baseline_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260830213039_eval_work_item_inquiry_row_resolution_v3.sql",
+    "destination": "20260830213039_eval_work_item_inquiry_row_resolution_v3.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831004047_eval_work_request_drive_parity.sql",
+    "destination": "20260831004047_eval_work_request_drive_parity.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831030457_eval_work_multi_assignee_v1.sql",
+    "destination": "20260831030457_eval_work_multi_assignee_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831141127_native_auth_profile_link_repair.sql",
+    "destination": "20260831141127_native_auth_profile_link_repair.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831165043_pikes_orders_manager_history.sql",
+    "destination": "20260831165043_pikes_orders_manager_history.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831175530_pikes_orders_access_audit_baseline.sql",
+    "destination": "20260831175530_pikes_orders_access_audit_baseline.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831181200_optimize_request_read_rls.sql",
+    "destination": "20260831181200_optimize_request_read_rls.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831210000_request_eval_drive_reliability_repair.sql",
+    "destination": "20260831210000_request_eval_drive_reliability_repair.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831224251_repair_pikes_assignments_and_maintenance.sql",
+    "destination": "20260831224251_repair_pikes_assignments_and_maintenance.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260831230825_harden_pikes_assignment_repair_audit.sql",
+    "destination": "20260831230825_harden_pikes_assignment_repair_audit.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260901024608_drive_eval_shear_location_inquiries_v1.sql",
+    "destination": "20260901024608_drive_eval_shear_location_inquiries_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260901043510_harden_shear_location_rls.sql",
+    "destination": "20260901043510_harden_shear_location_rls.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260901135456_drive_shear_location_access_audit_baseline_v1.sql",
+    "destination": "20260901135456_drive_shear_location_access_audit_baseline_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260901192727_repair_request_option_append.sql",
+    "destination": "20260901192727_repair_request_option_append.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260901201209_eval_report2_completion_routing.sql",
+    "destination": "20260901201209_eval_report2_completion_routing.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902002912_flatten_eval_reports_2_and_reconcile_work.sql",
+    "destination": "20260902002912_flatten_eval_reports_2_and_reconcile_work.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902032807_repair_eval_work_assignee_insert_contract.sql",
+    "destination": "20260902032807_repair_eval_work_assignee_insert_contract.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902105411_group_eval_report2_assignment_email.sql",
+    "destination": "20260902105411_group_eval_report2_assignment_email.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902131328_stine_orders_history.sql",
+    "destination": "20260902131328_stine_orders_history.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902134004_manager_order_source_row_upload.sql",
+    "destination": "20260902134004_manager_order_source_row_upload.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902140500_repair_manager_order_finalizer_privilege.sql",
+    "destination": "20260902140500_repair_manager_order_finalizer_privilege.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902141956_repair_pikes_assignment_health_rpc_privilege.sql",
+    "destination": "20260902141956_repair_pikes_assignment_health_rpc_privilege.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902151444_optimize_bounded_request_maintenance.sql",
+    "destination": "20260902151444_optimize_bounded_request_maintenance.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902152210_bound_eval_assignment_delta.sql",
+    "destination": "20260902152210_bound_eval_assignment_delta.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902152707_separate_request_health_audit.sql",
+    "destination": "20260902152707_separate_request_health_audit.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902153652_historical_report_cursor_index.sql",
+    "destination": "20260902153652_historical_report_cursor_index.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902153654_optimize_historical_report_rows_rpc.sql",
+    "destination": "20260902153654_optimize_historical_report_rows_rpc.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902160400_optimize_po_management_health_snapshot.sql",
+    "destination": "20260902160400_optimize_po_management_health_snapshot.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260902165500_current_request_membership_health.sql",
+    "destination": "20260902165500_current_request_membership_health.sql"
+  },
+  {
+    "source": "supabase/ci/flyer_folder_batch_contract_baseline.sql",
+    "destination": "20260903013000_flyer_folder_batch_contract_baseline.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903013541_repair_reclass_task_flyer_access_v1.sql",
+    "destination": "20260903013541_repair_reclass_task_flyer_access_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql",
+    "destination": "20260903032040_protected_drive_reclass_inquiry_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql",
+    "destination": "20260903035800_drive_reclass_access_audit_baseline_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903171416_repair_season_sales_office_custom_av_staging.sql",
+    "destination": "20260903171416_repair_season_sales_office_custom_av_staging.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903180500_repair_season_sales_pgcrypto_search_path.sql",
+    "destination": "20260903180500_repair_season_sales_pgcrypto_search_path.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903181500_repair_season_sales_winner_alias.sql",
+    "destination": "20260903181500_repair_season_sales_winner_alias.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903183000_reconcile_legacy_season_sales_mirrors.sql",
+    "destination": "20260903183000_reconcile_legacy_season_sales_mirrors.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903190000_baseline_eval_itemcode_delivery_health_v2.sql",
+    "destination": "20260903190000_baseline_eval_itemcode_delivery_health_v2.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260903193349_enforce_season_sales_note_users_and_drive_drill.sql",
+    "destination": "20260903193349_enforce_season_sales_note_users_and_drive_drill.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904003007_sales_marketing_and_kayla_limited_access.sql",
+    "destination": "20260904003007_sales_marketing_and_kayla_limited_access.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904015607_emergency_drive_evidence_retry_storm_v2.sql",
+    "destination": "20260904015607_emergency_drive_evidence_retry_storm_v2.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904070154_photo_delivery_health_v1.sql",
+    "destination": "20260904070154_photo_delivery_health_v1.sql"
+  },
+  {
+    "source": "supabase/ci/photo_history_extensions.sql",
+    "destination": "20260904142700_photo_history_extensions.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904142737_dylan_photo_history_gallery_v1.sql",
+    "destination": "20260904142737_dylan_photo_history_gallery_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904143546_photo_history_catalog_refresh_refinement.sql",
+    "destination": "20260904143546_photo_history_catalog_refresh_refinement.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904151119_photo_history_required_copies_v2.sql",
+    "destination": "20260904151119_photo_history_required_copies_v2.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904184630_repair_request_season_sales_office_refresh.sql",
+    "destination": "20260904184630_repair_request_season_sales_office_refresh.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260904192758_add_season_sales_office_arrived_at.sql",
+    "destination": "20260904192758_add_season_sales_office_arrived_at.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260906022733_pin_remaining_public_function_search_paths.sql",
+    "destination": "20260906022733_pin_remaining_public_function_search_paths.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260906154833_repair_season_sales_done_lifecycle.sql",
+    "destination": "20260906154833_repair_season_sales_done_lifecycle.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260907212041_enforce_photo_evidence_projection.sql",
+    "destination": "20260907212041_enforce_photo_evidence_projection.sql"
+  },
+  {
+    "source": "supabase/ci/hl_order_baseline.sql",
+    "destination": "20260908184000_hl_order_baseline.sql"
+  },
+  {
+    "source": "supabase/ci/sales_credit_baseline.sql",
+    "destination": "20260908185000_sales_credit_baseline.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260908185903_live_dataset_revisions.sql",
+    "destination": "20260908185903_live_dataset_revisions.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260908201318_live_dataset_revision_empty_statements.sql",
+    "destination": "20260908201318_live_dataset_revision_empty_statements.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260908231650_retain_season_sales_office_av_notes.sql",
+    "destination": "20260908231650_retain_season_sales_office_av_notes.sql"
+  },
+  {
+    "source": "supabase/ci/season_sales_av_note_reset_baseline.sql",
+    "destination": "20260909004000_season_sales_av_note_reset_baseline.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260909004018_align_season_sales_av_note_shared_resets.sql",
+    "destination": "20260909004018_align_season_sales_av_note_shared_resets.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260910005005_reclass_review_assignedto_v1.sql",
+    "destination": "20260910005005_reclass_review_assignedto_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260910174603_grouped_eval_itemcode_health_contract.sql",
+    "destination": "20260910174603_grouped_eval_itemcode_health_contract.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260911115037_hl_ordering_system.sql",
+    "destination": "20260911115037_hl_ordering_system.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260911152125_restore_sep09_eval_review_compatibility.sql",
+    "destination": "20260911152125_restore_sep09_eval_review_compatibility.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260911203510_hl_ship_date_submission_batches.sql",
+    "destination": "20260911203510_hl_ship_date_submission_batches.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260912002734_hl_po_receipt_balances.sql",
+    "destination": "20260912002734_hl_po_receipt_balances.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260912013440_hl_po_membership_index.sql",
+    "destination": "20260912013440_hl_po_membership_index.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260912170906_hl_restocking.sql",
+    "destination": "20260912170906_hl_restocking.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260914164706_hl_state_balances_once.sql",
+    "destination": "20260914164706_hl_state_balances_once.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260915021525_hl_po_seasons_pdf.sql",
+    "destination": "20260915021525_hl_po_seasons_pdf.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260915115800_hl_po_negative_pdf_balances.sql",
+    "destination": "20260915115800_hl_po_negative_pdf_balances.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260917013505_hl_complete_restock_data.sql",
+    "destination": "20260917013505_hl_complete_restock_data.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260920060133_bunch_note_location_work_v1.sql",
+    "destination": "20260920060133_bunch_note_location_work_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260920132156_hl_po_pdf_health_contract.sql",
+    "destination": "20260920132156_hl_po_pdf_health_contract.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260920133738_hl_po_s1_read_only_grants.sql",
+    "destination": "20260920133738_hl_po_s1_read_only_grants.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260920154005_bunch_note_recorded_work.sql",
+    "destination": "20260920154005_bunch_note_recorded_work.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260920192648_bunch_note_destinations.sql",
+    "destination": "20260920192648_bunch_note_destinations.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260921011812_bunch_note_phone_steps.sql",
+    "destination": "20260921011812_bunch_note_phone_steps.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260921034331_sales_history_permanent_credit_workflow.sql",
+    "destination": "20260921034331_sales_history_permanent_credit_workflow.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260921034349_production_workflow_and_atomic_inventory_audit.sql",
+    "destination": "20260921034349_production_workflow_and_atomic_inventory_audit.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260921034506_navigation_preferences_and_live_view_grants.sql",
+    "destination": "20260921034506_navigation_preferences_and_live_view_grants.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260921123226_hl_draft_review_removal.sql",
+    "destination": "20260921123226_hl_draft_review_removal.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260922233000_manager_season_priority_inquiry_v1.sql",
+    "destination": "20260922233000_manager_season_priority_inquiry_v1.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260923174000_optimize_manager_season_priority_scope.sql",
+    "destination": "20260923174000_optimize_manager_season_priority_scope.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260923222348_materialize_manager_season_priority_scope_hashes.sql",
+    "destination": "20260923222348_materialize_manager_season_priority_scope_hashes.sql"
+  },
+  {
+    "source": "supabase/ci/request_notification_history_baseline.sql",
+    "destination": "20260924115225_ci_request_notification_history_baseline.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260924115226_sales_history_customer_docks_ownership.sql",
+    "destination": "20260924115226_sales_history_customer_docks_ownership.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260924145431_incident_pause_request_delivery_wakes.sql",
+    "destination": "20260924145431_incident_pause_request_delivery_wakes.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260924145930_incident_pause_request_delivery_claims.sql",
+    "destination": "20260924145930_incident_pause_request_delivery_claims.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260924155225_request_metadata_notification_guard.sql",
+    "destination": "20260924155225_request_metadata_notification_guard.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql",
+    "destination": "20260924155542_restore_request_delivery_after_metadata_guard.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260924172552_request_drive_evidence_reset_guard.sql",
+    "destination": "20260924172552_request_drive_evidence_reset_guard.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260924181019_optimize_request_history_read_projection.sql",
+    "destination": "20260924181019_optimize_request_history_read_projection.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260928145055_item_low_stock_targets.sql",
+    "destination": "20260928145055_item_low_stock_targets.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql",
+    "destination": "20260929000151_stabilize_manager_rpc_conflicts_and_photo_refresh.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260929013125_perennial_zone_assignment_override.sql",
+    "destination": "20260929013125_perennial_zone_assignment_override.sql"
+  },
+  {
+    "source": "supabase/archive_migrations/20260929160000_password_change_profile_reconciliation.sql",
+    "destination": "20260929160000_password_change_profile_reconciliation.sql"
+  },
+  {
+    "source": "supabase/ci/department_calendar_baseline.sql",
+    "destination": "20260929200001_ci_department_calendar_baseline.sql"
+  },
+  {
+    "source": "supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql",
+    "destination": "20260930205254_season_sales_business_conflicts_use_pt409.sql"
+  },
+  {
+    "source": "supabase/migrations/20261001012038_production_schedule_snapshot_v1.sql",
+    "destination": "20261001012038_production_schedule_snapshot_v1.sql"
+  },
+  {
+    "source": "supabase/migrations/20261001025638_aura_hr_command_center_v1.sql",
+    "destination": "20261001025638_aura_hr_command_center_v1.sql"
+  },
+  {
+    "source": "supabase/ci/scheduled_handover_fixture.sql",
+    "destination": "20261001215507_ci_scheduled_handover_fixture.sql"
+  },
+  {
+    "source": "supabase/migrations/20261001215508_scheduled_handover_005.sql",
+    "destination": "20261001215508_scheduled_handover_005.sql"
+  },
+  {
+    "source": "supabase/migrations/20261001215511_request_archive_005.sql",
+    "destination": "20261001215511_request_archive_005.sql"
+  },
+  {
+    "source": "supabase/migrations/20261001222228_handover_assignment_transfer_005.sql",
+    "destination": "20261001222228_handover_assignment_transfer_005.sql"
+  },
+  {
+    "source": "supabase/migrations/20261002014421_index_request_history_assigned_rep_006.sql",
+    "destination": "20261002014421_index_request_history_assigned_rep_006.sql"
+  },
+  {
+    "source": "supabase/migrations/20261002121446_aura_inventory_v2_007.sql",
+    "destination": "20261002121446_aura_inventory_v2_007.sql"
+  },
+  {
+    "source": "supabase/ci/nelly_access_audit_baseline_snapshot_fixture.sql",
+    "destination": "20261002134137_ci_nelly_baseline_snapshot.sql"
+  },
+  {
+    "source": "supabase/migrations/20261002134138_nelly_access_audit_baseline_repair_007.sql",
+    "destination": "20261002134138_nelly_access_audit_baseline_repair_007.sql"
+  },
+  {
+    "source": "supabase/migrations/20261002155017_eval_delivery_archive_health_007.sql",
+    "destination": "20261002155017_eval_delivery_archive_health_007.sql"
+  },
+  {
+    "source": "supabase/migrations/20261002204108_aura_inventory_match_010.sql",
+    "destination": "20261002204108_aura_inventory_match_010.sql"
+  },
+  {
+    "source": "supabase/migrations/20261003025749_aura_llm_free_tier_011.sql",
+    "destination": "20261003025749_aura_llm_free_tier_011.sql"
+  },
+  {
+    "source": "supabase/migrations/20261004010000_company_directory.sql",
+    "destination": "20261004010000_company_directory.sql"
+  },
+  {
+    "source": "supabase/ci/suspend_tag_approval_baseline.sql",
+    "destination": "20261005194157_ci_suspend_tag_approval_baseline.sql"
+  },
+  {
+    "source": "supabase/migrations/20261005194158_suspend_tag_approval_loop.sql",
+    "destination": "20261005194158_suspend_tag_approval_loop.sql"
+  },
+  {
+    "source": "supabase/migrations/20261005225759_structured_bunch_notes.sql",
+    "destination": "20261005225759_structured_bunch_notes.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006110751_bunch_note_per_card_work.sql",
+    "destination": "20261006110751_bunch_note_per_card_work.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006111244_bunch_note_card_commands.sql",
+    "destination": "20261006111244_bunch_note_card_commands.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006145333_reclass_split_move_inquiries_v4.sql",
+    "destination": "20261006145333_reclass_split_move_inquiries_v4.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006150745_reclass_split_move_eval_submit_guards.sql",
+    "destination": "20261006150745_reclass_split_move_eval_submit_guards.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006200446_inventory_row_assignment_authority.sql",
+    "destination": "20261006200446_inventory_row_assignment_authority.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006200448_itemcode_default_owners.sql",
+    "destination": "20261006200448_itemcode_default_owners.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006200449_inventory_row_assignment_fence_integration.sql",
+    "destination": "20261006200449_inventory_row_assignment_fence_integration.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006210000_inventory_row_assignment_future_snapshots.sql",
+    "destination": "20261006210000_inventory_row_assignment_future_snapshots.sql"
+  },
+  {
+    "source": "supabase/migrations/20261006210200_inventory_row_assignment_live_consumers.sql",
+    "destination": "20261006210200_inventory_row_assignment_live_consumers.sql"
+  },
+  {
+    "source": "supabase/migrations/20261007041448_aura_internal_query_conversation_inventory.sql",
+    "destination": "20261007041448_aura_internal_query_conversation_inventory.sql"
+  },
+  {
+    "source": "supabase/migrations/20261007123459_aura_inventory_common_name_priority.sql",
+    "destination": "20261007123459_aura_inventory_common_name_priority.sql"
+  },
+  {
+    "source": "supabase/migrations/20261007145433_aura_dynamic_season_scope.sql",
+    "destination": "20261007145433_aura_dynamic_season_scope.sql"
+  },
+  {
+    "source": "supabase/migrations/20261007153351_aura_inventory_explicit_projection.sql",
+    "destination": "20261007153351_aura_inventory_explicit_projection.sql"
+  },
+  {
+    "source": "supabase/migrations/20261007211325_sql_function_correctness_repairs.sql",
+    "destination": "20261007211325_sql_function_correctness_repairs.sql"
+  },
+  {
+    "source": "supabase/migrations/20261007211340_sql_lint_runtime_context.sql",
+    "destination": "20261007211340_sql_lint_runtime_context.sql"
+  }
+]

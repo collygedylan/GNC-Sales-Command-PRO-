@@ -3,7 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 // Exercise only the already-compiled release package; never rebuild or serve source.
 const baseURL = 'http://127.0.0.1:43138';
 export default defineConfig({
-  testDir: './tests', testMatch: 'sales-mobile.e2e.spec.ts',
+  testDir: './tests', testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@sales-mobile/,
   outputDir: './artifacts/sales-mobile-browser',
   fullyParallel: false, workers: 1, retries: process.env.CI ? 2 : 0, maxFailures: 1, timeout: 90_000,
   forbidOnly: Boolean(process.env.CI), expect: { timeout: 15_000 },

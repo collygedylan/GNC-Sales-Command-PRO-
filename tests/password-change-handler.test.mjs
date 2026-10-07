@@ -52,7 +52,7 @@ test('password handler reconciles before Auth and atomically completes before is
   assert.equal(result.status, 200);
   assert.deepEqual(f.calls.map(call => call.type), ['prepare_password_change_profile', 'updateUserById', 'complete_password_change_profile', 'session']);
   assert.equal(f.calls[0].args.p_username, 'nelly_aguilar');
-  assert.equal(f.calls[0].args.p_auth_user_id, null);
+  assert.equal(Object.hasOwn(f.calls[0].args, 'p_auth_user_id'), false);
   assert.equal('p_password' in f.calls[0].args, false);
   assert.match(f.calls[0].args.p_password_fingerprint, /^[a-f0-9]{64}$/);
   assert.equal(f.calls[2].args.p_password_fingerprint, f.calls[0].args.p_password_fingerprint);

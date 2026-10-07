@@ -6,7 +6,6 @@ import vm from 'node:vm';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const DYLAN_ID = '54c87ebf-d76d-452b-96b4-beaaeb1742d9';
 const ISSUER = 'https://kzrnyjsosryejjejliii.supabase.co/auth/v1';
-const RPC = 'https://kzrnyjsosryejjejliii.supabase.co/rest/v1/rpc/bloomscapes_pending_command';
 const NOW = Date.parse('2026-09-08T02:00:00Z');
 
 function between(start, end) {
@@ -66,13 +65,30 @@ function harness(options = {}) {
   const calls = [], toasts = [], timers = [], refreshes = [], auraDisposals = [];
   let dialog = options.noDialog ? null : dialogElement();
   let authCallback;
+  const databaseBridge = { fetchRpc: async (url, name, request, timeout, label) => {
+    assert.equal(url, 'https://kzrnyjsosryejjejliii.supabase.co');
+    assert.equal(name, 'bloomscapes_pending_command');
+    assert.equal(request.method, 'POST');
+    assert.equal(request.cache, 'no-store');
+    assert.equal(request.credentials, 'omit');
+    assert.equal(request.redirect, 'error');
+    assert.equal(timeout, 20000);
+    assert.equal(label, 'BloomScapes pending orders');
+    const body = JSON.parse(request.body);
+    assert.equal(body.p_action, 'state', 'Only the read-only state command is permitted');
+    assert.equal(body.p_request_id, null);
+    assert.deepEqual(Object.keys(body).sort(), ['p_action', 'p_payload', 'p_request_id']);
+    calls.push({ url: `${url}/rest/v1/rpc/${name}`, request, body });
+    return options.fetch ? options.fetch(calls.length, ctx) : response([order()]);
+  } };
   class FixedDate extends Date { static now() { return NOW; } }
   const mutation = () => { throw new Error('Pending review must not mutate inventory or use legacy order actions'); };
   const ctx = vm.createContext({
+    SUPABASE_URL: 'https://kzrnyjsosryejjejliii.supabase.co',
     invalidateNativeAuthRecovery() {}, disposeAuraWidget: () => auraDisposals.push('dispose'), productionDisplayGroups: new Set(), Date: FixedDate, Intl, atob: (value) => Buffer.from(value, 'base64').toString('binary'),
     currentUser: 'dylan_collyge', currentRole: 'Admin', nativeAuthProfile: profile(),
     nativeAuthSessionActive: true, nativeAuthAccessToken: token(),
-    navigator: { onLine: true }, window: {}, localStorage: storage(), sessionStorage: storage(),
+    navigator: { onLine: true }, window: { GncDatabase: databaseBridge }, localStorage: storage(), sessionStorage: storage(),
     document: {
       getElementById: (id) => id === 'bloomscapes-pending-dialog' ? dialog : null,
       createElement: (tag) => { assert.equal(tag, 'dialog'); return dialogElement(); },
@@ -91,20 +107,7 @@ function harness(options = {}) {
     getNativeAuthRequestHeaders: async () => options.headers === null ? null : ({
       apikey: 'unit-publishable', Authorization: `Bearer ${ctx.nativeAuthAccessToken}`,
     }),
-    fetchWithTimeout: async (url, request, timeout) => {
-      assert.equal(url, RPC);
-      assert.equal(request.method, 'POST');
-      assert.equal(request.cache, 'no-store');
-      assert.equal(request.credentials, 'omit');
-      assert.equal(request.redirect, 'error');
-      assert.equal(timeout, 20000);
-      const body = JSON.parse(request.body);
-      assert.equal(body.p_action, 'state', 'Only the read-only state command is permitted');
-      assert.equal(body.p_request_id, null);
-      assert.deepEqual(Object.keys(body).sort(), ['p_action', 'p_payload', 'p_request_id']);
-      calls.push({ url, request, body });
-      return options.fetch ? options.fetch(calls.length, ctx) : response([order()]);
-    },
+    fetchWithTimeout: mutation,
     fetch: mutation, supabaseFetch: mutation, runAppApiSupabaseWrite: mutation,
     saveData: mutation, markSalesOfficeComplete: mutation, removeSalesOfficeRowByUniqueId: mutation,
   });
@@ -163,7 +166,7 @@ test('unauthorized direct entry cannot create a dialog or issue a request', asyn
 test('authorized read is native-only and retains exact requested source details with unpaid warnings', async () => {
   const h = harness();
   await h.ctx.loadBloomscapesPendingOrders();
-  assert.equal(h.calls.length, 1);
+  assert.equal(h.calls.length, 1, h.ctx.pendingState().error);
   assert.equal(h.calls[0].request.headers.Authorization, `Bearer ${h.ctx.nativeAuthAccessToken}`);
   assert.deepEqual(h.calls[0].body.p_payload, {});
   for (const text of ['008033.021.1', 'Anna&#39;s Magic Ball', 'A.01.010', '27S1', '3 requested', '$15.00', '$45.00',

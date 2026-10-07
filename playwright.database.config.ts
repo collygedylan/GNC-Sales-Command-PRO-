@@ -15,7 +15,8 @@ if (process.env.CI) {
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: ['request-integrity-local.spec.js', 'native-auth-provisioning-local.spec.js'],
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@database/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

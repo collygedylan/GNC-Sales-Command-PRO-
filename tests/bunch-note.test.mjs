@@ -1,3 +1,4 @@
+// @test-group: bunch-notes
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -231,7 +232,7 @@ test('migration confines writes and enforces durable ownership/revision/command 
  assert.match(migration,/BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS/);
  assert.match(migration,/revoke all on schema bunch_note_private from public, anon, authenticated/);
  const worker=read('supabase/functions/request-delivery-worker/index.ts');
- assert.match(worker,/saved\?\.delivery_status === "sent"[\s\S]*finishEvent/);
+ assert.match(worker,/saved\.delivery_status === "sent" && savedReceipt\.gmail_message_id[\s\S]*finishEvent/);
  new vm.Script(js);new vm.Script(gas);
 });
 

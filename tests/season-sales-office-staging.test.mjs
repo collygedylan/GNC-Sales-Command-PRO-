@@ -1,3 +1,4 @@
+import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -125,7 +126,7 @@ test('Season Sales Notes cards show an immutable authoritative arrival timestamp
 });
 
 test('hosted database checks reproduce the protected legacy Sales Office dependency', () => {
-  assert.match(workflow, /sales_office_baseline\.sql/);
+  assertHistoricalMigration('sales_office_baseline.sql');
   assert.match(ciSalesOfficeBaseline, /create table if not exists public\.ph_sales_office/i);
   assert.match(ciSalesOfficeBaseline, /alter table public\.ph_sales_office enable row level security/i);
   assert.match(ciSalesOfficeBaseline, /revoke all on table public\.ph_sales_office from public, anon, authenticated/i);

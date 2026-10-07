@@ -1,3 +1,4 @@
+// @test-runtime: postgres
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
@@ -78,6 +79,11 @@ try {
   const id=sent.row.suspend_tag_approval_id; assert.ok(id); assert.equal(sent.row.suspend_tag_status,'awaiting_rep');
   const snapshot=(await admin('select * from suspend_tag_private.approvals where id=$1',[id])).rows[0];
   assert.equal(snapshot.submitter_email,'dylan_collyge@example.test'); assert.equal(snapshot.rep_email,'toby_brown@example.test');
+  await admin("update ph_request_delivery_outbox set status='failed',sanitized_error_code='FIXTURE_DELIVERY_FAILURE' where event_id=$1",[snapshot.request_event_id]);
+  const retried=await command('dylan_collyge','retry',{sourceUid:'row-1',expectedLastUpdated:revision},sent.row.suspend_tag_version);
+  assert.equal(retried.ok,true,'retry runs for an active approval');
+  const retryEvent=(await admin('select status,sanitized_error_code from ph_request_delivery_outbox where event_id=$1',[snapshot.request_event_id])).rows[0];
+  assert.equal(retryEvent.status,'pending'); assert.equal(retryEvent.sanitized_error_code,null,'retry clears the delivery error');
   await assert.rejects(command('dan_mccuistion','save',{...input,patch:{dock_note:'changed'}},sent.row.suspend_tag_version),/REVIEW_LOCKED/);
   await assert.rejects(command('other_rep','decide',{approvalId:id,decision:'approve'}),/FORBIDDEN/);
   assert.equal((await command('toby_brown','approval',{approvalId:id})).canDecide,true);

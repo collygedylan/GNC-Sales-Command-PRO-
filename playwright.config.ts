@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /(aura-query\.e2e|responsive-workflows\.e2e|theme-008\.e2e|mobile-overhaul-007\.e2e|request-archive-mobile\.e2e|request-integrity-local|eval-work\.e2e|eval-report2-header-filters\.e2e|module-loading-perennial\.e2e|eval-report2-async-index\.e2e|block-clearing\.e2e|scroll-performance\.e2e|photo-egress\.e2e|photo-history\.e2e|sales-marketing-tasks\.e2e|login-photo-repair\.e2e)\.spec\.(ts|js)/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@local-e2e/,
   fullyParallel: true,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),

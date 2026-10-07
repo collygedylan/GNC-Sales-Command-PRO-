@@ -1,7 +1,10 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test } from '@playwright/test';
+// @test-group: @review-assignedto
 
-test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on phones', async ({ page }) => {
+
+
+test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on phones', {"tag":["@review-assignedto"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).chooseEvalWorkAssignee === 'function');
@@ -50,7 +53,7 @@ test('Reclass Send as Review uses the searchable multi-evaluator Eval roster on 
   expect(result.pickerZ).toBeGreaterThan(result.setupZ);
 });
 
-test('Eval assignment dropdown exposes the full managed roster and Itemcode default key', async ({ page }) => {
+test('Eval assignment dropdown exposes the full managed roster and Itemcode default key', {"tag":["@review-assignedto"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalAssigneeOptionsHtml === 'function');
   const result = await page.evaluate(() => {
@@ -88,7 +91,7 @@ test('Eval assignment dropdown exposes the full managed roster and Itemcode defa
   expect(result.sheetTypoAlias).toBe('bobby_adair');
 });
 
-test('Phone Drive Reclass skips the recipient picker and strips browser recipient fields', async ({ page }) => {
+test('Phone Drive Reclass skips the recipient picker and strips browser recipient fields', {"tag":["@review-assignedto"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (

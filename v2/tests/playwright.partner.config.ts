@@ -3,7 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 // Uses the production-built preview prepared by the release process; no backend reset or login.
 export default defineConfig({
   testDir: '.',
-  testMatch: 'partner-workspace.e2e.spec.ts',
+  testMatch: /.+\.spec\.(ts|js)$/ ,
+  grep: /@partner-workspace/,
   workers: 1,
   retries: process.env.CI ? 2 : 0,
   timeout: 40_000,
@@ -19,4 +20,11 @@ export default defineConfig({
     { name: 'iphone-webkit', use: { ...devices['iPhone 13'] } },
     { name: 'tablet-webkit', use: { ...devices['iPad Pro 11'] } },
   ],
+  webServer: process.env.PARTNER_TEST_BASE_URL ? undefined : {
+    command: 'python -m http.server 43126 --bind 127.0.0.1 --directory _site',
+    cwd: '../..',
+    url: 'http://127.0.0.1:43126',
+    reuseExistingServer: !process.env.CI,
+    timeout: 20_000,
+  },
 });
