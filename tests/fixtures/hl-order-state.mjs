@@ -11,6 +11,10 @@ export const hlMaster = (unique_id, changes = {}) => inventoryReadFixture.row({ 
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const uuid = (index) => `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
+export function hlOrderFixtureRpcResult(operation) {
+  if (operation === 'report_app_health_event') return 1;
+  throw new Error(`HL_FIXTURE_UNSUPPORTED_RPC_RESULT:${String(operation || '')}`);
+}
 export function noHistoryLowStockTargets(itemcodes = []) {
   const codes = Array.isArray(itemcodes) ? itemcodes : [];
   return [...new Set(codes.map((code) => String(code || '').trim().toUpperCase()).filter(Boolean))].map((code) => ({
@@ -582,6 +586,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (op === 'get_request_capabilities') return json(route, { contract_version: 2, username, scope: 'global', can_view_queue: true, can_edit: true, can_complete: true });
       if (op === 'get_request_schema_compatibility') return json(route, { compatible: true, contract_version: 2 });
       if (op === 'get_eval_item_low_stock_targets_v1') return json(route, noHistoryLowStockTargets(body.p_itemcodes));
+      if (op === 'report_app_health_event') return json(route, hlOrderFixtureRpcResult(op));
       if (/^(get_|list_|report_app_health_event)/.test(op || '')) return json(route, []);
       control.blockedMutations.push(`RPC ${op}`); return json(route, { error: 'Blocked' }, 403);
     }

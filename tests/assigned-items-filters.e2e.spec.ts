@@ -616,7 +616,7 @@ test('hybrid per-row default controls retain failures and clarify perennial over
     scheduleManagersRender = () => { void mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), warehouseAssignedItemsInventory, warehouseAssignedItemsInventory.length); };
     reloadWarehouseAssignmentsAfterMutation = async () => true;
     supabaseRpc = async (name,args) => {
-      if(name === 'report_app_health_event') { window.__hybridHealthEvents.push({name,args}); return true; }
+      if(name === 'report_app_health_event') { window.__hybridHealthEvents.push({name,args}); return 1; }
       window.__hybridCalls.push({name,args:JSON.parse(JSON.stringify(args))});
       if(name !== 'set_itemcode_default_owners_v1') throw new Error('Unexpected RPC in assignment fixture: ' + name);
       if(window.__hybridFail) return await new Promise((resolve, reject) => { window.__releaseHybridCall = () => reject(new Error('Temporary network failure')); });

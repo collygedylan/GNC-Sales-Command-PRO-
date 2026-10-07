@@ -108,7 +108,7 @@ async function fixture(page: Page, baseURL: string, role = 'MANAGER') {
       return fulfill(route, { ok: true, data: [], allowed: true, canManage: true });
     }
     if (url.pathname === '/rest/v1/rpc/report_app_health_event' && request.method() === 'POST') {
-      return fulfill(route, { ok: true });
+      return fulfill(route, 1);
     }
     // The shell can refresh this read-only directory after its startup timer.
     // Keep it intercepted without classifying the POST-based read as a write.
