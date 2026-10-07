@@ -113,3 +113,18 @@ Deno.test('more specific order scopes precede generic balances and invalid dates
   assertEquals(resolveAuraIntent('Show active requests').filters.status, undefined);
   assert(resolveAuraIntent('Show employee hours on 2026-02-30').clarification);
 });
+
+Deno.test('current assignment authority, Bunch Notes and directory have explicit routes', () => {
+  for (const [question, capability] of [
+    ['Show inventory row assignments', 'row_assignments'],
+    ['Show itemcode default owners', 'default_owners'],
+    ['Show Bunch Notes jobs', 'bunch_notes'],
+    ['Show company directory', 'directory_contacts'],
+    ['Show nursery beds', 'directory_beds'],
+  ]) {
+    const intent = resolveAuraIntent(question);
+    assertEquals(intent.capability, capability); assertEquals(intent.clarification, undefined);
+    assertEquals(intent.filters.productText, undefined); assertEquals(intent.filters.itemcode, undefined);
+    assertEquals(intent.filters.countMode, 'quantity');
+  }
+});

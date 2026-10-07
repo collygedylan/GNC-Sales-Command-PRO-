@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(19);
+select plan(27);
 select has_table('aura_private','aura_query_conversations','conversation memory is private');
 select has_table('aura_private','aura_query_turns','turn memory is private');
 select ok((select relrowsecurity from pg_class where oid='aura_private.aura_query_conversations'::regclass),'conversation memory has RLS');
@@ -17,6 +17,14 @@ select ok((select prosecdef from pg_proc where oid='public.aura_query_conversati
 select ok((select proconfig @> array['statement_timeout=5s'] from pg_proc where oid='public.aura_query_conversation_v1(uuid,text,uuid,uuid,integer,jsonb)'::regprocedure),'conversation RPC has bounded execution');
 select ok((select prosrc like '%navigation_module_allowed_v1%' and prosrc like '%drive%' from pg_proc where oid='public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'inventory RPC enforces the Drive module ACL');
 select ok((select prosrc like '%navigation_module_allowed_v1%' and prosrc like '%hl-order%' from pg_proc where oid='public.aura_query_hl_order_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'HL order RPC enforces the HL Order module ACL');
+select has_index('aura_private','aura_query_turns','aura_query_turns_actor_turn_id_idx','turn IDs are unique per actor across conversations');
+select has_function('public','aura_query_bunch_v1',array['uuid','text','jsonb','jsonb','integer'],'fixed Bunch Notes read adapter exists');
+select ok((select prosecdef from pg_proc where oid='public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'Bunch Notes reader is a definer wrapper');
+select ok((select proconfig @> array['statement_timeout=5s'] from pg_proc where oid='public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'Bunch Notes reader has bounded execution');
+select ok((select prosrc like '%bunch_note_private.actor%' and prosrc like '%bunch_note_private.can_read%' and prosrc like '%bunch_note_private.job_json%' from pg_proc where oid='public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'Bunch Notes reader uses the existing actor and visibility rules');
+select ok((select prosrc like '%navigation_module_allowed_v1%' and prosrc like '%bunch-note%' from pg_proc where oid='public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'Bunch Notes reader enforces module access');
+select ok(not has_function_privilege('authenticated','public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)','execute'),'browser cannot call the Bunch Notes service adapter');
+select ok(has_function_privilege('service_role','public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)','execute'),'authorized server can call the Bunch Notes adapter');
 select has_function('public','aura_query_inventory_v1',array['uuid','text','jsonb','jsonb','integer'],'typed inventory RPC exists');
 select has_function('public','aura_query_hl_order_v1',array['uuid','text','jsonb','jsonb','integer'],'read-only order RPC exists');
 select ok(not has_function_privilege('authenticated','public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)','execute'),'browser cannot call inventory RPC directly');

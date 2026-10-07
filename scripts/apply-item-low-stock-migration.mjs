@@ -196,6 +196,7 @@ export function migrationContractQuery(name) {
       'public.aura_query_conversation_v1(uuid,text,uuid,uuid,integer,jsonb)',
       'public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)',
       'public.aura_query_hl_order_v1(uuid,text,jsonb,jsonb,integer)',
+      'public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer)',
     ];
     const helperContracts = helpers.map(signature => `(
       exists(select 1 from pg_proc where oid=to_regprocedure('${signature}') and prosecdef

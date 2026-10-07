@@ -41,6 +41,9 @@ function json(body: unknown, status = 200, headers: Record<string, string> = {})
 function fail(error: string, status: number, code: string) {
   return json({ ok: false, error, status, code }, status);
 }
+function sourceInfo(kind: string) {
+  return { kind, checkedAt: new Date().toISOString(), sourceUpdatedAt: null, freshness: "unknown" };
+}
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
@@ -53,7 +56,8 @@ function responseFields(result: Record<string, unknown>) {
   return {
     conversationId: result.conversationId ?? result.conversation_id ?? null,
     revision: Number(result.revision || 0),
-    context: record(result.context),
+    // Internal parser choices/cursors can retain data from an older result; the UI does not need them.
+    context: {},
     conversations: Array.isArray(result.conversations) ? result.conversations.map(normalizeConversation) : [],
     turns: Array.isArray(result.turns) ? result.turns.map(normalizeTurn) : [],
     hasMore: result.hasMore === true || result.has_more === true,
@@ -278,11 +282,25 @@ async function sourcesAllowed(admin: QueryClient, user: QueryClient, actorId: st
       if (ids.some((id) => !returned.has(id))) return false;
       continue;
     }
+    if (capability.reader === "bunch_notes") {
+      const query = record(descriptor.query);
+      const idsToCheck = ids;
+      for (const recordId of idsToCheck) {
+        const filters = { ...record(query.filters), recordId };
+        const data = await rpc(admin, "aura_query_bunch_v1", { p_actor_id: actorId, p_operation: "get", p_filters: filters, p_cursor: null, p_limit: 1 }, signal);
+        if (data.ok !== true || !Array.isArray(data.rows) || !data.rows.some((row) => String(record(row).recordId || record(row).id || "") === recordId)) return false;
+      }
+      continue;
+    }
     if (capability.reader === "navigation") {
       for (const id of ids) if (!await moduleAllowed(admin, actorId, id)) return false;
       continue;
     }
-    if (capability.reader === "settings") continue;
+    if (capability.reader === "settings") {
+      const data = record(await rpcValue(user, "get_eval_report_settings", {}, signal));
+      if (ids.some((id) => !Object.hasOwn(data, id))) return false;
+      continue;
+    }
     if (capability.table && capability.key && ids.length) {
       let query = user.from(capability.table).select(capability.key).in(capability.key, ids).limit(200);
       for (const [field, value] of Object.entries(capability.fixedFilters || {})) query = query.eq(field, value);
@@ -310,6 +328,7 @@ function assertDomainFilters(capability: AuraCapability, filters: Record<string,
     navigation: new Set(["navigationView"]),
     production_schedule: new Set(["productText", "locationCode", "locationMode", "lotcode", "contSize", "assigneeText", "selectionId"]),
     hl_orders: new Set(["productText", "itemcode", "lotcode", "contSize", "status"]),
+    bunch_notes: new Set(["recordId", "status", "locationCode", "locationMode", "productText", "dateFrom", "dateTo"]),
   };
   if (!reader || !allowedByReader[reader]) return;
   for (const [key, value] of Object.entries(filters)) {
@@ -602,6 +621,23 @@ async function runSpecialReader(admin: QueryClient, user: QueryClient, actorId: 
     const result = responseForRows(intent, rows, data.hasMore === true);
     return { ...result, context: { ...result.context, nextCursor: data.nextCursor || null }, sourceQuery: { operation, filters, cursor: boundedCursor(context.nextCursor) } };
   }
+  if (reader === "bunch_notes") {
+    const filters: Record<string, unknown> = {};
+    for (const key of ["recordId", "status", "locationCode", "locationMode", "productText", "dateFrom", "dateTo"])
+      if (intent.filters[key] != null) filters[key] = intent.filters[key];
+    const operation = filters.recordId ? "get" : "list";
+    const cursor = boundedCursor(context.nextCursor);
+    const data = await rpc(admin, "aura_query_bunch_v1", { p_actor_id: actorId, p_operation: operation, p_filters: filters, p_cursor: cursor, p_limit: MAX_PAGE }, signal);
+    if (data.ok !== true) throw Object.assign(new Error(String(data.code || "AURA_BUNCH_READ_UNAVAILABLE")), { status: 503 });
+    const rows = Array.isArray(data.rows) ? data.rows.map(record) : [];
+    const response = responseForRows(intent, rows, data.hasMore === true);
+    const reply = intent.operation === "count"
+      ? data.complete === true && data.total != null ? `Verified ${new Intl.NumberFormat("en-US").format(Number(data.total))} Bunch Notes record${Number(data.total) === 1 ? "" : "s"}.`
+        : "The Bunch Notes count is incomplete, so I can’t give a reliable total. Please refine the filters or try again later."
+      : response.reply;
+    return { ...response, reply, context: { ...response.context, nextCursor: data.nextCursor || null },
+      sourceQuery: { operation, filters, cursor } };
+  }
   if (reader === "production_schedule") return await readProductionSchedule(admin, intent, context, signal);
   return { reply: "This app area is not available to AURA yet.", actions: [], context: { pendingChoices: [], nextCursor: null } };
 }
@@ -617,9 +653,9 @@ async function readProductionSchedule(admin: QueryClient, intent: AuraIntent, co
     if (matches.length === 1) selected = matches[0];
   }
   if (!selected) {
-    const choices = sheets.slice(0, 20).map((sheet) => ({ id: String(sheet.id ?? sheet.index ?? ""), label: String(sheet.title || `Sheet ${sheet.id}`), ...sheet }));
+    const choices = sheets.slice(0, 5).map((sheet) => ({ id: String(sheet.id ?? sheet.index ?? ""), label: String(sheet.title || `Sheet ${sheet.id}`), ...sheet }));
     if (!choices.length) return { reply: "There is no published production schedule to read right now.", actions: [], context: { pendingChoices: [], nextCursor: null } };
-    return { reply: "Which production schedule sheet should I search?", actions: [{ type: "choices", kind: "entity", items: choices }],
+    return { reply: "Which production schedule sheet should I search? You can also name a sheet directly.", actions: [{ type: "choices", kind: "entity", items: choices, hasMore: sheets.length > choices.length }],
       context: { pendingChoices: choices, nextCursor: null } };
   }
   const filterFields = Array.isArray(selected.filterColumns) ? selected.filterColumns.map(record) : [];
@@ -682,15 +718,26 @@ function responseForRows(intent: AuraIntent, rows: Record<string, unknown>[], ha
   const reply = `I found ${rows.length}${hasMore ? " or more" : ""} ${intent.title.toLowerCase()} record${rows.length === 1 ? "" : "s"}.`;
   return { reply, actions: [action], context: { pendingChoices: items.slice(0, 20), nextCursor: null } };
 }
+function inventoryScope(filters: Record<string, unknown>, data: Record<string, unknown>) {
+  const parts: string[] = [];
+  const season = String(filters.season || data.season || data.currentSeason || "").trim();
+  const year = Number(filters.salesYear ?? data.salesYear);
+  if (season) parts.push(`for ${Number.isFinite(year) && year > 0 ? String(year).padStart(2, "0") : ""}${season}`);
+  if (filters.locationCode) parts.push(`at ${String(filters.locationCode)}`);
+  if (filters.contSize) parts.push(`in size ${String(filters.contSize)}`);
+  if (filters.assignee || filters.assigneeText) parts.push(`assigned to ${String(filters.assignee || filters.assigneeText)}`);
+  if (filters.zone) parts.push(filters.zone === "OUTSIDE" ? "outside the perennial area" : "in the perennial area");
+  return parts.length ? ` ${parts.join(" ")}` : " in the current inventory";
+}
 function handoffAction(intent: AuraIntent): QueryAction | null {
   const textValue = intent.question.toLowerCase();
   if (intent.capability === "navigation" && intent.filters.navigationView) {
-    return { type: "navigation", view: String(intent.filters.navigationView) };
+    return { type: "navigation", view: String(intent.filters.navigationView), filters: intent.filters };
   }
-  const writes = /\b(?:create|make|prepare|draft|submit|save|approve|deny|edit|update|change|move|assign|reclass|complete|finish|send|message|delete|cancel|release|deploy|merge)\b/.test(textValue);
+  const writes = /^(?:please\s+)?(?:can you\s+)?(?:create|make|prepare|draft|submit|save|approve|deny|edit|update|change|move|assign|reclass|complete|finish|send|message|delete|cancel|release|deploy|merge)\b/.test(textValue);
   if (!writes) return null;
   const capability = capabilityForIntent(intent)[0];
-  const view = /\borders?\b/.test(textValue) ? "bloom"
+  const view = capability?.id === "sales_orders" || (intent.mode === "orders" && !intent.capability) ? "bloom"
     : capability?.reader === "operations" ? "managers"
     : capability?.reviewView || AURA_MODULE_CAPABILITIES[intent.module as keyof typeof AURA_MODULE_CAPABILITIES]?.reviewView
     || (intent.mode === "orders" ? "bloom"
@@ -700,8 +747,12 @@ function handoffAction(intent: AuraIntent): QueryAction | null {
       : intent.mode === "dock" ? "docks"
       : intent.mode === "hr" ? "hours"
       : MODULE_VIEW[intent.module] || "drive");
-  const filters = capability?.reader === "operations" ? { ...intent.filters, operations: true } : intent.filters;
-  return { type: "review", view, filters, proposal: { summary: intent.question, text: intent.question, message: intent.question } };
+  let filters: Record<string, unknown> = capability?.reader === "operations" ? { ...intent.filters, operations: true } : { ...intent.filters };
+  if (intent.mode === "location_work") filters.workType = "location";
+  if (intent.mode === "eval_work") filters.workType = "eval";
+  const quotedMessage = intent.question.match(/\b(?:send|message)\b[^“"]*[“"]([^”"]+)[”"]/i)?.[1];
+  return { type: "review", view, filters, ...(intent.filters.recordId ? { recordId: intent.filters.recordId } : {}),
+    proposal: { summary: intent.question, text: intent.question, message: quotedMessage || intent.question } };
 }
 
 async function handleMemoryMode(mode: string, body: Record<string, unknown>, admin: QueryClient, user: QueryClient, actorId: string, signal?: AbortSignal) {
@@ -724,11 +775,10 @@ async function handleMemoryMode(mode: string, body: Record<string, unknown>, adm
   // Stored answers can contain rows that were readable when they were created.
   // Re-check each source before returning transcript content.
   if (mode === "read" && Array.isArray(result.turns)) {
-    for (const value of result.turns) {
-      const turn = record(value);
-      if (!await sourcesAllowed(admin, user, actorId, turn.sources, signal)) {
-        throw Object.assign(new Error("AURA_FORBIDDEN"), { status: 403 });
-      }
+    const turns = result.turns.map(record);
+    for (let offset = 0; offset < turns.length; offset += 6) {
+      const checks = await Promise.all(turns.slice(offset, offset + 6).map((turn) => sourcesAllowed(admin, user, actorId, turn.sources, signal)));
+      if (checks.some((allowed) => !allowed)) throw Object.assign(new Error("AURA_FORBIDDEN"), { status: 403 });
     }
   }
   return { ok: true, ...responseFields(result) };
@@ -746,8 +796,9 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
     const idField = selectedCapability.key || (selectedCapability.reader === "low_stock" ? "itemcode_normalized"
       : selectedCapability.reader === "operations" ? "id" : selectedCapability.reader === "production_schedule" ? "sourceRow"
       : selectedCapability.reader === "navigation" ? "view" : selectedCapability.reader === "settings" ? "setting"
-      : selectedCapability.reader === "hl_orders" ? String(record(result.sourceQuery).operation || "orders") === "receipts" ? "receiptId" : String(record(result.sourceQuery).operation || "orders") === "balances" ? "poId" : "orderId" : "id");
-    const recordIds = rows.map((row) => String(row[idField] || row.receiptId || row.poId || row.id || "")).filter(Boolean).slice(0, 200);
+      : selectedCapability.reader === "hl_orders" ? String(record(result.sourceQuery).operation || "orders") === "receipts" ? "receiptId" : String(record(result.sourceQuery).operation || "orders") === "balances" ? "poId" : "orderId"
+      : selectedCapability.reader === "bunch_notes" ? "recordId" : "id");
+    const recordIds = rows.map((row) => String(row[idField] || row.recordId || row.receiptId || row.poId || row.id || "")).filter(Boolean).slice(0, 200);
     return { ...result, sources: [{ capabilityId: selectedCapability.id, module: selectedCapability.module, recordIds, query: record(result.sourceQuery) }] };
   }
   if (["inventory", "ownership", "unassigned", "lot"].includes(intent.mode) || selectedCapability?.reader === "inventory") {
@@ -764,8 +815,8 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
     }, signal);
     if (data.ok === false) throw Object.assign(new Error(String(data.code || "AURA_QUERY_INVENTORY_UNAVAILABLE")), { status: 503 });
     const rows = Array.isArray(data.rows) ? data.rows.map(record) : [];
-    if (data.exactMatch === false && (rows.length || Array.isArray(data.candidateChoices))) {
-      const candidates = Array.isArray(data.candidateChoices) ? data.candidateChoices.map(record) : rows;
+    const candidates = Array.isArray(data.candidateChoices) ? data.candidateChoices.map(record) : [];
+    if (data.exactMatch === false && candidates.length > 0) {
       const choices = candidates.slice(0, 5).map((row) => ({ id: String(row.selectionId || row.uniqueId || row.itemcode || ""), label: labelFor(row), ...row }));
       const actions = [{ type: "choices", kind: "entity", items: choices, complete: data.complete === true, hasMore: data.hasMore === true }];
       return { reply: `I found ${choices.length} possible matches. Choose the exact plant, size, or location.`, actions,
@@ -774,19 +825,26 @@ async function executeIntent(intent: AuraIntent, admin: QueryClient, user: Query
     }
     if (operation === "stock") {
       const amount = data.total == null ? NaN : Number(data.total);
-      const subject = rows.length ? labelFor(rows[0]) : "eligible inventory";
+      const subject = String(intent.filters.productText || intent.filters.itemcode || intent.filters.genus || "plants");
       const metric = intent.filters.metric === "ptronhand" ? "on hand" : "available";
       const countMode = String(intent.filters.countMode || "quantity");
       const quantityLabel = countMode === "physical_rows" ? "physical inventory rows" : countMode === "unique_items" ? "unique items" : `${subject} ${metric}`;
+      const scope = inventoryScope(intent.filters, data);
       const reply = data.complete === true && Number.isFinite(amount) && amount === 0 && rows.length === 0
-        ? "No matching inventory was found in the current eligible inventory."
+        ? `No matching inventory was found${scope}.`
         : data.complete === true && Number.isFinite(amount)
-        ? `Verified ${new Intl.NumberFormat("en-US").format(amount)} ${quantityLabel} in the current inventory.`
+        ? `Verified ${new Intl.NumberFormat("en-US").format(amount)} ${quantityLabel}${scope}.`
         : `The ${quantityLabel} count is incomplete, so I can’t give a reliable total. Please refine the filters or try again later.`;
       const actions = rows.length ? [{ type: "records", title: intent.title, rows, columns: Object.keys(rows[0]) }] : [];
       return { reply, actions, context: { pendingChoices: [], nextCursor: data.nextCursor || null },
         sources: [{ capabilityId: "inventory", module: "drive", recordIds: rows.map((row) => String(row.selectionId || row.uniqueId || "")).filter(Boolean), query: { operation, filters, cursor: pageCursor } }] };
     }
+    if (data.complete !== true && rows.length === 0) return { reply: `I couldn’t complete the ${intent.title.toLowerCase()} lookup, so I can’t confirm whether matching inventory exists.`,
+      actions: [], context: { pendingChoices: [], nextCursor: data.nextCursor || null },
+      sources: [{ capabilityId: "inventory", module: "drive", recordIds: [], query: { operation, filters, cursor: pageCursor } }] };
+    if (rows.length === 0) return { reply: `No matching inventory was found${inventoryScope(intent.filters, data)}.`, actions: [],
+      context: { pendingChoices: [], nextCursor: data.nextCursor || null },
+      sources: [{ capabilityId: "inventory", module: "drive", recordIds: [], query: { operation, filters, cursor: pageCursor } }] };
     const response = responseForRows(intent, rows, data.hasMore === true);
     return { ...response, context: { ...response.context, nextCursor: data.nextCursor || null },
       sources: [{ capabilityId: "inventory", module: "drive", recordIds: rows.map((row) => String(row.selectionId || row.uniqueId || "")).filter(Boolean), query: { operation, filters, cursor: pageCursor } }] };
@@ -831,7 +889,7 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
   const choice = parseSelectedChoice(question, context);
   if (choice.error) {
     const result = { ok: true, requestId: turnId, conversationId: resolvedConversationId, revision,
-      reply: choice.error, speech: choice.error, actions: [], context, interpretation: { intent: "selection", entities: {} }, source,
+      reply: choice.error, speech: choice.error, actions: [], context, interpretation: { intent: "selection", entities: {} }, source: sourceInfo(source),
       hasMore: false, nextCursor: context.nextCursor || null };
     const completed = await rpc(admin, "aura_query_conversation_v1", {
       p_actor_id: actorId, p_operation: "complete", p_conversation_id: resolvedConversationId, p_turn_id: turnId,
@@ -844,7 +902,7 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
   if (more && !context.nextCursor) {
     const reply = "There are no more results in the current page.";
     const result = { ok: true, requestId: turnId, conversationId: resolvedConversationId, revision, reply, speech: reply,
-      actions: [], context, interpretation: { intent: "pagination", entities: {} }, source, hasMore: false, nextCursor: null };
+      actions: [], context, interpretation: { intent: "pagination", entities: {} }, source: sourceInfo(source), hasMore: false, nextCursor: null };
     const completed = await rpc(admin, "aura_query_conversation_v1", {
       p_actor_id: actorId, p_operation: "complete", p_conversation_id: resolvedConversationId, p_turn_id: turnId,
       p_expected_revision: revision, p_payload: { response: result, context, sources: [] },
@@ -859,18 +917,18 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
       question, filters: { ...record(continuation.filters), ...context.selectionId ? { selectionId: context.selectionId } : {} } } as AuraIntent
     : resolveAuraIntent(question, context);
   const clarification = String(record(intent).clarification || "");
-  const handoff = clarification ? null : handoffAction(intent);
+  let handoff = clarification ? null : handoffAction(intent);
   let outcome: { reply: string; actions: QueryAction[]; context: QueryContext; sources?: unknown[] };
   if (clarification) outcome = { reply: clarification, actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [] };
   else if (handoff?.type === "navigation") {
-    if (!await moduleAllowed(admin, actorId, intent.module)) outcome = {
+    if (!await moduleAllowed(admin, actorId, intent.module)) { outcome = {
       reply: `I can’t open ${String(handoff.view)} through your active app permissions.`, actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [],
-    };
+    }; handoff = null; }
     else outcome = { reply: `Opening ${String(handoff.view)}.`, actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [] };
   } else if (handoff) {
-    if (!await moduleAllowed(admin, actorId, String(handoff.view))) outcome = {
+    if (!await moduleAllowed(admin, actorId, String(handoff.view))) { outcome = {
       reply: `I can’t open ${String(handoff.view)} through your active app permissions.`, actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [],
-    };
+    }; handoff = null; }
     else outcome = { reply: `I prepared a draft for review in ${String(handoff.view)}.`, actions: [], context: { pendingChoices: [], nextCursor: null }, sources: [] };
   } else {
     try { outcome = await executeIntent(intent, admin, user, actorId, context, signal); }
@@ -887,7 +945,8 @@ async function handleCommand(body: Record<string, unknown>, admin: QueryClient, 
     speech: handoff?.type === "review" ? `${outcome.reply} Review and save any changes in the existing ${String(handoff.view)} screen.` : outcome.reply,
     actions, context: { ...outcome.context, lastIntent: { mode: intent.mode, operation: intent.operation, question: intent.question,
       filters: intent.filters, capability: intent.capability, module: intent.module, title: intent.title, replyPrefix: intent.replyPrefix } },
-    interpretation: { intent: intent.mode, operation: intent.operation, entities: intent.filters }, source,
+    interpretation: { intent: intent.mode, operation: intent.operation, entities: intent.filters },
+    source: sourceInfo(source),
     checkedAt: { at: new Date().toISOString(), capabilities: Array.isArray(outcome.sources) ? outcome.sources.map((item) => String(record(item).capabilityId || record(item).mode || "")) : [] },
     hasMore: Boolean(outcome.context.nextCursor) || actions.some((action) => record(action).hasMore === true), nextCursor: outcome.context.nextCursor || null,
   };
@@ -944,7 +1003,7 @@ export async function handleAuraQueryRequest(request: Request, deps: AuraQueryDe
     }
     const turnId = String(body.turnId || "");
     const result = await handleCommand(body, admin, user, actor.actorId, signal);
-    return json(result, 200, UUID.test(turnId) ? { "X-Request-Id": turnId } : {});
+    return json({ ...result, context: {} }, 200, UUID.test(turnId) ? { "X-Request-Id": turnId } : {});
   } catch (error) {
     const failure = record(error);
     if (signal.aborted) return fail("AURA’s request took too long. Try again.", 504, "AURA_QUERY_TIMEOUT");
@@ -953,6 +1012,10 @@ export async function handleAuraQueryRequest(request: Request, deps: AuraQueryDe
       : sqlState === "42501" ? "AURA_FORBIDDEN" : safeErrorCode(error);
     const status = Number(failure.status) || (code === "AURA_FORBIDDEN" ? 403
       : /INVALID|REQUIRED|MODE/.test(code) ? 400 : /CONFLICT|REVISION|LEASE/.test(code) ? 409 : 503);
-    return fail(status === 400 ? "AURA could not validate that request." : status === 409 ? "This AURA conversation changed. Refresh it and try again." : "AURA is temporarily unavailable.", status, code);
+    const message = status === 400 ? "AURA could not validate that request."
+      : status === 403 ? "AURA could not show this response because your active app permissions no longer allow access."
+      : status === 409 ? "This AURA conversation changed. Refresh it and try again."
+      : "AURA is temporarily unavailable.";
+    return fail(message, status, code);
   } finally { clearTimeout(timer); }
 }

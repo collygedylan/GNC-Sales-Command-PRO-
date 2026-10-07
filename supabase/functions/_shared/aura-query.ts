@@ -71,7 +71,7 @@ export function resolveAuraIntent(raw: unknown, context: Record<string, unknown>
   // must never be interpreted as a 123-inch container.
   let remaining = question.replace(/[’]/g, "'");
   const remove = (pattern: RegExp) => { const m = remaining.match(pattern); if (m) remaining = remaining.replace(pattern, ' '); return m; };
-  const item = remove(/\b(?:item\s*code|itemcode|item)\s*(?:#|:)?\s*([A-Z0-9][A-Z0-9_-]{1,99})\b/i);
+  const item = remove(/\b(?:item\s*code|itemcode|item)\b\s*(?:#|:)?\s*(?!default\b|owners?\b|assignments?\b)([A-Z0-9][A-Z0-9_-]{1,99})\b/i);
   if (item) { f.itemcode = item[1]; delete f.productText; delete f.selectionId; }
   else if (/^\d{3,}$/.test(remaining)) { f.itemcode = remaining; remaining = ''; delete f.productText; delete f.selectionId; }
   const loc = remove(/\b[A-Z]\.[0-9]{2}(?:\.[0-9]{3})?\b/i);
@@ -108,7 +108,7 @@ export function resolveAuraIntent(raw: unknown, context: Record<string, unknown>
   else if (/\bavailable\b/i.test(question) || !follow) f.metric = 'ptravailable';
   if (/\bopen stock\b/i.test(question)) f.openStockOnly = true;
   else if (!follow || /\ball stock\b/i.test(question)) f.openStockOnly = false;
-  if (/\b(?:physical rows?|rows?)\b/i.test(question)) f.countMode = 'physical_rows';
+  if (/\b(?:physical rows?|rows)\b/i.test(question)) f.countMode = 'physical_rows';
   else if (/\b(?:distinct|unique) (?:items?|plants?|products?)|plant types?\b/i.test(question)) f.countMode = 'unique_items';
   else if (!follow || /\bquantity\b/i.test(question)) f.countMode = 'quantity';
   const date = auraDateRange(question, now);

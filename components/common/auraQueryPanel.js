@@ -49,18 +49,23 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
   function renderRows(action, parent) {
     const rows = Array.isArray(action.rows) ? action.rows.slice(0, 100) : [];
     if (action.title) parent.append(node('strong', action.title));
-    const columns = (Array.isArray(action.columns) ? action.columns : Object.keys(rows[0] || {}).slice(0, 8))
+    const columns = (Array.isArray(action.columns) ? action.columns : Object.keys(rows[0] || {}))
       .map(value => typeof value === 'string' ? { key: value, label: value.replaceAll('_', ' ') } : value)
-      .filter(value => value && typeof value.key === 'string').slice(0, 12);
+      .filter(value => value && typeof value.key === 'string').slice(0, 64);
+    const priority = ['commonName', 'itemcode', 'contSize', 'locationCode', 'lotCode', 'ptravailable', 'ptronhand', 'assignedTo', 'ownerStatus', 'ownershipSource'];
+    if (columns.some(column => column.key === 'ownerStatus')) columns.sort((a, b) =>
+      (priority.includes(a.key) ? priority.indexOf(a.key) : 100) - (priority.includes(b.key) ? priority.indexOf(b.key) : 100));
     for (const row of rows) {
       const entry = node('dl', '', 'aura-message');
-      for (const { key, label } of columns) {
+      const extra = node('dl', '');
+      for (const [index, { key, label }] of columns.entries()) {
         const value = row[key];
         if (value == null) continue;
         const display = Array.isArray(value) ? value.slice(0, 25).map(item => typeof item === 'object' ? JSON.stringify(item) : String(item)).join('; ')
           : typeof value === 'object' ? JSON.stringify(value) : String(value);
-        entry.append(node('dt', label || key), node('dd', display.slice(0, 1600)));
+        (index < 12 ? entry : extra).append(node('dt', label || key), node('dd', display.slice(0, 1600)));
       }
+      if (extra.children.length) { const details = node('details', ''); details.append(node('summary', 'More record details'), extra); entry.append(details); }
       parent.append(entry);
     }
   }
@@ -164,6 +169,10 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
   async function readHistory(id, cursor = null) {
     await cancel();
     const ticket = ++epoch;
+    if (!cursor) {
+      conversationId = id; revision = null;
+      timeline.replaceChildren(); title.textContent = 'Selected conversation'; deleteButton.disabled = false;
+    }
     status.textContent = 'Loading conversation…';
     try {
       const response = await call({ mode: 'read', conversationId: id, cursor, limit: 30 });

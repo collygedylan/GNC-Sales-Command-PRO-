@@ -64,7 +64,8 @@ create table aura_private.aura_query_turns (
   foreign key(actor_id,conversation_id) references aura_private.aura_query_conversations(actor_id,id) on delete cascade
 );
 create index aura_query_turns_page_idx on aura_private.aura_query_turns(actor_id,conversation_id,created_at desc,id desc);
-revoke all on aura_private.aura_query_conversations,aura_private.aura_query_turns from public,anon,authenticated;
+create unique index aura_query_turns_actor_turn_id_idx on aura_private.aura_query_turns(actor_id,id);
+revoke all on aura_private.aura_query_conversations,aura_private.aura_query_turns from public,anon,authenticated,service_role;
 alter table aura_private.aura_query_conversations enable row level security;
 alter table aura_private.aura_query_turns enable row level security;
 
@@ -83,7 +84,7 @@ declare
   c aura_private.aura_query_conversations%rowtype;
   t aura_private.aura_query_turns%rowtype;
   txt text; src text; lim integer; cursor_time timestamptz; cursor_id uuid;
-  arr jsonb; cur jsonb; response_value jsonb; context_value jsonb; sources_value jsonb; page_more boolean;
+  arr jsonb; cur jsonb; response_value jsonb; context_value jsonb; sources_value jsonb; page_more boolean; turn_found boolean:=false;
 begin
   if p_actor_id is null or not exists(select 1 from public.profiles p where p.id=p_actor_id
     and p.username='dylan_collyge' and p.disabled_at is null and p.must_change_password=false
@@ -111,7 +112,7 @@ begin
         order by updated_at desc,id desc limit lim+1) x;
     page_more:=jsonb_array_length(arr)>lim;
     if page_more then
-      cur:=arr->(lim-1);
+      cur:=jsonb_build_object('updatedAt',arr->(lim-1)->'updatedAt','id',arr->(lim-1)->'id');
       select coalesce(jsonb_agg(value order by ord),'[]'::jsonb) into arr
         from jsonb_array_elements(arr) with ordinality a(value,ord) where ord<=lim;
     end if;
@@ -131,7 +132,7 @@ begin
         and (cursor_time is null or (created_at,id)<(cursor_time,cursor_id)) order by created_at desc,id desc limit lim+1) q
     ) x;
     page_more:=jsonb_array_length(arr)>lim;
-    if page_more then cur:=arr->(lim-1); end if;
+    if page_more then cur:=jsonb_build_object('createdAt',arr->(lim-1)->'createdAt','id',arr->(lim-1)->'id'); end if;
     select coalesce(jsonb_agg(value order by ord desc),'[]'::jsonb) into arr from jsonb_array_elements(
       case when page_more then (select coalesce(jsonb_agg(value order by ord),'[]'::jsonb) from jsonb_array_elements(arr) with ordinality a(value,ord) where ord<=lim) else arr end
     ) with ordinality a(value,ord);
@@ -147,22 +148,31 @@ begin
     if txt='' or length(txt)>12000 or src not in ('typed','voice') then
       raise exception using errcode='22023',message='AURA_TURN_INPUT_INVALID'; end if;
     if p_turn_id is null then raise exception using errcode='22023',message='AURA_TURN_ID_REQUIRED'; end if;
-    if p_conversation_id is null then
-      insert into aura_private.aura_query_conversations(actor_id,title) values(p_actor_id,left(txt,160)) returning * into c;
-    else
-      select * into c from aura_private.aura_query_conversations where actor_id=p_actor_id and id=p_conversation_id for update;
+    perform pg_advisory_xact_lock(hashtextextended('aura-query-turn:'||p_actor_id::text||':'||p_turn_id::text,0));
+    select * into t from aura_private.aura_query_turns where actor_id=p_actor_id and id=p_turn_id;
+    turn_found:=found;
+    if turn_found then
+      if p_conversation_id is not null and p_conversation_id is distinct from t.conversation_id then
+        raise exception using errcode='22023',message='AURA_TURN_ID_REUSED'; end if;
+      select * into c from aura_private.aura_query_conversations where actor_id=p_actor_id and id=t.conversation_id for update;
       if not found then raise exception using errcode='P0002',message='AURA_CONVERSATION_NOT_FOUND'; end if;
-      if btrim(c.title)='' then
-        update aura_private.aura_query_conversations set title=left(txt,160) where actor_id=p_actor_id and id=c.id returning * into c;
+      if t.status='cancelled' then raise exception using errcode='22023',message='AURA_TURN_CANCELLED'; end if;
+      if t.text<>txt or t.source<>src then raise exception using errcode='22023',message='AURA_TURN_ID_REUSED'; end if;
+      if t.status='complete' then return jsonb_build_object('ok',true,'conversationId',c.id,'revision',c.revision,'context',t.context,'replayed',true,'response',t.response,'sources',t.sources); end if;
+    else
+      if p_conversation_id is null then
+        insert into aura_private.aura_query_conversations(actor_id,title) values(p_actor_id,left(txt,160)) returning * into c;
+      else
+        select * into c from aura_private.aura_query_conversations where actor_id=p_actor_id and id=p_conversation_id for update;
+        if not found then raise exception using errcode='P0002',message='AURA_CONVERSATION_NOT_FOUND'; end if;
+        if btrim(c.title)='' then
+          update aura_private.aura_query_conversations set title=left(txt,160) where actor_id=p_actor_id and id=c.id returning * into c;
+        end if;
       end if;
     end if;
     if p_expected_revision is not null and p_expected_revision<>c.revision then
       raise exception using errcode='40001',message='AURA_REVISION_CONFLICT'; end if;
-    select * into t from aura_private.aura_query_turns where actor_id=p_actor_id and conversation_id=c.id and id=p_turn_id;
-    if found then
-      if t.status='cancelled' then raise exception using errcode='22023',message='AURA_TURN_CANCELLED'; end if;
-      if t.text<>txt or t.source<>src then raise exception using errcode='22023',message='AURA_TURN_ID_REUSED'; end if;
-      if t.status='complete' then return jsonb_build_object('ok',true,'conversationId',c.id,'revision',c.revision,'context',t.context,'replayed',true,'response',t.response,'sources',t.sources); end if;
+    if turn_found then
       if t.status='pending' and c.active_turn_id=t.id and c.lease_until>clock_timestamp() then
         raise exception using errcode='55P03',message='AURA_TURN_IN_PROGRESS'; end if;
     end if;
@@ -236,21 +246,27 @@ grant execute on function public.aura_query_conversation_v1(uuid,text,uuid,uuid,
 -- Typed read-only inventory query router. No caller-provided SQL is evaluated.
 create or replace function public.aura_query_inventory_v1(
   p_actor_id uuid,p_operation text,p_filters jsonb default '{}'::jsonb,p_cursor jsonb default null,p_limit integer default 50
-) returns jsonb language plpgsql stable security definer set search_path=pg_catalog,public,aura_private,extensions set statement_timeout='5s' set pg_trgm.word_similarity_threshold='0.3'
+) returns jsonb language plpgsql volatile security definer set search_path=pg_catalog,public,aura_private,extensions set statement_timeout='5s' set pg_trgm.word_similarity_threshold='0.3'
 as $$
 declare
   op text:=lower(btrim(coalesce(p_operation,''))); f jsonb:=coalesce(p_filters,'{}'::jsonb);
   season_code text; query_season text; sales_year integer; query_sales_year integer; metric text; count_mode text; lim integer; open_only boolean;
   needle text; ic text; gn text; size_filter text; loc text; zone_filter text; asg text; asg_text text; lot text; selection_filter text;
   assignee_matches integer; person_choices jsonb;
-  loc_mode text; total_value numeric; row_total bigint; unique_total bigint; physical_total bigint; page_offset integer:=0; complete_value boolean:=true; identity_complete boolean:=true; scope_complete boolean:=true; rows_value jsonb; choices_value jsonb; more_value boolean; exact_match_value boolean;
+  loc_mode text; row_assignment_active boolean:=false; total_value numeric; row_total bigint; unique_total bigint; physical_total bigint; page_offset integer:=0; complete_value boolean:=true; identity_complete boolean:=true; scope_complete boolean:=true; rows_value jsonb; choices_value jsonb; more_value boolean; exact_match_value boolean;
 begin
   if p_actor_id is null or not exists(select 1 from public.profiles p where p.id=p_actor_id and p.username='dylan_collyge'
     and p.disabled_at is null and p.must_change_password=false and (p.locked_until is null or p.locked_until<=clock_timestamp()))
     or not private.app_account_active_at_v1(p_actor_id,'dylan_collyge',clock_timestamp()) then
     raise exception using errcode='42501',message='AURA_ACTOR_FORBIDDEN'; end if;
-  if not public.navigation_module_allowed_v1(p_actor_id,'drive') then
+  if public.navigation_module_allowed_v1(p_actor_id,'drive') is distinct from true then
     raise exception using errcode='42501',message='AURA_MODULE_FORBIDDEN'; end if;
+  perform 1 from public.app_dataset_revisions r where r.key='ph_master_inventory' for share;
+  if not found or (select r.state from public.app_dataset_revisions r where r.key='ph_master_inventory') is distinct from 'ready'
+    or exists(select 1 from app_sync_private.import_leases l where l.key='ph_master_inventory') then
+    return jsonb_build_object('ok',true,'complete',false,'code','AURA_INVENTORY_IMPORT_INCOMPLETE',
+      'rows','[]'::jsonb,'total',null,'metric',metric,'season',null,'hasMore',false,'nextCursor',null); end if;
+  row_assignment_active:=coalesce(private.inventory_row_assignment_policy_active_v1(),false);
   if jsonb_typeof(f)<>'object' or op not in ('match','stock','locations','ownership','unassigned','lot','maximum') then
     raise exception using errcode='22023',message='AURA_FILTER_INVALID'; end if;
   if exists(select 1 from jsonb_object_keys(f) k where k not in ('productText','itemcode','genus','contSize','locationCode','locationMode','zone','assignee','assigneeText','selectionId','metric','season','salesYear','lotcode','openStockOnly','countMode')) then
@@ -356,35 +372,46 @@ begin
     select r.*,private.eval_location_zone(r.locationcode) zone_calc
     from relevant r
   ), candidates_raw as (
-    select x.*,a.assignedto,a.assigned_display_name,a.assignee_values,a.warehousei,a.assignment_reason,a.zone_override_active,a.assignment_ambiguous,a.assignment_present,
+    select x.*,a.assignedto,a.assigned_display_name,a.assignee_values,a.warehousei,a.assignment_reason,a.zone_override_active,a.assignment_ambiguous,a.assignment_present,a.assignment_review_required,
       concat_ws('|',x.ic_norm,x.gn_norm,x.size_norm) selection_id,x.ic_norm||'|'||x.gn_norm owner_key
     from filtered x left join lateral (
       select case when count(distinct coalesce(lower(u.username),lower(nullif(btrim(a.assignedto),''))))=1
           then min(coalesce(lower(u.username),lower(nullif(btrim(a.assignedto),'')))) else null end assignedto,
         min(u.display_name) assigned_display_name,min(a.warehousei) warehousei,min(a.assignment_reason) assignment_reason,
-        bool_or(a.zone_override_active) zone_override_active,
+        bool_or(a.zone_override_active) zone_override_active,bool_or(a.review_required) assignment_review_required,
         array_agg(distinct coalesce(lower(u.username),lower(nullif(btrim(a.assignedto),'')))
           order by coalesce(lower(u.username),lower(nullif(btrim(a.assignedto),''))))
           filter(where nullif(btrim(a.assignedto),'') is not null) assignee_values,
         count(distinct coalesce(lower(u.username),lower(nullif(btrim(a.assignedto),''))))>1 assignment_ambiguous,count(*)>0 assignment_present
-      from public.ph_warehouse_assigned_items a left join public.ph_eval_assignment_users u on u.active is true
+      from (
+        select private.inventory_effective_owner_v1(r.master_unique_id) assignedto,r.warehousei,r.assignment_reason,
+          r.zone_override_active,r.review_required
+        from public.ph_inventory_row_assignments r
+        where row_assignment_active and r.master_unique_id=x.unique_id and r.present_in_drive
+        union all
+        select legacy.assignedto,legacy.warehousei,legacy.assignment_reason,legacy.zone_override_active,false review_required
+        from public.ph_warehouse_assigned_items legacy
+        where not row_assignment_active
+          and coalesce(legacy.assignment_key,upper(btrim(coalesce(legacy.itemcode_normalized,legacy.itemcode,'')))||'|'||lower(regexp_replace(btrim(coalesce(legacy.genusname_normalized,legacy.genusname,'')),'\s+',' ','g')))
+             = x.ic_norm||'|'||x.gn_norm
+          and legacy.present_in_drive is true
+      ) a left join public.ph_eval_assignment_users u on u.active is true
         and (lower(btrim(a.assignedto))=lower(btrim(u.username)) or lower(btrim(a.assignedto))=lower(btrim(u.display_name)))
-      where a.present_in_drive is true
-       and coalesce(a.assignment_key,upper(btrim(coalesce(a.itemcode_normalized,a.itemcode,'')))||'|'||lower(regexp_replace(btrim(coalesce(a.genusname_normalized,a.genusname,'')),'\s+',' ','g')))
-           = x.ic_norm||'|'||x.gn_norm
     ) a on true
     where (zone_filter is null or (zone_filter in ('INSIDE','PERENNIAL') and x.zone_calc='inside') or (zone_filter='OUTSIDE' and x.zone_calc='outside'))
       and (asg is null or lower(coalesce(a.assignedto,''))=asg or asg=any(coalesce(a.assignee_values,array[]::text[])))
       and (selection_filter is null or concat_ws('|',x.ic_norm,x.gn_norm,x.size_norm)=selection_filter or x.ic_norm||'|'||x.gn_norm=selection_filter)
-      and (op<>'unassigned' or coalesce(a.assignment_ambiguous,false)
-        or not coalesce(a.assignment_present,false) or nullif(btrim(coalesce(a.assignedto,'')),'') is null
-        or lower(btrim(coalesce(a.assignedto,'')))='unassigned')
+      and (op<>'unassigned' or case when row_assignment_active then
+        (not coalesce(a.assignment_present,false) or coalesce(a.assignment_ambiguous,false) or nullif(btrim(coalesce(a.assignedto,'')),'') is null)
+        else coalesce(a.assignment_ambiguous,false) or not coalesce(a.assignment_present,false)
+          or nullif(btrim(coalesce(a.assignedto,'')),'') is null or lower(btrim(coalesce(a.assignedto,'')))='unassigned' end)
       and (op<>'ownership' or coalesce(a.assignment_present,false))
   ), candidates as (
     select c.* from candidates_raw c where needle is null or c.product_exact
       or not exists(select 1 from candidates_raw e where e.product_exact)
   ), ranked as (
-    select c.*,row_number() over(partition by case when op='ownership' then owner_key else selection_id end
+    select c.*,row_number() over(partition by case when op='ownership' and row_assignment_active then unique_id
+      when op='ownership' then owner_key else selection_id end
       order by match_score desc,itemcode,genusname,contsize,locationcode,unique_id) identity_rn from candidates c
   ), numbered as (
     select r.*,row_number() over(order by case when op='maximum' then qty end desc nulls last,match_score desc,itemcode,genusname,contsize,locationcode,unique_id) rn from ranked r
@@ -405,18 +432,26 @@ begin
         when not coalesce(assignment_present,false) then 'missing'
         when nullif(btrim(coalesce(assignedto,'')),'') is null or lower(btrim(coalesce(assignedto,'')))='unassigned' then 'unassigned'
         else 'assigned' end,
+      'ownershipSource',case when row_assignment_active then 'inventory_row' else 'eval_group' end,
+      'rowOwnerStatus',case when not row_assignment_active then null
+        when coalesce(assignment_review_required,false) then 'review'
+        when not coalesce(assignment_present,false) then 'missing'
+        when nullif(btrim(coalesce(assignedto,'')),'') is null then 'unassigned' else 'assigned' end,
       'matchKind',case when needle is null or product_exact then 'exact' else 'fuzzy' end,
       'assigneeChoices',to_jsonb(coalesce(assignee_values,array[]::text[])),
-      'currentLocationCount',case when op='ownership' then (select count(distinct z.locationcode) from candidates z where z.owner_key=numbered.owner_key) else null end,
-      'currentLocations',case when op='ownership' then (select coalesce(jsonb_agg(distinct z.locationcode) filter(where z.locationcode is not null),'[]'::jsonb) from candidates z where z.owner_key=numbered.owner_key) else null end
+      'currentLocationCount',case when op='ownership' then (select count(distinct z.locationcode) from candidates z where z.owner_key=numbered.owner_key
+        and (not row_assignment_active or z.assignedto is not distinct from numbered.assignedto)) else null end,
+      'currentLocations',case when op='ownership' then (select coalesce(jsonb_agg(distinct z.locationcode) filter(where z.locationcode is not null),'[]'::jsonb) from candidates z where z.owner_key=numbered.owner_key
+        and (not row_assignment_active or z.assignedto is not distinct from numbered.assignedto)) else null end
       ) order by case when op='maximum' then qty end desc nulls last,match_score desc,itemcode,genusname,contsize,locationcode,unique_id)
       filter(where rn>page_offset and rn<=page_offset+lim),'[]'::jsonb),
     coalesce((select jsonb_agg(choice order by score desc,selection_id) from (
-      select jsonb_build_object('selectionId',case when op='ownership' then owner_key else selection_id end,
+      select jsonb_build_object('selectionId',selection_id,
         'itemcode',itemcode,'genus',genusname,'commonName',commonname,'contSize',contsize,'locationCode',locationcode,
-        'matchKind',case when product_exact then 'exact' else 'fuzzy' end) choice,match_score score,
-        case when op='ownership' then owner_key else selection_id end selection_id
-      from ranked where identity_rn=1 order by match_score desc,itemcode,genusname,contsize,locationcode limit 5
+        'matchKind',case when product_exact then 'exact' else 'fuzzy' end) choice,match_score score,selection_id
+      from (select distinct on(selection_id) * from ranked
+        order by selection_id,match_score desc,itemcode,genusname,contsize,locationcode,unique_id) chosen
+      order by match_score desc,itemcode,genusname,contsize,locationcode,unique_id limit 5
     ) choice_rows),'[]'::jsonb)
   into physical_total,row_total,unique_total,total_value,complete_value,identity_complete,scope_complete,exact_match_value,rows_value,choices_value from numbered;
   if count_mode='physical_rows' then total_value:=physical_total; complete_value:=scope_complete;
@@ -452,7 +487,7 @@ begin
     and p.disabled_at is null and p.must_change_password=false and (p.locked_until is null or p.locked_until<=clock_timestamp()))
     or not private.app_account_active_at_v1(p_actor_id,'dylan_collyge',clock_timestamp()) then
     raise exception using errcode='42501',message='AURA_ACTOR_FORBIDDEN'; end if;
-  if not public.navigation_module_allowed_v1(p_actor_id,'hl-order') then
+  if public.navigation_module_allowed_v1(p_actor_id,'hl-order') is distinct from true then
     raise exception using errcode='42501',message='AURA_MODULE_FORBIDDEN'; end if;
   if op not in ('orders','receipts','balances') or jsonb_typeof(f)<>'object'
     or exists(select 1 from jsonb_object_keys(f) k where k not in ('productText','orderNumber','status','itemcode','lot','size')) then
@@ -522,4 +557,73 @@ begin
 end $$;
 revoke all on function public.aura_query_hl_order_v1(uuid,text,jsonb,jsonb,integer) from public,anon,authenticated;
 grant execute on function public.aura_query_hl_order_v1(uuid,text,jsonb,jsonb,integer) to service_role;
+
+-- Narrow read-only Aura adapter for Bunch Notes. It uses the workflow's own
+-- actor and can_read rules and never dispatches through the write-capable
+-- bunch_note_command_v1 router.
+create or replace function public.aura_query_bunch_v1(
+  p_actor_id uuid,p_operation text,p_filters jsonb default '{}'::jsonb,p_cursor jsonb default null,p_limit integer default 50
+) returns jsonb language plpgsql stable security definer
+set search_path=pg_catalog,public,bunch_note_private,private set statement_timeout='5s'
+as $$
+declare
+  actor public.profiles; op text:=lower(btrim(coalesce(p_operation,''))); f jsonb:=coalesce(p_filters,'{}'::jsonb);
+  lim integer:=greatest(1,least(100,coalesce(p_limit,50))); off integer:=0;
+  record_id uuid; status_filter text; location_filter text; location_mode text; product_needle text;
+  date_from timestamptz; date_to timestamptz; rows_value jsonb; total_value bigint; more_value boolean; next_cursor jsonb;
+begin
+  if p_actor_id is null or not exists(select 1 from public.profiles p where p.id=p_actor_id and p.username='dylan_collyge'
+    and p.disabled_at is null and p.must_change_password=false and (p.locked_until is null or p.locked_until<=clock_timestamp()))
+    or not private.app_account_active_at_v1(p_actor_id,'dylan_collyge',clock_timestamp()) then
+    raise exception using errcode='42501',message='AURA_ACTOR_FORBIDDEN'; end if;
+  if public.navigation_module_allowed_v1(p_actor_id,'bunch-note') is distinct from true then
+    raise exception using errcode='42501',message='AURA_MODULE_FORBIDDEN'; end if;
+  actor:=bunch_note_private.actor(p_actor_id);
+  if actor.username is distinct from 'dylan_collyge' then raise exception using errcode='42501',message='AURA_ACTOR_FORBIDDEN'; end if;
+  if op not in ('list','get') or jsonb_typeof(f)<>'object'
+    or exists(select 1 from jsonb_object_keys(f) k where k not in ('recordId','status','locationCode','locationMode','productText','dateFrom','dateTo')) then
+    raise exception using errcode='22023',message='AURA_BUNCH_FILTER_INVALID'; end if;
+  if p_cursor is not null then
+    if jsonb_typeof(p_cursor)<>'object' or p_cursor-'offset'<>'{}'::jsonb or coalesce(p_cursor->>'offset','') !~ '^[0-9]{1,9}$' then
+      raise exception using errcode='22023',message='AURA_BUNCH_CURSOR_INVALID'; end if;
+    off:=least(1000000,(p_cursor->>'offset')::integer);
+  end if;
+  record_id:=nullif(btrim(f->>'recordId'),'')::uuid;
+  status_filter:=nullif(lower(btrim(f->>'status')),'');
+  location_filter:=nullif(upper(btrim(f->>'locationCode')),'');
+  location_mode:=lower(coalesce(f->>'locationMode','exact'));
+  product_needle:=nullif(btrim(f->>'productText'),'');
+  date_from:=nullif(btrim(f->>'dateFrom'),'')::timestamptz;
+  date_to:=nullif(btrim(f->>'dateTo'),'')::timestamptz;
+  if (op='get' and record_id is null) or location_mode not in ('exact','prefix')
+    or (status_filter is not null and status_filter not in ('open','complete','cancelled'))
+    or length(coalesce(location_filter,''))>80 or length(coalesce(product_needle,''))>160
+    or length(coalesce(f->>'dateFrom',''))>48 or length(coalesce(f->>'dateTo',''))>48
+    or (date_from is not null and date_to is not null and date_from>date_to) then
+    raise exception using errcode='22023',message='AURA_BUNCH_FILTER_INVALID'; end if;
+  with matched as materialized (
+    select j.id,j.updated_at,bunch_note_private.job_json(j) detail from bunch_note_private.jobs j
+    where bunch_note_private.can_read(actor,j)
+      and (record_id is null or j.id=record_id)
+      and (status_filter is null or lower(j.status)=status_filter)
+      and (location_filter is null or case location_mode when 'prefix' then upper(btrim(j.location)) like location_filter||'%' else upper(btrim(j.location))=location_filter end)
+      and (date_from is null or j.created_at>=date_from)
+      and (date_to is null or j.created_at<date_to)
+      and (product_needle is null or position(lower(product_needle) in lower(j.block))>0
+        or position(lower(product_needle) in lower(j.location))>0
+        or exists(select 1 from jsonb_array_elements(coalesce((bunch_note_private.job_json(j)->'body'->'source'),'[]'::jsonb)) s
+          where position(lower(product_needle) in lower(concat_ws(' ',s->>'itemcode',s->>'commonname',s->>'lotcode')))>0))
+  ), numbered as (
+    select m.*,row_number() over(order by m.updated_at desc,m.id desc) rn from matched m
+  )
+  select (select count(*) from matched),coalesce(jsonb_agg(detail||jsonb_build_object('recordId',id) order by rn)
+    filter(where rn>off and rn<=off+lim),'[]'::jsonb)
+    into total_value,rows_value from numbered;
+  more_value:=total_value>off+lim;
+  if more_value then next_cursor:=jsonb_build_object('offset',off+lim); end if;
+  return jsonb_build_object('ok',true,'complete',true,'rows',rows_value,'total',total_value,
+    'hasMore',more_value,'nextCursor',next_cursor);
+end $$;
+revoke all on function public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer) from public,anon,authenticated;
+grant execute on function public.aura_query_bunch_v1(uuid,text,jsonb,jsonb,integer) to service_role;
 commit;

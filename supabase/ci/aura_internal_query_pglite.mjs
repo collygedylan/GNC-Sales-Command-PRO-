@@ -11,12 +11,24 @@ const {pg_trgm}=req(path.join(path.resolve(root),'node_modules/@electric-sql/pgl
 const db=new PGlite({extensions:{pg_trgm}}); const q=async(sql,params=[]) => (await db.query(sql,params)).rows;
 try {
  await db.waitReady;
- await db.exec(`create role anon; create role authenticated; create role service_role; create schema private; create schema extensions;
+ await db.exec(`create role anon; create role authenticated; create role service_role; create schema private; create schema extensions; create schema app_sync_private;
+ grant usage on schema app_sync_private to service_role;
  create function private.app_account_active_at_v1(uuid,text,timestamptz) returns boolean language sql stable as $$select true$$;
+ create table public.app_dataset_revisions(key text primary key,state text,revision bigint not null default 1);
+ grant all on public.app_dataset_revisions to service_role;
+ insert into public.app_dataset_revisions values('ph_master_inventory','ready',1);
+ create table app_sync_private.import_leases(key text,run_id uuid);
+ grant all on app_sync_private.import_leases to service_role;
  create table public.test_module_access(actor_id uuid,view_key text,allowed boolean,primary key(actor_id,view_key));
  grant all on public.test_module_access to service_role;
  create function public.navigation_module_allowed_v1(p_actor_id uuid,p_view text) returns boolean language sql stable as $$
    select coalesce((select allowed from public.test_module_access where actor_id=p_actor_id and view_key=p_view),true)$$;
+ create table public.test_assignment_policy(singleton boolean primary key default true,active boolean not null default false);
+ grant all on public.test_assignment_policy to service_role;
+ insert into public.test_assignment_policy values(true,false);
+ create table public.ph_inventory_row_assignments(master_unique_id text primary key,unique_id text,itemcode text,itemcode_normalized text,
+   genusname text,commonname text,contsize text,locationcode text,lotcode text,source text,warehousei text,assignedto text,assigned_at timestamptz,
+   assignment_reason text,zone_override_active boolean,review_required boolean,present_in_drive boolean);
  create function public.aura_inventory_v2_name_v1(v text) returns text language sql immutable as $$select btrim(regexp_replace(lower(normalize(regexp_replace(coalesce(v,''),'[®™℠]','','g'),NFKC)),'[^[:alnum:]]+',' ','g'))$$;
  create function private.eval_location_zone(p_location text) returns text language plpgsql immutable as $$
  declare value text:=upper(regexp_replace(btrim(coalesce(p_location,'')),'[[:space:]]+','','g')); parts text[];
@@ -27,10 +39,29 @@ try {
  if parts[1]='D' and parts[2]='10' and cardinality(parts)=3 and parts[3]::integer<=21 then return 'inside'; end if;
  return 'outside'; end $$;
  create table public.profiles(id uuid primary key,username text,disabled_at timestamptz,must_change_password boolean,locked_until timestamptz);
+ create schema bunch_note_private;
+ create table bunch_note_private.jobs(id uuid primary key,batch_id uuid,note_number text,block text,location text,status text,owner_id uuid,
+   revision bigint,instruction_revision integer,body jsonb,progress jsonb,created_by uuid,created_at timestamptz,updated_at timestamptz);
+ create function bunch_note_private.actor(p_id uuid) returns public.profiles language sql stable security definer set search_path='' as $$
+   select p from public.profiles p where p.id=p_id and p.username='dylan_collyge' and p.disabled_at is null
+     and p.must_change_password=false and (p.locked_until is null or p.locked_until<=now())$$;
+ create function bunch_note_private.can_read(p_actor public.profiles,p_job bunch_note_private.jobs) returns boolean language sql immutable as $$
+   select coalesce((p_actor).username='dylan_collyge' or (p_job).owner_id=(p_actor).id
+     or ((p_job).status='open' and (p_job).owner_id is null),false)$$;
+ create function bunch_note_private.job_json(j bunch_note_private.jobs) returns jsonb language sql stable as $$select to_jsonb(j)$$;
  create table public.ph_app_settings(key text primary key,value jsonb);
  create table public.ph_eval_assignment_users(username text primary key,display_name text,active boolean);
  create table public.ph_master_inventory(unique_id text primary key,itemcode text,commonname text,contsize text,locationcode text,lotcode text,
  ptravailable text,ptronhand text,s_lts text,season text,saleyear text,desigitem text,app_tab_assignment text,genusname text,botanicalname text);
+ create function private.inventory_row_assignment_policy_active_v1() returns boolean language sql stable security definer set search_path='' as $$
+   select active from public.test_assignment_policy where singleton$$;
+ create function private.eval_assignment_profile_active_v1(p_username text) returns boolean language sql stable security definer set search_path='' as $$
+   select exists(select 1 from public.ph_eval_assignment_users u left join public.profiles p on lower(btrim(p.username))=lower(btrim(u.username))
+     where u.active and lower(btrim(u.username))=lower(btrim(p_username)) and (p.id is null or (p.disabled_at is null and (p.locked_until is null or p.locked_until<=now()))))$$;
+ create function private.inventory_effective_owner_v1(p_unique_id text) returns text language sql stable security definer set search_path='' as $$
+   select case when private.eval_assignment_profile_active_v1(a.assignedto) then a.assignedto else null end
+   from public.ph_inventory_row_assignments a where a.master_unique_id=p_unique_id and a.present_in_drive
+     and private.inventory_row_assignment_policy_active_v1()$$;
  create table public.ph_warehouse_assigned_items(id uuid primary key default gen_random_uuid(),assignedto text,warehousei text,itemcode text,
  genusname text,itemcode_normalized text,genusname_normalized text,assignment_key text,present_in_drive boolean,zone_override_active boolean,
  assignment_reason text,updated_at timestamptz default now());
@@ -60,6 +91,11 @@ try {
  insert into public.profiles values('00000000-0000-0000-0000-000000000006','dylan_collyge',null,false,now()+interval '1 hour');
  insert into public.ph_app_settings values('current_season_salesyear','{"seasonCode":"F1","salesYear":"27"}');
  insert into public.ph_eval_assignment_users values('mia','Mia Jones',true),('zoe_green','Zoe Green',true),('zoey_green','Zoey Green',true);
+ insert into bunch_note_private.jobs values
+ ('60000000-0000-0000-0000-000000000001','60000000-0000-0000-0000-000000000101','BN-100','C','C.06.001','open','00000000-0000-0000-0000-000000000001',1,1,
+   '{"source":[{"unique_id":"i1","itemcode":"ROSE1","commonname":"Red Rose","lotcode":"27.F1"}]}','{}','00000000-0000-0000-0000-000000000001',now()-interval '2 days',now()-interval '1 day'),
+ ('60000000-0000-0000-0000-000000000002','60000000-0000-0000-0000-000000000102','BN-101','D','D.04.001','complete','00000000-0000-0000-0000-000000000002',2,1,
+   '{"source":[{"unique_id":"i3","itemcode":"TREE1","commonname":"Oak","lotcode":"27.F1"}]}','{}','00000000-0000-0000-0000-000000000002',now()-interval '1 day',now());
  insert into public.ph_master_inventory values
  ('i1','ROSE1','Red Rose','3DP','D.04.001','27.F1','12','20','1','F1','27','','','Rosa','Rosa rubiginosa'),
  ('i2','ROSE1','Red Rose','3DP','U1','27.F1','bad','20','1','F1','27','','','Rosa','Rosa rubiginosa'),
@@ -73,6 +109,10 @@ try {
  ('i10','ROSE_D10022','Rose D10 outside edge','3DP','D.10.022','27.F1','1','2','1','F1','27','','','Rosa','Rosa alba'),
  ('i11','ROSE_D03','Rose D03','3DP','D.03.001','27.F1','1','2','1','F1','27','','','Rosa','Rosa alba'),
  ('i12','0012','Leading Zero Item','3DP','C.06.003','27.F1','7','9','1','F1','27','','','Rosa','Rosa alba');
+ insert into public.ph_inventory_row_assignments(master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,lotcode,source,warehousei,assignedto,assignment_reason,zone_override_active,review_required,present_in_drive)
+ values('i1','i1','ROSE1','ROSE1','Rosa','Red Rose','3DP','D.04.001','27.F1','drive','W1','zoe_green','zone_zoe',true,false,true),
+       ('i2','i2','ROSE1','ROSE1','Rosa','Red Rose','3DP','U1','27.F1','drive','W1',null,'unassigned',false,false,true),
+       ('i5','i5','OTHERROSE','OTHERROSE','Rosa','Red Rose Select','3DP','C.06.002','27.F1','drive','W1','zoe_green','zone_zoe',true,false,true);
  insert into public.ph_warehouse_assigned_items(assignedto,warehousei,itemcode,genusname,itemcode_normalized,genusname_normalized,assignment_key,present_in_drive,zone_override_active,assignment_reason)
  values('Mia','W1','ROSE1','Rosa','ROSE1','rosa','ROSE1|rosa',true,false,'current');
  insert into public.ph_warehouse_assigned_items(assignedto,warehousei,itemcode,genusname,itemcode_normalized,genusname_normalized,assignment_key,present_in_drive,zone_override_active,assignment_reason)
@@ -94,6 +134,13 @@ try {
  assert.equal((await q(`select public.aura_query_conversation_v1($1,'list',null,null,null,'{}') x`,[actor]))[0].x.conversations[0].title,'red rose','first turn names a blank conversation');
  const completed=(await q(`select public.aura_query_conversation_v1($1,'complete',$2,$3,$4,$5::jsonb) x`,[actor,conversation,tid,begun.revision,JSON.stringify({response:{reply:'Found it'},context:{selectionId:'ROSE1|rosa|3dp'},sources:[]})]))[0].x;
  assert.equal(completed.revision,begun.revision+1);
+ const clientOnlyTurn='21000000-0000-0000-0000-000000000001';
+ const clientOnly=(await q(`select public.aura_query_conversation_v1($1,'begin',null,$2,null,'{"text":"without conversation id","source":"typed"}') x`,[actor,clientOnlyTurn]))[0].x;
+ const clientOnlyDone=(await q(`select public.aura_query_conversation_v1($1,'complete',$2,$3,$4,'{"response":{"reply":"saved once"},"context":{},"sources":[]}') x`,[actor,clientOnly.conversationId,clientOnlyTurn,clientOnly.revision]))[0].x;
+ const clientOnlyReplay=(await q(`select public.aura_query_conversation_v1($1,'begin',null,$2,0,'{"text":"without conversation id","source":"typed"}') x`,[actor,clientOnlyTurn]))[0].x;
+ assert.equal(clientOnlyReplay.replayed,true,'a lost conversation ID still replays the original completed turn');
+ assert.equal(clientOnlyReplay.conversationId,clientOnly.conversationId);
+ await assert.rejects(()=>q(`select public.aura_query_conversation_v1($1,'begin',$2,$3,null,'{"text":"without conversation id","source":"typed"}')`,[actor,conversation,clientOnlyTurn]),/AURA_TURN_ID_REUSED/,'a turn ID cannot be rebound to another conversation');
  const read=(await q(`select public.aura_query_conversation_v1($1,'read',$2,null,null,'{}') x`,[actor,conversation]))[0].x;
  assert.equal(read.turns[0].response.reply,'Found it');
  assert.deepEqual(read.turns[0].sources,[]);
@@ -102,11 +149,13 @@ try {
  await assert.rejects(()=>q(`select public.aura_query_conversation_v1($1,'begin',$2,$3,$4,'{"text":"different question","source":"typed"}')`,[actor,conversation,tid,completed.revision]),/AURA_TURN_ID_REUSED/);
  const tid2='20000000-0000-0000-0000-000000000002';
  const begun2=(await q(`select public.aura_query_conversation_v1($1,'begin',$2,$3,$4,'{"text":"on hand?","source":"typed"}') x`,[actor,conversation,tid2,completed.revision]))[0].x;
- await q(`select public.aura_query_conversation_v1($1,'complete',$2,$3,$4,$5::jsonb)`,[actor,conversation,tid2,begun2.revision,JSON.stringify({response:{reply:'Second'},context:{},sources:[]})]);
+ await q(`select public.aura_query_conversation_v1($1,'complete',$2,$3,$4,$5::jsonb)`,[actor,conversation,tid2,begun2.revision,JSON.stringify({response:{reply:'Second '+ 'x'.repeat(5000)},context:{},sources:[]})]);
  const history=(await q(`select public.aura_query_conversation_v1($1,'read',$2,null,null,'{}') x`,[actor,conversation]))[0].x;
  assert.deepEqual(history.turns.map(turn=>turn.text),['red rose','on hand?'],'history page is chronological within newest-first page fetch');
  const newestPage=(await q(`select public.aura_query_conversation_v1($1,'read',$2,null,null,$3::jsonb) x`,[actor,conversation,JSON.stringify({limit:1})]))[0].x;
  assert.equal(newestPage.turns[0].text,'on hand?'); assert.equal(newestPage.hasMore,true);
+ assert.deepEqual(Object.keys(newestPage.nextCursor).sort(),['createdAt','id'],'history cursors contain only stable pagination keys');
+ assert.ok(JSON.stringify(newestPage.nextCursor).length<500,'long turn responses are not copied into history cursors');
  const olderPage=(await q(`select public.aura_query_conversation_v1($1,'read',$2,null,null,$3::jsonb) x`,[actor,conversation,JSON.stringify({limit:1,cursor:newestPage.nextCursor})]))[0].x;
  assert.equal(olderPage.turns[0].text,'red rose'); assert.equal(olderPage.hasMore,false);
  const cancelId='30000000-0000-0000-0000-000000000001';
@@ -128,6 +177,14 @@ try {
  const inv=(await q(`select public.aura_query_inventory_v1($1,'stock','{"itemcode":"ROSE1","countMode":"quantity"}') x`,[actor]))[0].x;
  assert.equal(inv.complete,false,'unknown available quantity is never reported as a complete total'); assert.equal(inv.total,null);
  assert.equal(inv.rows[0].assignedTo,'mia');
+ await q(`update public.app_dataset_revisions set state='importing' where key='ph_master_inventory'`);
+ const importing=(await q(`select public.aura_query_inventory_v1($1,'stock','{"itemcode":"ROSE1"}') x`,[actor]))[0].x;
+ assert.equal(importing.code,'AURA_INVENTORY_IMPORT_INCOMPLETE'); assert.equal(importing.rows.length,0); assert.equal(importing.total,null);
+ await q(`update public.app_dataset_revisions set state='ready' where key='ph_master_inventory'`);
+ await q(`insert into app_sync_private.import_leases values('ph_master_inventory','70000000-0000-0000-0000-000000000001')`);
+ const leased=(await q(`select public.aura_query_inventory_v1($1,'stock','{}') x`,[actor]))[0].x;
+ assert.equal(leased.code,'AURA_INVENTORY_IMPORT_INCOMPLETE','a live source lease blocks partial-snapshot answers');
+ await q(`delete from app_sync_private.import_leases where key='ph_master_inventory'`);
  const unique=(await q(`select public.aura_query_inventory_v1($1,'stock','{"itemcode":"ROSE1","countMode":"unique_items"}') x`,[actor]))[0].x;
  assert.equal(unique.total,1); assert.equal(unique.complete,true);
  const leadingZero=(await q(`select public.aura_query_inventory_v1($1,'stock','{"itemcode":"0012"}') x`,[actor]))[0].x;
@@ -154,6 +211,25 @@ try {
  assert.equal(duplicateAssignmentStock.total,40,'duplicate assignment rows do not fan out inventory quantities');
  const aliasOwner=(await q(`select public.aura_query_inventory_v1($1,'ownership','{"assigneeText":"Mia Jones"}') x`,[actor]))[0].x;
  assert.equal(aliasOwner.rows[0].assignedTo,'mia','exact display-name alias resolves to a username');
+ await q(`update public.test_assignment_policy set active=true where singleton`);
+ const rowOwner=(await q(`select public.aura_query_inventory_v1($1,'ownership','{"itemcode":"ROSE1","assignee":"zoe_green"}') x`,[actor]))[0].x;
+ assert.equal(rowOwner.rows.length,1,'active authority is queried per exact master row');
+ assert.equal(rowOwner.rows[0].uniqueId,'i1');
+ assert.equal(rowOwner.rows[0].ownershipSource,'inventory_row');
+ assert.equal(rowOwner.rows[0].rowOwnerStatus,'assigned');
+ assert.equal(rowOwner.rows[0].currentLocationCount,1);
+ const rowUnassigned=(await q(`select public.aura_query_inventory_v1($1,'unassigned','{"itemcode":"ROSE1"}') x`,[actor]))[0].x;
+ assert.equal(rowUnassigned.rows.length,1,'explicit row unassignment does not inherit legacy Eval ownership');
+ assert.equal(rowUnassigned.rows[0].uniqueId,'i2');
+ assert.equal(rowUnassigned.rows[0].rowOwnerStatus,'unassigned');
+ const noLegacyFallback=(await q(`select public.aura_query_inventory_v1($1,'ownership','{"itemcode":"ROSE1","assignee":"mia"}') x`,[actor]))[0].x;
+ assert.equal(noLegacyFallback.rows.length,0,'active row ownership never falls back to the Eval itemcode/genus assignment');
+ const rowFuzzy=(await q(`select public.aura_query_inventory_v1($1,'ownership','{"productText":"red roes"}') x`,[actor]))[0].x;
+ assert.equal(new Set(rowFuzzy.candidateChoices.map(choice=>choice.selectionId)).size,rowFuzzy.candidateChoices.length,
+   'row-level fuzzy ownership choices deduplicate repeated physical rows of the same plant identity');
+ const rowQuantity=(await q(`select public.aura_query_inventory_v1($1,'stock','{"itemcode":"ROSE1","metric":"ptronhand"}') x`,[actor]))[0].x;
+ assert.equal(rowQuantity.total,40,'row ownership lookups do not fan out stock totals');
+ await q(`update public.test_assignment_policy set active=false where singleton`);
  const personChoice=(await q(`select public.aura_query_inventory_v1($1,'ownership','{"assigneeText":"Zoe"}') x`,[actor]))[0].x;
  assert.equal(personChoice.choiceKind,'assignee','partial person names require a reviewed choice');
  assert.ok(personChoice.candidateChoices.length>0);
@@ -176,6 +252,23 @@ try {
  await q(`insert into public.test_module_access values($1,'hl-order',false) on conflict(actor_id,view_key) do update set allowed=false`,[actor]);
  await assert.rejects(()=>q(`select public.aura_query_hl_order_v1($1,'orders','{}')`,[actor]),/AURA_MODULE_FORBIDDEN/,'HL definer RPC enforces HL Order access itself');
  await q(`update public.test_module_access set allowed=true where actor_id=$1 and view_key='hl-order'`,[actor]);
+ const bunchPage=(await q(`select public.aura_query_bunch_v1($1,'list','{}',null,1) x`,[actor]))[0].x;
+ assert.equal(bunchPage.total,2,'Bunch Notes total is independent of page size');
+ assert.equal(bunchPage.rows[0].recordId,'60000000-0000-0000-0000-000000000002');
+ assert.equal(bunchPage.hasMore,true);
+ const bunchNext=(await q(`select public.aura_query_bunch_v1($1,'list','{}',$2::jsonb,1) x`,[actor,JSON.stringify(bunchPage.nextCursor)]))[0].x;
+ assert.equal(bunchNext.rows[0].recordId,'60000000-0000-0000-0000-000000000001');
+ assert.equal(bunchNext.hasMore,false);
+ const bunchFiltered=(await q(`select public.aura_query_bunch_v1($1,'list',$2::jsonb) x`,[actor,JSON.stringify({productText:'red rose',locationCode:'C.06',locationMode:'prefix',status:'open',dateFrom:'2020-01-01T00:00:00Z',dateTo:'9999-12-31T00:00:00Z'})]))[0].x;
+ assert.equal(bunchFiltered.total,1,'Bunch Notes fixed filters cover product, status, location prefix, and date');
+ const bunchDateExclusive=(await q(`select public.aura_query_bunch_v1($1,'list',$2::jsonb) x`,[actor,JSON.stringify({dateTo:bunchPage.rows[0].created_at})]))[0].x;
+ assert.equal(bunchDateExclusive.total,1,'dateTo is an exclusive timestamp bound');
+ const bunchGet=(await q(`select public.aura_query_bunch_v1($1,'get',$2::jsonb) x`,[actor,JSON.stringify({recordId:'60000000-0000-0000-0000-000000000001'})]))[0].x;
+ assert.equal(bunchGet.rows[0].location,'C.06.001');
+ await assert.rejects(()=>q(`select public.aura_query_bunch_v1($1,'list','{}')`,[other]),/AURA_ACTOR_FORBIDDEN/,'Bunch Notes adapter is Dylan-gated');
+ await q(`insert into public.test_module_access values($1,'bunch-note',false) on conflict(actor_id,view_key) do update set allowed=false`,[actor]);
+ await assert.rejects(()=>q(`select public.aura_query_bunch_v1($1,'list','{}')`,[actor]),/AURA_MODULE_FORBIDDEN/,'Bunch Notes adapter enforces module permission');
+ await q(`update public.test_module_access set allowed=true where actor_id=$1 and view_key='bunch-note'`,[actor]);
  await assert.rejects(()=>q(`select public.aura_query_inventory_v1($1,'stock','{"zone":"moon"}')`,[actor]),/AURA_ZONE_INVALID/);
  const unknownOpen=(await q(`select public.aura_query_inventory_v1($1,'stock','{"itemcode":"PINE1","openStockOnly":true}') x`,[actor]))[0].x;
  assert.equal(unknownOpen.rows.length,1,'unknown open-stock state is surfaced rather than silently excluded');
@@ -198,6 +291,6 @@ try {
  await assert.rejects(()=>q(`select public.aura_query_conversation_v1($1,'list')`,[actor]),/permission denied/);
  await db.exec('reset role; set role service_role');
  await assert.rejects(()=>q(`select * from aura_private.aura_query_conversations`),/permission denied/,'service role can use RPCs but cannot directly read private memory tables');
- console.log('Aura internal query SQL passed: actor-gated memory, leases/retries/cancellation/deletion, exact itemcodes, ownership de-duplication, inventory completeness, zone boundaries, HL-order reads, and grants.');
+ console.log('Aura internal query SQL passed: private memory retry/deletion, row assignment authority, inventory readiness and zones, HL-order/Bunch Notes bounded reads, actor/module gates, and grants.');
 } catch(error) { console.error(error?.code,error?.message,error?.detail,error?.where); process.exitCode=1; }
 finally { await db.close(); }

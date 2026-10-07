@@ -107,6 +107,16 @@ Deno.test("write requests only stage a review action and never call a business m
   assert(businessMutations.length === 0, `write intent invoked a non-memory business RPC: ${businessMutations.join(",")}`);
 });
 
+Deno.test("read nouns such as inventory changes and release tasks do not become write handoffs", async () => {
+  for (const text of ["Show inventory change requests", "Show release tasks"]) {
+    const f = fixture({ moduleAllowed: false });
+    const response = await handleAuraQueryRequest(f.request({ mode: "command", text, turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+    const body = await response.json();
+    assert(response.status === 200, `${text} should stay a read request`);
+    assert(!body.actions.some((action: any) => action.type === "review"), `${text} must not produce a false write proposal`);
+  }
+});
+
 Deno.test("denied module prevents user-scoped reads for every catalog module", async () => {
   for (const [module, entry] of Object.entries(AURA_MODULE_CAPABILITIES)) {
     const sample = entry.questions[0];
@@ -114,6 +124,8 @@ Deno.test("denied module prevents user-scoped reads for every catalog module", a
     const f = fixture({ moduleAllowed: false });
     const response = await handleAuraQueryRequest(f.request({ mode: "command", text: sample, turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
     assert(response.status === 200 || response.status === 400, `${module} should be handled deterministically`);
+    const body = await response.json();
+    assert(!body.actions?.some((action: any) => ['navigation', 'review'].includes(action.type)), `${module} returned an action despite module denial`);
     assert(f.userTables.length === 0, `${module} read data despite module denial`);
   }
 });
@@ -130,6 +142,41 @@ Deno.test("memory read refuses stored content after its source module is revoked
   const response = await handleAuraQueryRequest(f.request({ mode: "read", conversationId: CONVERSATION, limit: 20 }), { adminClient: f.admin, userClient: f.user });
   assert(response.status === 403, "revoked source permission must hide stored assistant content");
   assert(f.userTables.length === 0, "revoked transcript read must not query domain tables");
+});
+
+Deno.test("memory responses never expose stale internal parser context", async () => {
+  const f = fixture({ moduleAllowed: true });
+  f.admin.rpc = (name: string) => {
+    f.rpcNames.push(name);
+    return chainForTest(name === "app_account_active_v1" ? true : name === "aura_query_conversation_v1"
+      ? { context: { pendingChoices: [{ id: "private-choice" }], nextCursor: { sensitive: true } }, turns: [] }
+      : true);
+  };
+  const response = await handleAuraQueryRequest(f.request({ mode: "read", conversationId: CONVERSATION, limit: 20 }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 200, "authorized conversation history should be readable");
+  assert(Object.keys(body.context).length === 0, "internal result context should not escape through history APIs");
+});
+
+Deno.test("Bunch Notes use the fixed gated read RPC with server-built filters", async () => {
+  const f = fixture({ moduleAllowed: true });
+  const baseRpc = f.admin.rpc;
+  f.admin.rpc = (name: string, args: Record<string, unknown> = {}) => {
+    if (name === "aura_query_bunch_v1") {
+      f.rpcCalls.push({ name, args });
+      f.rpcNames.push(name);
+      return chainForTest({ ok: true, complete: true, total: 1, rows: [{ recordId: "note-1", status: "open", title: "Spring roses" }], hasMore: false, nextCursor: null });
+    }
+    return baseRpc(name, args);
+  };
+  const response = await handleAuraQueryRequest(f.request({ mode: "command", text: "Show Bunch Notes jobs", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 200, `Bunch Notes read should succeed: ${JSON.stringify(body)}`);
+  const call = f.rpcCalls.find((entry) => entry.name === "aura_query_bunch_v1");
+  assert(call, "special reader must invoke the whitelisted SQL RPC");
+  if (!call) throw new Error("missing Bunch Notes RPC call");
+  assert((call.args.p_filters as Record<string, unknown>).status == null, "unrequested filters must not be inferred");
+  assert(body.actions.some((action: any) => action.type === "records"), "Bunch Notes rows should use the shared records action");
 });
 
 Deno.test("compatibility handler shares the deterministic primary handler", () => {
@@ -172,6 +219,28 @@ Deno.test("incomplete inventory response never invents a count", async () => {
   assert(response.status === 200, "inventory query should be answered");
   assert(/count is incomplete/i.test(body.reply), "incomplete totals must be labeled as incomplete");
   assert(!/Verified\s+\d/i.test(body.reply), "the handler must not present an unproven total");
+});
+
+Deno.test("empty fuzzy candidate sets use the complete no-match answer with verified season and zone scope", async () => {
+  const f = fixture({ moduleAllowed: true, inventoryResults: [{ ok: true, complete: true, total: 0, rows: [], hasMore: false,
+    exactMatch: false, candidateChoices: [], currentSeason: "S1", salesYear: 27 }] });
+  const response = await handleAuraQueryRequest(f.request({ mode: "command", text: "How many roses are available in perennial area?", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+  const body = await response.json();
+  assert(response.status === 200, "complete empty inventory query should succeed");
+  assert(/No matching inventory was found/i.test(body.reply), "empty fuzzy candidates should not be presented as zero choices");
+  assert(/27S1/i.test(body.reply) && /perennial area/i.test(body.reply), "reply should state the verified season and zone");
+});
+
+Deno.test("command responses redact internal parser choices, including invalid choice replies", async () => {
+  const f = fixture({ moduleAllowed: true, inventoryResults: [{ ok: true, complete: true, total: null, rows: [], hasMore: false, exactMatch: false,
+    candidateChoices: [{ selectionId: "rose-1", itemcode: "123", commonName: "Rose" }] }] });
+  const first = await handleAuraQueryRequest(f.request({ mode: "command", text: "Show roses", turnId: TURN, source: "typed" }), { adminClient: f.admin, userClient: f.user });
+  const firstBody = await first.json();
+  assert(Object.keys(firstBody.context).length === 0, "first command must not expose persisted entity choices");
+  const second = await handleAuraQueryRequest(f.request({ mode: "command", text: "option 9", turnId: "00000000-0011-4000-8000-000000000004", source: "typed", conversationId: CONVERSATION, expectedRevision: 1 }), { adminClient: f.admin, userClient: f.user });
+  const secondBody = await second.json();
+  assert(second.status === 200, "invalid choice should be safely handled");
+  assert(Object.keys(secondBody.context).length === 0, "invalid choice response must not replay stale result context");
 });
 
 Deno.test("show more reuses the stored cursor and conversation context", async () => {

@@ -125,3 +125,17 @@ test('a transport retry keeps the turn ID so the server can replay a committed a
     assert.match(f.panel.textContent, /Verified result/);
   } finally { f.close(); }
 });
+
+test('a conversation whose sources are revoked can still be explicitly deleted', async () => {
+  const f = fixture(async body => {
+    if (body.mode === 'list') return { conversations: [{ id: 'revoked', title: 'Saved work' }] };
+    if (body.mode === 'read') throw new Error('Access no longer available');
+    return {};
+  });
+  try {
+    f.click('Conversations'); await flush(); f.click('Saved work'); await flush();
+    assert.match(f.panel.textContent, /Access no longer available/);
+    f.click('Delete chat'); await flush(); f.click('Delete permanently'); await flush();
+    assert.equal(f.calls.at(-1).mode, 'delete'); assert.equal(f.calls.at(-1).conversationId, 'revoked');
+  } finally { f.close(); }
+});

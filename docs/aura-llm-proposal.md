@@ -31,7 +31,7 @@ Unsupported or ambiguous wording produces clarification. Commands cannot supply 
 
 - Itemcodes remain strings, including leading zeros. Quantity, container size, lot and bay are distinct fields.
 - Exact identifiers and reviewed aliases precede fuzzy choices. Misspellings require selection; choices are bounded to five.
-- `warehousei` is an assignment-table column in `public`. Effective Eval ownership uses normalized ItemCode and genus. Inventory-row assignments and work membership remain separate.
+- `warehousei` is an assignment-table column in `public`. Eval ownership stays on its normalized ItemCode/genus mapping and recorded work membership. Aura's current-inventory ownership uses `ph_inventory_row_assignments` by exact `ph_master_inventory.unique_id` when the row-assignment policy is active; before activation it uses the legacy Eval assignment view. An active-policy row that is missing or explicitly unassigned never inherits a sibling ItemCode/genus owner.
 - Perennial physical location and policy-derived ownership are separate filters. The existing zone function controls C.06/C.07, D.04–D.09 and D.10 bays 000–021. Effective ownership retains rose exemptions.
 - Explicit Unassigned ownership is separate from missing or conflicting ownership.
 - “How many” defaults to available quantity. On-hand quantity, physical rows and distinct items require explicit wording. Unknown quantities remain unknown, and assignment joins cannot multiply totals.
