@@ -296,6 +296,47 @@ test("missing local capability API selects browser mode without attempting pack 
   } finally { await browser.restore(); }
 });
 
+test("WebDriver mode skips Chromium's crashing native local-capability probe but still probes test doubles", async () => {
+  const browser = fakeRecognitionEnvironment();
+  let probeCalls = 0;
+  Object.defineProperty(navigator, "webdriver", { configurable: true, value: true });
+  class TestRecognition extends browser.dom.window.SpeechRecognition {
+    static async available(options) {
+      probeCalls += 1;
+      return super.available(options);
+    }
+  }
+  Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: TestRecognition });
+  try {
+    const session = createAuraVoiceSession();
+    assert.equal(await session.prepare(), true);
+    assert.equal(probeCalls, 1);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
+test("WebDriver native-probe fallback starts hands-free browser recognition synchronously", async () => {
+  const browser = fakeRecognitionEnvironment();
+  let nativeProbeCalls = 0;
+  const nativeProbe = new Proxy(Math.max, { apply() { nativeProbeCalls += 1; return "available"; } });
+  Object.defineProperty(navigator, "webdriver", { configurable: true, value: true });
+  class NativeLikeRecognition extends browser.dom.window.SpeechRecognition {
+    static available = nativeProbe;
+  }
+  Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: NativeLikeRecognition });
+  try {
+    const session = createAuraVoiceSession();
+    assert.equal(await session.prepare(), false);
+    assert.equal(nativeProbeCalls, 0);
+    const starting = session.startHandsFree();
+    assert.equal(browser.engines.length, 1, "the native gesture path must start without awaiting the capability probe");
+    assert.equal(browser.engines[0].processLocally, false);
+    assert.equal(browser.engines[0].started, true);
+    assert.equal(await starting, true);
+    session.destroy();
+  } finally { await browser.restore(); }
+});
+
 test("prefixed browser recognition constructor remains supported", async () => {
   const browser = fakeRecognitionEnvironment();
   const prefixed = browser.dom.window.SpeechRecognition;

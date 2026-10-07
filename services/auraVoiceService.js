@@ -134,6 +134,14 @@ export function createAuraVoiceSession({
 
   async function localCapability(Constructor) {
     if (!Constructor || typeof Constructor.available !== "function") return false;
+    // Headless Chromium exposes this experimental native method, but calling it
+    // crashes the renderer. Test doubles remain probeable so voice behavior can
+    // still be covered in browser automation.
+    if (navigator?.webdriver === true) {
+      try {
+        if (/\[native code\]/.test(Function.prototype.toString.call(Constructor.available))) return false;
+      } catch { return false; }
+    }
     let timeoutId = null;
     try {
       const available = Promise.resolve().then(() => Constructor.available({
