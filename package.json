@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.10.06.003",
+  "version": "2026.10.06.004",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -16,7 +16,7 @@
     "build:live:vendor": "node scripts/vendor-live-assets.mjs && esbuild scripts/live-supabase-entry.js --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=assets/vendor/supabase-browser-2.112.3.min.js",
     "build:live:schedule": "node scripts/build-production-schedule.mjs",
     "build:live:command-center": "node scripts/build-alpha-command-center.mjs",
-    "build:live:assets": "npm run build:live:css && npm run build:live:vendor && npm run build:live:schedule && npm run build:live:command-center && npm run build:live:bunch-note",
+    "build:live:assets": "npm run build:live:css && npm run build:live:vendor && npm run build:live:schedule && npm run build:live:command-center && npm run build:live:bunch-note && npm run build:live:assigned-items",
     "build:live:shell": "node scripts/build-live-shell.mjs",
     "build:live": "npm run build:live:assets && npm run build:live:shell",
     "build:v2": "tsc --noEmit -p tsconfig.json && vite build --config vite.v2.config.ts",
@@ -47,7 +47,8 @@
     "preview:isolated": "node scripts/isolated-preview.mjs",
     "ops:diagnose": "node scripts/recovery-diagnostics.mjs",
     "ops:record": "node scripts/repair-ledger.mjs",
-    "build:live:bunch-note": "node scripts/build-bunch-note.mjs"
+    "build:live:bunch-note": "node scripts/build-bunch-note.mjs",
+    "build:live:assigned-items": "node scripts/build-assigned-items.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "5.8.0",

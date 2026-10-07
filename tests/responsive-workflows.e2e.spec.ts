@@ -705,7 +705,8 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
       const assignedToStayedLocked = getManagerEvalReportRowAssignedTo(getManagerEvalReport2VisibleItemGroups()[0].representativeRow);
       const host = document.createElement('div');
       host.id = 'eval2-email-test-host';
-      host.style.width = '390px';
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
       host.innerHTML = renderManagerEvalReports2Panel();
       document.body.appendChild(host);
       const recordsHost = host.querySelector('#manager-eval-report-2-records');
@@ -1201,18 +1202,20 @@ test('Eval Reports #2 manager search refreshes while the search field remains ac
   expect(result.regionRefreshCalls).toBeGreaterThan(0);
 });
 
-test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
+test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
-  const phone = await page.evaluate(() => window.eval(`(() => {
+  const phone = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
-    const originalSave = setSingleEvalItemcodeAssignment;
+    const originalAssign = assignEvalItemcodes;
     let saved = null;
     try {
       canManageEvalItemcodeAssignments = () => true;
-      setSingleEvalItemcodeAssignment = (itemcode, genusname, assignedto) => {
-        saved = { itemcode, genusname, assignedto };
+      canViewAssignedItemsExport = () => true;
+      isManagerAssignedSnapshotCurrent = () => true;
+      assignEvalItemcodes = (itemcodes, assignedto) => {
+        saved = { itemcodes, assignedto };
         return false;
       };
       const rows = [
@@ -1223,9 +1226,12 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       window.__assignedItemsResponsiveRows = rows;
       const host = document.createElement('div');
       host.id = 'assigned-items-phone-test-host';
-      host.style.width = '390px';
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(rows));
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
       document.body.appendChild(host);
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), getManagerAssignedItemsDisplayRows(rows), rows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const mobileList = host.querySelector('[data-manager-assigned-mobile-list]');
       const controls = Array.from(mobileList.querySelectorAll('select,input')).map((element) => {
         const box = element.getBoundingClientRect();
@@ -1235,6 +1241,8 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       firstSelect.dispatchEvent(new Event('change', { bubbles: true }));
       return {
         cardCount: mobileList.querySelectorAll('[data-manager-assigned-item-card]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+        defaultOwnerCount: mobileList.querySelectorAll('select[aria-label^=\"Itemcode Default Owner \"]').length,
         mobileDisplay: getComputedStyle(mobileList).display,
         desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
         hasVisibleTable: host.querySelectorAll('table').length > 0,
@@ -1247,11 +1255,13 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       };
     } finally {
       canManageEvalItemcodeAssignments = originalCanManage;
-      setSingleEvalItemcodeAssignment = originalSave;
+      assignEvalItemcodes = originalAssign;
     }
   })()`));
 
   expect(phone.cardCount).toBe(3);
+  expect(phone.logicalCount).toBe('3');
+  expect(phone.defaultOwnerCount).toBe(3);
   expect(phone.mobileDisplay).not.toBe('none');
   expect(phone.desktopPresent).toBe(false);
   expect(phone.hasVisibleTable).toBe(false);
@@ -1260,12 +1270,15 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(phone.hostFits).toBe(true);
   expect(phone.checkedBulkCount).toBe(0);
   expect(phone.groupSequence).toEqual(['unassigned', 'assigned']);
-  expect(phone.saved).toEqual({ itemcode: '000724.070.1', genusname: '', assignedto: '' });
+  expect(phone.saved).toEqual({ itemcodes: ['000724.070.1'], assignedto: '' });
+  await page.screenshot({ path: '.gnc-local/assigned-virtual-mobile.png' });
 
   await page.setViewportSize({ width: 1024, height: 844 });
-  const desktop = await page.evaluate(() => window.eval(`(() => {
+  const desktop = await page.evaluate(() => window.eval(`(async () => {
     const host = document.getElementById('assigned-items-phone-test-host');
-    host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(window.__assignedItemsResponsiveRows || []));
+    host.innerHTML = renderManagerAssignedItemsPreviewTable();
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), getManagerAssignedItemsDisplayRows(window.__assignedItemsResponsiveRows || []), window.__assignedItemsResponsiveRows?.length || 0);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const desktopTable = host?.querySelector('[data-manager-assigned-desktop-table]');
     return {
       mobilePresent: !!host?.querySelector('[data-manager-assigned-mobile-list]'),
@@ -1278,17 +1291,20 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(desktop.desktopDisplay).not.toBe('none');
   expect(desktop.tableCount).toBe(1);
   expect(desktop.rowCount).toBe(3);
+  await page.screenshot({ path: '.gnc-local/assigned-virtual-desktop.png' });
 });
 
-test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
+test('Assigned Items virtualizes the full list while preserving complete search results', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
-  const desktop = await page.evaluate(() => window.eval(`(() => {
+  const desktop = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
     try {
+      canViewAssignedItemsExport = () => true;
       canManageEvalItemcodeAssignments = () => false;
+      isManagerAssignedSnapshotCurrent = () => true;
       const rows = Array.from({ length: 125 }, (_, index) => ({
         UNIQUE_ID: 'full-' + index,
         ITEMCODE: 'SKU-' + String(index).padStart(3, '0'),
@@ -1303,10 +1319,16 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
       window.__assignedItemsFullRows = getManagerAssignedItemsDisplayRows(rows);
       const host = document.createElement('div');
       host.id = 'assigned-items-full-list-test-host';
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, rows.length);
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
       document.body.appendChild(host);
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), window.__assignedItemsFullRows, rows.length);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       return {
         rowCount: host.querySelectorAll('[data-manager-assigned-item-row]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+        disabledOwnerCount: host.querySelectorAll('[data-manager-assigned-item-row] select[aria-label^="Itemcode Default Owner "]:disabled').length,
         mobilePresent: !!host.querySelector('[data-manager-assigned-mobile-list]'),
         status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || '',
         oldCapMessagePresent: /first 100/i.test(host.textContent || '')
@@ -1316,30 +1338,42 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
     }
   })()`));
 
-  expect(desktop.rowCount).toBe(125);
+  expect(desktop.rowCount).toBeGreaterThan(0);
+  expect(desktop.rowCount).toBeLessThanOrEqual(35);
+  expect(desktop.logicalCount).toBe('125');
+  expect(desktop.disabledOwnerCount).toBe(desktop.rowCount);
   expect(desktop.mobilePresent).toBe(false);
   expect(desktop.status).toContain('Showing all 125 matching rows');
   expect(desktop.oldCapMessagePresent).toBe(false);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const phoneSearch = await page.evaluate(() => window.eval(`(() => {
+  const phoneSearch = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
     const searchInput = document.getElementById('managers-search');
     const originalSearch = searchInput ? searchInput.value : '';
     try {
+      canViewAssignedItemsExport = () => true;
       canManageEvalItemcodeAssignments = () => false;
+      isManagerAssignedSnapshotCurrent = () => true;
       const host = document.getElementById('assigned-items-full-list-test-host');
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, window.__assignedItemsFullRows.length);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), window.__assignedItemsFullRows, window.__assignedItemsFullRows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const fullCardCount = host.querySelectorAll('[data-manager-assigned-item-card]').length;
+      const fullLogicalCount = host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count');
       if (!searchInput) throw new Error('Managers search input is unavailable');
       searchInput.value = 'SKU-124';
       handleManagersSearch();
       const filteredRows = getFilteredManagerAssignedItemsExportRows(window.__assignedItemsFullRows);
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(filteredRows, window.__assignedItemsFullRows.length);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), filteredRows, window.__assignedItemsFullRows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       return {
         fullCardCount,
+        fullLogicalCount,
         filteredCount: filteredRows.length,
         filteredCardCount: host.querySelectorAll('[data-manager-assigned-item-card]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
         desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
         status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || ''
       };
@@ -1352,11 +1386,78 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
     }
   })()`));
 
-  expect(phoneSearch.fullCardCount).toBe(125);
+  expect(phoneSearch.fullCardCount).toBeGreaterThan(0);
+  expect(phoneSearch.fullLogicalCount).toBe('125');
+  expect(phoneSearch.fullCardCount).toBeLessThanOrEqual(35);
   expect(phoneSearch.filteredCount).toBe(1);
   expect(phoneSearch.filteredCardCount).toBe(1);
+  expect(phoneSearch.logicalCount).toBe('1');
   expect(phoneSearch.desktopPresent).toBe(false);
   expect(phoneSearch.status).toContain('Search checks the complete 125-row list');
+});
+
+test('Assigned Items renders 10k and 25k records with bounded DOM and scrolls to the final row', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/?e2e=assigned-items-virtualization', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).mountManagerAssignedItemsView === 'function');
+  const metrics = await page.evaluate(() => window.eval(`(async () => {
+    currentUser = 'dylan_collyge'; currentUserDisplay = 'Dylan Collyge'; currentRole = 'Manager';
+    canViewAssignedItemsExport = () => true;
+    canManageEvalItemcodeAssignments = () => false;
+    isManagerAssignedSnapshotCurrent = () => true;
+    const host = document.createElement('div'); host.id = 'assigned-items-virtual-benchmark-host';
+    host.dataset.managerAssignedScroll = 'true';
+    host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+    document.body.appendChild(host);
+    const makeRows = count => Array.from({ length: count }, (_, index) => ({
+      UNIQUE_ID: 'stress-' + index,
+      ITEMCODE: 'STRESS-' + String(index).padStart(5, '0'),
+      COMMONNAME: 'Virtual Plant ' + index,
+      GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', WAREHOUSEI: 'PH',
+      SOURCE: 'virtualization-test', ASSIGNEDTO: 'dylan_collyge', DEFAULT_ASSIGNEDTO: 'dylan_collyge'
+    }));
+    const originalDisplayRows = getManagerAssignedItemsDisplayRows;
+    window.__assignedVirtualTransforms = 0;
+    getManagerAssignedItemsDisplayRows = (...args) => { window.__assignedVirtualTransforms += 1; return originalDisplayRows(...args); };
+    const start10k = performance.now();
+    const rows10k = getManagerAssignedItemsDisplayRows(makeRows(10000));
+    host.innerHTML = renderManagerAssignedItemsPreviewTable();
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), rows10k, 10000);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const elapsed10kMs = performance.now() - start10k;
+    const dom10k = host.querySelectorAll('[data-manager-assigned-item-row]').length;
+    const domNodeCount10k = host.querySelectorAll('*').length;
+    const start25k = performance.now();
+    const rows25k = getManagerAssignedItemsDisplayRows(makeRows(25000));
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), rows25k, 25000);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const elapsed25kMs = performance.now() - start25k;
+    const dom25k = host.querySelectorAll('[data-manager-assigned-item-row]').length;
+    const domNodeCount25k = host.querySelectorAll('*').length;
+    const beforeScrollTransforms = window.__assignedVirtualTransforms;
+    const scroll = host;
+    scroll.scrollTop = scroll.scrollHeight;
+    scroll.dispatchEvent(new Event('scroll'));
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return {
+      elapsed10kMs, dom10k, domNodeCount10k, elapsed25kMs, dom25k, domNodeCount25k,
+      logical25k: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+      visibleAfterScroll: host.querySelectorAll('[data-manager-assigned-item-row]').length,
+      finalRowAfterScroll: !!host.querySelector('[data-inventory-id="stress-24999"]'),
+      transformsDuringScroll: window.__assignedVirtualTransforms - beforeScrollTransforms
+    };
+  })()`));
+  await testInfo.attach('assigned-items-virtualization-metrics.json', { body: Buffer.from(JSON.stringify(metrics, null, 2)), contentType: 'application/json' });
+  expect(metrics.dom10k).toBeGreaterThan(0);
+  expect(metrics.dom10k).toBeLessThanOrEqual(35);
+  expect(metrics.dom25k).toBeGreaterThan(0);
+  expect(metrics.dom25k).toBeLessThanOrEqual(35);
+  expect(metrics.logical25k).toBe('25000');
+  expect(metrics.visibleAfterScroll).toBeGreaterThan(0);
+  expect(metrics.finalRowAfterScroll).toBe(true);
+  expect(metrics.visibleAfterScroll).toBeLessThanOrEqual(35);
+  expect(metrics.transformsDuringScroll).toBe(0);
+  await expect(page.locator('#assigned-items-virtual-benchmark-host [data-inventory-id="stress-24999"]')).toContainText('STRESS-24999');
 });
 
 test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {

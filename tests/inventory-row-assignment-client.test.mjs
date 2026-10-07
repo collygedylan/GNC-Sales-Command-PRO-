@@ -99,6 +99,59 @@ test('an idempotent acknowledgment cannot replace a newer realtime row revision'
   assert.equal(ctx.getMasterAssignedToValue({UNIQUE_ID:'outside'}),'dylan_collyge');
 });
 
+test('duplicate row controls and overlapping bulk submissions share one pending itemcode command', async () => {
+  const ctx = harness();
+  let release, calls = 0;
+  ctx.supabaseRpc = async () => { calls++; await new Promise(resolve => { release = resolve; }); throw new Error('Offline'); };
+  const first = ctx.assignEvalItemcodes(['SAME'], 'megan_kelly');
+  assert.equal(ctx.managerAssignedColumnState.defaultPending.has('SAME'), true);
+  await ctx.assignEvalItemcodes(['same'], 'dylan_collyge');
+  await ctx.assignEvalItemcodes(['SAME', 'NONE'], 'dylan_collyge');
+  assert.equal(calls, 1);
+  assert.equal(ctx.managerAssignedColumnState.defaultDrafts.SAME.assignedto, 'megan_kelly');
+  release(); await first;
+  assert.equal(ctx.managerAssignedColumnState.defaultPending.size, 0);
+  assert.equal(ctx.managerAssignedColumnState.defaultDrafts.SAME.error, 'Offline');
+});
+
+test('independent pending commands preserve each other and changed retries receive distinct IDs', async () => {
+  const ctx = harness();
+  const calls = [], releases = [];
+  ctx.crypto.randomUUID = () => `request-${calls.length}`;
+  ctx.supabaseRpc = async (name, args) => {
+    calls.push(JSON.parse(JSON.stringify(args)));
+    await new Promise(resolve => releases.push(resolve));
+    throw new Error('Offline');
+  };
+  const a = ctx.assignEvalItemcodes(['SAME'], 'megan_kelly');
+  const b = ctx.assignEvalItemcodes(['NONE'], 'dylan_collyge');
+  assert.notEqual(calls[0].p_request_id, calls[1].p_request_id);
+  releases[0](); await a;
+  assert.equal(ctx.managerAssignedColumnState.defaultPending.has('NONE'), true);
+  releases[1](); await b;
+  const retry = ctx.assignEvalItemcodes(['SAME'], 'megan_kelly');
+  releases[2](); await retry;
+  assert.equal(calls[0].p_request_id, calls[2].p_request_id);
+  const changed = ctx.assignEvalItemcodes(['SAME'], 'dylan_collyge');
+  releases[3](); await changed;
+  assert.notEqual(calls[0].p_request_id, calls[3].p_request_id);
+  assert.equal(ctx.managerAssignedColumnState.defaultDrafts.NONE.assignedto, 'dylan_collyge');
+});
+
+test('a save acknowledgment after an account change cannot mutate the new session', async () => {
+  const ctx = harness();
+  let release;
+  ctx.supabaseRpc = async () => {
+    await new Promise(resolve => { release = resolve; });
+    return { contractVersion: 'inventory-row-assignments-v1', assignments: [{master_unique_id:'outside', itemcode:'SAME', assignedto:'megan_kelly', revision:100}] };
+  };
+  const pending = ctx.assignEvalItemcodes(['SAME'], 'megan_kelly');
+  ctx.currentUser = 'megan_kelly';
+  release(); await pending;
+  assert.equal(ctx.getMasterAssignedToValue({UNIQUE_ID:'outside'}), 'dylan_collyge');
+  assert.equal(ctx.getManagerAssignedColumnState().defaultDrafts, undefined);
+});
+
 test('Crop Roll reports keep exact row ownership without legacy location or itemcode overrides', () => {
   const ctx = vm.createContext({ WAREHOUSE_ASSIGNED_ITEMS_TABLE:'ph_inventory_row_assignments',
     getEvalTaskAssignedUsersFromItem: row => row.owners,

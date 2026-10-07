@@ -224,7 +224,7 @@ test('cooperative fallback preserves exact report parity and drops obsolete work
 
 test('perennial row ownership and itemcode default controls survive mobile themes', async ({ page, baseURL }) => {
   await isolatedApp(page, baseURL!);
-  await page.evaluate(() => (window as any).eval(`(() => {
+  await page.evaluate(() => (window as any).eval(`(async () => {
     fullInventory = [];
     warehouseAssignedItemsInventory = [
       { master_unique_id:'inside', itemcode:'0001', genusname:'Acer', assignedto:'zoe_green', default_assignedto:'dylan_collyge', default_revision:1, zone_override_active:true, assignment_reason:'zone_zoe', commonname:'Perennial item', locationcode:'D.10.021' },
@@ -233,29 +233,51 @@ test('perennial row ownership and itemcode default controls survive mobile theme
     ].map(normalizeWarehouseAssignedItemRow);
     getDatasetState('warehouseAssignedItems').fullLoaded = true;
     const masterState = getDatasetState('master'); masterState.fullLoaded = true; masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
+    currentUser = 'dylan_collyge'; currentUserDisplay = 'Dylan Collyge'; currentRole = 'Manager';
+    canViewAssignedItemsExport = () => true;
     canManageEvalItemcodeAssignments = () => true;
     canManageItemLowStockTargets = () => false;
-    activeHomeTab = MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW;
+    activeHomeTab = 'assigned-items-export';
     clearWarehouseAssignedItemCaches();
   })()`));
   for (const theme of ['light', 'dark', 'outdoor']) {
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.evaluate(theme => (window as any).eval(`(() => {
+      await page.evaluate(theme => (window as any).eval(`(async () => {
         document.documentElement.classList.toggle('dark', ${JSON.stringify(theme)} === 'dark');
         document.documentElement.classList.toggle('outdoor-mode', ${JSON.stringify(theme)} === 'outdoor');
         document.body.dataset.opsTheme = ${JSON.stringify(theme)} === 'dark' ? 'dark' : 'light';
         document.body.dataset.opsThemeMode = document.body.dataset.opsTheme;
         document.body.classList.toggle('dark-mode', ${JSON.stringify(theme)} === 'dark');
         document.body.classList.toggle('outdoor-mode', ${JSON.stringify(theme)} === 'outdoor');
-        document.getElementById('managers-content').innerHTML = renderManagerAssignedItemsPreviewTable(warehouseAssignedItemsInventory);
+        const managersHost = document.getElementById('managers-content');
+      managersHost.dataset.managerAssignedScroll = 'true';
+      managersHost.innerHTML = renderManagerAssignedItemsPreviewTable();
+      await mountManagerAssignedItemsView(managersHost.querySelector('#manager-assigned-items-root'), warehouseAssignedItemsInventory, warehouseAssignedItemsInventory.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       })()`), theme);
-      const defaultOwner = page.locator('#managers-content select[data-itemcode="0001"]');
-      await expect(defaultOwner).toHaveCount(1);
-      await expect(defaultOwner).toBeEnabled();
-      await expect(defaultOwner).toHaveValue('dylan_collyge');
-      await expect(page.locator('[data-assignment-reason="zone_zoe"]')).toHaveText('Perennial Area: Zoe');
-      await expect(page.locator('[data-assignment-reason="zone_mitch_rose"]')).toHaveText('Perennial roses: Mitch');
+      const defaultOwner = page.getByRole('combobox', { name: /Itemcode Default Owner 0001 row/ });
+      expect(await defaultOwner.count()).toBeGreaterThan(0);
+      const observed = new Map<string, { value: string; disabled: boolean; text: string }>();
+      const recordVisibleRows = async () => {
+        const records = await page.locator('#managers-content [data-inventory-id]').evaluateAll(rows => rows.map(row => ({
+          id: (row as HTMLElement).dataset.inventoryId || '',
+          control: row.querySelector('select[aria-label^="Itemcode Default Owner 0001 row"]') as HTMLSelectElement | null,
+          text: row.querySelector('.ai-owner-control')?.textContent || ''
+        })).filter(entry => entry.control).map(entry => ({ id:entry.id, value:entry.control!.value, disabled:entry.control!.disabled, text:entry.text })));
+        for (const entry of records) observed.set(entry.id, entry);
+      };
+      const scrollHost = page.locator('#managers-content');
+      const maxScroll = await scrollHost.evaluate(host => host.scrollHeight - host.clientHeight);
+      for (const fraction of [0, 0.5, 1]) {
+        await scrollHost.evaluate((host, ratio) => { host.scrollTop = Math.max(0, (host.scrollHeight - host.clientHeight) * ratio); }, fraction);
+        await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+        await recordVisibleRows();
+      }
+      expect([...observed.keys()].sort()).toEqual(['inside','rose']);
+      expect([...observed.values()].every(entry => !entry.disabled && entry.value === 'dylan_collyge')).toBe(true);
+      expect(observed.get('inside')?.text).toContain('Location Override: Zoe');
+      expect(observed.get('rose')?.text).toContain('Location Override: Mitch');
     }
   }
   const result = await page.evaluate(() => (window as any).eval(`(() => ({
