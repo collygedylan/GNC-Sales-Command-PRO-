@@ -7,7 +7,7 @@ const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'ut
 
 test('AURA quota migration is atomic, private, and checked before release', () => {
   const sql = migrationBody(read(`supabase/migrations/${auraLlmFreeTierMigrationName}`));
-  assert.equal(releaseDatabaseMigrations.at(-1), auraLlmFreeTierMigrationName);
+  assert.ok(releaseDatabaseMigrations.includes(auraLlmFreeTierMigrationName));
   assert.match(sql, /pg_advisory_xact_lock\(110011011\)/);
   assert.match(sql, /primary key \(request_id, round\)/);
   assert.match(sql, /alter table aura_private\.llm_provider_calls enable row level security/);

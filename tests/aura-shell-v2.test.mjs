@@ -139,7 +139,7 @@ test('AURA reads enter the shared read boundary and retain error status metadata
   assert.match(source, /withProductionLiveSyncSignal/);
   assert.match(source, /runDedupeSupabaseRead/);
   assert.match(source, /maxAttempts: 1/);
-  assert.match(source, /AURA_LLM_ROUTER_URL/);
+  assert.match(source, /AURA_QUERY_URL/);
   const api = extract('callAuraAppApi', 'requestAuraInventory');
   assert.match(api, /error\.status = Number\(payload\?\.status/);
   assert.match(api, /error\.code = String\(payload\?\.code/);
@@ -157,7 +157,7 @@ test('AURA router calls use the verified native session, bounded deadline, and s
     nativeAuthSessionActive: true,
     nativeAuthProfile: { id: 'profile', username: 'dylan_collyge' },
     currentUser: 'dylan_collyge', auraVerifiedProfileId: 'profile',
-    auraPendingRequests: new Set(), AURA_LLM_ROUTER_URL: 'https://api.example.test/functions/v1/aura-llm-router',
+    auraPendingRequests: new Set(), AURA_QUERY_URL: 'https://api.example.test/functions/v1/aura-llm-router',
     SUPABASE_KEY: 'project-anon-key',
     getSupabaseReadIdentityScope: () => 'dylan:session',
     isAuraWidgetAuthorized: () => true,

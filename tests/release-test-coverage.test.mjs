@@ -93,6 +93,9 @@ test('release unit union preserves every existing script and explicit gate exact
     'tests/aura-lingo-v2.test.mjs',
     'tests/aura-shell-v2.test.mjs',
     'tests/aura-llm-release.test.mjs',
+    'tests/aura-query-panel.test.mjs',
+    'tests/aura-query-release.test.mjs',
+    'tests/aura-capabilities.test.mjs',
     'tests/alpha-command-center.test.mjs',
     'tests/floor-startup-hotfix.test.mjs',
     'tests/dataset-read-hotfix.test.mjs',
@@ -189,7 +192,7 @@ test('functional, timing and database lanes cover the original browser files wit
   const functional = load('playwright.release-functional.config.ts');
   const timing = load('playwright.release-timing.config.ts');
   const database = load('playwright.database.config.ts');
-  assert.deepEqual(selected(base), [...originalBrowserFiles, 'tests/module-loading-perennial.e2e.spec.ts', 'tests/mobile-overhaul-007.e2e.spec.ts', 'tests/theme-008.e2e.spec.ts', 'tests/request-archive-mobile.e2e.spec.ts'].sort());
+  assert.deepEqual(selected(base), [...originalBrowserFiles, 'tests/module-loading-perennial.e2e.spec.ts', 'tests/mobile-overhaul-007.e2e.spec.ts', 'tests/theme-008.e2e.spec.ts', 'tests/request-archive-mobile.e2e.spec.ts', 'tests/aura-query.e2e.spec.ts'].sort());
   const functionalFiles = selected(functional);
   const timingFiles = selected(timing);
   assert.deepEqual(timingFiles, ['tests/eval-report2-async-index.e2e.spec.ts', 'tests/login-photo-repair.e2e.spec.ts', 'tests/module-loading-perennial.e2e.spec.ts', 'tests/scroll-performance.e2e.spec.ts']);
@@ -198,7 +201,7 @@ test('functional, timing and database lanes cover the original browser files wit
   const union = [...functionalFiles, ...timingFiles, ...databaseOriginalFiles];
   assert.equal(union.length, new Set(union).size, 'Every original file belongs to exactly one lane');
   assert.deepEqual([...union].sort(), selected(base));
-  assert.equal(functionalFiles.length, 10);
+  assert.equal(functionalFiles.length, 11);
   assert.equal(String(functional.testMatch), String(base.testMatch));
 });
 
