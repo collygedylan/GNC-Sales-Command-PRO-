@@ -7,7 +7,10 @@ import pg from 'pg';
 // Shared with the private local query-plan reproduction. All values are synthetic.
 export async function seedSeasonPriorityScaleRows(db, prefix) {
   await db.query("update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory'");
-  await db.query(`insert into public.ph_master_inventory
+  // Bulk fixture setup includes index and trigger work outside the measured RPC.
+  // Give these inserts a bounded setup budget; retain the client's 10s default
+  // and the protected list's server-side and measured 8s limits below.
+  await db.query({ text: `insert into public.ph_master_inventory
     (unique_id,itemcode,genusname,commonname,contsize,locationcode,lotcode,source,season,saleyear,
      ptronhand,ptravailable,priority,app_tab_assignment,assignedto,blockalpha)
     select $1||'-row-'||i,
@@ -17,10 +20,10 @@ export async function seedSeasonPriorityScaleRows(db, prefix) {
       case when i%8=7 then '100' else '20' end,
       case when i=400 then '5' when i%8=7 then (2+((i-1)/8)%3)::text when i<=400 then '1' else '' end,
       case when i<=400 then 'season' else 'other' end,'stale_scale_assignment','A'
-    from generate_series(1,9364) i`, [prefix]);
-  await db.query(`insert into public.ph_cav_import(unique_id,itemcode,commonname,contsize,season,holdstopreason)
-    select $1||'-cav-'||i,$1||'-item-'||i,'Scale plant','#3','F1','' from generate_series(0,49) i`,[prefix]);
-  await db.query(`insert into public.ph_inventory_row_assignments
+    from generate_series(1,9364) i`, values: [prefix], query_timeout: 30000 });
+  await db.query({ text: `insert into public.ph_cav_import(unique_id,itemcode,commonname,contsize,season,holdstopreason)
+    select $1||'-cav-'||i,$1||'-item-'||i,'Scale plant','#3','F1','' from generate_series(0,49) i`, values: [prefix], query_timeout: 30000 });
+  await db.query({ text: `insert into public.ph_inventory_row_assignments
     (master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,
      lotcode,source,assignedto,assignment_reason,present_in_drive)
     select m.unique_id,m.unique_id,m.itemcode,upper(m.itemcode),m.genusname,m.commonname,m.contsize,
@@ -33,7 +36,7 @@ export async function seedSeasonPriorityScaleRows(db, prefix) {
     where m.unique_id like $1||'-row-%' and parsed.i<=4055
     on conflict (master_unique_id) do update set
       assignedto=excluded.assignedto,assignment_reason=excluded.assignment_reason,
-      present_in_drive=true,revision=ph_inventory_row_assignments.revision+1,updated_at=now()`,[prefix]);
+      present_in_drive=true,revision=ph_inventory_row_assignments.revision+1,updated_at=now()`, values: [prefix], query_timeout: 30000 });
 }
 
 export function seasonPriorityListQuery(definition) {
