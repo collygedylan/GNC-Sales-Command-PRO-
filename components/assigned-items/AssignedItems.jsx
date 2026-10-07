@@ -92,7 +92,7 @@ function Info({ label, value }) { return <div className="min-w-0 rounded-xl bord
 function AssignedItemsView(props) {
   const hostRef = useRef(null), propsRef = useRef(props), [layout, setLayout] = useState('desktop'), [scrollMargin, setScrollMargin] = useState(0), [expanded, setExpanded] = useState(() => new Set(props.uiState?.expanded || [])), [pinnedRowId, setPinnedRowId] = useState('');
   const anchorRef = useRef(props.uiState?.anchor || null), priorEntriesRef = useRef(null);
-  const entriesRef = useRef([]), virtualizerRef = useRef(null), rowIndexByIdRef = useRef(new Map()), anchorFrameRef = useRef(0);
+  const entriesRef = useRef([]), virtualizerRef = useRef(null), rowIndexByIdRef = useRef(new Map()), anchorFrameRef = useRef(0), scrollRevisionRef = useRef(0);
   propsRef.current = props;
   const rows = props.rows || [], columns = props.columns || [], grouped = !!props.grouped;
   const mobile = layout === 'mobile';
@@ -211,6 +211,7 @@ function AssignedItemsView(props) {
     const scroll = propsRef.current.scrollElement || document.getElementById('main-scroll-area');
     if (!scroll) return undefined;
     const capture = () => {
+      scrollRevisionRef.current += 1;
       const currentEntries = entriesRef.current, currentVirtualizer = virtualizerRef.current;
       if (!currentVirtualizer) return;
       const first = currentVirtualizer.getVirtualItems().find(item => currentEntries[item.index]?.type === 'row');
@@ -231,16 +232,11 @@ function AssignedItemsView(props) {
     const anchor = previous ? anchorRef.current : props.uiState?.anchor || anchorRef.current;
     if (!anchor && !previous) return;
     const index = anchor?.id ? rowIndexById.get(anchor.id) ?? -1 : -1;
+    const scheduledScrollTop = scroll.scrollTop || 0;
+    const scheduledScrollRevision = scrollRevisionRef.current;
     const frame = requestAnimationFrame(() => {
       anchorFrameRef.current = 0;
-      if (!scroll.isConnected) return;
-      if (index >= 0) {
-        const start = virtualizerRef.current?.getMeasurements()[index]?.start;
-        if (Number.isFinite(start)) virtualizerRef.current.scrollToOffset(Math.max(0, start - anchor.viewportOffset), { behavior: 'auto' });
-      } else {
-        const maximum = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
-        if (scroll.scrollTop > maximum) scroll.scrollTop = maximum;
-      }
+      restoreAssignedItemsAnchor({ scroll, scheduledScrollTop, scheduledScrollRevision, currentScrollRevision: scrollRevisionRef.current, index, anchor, virtualizer: virtualizerRef.current });
     });
     anchorFrameRef.current = frame;
     return () => { if (anchorFrameRef.current) cancelAnimationFrame(anchorFrameRef.current); anchorFrameRef.current = 0; };
@@ -277,6 +273,22 @@ function AssignedItemsView(props) {
 }
 
 function canManageGroupColumn(props) { return !!props.canManageAssignments; }
+
+export function restoreAssignedItemsAnchor({ scroll, scheduledScrollTop, scheduledScrollRevision, currentScrollRevision, index, anchor, virtualizer }) {
+  if (!scroll?.isConnected) return false;
+  // A newly requested/user scroll always wins over a stale anchor restore.
+  // The position check also covers programmatic scrollTop writes whose native
+  // scroll event has not been delivered before this animation frame.
+  if (currentScrollRevision !== scheduledScrollRevision || Math.abs((scroll.scrollTop || 0) - scheduledScrollTop) > 1) return false;
+  if (index >= 0) {
+    const start = virtualizer?.getMeasurements()[index]?.start;
+    if (Number.isFinite(start)) virtualizer.scrollToOffset(Math.max(0, start - anchor.viewportOffset), { behavior: 'auto' });
+  } else {
+    const maximum = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
+    if (scroll.scrollTop > maximum) scroll.scrollTop = maximum;
+  }
+  return true;
+}
 
 class AssignedItemsErrorBoundary extends React.Component {
   state = { error: null };

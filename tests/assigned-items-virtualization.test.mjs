@@ -23,6 +23,31 @@ test('virtualized source shell never serializes all inventory rows', () => {
   }
 });
 
+test('Assigned Items navigation restoration wins over the outgoing page scroll', () => {
+  const restores = [], assigned = { restoreScroll: true };
+  const ctx = vm.createContext({
+    activeHomeTab: 'assigned', MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned', MANAGER_BLOCK_CLEARING_VIEW: 'block-clearing',
+    managerBlockClearingDraftState: { restore: null }, getManagerAssignedColumnState: () => assigned,
+    document: { getElementById: () => ({ classList: { contains: () => false } }) },
+    ensureViewRenderState: () => ({ initialized: true, dirty: true }), prepareLatestViewRender: () => 1,
+    isLatestViewRenderToken: () => true, getUserActionPaintYieldDelay: () => 0,
+    scheduleTypingAwareUiRender: (_key, callback) => callback(), getCurrentVisibleViewId: () => 'managers',
+    shouldResetIosPhoneMainScrollForView: () => false, getMainAreaScrollTop: () => 398,
+    beginInternalPerfMeasure: () => 0, getAdaptivePerfElapsedMs: () => 0,
+    recordAdaptiveRenderDuration() {}, sampleAdaptiveDomPressure() {},
+    schedulePostRenderMainAreaScrollRestore: (_view, key, top) => restores.push({ key, top }),
+    renderViewContent: () => { if (assigned.restoreScroll) { assigned.restoreScroll = false; restores.push({ key: 'assigned-items-navigation', top: 500 }); } },
+    isTouchConstrainedDevice: () => true, isIOSDevice: () => false, isCoarsePointerDevice: () => true,
+    USER_VISIBLE_FORCE_RENDER_MAX_DEFER_MS: 380, USER_VISIBLE_RENDER_MAX_DEFER_MS: 1000,
+  });
+  vm.runInContext(extract('queueInteractiveViewRender'), ctx);
+  ctx.queueInteractiveViewRender('managers', false, true);
+  assert.deepEqual(restores, [{ key: 'assigned-items-navigation', top: 500 }]);
+  restores.length = 0;
+  ctx.queueInteractiveViewRender('managers', false, true);
+  assert.deepEqual(restores, [{ key: 'interactive:managers', top: 398 }], 'ordinary refreshes still preserve their current scroll');
+});
+
 test('snapshot memoization skips normalization and sorting until authoritative data changes', () => {
   let normalizations = 0, signature = '1';
   const state = { filters:{}, labels:new Map() };
