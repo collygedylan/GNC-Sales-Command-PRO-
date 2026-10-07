@@ -430,6 +430,18 @@ test('Assigned Items low-stock targets preserve focused drafts, enforce editor i
   const fixture = page.locator('#low-stock-assigned-fixture');
   const row = fixture.locator('[data-manager-assigned-item-card], [data-manager-assigned-item-row]').filter({ has: page.locator('[data-low-stock-override="AB-100"]') });
   const targetInput = fixture.locator('[data-low-stock-override="AB-100"]');
+  const assignedRoot = fixture.locator('#manager-assigned-items-root');
+  await expect(assignedRoot).toHaveAttribute('data-logical-row-count', '2');
+  // The virtualized phone list starts below the fixed mobile header, so AB-100
+  // can be outside its initial viewport buffer. Scroll the fixture to the row
+  // before interacting with it, while keeping the complete logical-row check.
+  await fixture.evaluate(async element => {
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      element.scrollTop = element.scrollHeight;
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      if (element.querySelector('[data-low-stock-override="AB-100"]')) break;
+    }
+  });
   await expect(targetInput).toHaveValue('20');
   await expect(targetInput).toHaveAttribute('inputmode', 'numeric');
   await expect(fixture.locator('[data-manager-item-average="AB-100"]').first()).toHaveText('11.8');
