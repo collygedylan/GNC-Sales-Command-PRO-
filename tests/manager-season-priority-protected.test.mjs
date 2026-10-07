@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { assertSingleScopeProducer, seasonPriorityListQuery } from '../scripts/test-manager-season-priority-scale.mjs';
+import { assertSingleScopeProducer, seasonPriorityListQuery, seedSeasonPriorityScaleRows } from '../scripts/test-manager-season-priority-scale.mjs';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -31,12 +31,30 @@ test('scale plan guard rejects missing or repeated scope fingerprint production'
   assert.throws(()=>assertSingleScopeProducer({Plans:[{...producer,'Actual Rows':49}]},50),/Every complete eligible group/);
 });
 
+test('bulk scale fixture inserts have a bounded setup budget without changing query budgets', async () => {
+  const queries=[];
+  await seedSeasonPriorityScaleRows({query:async query=>{queries.push(query);}},'SP-SCALE-test');
+  assert.equal(queries.length,4);
+  assert.equal(typeof queries[0],'string','Readiness update retains the client default');
+  for(const query of queries.slice(1)) {
+    assert.match(query.text,/^insert into public\./);
+    assert.deepEqual(query.values,['SP-SCALE-test']);
+    assert.equal(query.query_timeout,30000,'Only bulk inserts receive the setup budget');
+  }
+  const failure=new Error('fixture setup failed');
+  let calls=0;
+  await assert.rejects(()=>seedSeasonPriorityScaleRows({query:async()=>{if(++calls===2)throw failure;}},'SP-SCALE-failure'),error=>error===failure);
+  assert.equal(calls,2,'A failed insert stops fixture setup without retrying');
+});
+
 test('scale fixture keeps isolated database guards, rollback, timeout, parity and no-delivery assertions', () => {
   const fixture=read('scripts/test-manager-season-priority-scale.mjs');
   assert.match(fixture,/assert\.equal\(process\.env\.CI,'true'/);
   assert.match(fixture,/\['127\.0\.0\.1','localhost','\[::1\]'\]\.includes\(target\.hostname\)/);
   assert.match(fixture,/assert\.equal\(target\.pathname,'\/postgres'/);
   assert.match(fixture,/set local statement_timeout='8s'/);
+  assert.match(fixture,/query_timeout:10000/);
+  assert.match(fixture,/assert\.ok\(coldMs<8000/);
   assert.match(fixture,/finally \{ await db\.query\('rollback'\)/);
   assert.match(fixture,/generate_series\(1,9364\)/);
   assert.match(fixture,/parsed\.i<=4055/);
