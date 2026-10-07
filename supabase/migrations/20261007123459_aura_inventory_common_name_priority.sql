@@ -1,3 +1,6 @@
+begin;
+set local lock_timeout = '5s';
+
 create or replace function public.aura_query_inventory_v1(
   p_actor_id uuid,p_operation text,p_filters jsonb default '{}'::jsonb,p_cursor jsonb default null,p_limit integer default 50
 ) returns jsonb language plpgsql volatile security definer set search_path=pg_catalog,public,aura_private,extensions set statement_timeout='5s' set pg_trgm.word_similarity_threshold='0.3'
@@ -254,3 +257,4 @@ end $$;
 
 revoke all on function public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer) from public,anon,authenticated;
 grant execute on function public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer) to service_role;
+commit;

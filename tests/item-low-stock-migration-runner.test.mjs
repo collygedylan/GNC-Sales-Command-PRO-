@@ -112,8 +112,9 @@ test('Production Schedule migration applies additively after an older consolidat
 });
 
 test('release migration sources satisfy the atomic production runner contract', () => {
-  for (const name of [productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName]) {
-    const source = fs.readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
+  for (const name of releaseDatabaseMigrations) {
+    const directory = [migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName].includes(name) ? 'archive_migrations' : 'migrations';
+    const source = fs.readFileSync(new URL(`../supabase/${directory}/${name}`, import.meta.url), 'utf8');
     const body = migrationBody(source);
     assert.ok(body.trim().length > 0, `${name} contains a migration body`);
     assert.doesNotMatch(body, /^\s*(?:begin|commit)\s*;/i, `${name} has one outer transaction`);
