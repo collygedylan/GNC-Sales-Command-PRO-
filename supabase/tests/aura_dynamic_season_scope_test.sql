@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(21);
+select plan(22);
 
 select has_function('public','aura_manager_season_settings_v1',array['uuid','text','bigint','text','integer'],'Manager season settings RPC exists');
 select ok((select prosecdef and proconfig @> array['search_path=""','statement_timeout=5s'] from pg_proc where oid='public.aura_manager_season_settings_v1(uuid,text,bigint,text,integer)'::regprocedure),'Manager settings RPC is a bounded definer with empty search path');
@@ -12,6 +12,7 @@ select has_function('public','aura_query_seasonal_records_v1',array['uuid','text
 select ok((select prosecdef and proconfig @> array['search_path=""','statement_timeout=8s'] from pg_proc where oid='public.aura_query_seasonal_records_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'Sales read RPC is bounded and pinned');
 select ok(has_function_privilege('service_role','public.aura_query_seasonal_records_v1(uuid,text,jsonb,jsonb,integer)','execute') and not has_function_privilege('authenticated','public.aura_query_seasonal_records_v1(uuid,text,jsonb,jsonb,integer)','execute') and not has_function_privilege('anon','public.aura_query_seasonal_records_v1(uuid,text,jsonb,jsonb,integer)','execute'),'Seasonal source reader is server-only');
 select ok((select prosecdef and proconfig @> array['pg_trgm.word_similarity_threshold=0.3'] and prosrc like '%seasonReference%' and prosrc like '%settingRevision%' from pg_proc where oid='public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'Inventory reader resolves current/next scope and returns setting revision');
+select ok((select position('select m.*' in lower(prosrc))=0 and position('m.unique_id,m.itemcode,m.commonname,m.contsize,m.ptravailable,m.ptronhand,m.genusname,m.botanicalname' in prosrc)>0 from pg_proc where oid='public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure),'Inventory reader explicitly projects physical columns so assignment fields cannot collide');
 
 insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data)
 values('9f8b0000-0000-4000-8000-000000000001','aura-season-fixture@example.invalid','{}','{}')

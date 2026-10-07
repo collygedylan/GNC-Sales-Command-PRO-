@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import yaml from 'js-yaml';
 import { checkAuraAuthorization } from '../scripts/aura-query-production-smoke.mjs';
-import { auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, releaseDatabaseMigrations, migrationContractQuery } from '../scripts/apply-item-low-stock-migration.mjs';
+import { auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, releaseDatabaseMigrations, migrationContractQuery } from '../scripts/apply-item-low-stock-migration.mjs';
 const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 
 test('internal Aura deploys after its migration and before Pages, including the compatibility endpoint', () => {
@@ -14,19 +14,23 @@ test('internal Aura deploys after its migration and before Pages, including the 
   assert.ok(migration >= 0 && engine > migration);
   assert.ok(steps[engine].run.includes('functions deploy aura-llm-router'));
   assert.ok(workflow.jobs['publish-pages'].needs.includes('sync-codegs'));
-  assert.equal(releaseDatabaseMigrations.at(-3), auraInternalQueryMigrationName);
-  assert.equal(releaseDatabaseMigrations.at(-2), auraCommonNamePriorityMigrationName);
-  assert.equal(releaseDatabaseMigrations.at(-1), auraDynamicSeasonScopeMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-4), auraInternalQueryMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-3), auraCommonNamePriorityMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-2), auraDynamicSeasonScopeMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-1), auraInventoryExplicitProjectionMigrationName);
   assert.match(migrationContractQuery(auraCommonNamePriorityMigrationName), /idx_ph_master_inventory_aura_name_trgm/);
   assert.match(migrationContractQuery(auraInternalQueryMigrationName), /aura_query_conversation_v1/);
   assert.match(migrationContractQuery(auraDynamicSeasonScopeMigrationName), /aura_resolve_season_v1/);
   assert.match(migrationContractQuery(auraDynamicSeasonScopeMigrationName), /settingRevision/);
+  assert.match(migrationContractQuery(auraInventoryExplicitProjectionMigrationName), /m\.unique_id,m\.itemcode,m\.commonname/);
+  assert.match(migrationContractQuery(auraInventoryExplicitProjectionMigrationName), /position\('m\.\*' in prosrc\)=0/);
   assert.match(read('supabase/config.toml'), /\[functions\.aura-query\][\s\S]*?verify_jwt = false/);
   assert.match(read('.github/workflows/release-database.yml'), /cp supabase\/tests\/aura_internal_query_test.sql/);
   assert.match(read('.github/workflows/release-database.yml'), /node supabase\/ci\/aura_internal_query_pglite.mjs/);
   assert.match(read('.github/workflows/release-database.yml'), /cp supabase\/migrations\/20261007123459_aura_inventory_common_name_priority.sql/);
   assert.match(read('.github/workflows/release-database.yml'), /cp supabase\/tests\/aura_inventory_common_name_test.sql/);
   assert.match(read('.github/workflows/release-database.yml'), /cp supabase\/migrations\/20261007145433_aura_dynamic_season_scope.sql/);
+  assert.match(read('.github/workflows/release-database.yml'), /cp supabase\/migrations\/20261007153351_aura_inventory_explicit_projection.sql/);
   assert.match(read('.github/workflows/release-database.yml'), /cp supabase\/tests\/aura_dynamic_season_scope_test.sql/);
 });
 
