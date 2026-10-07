@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, chmodSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync, symlinkSync, chmodSync, existsSync, lstatSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -117,7 +117,7 @@ test('real pre-commit refuses syntax, type and mount failures and preserves stag
   try {
     mkdirSync(path.join(fixture, 'tests'));
     symlinkSync(path.join(repoRoot, 'node_modules'), path.join(fixture, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
-    write('.gitignore', 'node_modules/\n');
+    write('.gitignore', '/node_modules\n');
     write('tracked note.txt', 'original note\n');
     write('package.json', '{"type":"module"}\n');
     write('ui.js', 'export function mount(root) { root.textContent = "Ready"; }\n');
@@ -127,7 +127,9 @@ test('real pre-commit refuses syntax, type and mount failures and preserves stag
     write('guard.mjs', 'import {spawnSync} from "node:child_process"; import {readdirSync} from "node:fs"; const tests=readdirSync("tests").filter(f=>f.endsWith(".test.mjs")).map(f=>"tests/"+f); for(const args of [["--check","ui.js"],["node_modules/typescript/bin/tsc","--noEmit","-p","tsconfig.json"],["--test",...tests]]) { const result=spawnSync(process.execPath,args,{stdio:"inherit"}); if(result.status!==0) process.exit(result.status||1); }\n');
     write('lint-staged.config.mjs', 'export default () => ["node guard.mjs"];\n');
     git('init', '--quiet'); git('config', 'user.name', 'Commit Gate Fixture'); git('config', 'user.email', 'fixture@example.invalid');
-    git('add', '.'); git('-c', 'core.hooksPath=/dev/null', 'commit', '--quiet', '-m', 'fixture baseline');
+    git('add', '.');
+    assert.equal(git('ls-files', 'node_modules'), '', 'fixture dependencies must remain untracked on every platform');
+    git('-c', 'core.hooksPath=/dev/null', 'commit', '--quiet', '-m', 'fixture baseline');
     mkdirSync(path.join(fixture, '.husky'));
     write('.husky/pre-commit', '#!/usr/bin/env sh\n' + readFileSync(path.join(repoRoot, '.husky/pre-commit'), 'utf8').replace('--hide-all', '--hide-all --verbose'));
     chmodSync(path.join(fixture, '.husky/pre-commit'), 0o755);
@@ -167,7 +169,12 @@ test('real pre-commit refuses syntax, type and mount failures and preserves stag
 
     const linked = path.join(fixture, 'linked checkout with spaces');
     git('worktree', 'add', '--quiet', '-b', 'linked-hook-proof', linked);
-    symlinkSync(path.join(repoRoot, 'node_modules'), path.join(linked, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir');
+    const linkedModules = path.join(linked, 'node_modules');
+    assert.equal(lstatSync(linkedModules, { throwIfNoEntry: false }), undefined,
+      'linked checkout must not materialize the ignored dependency link');
+    symlinkSync(path.join(repoRoot, 'node_modules'), linkedModules, process.platform === 'win32' ? 'junction' : 'dir');
+    assert.ok(existsSync(path.join(linkedModules, 'typescript', 'bin', 'tsc')));
+    assert.ok(existsSync(path.join(linkedModules, 'jsdom', 'package.json')));
     mkdirSync(path.join(linked, '.husky'));
     writeFileSync(path.join(linked, '.husky/pre-commit'), '#!/usr/bin/env sh\n' + readFileSync(path.join(repoRoot, '.husky/pre-commit'), 'utf8'));
     chmodSync(path.join(linked, '.husky/pre-commit'), 0o755);

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
+import { createDatabaseRestBridge } from '../services/databaseRest.ts';
+import { poManagementCanaryRows } from './fixtures/po-management-canary.mjs';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const appApi = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
@@ -84,6 +86,21 @@ test('hosted health and exact-live canary cover the PO authorization contract', 
   assert.match(productionCanary, /live PO Management uses authenticated PostgREST and never the retired database proxy/);
   assert.match(productionCanary, /\/rest\/v1\/ph_view_po_27f1_hl/);
   assert.match(productionCanary, /retired proxy or mutation attempted/);
+});
+
+test('PO canary fixture satisfies the generated PostgREST projection contract', async () => {
+  const selectStart = html.indexOf('const PO_MANAGEMENT_SELECT_FIELDS = [');
+  const selectEnd = html.indexOf('].join', selectStart);
+  assert.ok(selectStart >= 0 && selectEnd > selectStart, 'PO Management projection fields are present');
+  const fields = [...html.slice(selectStart, selectEnd).matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  const bridge = createDatabaseRestBridge(async () => new Response(JSON.stringify(poManagementCanaryRows()), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  }));
+  const response = await bridge.fetchTable('https://example.test', 'ph_view_po_27f1_hl',
+    `select=${fields.join(',')}&order=row_index.asc&limit=1000&offset=0`, { method: 'GET' }, 1000, 'PO canary fixture contract');
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).length, 2);
 });
 
 test('PO health reads the bounded latest source scope instead of rebuilding the live view', () => {
