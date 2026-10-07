@@ -8,6 +8,53 @@ const args=process.argv.slice(2); const root=args[args.indexOf('--pglite-root')+
 if(!root) throw Error('Pass --pglite-root');
 const req=createRequire(path.join(path.resolve(root),'package.json')); const {PGlite}=req('@electric-sql/pglite');
 const {pg_trgm}=req(path.join(path.resolve(root),'node_modules/@electric-sql/pglite/dist/contrib/pg_trgm.cjs'));
+
+// A production release reuses installed extensions in a fresh, non-superuser
+// connection. The main fixture below creates its indexes in the same session.
+async function verifyColdSessionCommonNameMigration() {
+ const seed=new PGlite({extensions:{pg_trgm}}); let snapshot;
+ try {
+  await seed.waitReady;
+  await seed.exec(`
+   create schema extensions; create extension pg_trgm with schema extensions;
+   create role aura_migrator nosuperuser; create role anon; create role authenticated; create role service_role;
+   grant usage,create on schema public to aura_migrator;
+   grant usage on schema extensions to aura_migrator;
+   create table public.ph_master_inventory(commonname text);
+   create function public.aura_inventory_v2_name_v1(v text) returns text language sql immutable as 'select lower(btrim(v))';
+   create index idx_ph_master_inventory_aura_name_trgm on public.ph_master_inventory using gin
+    (public.aura_inventory_v2_name_v1(commonname) extensions.gin_trgm_ops);
+   create function public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer) returns jsonb language sql as 'select ''{}''::jsonb';
+   alter function public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer) owner to aura_migrator;
+  `);
+  snapshot=await seed.dumpDataDir();
+ } finally { await seed.close(); }
+ const cold=new PGlite({extensions:{pg_trgm},loadDataDir:snapshot});
+ try {
+  await cold.waitReady;
+  await cold.exec('set role aura_migrator');
+  assert.equal((await cold.query('select rolsuper from pg_roles where rolname=current_user')).rows[0].rolsuper,false);
+  assert.equal((await cold.query("select name from pg_settings where name='pg_trgm.word_similarity_threshold'")).rows.length,0,
+   'fresh connection has not registered the pg_trgm settings');
+  const source=fs.readFileSync(new URL('../migrations/20261007123459_aura_inventory_common_name_priority.sql',import.meta.url),'utf8');
+  const unwarmed=source.replace("select extensions.similarity('aura','aura');",'');
+  await assert.rejects(()=>cold.exec(unwarmed),error=>error.code==='42501' && /pg_trgm.word_similarity_threshold/.test(error.message),
+   'control reproduces the production permission failure before extension loading');
+  await cold.exec('rollback');
+  await cold.exec(source);
+  const installed=(await cold.query(`select
+   prosecdef and prosrc like '%commonName%' and prosrc like '%product_priority%'
+    and 'pg_trgm.word_similarity_threshold=0.3'=any(proconfig) as installed,
+   has_function_privilege('anon',oid,'execute') as anon_execute,
+   has_function_privilege('authenticated',oid,'execute') as authenticated_execute,
+   has_function_privilege('service_role',oid,'execute') as service_execute
+   from pg_proc where oid='public.aura_query_inventory_v1(uuid,text,jsonb,jsonb,integer)'::regprocedure`)).rows[0];
+  assert.deepEqual(installed,{installed:true,anon_execute:false,authenticated_execute:false,service_execute:true});
+  console.log('Aura common-name migration passed in a fresh non-superuser session; threshold and grants preserved.');
+ } finally { await cold.close(); }
+}
+await verifyColdSessionCommonNameMigration();
+
 const db=new PGlite({extensions:{pg_trgm}}); const q=async(sql,params=[]) => (await db.query(sql,params)).rows;
 try {
  await db.waitReady;
