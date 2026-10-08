@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { noHistoryLowStockTargets } from './fixtures/hl-order-state.mjs';
+import { appApiDatabaseBridge } from './helpers/database-bridge.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
@@ -73,6 +74,25 @@ test('low-stock no-history fixture returns one complete fallback summary per nor
     },
   ]);
   assert.deepEqual(noHistoryLowStockTargets(null), []);
+});
+
+test('low-stock no-history fixture passes the app-api RPC response contract without weakening validation', async () => {
+  const fixture = noHistoryLowStockTargets(['0012'])[0];
+  const invoke = async (row) => {
+    const bridge = appApiDatabaseBridge(async () => new Response(JSON.stringify([row]), {
+      headers: { 'content-type': 'application/json' },
+    }));
+    return bridge.fetchRpc('https://fixture.invalid', 'get_eval_item_low_stock_targets_v1', {
+      method: 'POST', body: JSON.stringify({ p_itemcodes: ['0012'], p_limit: 1 }),
+    }, 1000, 'low-stock fixture contract');
+  };
+
+  const accepted = await invoke(fixture);
+  assert.deepEqual(await accepted.json(), [fixture], 'the faithful nullable no-history row is accepted');
+  await assert.rejects(invoke(Object.fromEntries(Object.entries(fixture).filter(([key]) => key !== 'qualifying_line_count'))), /Invalid.*response/);
+  await assert.rejects(invoke({ ...fixture, unexpected_field: true }), /Invalid.*response/);
+  await assert.rejects(invoke({ ...fixture, effective_qty: '150' }), /Invalid.*response/);
+  await assert.rejects(invoke({ ...fixture, history_ready: 'true' }), /Invalid.*response/);
 });
 
 test('each data column filters normalized values without modifying source records', () => {

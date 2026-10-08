@@ -56,6 +56,21 @@ export function databaseContracts(source) {
   }
   const functions = {};
   const functionReturns = {};
+  function sqlReturnSchema(schema) {
+    // SQL composite attributes and array elements can be NULL. The CLI does
+    // not encode OUT-field nullability, even when a table's row type is used:
+    // table constraints do not apply to composite values outside that table.
+    // Keep every field required and validate each non-null value's exact type.
+    // https://www.postgresql.org/docs/current/rowtypes.html
+    if (schema === 'json' || schema === 'null') return schema;
+    if (typeof schema === 'object') {
+      if ('oneOf' in schema) return { oneOf: schema.oneOf.map(sqlReturnSchema) };
+      if ('array' in schema) schema = { array: sqlReturnSchema(schema.array) };
+      else if ('object' in schema) schema = { object: Object.fromEntries(Object.entries(schema.object)
+        .map(([key, field]) => [key, { ...field, schema: sqlReturnSchema(field.schema) }])) };
+    }
+    return { oneOf: [schema, 'null'] };
+  }
   for (const [name, fn] of Object.entries(members(publicSchema.Functions.type))) {
     const variants = ts.isUnionTypeNode(fn.type) ? fn.type.types : [fn.type];
     const argsByVariant = [];
@@ -72,9 +87,7 @@ export function databaseContracts(source) {
       }
       argsByVariant.push(args);
       const returned = describe(properties.Returns?.type || ts.factory.createKeywordTypeNode(ts.SyntaxKind.UndefinedKeyword));
-      // PostgREST serializes SQL NULL as JSON null even when generated TS scalar
-      // metadata describes only the non-null value type.
-      returnsByVariant.push({ oneOf: [returned, 'null'] });
+      returnsByVariant.push(sqlReturnSchema(returned));
     }
     functions[name] = { oneOf: argsByVariant };
     functionReturns[name] = { oneOf: returnsByVariant };

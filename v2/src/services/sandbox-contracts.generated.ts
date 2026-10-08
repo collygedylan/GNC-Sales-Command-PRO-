@@ -6383,92 +6383,47 @@ export const contracts: RuntimeContracts<Database> = {
   "functionReturns": {
     "add_codex_ops_message_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "apply_codex_ops_repair_result_service_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "apply_codex_ops_service_event_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "approve_codex_ops_deployment_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "bloomscapes_demo_api_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "cancel_codex_ops_task_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_codex_ops_task_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_access_control_health_snapshot_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_access_control_matrix_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_app_user_directory": {
@@ -6477,23 +6432,53 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "display_name": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "display_name": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "division": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "language": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "role": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "division": {
-                    "schema": "string"
-                  },
-                  "language": {
-                    "schema": "string"
-                  },
-                  "role": {
-                    "schema": "string"
-                  },
-                  "username": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -6503,122 +6488,62 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "get_codex_ops_capabilities_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_codex_ops_health_snapshot_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_codex_ops_runner_context_service_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_codex_ops_task_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_limited_access_control_matrix_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_my_app_permissions_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "list_codex_ops_tasks_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "list_expired_codex_ops_evidence_service_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "publish_access_control_policy_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "request_codex_ops_escalation_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_access_control_draft_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_limited_access_override_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "v2_refresh_hold_learning_profiles": {

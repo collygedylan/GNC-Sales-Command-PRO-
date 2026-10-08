@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { appApiDatabaseBridge, databaseBridge } from './helpers/database-bridge.mjs';
 import { databaseContracts, generateContracts } from '../scripts/generate-database-contracts.mjs';
 import { inspectDatabaseBoundary } from '../scripts/check-database-boundaries.mjs';
+import { noHistoryLowStockTargets } from './fixtures/hl-order-state.mjs';
 
 test('coverage guard rejects new untyped clients and calls outside adapters', () => {
   assert.match(inspectDatabaseBoundary('v2/src/services/new.ts', "const c = createClient(url, key);").join(' '), /generated Database/);
@@ -150,6 +151,33 @@ test('RPC JSON returns are checked, nullable SQL results pass, and error or empt
   const empty = await emptyBridge.fetchTable('https://fixture.invalid', 'marketing_materials',
     'select=*', { method: 'HEAD' }, 1000, 'empty response');
   assert.equal(empty.status, 204);
+});
+
+test('nullable SQL fields in RPC array-of-composite returns pass without loosening required keys or table rows', async () => {
+  const fixture = noHistoryLowStockTargets(['SYNTH.NULLABLE'])[0];
+  const bridge = databaseBridge(async (url, init) => {
+    const mode = init.headers?.mode;
+    let response;
+    if (new URL(url).pathname.endsWith('/rpc/get_eval_item_low_stock_targets_v1')) {
+      const row = { ...fixture };
+      if (mode === 'missing') delete row.history_from_date;
+      if (mode === 'unknown') row.unexpected_field = true;
+      response = [row];
+    } else response = [{ key: 'current_season_salesyear', value: {}, updated_by: null, updated_at: null }];
+    return new Response(JSON.stringify(response), { headers: { 'content-type': 'application/json' } });
+  });
+  const rpc = (value) => bridge.fetchRpc('https://fixture.invalid', 'get_eval_item_low_stock_targets_v1', {
+    method: 'POST', body: JSON.stringify({ p_itemcodes: ['SYNTH.NULLABLE'] }), headers: { mode: value },
+  }, 1000, 'nullable table-return RPC');
+
+  const accepted = await rpc('valid');
+  assert.deepEqual(await accepted.json(), [fixture], 'SQL NULL values in composite fields are preserved inside the returned array');
+
+  await assert.rejects(rpc('missing'), /Invalid.*response/);
+  await assert.rejects(rpc('unknown'), /Invalid.*response/);
+
+  await assert.rejects(bridge.fetchTable('https://fixture.invalid', 'ph_app_settings',
+    'select=key,value,updated_by,updated_at', { method: 'GET' }, 1000, 'non-null table row'), /Invalid.*response/);
 });
 
 test('existing inventory/request views remain readable and cannot be written through the bridge', async () => {

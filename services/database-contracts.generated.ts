@@ -91704,32 +91704,17 @@ export const contracts: RuntimeContracts<Database> = {
   "functionReturns": {
     "acknowledge_request_folder_completion_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "activate_eval_item_low_stock_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "add_codex_ops_message_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "app_account_active_v1": {
@@ -91744,82 +91729,42 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "append_manager_order_source_rows_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "append_request_options_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "apply_codex_ops_repair_result_service_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "apply_codex_ops_service_event_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "apply_inventory_transaction_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "approve_codex_ops_deployment_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_inventory_lot_lookup_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_inventory_v2_match_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_inventory_v2_name_v1": {
@@ -91844,12 +91789,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "aura_inventory_v2_read_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_inventory_v2_salesyear_v1": {
@@ -91874,62 +91814,32 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "aura_llm_reserve_call_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_manager_season_settings_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_query_bunch_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_query_conversation_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_query_hl_order_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_query_inventory_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_query_number_v1": {
@@ -91954,12 +91864,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "aura_query_seasonal_records_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "aura_query_size_v1": {
@@ -91974,102 +91879,52 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "aura_resolve_season_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "begin_dataset_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "begin_eval_item_low_stock_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "bloomscapes_pending_command": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "bunch_note_card_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "bunch_note_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "bunch_note_delivery_lookup_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "bunch_note_delivery_record_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "bunch_note_freeze_pdfs_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "cancel_codex_ops_task_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "cancel_eval_work_v1": {
@@ -92080,30 +91935,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92111,7 +92006,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92119,7 +92019,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92127,88 +92032,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92216,7 +92226,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92224,13 +92239,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -92238,18 +92263,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92257,7 +92297,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92265,7 +92310,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92273,7 +92323,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92295,10 +92350,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -92315,13 +92380,28 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92329,7 +92409,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92337,7 +92422,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92345,7 +92435,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92353,7 +92448,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92361,7 +92461,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92370,43 +92475,108 @@ export const contracts: RuntimeContracts<Database> = {
                   "schema": "json"
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_profile_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "general_instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "idempotency_key": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "line_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_line_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "revision": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "title": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -92424,7 +92594,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92432,7 +92607,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92440,7 +92620,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92448,35 +92633,54 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "delivery_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "id": {
-                  "schema": "string"
-                },
-                "item_count": {
-                  "schema": "number"
-                },
-                "location_key": {
                   "schema": {
                     "oneOf": [
                       "string",
@@ -92484,12 +92688,48 @@ export const contracts: RuntimeContracts<Database> = {
                     ]
                   }
                 },
+                "item_count": {
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "location_key": {
+                  "schema": {
+                    "oneOf": [
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "null"
+                    ]
+                  }
+                },
                 "locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "recipient_emails": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "recipient_profiles": {
@@ -92497,29 +92737,74 @@ export const contracts: RuntimeContracts<Database> = {
                 },
                 "recipient_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "revision": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "row_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "total_on_hand": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "total_to_shear": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -92534,158 +92819,278 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "attempt_count": {
-                    "schema": "number"
-                  },
-                  "channel_results": {
-                    "schema": "json"
-                  },
-                  "created_at": {
-                    "schema": "string"
-                  },
-                  "delivered_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
+                "oneOf": [
+                  {
+                    "object": {
+                      "attempt_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "channel_results": {
+                        "schema": "json"
+                      },
+                      "created_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "delivered_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "delivery_mode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "email_delivered_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "event_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "event_key": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "event_type": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "first_attempt_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "gmail_message_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "gmail_thread_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "last_attempt_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "lease_expires_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "lease_owner": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "lease_token": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "message_id_header": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "next_attempt_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "payload": {
+                        "schema": "json"
+                      },
+                      "push_delivered_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "request_folder": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "request_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "sanitized_error_code": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
                     }
                   },
-                  "delivery_mode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "email_delivered_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "event_id": {
-                    "schema": "string"
-                  },
-                  "event_key": {
-                    "schema": "string"
-                  },
-                  "event_type": {
-                    "schema": "string"
-                  },
-                  "first_attempt_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "gmail_message_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "gmail_thread_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "last_attempt_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "lease_expires_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "lease_owner": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "lease_token": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "message_id_header": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "next_attempt_at": {
-                    "schema": "string"
-                  },
-                  "payload": {
-                    "schema": "json"
-                  },
-                  "push_delivered_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "request_folder": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "request_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "sanitized_error_code": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "status": {
-                    "schema": "string"
-                  },
-                  "updated_at": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -92699,35 +93104,85 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "display_name": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "display_name": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "division": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "language": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "legacy_user_id": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "must_change_password": {
+                        "schema": {
+                          "oneOf": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "profile_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "role": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "division": {
-                    "schema": "string"
-                  },
-                  "language": {
-                    "schema": "string"
-                  },
-                  "legacy_user_id": {
-                    "schema": "number"
-                  },
-                  "must_change_password": {
-                    "schema": "boolean"
-                  },
-                  "profile_id": {
-                    "schema": "string"
-                  },
-                  "role": {
-                    "schema": "string"
-                  },
-                  "status": {
-                    "schema": "string"
-                  },
-                  "username": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -92742,18 +93197,33 @@ export const contracts: RuntimeContracts<Database> = {
             {
               "object": {
                 "attempt_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "channel_results": {
                   "schema": "json"
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92761,7 +93231,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "delivery_mode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92769,24 +93244,49 @@ export const contracts: RuntimeContracts<Database> = {
                 "email_delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "event_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "event_key": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "event_type": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "first_attempt_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92794,7 +93294,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "gmail_message_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92802,7 +93307,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "gmail_thread_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92810,7 +93320,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "last_attempt_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92818,7 +93333,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_expires_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92826,7 +93346,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_owner": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92834,7 +93359,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92842,13 +93372,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "message_id_header": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "next_attempt_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "payload": {
                   "schema": "json"
@@ -92856,7 +93396,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "push_delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92864,7 +93409,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "request_folder": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92872,7 +93422,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "request_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92880,16 +93435,31 @@ export const contracts: RuntimeContracts<Database> = {
                 "sanitized_error_code": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -92900,12 +93470,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "complete_season_sales_office_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "complete_shear_location_inquiry_v1": {
@@ -92917,7 +93482,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92925,7 +93495,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92933,7 +93508,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -92941,35 +93521,54 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "delivery_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "id": {
-                  "schema": "string"
-                },
-                "item_count": {
-                  "schema": "number"
-                },
-                "location_key": {
                   "schema": {
                     "oneOf": [
                       "string",
@@ -92977,12 +93576,48 @@ export const contracts: RuntimeContracts<Database> = {
                     ]
                   }
                 },
+                "item_count": {
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "location_key": {
+                  "schema": {
+                    "oneOf": [
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "null"
+                    ]
+                  }
+                },
                 "locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "recipient_emails": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "recipient_profiles": {
@@ -92990,29 +93625,74 @@ export const contracts: RuntimeContracts<Database> = {
                 },
                 "recipient_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "revision": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "row_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "total_on_hand": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "total_to_shear": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -93023,42 +93703,22 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "complete_suspend_tag_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_av_request_batch": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_codex_ops_task_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_eval_report2_batch_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_eval_work_batch_multi_v2": {
@@ -93067,230 +93727,445 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "assigned_to_users": {
-                    "schema": {
-                      "array": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "assigned_to_users": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_display": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_email": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_profiles": {
+                        "schema": "json"
+                      },
+                      "assignee_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_usernames": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignment_event_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "batch_token": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "cancelled_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "cancelled_by": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "commonname": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "completion_event_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "completion_recipients": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "context_rows": {
+                        "schema": "json"
+                      },
+                      "contract_version": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "contsize": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "create_token": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "created_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "creator_display": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "creator_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "evidence_draft": {
+                        "schema": "json"
+                      },
+                      "id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "inquiry_draft": {
+                        "schema": "json"
+                      },
+                      "instructions": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "inventory_signature": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_locationcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_lotcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_snapshot": {
+                        "schema": "json"
+                      },
+                      "origin_source": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_unique_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_report_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_revision": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "settings_signature": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "source_context": {
+                        "schema": "json"
+                      },
+                      "started_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "submission_request_fingerprint": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submission_token": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_by_username": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_evidence": {
+                        "schema": {
+                          "oneOf": [
+                            "json",
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_inquiry": {
+                        "schema": {
+                          "oneOf": [
+                            "json",
+                            "null"
+                          ]
+                        }
+                      },
+                      "updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "version": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
                     }
                   },
-                  "assignee_display": {
-                    "schema": "string"
-                  },
-                  "assignee_email": {
-                    "schema": "string"
-                  },
-                  "assignee_profiles": {
-                    "schema": "json"
-                  },
-                  "assignee_username": {
-                    "schema": "string"
-                  },
-                  "assignee_usernames": {
-                    "schema": {
-                      "array": "string"
-                    }
-                  },
-                  "assignment_event_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "batch_token": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "cancelled_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "cancelled_by": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "commonname": {
-                    "schema": "string"
-                  },
-                  "completion_event_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "completion_recipients": {
-                    "schema": {
-                      "array": "string"
-                    }
-                  },
-                  "context_rows": {
-                    "schema": "json"
-                  },
-                  "contract_version": {
-                    "schema": "string"
-                  },
-                  "contsize": {
-                    "schema": "string"
-                  },
-                  "create_token": {
-                    "schema": "string"
-                  },
-                  "created_at": {
-                    "schema": "string"
-                  },
-                  "creator_display": {
-                    "schema": "string"
-                  },
-                  "creator_username": {
-                    "schema": "string"
-                  },
-                  "evidence_draft": {
-                    "schema": "json"
-                  },
-                  "id": {
-                    "schema": "string"
-                  },
-                  "inquiry_draft": {
-                    "schema": "json"
-                  },
-                  "instructions": {
-                    "schema": "string"
-                  },
-                  "inventory_signature": {
-                    "schema": "string"
-                  },
-                  "itemcode": {
-                    "schema": "string"
-                  },
-                  "origin_count": {
-                    "schema": "number"
-                  },
-                  "origin_locationcode": {
-                    "schema": "string"
-                  },
-                  "origin_lotcode": {
-                    "schema": "string"
-                  },
-                  "origin_snapshot": {
-                    "schema": "json"
-                  },
-                  "origin_source": {
-                    "schema": "string"
-                  },
-                  "origin_unique_id": {
-                    "schema": "string"
-                  },
-                  "resolved_import_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "resolved_import_report_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "resolved_import_revision": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "settings_signature": {
-                    "schema": "string"
-                  },
-                  "source_context": {
-                    "schema": "json"
-                  },
-                  "started_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "status": {
-                    "schema": "string"
-                  },
-                  "submission_request_fingerprint": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submission_token": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_by_username": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_evidence": {
-                    "schema": {
-                      "oneOf": [
-                        "json",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_inquiry": {
-                    "schema": {
-                      "oneOf": [
-                        "json",
-                        "null"
-                      ]
-                    }
-                  },
-                  "updated_at": {
-                    "schema": "string"
-                  },
-                  "version": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -93304,230 +94179,445 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "assigned_to_users": {
-                    "schema": {
-                      "array": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "assigned_to_users": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_display": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_email": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_profiles": {
+                        "schema": "json"
+                      },
+                      "assignee_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_usernames": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignment_event_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "batch_token": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "cancelled_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "cancelled_by": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "commonname": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "completion_event_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "completion_recipients": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "context_rows": {
+                        "schema": "json"
+                      },
+                      "contract_version": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "contsize": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "create_token": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "created_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "creator_display": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "creator_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "evidence_draft": {
+                        "schema": "json"
+                      },
+                      "id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "inquiry_draft": {
+                        "schema": "json"
+                      },
+                      "instructions": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "inventory_signature": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_locationcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_lotcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_snapshot": {
+                        "schema": "json"
+                      },
+                      "origin_source": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_unique_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_report_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_revision": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "settings_signature": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "source_context": {
+                        "schema": "json"
+                      },
+                      "started_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "submission_request_fingerprint": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submission_token": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_by_username": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_evidence": {
+                        "schema": {
+                          "oneOf": [
+                            "json",
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_inquiry": {
+                        "schema": {
+                          "oneOf": [
+                            "json",
+                            "null"
+                          ]
+                        }
+                      },
+                      "updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "version": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
                     }
                   },
-                  "assignee_display": {
-                    "schema": "string"
-                  },
-                  "assignee_email": {
-                    "schema": "string"
-                  },
-                  "assignee_profiles": {
-                    "schema": "json"
-                  },
-                  "assignee_username": {
-                    "schema": "string"
-                  },
-                  "assignee_usernames": {
-                    "schema": {
-                      "array": "string"
-                    }
-                  },
-                  "assignment_event_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "batch_token": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "cancelled_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "cancelled_by": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "commonname": {
-                    "schema": "string"
-                  },
-                  "completion_event_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "completion_recipients": {
-                    "schema": {
-                      "array": "string"
-                    }
-                  },
-                  "context_rows": {
-                    "schema": "json"
-                  },
-                  "contract_version": {
-                    "schema": "string"
-                  },
-                  "contsize": {
-                    "schema": "string"
-                  },
-                  "create_token": {
-                    "schema": "string"
-                  },
-                  "created_at": {
-                    "schema": "string"
-                  },
-                  "creator_display": {
-                    "schema": "string"
-                  },
-                  "creator_username": {
-                    "schema": "string"
-                  },
-                  "evidence_draft": {
-                    "schema": "json"
-                  },
-                  "id": {
-                    "schema": "string"
-                  },
-                  "inquiry_draft": {
-                    "schema": "json"
-                  },
-                  "instructions": {
-                    "schema": "string"
-                  },
-                  "inventory_signature": {
-                    "schema": "string"
-                  },
-                  "itemcode": {
-                    "schema": "string"
-                  },
-                  "origin_count": {
-                    "schema": "number"
-                  },
-                  "origin_locationcode": {
-                    "schema": "string"
-                  },
-                  "origin_lotcode": {
-                    "schema": "string"
-                  },
-                  "origin_snapshot": {
-                    "schema": "json"
-                  },
-                  "origin_source": {
-                    "schema": "string"
-                  },
-                  "origin_unique_id": {
-                    "schema": "string"
-                  },
-                  "resolved_import_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "resolved_import_report_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "resolved_import_revision": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "settings_signature": {
-                    "schema": "string"
-                  },
-                  "source_context": {
-                    "schema": "json"
-                  },
-                  "started_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "status": {
-                    "schema": "string"
-                  },
-                  "submission_request_fingerprint": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submission_token": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_by_username": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_evidence": {
-                    "schema": {
-                      "oneOf": [
-                        "json",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_inquiry": {
-                    "schema": {
-                      "oneOf": [
-                        "json",
-                        "null"
-                      ]
-                    }
-                  },
-                  "updated_at": {
-                    "schema": "string"
-                  },
-                  "version": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -93541,230 +94631,445 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "assigned_to_users": {
-                    "schema": {
-                      "array": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "assigned_to_users": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_display": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_email": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_profiles": {
+                        "schema": "json"
+                      },
+                      "assignee_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignee_usernames": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignment_event_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "batch_token": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "cancelled_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "cancelled_by": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "commonname": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "completion_event_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "completion_recipients": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "array": {
+                                "oneOf": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "context_rows": {
+                        "schema": "json"
+                      },
+                      "contract_version": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "contsize": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "create_token": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "created_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "creator_display": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "creator_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "evidence_draft": {
+                        "schema": "json"
+                      },
+                      "id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "inquiry_draft": {
+                        "schema": "json"
+                      },
+                      "instructions": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "inventory_signature": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_locationcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_lotcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_snapshot": {
+                        "schema": "json"
+                      },
+                      "origin_source": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "origin_unique_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_report_id": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "resolved_import_revision": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "settings_signature": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "source_context": {
+                        "schema": "json"
+                      },
+                      "started_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "submission_request_fingerprint": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submission_token": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_by_username": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_evidence": {
+                        "schema": {
+                          "oneOf": [
+                            "json",
+                            "null"
+                          ]
+                        }
+                      },
+                      "submitted_inquiry": {
+                        "schema": {
+                          "oneOf": [
+                            "json",
+                            "null"
+                          ]
+                        }
+                      },
+                      "updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "version": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
                     }
                   },
-                  "assignee_display": {
-                    "schema": "string"
-                  },
-                  "assignee_email": {
-                    "schema": "string"
-                  },
-                  "assignee_profiles": {
-                    "schema": "json"
-                  },
-                  "assignee_username": {
-                    "schema": "string"
-                  },
-                  "assignee_usernames": {
-                    "schema": {
-                      "array": "string"
-                    }
-                  },
-                  "assignment_event_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "batch_token": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "cancelled_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "cancelled_by": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "commonname": {
-                    "schema": "string"
-                  },
-                  "completion_event_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "completion_recipients": {
-                    "schema": {
-                      "array": "string"
-                    }
-                  },
-                  "context_rows": {
-                    "schema": "json"
-                  },
-                  "contract_version": {
-                    "schema": "string"
-                  },
-                  "contsize": {
-                    "schema": "string"
-                  },
-                  "create_token": {
-                    "schema": "string"
-                  },
-                  "created_at": {
-                    "schema": "string"
-                  },
-                  "creator_display": {
-                    "schema": "string"
-                  },
-                  "creator_username": {
-                    "schema": "string"
-                  },
-                  "evidence_draft": {
-                    "schema": "json"
-                  },
-                  "id": {
-                    "schema": "string"
-                  },
-                  "inquiry_draft": {
-                    "schema": "json"
-                  },
-                  "instructions": {
-                    "schema": "string"
-                  },
-                  "inventory_signature": {
-                    "schema": "string"
-                  },
-                  "itemcode": {
-                    "schema": "string"
-                  },
-                  "origin_count": {
-                    "schema": "number"
-                  },
-                  "origin_locationcode": {
-                    "schema": "string"
-                  },
-                  "origin_lotcode": {
-                    "schema": "string"
-                  },
-                  "origin_snapshot": {
-                    "schema": "json"
-                  },
-                  "origin_source": {
-                    "schema": "string"
-                  },
-                  "origin_unique_id": {
-                    "schema": "string"
-                  },
-                  "resolved_import_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "resolved_import_report_id": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "resolved_import_revision": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "settings_signature": {
-                    "schema": "string"
-                  },
-                  "source_context": {
-                    "schema": "json"
-                  },
-                  "started_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "status": {
-                    "schema": "string"
-                  },
-                  "submission_request_fingerprint": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submission_token": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_by_username": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_evidence": {
-                    "schema": {
-                      "oneOf": [
-                        "json",
-                        "null"
-                      ]
-                    }
-                  },
-                  "submitted_inquiry": {
-                    "schema": {
-                      "oneOf": [
-                        "json",
-                        "null"
-                      ]
-                    }
-                  },
-                  "updated_at": {
-                    "schema": "string"
-                  },
-                  "version": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -93780,30 +95085,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93811,7 +95156,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93819,7 +95169,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93827,88 +95182,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93916,7 +95376,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93924,13 +95389,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -93938,18 +95413,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93957,7 +95447,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93965,7 +95460,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93973,7 +95473,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -93995,10 +95500,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -94015,30 +95530,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94046,7 +95601,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94054,7 +95614,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94062,88 +95627,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94151,7 +95821,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94159,13 +95834,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -94173,18 +95858,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94192,7 +95892,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94200,7 +95905,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94208,7 +95918,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94230,10 +95945,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -94250,30 +95975,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94281,7 +96046,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94289,7 +96059,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94297,88 +96072,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94386,7 +96266,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94394,13 +96279,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -94408,18 +96303,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94427,7 +96337,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94435,7 +96350,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94443,7 +96363,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94465,10 +96390,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -94479,42 +96414,22 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "create_flyer_folder_batch_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_location_work_job_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_request_batch": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "create_shear_location_inquiries_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "digest": {
@@ -94535,32 +96450,17 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "enqueue_drive_reclass_inquiry_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "enqueue_drive_reclass_inquiry_v4": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "fail_dataset_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "fail_request_delivery_event": {
@@ -94570,18 +96470,33 @@ export const contracts: RuntimeContracts<Database> = {
             {
               "object": {
                 "attempt_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "channel_results": {
                   "schema": "json"
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94589,7 +96504,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "delivery_mode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94597,24 +96517,49 @@ export const contracts: RuntimeContracts<Database> = {
                 "email_delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "event_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "event_key": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "event_type": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "first_attempt_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94622,7 +96567,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "gmail_message_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94630,7 +96580,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "gmail_thread_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94638,7 +96593,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "last_attempt_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94646,7 +96606,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_expires_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94654,7 +96619,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_owner": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94662,7 +96632,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94670,13 +96645,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "message_id_header": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "next_attempt_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "payload": {
                   "schema": "json"
@@ -94684,7 +96669,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "push_delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94692,7 +96682,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "request_folder": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94700,7 +96695,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "request_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -94708,16 +96708,31 @@ export const contracts: RuntimeContracts<Database> = {
                 "sanitized_error_code": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -94728,82 +96743,42 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "finalize_eval_item_low_stock_file_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "finalize_pikes_order_import": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "finalize_transactions_keyed_import": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "finish_dataset_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_access_control_capabilities_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_access_control_health_snapshot_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_access_control_matrix_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_access_control_matrix_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_app_user_directory": {
@@ -94812,23 +96787,53 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "display_name": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "display_name": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "division": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "language": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "role": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "division": {
-                    "schema": "string"
-                  },
-                  "language": {
-                    "schema": "string"
-                  },
-                  "role": {
-                    "schema": "string"
-                  },
-                  "username": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -94838,72 +96843,37 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "get_codex_ops_capabilities_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_codex_ops_health_snapshot_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_codex_ops_runner_context_service_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_codex_ops_task_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_dataset_import_status_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_drive_evidence_save_health_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_drive_reclass_inquiry_status_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_eval_item_low_stock_targets_v1": {
@@ -94912,59 +96882,149 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "calculated_at": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "calculated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "effective_qty": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_from_date": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_pending_files": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_ready": {
+                        "schema": {
+                          "oneOf": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_through_date": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_total_files": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode_normalized": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "manual_override_qty": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "mean_quantity": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "override_revision": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "p75_quantity": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "qualifying_day_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "qualifying_line_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "source_file_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "suggested_qty": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "effective_qty": {
-                    "schema": "number"
-                  },
-                  "history_from_date": {
-                    "schema": "string"
-                  },
-                  "history_pending_files": {
-                    "schema": "number"
-                  },
-                  "history_ready": {
-                    "schema": "boolean"
-                  },
-                  "history_through_date": {
-                    "schema": "string"
-                  },
-                  "history_total_files": {
-                    "schema": "number"
-                  },
-                  "itemcode_normalized": {
-                    "schema": "string"
-                  },
-                  "manual_override_qty": {
-                    "schema": "number"
-                  },
-                  "mean_quantity": {
-                    "schema": "number"
-                  },
-                  "override_revision": {
-                    "schema": "number"
-                  },
-                  "p75_quantity": {
-                    "schema": "number"
-                  },
-                  "qualifying_day_count": {
-                    "schema": "number"
-                  },
-                  "qualifying_line_count": {
-                    "schema": "number"
-                  },
-                  "source_file_count": {
-                    "schema": "number"
-                  },
-                  "suggested_qty": {
-                    "schema": "number"
-                  },
-                  "updated_at": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -94974,32 +97034,17 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "get_eval_itemcode_work_health_snapshot_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_eval_itemcode_work_health_snapshot_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_eval_report_settings": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_eval_report2_direct_inquiry_recipients_v1": {
@@ -95007,7 +97052,12 @@ export const contracts: RuntimeContracts<Database> = {
         {
           "oneOf": [
             {
-              "array": "string"
+              "array": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
             },
             "null"
           ]
@@ -95016,182 +97066,92 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "get_eval_request_delivery_health_snapshot_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_eval_work_assignment_batch_health_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_eval_work_creation_health_snapshot_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_eval_work_review_setup_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_historical_inventory_container_sizes": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_historical_inventory_rows": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_hosted_health_snapshot": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_item_inquiry_coverage_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_limited_access_control_matrix_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_manager_order_batch_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_manager_order_batches_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_manager_order_sources_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_my_app_permissions_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_my_dataset_revisions_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_photo_delivery_health_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_pikes_order_assignment_health_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_po_management_health_snapshot": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_request_capabilities": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_request_delivery_recovery_queue": {
@@ -95200,59 +97160,144 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "attempt_count": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "attempt_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "created_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "delivery_mode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "email_delivered_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "event_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "event_type": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "first_attempt_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_snapshot": {
+                        "schema": "json"
+                      },
+                      "last_attempt_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "lease_expires_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "next_attempt_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "pending_age_seconds": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "push_delivered_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "request_folder": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "request_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "sanitized_error_code": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "created_at": {
-                    "schema": "string"
-                  },
-                  "delivery_mode": {
-                    "schema": "string"
-                  },
-                  "email_delivered_at": {
-                    "schema": "string"
-                  },
-                  "event_id": {
-                    "schema": "string"
-                  },
-                  "event_type": {
-                    "schema": "string"
-                  },
-                  "first_attempt_at": {
-                    "schema": "string"
-                  },
-                  "history_snapshot": {
-                    "schema": "json"
-                  },
-                  "last_attempt_at": {
-                    "schema": "string"
-                  },
-                  "lease_expires_at": {
-                    "schema": "string"
-                  },
-                  "next_attempt_at": {
-                    "schema": "string"
-                  },
-                  "pending_age_seconds": {
-                    "schema": "number"
-                  },
-                  "push_delivered_at": {
-                    "schema": "string"
-                  },
-                  "request_folder": {
-                    "schema": "string"
-                  },
-                  "request_id": {
-                    "schema": "string"
-                  },
-                  "sanitized_error_code": {
-                    "schema": "string"
-                  },
-                  "status": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95262,52 +97307,27 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "get_request_drive_evidence_health_snapshot_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_request_schema_compatibility": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_season_sales_note_access_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_season_sales_office_health_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_transactions_keyed_dashboard": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "get_v2_crop_roll_completion_master_ids": {
@@ -95315,7 +97335,12 @@ export const contracts: RuntimeContracts<Database> = {
         {
           "oneOf": [
             {
-              "array": "string"
+              "array": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
             },
             "null"
           ]
@@ -95344,32 +97369,17 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "guard_active_app_session_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "heartbeat_dataset_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "heartbeat_request_delivery_worker": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "hl_order_can_read_outbox_v1": {
@@ -95384,32 +97394,17 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "hl_order_command": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_order_delivery_lookup_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_order_delivery_record_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_order_inventory_availability": {
@@ -95418,20 +97413,45 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "computed_balance": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "computed_balance": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "contsize": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "season_lot": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "contsize": {
-                    "schema": "string"
-                  },
-                  "itemcode": {
-                    "schema": "string"
-                  },
-                  "season_lot": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95441,62 +97461,32 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "hl_order_restock_state": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_order_restock_state_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_order_state": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_po_import_capabilities": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_po_import_stage": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hl_po_pdf_stage": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "hr_claim_calendar_reminders_v1": {
@@ -95505,62 +97495,127 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "attempt_count": {
-                    "schema": "number"
-                  },
-                  "calendar_event_id": {
-                    "schema": "string"
-                  },
-                  "created_at": {
-                    "schema": "string"
-                  },
-                  "event_key": {
-                    "schema": "string"
-                  },
-                  "event_type": {
-                    "schema": "string"
-                  },
-                  "id": {
-                    "schema": "string"
-                  },
-                  "last_error_code": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
+                "oneOf": [
+                  {
+                    "object": {
+                      "attempt_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "calendar_event_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "created_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "event_key": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "event_type": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "last_error_code": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "lease_expires_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "next_attempt_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "payload": {
+                        "schema": "json"
+                      },
+                      "recipient_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "sent_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
                     }
                   },
-                  "lease_expires_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "next_attempt_at": {
-                    "schema": "string"
-                  },
-                  "payload": {
-                    "schema": "json"
-                  },
-                  "recipient_username": {
-                    "schema": "string"
-                  },
-                  "sent_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "status": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95570,102 +97625,52 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "hr_finish_calendar_reminder_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "inventory_transaction_history_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "inventory_workflow_session_actor_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "list_codex_ops_tasks_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "list_eval_report2_itemcodes_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "list_expired_codex_ops_evidence_service_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "manager_season_priority_list_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "manager_season_priority_state_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "mark_pikes_order_file_archived": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "mark_transactions_keyed_file_archived": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "navigation_module_allowed_v1": {
@@ -95680,12 +97685,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "navigation_preferences_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "ph_prepare_hold_learning_refresh_chunked": {
@@ -95694,11 +97694,21 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "itemcode_count": {
-                    "schema": "number"
-                  }
-                }
+                "oneOf": [
+                  {
+                    "object": {
+                      "itemcode_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "null"
+                ]
               }
             },
             "null"
@@ -95712,23 +97722,53 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "cycle_rows": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "cycle_rows": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "finished": {
+                        "schema": {
+                          "oneOf": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "processed_itemcodes": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "remaining_itemcodes": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "snapshot_rows": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "finished": {
-                    "schema": "boolean"
-                  },
-                  "processed_itemcodes": {
-                    "schema": "number"
-                  },
-                  "remaining_itemcodes": {
-                    "schema": "number"
-                  },
-                  "snapshot_rows": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95742,20 +97782,45 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "finished": {
-                    "schema": "boolean"
+                "oneOf": [
+                  {
+                    "object": {
+                      "finished": {
+                        "schema": {
+                          "oneOf": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "inserted_summaries": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "processed_itemcodes": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "remaining_itemcodes": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "inserted_summaries": {
-                    "schema": "number"
-                  },
-                  "processed_itemcodes": {
-                    "schema": "number"
-                  },
-                  "remaining_itemcodes": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95769,14 +97834,29 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "itemcode_cycles": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "itemcode_cycles": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "snapshot_rows": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "snapshot_rows": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95800,20 +97880,45 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "item_job_id": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "item_job_id": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "job_name": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "summary_job_id": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "itemcode_count": {
-                    "schema": "number"
-                  },
-                  "job_name": {
-                    "schema": "string"
-                  },
-                  "summary_job_id": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95823,32 +97928,17 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "photo_history_gallery_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "prepare_eval_item_low_stock_file_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "prepare_manager_order_import_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "prepare_password_change_profile": {
@@ -95857,44 +97947,109 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "attempt_id": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "attempt_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "disabled_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "display_name": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "division": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "language": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "legacy_user_id": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "locked_until": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "must_change_password": {
+                        "schema": {
+                          "oneOf": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "profile_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "role": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "status": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "disabled_at": {
-                    "schema": "string"
-                  },
-                  "display_name": {
-                    "schema": "string"
-                  },
-                  "division": {
-                    "schema": "string"
-                  },
-                  "language": {
-                    "schema": "string"
-                  },
-                  "legacy_user_id": {
-                    "schema": "number"
-                  },
-                  "locked_until": {
-                    "schema": "string"
-                  },
-                  "must_change_password": {
-                    "schema": "boolean"
-                  },
-                  "profile_id": {
-                    "schema": "string"
-                  },
-                  "role": {
-                    "schema": "string"
-                  },
-                  "status": {
-                    "schema": "string"
-                  },
-                  "username": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -95904,42 +98059,22 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "prepare_pikes_order_import": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "prepare_request_folder_completion_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "prepare_suspend_tag_delivery_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "prepare_transactions_keyed_import": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "production_schedule_append_rows_v1": {
@@ -95954,102 +98089,52 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "production_schedule_fail_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "production_schedule_finish_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "production_schedule_read_cards_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "production_schedule_read_metadata_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "production_schedule_read_rows_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "production_schedule_read_status_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "production_schedule_set_sheets_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "production_schedule_start_import_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "production_schedule_update_progress_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "production_workflow_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "provision_native_auth_app_user": {
@@ -96058,11 +98143,21 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "legacy_user_id": {
-                    "schema": "number"
-                  }
-                }
+                "oneOf": [
+                  {
+                    "object": {
+                      "legacy_user_id": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "null"
+                ]
               }
             },
             "null"
@@ -96092,12 +98187,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "publish_access_control_policy_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "reassign_eval_work_v1": {
@@ -96108,30 +98198,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96139,7 +98269,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96147,7 +98282,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96155,88 +98295,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96244,7 +98489,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96252,13 +98502,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -96266,18 +98526,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96285,7 +98560,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96293,7 +98573,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96301,7 +98586,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96323,10 +98613,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -96343,30 +98643,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96374,7 +98714,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96382,7 +98727,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96390,88 +98740,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96479,7 +98934,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96487,13 +98947,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -96501,18 +98971,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96520,7 +99005,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96528,7 +99018,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96536,7 +99031,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96558,10 +99058,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -96572,58 +99082,28 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "reconcile_eval_itemcodes": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        },
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json",
+        "json"
       ]
     },
     "reconcile_eval_report2_work_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "reconcile_request_folder_completion_window_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "reconcile_season_sales_office_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "record_pikes_order_import_failure": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "record_request_delivery_channel_result": {
@@ -96633,18 +99113,33 @@ export const contracts: RuntimeContracts<Database> = {
             {
               "object": {
                 "attempt_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "channel_results": {
                   "schema": "json"
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96652,7 +99147,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "delivery_mode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96660,24 +99160,49 @@ export const contracts: RuntimeContracts<Database> = {
                 "email_delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "event_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "event_key": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "event_type": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "first_attempt_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96685,7 +99210,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "gmail_message_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96693,7 +99223,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "gmail_thread_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96701,7 +99236,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "last_attempt_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96709,7 +99249,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_expires_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96717,7 +99262,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_owner": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96725,7 +99275,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "lease_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96733,13 +99288,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "message_id_header": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "next_attempt_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "payload": {
                   "schema": "json"
@@ -96747,7 +99312,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "push_delivered_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96755,7 +99325,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "request_folder": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96763,7 +99338,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "request_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96771,16 +99351,31 @@ export const contracts: RuntimeContracts<Database> = {
                 "sanitized_error_code": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -96791,62 +99386,32 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "record_transactions_keyed_import_failure": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "refresh_photo_history_catalog_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "refresh_season_sales_office_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "refresh_v2_crop_roll_completed_drive_keys": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "repair_pikes_order_batch_assignments_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "repair_request_drive_evidence_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "report_app_health_event": {
@@ -96861,62 +99426,32 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "request_archive_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "request_archive_list_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "request_codex_ops_escalation_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "request_history_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "requeue_request_delivery": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "resolve_location_work_line_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "resolve_operational_recipients_v1": {
@@ -96924,7 +99459,12 @@ export const contracts: RuntimeContracts<Database> = {
         {
           "oneOf": [
             {
-              "array": "string"
+              "array": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
             },
             "null"
           ]
@@ -96933,12 +99473,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "retry_drive_reclass_inquiry_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "retry_location_work_delivery_v1": {
@@ -96949,13 +99484,28 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96963,7 +99513,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96971,7 +99526,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96979,7 +99539,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96987,7 +99552,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -96995,7 +99565,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97004,43 +99579,108 @@ export const contracts: RuntimeContracts<Database> = {
                   "schema": "json"
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_profile_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "general_instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "idempotency_key": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "line_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_line_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "revision": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "title": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -97058,7 +99698,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97066,7 +99711,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97074,7 +99724,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97082,35 +99737,54 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "delivery_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "id": {
-                  "schema": "string"
-                },
-                "item_count": {
-                  "schema": "number"
-                },
-                "location_key": {
                   "schema": {
                     "oneOf": [
                       "string",
@@ -97118,12 +99792,48 @@ export const contracts: RuntimeContracts<Database> = {
                     ]
                   }
                 },
+                "item_count": {
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
+                },
+                "location_key": {
+                  "schema": {
+                    "oneOf": [
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "null"
+                    ]
+                  }
+                },
                 "locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "recipient_emails": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "recipient_profiles": {
@@ -97131,29 +99841,74 @@ export const contracts: RuntimeContracts<Database> = {
                 },
                 "recipient_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "revision": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "row_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "total_on_hand": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "total_to_shear": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -97164,32 +99919,17 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "run_request_integrity_maintenance": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "sales_credit_attachment_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "sales_credit_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "sales_history_unresolved_sources_v1": {
@@ -97198,23 +99938,53 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "salesrepid": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "salesrepid": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "salesrepname": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "selected_rep_username": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "source_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "source_kind": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "salesrepname": {
-                    "schema": "string"
-                  },
-                  "selected_rep_username": {
-                    "schema": "string"
-                  },
-                  "source_id": {
-                    "schema": "string"
-                  },
-                  "source_kind": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -97224,12 +99994,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "save_access_control_draft_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_dock_trip_status_v1": {
@@ -97241,18 +100006,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "checker": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "dock_num": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97260,7 +100040,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "inspector": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97268,25 +100053,55 @@ export const contracts: RuntimeContracts<Database> = {
                 "mistake": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "revision": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "tripnumber": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_by_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -97297,22 +100112,12 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "save_drive_evidence_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_drive_evidence_v2": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_eval_work_v1": {
@@ -97323,30 +100128,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97354,7 +100199,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97362,7 +100212,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97370,88 +100225,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97459,7 +100419,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97467,13 +100432,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -97481,18 +100456,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97500,7 +100490,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97508,7 +100503,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97516,7 +100516,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97538,10 +100543,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -97558,30 +100573,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97589,7 +100644,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97597,7 +100657,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97605,88 +100670,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97694,7 +100864,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97702,13 +100877,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -97716,18 +100901,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97735,7 +100935,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97743,7 +100948,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97751,7 +100961,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97773,10 +100988,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -97793,30 +101018,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97824,7 +101089,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97832,7 +101102,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97840,88 +101115,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97929,7 +101309,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97937,13 +101322,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -97951,18 +101346,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97970,7 +101380,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97978,7 +101393,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -97986,7 +101406,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98008,10 +101433,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -98022,62 +101457,32 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "save_limited_access_override_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_request_work": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_request_work_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_season_sales_note_users_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "save_season_sales_office_av_note_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "scheduled_handover_auth_checkpoint_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "scheduled_handover_claim_push_v1": {
@@ -98104,32 +101509,17 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "scheduled_handover_tick_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "search_historical_inventory_common_names": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "send_onesignal_push": {
       "oneOf": [
-        {
-          "oneOf": [
-            "null",
-            "null"
-          ]
-        }
+        "null"
       ]
     },
     "set_eval_item_low_stock_override_v1": {
@@ -98138,59 +101528,149 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "calculated_at": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "calculated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "effective_qty": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_from_date": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_pending_files": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_ready": {
+                        "schema": {
+                          "oneOf": [
+                            "boolean",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_through_date": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "history_total_files": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode_normalized": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "manual_override_qty": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "mean_quantity": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "override_revision": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "p75_quantity": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "qualifying_day_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "qualifying_line_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "source_file_count": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "suggested_qty": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "effective_qty": {
-                    "schema": "number"
-                  },
-                  "history_from_date": {
-                    "schema": "string"
-                  },
-                  "history_pending_files": {
-                    "schema": "number"
-                  },
-                  "history_ready": {
-                    "schema": "boolean"
-                  },
-                  "history_through_date": {
-                    "schema": "string"
-                  },
-                  "history_total_files": {
-                    "schema": "number"
-                  },
-                  "itemcode_normalized": {
-                    "schema": "string"
-                  },
-                  "manual_override_qty": {
-                    "schema": "number"
-                  },
-                  "mean_quantity": {
-                    "schema": "number"
-                  },
-                  "override_revision": {
-                    "schema": "number"
-                  },
-                  "p75_quantity": {
-                    "schema": "number"
-                  },
-                  "qualifying_day_count": {
-                    "schema": "number"
-                  },
-                  "qualifying_line_count": {
-                    "schema": "number"
-                  },
-                  "source_file_count": {
-                    "schema": "number"
-                  },
-                  "suggested_qty": {
-                    "schema": "number"
-                  },
-                  "updated_at": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -98200,48 +101680,23 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "set_eval_itemcode_assignment": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        },
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json",
+        "json"
       ]
     },
     "set_eval_report_settings": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "set_item_inquiry_coverage_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "set_itemcode_default_owners_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "stage_eval_item_low_stock_rows_v1": {
@@ -98262,30 +101717,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98293,7 +101788,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98301,7 +101801,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98309,88 +101814,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98398,7 +102008,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98406,13 +102021,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -98420,18 +102045,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98439,7 +102079,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98447,7 +102092,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98455,7 +102105,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98477,10 +102132,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -98497,30 +102162,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98528,7 +102233,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98536,7 +102246,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98544,88 +102259,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98633,7 +102453,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98641,13 +102466,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -98655,18 +102490,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98674,7 +102524,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98682,7 +102537,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98690,7 +102550,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98712,10 +102577,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -98732,30 +102607,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98763,7 +102678,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98771,7 +102691,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98779,88 +102704,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98868,7 +102898,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98876,13 +102911,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -98890,18 +102935,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98909,7 +102969,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98917,7 +102982,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98925,7 +102995,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98947,10 +103022,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -98967,30 +103052,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -98998,7 +103123,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99006,7 +103136,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99014,88 +103149,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99103,7 +103343,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99111,13 +103356,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -99125,18 +103380,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99144,7 +103414,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99152,7 +103427,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99160,7 +103440,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99182,10 +103467,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -99202,30 +103497,70 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_to_users": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignee_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_email": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_profiles": {
                   "schema": "json"
                 },
                 "assignee_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "assignee_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99233,7 +103568,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "batch_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99241,7 +103581,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99249,88 +103594,193 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "commonname": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "completion_recipients": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "context_rows": {
                   "schema": "json"
                 },
                 "contract_version": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "contsize": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "create_token": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "creator_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "evidence_draft": {
                   "schema": "json"
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inquiry_draft": {
                   "schema": "json"
                 },
                 "instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "inventory_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "itemcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_locationcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_lotcode": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_snapshot": {
                   "schema": "json"
                 },
                 "origin_source": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "origin_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_import_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99338,7 +103788,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_report_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99346,13 +103801,23 @@ export const contracts: RuntimeContracts<Database> = {
                 "resolved_import_revision": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "settings_signature": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "source_context": {
                   "schema": "json"
@@ -99360,18 +103825,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "started_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "submission_request_fingerprint": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99379,7 +103859,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submission_token": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99387,7 +103872,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99395,7 +103885,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "submitted_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99417,10 +103912,20 @@ export const contracts: RuntimeContracts<Database> = {
                   }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "version": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -99431,22 +103936,12 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "submit_manager_season_priority_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "suspend_tag_command_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "suspend_tag_push_receipt_v1": {
@@ -99467,13 +103962,28 @@ export const contracts: RuntimeContracts<Database> = {
               "object": {
                 "assigned_usernames": {
                   "schema": {
-                    "array": "string"
+                    "oneOf": [
+                      {
+                        "array": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "null"
+                    ]
                   }
                 },
                 "assignment_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99481,7 +103991,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99489,7 +104004,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "cancelled_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99497,7 +104017,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99505,7 +104030,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completed_by_username": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99513,7 +104043,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "completion_event_id": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99522,43 +104057,108 @@ export const contracts: RuntimeContracts<Database> = {
                   "schema": "json"
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_display": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_profile_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "created_by_username": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "general_instructions": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "idempotency_key": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "line_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "resolved_line_count": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "revision": {
-                  "schema": "number"
+                  "schema": {
+                    "oneOf": [
+                      "number",
+                      "null"
+                    ]
+                  }
                 },
                 "status": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "title": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 }
               }
             },
@@ -99569,12 +104169,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "upsert_my_push_subscription": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     },
     "v2_classify_hold_reason": {
@@ -99593,29 +104188,69 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "contsize": {
-                    "schema": "string"
+                "oneOf": [
+                  {
+                    "object": {
+                      "contsize": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "key_type": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "locationcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "lotcode": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "master_unique_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "match_key": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "itemcode": {
-                    "schema": "string"
-                  },
-                  "key_type": {
-                    "schema": "string"
-                  },
-                  "locationcode": {
-                    "schema": "string"
-                  },
-                  "lotcode": {
-                    "schema": "string"
-                  },
-                  "master_unique_id": {
-                    "schema": "string"
-                  },
-                  "match_key": {
-                    "schema": "string"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -99632,7 +104267,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "app_tab_assignment": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99640,7 +104280,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "assignedto": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99648,7 +104293,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "av_note": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99656,7 +104306,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "blockalpha": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99664,7 +104319,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "blocknumber": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99672,7 +104332,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "botanicalname": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99680,7 +104345,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "caliper": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99688,7 +104358,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "commonname": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99696,21 +104371,41 @@ export const contracts: RuntimeContracts<Database> = {
                 "contsize": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "created_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "crop_roll_view": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "date_completed": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99718,7 +104413,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "desigcust": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99726,7 +104426,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "desigitem": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99734,7 +104439,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "desigloc": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99742,7 +104452,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "dock_photo_link": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99750,7 +104465,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "dock_photo_name": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99758,7 +104478,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "fieldtagcolor": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99766,7 +104491,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_av_note": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99774,7 +104504,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_caliper": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99782,7 +104517,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_completed": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99790,7 +104530,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_initial_ptr": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99798,7 +104543,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_loc_match_qty": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99806,7 +104556,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_match": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99814,7 +104569,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_photo_link": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99822,7 +104582,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_photo_name": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99830,7 +104595,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_pick": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99838,7 +104608,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "flyer_spec": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99846,7 +104621,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "genus": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99854,7 +104634,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "genusname": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99862,7 +104647,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "holdstopbegindate": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99870,7 +104660,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "holdstopcode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99878,7 +104673,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "holdstopreason": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99886,7 +104686,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "initial_ptr": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99894,7 +104699,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "itemcode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99902,7 +104712,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "itemspec": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99910,7 +104725,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "loc_match_qty": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99918,7 +104738,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "locationcode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99926,7 +104751,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "locationnote": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99934,7 +104764,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "locationnotedate": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99942,7 +104777,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "locationptn1": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99950,18 +104790,33 @@ export const contracts: RuntimeContracts<Database> = {
                 "lotcode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "master_unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "master_updated_at": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99969,7 +104824,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "match": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99977,7 +104837,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "photo_link": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99985,7 +104850,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "photo_name": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -99993,7 +104863,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "plantgroupcode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100001,7 +104876,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "priority": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100009,7 +104889,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "ptravailable": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100017,7 +104902,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "ptronhand": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100025,7 +104915,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "ptrreviewed": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100033,7 +104928,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "qualitycode": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100041,7 +104941,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "s_lts": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100049,7 +104954,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "sales_note": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100057,7 +104967,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "salesnote": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100065,7 +104980,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "saleyear": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100073,7 +104993,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "search_text": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100081,7 +105006,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "season": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100089,7 +105019,12 @@ export const contracts: RuntimeContracts<Database> = {
                 "season_supply": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100097,15 +105032,17 @@ export const contracts: RuntimeContracts<Database> = {
                 "source": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
                 },
                 "source_table": {
-                  "schema": "string"
-                },
-                "spec": {
                   "schema": {
                     "oneOf": [
                       "string",
@@ -100113,16 +105050,44 @@ export const contracts: RuntimeContracts<Database> = {
                     ]
                   }
                 },
+                "spec": {
+                  "schema": {
+                    "oneOf": [
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "null"
+                    ]
+                  }
+                },
                 "unique_id": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "updated_at": {
-                  "schema": "string"
+                  "schema": {
+                    "oneOf": [
+                      "string",
+                      "null"
+                    ]
+                  }
                 },
                 "warehouseid": {
                   "schema": {
                     "oneOf": [
-                      "string",
+                      {
+                        "oneOf": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "null"
                     ]
                   }
@@ -100150,1707 +105115,2777 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "a_lts": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ai_lts": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "altshipcomment": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "app_tab_assignment": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "assignedto": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_note": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_av_note_updated_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_bundle_updated_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_caliper_updated_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_holdstop_snapshot": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_last_clear_reason": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_last_cleared_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_match_updated_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_photo_updated_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_priority_snapshot": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "av_rule_spec_updated_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "avg_price_eunit_shipped": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "bay": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "blockalpha": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "blocknumber": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "botanicalname": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "brand": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "bypassloc": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "caliper": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "carrier": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "combinedprice": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "commonname": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "concat": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "consigneeaddress_1": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "consigneeaddress_2": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "consigneecity": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "consigneeidentityid": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "consigneename": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "consigneestate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "consigneezip": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "containersort": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "contsize": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "customeridentityid": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "customername": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "customersku": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "date_completed": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "descriptorcode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "desigcust": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "desigitem": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "desigloc": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dock": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dock_caliper": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dock_note": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dock_num": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dock_photo_link": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dock_photo_name": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dock_spec": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "dropweight": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "end_cap_folder": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "end_cap_level": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "end_cap_qty": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "equiv_unit": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "equiv_uom": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_assigned_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_assigned_by": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_completed_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_completed_by": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_hold_action": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_hold_code": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_hold_reason": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_instructions": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_moved_up_qty": {
-                    "schema": {
-                      "oneOf": [
-                        "number",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_recount_qty": {
-                    "schema": {
-                      "oneOf": [
-                        "number",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_result_note": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_status": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "eval_task_type": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ext_eunit_shipped": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ext_ptronhand": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ext_unit_merch_shipped": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "extunitprice": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "field_tag_color": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "fieldtagcolor": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "filename": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_assigned": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_av_note": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_caliper": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_cat": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_completed": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_initial_ptr": {
-                    "schema": {
-                      "oneOf": [
-                        "number",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_inst": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_loc_match_qty": {
-                    "schema": {
-                      "oneOf": [
-                        "number",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_match": {
-                    "schema": {
-                      "oneOf": [
-                        "number",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_notes": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_photo_link": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_photo_name": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_pick": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_spec": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "flyer_title": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "fnsalesnote": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "formattedupc": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "freightrateperitem": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "generalloadinstr": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "genusname": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "grower": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "handlingchargeperitem": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hardinesszone": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hlloadinstructions": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hold_release_approved_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hold_release_approved_by": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hold_release_approved_by_display": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hold_release_approved_holdstopbegindate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "holdstopbegindate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "holdstopcode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "holdstopenddate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "holdstopreason": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hsreasonbegin": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "hz": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "idgroup": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "initial_ptr": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "insurancegroup": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "intercopo": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "internalinvnote": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "inventorynote": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "invoicedate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "isreserve": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "itemcode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "itemspec": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "landed": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "largeptrqty": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "last_updated": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "listprice": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "loc_match_qty": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "locationcode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "locationnote": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "locationnotedate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "locationptn1": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "locationptn2": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "lochold": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "lotcode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "match": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "maxorderquantity": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "mcstatus": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "nationalaccount": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ncloadinstructions": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ncr_approval_message": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ncr_approval_type": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ncr_requested_at": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ncr_requested_by_display": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ncr_requested_by_email": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ncr_requested_by_username": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "okloadinstructions": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ordertotal": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "oversellpercentage": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "photo_link": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "photo_name": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "pic_note": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "picknote": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "planstart": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "plantgroupcode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "printedcontainercode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "priority": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "prisetby": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "priupdated": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ptravailable": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ptronhand": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "ptrreviewed": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "pullerresponsibility": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "pulltagnote1": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "pulltagnote2": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "purchaseordernumber": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "qa_code": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "qualitycode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "quantityordered": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "quantityshipped": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "requestdate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "requestdateweek": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "retailprice": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "reversecommon": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "s_lts": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "sales_note": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "salesnote": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "salesnote_1": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "salesnotebegindate": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "salesrepid": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "salesrepname": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "saleyear": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "season": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "season_available": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "season_demand": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "season_oh": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "season_supply": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "shiptotelephone_1": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "si_available": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "si_lts": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "sortnamevariety": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "source": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "spec": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "specialpuller": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "stagename": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "step": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "stopnumber": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "suspend": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "suspend_to": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "suspendto": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "tagcode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "tagdeptnote": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "taggingchargeperitem": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "transactionnumber": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "tripnumber": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "txloadinstructions": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "unique_id": {
-                    "schema": "string"
-                  },
-                  "unitprice": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "varietycode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "warehousei": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "warehouseid": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "warehousename": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "wingdingunits": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  },
-                  "zonecode": {
-                    "schema": {
-                      "oneOf": [
-                        "string",
-                        "null"
-                      ]
-                    }
-                  }
-                }
+                "oneOf": [
+                  {
+                    "object": {
+                      "a_lts": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ai_lts": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "altshipcomment": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "app_tab_assignment": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "assignedto": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_note": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_av_note_updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_bundle_updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_caliper_updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_holdstop_snapshot": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_last_clear_reason": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_last_cleared_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_match_updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_photo_updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_priority_snapshot": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "av_rule_spec_updated_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "avg_price_eunit_shipped": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "bay": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "blockalpha": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "blocknumber": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "botanicalname": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "brand": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "bypassloc": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "caliper": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "carrier": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "combinedprice": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "commonname": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "concat": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "consigneeaddress_1": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "consigneeaddress_2": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "consigneecity": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "consigneeidentityid": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "consigneename": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "consigneestate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "consigneezip": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "containersort": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "contsize": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "customeridentityid": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "customername": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "customersku": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "date_completed": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "descriptorcode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "desigcust": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "desigitem": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "desigloc": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dock": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dock_caliper": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dock_note": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dock_num": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dock_photo_link": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dock_photo_name": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dock_spec": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "dropweight": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "end_cap_folder": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "end_cap_level": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "end_cap_qty": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "equiv_unit": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "equiv_uom": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_assigned_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_assigned_by": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_completed_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_completed_by": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_hold_action": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_hold_code": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_hold_reason": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_instructions": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_moved_up_qty": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_recount_qty": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_result_note": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_status": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "eval_task_type": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ext_eunit_shipped": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ext_ptronhand": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ext_unit_merch_shipped": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "extunitprice": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "field_tag_color": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "fieldtagcolor": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "filename": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_assigned": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_av_note": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_caliper": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_cat": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_completed": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_initial_ptr": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_inst": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_loc_match_qty": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_match": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_notes": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_photo_link": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_photo_name": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_pick": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_spec": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "flyer_title": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "fnsalesnote": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "formattedupc": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "freightrateperitem": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "generalloadinstr": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "genusname": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "grower": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "handlingchargeperitem": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hardinesszone": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hlloadinstructions": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hold_release_approved_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hold_release_approved_by": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hold_release_approved_by_display": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hold_release_approved_holdstopbegindate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "holdstopbegindate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "holdstopcode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "holdstopenddate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "holdstopreason": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hsreasonbegin": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "hz": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "idgroup": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "initial_ptr": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "insurancegroup": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "intercopo": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "internalinvnote": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "inventorynote": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "invoicedate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "isreserve": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemspec": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "landed": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "largeptrqty": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "last_updated": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "listprice": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "loc_match_qty": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "locationcode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "locationnote": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "locationnotedate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "locationptn1": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "locationptn2": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "lochold": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "lotcode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "match": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "maxorderquantity": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "mcstatus": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "nationalaccount": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ncloadinstructions": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ncr_approval_message": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ncr_approval_type": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ncr_requested_at": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ncr_requested_by_display": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ncr_requested_by_email": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ncr_requested_by_username": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "okloadinstructions": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ordertotal": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "oversellpercentage": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "photo_link": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "photo_name": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "pic_note": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "picknote": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "planstart": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "plantgroupcode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "printedcontainercode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "priority": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "prisetby": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "priupdated": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ptravailable": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ptronhand": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "ptrreviewed": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "pullerresponsibility": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "pulltagnote1": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "pulltagnote2": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "purchaseordernumber": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "qa_code": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "qualitycode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "quantityordered": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "quantityshipped": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "requestdate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "requestdateweek": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "retailprice": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "reversecommon": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "s_lts": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "sales_note": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "salesnote": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "salesnote_1": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "salesnotebegindate": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "salesrepid": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "salesrepname": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "saleyear": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "season": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "season_available": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "season_demand": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "season_oh": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "season_supply": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "shiptotelephone_1": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "si_available": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "si_lts": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "sortnamevariety": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "source": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "spec": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "specialpuller": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "stagename": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "step": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "stopnumber": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "suspend": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "suspend_to": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "suspendto": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "tagcode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "tagdeptnote": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "taggingchargeperitem": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "transactionnumber": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "tripnumber": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "txloadinstructions": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "unique_id": {
+                        "schema": {
+                          "oneOf": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "unitprice": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "varietycode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "warehousei": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "warehouseid": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "warehousename": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "wingdingunits": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      },
+                      "zonecode": {
+                        "schema": {
+                          "oneOf": [
+                            {
+                              "oneOf": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "null"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "null"
+                ]
               }
             },
             "null"
@@ -101874,14 +107909,29 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "hold_events_upserted": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "hold_events_upserted": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "release_cycles_upserted": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "release_cycles_upserted": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -101895,14 +107945,29 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "hold_events_upserted": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "hold_events_upserted": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "release_cycles_upserted": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "release_cycles_upserted": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -101936,23 +108001,53 @@ export const contracts: RuntimeContracts<Database> = {
           "oneOf": [
             {
               "array": {
-                "object": {
-                  "hold_events_upserted": {
-                    "schema": "number"
+                "oneOf": [
+                  {
+                    "object": {
+                      "hold_events_upserted": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "itemcode_cycles": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "profiles_refreshed": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "release_cycles_upserted": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      },
+                      "snapshot_rows": {
+                        "schema": {
+                          "oneOf": [
+                            "number",
+                            "null"
+                          ]
+                        }
+                      }
+                    }
                   },
-                  "itemcode_cycles": {
-                    "schema": "number"
-                  },
-                  "profiles_refreshed": {
-                    "schema": "number"
-                  },
-                  "release_cycles_upserted": {
-                    "schema": "number"
-                  },
-                  "snapshot_rows": {
-                    "schema": "number"
-                  }
-                }
+                  "null"
+                ]
               }
             },
             "null"
@@ -101962,12 +108057,7 @@ export const contracts: RuntimeContracts<Database> = {
     },
     "validate_eval_work_delivery_v1": {
       "oneOf": [
-        {
-          "oneOf": [
-            "json",
-            "null"
-          ]
-        }
+        "json"
       ]
     }
   }
