@@ -1,4 +1,4 @@
-import { cleanseAuraInventoryText, parseAuraWholeNumber, readAuraProduct } from "./auraLingo.js?v=V2026.10.08.002";
+import { cleanseAuraInventoryText, parseAuraWholeNumber, readAuraProduct } from "./auraLingo.js?v=V2026.10.08.003";
 
 function readInventoryScope(input) {
   let text = cleanseAuraInventoryText(input);
