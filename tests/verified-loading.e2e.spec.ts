@@ -366,7 +366,7 @@ for (const failure of ['failed', 'empty'] as const) test(`Common Name retains ea
 });
 
 test('mobile Pending Requests renders its required rows while unrelated reads are held or failing', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Focused native-auth phone and tablet regression');
+  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
   const control = await installPendingRequestFixture(page, baseURL!, 'rows');
   try {
     await openPendingRequests(page);
@@ -383,7 +383,7 @@ test('mobile Pending Requests renders its required rows while unrelated reads ar
 });
 
 test('native mobile search viewport changes settle without browser resize errors', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Native mobile viewport regression');
+  test.skip(!testInfo.project.use.isMobile, 'Native mobile viewport regression');
   await page.addInitScript(() => {
     (window as any).__nativeResizeErrors = 0;
     window.addEventListener('error', event => {
@@ -447,7 +447,7 @@ test('navigation clears a stale draft warning without discarding the retained in
 });
 
 test('mobile Pending Requests exposes required-read failure and recovers through Retry', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Focused native-auth phone and tablet regression');
+  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
   const control = await installPendingRequestFixture(page, baseURL!, 'failed');
   try {
     await openPendingRequests(page);
@@ -463,7 +463,7 @@ test('mobile Pending Requests exposes required-read failure and recovers through
 });
 
 test('mobile Pending Requests verifies an empty required list without waiting on other datasets', {"tag":["@home-role"]}, async ({ page, baseURL }, testInfo) => {
-  test.skip(!testInfo.project.use.isMobile, {"tag":["@home-role"]}, 'Focused native-auth phone and tablet regression');
+  test.skip(!testInfo.project.use.isMobile, 'Focused native-auth phone and tablet regression');
   const control = await installPendingRequestFixture(page, baseURL!, 'empty');
   try {
     await openPendingRequests(page);
@@ -565,7 +565,7 @@ test('Drive verifies cards before unopened reserves and AV-note sources are requ
 });
 
 for (const view of ['Drive', 'Tasks'] as const) test(`benchmark records three independent cold and repeat ${view} visits`, {"tag":["@home-role"]}, async ({ browser, baseURL }, info) => {
-  test.skip(process.env.VERIFIED_LOADING_BENCHMARK !== '1', {"tag":["@home-role"]}, 'benchmark enabled only when explicitly requested');
+  test.skip(process.env.VERIFIED_LOADING_BENCHMARK !== '1', 'benchmark enabled only when explicitly requested');
   const trials: Visit[][] = [];
   for (let trial = 0; trial < 3; trial++) {
     const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = info.project.use;
@@ -897,7 +897,7 @@ test('HL and PO show permission-matched saved listings before refresh, with curr
 
 
 test('progressive loader reference timing uses three cold sessions and repeat visits', {"tag":["@home-role"]}, async ({ browser, baseURL }, info) => {
-  test.skip(process.env.PROGRESSIVE_LOADING_BENCHMARK !== '1', {"tag":["@home-role"]}, 'Timing runs are isolated from functional browser work');
+  test.skip(process.env.PROGRESSIVE_LOADING_BENCHMARK !== '1', 'Timing runs are isolated from functional browser work');
   test.setTimeout(240000);
   const samples: any[] = [];
   for (let trial = 0; trial < 3; trial++) {
