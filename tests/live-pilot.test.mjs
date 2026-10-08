@@ -194,7 +194,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081709\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/assets\/branding\/ag-data-solutions-splash-v2026081709\.png"/);
   assert.equal(manifest.background_color, '#f4fbf7');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -826,9 +826,8 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(serviceWorker, /ag-data-solutions-logo-v2026090503-224\.webp/);
   assert.match(serviceWorker, /ag-data-solutions-logo-v2026090503-448\.webp/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
-  assert.match(html, /imagesrcset="\.\/ag-data-solutions-logo-v2026090503-224\.webp 224w, \.\/ag-data-solutions-logo-v2026090503-448\.webp 448w"/);
-  assert.match(releasePreparation, /'ag-data-solutions-logo-v2026090503-224\.webp'/);
-  assert.match(releasePreparation, /'ag-data-solutions-logo-v2026090503-448\.webp'/);
+  assert.match(html, /imagesrcset="\.\/assets\/branding\/ag-data-solutions-logo-v2026090503-224\.webp 224w, \.\/assets\/branding\/ag-data-solutions-logo-v2026090503-448\.webp 448w"/);
+  assert.match(releasePreparation, /prepareBrandingAssets\(\{ root, site \}\)/);
   assert.match(releasePreparation, /for \(const name of files\) await copyTree\(path\.join\(root, name\), path\.join\(site, name\)\)/);
   assert.match(performanceWorkflow, /node scripts\/prepare-release-site\.mjs/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
