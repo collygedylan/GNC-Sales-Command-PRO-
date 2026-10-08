@@ -51,17 +51,16 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
   };
   vm.runInContext(`
     getDriveFolderByIdWithRetry_ = () => ({});
-    listDriveFilesWithRetry_ = () => { let used=false; return { hasNext:()=>!used, next:()=>{used=true;return {getName:()=> 'synthetic.csv',getLastUpdated:()=>new Date(0)}} }; };
+    listDriveFilesWithRetry_ = () => { let used=false; return { hasNext:()=>!used, next:()=>{used=true;return {getId:()=> 'synthetic-drive-file',getName:()=> 'synthetic.csv',getLastUpdated:()=>new Date(0)}} }; };
     extractDataFromFile = () => [['ITEMCODE'],['SYNTHETIC']];
     fetchAllSupabaseData = () => [];
     getPayloadSelectColumns_ = () => 'unique_id';
     getSupabaseFetchOptionsForTable_ = () => ({});
     combineSnapshotDeleteIds_ = () => changed ? ['obsolete'] : [];
-    shouldAbortSnapshotDelete_ = () => false;
     pushToSupabase = () => events.push({action:'upsert',headers:getSupabaseHeaders_()});
     emitTableSyncLiveEvent_ = () => {};
     moveDriveFileToFolderWithRetry_ = () => { events.push('archive'); if(archiveFailure) throw new Error('Drive unavailable'); };
-    __build = () => ({upserts: changed ? [{unique_id:'present'}] : [],seenIds:new Set(['present']),totalRows:1,stats:{sourceRows:1}});
+    __build = () => ({upserts: changed ? [{unique_id:'present'}] : [],seenIds:new Set(['present']),totalRows:1,stats:{sourceRows:1,validIdentityRows:1}});
     __run = () => processLatestFileOnlyFolder('source','processed','ph_soc_master',__build,{deltaMode:true,
       afterCommit:()=>reconcileSeasonSalesOfficeAfterImport_('synthetic-version','test')});
   `, ctx);
