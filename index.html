@@ -19345,16 +19345,25 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 if (!row.MASTER_ID) row.MASTER_ID = masterId;
                 if (!row.master_id) row.master_id = masterId;
             }
+            const sameMasterInventoryRow = !!masterId && masterId === String(row.UNIQUE_ID || '').trim()
+                && String(masterItem.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory'
+                && String(row.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory';
             (Array.isArray(keys) ? keys : []).forEach((key) => {
                 if (MASTER_EVIDENCE_SYNC_KEYS.includes(key)) {
-                    if (masterId !== String(row.UNIQUE_ID || '').trim()
-                        || String(masterItem.SOURCE_TABLE || '').toLowerCase() !== 'ph_master_inventory'
-                        || String(row.SOURCE_TABLE || '').toLowerCase() !== 'ph_master_inventory') return;
+                    if (!sameMasterInventoryRow) return;
                     // Omitted legacy metadata is not an authoritative clear.
                     if (!Object.prototype.hasOwnProperty.call(masterItem, key)) return;
                     row[key.toLowerCase()] = masterItem[key];
                 }
                 row[key] = masterItem[key];
+                const lowerKey = key.toLowerCase();
+                if (sameMasterInventoryRow && key !== lowerKey
+                    && (Object.prototype.hasOwnProperty.call(row, lowerKey) || Object.prototype.hasOwnProperty.call(masterItem, lowerKey))) {
+                    row[lowerKey] = masterItem[key];
+                }
+                if (sameMasterInventoryRow && key === 'PICK' && Object.prototype.hasOwnProperty.call(masterItem, 'PICK')) {
+                    row.PIC_NOTE = row.pic_note = masterItem.PICK;
+                }
             });
             clonePhotoFields(masterItem, row, { exact: opts.exactPhotoClone !== false });
             syncSharedFlyerPhotoFields(row, opts.photoPrefix || '');

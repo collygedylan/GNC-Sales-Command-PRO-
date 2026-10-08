@@ -92,6 +92,21 @@ test('completion publishes canonical specs and explicit clears while AV is visib
   assert.deepEqual(r.rendered, ['av']);
 });
 
+test('later evidence clears replace lowercase aliases in a previously created AV cache row', () => {
+  const { c, master } = runtime();
+  c.avOpenInventory = [];
+  c.reconcileConfirmedDriveEvidence(receipt({ pic_note: 'saved pick note' }), master, 'ssn-');
+  assert.equal(c.avOpenInventory[0].spec, '24-30');
+  assert.equal(c.avOpenInventory[0].match, '50');
+  c.reconcileConfirmedDriveEvidence(receipt({ last_updated: '2026-10-07T18:00:01Z',
+    spec: null, match: null, loc_match_qty: null, pic_note: null }), master, 'ssn-');
+  for (const key of ['spec', 'match', 'loc_match_qty', 'pic_note']) {
+    assert.equal(c.avOpenInventory[0][key], null, key);
+    assert.equal(c.avOpenInventory[0][key.toUpperCase()], null, key.toUpperCase());
+  }
+  assert.equal(c.avOpenInventory[0].PICK, null);
+});
+
 test('older reads and repeated or older acknowledgements cannot replace confirmed evidence', () => {
   const r = runtime(); const { c, master } = r;
   c.reconcileConfirmedDriveEvidence(receipt(), master, 'ssn-');
