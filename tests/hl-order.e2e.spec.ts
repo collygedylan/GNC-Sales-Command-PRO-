@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Locator } from '@playwright/test';
 
 import { installHlOrderFixture, hlSoc, hlMaster, hlRecipient } from './fixtures/hl-order-state.mjs';
+import { poManagementRow } from './fixtures/po-management-canary.mjs';
 // @test-group: @hl-order,hl-orders
 
 
@@ -560,7 +561,7 @@ test('PO inventory action pages verified same-size rows and preserves zero avail
   const master = [hlMaster('po-exact', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', ptravailable: '0' }),
     ...Array.from({ length: 251 }, (_, index) => hlMaster(`po-related-${String(index).padStart(3, '0')}`, { itemcode: 'PO.TEST', contsize: '#3', locationcode: `C.14.${String(index).padStart(3, '0')}`, lotcode: '27.F1', ptravailable: index === 1 ? null : '3' })),
     hlMaster('po-hidden-approval', { itemcode: 'PO.TEST', contsize: '#3', locationcode: 'C.19.999', lotcode: '27.F1', ptravailable: '9', app_tab_assignment: 'not_on_inventory_dylan' })];
-  const fixture = await installHlOrderFixture(page, baseURL!, { master, poRows: [{ row_index: 1, itemcode: 'PO.TEST', commonname: 'PO test', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' }] });
+  const fixture = await installHlOrderFixture(page, baseURL!, { master, poRows: [poManagementRow({ row_index: 1, itemcode: 'PO.TEST', commonname: 'PO test', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' })] });
   await page.getByRole('button', { name: 'Open Inventory', exact: true }).click();
   await page.locator('#inventory-open-po-management').click();
   await expect(page.locator('#view-po-management')).toBeVisible();
@@ -1115,8 +1116,8 @@ test('another admin cannot discover or open HL ordering', {"tag":["@hl-order"]},
 
 test('PO Management opens both confirmed seasons without mixing balances or search', {"tag":["@hl-order"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, { poRows: [
-    { row_index: 1, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.F1', po_remain: 300 },
-    { row_index: 2, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.S1', po_remain: 794 }
+    poManagementRow({ row_index: 1, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.F1', po_remain: 300 }),
+    poManagementRow({ row_index: 2, itemcode: '000310.030.1', commonname: 'Sea Green Juniper', contsize: '#3', lotcode: '27.S1', po_remain: 794 })
   ] });
   await page.getByRole('button', { name: 'Open Inventory', exact: true }).click();
   await page.locator('#inventory-open-po-management').click();

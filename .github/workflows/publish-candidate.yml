@@ -63,10 +63,13 @@ jobs:
               return;
             }
             if (!pr.merged) {
-              // Preserve the existing auto-merge opt-in if branch rules deferred it.
-              // The API enforces branch protection and the expected head SHA.
-              if (pr.state !== 'open' || !pr.auto_merge) {
-                core.notice('PR is neither merged nor awaiting an enabled auto-merge.');
+              // Codex candidate branches are merge-authorized only after this
+              // exact full validation run succeeds. Other branches retain the
+              // explicit GitHub Auto-Merge opt-in requirement.
+              const validatedCodexCandidate = typeof pr.head?.ref === 'string' &&
+                pr.head.ref.startsWith('codex/');
+              if (pr.state !== 'open' || (!validatedCodexCandidate && !pr.auto_merge)) {
+                core.notice('PR is neither a validated Codex candidate nor awaiting an enabled auto-merge.');
                 return;
               }
               const { data: merge } = await github.rest.pulls.merge({

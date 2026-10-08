@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
+import { poManagementRow } from './fixtures/po-management-canary.mjs';
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 // @test-group: @home-role
 
@@ -847,7 +848,7 @@ test('failed native session recovery shows recovery guidance without a legacy da
 test('HL and PO show permission-matched saved listings before refresh, with current actions gated', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const fixture = await installColdFixture(page, baseURL!, {
     username: 'dylan_collyge',
-    poRows: [{ row_index: 1, itemcode: 'CACHE.PO', commonname: 'Saved PO listing', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' }]
+    poRows: [poManagementRow({ row_index: 1, itemcode: 'CACHE.PO', commonname: 'Saved PO listing', contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1' })]
   });
   await page.locator('#home-tile-hl-order').click();
   await expect(page.locator('[data-hl-group]')).toBeVisible();
