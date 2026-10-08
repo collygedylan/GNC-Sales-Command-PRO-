@@ -13,15 +13,23 @@ function fixture() {
     steps: [{ name: 'Require every safety lane for this commit', status: 'completed', conclusion: 'success' }] }];
   const artifacts = [{ id: 30, name: `release-site-${buildCommit}` }, { id: 31, name: `release-proof-${buildCommit}-1` }]
     .map(artifact => ({ ...artifact, expired: false, expires_at: '2999-01-01T00:00:00Z', workflow_run: { id: 12, head_sha: head } }));
-  const f = { pr, associated: [pr], runs: [run], jobs, artifacts,
+  const f = { pr, associated: [pr], runs: [run], jobs, artifacts, listRequests: [],
     workflow: { id: 9, path: run.path, state: 'active' },
     merged: { sha: commit, tree: { sha: tree } }, built: { sha: buildCommit, tree: { sha: tree }, parents: [{ sha: head }] } };
+  const page = (url, field, rows) => {
+    const parsed = new URL(url, 'https://fixture.invalid');
+    const pageNumber = Number(parsed.searchParams.get('page') || 1);
+    const pageSize = Number(parsed.searchParams.get('per_page') || 100);
+    f.listRequests.push({ field, pageNumber, pageSize });
+    return { total_count: rows.length,
+      [field]: rows.slice((pageNumber - 1) * pageSize, pageNumber * pageSize) };
+  };
   f.api = async url => {
     if (url.endsWith('/pulls?per_page=100')) return f.associated;
     if (url.endsWith('/pulls/42')) return f.pr;
-    if (url.includes('/artifacts?')) return { total_count: f.artifacts.length, artifacts: f.artifacts };
-    if (url.includes('/jobs?')) return { total_count: f.jobs.length, jobs: f.jobs };
-    if (url.includes('/runs?')) return { total_count: f.runs.length, workflow_runs: f.runs };
+    if (url.includes('/artifacts?')) return page(url, 'artifacts', f.artifacts);
+    if (url.includes('/jobs?')) return page(url, 'jobs', f.jobs);
+    if (url.includes('/runs?')) return page(url, 'workflow_runs', f.runs);
     if (url.endsWith(`/git/commits/${commit}`)) return f.merged;
     if (url.endsWith(`/git/commits/${buildCommit}`)) return f.built;
     if (url.endsWith('/actions/workflows/performance-monitor.yml')) return f.workflow;
@@ -46,6 +54,53 @@ test('optional PR production-health skip is allowed; fresh production health is 
   const f = fixture();
   f.jobs.push({ ...f.jobs[0], id: 3, name: 'validation / production-health', conclusion: 'skipped' });
   assert.equal((await f.select()).reuse, true);
+});
+
+test('Pages accepts complete 102-job proof metadata and finds the release gate on page two', async () => {
+  const f = fixture();
+  const gate = f.jobs[0];
+  f.jobs = Array.from({ length: 100 }, (_, index) => ({ ...gate, id: 100 + index, name: `validation / extra-${index}` }))
+    .concat([gate, { ...gate, id: 999, name: 'validation / unit' }]);
+  const selected = await f.select();
+  assert.equal(selected.reuse, true);
+  assert.ok(f.listRequests.some(request => request.field === 'jobs' && request.pageNumber === 2));
+});
+
+for (const [name, mutate] of [
+  ['a non-green job on page two', f => { f.jobs[101] = { ...f.jobs[101], conclusion: 'failure' }; }],
+  ['a foreign job on page two', f => { f.jobs[101] = { ...f.jobs[101], head_sha: buildCommit }; }],
+  ['a duplicate page-two job ID', f => { f.jobs[101] = { ...f.jobs[101], id: f.jobs[0].id }; }],
+]) test(`Pages fails closed for ${name}`, async () => {
+  const f = fixture(), gate = f.jobs[0];
+  f.jobs = Array.from({ length: 100 }, (_, index) => ({ ...gate, id: 100 + index, name: `validation / extra-${index}` }))
+    .concat([{ ...gate, id: 998 }, { ...gate, id: 999, name: 'validation / unit' }]);
+  mutate(f);
+  assert.equal((await f.select()).reuse, false);
+});
+
+for (const [name, mutate] of [
+  ['an inconsistent page total', f => { const api = f.api; f.api = async url => {
+    const result = await api(url);
+    if (url.includes('/jobs?') && new URL(url, 'https://fixture.invalid').searchParams.get('page') === '2') result.total_count += 1;
+    return result;
+  }; }],
+  ['a truncated second page', f => { const api = f.api; f.api = async url => {
+    if (url.includes('/jobs?') && new URL(url, 'https://fixture.invalid').searchParams.get('page') === '2') {
+      const result = await api(url); result.jobs = []; return result;
+    }
+    return api(url);
+  }; }],
+  ['an API error on page two', f => { const api = f.api; f.api = async url => {
+    if (url.includes('/jobs?') && new URL(url, 'https://fixture.invalid').searchParams.get('page') === '2') throw new Error('API_PAGE_TWO_FAILED');
+    return api(url);
+  }; }],
+]) test(`Pages does not accept ${name}`, async () => {
+  const f = fixture(), gate = f.jobs[0];
+  f.jobs = Array.from({ length: 100 }, (_, index) => ({ ...gate, id: 100 + index, name: `validation / extra-${index}` }))
+    .concat([gate, { ...gate, id: 999, name: 'validation / unit' }]);
+  mutate(f);
+  if (name.includes('API error')) await assert.rejects(f.select(), /API_PAGE_TWO_FAILED|GITHUB_PAGINATION/);
+  else assert.equal((await f.select()).reuse, false);
 });
 
 for (const [name, change] of [

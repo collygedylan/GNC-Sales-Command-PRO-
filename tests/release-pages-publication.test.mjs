@@ -6,7 +6,7 @@ const repository = 'example/app', commit = 'a'.repeat(40), buildCommit = 'b'.rep
 function fixture() {
   const run = { id: 12, run_number: 1, run_attempt: 2, path: '.github/workflows/pages-static.yml', head_sha: commit,
     head_branch: 'main', event: 'workflow_dispatch', head_repository: { full_name: repository } };
-  const job = { name: 'deploy', run_id: 12, head_sha: commit,
+  const job = { id: 13, name: 'deploy', run_id: 12, head_sha: commit,
     steps: [{ name: 'Deploy verified artifact to Pages', status: 'completed', conclusion: 'success' }] };
   const artifact = { id: 99, name: 'pages-publication-2', expired: false, expires_at: '2999-01-01T00:00:00Z',
     workflow_run: { id: 12, head_sha: commit } };
@@ -14,9 +14,14 @@ function fixture() {
   const f = { runs: [run], jobs: [job], artifacts: [artifact], descriptor,
     merged: { sha: commit, tree: { sha: tree } }, built: { sha: buildCommit, tree: { sha: tree } } };
   f.api = async url => {
-    if (url.includes('/runs?')) return { total_count: f.runs.length, workflow_runs: f.runs };
-    if (url.includes('/jobs?')) return { total_count: f.jobs.length, jobs: f.jobs };
-    if (url.includes('/artifacts?')) return { total_count: f.artifacts.length, artifacts: f.artifacts };
+    const paged = (items, field) => {
+      const params = new URL(url, 'https://api.github.com').searchParams;
+      const page = Number(params.get('page') || 1), perPage = Number(params.get('per_page') || 100);
+      return { total_count: items.length, [field]: items.slice((page - 1) * perPage, page * perPage) };
+    };
+    if (url.includes('/runs?')) return paged(f.runs, 'workflow_runs');
+    if (url.includes('/jobs?')) return paged(f.jobs, 'jobs');
+    if (url.includes('/artifacts?')) return paged(f.artifacts, 'artifacts');
     if (url.endsWith(`/commits/${commit}`)) return f.merged;
     if (url.endsWith(`/commits/${buildCommit}`)) return f.built;
     throw new Error('Unexpected API URL');
@@ -28,6 +33,14 @@ function fixture() {
 
 test('independent health check resolves the published PR fingerprint from the exact Pages run and attempt', async () => {
   assert.equal(await fixture().resolve(), buildCommit);
+});
+test('independent health check finds the published step on jobs page two', async () => {
+  const f = fixture();
+  f.jobs = Array.from({ length: 102 }, (_, index) => ({ id: index + 100, name: `validation ${index}`, run_id: 12, head_sha: commit }));
+  f.jobs[101] = { ...f.jobs[101], name: 'deploy', steps: [{ name: 'Deploy verified artifact to Pages', status: 'completed', conclusion: 'success' }] };
+  assert.equal(await f.resolve(), buildCommit);
+  f.jobs[101].steps[0].conclusion = 'failure';
+  await assert.rejects(f.resolve(), /NOT_PUBLISHED/);
 });
 test('a legacy Pages publication without a descriptor retains the main fingerprint', async () => {
   const f = fixture(); f.artifacts = []; f.readDescriptor = () => assert.fail('no download for legacy publication');
@@ -71,7 +84,7 @@ for (const [name, mutate] of [
   const f = fixture(); mutate(f); await assert.rejects(f.resolve(), /PAGES_PUBLICATION_/);
 });
 test('an older successful publication cannot hide a newer pending attempt', async () => {
-  const f = fixture(); f.runs.push({ ...f.runs[0], run_number: 2, run_attempt: 3 });
+  const f = fixture(); f.runs.push({ ...f.runs[0], id: 13, run_number: 2, run_attempt: 3 });
   f.api = async url => {
     if (url.includes('/runs?')) return { total_count: f.runs.length, workflow_runs: f.runs };
     assert.match(url, /attempts\/3\/jobs/);
