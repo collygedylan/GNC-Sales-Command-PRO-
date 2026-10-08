@@ -2231,12 +2231,19 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
 #view-detail #det-not-on-inventory-content .focus\:border-amber-500:focus,#not-on-inventory-panel .focus\:border-amber-500:focus{border-color:var(--noi-red)!important}
 #camera-btn-not-on-inventory{border-color:var(--noi-red)!important;background-color:var(--noi-red-soft)!important;color:var(--noi-red)!important}
 #view-detail #det-not-on-inventory-content button[onclick="return createNotOnInventoryRow()"],#not-on-inventory-panel button[onclick="return createNotOnInventoryRow()"]{background:var(--noi-red)!important}
+#view-detail #det-tabs-container{margin-bottom:8px}
 #view-detail #det-title-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:end;column-gap:.55rem;min-width:0;overflow:hidden;color:#007a4d;padding-bottom:.08rem}
 #view-detail #det-title-row>*{min-width:0;white-space:nowrap}
 #view-detail #det-common{overflow:visible;text-overflow:clip;font-size:clamp(1.28rem,4.1vw,2.15rem);line-height:1.1;padding:.04em 0 .08em}
 #view-detail #det-size{font-size:clamp(1rem,3.2vw,1.42rem);line-height:1.05}
 #view-detail #det-location{font-size:clamp(1rem,3.1vw,1.38rem);line-height:1.05}
 #view-detail #det-size,#view-detail #det-location{white-space:nowrap}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-title-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:start;column-gap:.55rem;row-gap:.18rem;min-width:0;overflow:visible;color:#007a4d;padding-bottom:.08rem}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-title-row>*{min-width:0;white-space:normal;overflow-wrap:anywhere}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-common{overflow:visible;text-overflow:clip;font-size:clamp(1.28rem,4.1vw,2.15rem);line-height:1.12;padding:.04em 0 .08em}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-size{font-size:clamp(1rem,3.2vw,1.42rem);line-height:1.05;white-space:nowrap}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-location{font-size:clamp(1rem,3.1vw,1.38rem);line-height:1.05;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:640px){#view-detail:has(#det-tabs-container:not(.hidden)) #det-title-row{grid-template-columns:minmax(0,1fr) auto;column-gap:.4rem;row-gap:.22rem}#view-detail:has(#det-tabs-container:not(.hidden)) #det-location{grid-column:1/-1}}
 #view-detail #det-crop-roll-form-content{padding:.5rem 0 .5rem;overflow:visible;scroll-margin-top:calc(var(--freeze-panel-offset,0px) + 1rem)}
 #view-detail #crop-roll-form-panel{padding-top:.45rem;overflow:visible}
 #view-detail #crop-roll-form-fit-shell{transform-origin:top left}
@@ -2394,7 +2401,7 @@ body.viewport-compact .detail-av-hero-photo img{min-height:clamp(14rem,66vw,20re
 body.viewport-compact .detail-av-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 #view-detail.detail-request-mode .freeze-panel{position:relative!important;top:auto!important;margin-top:0!important;margin-bottom:.08rem!important;padding-top:.14rem!important;padding-bottom:.08rem!important}
 #view-detail.detail-request-mode .freeze-panel>.mb-4{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "meta" "desired" "camera";align-items:center;gap:.14rem;margin-bottom:.16rem!important;padding-top:0!important}
-#view-detail.detail-request-mode #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important;position:relative!important;z-index:6!important}
+#view-detail.detail-request-mode #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important}
 #view-detail.detail-request-mode #det-common{font-size:clamp(1.02rem,3.5vw,1.38rem)!important;line-height:1.05!important}
 #view-detail.detail-request-mode #det-size,#view-detail.detail-request-mode #det-location{font-size:clamp(.82rem,2.9vw,1rem)!important;line-height:1.05!important}
 #view-detail.detail-request-mode #det-extra-info{grid-area:meta;padding-bottom:.25rem!important}
@@ -2404,7 +2411,7 @@ body.viewport-compact .detail-av-stats{grid-template-columns:repeat(2,minmax(0,1
 #view-detail.detail-request-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card{min-height:3.15rem;border-radius:14px;padding:.56rem .72rem;font-size:.66rem;letter-spacing:.1em;gap:.5rem}
 #view-detail.detail-request-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card i{font-size:1.28rem}
 #view-detail.detail-request-mode #global-inputs-container{margin-bottom:.32rem!important}
-#view-detail.detail-request-mode #det-tabs-container{margin-bottom:.16rem!important}
+#view-detail.detail-request-mode #det-tabs-container{margin-bottom:8px!important}
 #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:.32rem;max-width:780px;margin:0 auto;padding:.08rem 0 .2rem!important}
 #view-detail #detail-shared-panels.detail-shared-single-panel:not(.hidden){grid-template-columns:minmax(0,1fr)!important}
 body.request-detail-av-options-open #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){grid-template-columns:minmax(0,1fr)!important;max-width:980px!important}
@@ -2507,7 +2514,7 @@ body.viewport-compact #view-detail.detail-request-mode .request-desired-chip,bod
 body.viewport-compact #view-detail.detail-request-mode .request-desired-label{font-size:6.5px;letter-spacing:.08em}
 body.viewport-compact #view-detail.detail-request-mode .request-desired-value{font-size:10px;line-height:1.05}
 body.viewport-compact #view-detail.detail-request-mode #det-request-content>div{padding:5px!important;margin-bottom:5px!important}
-body.viewport-compact #view-detail.detail-request-mode #det-tabs-container{margin-bottom:.14rem!important}
+body.viewport-compact #view-detail.detail-request-mode #det-tabs-container{margin-bottom:8px!important}
 body.viewport-compact #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){gap:.22rem;padding:.08rem 0 .18rem!important}
 body.viewport-compact #view-detail.detail-request-mode #detail-shared-panels .request-av-options-header{min-height:3.18rem!important;height:auto!important;padding:.48rem .5rem!important;gap:.28rem!important}
 body.viewport-compact #view-detail.detail-request-mode #detail-shared-panels .request-av-options-header>span:first-child>span:first-child{font-size:.48rem!important;letter-spacing:.06em!important}
@@ -2535,7 +2542,7 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         #view-detail #req-comments{min-height:132px}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) .freeze-panel{position:relative!important;top:auto!important;margin-top:0!important;margin-bottom:.08rem!important;padding-top:.14rem!important;padding-bottom:.08rem!important}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) .freeze-panel>.mb-4{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "meta" "camera";align-items:center;gap:.14rem;margin-bottom:.16rem!important;padding-top:0!important}
-        #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important;position:relative!important;z-index:6!important}
+        #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-common{font-size:clamp(1.02rem,3.5vw,1.38rem)!important;line-height:1.05!important}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-size,
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-location{font-size:clamp(.82rem,2.9vw,1rem)!important;line-height:1.05!important}
@@ -2545,7 +2552,7 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         #view-detail.detail-photo-update-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card{min-height:3.15rem;border-radius:14px;padding:.56rem .72rem;font-size:.66rem;letter-spacing:.1em;gap:.5rem}
         #view-detail.detail-photo-update-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card i{font-size:1.28rem}
         #view-detail.detail-photo-update-mode #global-inputs-container{margin-bottom:.32rem!important}
-        #view-detail.detail-photo-update-mode #det-tabs-container{margin-bottom:.16rem!important}
+        #view-detail.detail-photo-update-mode #det-tabs-container{margin-bottom:8px!important}
         #view-detail.detail-photo-update-mode #detail-shared-panels:not(.hidden){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:.32rem;max-width:780px;margin:0 auto;padding:.08rem 0 .2rem!important}
         #view-detail.detail-photo-update-mode #detail-shared-panels.hidden{display:none!important}
         #view-detail.detail-photo-update-mode #detail-shared-panels>:not([hidden])~:not([hidden]){margin-top:0!important}
@@ -19216,9 +19223,11 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         const ROW_SCOPED_DESIGNATION_SYNC_KEYS = ['DESIGITEM','DESIGCUST','DESIGLOC'];
         const ROW_SCOPED_DESIGNATION_SYNC_KEY_SET = new Set(ROW_SCOPED_DESIGNATION_SYNC_KEYS.concat(['desigitem','desigcust','desigloc']));
+        const MASTER_EVIDENCE_SYNC_KEYS = ['LAST_UPDATED','PHOTO_MATCH_PTR_AVAILABLE_KNOWN','AV_RULE_AV_NOTE_UPDATED_AT','AV_RULE_BUNDLE_UPDATED_AT','AV_RULE_CALIPER_UPDATED_AT','AV_RULE_HOLDSTOP_SNAPSHOT','AV_RULE_LAST_CLEAR_REASON','AV_RULE_LAST_CLEARED_AT','AV_RULE_MATCH_UPDATED_AT','AV_RULE_PHOTO_UPDATED_AT','AV_RULE_PRIORITY_SNAPSHOT','AV_RULE_SPEC_UPDATED_AT'];
+        const confirmedDriveEvidenceRows = new Map();
         const LINKED_ROW_SYNC_KEYS = ['COMMONNAME','CONTSIZE','LOCATIONCODE','LOTCODE','ITEMCODE','PTRONHAND','PTRREVIEWED','PTRAVAILABLE','SEASONSUPPLY','PRIORITY','QUALITYCODE','FIELDTAGCOLOR','PLANTGROUPCODE','BLOCKALPHA','SEASON','S_LTS','HOLDSTOPCODE','HOLSTOPCODE','HOLDSTOPREASON','HOLDSTOPBEGINDATE','holdstopbegindate','HOLD_RELEASE_APPROVED_AT','hold_release_approved_at','HOLD_RELEASE_APPROVED_BY','hold_release_approved_by','HOLD_RELEASE_APPROVED_BY_DISPLAY','hold_release_approved_by_display','HOLD_RELEASE_APPROVED_HOLDSTOPBEGINDATE','hold_release_approved_holdstopbegindate','LOCATIONNOTE','LOCATIONNOTEDATE','AV_NOTE','SALES_NOTE','MATCH','SPEC','CALIPER','PICK','LOC_MATCH_QTY','INITIAL_PTR','NCR_APPROVAL_MESSAGE','ncr_approval_message'];
         const EVAL_TASK_ROW_SYNC_KEYS = ['EVAL_TASK_TYPE','EVAL_TASK_STATUS','EVAL_TASK_INSTRUCTIONS','EVAL_TASK_ASSIGNED_BY','EVAL_TASK_ASSIGNED_AT','EVAL_TASK_COMPLETED_BY','EVAL_TASK_COMPLETED_AT','EVAL_TASK_RECOUNT_QTY','EVAL_TASK_MOVED_UP_QTY','EVAL_TASK_HOLD_ACTION','EVAL_TASK_HOLD_CODE','EVAL_TASK_HOLD_REASON','EVAL_TASK_RESULT_NOTE'];
-        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(ROW_SCOPED_DESIGNATION_SYNC_KEYS, getFlyerShadowKeys(), EVAL_TASK_ROW_SYNC_KEYS, ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
+        const EXACT_ROW_SYNC_KEYS = LINKED_ROW_SYNC_KEYS.concat(ROW_SCOPED_DESIGNATION_SYNC_KEYS, getFlyerShadowKeys(), EVAL_TASK_ROW_SYNC_KEYS, MASTER_EVIDENCE_SYNC_KEYS, ['APP_TAB_ASSIGNMENT','PRODUCTIVITY_ORIGIN_ASSIGNMENT','DATE_COMPLETED','FLYER_CAT','FLYER_TITLE','FLYER_INST','FLYER_ASSIGNED','FLYER_NOTES','FLYER_COMPLETED','ASSIGNEDTO']);
         const ROW_SYNC_SNAPSHOT_EXTRA_KEYS = ['SAVED_PHOTO_LINK','SAVED_PHOTO_NAME','REQ_PHOTO_LINK','REQ_PHOTO_NAME','DOCK_PHOTO_LINK','DOCK_PHOTO_NAME','FLYER_PHOTO_LINK','FLYER_PHOTO_NAME','ROW_PHOTO_LINK','ROW_PHOTO_NAME','DESIGITEM','DESIGCUST','DESIGLOC','REQ_STATUS','REQ_MATCH','REQ_SPEC','REQ_CALIPER','REQ_DESIRED_SPEC','REQ_DESIRED_CALIPER','DESIRED_SPEC','DESIRED_CALIPER','REQ_PICK','REQUEST_NOTE','REQUEST_NOTES','REQ_NOTE','REQ_ROW_NOTE','ROW_NOTE','ROWNOTE','REQUEST_ROW_NOTE','REQUEST_MESSAGE','NOTE','REQ_COMMENTS','REQ_RESERVE'];
         const ROW_SYNC_STORAGE_KEY = 'gnc_row_state_sync_v1';
         const ROW_SYNC_EVENT_NAME = 'gnc-row-state-sync';
@@ -19243,7 +19252,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 ? uniqueId
                 : (String(firstNonEmptyValue(item.MASTER_ID, item.MASTER_UNIQUE_ID, item.master_id, uniqueId)).trim() || uniqueId);
             const data = {};
-            EXACT_ROW_SYNC_KEYS.forEach((key) => { data[key] = item[key]; });
+            EXACT_ROW_SYNC_KEYS.forEach((key) => {
+                if (MASTER_EVIDENCE_SYNC_KEYS.includes(key) && sourceTable !== 'ph_master_inventory') return;
+                data[key] = item[key];
+            });
             ROW_SYNC_SNAPSHOT_EXTRA_KEYS.forEach((key) => {
                 data[key] = item[key];
             });
@@ -19271,8 +19283,14 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             if (!target) return false;
             const targetUniqueId = String(firstNonEmptyValue(target && target.UNIQUE_ID, target && target.unique_id, '') || '').trim();
             const isExactSnapshotTarget = !!(uniqueId && targetUniqueId && targetUniqueId === uniqueId);
+            if (snapshotSourceTable === 'ph_master_inventory' && isExactSnapshotTarget) {
+                const incomingRevision = window.GncDatabase.driveEvidenceRevision(payload.LAST_UPDATED);
+                const currentRevision = window.GncDatabase.driveEvidenceRevision(target.LAST_UPDATED);
+                if (currentRevision && incomingRevision && incomingRevision < currentRevision) return false;
+            }
             Object.keys(payload).forEach((key) => {
                 if (!isExactSnapshotTarget && isRowScopedDesignationSyncKey(key)) return;
+                if (MASTER_EVIDENCE_SYNC_KEYS.includes(key) && (!isExactSnapshotTarget || snapshotSourceTable !== 'ph_master_inventory')) return;
                 target[key] = payload[key];
             });
             if (exactTarget && exactTarget !== target) {
@@ -19327,8 +19345,25 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 if (!row.MASTER_ID) row.MASTER_ID = masterId;
                 if (!row.master_id) row.master_id = masterId;
             }
+            const sameMasterInventoryRow = !!masterId && masterId === String(row.UNIQUE_ID || '').trim()
+                && String(masterItem.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory'
+                && String(row.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory';
             (Array.isArray(keys) ? keys : []).forEach((key) => {
+                if (MASTER_EVIDENCE_SYNC_KEYS.includes(key)) {
+                    if (!sameMasterInventoryRow) return;
+                    // Omitted legacy metadata is not an authoritative clear.
+                    if (!Object.prototype.hasOwnProperty.call(masterItem, key)) return;
+                    row[key.toLowerCase()] = masterItem[key];
+                }
                 row[key] = masterItem[key];
+                const lowerKey = key.toLowerCase();
+                if (sameMasterInventoryRow && key !== lowerKey
+                    && (Object.prototype.hasOwnProperty.call(row, lowerKey) || Object.prototype.hasOwnProperty.call(masterItem, lowerKey))) {
+                    row[lowerKey] = masterItem[key];
+                }
+                if (sameMasterInventoryRow && key === 'PICK' && Object.prototype.hasOwnProperty.call(masterItem, 'PICK')) {
+                    row.PIC_NOTE = row.pic_note = masterItem.PICK;
+                }
             });
             clonePhotoFields(masterItem, row, { exact: opts.exactPhotoClone !== false });
             syncSharedFlyerPhotoFields(row, opts.photoPrefix || '');
@@ -27661,6 +27696,101 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             flushPendingEditsCache(true);
         }
 
+        function buildConfirmedDriveEvidenceState(row) {
+            const identityKeys = ['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'];
+            const evidence = {};
+            window.GncDatabase.driveEvidenceColumns.forEach(key => {
+                const upper = key.toUpperCase();
+                if (identityKeys.includes(upper)) return;
+                const value = Object.prototype.hasOwnProperty.call(row, upper) ? row[upper] : null;
+                evidence[upper] = value;
+                evidence[key] = value;
+            });
+            setPhotoAliasFieldsForPrefix(evidence, '', row.PHOTO_LINK || '', row.PHOTO_NAME || '');
+            ['PICK', 'PHOTO_MATCH_PTR_AVAILABLE_KNOWN'].forEach(key => {
+                evidence[key] = row[key];
+            });
+            return { scope: getSupabaseReadIdentityScope(), revision: window.GncDatabase.driveEvidenceRevision(row.LAST_UPDATED),
+                identity: identityKeys.map(key => String(row[key] || '')), row: evidence };
+        }
+
+        function preserveConfirmedDriveEvidence(row = null) {
+            if (!row || String(row.SOURCE_TABLE || '').toLowerCase() !== 'ph_master_inventory') return row;
+            const uid = String(row.UNIQUE_ID || '');
+            const saved = confirmedDriveEvidenceRows.get(uid);
+            if (!saved || saved.scope !== getSupabaseReadIdentityScope()) return row;
+            if (['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'].some((key, index) => String(row[key] || '') !== saved.identity[index])) return row;
+            const revision = window.GncDatabase.driveEvidenceRevision(row.LAST_UPDATED);
+            if (!revision || revision < saved.revision) return { ...row, ...saved.row };
+            if (revision > saved.revision) {
+                confirmedDriveEvidenceRows.set(uid, buildConfirmedDriveEvidenceState(row));
+            }
+            return row;
+        }
+
+        function reconcileConfirmedDriveEvidence(result, item, prefix = '', options = {}) {
+            if (options.scope && options.scope !== getSupabaseReadIdentityScope()) {
+                throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
+            }
+            if (result && result.noOp === true) return { row: item, applied: false };
+            const raw = window.GncDatabase.confirmedDriveEvidence(result);
+            const identityKeys = ['UNIQUE_ID', 'ITEMCODE', 'LOCATIONCODE', 'LOTCODE'];
+            if (!item || identityKeys.some(key => String(raw[key.toLowerCase()] || '') !== String(item[key] || ''))) {
+                throw new Error('The saved inventory identity changed. Reopen the item before retrying.');
+            }
+            const uid = raw.unique_id;
+            const scope = getSupabaseReadIdentityScope();
+            const revision = window.GncDatabase.driveEvidenceRevision(raw.last_updated);
+            const master = fullInventory.find(row => String(row.UNIQUE_ID || '') === uid) || item;
+            const saved = confirmedDriveEvidenceRows.get(uid);
+            if ((saved && saved.scope === scope && revision <= saved.revision)
+                || window.GncDatabase.driveEvidenceRevision(master.LAST_UPDATED) > revision) {
+                return { row: master, applied: false };
+            }
+            if (identityKeys.some(key => String(master[key] || '') !== String(item[key] || ''))) {
+                throw new Error('The inventory row moved. Reopen the item before retrying.');
+            }
+            // The editor may share the master object. Detach it before applying
+            // the receipt so unsubmitted fields cannot leak into lists/broadcasts.
+            const preserveEditor = options.photoOnly === true && activeItem && activeItem.UNIQUE_ID === uid
+                && String(activeItem.SOURCE_TABLE || '').toLowerCase() === 'ph_master_inventory'
+                && identityKeys.every(key => String(activeItem[key] || '') === String(item[key] || ''));
+            const editorDraft = preserveEditor ? { ...activeItem } : null;
+            if (preserveEditor && activeItem === master) activeItem = { ...activeItem };
+            const canonical = formatFetchedRows([raw], 'ph_master_inventory')[0];
+            // SQL NULLs are authoritative clears, including evidence timestamps.
+            window.GncDatabase.driveEvidenceColumns.forEach(key => {
+                canonical[key.toUpperCase()] = raw[key];
+                canonical[key] = raw[key];
+            });
+            canonical.PICK = raw.pic_note;
+            canonical.PHOTO_MATCH_PTR_AVAILABLE_KNOWN = parseAppNumber(raw.ptravailable) != null;
+            Object.assign(master, canonical);
+            normalizeRowPhotoFields(master);
+            buildSearchIndex(master);
+            confirmedDriveEvidenceRows.set(uid, buildConfirmedDriveEvidenceState(master));
+            if (options.photoOnly !== true && item !== master) Object.assign(item, master);
+            const changedKeys = getDatasetKeysForTable('ph_master_inventory');
+            try {
+                rebuildMasterInventoryIndexes();
+                touchDatasetLoadStateForLocalChange(changedKeys);
+                propagateCommittedEdit('ph_master_inventory', master, changedKeys, null, { prefix, delay: 0, typingDelay: 120 });
+            } finally {
+                if (editorDraft && activeItem && activeItem.UNIQUE_ID === uid) {
+                    Object.assign(activeItem, editorDraft);
+                    // Only acknowledged photo fields/revision replace the draft.
+                    setPhotoAliasFieldsForPrefix(activeItem, prefix, raw.photo_link || '', raw.photo_name || '');
+                    MASTER_EVIDENCE_SYNC_KEYS.forEach(key => {
+                        if (Object.prototype.hasOwnProperty.call(master, key)) {
+                            activeItem[key] = master[key];
+                            activeItem[key.toLowerCase()] = master[key];
+                        }
+                    });
+                }
+            }
+            return { row: master, applied: true };
+        }
+
         async function saveSecureDriveEvidence(item = null, prefix = '', payload = {}, isComplete = false, baselineInput = null) {
             if (!item || !SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
                 throw new Error('Secure Drive evidence context is invalid.');
@@ -27669,7 +27799,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 ? { ...baselineInput }
                 : buildSecureDriveEvidenceBaseline(item);
             const evidencePatch = buildSecureDriveEvidencePatch(payload, baseline);
-            if (!isComplete && !Object.keys(evidencePatch).length) {
+            if (!isComplete && !Object.keys(evidencePatch).length && !item.__drivePhotoAttachment) {
                 return { ok: true, code: 'NO_CHANGES', canonicalConfirmed: true, row: item, requestRows: [], noOp: true };
             }
             const evidenceSignature = JSON.stringify({
@@ -27688,6 +27818,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 delete item.__driveEvidenceRetryParentToken;
             }
             const masterUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
+            const identityScope = getSupabaseReadIdentityScope();
             const controller = new AbortController();
             if (item.__drivePhotoAttachment) item.__drivePhotoAbort = () => controller.abort();
             driveEvidenceAbortControllers.set(masterUid, controller);
@@ -27696,7 +27827,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     let lastError = null;
                     for (let attempt = 0; attempt < 2; attempt += 1) {
                         try {
-                            if (item.__drivePhotoAttachment && (!item.__drivePhotoIsCurrent() || controller.signal.aborted)) {
+                            if (identityScope !== getSupabaseReadIdentityScope() || controller.signal.aborted
+                                || (item.__drivePhotoAttachment && !item.__drivePhotoIsCurrent())) {
                                 throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
                             }
                             const result = await supabaseRpc('save_drive_evidence_v2', {
@@ -27712,7 +27844,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                                 p_idempotency_key: item.__driveEvidenceIdempotencyKey
                             }, { timeoutMs: Math.max(getDetailRowWriteTimeoutMs(), 30000), signal: controller.signal });
                             const code = String(result && result.code || '').trim().toUpperCase();
+                            if (identityScope !== getSupabaseReadIdentityScope() || controller.signal.aborted) {
+                                throw Object.assign(new Error('Photo session changed.'), { code: 'DRIVE_SAVE_ABORTED' });
+                            }
                             if (result && result.ok === true && result.canonicalConfirmed === true && result.row) {
+                                window.GncDatabase.confirmedDriveEvidence(result);
                                 delete item.__driveEvidenceIdempotencyKey;
                                 delete item.__driveEvidenceIdempotencySignature;
                                 try { delete item.__driveEvidenceBaselineOverride; } catch (error) { item.__driveEvidenceBaselineOverride = null; }
@@ -36112,6 +36248,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function resetProductionLiveSync() {
             clearDrivePhotoAttachments();
+            confirmedDriveEvidenceRows.clear();
             suspendTagInventory = [];
             suspendTagInventoryScope = '';
             socRawSourceRows = [];
@@ -39945,7 +40082,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     && String(firstNonEmptyValue(item.so_source, item.SO_SOURCE, 'season')).trim().toLowerCase() === 'season';
                 for (let k in item) {
                     const preserveSalesOfficeField = isSeasonSalesOfficeRow || (normalizedSourceTable === 'ph_sales_office' && /^av_note$/i.test(k));
-                    if (item[k] !== null || preserveSalesOfficeField || /^(?:(?:req_|flyer_|dock_)?photo_link|(?:req_|flyer_|dock_)?photo_name)$/i.test(k)) obj[k.toUpperCase()] = item[k];
+                    const preserveMasterEvidence = normalizedSourceTable === 'ph_master_inventory'
+                        && /^(?:av_rule_|last_updated$)/i.test(k);
+                    if (item[k] !== null || preserveSalesOfficeField || preserveMasterEvidence || /^(?:(?:req_|flyer_|dock_)?photo_link|(?:req_|flyer_|dock_)?photo_name)$/i.test(k)) obj[k.toUpperCase()] = item[k];
                 }
                 obj.SOURCE_TABLE = normalizeAppTableName(firstNonEmptyValue(obj.SOURCE_TABLE, obj.source_table, normalizedSourceTable)) || normalizedSourceTable;
                 obj.source_table = obj.SOURCE_TABLE;
@@ -39976,7 +40115,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 }
                 repairDisplayFieldsOnRow(obj);
                 normalizeRowPhotoFields(obj);
-                return obj;
+                return preserveConfirmedDriveEvidence(obj);
             });
         }
 
@@ -59240,7 +59379,7 @@ function toggleDriveQuickRequestItem(domId) {
             }
 
             if (hasMaster) {
-                fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((item,idx)=>{item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
+                fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((row,idx)=>{const item=preserveConfirmedDriveEvidence(row);item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
                 applyMasterAppTabAssignments(fullInventory);
                 avRuleClearOps = (res._fromCache || res._verifiedLiveSync) ? [] : collectMasterAvRuleClearOps(fullInventory);
                 rebuildMasterInventoryIndexes();
@@ -106131,22 +106270,26 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const size = document.getElementById('det-size');
             const location = document.getElementById('det-location');
             if (!row || !common || !size || !location || !row.clientWidth) return;
-            common.style.fontSize = '';
-            const viewportWidth = window.visualViewport && Number(window.visualViewport.width)
-                ? Number(window.visualViewport.width)
-                : Number(window.innerWidth || document.documentElement.clientWidth || 0);
-            const minSize = viewportWidth >= 760 ? 22 : viewportWidth >= 480 ? 16 : 12;
-            let nextSize = parseFloat(window.getComputedStyle(common).fontSize) || 24;
-            common.style.fontSize = `${nextSize}px`;
-            const fits = () => {
-                return common.scrollWidth <= common.clientWidth + 1 && row.scrollWidth <= row.clientWidth + 1;
-            };
-            let guard = 0;
-            while (!fits() && nextSize > minSize && guard < 40) {
-                nextSize = Math.max(minSize, nextSize - 0.75);
+            const tabs = document.getElementById('det-tabs-container');
+            if (!tabs || tabs.classList.contains('hidden')) {
+                common.style.fontSize = '';
+                const viewportWidth = window.visualViewport && Number(window.visualViewport.width)
+                    ? Number(window.visualViewport.width)
+                    : Number(window.innerWidth || document.documentElement.clientWidth || 0);
+                const minSize = viewportWidth >= 760 ? 22 : viewportWidth >= 480 ? 16 : 12;
+                let nextSize = parseFloat(window.getComputedStyle(common).fontSize) || 24;
                 common.style.fontSize = `${nextSize}px`;
-                guard += 1;
+                const fits = () => common.scrollWidth <= common.clientWidth + 1 && row.scrollWidth <= row.clientWidth + 1;
+                let guard = 0;
+                while (!fits() && nextSize > minSize && guard < 40) {
+                    nextSize = Math.max(minSize, nextSize - 0.75);
+                    common.style.fontSize = `${nextSize}px`;
+                    guard += 1;
+                }
+                return;
             }
+            // Keep the authored responsive size and let long names wrap within the title grid.
+            common.style.removeProperty('font-size');
         }
 
         function scheduleDetailTitleRowFit(delayMs = 0) {
@@ -165563,13 +165706,11 @@ ${folderNote ? `Folder Note: ${folderNote}
                         if (nativeAuthSessionActive
                             && targetTable === 'ph_master_inventory'
                             && SECURE_DRIVE_EVIDENCE_PREFIXES.has(String(prefix || '').trim().toLowerCase())) {
+                            const driveSaveScope = getSupabaseReadIdentityScope();
                             const rpcResult = await saveSecureDriveEvidence(itemToSave, prefix, payload, isComplete, secureDriveEvidenceBaseline);
-                            const serverRow = formatFetchedRows([rpcResult.row], 'ph_master_inventory')[0] || rpcResult.row;
-                            Object.assign(itemToSave, serverRow);
-                            normalizeRowPhotoFields(itemToSave);
-                            buildSearchIndex(itemToSave);
-                            syncRowDataAcrossViews(itemToSave);
-                            const canonicalRequestRows = Array.isArray(rpcResult.requestRows)
+                            const reconciled = reconcileConfirmedDriveEvidence(rpcResult, itemToSave, prefix, { scope: driveSaveScope });
+                            if (!reconciled.applied && !rpcResult.noOp) Object.assign(itemToSave, reconciled.row);
+                            const canonicalRequestRows = reconciled.applied && Array.isArray(rpcResult.requestRows)
                                 ? formatFetchedRows(rpcResult.requestRows, ACTIVE_REQUEST_TABLE)
                                 : [];
                             canonicalRequestRows.forEach((requestRow) => {
@@ -166147,23 +166288,17 @@ ${folderNote ? `Folder Note: ${folderNote}
             // physical-row lock also serializes these writes with ordinary edits.
             const result = await saveSecureDriveEvidence(job.commandRow, job.prefix, job.payload, false, job.baseline);
             if (!isCurrentDrivePhotoAttachment(job)) return;
-            const canonical = formatFetchedRows([result.row], 'ph_master_inventory')[0] || result.row;
-            if (Object.keys(job.identity).some(key => String(canonical[key] || '') !== job.identity[key])) throw new Error('The saved photo row could not be verified. Reopen the item.');
-            const links = firstNonEmptyValue(canonical.PHOTO_LINK, canonical.photo_link, canonical.SAVED_PHOTO_LINK, '');
+            const canonical = window.GncDatabase.confirmedDriveEvidence(result);
+            if (Object.keys(job.identity).some(key => String(canonical[key.toLowerCase()] || '') !== job.identity[key])) throw new Error('The saved photo row could not be verified. Reopen the item.');
+            const links = canonical.photo_link || '';
             if (!parsePhotoCsvValues(links).includes(job.upload.publicUrl)) throw new Error('Photo attachment was not confirmed. Retry photo.');
-            const names = firstNonEmptyValue(canonical.PHOTO_NAME, canonical.photo_name, canonical.SAVED_PHOTO_NAME, '');
-            [current, job.item, activeItem].filter(row => row && row.UNIQUE_ID === job.identity.UNIQUE_ID).forEach(row => {
-                setPhotoAliasFieldsForPrefix(row, job.prefix, links, names);
-                ['LAST_UPDATED', 'AV_RULE_PHOTO_UPDATED_AT', 'AV_RULE_BUNDLE_UPDATED_AT', 'AV_RULE_PRIORITY_SNAPSHOT', 'AV_RULE_HOLDSTOP_SNAPSHOT'].forEach(key => {
-                    if (Object.prototype.hasOwnProperty.call(canonical, key)) row[key] = canonical[key];
-                });
-            });
-            // Reconcile photos only. The open detail may contain unsaved notes.
-            normalizeRowPhotoFields(current);
-            buildSearchIndex(current);
-            invalidateResolvedViewStateCaches();
-            markViewDirty('drive');
-            queueAppLiveEventForWrite('ph_master_inventory', 'PATCH', [{ unique_id: current.UNIQUE_ID }], '');
+            const reconciled = reconcileConfirmedDriveEvidence(result, current, job.prefix, { photoOnly: true, scope: job.scope });
+            const saved = reconciled.row;
+            if (job.item !== saved && job.item !== activeItem) {
+                setPhotoAliasFieldsForPrefix(job.item, job.prefix, saved.PHOTO_LINK || '', saved.PHOTO_NAME || '');
+                MASTER_EVIDENCE_SYNC_KEYS.forEach(key => { if (Object.prototype.hasOwnProperty.call(saved, key)) job.item[key] = saved[key]; });
+            }
+            if (reconciled.applied) queueAppLiveEventForWrite('ph_master_inventory', 'PATCH', [{ unique_id: saved.UNIQUE_ID }], '');
             clearPendingPhotoPreview(job.item, job.prefix, job.preview.id);
             drivePhotoAttachments.delete(job.id);
             refreshPendingPhotoUiForItem(job.item, job.prefix);
