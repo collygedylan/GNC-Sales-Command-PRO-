@@ -6,10 +6,14 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const code = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
-function context() {
+function context(properties = new Map()) {
   const result = vm.createContext({
     console,
-    PropertiesService: { getScriptProperties: () => ({ getProperty: () => '' }) },
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: key => properties.has(String(key)) ? properties.get(String(key)) : null,
+      setProperty: (key, value) => { properties.set(String(key), String(value)); },
+      deleteProperty: key => { properties.delete(String(key)); },
+    }) },
     Utilities: {
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (algorithm, value) => Array.from(createHash(algorithm).update(value, 'utf8').digest()),
@@ -32,14 +36,14 @@ function csv(completion = '', quantity = '10', completionHeader = 'DATE_COMPLETE
 }
 const build = (ctx, data, existing = [], table = 'ph_soc_master') => invoke(ctx, 'buildStandardPayload', data, table, existing, '2026-09-08T17:00:00Z', 'synthetic.csv');
 
-function processSnapshot(ctx, data, existing = []) {
+function processSnapshot(ctx, data, existing = [], modifiedAt = '2026-09-08T17:00:00.000Z', tableName = 'ph_soc_master') {
   const events = [];
   let read = false;
   ctx.console = { log() {}, warn() {}, error() {} };
   ctx.getDriveFolderByIdWithRetry_ = () => ({});
   ctx.listDriveFilesWithRetry_ = () => ({
     hasNext: () => !read,
-    next: () => { read = true; return { getName: () => 'synthetic.csv', getLastUpdated: () => new Date(0) }; },
+      next: () => { read = true; return { getName: () => 'synthetic.csv', getId: () => 'synthetic-file-id', getLastUpdated: () => new Date(modifiedAt) }; },
   });
   ctx.extractDataFromFile = () => data;
   ctx.fetchAllSupabaseData = (_, columns) => {
@@ -53,7 +57,65 @@ function processSnapshot(ctx, data, existing = []) {
   ctx.deleteFromSupabase = (_, ids) => events.push({ type: 'delete', ids: plain(ids) });
   ctx.moveDriveFileToFolderWithRetry_ = () => events.push({ type: 'archive' });
   ctx.emitTableSyncLiveEvent_ = () => {};
-  const result = invoke(ctx, 'processLatestFileOnlyFolderLocked_', 'source', 'processed', 'ph_soc_master', ctx.buildStandardPayload, { deltaMode: true });
+  const result = invoke(ctx, 'processLatestFileOnlyFolderLocked_', 'source', 'processed', tableName, ctx.buildStandardPayload, { deltaMode: true });
+  return { result, events };
+}
+
+function processLatestSnapshotFiles(ctx, files, existing = [], tableName = 'ph_soc_master') {
+  const events = [];
+  const entries = files.map(file => ({
+    ...file,
+    getName: () => file.name,
+    getId: () => file.id,
+    getLastUpdated: () => new Date(file.modifiedAt),
+  }));
+  let readIndex = 0;
+  ctx.console = { log() {}, warn() {}, error() {} };
+  ctx.getDriveFolderByIdWithRetry_ = folderId => ({ folderId });
+  ctx.listDriveFilesWithRetry_ = () => ({ hasNext: () => readIndex < entries.length, next: () => entries[readIndex++] });
+  ctx.extractDataFromFile = file => file.data;
+  ctx.fetchAllSupabaseData = (_, columns) => {
+    const fields = Array.isArray(columns) ? columns : String(columns).split(',');
+    return existing.map(row => Object.fromEntries(fields.filter(key => Object.hasOwn(row, key)).map(key => [key, row[key]])));
+  };
+  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return null; };
+  ctx.closeDatasetImportFence_ = () => events.push({ type: 'finish' });
+  ctx.failDatasetImportFence_ = () => { events.push({ type: 'fence-failed' }); };
+  ctx.pushToSupabase = (_, rows) => events.push({ type: 'upsert', rows: plain(rows) });
+  ctx.deleteFromSupabase = (_, ids) => events.push({ type: 'delete', ids: plain(ids) });
+  ctx.moveDriveFileToFolderWithRetry_ = file => events.push({ type: 'archive', name: file.getName() });
+  ctx.emitTableSyncLiveEvent_ = table => events.push({ type: 'table-event', table });
+  const result = invoke(ctx, 'processLatestFileOnlyFolderLocked_', 'source', 'processed', tableName, ctx.buildStandardPayload, { deltaMode: true });
+  return { result, events };
+}
+
+function latestFile(id, name, data, modifiedAt) {
+  return { id, name, data, modifiedAt };
+}
+
+function processMasterSnapshotBatch(ctx, files, existing = []) {
+  const events = [];
+  ctx.console = { log() {}, warn() {}, error(...args) { events.push({ type: 'error', detail: String(args[0] || '') }); } };
+  ctx.getDriveFolderByIdWithRetry_ = folderId => ({ folderId });
+  let readIndex = 0;
+  ctx.listDriveFilesWithRetry_ = () => ({
+    hasNext: () => readIndex < files.length,
+    next: () => files[readIndex++],
+  });
+  ctx.extractDataFromFile = file => file.data;
+  ctx.fetchAllSupabaseData = () => existing;
+  ctx.fetchAllSupabaseRowIdsForMaster_ = () => existing.map(row => String(row.unique_id || '')).filter(Boolean);
+  ctx.fetchSupabaseRowsByIds_ = () => existing;
+  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return null; };
+  ctx.closeDatasetImportFence_ = () => events.push({ type: 'finish' });
+  ctx.failDatasetImportFence_ = () => events.push({ type: 'fence-failed' });
+  ctx.pushToSupabase = (_, rows) => events.push({ type: 'upsert', rows: plain(rows) });
+  ctx.deleteFromSupabase = (_, ids) => events.push({ type: 'delete', ids: plain(ids) });
+  ctx.moveDriveFileToFolderWithRetry_ = file => events.push({ type: 'archive', name: file.getName() });
+  ctx.emitTableSyncLiveEvent_ = table => events.push({ type: 'table-event', table });
+  ctx.reconcileSeasonSalesOfficeAfterImport_ = () => {};
+  ctx.callSupabaseRpc_ = () => ({ status: 'complete', resolved: 0 });
+  const result = invoke(ctx, 'processSnapshotBatchFolderLocked_', 'source', 'processed-test', 'ph_master_inventory', ctx.buildMasterPayload, {});
   return { result, events };
 }
 
@@ -190,8 +252,124 @@ test('SOC missing or ambiguous invoice headers fail before any write or archival
     assert.throws(() => build(ctx, data), /invoice/i);
     const { result, events } = processSnapshot(ctx, data, [{ unique_id: 'existing-source' }]);
     assert.equal(result.failedFiles, 1);
+    assert.equal(result.failedFileErrors[0].errorCode, 'IMPORT_SOURCE_NO_HEADER');
+    assert.equal(result.fatalFailure, false, 'a malformed source header is recoverable');
     assert.deepEqual(events, []);
   }
+});
+
+test('a spreadsheet with no worksheets is classified as an empty source', () => {
+  const ctx = context();
+  ctx.console = { log() {}, warn() {}, error() {} };
+  ctx.MimeType = { CSV: 'text/csv' };
+  ctx.SpreadsheetApp = { openById: () => ({ getSheets: () => [] }) };
+  const workbook = {
+    getMimeType: () => 'application/vnd.google-apps.spreadsheet',
+    getName: () => 'empty-workbook',
+    getId: () => 'synthetic-sheet-id',
+  };
+
+  assert.throws(
+    () => invoke(ctx, 'extractDataFromFile', workbook, 'synthetic-folder'),
+    error => error.errorCode === 'IMPORT_SOURCE_EMPTY',
+  );
+});
+
+test('an older rejected file stays in the drop after a newer valid file imports', () => {
+  const properties = new Map();
+  const ctx = context(properties);
+  const existing = plain(build(ctx, csv()).upserts);
+  const badData = csv(); badData[0].pop(); badData[1].pop();
+  const rejectedOlder = latestFile('rejected-old-id', 'rejected-old.csv', badData, '2026-09-08T17:00:00.000Z');
+  const first = processLatestSnapshotFiles(ctx, [rejectedOlder], existing);
+  assert.equal(first.result.failedFileErrors[0].errorCode, 'IMPORT_SOURCE_NO_HEADER');
+
+  const validNewer = latestFile('valid-new-id', 'valid-new.csv', csv('', '12'), '2026-09-09T17:00:00.000Z');
+  const next = processLatestSnapshotFiles(ctx, [rejectedOlder, validNewer], existing);
+  assert.equal(next.result.filesProcessed, 1);
+  assert.equal(next.result.failedFiles, 1);
+  assert.equal(next.result.skippedFiles, 1);
+  assert.deepEqual(plain(next.result.failedFileNames), ['rejected-old.csv']);
+  assert.deepEqual(next.events.filter(event => event.type === 'archive').map(event => event.name), ['valid-new.csv']);
+  assert.equal(next.events.find(event => event.type === 'upsert').rows[0].quantityordered, '12');
+  assert.ok(next.events.some(event => event.type === 'table-event'), 'successful imports still emit their table event');
+});
+
+test('an unchanged rejected newest file is retried without falling back to an older file', () => {
+  const properties = new Map();
+  const ctx = context(properties);
+  const existing = plain(build(ctx, csv()).upserts);
+  const badData = csv(); badData[0].pop(); badData[1].pop();
+  const rejectedNewest = latestFile('rejected-new-id', 'rejected-new.csv', badData, '2026-09-09T17:00:00.000Z');
+  processLatestSnapshotFiles(ctx, [rejectedNewest], existing);
+
+  const olderValid = latestFile('older-valid-id', 'older-valid.csv', csv(), '2026-09-08T17:00:00.000Z');
+  const retry = processLatestSnapshotFiles(ctx, [olderValid, rejectedNewest], existing);
+  assert.equal(retry.result.filesProcessed, 0);
+  assert.equal(retry.result.failedFiles, 1);
+  assert.equal(retry.result.skippedFiles, 1);
+  assert.deepEqual(plain(retry.result.failedFileNames), ['rejected-new.csv']);
+  assert.equal(retry.events.some(event => ['upsert', 'delete', 'archive', 'table-event'].includes(event.type)), false);
+});
+
+test('a changed rejected-file revision is retried and can import successfully', () => {
+  const properties = new Map();
+  const ctx = context(properties);
+  const existing = plain(build(ctx, csv()).upserts);
+  const badData = csv(); badData[0].pop(); badData[1].pop();
+  const rejected = latestFile('same-drive-id', 'replacement.csv', badData, '2026-09-08T17:00:00.000Z');
+  processLatestSnapshotFiles(ctx, [rejected], existing);
+
+  const repairedRevision = latestFile('same-drive-id', 'replacement.csv', csv('', '13'), '2026-09-09T17:00:00.000Z');
+  const retried = processLatestSnapshotFiles(ctx, [repairedRevision], existing);
+  assert.equal(retried.result.failedFiles, 0);
+  assert.equal(retried.result.filesProcessed, 1);
+  assert.equal(retried.result.upsertCount, 1);
+  assert.equal(retried.events.find(event => event.type === 'upsert').rows[0].quantityordered, '13');
+  const markerStore = JSON.parse(properties.get('IMPORT_SOURCE_REJECTION_MARKERS_V1'));
+  assert.equal(Object.hasOwn(markerStore, 'ph_soc_master|same-drive-id'), false, 'the previous timestamp marker is pruned');
+});
+
+test('the rejected-source marker limit fails closed when all retained markers are still pending', () => {
+  const properties = new Map();
+  const markers = {};
+  const olderFiles = [];
+  const markerBaseTime = Date.parse('2026-09-01T12:00:00.000Z');
+  for (let index = 0; index < 48; index += 1) {
+    const id = `retained-${index}`;
+    const modifiedAt = markerBaseTime + index * 60_000;
+    markers[`ph_soc_master|${id}`] = { modifiedAt, errorCode: 'IMPORT_SOURCE_NO_HEADER' };
+    olderFiles.push(latestFile(id, `${id}.csv`, csv(), new Date(modifiedAt).toISOString()));
+  }
+  properties.set('IMPORT_SOURCE_REJECTION_MARKERS_V1', JSON.stringify(markers));
+  const ctx = context(properties);
+  const badData = csv(); badData[0].pop(); badData[1].pop();
+  const rejectedNewest = latestFile('new-rejected', 'new-rejected.csv', badData, '2026-10-01T12:00:00.000Z');
+
+  const result = processLatestSnapshotFiles(ctx, [...olderFiles, rejectedNewest]);
+  assert.equal(result.result.fatalFailure, true);
+  assert.equal(result.result.errorCode, 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  assert.equal(result.result.failedFileErrors[0].errorCode, 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  assert.equal(result.events.some(event => ['upsert', 'delete', 'archive', 'table-event'].includes(event.type)), false);
+  assert.equal(Object.keys(JSON.parse(properties.get('IMPORT_SOURCE_REJECTION_MARKERS_V1'))).length, 48);
+});
+
+test('rejection marker storage fails closed instead of importing after persistence failure', () => {
+  const properties = new Map();
+  const originalSet = properties.set.bind(properties);
+  properties.set = (key, value) => {
+    if (key === 'IMPORT_SOURCE_REJECTION_MARKERS_V1') throw new Error('script property quota exceeded');
+    return originalSet(key, value);
+  };
+  const ctx = context(properties);
+  const badData = csv(); badData[0].pop(); badData[1].pop();
+  const rejected = latestFile('storage-failure-id', 'bad.csv', badData, '2026-09-08T17:00:00.000Z');
+  const result = processLatestSnapshotFiles(ctx, [rejected]);
+
+  assert.equal(result.result.fatalFailure, true);
+  assert.equal(result.result.errorCode, 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  assert.equal(result.result.failedFileErrors[0].errorCode, 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  assert.equal(result.events.some(event => ['upsert', 'delete', 'archive', 'table-event'].includes(event.type)), false);
 });
 
 test('invoiced rows without valid SOC identities still trigger the destructive-sync guard', () => {
@@ -206,6 +384,82 @@ test('invoiced rows without valid SOC identities still trigger the destructive-s
     assert.equal(result.failedFiles, 1);
     assert.deepEqual(events, []);
   }
+});
+
+test('empty and header-only SOC and Reserves snapshots never delete existing data or archive the input', () => {
+  const ctx = context();
+  const existing = plain(build(ctx, csv()).upserts);
+  const headerOnly = [csv()[0]];
+
+  for (const tableName of ['ph_soc_master', 'ph_reserves']) {
+    for (const [label, data] of [['empty', []], ['header-only', headerOnly]]) {
+      const { result, events } = processSnapshot(ctx, data, existing, '2026-09-08T17:00:00.000Z', tableName);
+      assert.equal(events.some(event => event.type === 'delete'), false, `${tableName} ${label} source must not delete existing rows`);
+      assert.equal(events.some(event => event.type === 'upsert'), false, `${tableName} ${label} source must not upsert rows`);
+      assert.equal(events.some(event => event.type === 'archive'), false, `${tableName} ${label} source must remain pending`);
+      assert.equal(result.failedFiles, 1, `${tableName} ${label} source must be retained for review/retry`);
+      assert.equal(result.deleteCount, 0, `${tableName} ${label} source must not produce destructive deletes`);
+      assert.equal(result.upsertCount, 0, `${tableName} ${label} source must not produce writes`);
+    }
+  }
+});
+
+test('master batch skips empty files but imports and archives a valid replacement snapshot', () => {
+  const validData = csv();
+  validData[0].push('COMMONNAME');
+  validData[1].push('Synthetic Plant');
+  const files = [
+    { data: [], getName: () => 'empty.csv', getLastUpdated: () => new Date('2026-09-08T17:00:00Z') },
+    { data: validData, getName: () => 'replacement.csv', getLastUpdated: () => new Date('2026-09-09T17:00:00Z') },
+  ];
+  const { result, events } = processMasterSnapshotBatch(context(), files);
+
+  assert.equal(result.filesProcessed, 1, JSON.stringify({ result, events }));
+  assert.equal(result.failedFiles, 1);
+  assert.deepEqual(plain(result.failedFileNames), ['empty.csv']);
+  assert.equal(result.upsertCount, 1);
+  assert.equal(events.find(event => event.type === 'upsert').rows[0].itemcode, 'SYNTHETIC-ITEM');
+  assert.deepEqual(events.filter(event => event.type === 'archive').map(event => event.name), ['replacement.csv']);
+  assert.equal(events.some(event => event.type === 'table-event'), true, 'the committed valid replacement emits the ordinary table event');
+});
+
+test('a nonempty unrecognized master file prevents applying a partial snapshot', () => {
+  const invalidNonempty = [['Unrecognized column'], ['not-a-master-row']];
+  const validData = csv();
+  validData[0].push('COMMONNAME');
+  validData[1].push('Synthetic Plant');
+  const files = [
+    { data: validData, getName: () => 'valid.csv', getLastUpdated: () => new Date('2026-09-08T17:00:00Z') },
+    { data: invalidNonempty, getName: () => 'unrecognized.csv', getLastUpdated: () => new Date('2026-09-09T17:00:00Z') },
+  ];
+  const { result, events } = processMasterSnapshotBatch(context(), files);
+
+  assert.equal(result.filesProcessed, 0);
+  assert.equal(result.failedFiles, 1);
+  assert.equal(result.skippedFiles, 1);
+  assert.deepEqual(plain(result.failedFileNames), ['unrecognized.csv']);
+  assert.equal(result.upsertCount, 0);
+  assert.equal(result.deleteCount, 0);
+  assert.equal(events.some(event => ['upsert', 'delete', 'archive', 'table-event'].includes(event.type)), false);
+});
+
+test('a retained failed source is re-read and imported after a valid replacement revision arrives', () => {
+  const baselineContext = context();
+  const existing = plain(build(baselineContext, csv()).upserts);
+  const invalid = csv();
+  invalid[0].pop();
+  const firstAttempt = processSnapshot(context(), invalid, existing, '2026-09-08T17:00:00.000Z');
+  assert.equal(firstAttempt.result.failedFiles, 1);
+  assert.equal(firstAttempt.result.failedFileNames[0], 'synthetic.csv');
+  assert.equal(firstAttempt.events.some(event => ['upsert', 'delete', 'archive'].includes(event.type)), false);
+
+  const replacement = csv('', '12');
+  const secondAttempt = processSnapshot(context(), replacement, existing, '2026-09-09T17:00:00.000Z');
+  assert.equal(secondAttempt.result.failedFiles, 0);
+  assert.equal(secondAttempt.result.filesProcessed, 1);
+  assert.equal(secondAttempt.result.upsertCount, 1);
+  assert.equal(secondAttempt.events.find(event => event.type === 'upsert').rows[0].quantityordered, '12');
+  assert.ok(secondAttempt.events.some(event => event.type === 'archive'));
 });
 
 test('invoice filtering preserves duplicate SOC identity suffixes and existing completion in either order', () => {
