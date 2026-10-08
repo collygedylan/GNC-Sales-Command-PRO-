@@ -17,6 +17,8 @@ import {
   parseBenchmarkCliArgs,
   readTomlInteger,
   resolveLocalApiUrl,
+  sanitizedApplicationErrorCode,
+  sanitizedDatabaseFailureCode,
   runDatabasePerformanceBenchmark,
   validateLocalBenchmarkUrl,
 } from '../scripts/performance-database.mjs';
@@ -50,6 +52,10 @@ test('SQL-only benchmark validation does not require an API endpoint, but API mo
 
 test('API benchmark identities link Auth, profile, and legacy account fixtures', () => {
   const fixture = buildLocalIdentityFixture('rep', 'fixture-123', 'Bench-random-password-123!');
+  const generatedFixture = buildLocalIdentityFixture('admin', 'DRIVE-V1', 'Bench-random-password-123!');
+  assert.equal(generatedFixture.username, 'perf_admin_drive-v1');
+  assert.equal(generatedFixture.username, generatedFixture.username.toLowerCase());
+  assert.equal(generatedFixture.legacyRow.username, generatedFixture.profileRow.username);
   assert.equal(fixture.legacyRow.username, fixture.username);
   assert.equal(fixture.legacyRow.password, fixture.password);
   assert.equal(fixture.legacyRow.role, 'REP');
@@ -59,6 +65,26 @@ test('API benchmark identities link Auth, profile, and legacy account fixtures',
   assert.equal(fixture.legacyRow.must_change_password, false);
   assert.throws(() => buildLocalIdentityFixture('rep', 'fixture-123', ''), /PERFORMANCE_LOCAL_IDENTITY_FIXTURE_INVALID/);
   assert.throws(() => buildLocalIdentityFixture('unknown', 'fixture-123', 'Bench-random-password-123!'), /PERFORMANCE_LOCAL_IDENTITY_FIXTURE_INVALID/);
+});
+
+test('database fixture diagnostics retain only a validated SQLSTATE', () => {
+  const failure = sanitizedDatabaseFailureCode('PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED', {
+    code: '23514', message: 'sensitive database detail', details: 'private row contents',
+  });
+  assert.equal(failure.message, 'PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED:23514');
+  assert.doesNotMatch(failure.message, /sensitive|private/);
+  assert.equal(sanitizedDatabaseFailureCode('PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED', {
+    code: 'not-a-sqlstate', message: 'secret',
+  }).message, 'PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED:UNKNOWN');
+  assert.throws(() => sanitizedDatabaseFailureCode('profile failed', { code: '23514' }), /PERFORMANCE_LOCAL_ERROR_PREFIX_INVALID/);
+});
+
+test('authenticated API diagnostics include only a sanitized application code', () => {
+  assert.equal(sanitizedApplicationErrorCode({ code: 'AUTH_PROFILE_LOCKED', message: 'private user detail' }), 'AUTH_PROFILE_LOCKED');
+  assert.equal(sanitizedApplicationErrorCode({ code: 'bad code', message: 'token=secret' }), 'UNKNOWN');
+  assert.equal(sanitizedApplicationErrorCode({ code: 'A'.repeat(81) }), 'UNKNOWN');
+  assert.equal(sanitizedApplicationErrorCode({ message: 'raw server text' }), 'UNKNOWN');
+  assert.equal(sanitizedApplicationErrorCode('not an object'), 'UNKNOWN');
 });
 
 test('SQL scenarios mirror the active fixed role scopes and exact projections', () => {

@@ -6,7 +6,7 @@ import { compareBenchmarks, parseBenchmarkManifest, percentile } from '../servic
 import { startReleaseTestServer } from './serve-release-tests.mjs';
 import { verifyReleaseArtifact } from './release-artifact.mjs';
 import { installPerformanceFixture, openPerformanceView, returnPerformanceHome } from './performance-browser-fixture.mjs';
-import { drainPerformanceResponseBodies } from './performance-response-drain.mjs';
+import { attachPerformanceResponseTracker, drainPerformanceApiRequests, drainPerformanceResponseBodies } from './performance-response-drain.mjs';
 
 const root = process.cwd();
 const manifest = parseBenchmarkManifest(JSON.parse(await readFile(path.join(root, 'performance/baseline.json'), 'utf8')));
@@ -30,17 +30,22 @@ async function settle(page) {
 }
 async function measure(page, app, view, totals) {
   await settle(page);
+  await drainPerformanceApiRequests(totals);
   await drainPerformanceResponseBodies(totals);
-  const before = { reads: totals.reads, bytes: totals.bytes };
+  const startIndex = totals.apiRequests.length;
   await page.evaluate(() => { window.__phase6Metrics = { longTaskMs: 0, domRemovals: 0 }; });
   const started = performance.now();
   await openPerformanceView(page, app, view);
   await settle(page);
   const duration = performance.now() - started;
+  const endIndex = totals.apiRequests.length;
+  await drainPerformanceApiRequests(totals, { startIndex, endIndex });
   await drainPerformanceResponseBodies(totals);
-  if (totals.errors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${totals.errors.join(',')}`);
-  const routeReads = totals.reads - before.reads;
-  const routeBytes = totals.bytes - before.bytes;
+  const routeRequests = totals.apiRequests.slice(startIndex, endIndex);
+  const routeErrors = [...totals.errors, ...routeRequests.map(request => request.error).filter(Boolean)];
+  if (routeErrors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${routeErrors.join(',')}`);
+  const routeReads = endIndex - startIndex;
+  const routeBytes = routeRequests.reduce((sum, request) => sum + request.bytes, 0);
   const evidence = await page.evaluate(() => window.__phase6Metrics);
   const scrollFrameP95 = await page.evaluate(async appId => {
     const scroller = document.querySelector(appId === 'v2' ? 'main.main-scroll' : '#main-scroll-area');
@@ -57,7 +62,8 @@ async function measure(page, app, view, totals) {
   }, app);
   await drainPerformanceResponseBodies(totals);
   if (totals.errors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${totals.errors.join(',')}`);
-  return { duration, reads: routeReads, bytes: routeBytes, ...evidence, scrollFrameP95 };
+  return { duration, reads: routeReads, bytes: routeBytes,
+    canceledReads: routeRequests.filter(request => request.canceled).length, ...evidence, scrollFrameP95 };
 }
 async function benchmark(site, info, profile, app) {
   const server = await startReleaseTestServer({ siteDir: site, port: 0 });
@@ -69,26 +75,14 @@ async function benchmark(site, info, profile, app) {
   };
   const deferred = [];
   const initialExecutableJsBytes = [];
+  const cancellationDiagnostics = [];
   try {
     for (let iteration = 0; iteration < manifest.coldSamples; iteration++) {
       const context = await browser.newContext({ viewport: { width: profile.width, height: profile.height }, baseURL: origin, serviceWorkers: 'block' });
       const page = await context.newPage();
       page.setDefaultTimeout(20000);
-      const totals = { reads: 0, bytes: 0, scriptBytes: 0, pending: [], errors: [] };
-      page.on('request', request => {
-        if (request.method() !== 'OPTIONS' && /\/(?:rest|functions)\/v1\//.test(request.url())) totals.reads++;
-      });
-      page.on('response', response => {
-        const request = response.request();
-        if (request.method() === 'OPTIONS') return;
-        const api = /\/(?:rest|functions)\/v1\//.test(response.url());
-        if (!api && request.resourceType() !== 'script') return;
-        const pending = response.body().then(body => {
-          if (api) totals.bytes += body.length;
-          else totals.scriptBytes += body.length;
-        }).catch(() => { totals.errors.push(new URL(response.url()).pathname); });
-        totals.pending.push(pending);
-      });
+      const totals = { scriptBytes: 0, apiRequests: [], pending: [], errors: [] };
+      attachPerformanceResponseTracker(page, totals);
       await page.addInitScript(() => {
         window.__phase6Metrics = { longTaskMs: 0, domRemovals: 0 };
         if (PerformanceObserver.supportedEntryTypes.includes('longtask')) new PerformanceObserver(entries => {
@@ -105,22 +99,44 @@ async function benchmark(site, info, profile, app) {
       try {
         await installPerformanceFixture(page, origin, app);
         await settle(page);
+        const initialEndIndex = totals.apiRequests.length;
+        await drainPerformanceApiRequests(totals, { startIndex: 0, endIndex: initialEndIndex });
         await drainPerformanceResponseBodies(totals);
-        if (totals.errors.length) throw new Error('PERFORMANCE_INITIAL_RESPONSE_MEASUREMENT_FAILED');
+        const initialRequests = totals.apiRequests.slice(0, initialEndIndex);
+        const initialApiErrors = initialRequests.map(request => request.error).filter(Boolean);
+        if (totals.errors.length || initialApiErrors.length) {
+          throw new Error(`PERFORMANCE_INITIAL_RESPONSE_MEASUREMENT_FAILED:${[...totals.errors, ...initialApiErrors].join(',')}`);
+        }
         const initialBytes = totals.scriptBytes;
         initialExecutableJsBytes.push(initialBytes);
-        add('initial-api-reads', 'count', totals.reads);
-        add('initial-api-bytes', 'bytes', totals.bytes);
+        cancellationDiagnostics.push({ view: 'home', phase: 'initial', canceledApiReads: initialRequests.filter(request => request.canceled).length });
+        add('initial-api-reads', 'count', initialRequests.length);
+        add('initial-api-bytes', 'bytes', initialRequests.reduce((sum, request) => sum + request.bytes, 0));
         for (const view of ['request', 'drive']) {
           const cold = await measure(page, app, view, totals);
-          for (const [key, value] of Object.entries(cold)) add(`${view}.cold.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', value);
+          cancellationDiagnostics.push({ view, phase: 'cold', canceledApiReads: cold.canceledReads });
+          for (const [key, value] of Object.entries(cold)) {
+            if (key === 'canceledReads') continue;
+            add(`${view}.cold.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', value);
+          }
           await returnPerformanceHome(page, app);
           for (let warm = 0; warm < manifest.warmSamples / manifest.coldSamples; warm++) {
             const value = await measure(page, app, view, totals);
-            for (const [key, sample] of Object.entries(value)) add(`${view}.warm.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', sample);
+            cancellationDiagnostics.push({ view, phase: `warm-${warm + 1}`, canceledApiReads: value.canceledReads });
+            for (const [key, sample] of Object.entries(value)) {
+              if (key === 'canceledReads') continue;
+              add(`${view}.warm.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', sample);
+            }
             await returnPerformanceHome(page, app);
           }
         }
+        await drainPerformanceApiRequests(totals);
+        await drainPerformanceResponseBodies(totals);
+        const finalApiErrors = totals.apiRequests.map(request => request.error).filter(Boolean);
+        if (totals.errors.length || finalApiErrors.length) {
+          throw new Error(`PERFORMANCE_FINAL_RESPONSE_MEASUREMENT_FAILED:${[...totals.errors, ...finalApiErrors].join(',')}`);
+        }
+        cancellationDiagnostics.push({ view: 'all', phase: 'final-drain', canceledApiReads: totals.apiRequests.filter(request => request.canceled).length });
         deferred.push(totals.scriptBytes - initialBytes);
       } finally { await context.close(); }
     }
@@ -129,7 +145,7 @@ async function benchmark(site, info, profile, app) {
     fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browser.version()}`, viewport: { width: profile.width, height: profile.height },
     method: `${app}:serial-cold-context-and-warm-route-v1;service-workers-blocked`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
-  reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred });
+  reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics });
   return report;
 }
 try {

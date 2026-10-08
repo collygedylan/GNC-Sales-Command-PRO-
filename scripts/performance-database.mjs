@@ -512,7 +512,7 @@ function roleScopeForApi(role) {
 export function buildLocalIdentityFixture(role, nonce, password) {
   if (!['admin', 'rep', 'foreman'].includes(role) || !/^[a-z0-9-]{1,64}$/i.test(nonce)
       || typeof password !== 'string' || password.length < 16) throw errorCode('PERFORMANCE_LOCAL_IDENTITY_FIXTURE_INVALID');
-  const username = `perf_${role}_${nonce}`;
+  const username = `perf_${role}_${nonce.toLowerCase()}`;
   return {
     username,
     email: `${username}@example.invalid`,
@@ -524,12 +524,29 @@ export function buildLocalIdentityFixture(role, nonce, password) {
   };
 }
 
+export function sanitizedDatabaseFailureCode(prefix, error) {
+  if (!/^PERFORMANCE_LOCAL_[A-Z0-9_]+$/.test(prefix)) throw errorCode('PERFORMANCE_LOCAL_ERROR_PREFIX_INVALID');
+  const sqlState = typeof error?.code === 'string' && /^[0-9A-Z]{5}$/.test(error.code)
+    ? error.code
+    : 'UNKNOWN';
+  return errorCode(`${prefix}:${sqlState}`);
+}
+
+export function sanitizedApplicationErrorCode(responseBody) {
+  const code = responseBody && typeof responseBody === 'object' && !Array.isArray(responseBody)
+    ? responseBody.code
+    : null;
+  return typeof code === 'string' && /^[A-Z0-9_]{1,80}$/.test(code) ? code : 'UNKNOWN';
+}
+
 async function createLocalIdentity(admin, apiUrl, publishableKey, role, nonce) {
   const password = `Bench-${randomUUID()}-T9!`;
   const fixture = buildLocalIdentityFixture(role, nonce, password);
   const { username, email } = fixture;
   const legacy = await admin.from('ph_app_users').insert(fixture.legacyRow).select('id').single();
-  if (legacy.error || !legacy.data?.id) throw errorCode('PERFORMANCE_LOCAL_LEGACY_USER_CREATE_FAILED');
+  if (legacy.error || !legacy.data?.id) {
+    throw sanitizedDatabaseFailureCode('PERFORMANCE_LOCAL_LEGACY_USER_CREATE_FAILED', legacy.error);
+  }
   const legacyUserId = legacy.data.id;
   let userId = null;
   try {
@@ -539,7 +556,7 @@ async function createLocalIdentity(admin, apiUrl, publishableKey, role, nonce) {
     if (created.error || !created.data?.user?.id) throw errorCode('PERFORMANCE_LOCAL_AUTH_USER_CREATE_FAILED');
     userId = created.data.user.id;
     const profile = await admin.from('profiles').insert({ id: userId, legacy_user_id: legacyUserId, ...fixture.profileRow });
-    if (profile.error) throw errorCode('PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED');
+    if (profile.error) throw sanitizedDatabaseFailureCode('PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED', profile.error);
     const browser = createClient(apiUrl.href, publishableKey, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
     const signedIn = await browser.auth.signInWithPassword({ email, password });
     if (signedIn.error || !signedIn.data.session?.access_token) throw errorCode('PERFORMANCE_LOCAL_AUTH_SIGNIN_FAILED');
@@ -637,7 +654,11 @@ async function callAppApi(apiUrl, identity, payload) {
   }, body: JSON.stringify({ action: 'inventory_read', ...payload }), signal: AbortSignal.timeout(30000) });
   const bodyText = await response.text();
   const elapsed = performance.now() - started;
-  if (!response.ok) throw errorCode(`PERFORMANCE_AUTHENTICATED_API_FAILED:${response.status}`);
+  if (!response.ok) {
+    let responseBody = null;
+    try { responseBody = JSON.parse(bodyText); } catch { /* Error responses may not be JSON. */ }
+    throw errorCode(`PERFORMANCE_AUTHENTICATED_API_FAILED:${response.status}:${sanitizedApplicationErrorCode(responseBody)}`);
+  }
   let body;
   try { body = JSON.parse(bodyText); } catch { throw errorCode('PERFORMANCE_API_JSON_INVALID'); }
   if (body?.ok !== true || !body.data || !Array.isArray(body.data.rows)) throw errorCode('PERFORMANCE_API_RESPONSE_INVALID');

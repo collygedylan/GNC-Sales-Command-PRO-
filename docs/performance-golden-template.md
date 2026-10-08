@@ -72,6 +72,11 @@ the existing Lighthouse and compiled artifact size limits continue to govern cod
 size. The zero-growth payload budget applies to unchanged query results. Route metrics
 include usable-content latency, long-task duration, content-node removals,
 API reads and response bytes captured before the separate scroll-frame exercise.
+Read counts include every API request started within the measurement window.
+Payload bytes come from those same requests after bounded completion; later
+background responses cannot enter the window. Deliberate browser cancellations
+are recorded separately with zero completed payload, while unexpected HTTP,
+network and body-capture failures invalidate the measurement.
 React render isolation has separate deterministic mount tests because the normal
 production React build does not enable profiling.
 
