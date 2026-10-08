@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "assets": [
+    {
+      "file": "ag-data-solutions-icon-v2026080925-32.png",
+      "sha256": "3f1c90e492a23a4568cba86d65d2481e90c133e8e71809799139cb2a207bee55",
+      "bytes": 1079,
+      "legacyFiles": [
+        "ag-data-solutions-icon-v20260708023-32.png",
+        "ag-data-solutions-icon-v2026080923-32.png",
+        "ag-data-solutions-icon-v2026080925-32.png"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-icon-v2026080925-180.png",
+      "sha256": "fcf61fadfa095aa3d4516488e870b3460ebc4f611c517a38eea51b7f68769f19",
+      "bytes": 12938,
+      "legacyFiles": [
+        "ag-data-solutions-icon-v20260708023-180.png",
+        "ag-data-solutions-icon-v2026080923-180.png",
+        "ag-data-solutions-icon-v2026080925-180.png"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-icon-v2026080925-192.png",
+      "sha256": "2ced6f69aed29d80ea91a162744b874270afb00a1916b4265771052bcc7d6d5f",
+      "bytes": 14055,
+      "legacyFiles": [
+        "ag-data-solutions-icon-v20260708023-192.png",
+        "ag-data-solutions-icon-v2026080923-192.png",
+        "ag-data-solutions-icon-v2026080925-192.png"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-icon-v2026080925-512.png",
+      "sha256": "bae2b8dfa1690011f60781e60605ba60c6446c6ff09992a648896e82e3343f29",
+      "bytes": 59245,
+      "legacyFiles": [
+        "ag-data-solutions-icon-v20260708023-512.png",
+        "ag-data-solutions-icon-v2026080923-512.png",
+        "ag-data-solutions-icon-v2026080925-512.png"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-logo-v2026080925.png",
+      "sha256": "070b8ab4f5cbe1277674dc06aa1eaa8ba53b7cc2333df5ca7ade691b04b20895",
+      "bytes": 307369,
+      "legacyFiles": [
+        "ag-data-solutions-logo-v2026080923.png",
+        "ag-data-solutions-logo-v2026080925.png",
+        "ag-data-solutions-logo.png"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-logo-v2026090503-224.webp",
+      "sha256": "5cd7090ae123a7b3c0ea0ae388a369a27da2e4f0da43894a06e3f3c044703a3d",
+      "bytes": 13120,
+      "legacyFiles": [
+        "ag-data-solutions-logo-v2026090503-224.webp"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-logo-v2026090503-448.webp",
+      "sha256": "6cff3108510d8c4b613690e24ae0a9c6bb0bc48f603c63a1501e1624d7920306",
+      "bytes": 35564,
+      "legacyFiles": [
+        "ag-data-solutions-logo-v2026090503-448.webp"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-splash-v2026080925.png",
+      "sha256": "4188316ac885fff4993dda621a40a7957cd7ec6d07b06df78baa2f3c54d36816",
+      "bytes": 154423,
+      "legacyFiles": [
+        "ag-data-solutions-splash-v202607141237.png",
+        "ag-data-solutions-splash-v2026080923.png",
+        "ag-data-solutions-splash-v2026080925.png"
+      ]
+    },
+    {
+      "file": "ag-data-solutions-splash-v2026081709.png",
+      "sha256": "c6ccb7077de7495362303f6e311cf67fe477ab8e7f04e752d51abe69ebf2545e",
+      "bytes": 858668,
+      "legacyFiles": [
+        "ag-data-solutions-splash-v2026081615.png",
+        "ag-data-solutions-splash-v2026081701.png",
+        "ag-data-solutions-splash-v2026081702.png",
+        "ag-data-solutions-splash-v2026081703.png",
+        "ag-data-solutions-splash-v2026081704.png",
+        "ag-data-solutions-splash-v2026081705.png",
+        "ag-data-solutions-splash-v2026081706.png",
+        "ag-data-solutions-splash-v2026081707.png",
+        "ag-data-solutions-splash-v2026081708.png",
+        "ag-data-solutions-splash-v2026081709.png"
+      ]
+    }
+  ]
+}

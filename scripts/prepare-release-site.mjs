@@ -2,6 +2,7 @@ import { copyFile, lstat, mkdir, readFile, readdir, realpath, stat, writeFile } 
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { prepareBrandingAssets } from './branding-assets.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const site = path.resolve(root, process.env.LIVE_SITE_DIR || '_site');
@@ -11,16 +12,6 @@ if (relativeSite !== '_site' && !/^\.gnc-local\/foundation-site-[\w-]+$/.test(re
 }
 const files = [
   'index.html', 'manifest.json', 'sw.js', 'CNAME', '.nojekyll', 'OneSignalSDKWorker.js',
-  'ag-data-solutions-logo-v2026080923.png', 'ag-data-solutions-splash-v2026080923.png',
-  'ag-data-solutions-icon-v2026080923-32.png', 'ag-data-solutions-icon-v2026080923-180.png',
-  'ag-data-solutions-icon-v2026080923-192.png', 'ag-data-solutions-icon-v2026080923-512.png',
-  'ag-data-solutions-logo-v2026080925.png', 'ag-data-solutions-logo-v2026090503-224.webp',
-  'ag-data-solutions-logo-v2026090503-448.webp', 'ag-data-solutions-splash-v2026080925.png',
-  'ag-data-solutions-splash-v2026081702.png', 'ag-data-solutions-splash-v2026081705.png',
-  'ag-data-solutions-splash-v2026081706.png', 'ag-data-solutions-splash-v2026081708.png',
-  'ag-data-solutions-splash-v2026081709.png', 'ag-data-solutions-icon-v2026080925-32.png',
-  'ag-data-solutions-icon-v2026080925-180.png', 'ag-data-solutions-icon-v2026080925-192.png',
-  'ag-data-solutions-icon-v2026080925-512.png',
 ];
 
 async function copyTree(source, destination) {
@@ -42,6 +33,7 @@ try {
   await mkdir(site, { recursive: true });
   for (const name of files) await copyTree(path.join(root, name), path.join(site, name));
   await copyTree(path.join(root, 'assets'), path.join(site, 'assets'));
+  await prepareBrandingAssets({ root, site });
   // Native AURA modules stay out of the public shell bundle and are fetched
   // only after the verified owner signs in. Their relative ESM imports require
   // the same directory layout in the static site.

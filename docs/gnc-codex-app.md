@@ -8,7 +8,7 @@ Develop in an isolated local worktree; do not deploy from the Drive mirror.
 
 ```text
 index.html                    Production HTML shell and existing application
-assets/                       Production modules, styles, icons and vendor assets
+assets/                       Production modules, styles, branding catalog and vendor assets
 live-src/                     Production runtime manifest and module foundation
 v2/
   index.html                  React beta entry point, still published at /v2/
@@ -43,6 +43,11 @@ with their components and utilities. Production still uses `build:live` and the
 sealed artifact release pipeline described in `parallel-release-pipeline.md`.
 Root deployment/configuration files and production assets stay at paths required
 by existing clients, build tools and service workers.
+
+Production logos, app icons, and splash artwork are listed in
+[`branding-assets.md`](branding-assets.md). The catalog owns the canonical
+payloads; generated legacy root filenames preserve links used by older
+installed shells and caches.
 
 ## Backup and recovery
 

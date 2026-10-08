@@ -35,7 +35,7 @@ export default defineConfig({
           },
           {
             // Private partner photos, signed storage URLs, and API responses must never enter this cache.
-            urlPattern: ({ request, url, sameOrigin }) => sameOrigin && request.destination === 'image' && !url.search && /^\/ag-data-solutions-icon-v2026080925-(192|512)\.png$/.test(url.pathname),
+            urlPattern: ({ request, url, sameOrigin }) => sameOrigin && request.destination === 'image' && !url.search && /^\/assets\/branding\/ag-data-solutions-icon-v2026080925-(192|512)\.png$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'gnc-v2-static-icons-v2',

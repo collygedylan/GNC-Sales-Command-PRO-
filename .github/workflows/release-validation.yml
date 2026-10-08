@@ -645,7 +645,7 @@ jobs:
             total: 1
           - suite: command-center
             project: chromium
-            browsers: chromium
+            browsers: chromium webkit
             shard: 1
             total: 1
     steps:
