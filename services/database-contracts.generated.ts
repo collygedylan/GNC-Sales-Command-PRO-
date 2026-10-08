@@ -86451,6 +86451,22 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "enqueue_drive_reclass_inquiry_v5": {
+      "oneOf": [
+        {
+          "object": {
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "fail_dataset_import_v1": {
       "oneOf": [
         {
@@ -96454,6 +96470,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "enqueue_drive_reclass_inquiry_v4": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "enqueue_drive_reclass_inquiry_v5": {
       "oneOf": [
         "json"
       ]

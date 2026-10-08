@@ -1,4 +1,6 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
+import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
 import { readAvPage } from "../_shared/av-read.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
@@ -1099,6 +1101,27 @@ async function resolveActiveSessionProfile(
   return profile as Record<string, unknown>;
 }
 
+export async function handleRequestRecipientDirectory(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+  dependencies = {
+    resolveActiveProfile: resolveActiveSessionProfile,
+    readDirectory: () => readRequestRecipientDirectory(supabase),
+  },
+) {
+  const forbidden = () => errorResponse("An authorized Bloom or Request email workflow is required.", 403, { code: "RECIPIENT_DIRECTORY_FORBIDDEN" });
+  if (!session || session.mustChangePassword) return forbidden();
+  let actor: Record<string, unknown>;
+  try { actor = await dependencies.resolveActiveProfile(session); }
+  catch { return forbidden(); }
+  if (!isRequestRecipientDirectoryUser(actor.username)) return forbidden();
+  if (Object.keys(payload).some(key => key !== "action")) {
+    return errorResponse("Recipient directory filters are server controlled.", 400, { code: "RECIPIENT_DIRECTORY_INPUT_INVALID" });
+  }
+  try { return jsonResponse(await dependencies.readDirectory()); }
+  catch { return errorResponse("Recipients could not be loaded. Retry loading the email picker.", 503, { code: "RECIPIENT_DIRECTORY_UNAVAILABLE" }); }
+}
+
 async function handleManagerSeasonSettings(
   req: Request,
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
@@ -1183,7 +1206,7 @@ function driveReclassErrorResponse(message: string) {
   if (/FORBIDDEN|PERMISSION_REQUIRED|ROW_NOT_ASSIGNED|PROFILE_NOT_ACTIVE|ACTOR_REQUIRED/.test(raw)) {
     return errorResponse("You do not have access to Reclass this Drive row.", 403, { code: "DRIVE_RECLASS_FORBIDDEN" });
   }
-  if (/SOURCE_CHANGED|SOURCE_MISSING|TOKEN_CONFLICT/.test(raw)) {
+  if (/SOURCE_(?:ROW_)?(?:CHANGED|MISSING)|TOKEN_CONFLICT|V5_ORIGINAL_SNAPSHOT_CONFLICT/.test(raw)) {
     return errorResponse("Inventory or inquiry state changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
   }
   if (/EVAL_WORK_(ORIGINAL_OH|VERSION|SUBMISSION_TOKEN)_.*CONFLICT|EVAL_WORK_SUBMISSION_TOKEN_CONFLICT/.test(raw)) {
@@ -1192,7 +1215,7 @@ function driveReclassErrorResponse(message: string) {
   if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
     return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
   }
-  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
+  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|V5_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
   return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
@@ -1310,9 +1333,13 @@ async function handleDriveReclassAction(
         ...sanitizeDriveReclassPayload(payload),
         actorUsername,
       };
-      const enqueueRpc = protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
-        ? "enqueue_drive_reclass_inquiry_v4"
-        : "enqueue_drive_reclass_inquiry_v1";
+      try { validateReclassShearedProposals(protectedPayload); }
+      catch (error) { return driveReclassErrorResponse(error instanceof Error ? error.message : "DRIVE_RECLASS_V5_PAYLOAD_INVALID"); }
+      const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_SHEARED_POLICY
+        ? "enqueue_drive_reclass_inquiry_v5"
+        : protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
+          ? "enqueue_drive_reclass_inquiry_v4"
+          : "enqueue_drive_reclass_inquiry_v1";
       const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: jsonValue(protectedPayload) });
       if (error) return driveReclassErrorResponse(error.message || "");
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
@@ -4603,6 +4630,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   const action = String(payload.action || "").trim().toLowerCase();
 
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
+  if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
 
   if (action === "request_history" || action === "sales_credit") {
     return await handleSalesWorkflow({ session, payload, supabase, resolveActiveSessionProfile, headers: corsHeaders });

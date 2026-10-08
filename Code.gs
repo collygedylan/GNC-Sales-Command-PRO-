@@ -12615,7 +12615,8 @@ const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
   recount: 'Re-Count Request',
   priority_change: 'Priority Change',
   move_up: 'Move Up Request',
-  move_down: 'Move Down Request'
+  move_down: 'Move Down Request',
+  sheared: 'Sheared Request'
 });
 
 const RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = true;
@@ -12624,6 +12625,8 @@ const RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = 'reclass-action-workflow-v3-row-actions-20260826';
 const RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = 'reclass-action-workflow-v4-split-moves-20261006';
+const RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = true;
+const RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = 'reclass-action-workflow-v5-sheared-20261008';
 const RECLASS_INQUIRY_DESTINATION_SEASONS_V2_ = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
 const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request' }),
@@ -12636,6 +12639,7 @@ const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   move_down: Object.freeze({ kind: 'move', label: 'Move Down Request' })
 });
 const RECLASS_INQUIRY_ACTION_ORDER_V3_ = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']);
+const RECLASS_INQUIRY_ACTION_ORDER_V5_ = Object.freeze(RECLASS_INQUIRY_ACTION_ORDER_V3_.concat(['sheared']));
 const RECLASS_INQUIRY_HOLD_ACTIONS_V3_ = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']);
 const RECLASS_INQUIRY_TEMPORARY_FIELDS_V3_ = Object.freeze({
   holdstopreason: Object.freeze({ label: 'Hold/Stop Reason', maxLength: 1000, renderKey: 'holdstopreason', lower: true }),
@@ -13044,6 +13048,12 @@ function getReclassInquiryActionsLabelV3_(actions) {
   return ordered.map(getReclassInquiryActionLabel_).join(' + ');
 }
 
+function getReclassInquiryActionsLabelV5_(actions) {
+  const ordered = RECLASS_INQUIRY_ACTION_ORDER_V5_.filter(function(action) { return (Array.isArray(actions) ? actions : []).indexOf(action) !== -1; });
+  if (!ordered.length) return 'Reclass Item Inquiry';
+  return ordered.map(getReclassInquiryActionLabel_).join(' + ');
+}
+
 function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authoritativeRows, overlays, authoritativeScope) {
   const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope'], 'The Reclass transaction');
   const safeRows = Array.isArray(authoritativeRows) ? authoritativeRows : [];
@@ -13191,7 +13201,9 @@ function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authorit
 
 function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overlays, authoritativeScope, options) {
   const safeOptions = options && typeof options === 'object' ? options : {};
-  const isV4 = safeOptions.policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
+  const isV5 = safeOptions.policyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
+  const isV4 = safeOptions.policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ || isV5;
+  const actionOrder = isV5 ? RECLASS_INQUIRY_ACTION_ORDER_V5_ : RECLASS_INQUIRY_ACTION_ORDER_V3_;
   const allowEmptyActions = safeOptions.allowEmptyActions === true;
   const now = safeOptions.now instanceof Date ? safeOptions.now : new Date();
   const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope', 'seasonPriority'], 'The Reclass transaction');
@@ -13216,7 +13228,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     : [];
   if ((!requestedActions.length && !allowEmptyActions) || new Set(requestedActions).size !== requestedActions.length) throw new Error('The Reclass action list is empty or duplicated.');
   requestedActions.forEach(function(action) {
-    if (RECLASS_INQUIRY_ACTION_ORDER_V3_.indexOf(action) === -1) throw new Error('The Reclass action list contains an unsupported action.');
+    if (actionOrder.indexOf(action) === -1) throw new Error('The Reclass action list contains an unsupported action.');
   });
   const normalizedHoldProposals = [];
   function addHoldProposal_(rawAction, rawReason, label) {
@@ -13284,7 +13296,9 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const uid = getInventoryTransactionRowUid_(row);
     const overlay = overlayByUid.get(uid);
     if (!overlay) return { ok: false, status: 'conflict', message: 'An Item Inquiry row changed or is no longer available. Sync and try again.' };
-    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, ['itemcode', 'lotcode', 'locationcode', 'ptronhand', 'priority', 'ptravailable', 'lineageHash', 'lineage'], 'The expected row identity');
+    const expectedFields = ['itemcode', 'lotcode', 'locationcode', 'ptronhand', 'priority', 'ptravailable', 'lineageHash', 'lineage'];
+    if (isV5) expectedFields.push('desigitem');
+    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, expectedFields, 'The expected row identity');
     const checks = [
       ['ItemCode', getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''), expected.itemcode],
       ['Lot', getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''), expected.lotcode],
@@ -13292,6 +13306,11 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     ];
     const mismatch = checks.find(function(check) { return normalizeInventoryTransactionCompareText_(check[1]) !== normalizeInventoryTransactionCompareText_(check[2]); });
     if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
+    if (isV5 && Object.prototype.hasOwnProperty.call(expected, 'desigitem')
+        && normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['desigitem', 'DESIGITEM'], ''))
+          !== normalizeInventoryTransactionCompareText_(expected.desigitem)) {
+      return { ok: false, status: 'conflict', message: 'Designation changed for an Item Inquiry row. Sync and review it before sending.' };
+    }
     const originalPriority = String(getInventoryTransactionRowValue_(row, ['priority', 'PRIORITY'], '')).trim();
     if (seasonPriority && !Object.prototype.hasOwnProperty.call(expected, 'priority')) throw new Error('Season Priority requires every expected Priority.');
     if (Object.prototype.hasOwnProperty.call(expected, 'priority') && originalPriority !== String(expected.priority == null ? '' : expected.priority).trim()) {
@@ -13343,6 +13362,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const rowActions = [];
     const seenRowActions = new Set();
     let combinedMoveQuantity = 0;
+    let combinedShearedQuantity = 0;
     if (holdProposal) {
       const rowSeason = getReclassInquiryCurrentSeasonV2_(row);
       const rowSalesYear = normalizeReclassInquirySalesYearV3_(getReclassInquiryExactValue_(row, ['saleyear', 'SALEYEAR', 'salesyear', 'SALESYEAR'], ''));
@@ -13363,7 +13383,9 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     overlay.proposals.forEach(function(rawProposal) {
       const baseProposal = rawProposal && typeof rawProposal === 'object' && !Array.isArray(rawProposal) ? rawProposal : {};
       const action = String(baseProposal.action || '').trim().toLowerCase();
-      const rule = getReclassInquiryActionRuleV2_(action);
+      const rule = isV5 && action === 'sheared'
+        ? { kind: 'sheared', label: 'Sheared Request' }
+        : getReclassInquiryActionRuleV2_(action);
       if (!rule) throw new Error('A row proposal contains an unsupported action.');
       if (RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) !== -1) return;
       if (seenRowActions.has(action)) throw new Error('A row action may be selected only once.');
@@ -13425,6 +13447,22 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
           actionValues[prefix + 'season'] = destination;
           changedFields.push(prefix + 'quantity', prefix + 'season');
         }
+      } else if (rule.kind === 'sheared') {
+        if (!isV5) throw new Error('Sheared is supported only by the current Reclass workflow.');
+        const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'quantity', 'desigitem'], 'A Sheared proposal');
+        if (!Object.prototype.hasOwnProperty.call(expected, 'desigitem')) throw new Error('Sheared proposals require the original designation snapshot. Refresh and review the row before sending.');
+        const quantity = proposal.quantity;
+        if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 1) {
+          throw new Error('Sheared quantity must be a positive whole number.');
+        }
+        const proposedDesigitem = String(quantity) + '-->#';
+        if (proposal.desigitem !== proposedDesigitem) throw new Error('The stored Sheared designation proposal is invalid. Refresh and review the row before sending.');
+        const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
+        if (!Number.isFinite(originalOh) || originalOh < 1) throw new Error('Selected Sheared rows must have a positive original OH.');
+        combinedShearedQuantity += quantity;
+        actionValues.shearedquantity = quantity;
+        actionValues.shearedproposeddesigitem = proposedDesigitem;
+        changedFields.push('ptronhand');
       } else if (rule.kind === 'recount') {
         assertReclassInquiryObjectKeysV2_(baseProposal, ['action'], 'A Re-Count proposal');
       }
@@ -13432,7 +13470,8 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const temporaryChanges = applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields, now);
     const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
     if (combinedMoveQuantity && (!Number.isFinite(originalOh) || combinedMoveQuantity > originalOh)) throw new Error('Combined Move Up and Move Down quantities cannot exceed original OH.');
-    const orderedRowActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return rowActions.indexOf(action) !== -1; });
+    if (isV5 && combinedMoveQuantity + combinedShearedQuantity > originalOh) throw new Error('Combined Move and Sheared quantities cannot exceed current OH.');
+    const orderedRowActions = actionOrder.filter(function(action) { return rowActions.indexOf(action) !== -1; });
     reportRows.push({
       unique_id: uid,
       expectedPriority: seasonPriority ? originalPriority : undefined,
@@ -13447,9 +13486,9 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
   if (seasonPriority && seasonPrioritySelectedRows !== 1) throw new Error('The selected Season Priority row is missing or ambiguous.');
   if (overlayByUid.size !== safeRows.length) return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
   if (holdProposal && !holdAffectedCount) throw new Error(getReclassInquiryActionLabel_(holdProposal.action) + ' has no eligible rows in the configured current-season scope.');
-  const canonicalActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return actionUnion.has(action); });
+  const canonicalActions = actionOrder.filter(function(action) { return actionUnion.has(action); });
   if (!canonicalActions.length && !allowEmptyActions) throw new Error('Choose at least one Reclass action before sending.');
-  if (canonicalActions.join('|') !== RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return requestedActions.indexOf(action) !== -1; }).join('|')) {
+  if (canonicalActions.join('|') !== actionOrder.filter(function(action) { return requestedActions.indexOf(action) !== -1; }).join('|')) {
     throw new Error('The Reclass action summary does not match the row proposals.');
   }
   return {
@@ -13543,9 +13582,10 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   });
   const actor = payload && payload.actor && typeof payload.actor === 'object' ? payload.actor : {};
   const transaction = payload && payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {};
+  const isV5 = String(payload && payload.workflowPolicyVersion || '') === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
   const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
   const requestActions = Array.isArray(transaction.requestActions)
-    ? RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return transaction.requestActions.indexOf(action) !== -1; })
+    ? (isV5 ? RECLASS_INQUIRY_ACTION_ORDER_V5_ : RECLASS_INQUIRY_ACTION_ORDER_V3_).filter(function(action) { return transaction.requestActions.indexOf(action) !== -1; })
     : (requestAction ? [requestAction] : []);
   const rawHoldProposal = Array.isArray(transaction.holdStopProposals) && transaction.holdStopProposals.length
     ? transaction.holdStopProposals[0]
@@ -13574,7 +13614,7 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     requestActionLabel: transaction.seasonPriority ? 'Season Priority - Make Priority 1 (requested)' : hasLocationDetailChanges && !requestActions.length
       ? 'Location Detail Update'
       : (requestActions.length > 1 || (!requestAction && requestActions.length)
-        ? getReclassInquiryActionsLabelV3_(requestActions)
+        ? (isV5 ? getReclassInquiryActionsLabelV5_(requestActions) : getReclassInquiryActionsLabelV3_(requestActions))
         : getReclassInquiryActionLabel_(requestAction)),
     actorDisplay: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, 'Unknown User')),
     submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a'),
@@ -13792,35 +13832,24 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
         const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
         const movementLines = [];
         const v4MovementDetails = [];
-        const v4MovementSummaries = [];
-        let combinedSplitTotal = 0;
-        let hasV4Splits = false;
         [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
           const prefix = pair[0];
           const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
-          if (splits.length) {
-            const directionTotal = splits.reduce(function(sum, split) { return sum + Number(split && split.quantity || 0); }, 0);
-            combinedSplitTotal += directionTotal;
-            hasV4Splits = true;
-            const sourceLabel = String(row && row.values && row.values.locationcode || 'Unknown Location') + ' / ' + String(row && row.values && row.values.lotcode || 'Unknown Lot') + ' · ';
-            v4MovementSummaries.push(buildReclassInquiryProposalBoxHtml_(sourceLabel + pair[1] + ' split total requested: ' + String(directionTotal), 'proposal-box-movement'));
-          }
           splits.forEach(function(split) {
-            const hold = actionValues[prefix + 'applyhold'] === true
-              ? ' · PLACE ON HOLD REQUESTED' + (actionValues[prefix + 'holdreason'] ? ': ' + actionValues[prefix + 'holdreason'] : '')
-              : '';
-            const sourceLabel = String(row && row.values && row.values.locationcode || 'Unknown Location') + ' / ' + String(row && row.values && row.values.lotcode || 'Unknown Lot') + ' · ';
-            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(sourceLabel + pair[1] + ' ' + String(split && split.quantity != null ? split.quantity : '')
-              + ' TO ' + String(split && split.destinationSeason || '').toUpperCase() + hold, 'proposal-box-movement'));
+            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(String(split && split.quantity != null ? split.quantity : '')
+              + '-->' + String(split && split.destinationSeason || '').toUpperCase(), 'proposal-box-movement'));
           });
+          if (splits.length && actionValues[prefix + 'applyhold'] === true) {
+            const reason = String(actionValues[prefix + 'holdreason'] || '').trim();
+            movementLines.push(buildReclassInquiryProposalBoxHtml_('Place on Hold requested' + (reason ? ': ' + reason : ''), 'proposal-box-movement'));
+          }
         });
-        if (hasV4Splits) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP + DOWN total requested: ' + String(combinedSplitTotal), 'proposal-box-movement'));
-        movementLines.push.apply(movementLines, v4MovementSummaries.concat(v4MovementDetails));
-        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.moveupquantity).trim() + ' TO ' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
-        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('DOWN ' + String(actionValues.movedownquantity).trim() + ' TO ' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        movementLines.push.apply(movementLines, v4MovementDetails);
+        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.moveupquantity).trim() + '-->' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.movedownquantity).trim() + '-->' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (String(actionValues.shearedproposeddesigitem || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.shearedproposeddesigitem).trim(), 'proposal-box-movement'));
         if (!movementLines.length && String(actionValues.movequantity || '').trim()) {
-          const direction = String(safeModel.requestAction || '').trim().toLowerCase() === 'move_down' ? 'DOWN' : 'UP';
-          movementLines.push(buildReclassInquiryProposalBoxHtml_(direction + ' ' + String(actionValues.movequantity).trim() + ' TO ' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+          movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.movequantity).trim() + '-->' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         }
         return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
       }
@@ -14098,7 +14127,7 @@ function enqueueReclassInquiryEmail_(payload) {
     return { ok: false, status: 'unauthorized', message: 'Refresh the app and sign in before sending this Drive Mode inquiry.' };
   }
   const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
-  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
+  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
     return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app and review the current rows.' };
   }
   const recipients = getReclassInquiryEmailRecipients_(safePayload);
@@ -14146,8 +14175,9 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
     const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
     const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
+    const isV5 = RECLASS_ACTION_WORKFLOW_V5_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
     const isV4 = RECLASS_ACTION_WORKFLOW_V4_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
-    const isV3 = (RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_) || isV4;
+    const isV3 = (RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_) || isV4 || isV5;
     const isV2 = RECLASS_ACTION_WORKFLOW_V2_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
     if (!isV3 && !isV2) {
       throw new Error('RECLASS_CONFLICT:WORKFLOW_POLICY_CHANGED');
@@ -14164,7 +14194,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     let overlayResult;
     try {
       overlayResult = isV3
-        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now, policyVersion: isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '' })
+        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now, policyVersion: isV5 ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '') })
         : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
     } catch (validationError) {
       throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
@@ -14212,7 +14242,7 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
       });
       result.subject = subject;
       result.submittedAt = now.toISOString();
-      result.policyVersion = isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : (isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_);
+      result.policyVersion = isV5 ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : (isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_));
       result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Requested changes are highlighted yellow; no inventory data was changed.';
       return result;
     } catch (emailError) {
@@ -17024,7 +17054,8 @@ function buildEvalWorkReportModel_(eventPayload) {
   }) : allCurrentItemRows;
   const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
   const inquiryPolicyVersion = normalizeInventoryTransactionText_(inquiry.workflowPolicyVersion);
-  const isV4Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
+  const isV5Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
+  const isV4Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ || isV5Inquiry;
   const requestActions = Array.isArray(transaction.requestActions)
     ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
     : [];
@@ -17040,7 +17071,7 @@ function buildEvalWorkReportModel_(eventPayload) {
         : null;
       proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, {
         allowEmptyActions: true,
-        policyVersion: isV4Inquiry ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : ''
+        policyVersion: isV5Inquiry ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4Inquiry ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '')
       });
     } catch (error) {
       throw new Error('EVAL_WORK_VALIDATION:' + String(error && error.message || 'PROPOSAL_INVALID'));
@@ -17076,7 +17107,9 @@ function buildEvalWorkReportModel_(eventPayload) {
     } : {})
   });
   const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, reportPayload, new Date());
-  model.requestActionLabel = requestActions.length ? getReclassInquiryActionsLabelV3_(requestActions) : 'Evidence Review';
+  model.requestActionLabel = requestActions.length
+    ? (isV5Inquiry ? getReclassInquiryActionsLabelV5_(requestActions) : getReclassInquiryActionsLabelV3_(requestActions))
+    : 'Evidence Review';
   model.evalWork = {
     id: String(payload.evalWorkId || ''),
     deliveryKind: String(payload.deliveryKind || ''),

@@ -20,6 +20,7 @@ function fixture() {
   const ctx = {
     Map, Set, console,
     RECLASS_ACTION_WORKFLOW_V3_ORDER: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down'],
+    RECLASS_ACTION_WORKFLOW_V5_ORDER: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down', 'sheared'],
     RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
     RECLASS_ACTION_WORKFLOW_V2_SEASONS: ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'],
     argosInventoryTransactionState: { sourceView: 'drive', idempotencyToken: 'original', inquiryModel: { locationRows: [entry] } },
@@ -28,6 +29,7 @@ function fixture() {
     getArgosReclassV3Proposal: (_, action) => rowMap[action],
     getArgosReclassV3HoldProposal: () => null,
     getReclassActionWorkflowV2Config: action => ({ kind: 'move', label: action === 'move_up' ? 'Move Up Request' : 'Move Down Request' }),
+    getReclassActionWorkflowV5Config: action => ({ kind: action === 'sheared' ? 'sheared' : 'move', label: action === 'sheared' ? 'Sheared Request' : (action === 'move_up' ? 'Move Up Request' : 'Move Down Request') }),
     getArgosReclassRowCurrentSeason: row => row.values.season,
     getArgosReclassTemporaryOverlay: () => null,
     getItemInquiryItemCode: row => row.ITEMCODE,
