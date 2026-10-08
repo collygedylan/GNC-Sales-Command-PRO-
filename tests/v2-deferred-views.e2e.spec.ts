@@ -6,16 +6,23 @@ import { installPerformanceFixture, openPerformanceView, returnPerformanceHome }
 
 type ViteManifest = Record<string, { file: string; isDynamicEntry?: boolean }>;
 const siteRoot = path.resolve(process.env.GNC_LOCAL_SITE_DIR || '_site');
-const manifest = JSON.parse(await readFile(path.join(siteRoot, 'v2', '.vite', 'manifest.json'), 'utf8')) as ViteManifest;
 
-function dynamicChunk(source: string) {
+function dynamicChunk(manifest: ViteManifest, source: string) {
   const entry = manifest[source];
   if (!entry?.isDynamicEntry || !entry.file) throw new Error(`PHASE6_DYNAMIC_CHUNK_MISSING:${source}`);
   return entry.file;
 }
 
-const requestChunk = dynamicChunk('src/pages/RequestQueue.tsx');
-const driveChunk = dynamicChunk('src/components/DriveInventory.tsx');
+let requestChunk: string;
+let driveChunk: string;
+
+// Playwright imports every spec before applying suite tags. Only executing this
+// compiled suite requires its artifact; unrelated database collection does not.
+test.beforeAll(async () => {
+  const manifest = JSON.parse(await readFile(path.join(siteRoot, 'v2', '.vite', 'manifest.json'), 'utf8')) as ViteManifest;
+  requestChunk = dynamicChunk(manifest, 'src/pages/RequestQueue.tsx');
+  driveChunk = dynamicChunk(manifest, 'src/components/DriveInventory.tsx');
+});
 
 async function installStaticApp(page: import('@playwright/test').Page, origin: string) {
   await installPerformanceFixture(page, origin, 'v2');

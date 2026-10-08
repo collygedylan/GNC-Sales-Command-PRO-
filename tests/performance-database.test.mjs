@@ -12,6 +12,7 @@ import {
   buildLocalIdentityFixture,
   buildBetaDrivePageSql,
   buildInventoryPageSql,
+  cleanupLocalIdentity,
   inventoryScopeSql,
   pinnedBaselineProjections,
   parseBenchmarkCliArgs,
@@ -77,6 +78,48 @@ test('database fixture diagnostics retain only a validated SQLSTATE', () => {
     code: 'not-a-sqlstate', message: 'secret',
   }).message, 'PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED:UNKNOWN');
   assert.throws(() => sanitizedDatabaseFailureCode('profile failed', { code: '23514' }), /PERFORMANCE_LOCAL_ERROR_PREFIX_INVALID/);
+});
+
+test('local identity cleanup removes only its rep mapping before profile and Auth deletion', async () => {
+  const calls = [];
+  const userId = '11111111-1111-4111-8111-111111111111';
+  const legacyUserId = '22222222-2222-4222-8222-222222222222';
+  const db = { async query(sql, values) { calls.push(['db', sql, values]); return { rows: [] }; } };
+  const admin = {
+    from(table) {
+      return {
+        delete() {
+          return { async eq(column, value) {
+            calls.push([table, column, value]);
+            return { error: null };
+          } };
+        },
+      };
+    },
+    auth: { admin: { async deleteUser(id) { calls.push(['auth', id]); return { error: null }; } } },
+  };
+
+  await cleanupLocalIdentity(db, admin, userId, legacyUserId);
+  assert.deepEqual(calls, [
+    ['db', 'DELETE FROM sales_private.rep_identities WHERE profile_id = $1::uuid', [userId]],
+    ['profiles', 'id', userId],
+    ['auth', userId],
+    ['ph_app_users', 'id', legacyUserId],
+  ]);
+});
+
+test('local identity cleanup errors expose SQLSTATE only', async () => {
+  const userId = '11111111-1111-4111-8111-111111111111';
+  const db = { async query() { throw Object.assign(new Error('private row detail'), { code: '23503' }); } };
+  const admin = {
+    from() { return { delete() { return { async eq() { return { error: null }; } }; } }; },
+    auth: { admin: { async deleteUser() { return { error: null }; } } },
+  };
+  await assert.rejects(cleanupLocalIdentity(db, admin, userId, null), error => {
+    assert.equal(error.message, 'PERFORMANCE_LOCAL_REP_IDENTITY_CLEANUP_FAILED:23503');
+    assert.doesNotMatch(error.message, /private row detail/);
+    return true;
+  });
 });
 
 test('authenticated API diagnostics include only a sanitized application code', () => {

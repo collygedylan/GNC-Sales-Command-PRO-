@@ -13,6 +13,33 @@ export async function readCompletePerformanceResponseBody(response, requestOutco
   return body;
 }
 
+function safeApiRequestDetails(request) {
+  const url = new URL(request.url());
+  const path = url.pathname;
+  const rpc = path.match(/\/rpc\/([^/]+)$/);
+  let operation = rpc ? `rpc:${decodeURIComponent(rpc[1])}` : null;
+  if (path === '/functions/v1/app-api') {
+    try {
+      const body = request.postDataJSON();
+      if (typeof body?.action === 'string' && /^[a-z0-9_.-]{1,80}$/i.test(body.action)) {
+        operation = `action:${body.action}`;
+        if (typeof body.dataset === 'string' && /^[a-z0-9_.-]{1,80}$/i.test(body.dataset)) operation += `;dataset:${body.dataset}`;
+      }
+    } catch { /* Opaque or malformed bodies stay undisclosed in diagnostics. */ }
+  }
+  return { method: request.method(), path, operation };
+}
+
+export function safePerformanceApiDiagnostic(request) {
+  if (!request || typeof request.method !== 'string' || typeof request.path !== 'string'
+    || !(request.operation === null || typeof request.operation === 'string')
+    || typeof request.bytes !== 'number' || typeof request.canceled !== 'boolean') {
+    throw new Error('PERFORMANCE_API_DIAGNOSTIC_INVALID');
+  }
+  return { method: request.method, path: request.path, operation: request.operation,
+    bytes: request.bytes, canceled: request.canceled, failed: Boolean(request.error) };
+}
+
 export function attachPerformanceResponseTracker(page, totals) {
   if (!page || typeof page.on !== 'function' || !totals || !Array.isArray(totals.apiRequests)
     || !Array.isArray(totals.pending) || !Array.isArray(totals.errors)) {
@@ -27,7 +54,7 @@ export function attachPerformanceResponseTracker(page, totals) {
     requestOutcomes.set(request, outcome);
     requestOutcomeResolvers.set(request, resolveOutcome);
     if (request.method() === 'OPTIONS' || !/\/(?:rest|functions)\/v1\//.test(request.url())) return;
-    const record = { index: totals.apiRequests.length, request, outcome, resolveOutcome, response: null,
+    const record = { index: totals.apiRequests.length, ...safeApiRequestDetails(request), request, outcome, resolveOutcome, response: null,
       bytes: 0, canceled: false, error: null, capturePromise: null };
     requestRecords.set(request, record);
     totals.apiRequests.push(record);
@@ -142,7 +169,7 @@ export async function drainPerformanceApiRequests(totals, { startIndex = 0, endI
 
 export async function settlePerformanceApiBoundary(totals, fixtureControl, { maxBatches = 4, timeoutMs = 15_000 } = {}) {
   if (!totals || !Array.isArray(totals.apiRequests) || !Array.isArray(totals.pending) || !Array.isArray(totals.errors)
-    || (fixtureControl != null && typeof fixtureControl.waitForRevisionIdle !== 'function')
+    || (fixtureControl != null && typeof fixtureControl.waitForApiIdle !== 'function')
     || !Number.isInteger(maxBatches) || maxBatches < 1 || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error('PERFORMANCE_API_BOUNDARY_OPTIONS_INVALID');
   }
@@ -154,8 +181,8 @@ export async function settlePerformanceApiBoundary(totals, fixtureControl, { max
       let timer;
       try {
         await Promise.race([
-          fixtureControl.waitForRevisionIdle(),
-          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('PERFORMANCE_REVISION_IDLE_TIMEOUT')), remainingMs); })
+          fixtureControl.waitForApiIdle({ timeoutMs: remainingMs }),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('PERFORMANCE_API_BOUNDARY_TIMEOUT')), remainingMs); })
         ]);
       } finally { clearTimeout(timer); }
     }

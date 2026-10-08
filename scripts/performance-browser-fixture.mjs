@@ -8,9 +8,60 @@ const queueRows = inventoryRows.slice(0, 200).map(row => ({ ...row, unique_id: `
   req_status: 'Pending', req_archived: false, req_qty: '5', req_match: '100', request_folder: 'performance-folder',
   req_customer: 'Synthetic Customer', salesrepname: 'Fixture Rep', requested_by: 'performance_admin' }));
 
+// After route readiness, wait through a short asynchronous-settlement window
+// (about four 60 Hz frames). Longer live polling remains measured and is
+// reported in its route or between-phase partition; this never cancels reads.
+export const PERFORMANCE_API_QUIET_MS = 75;
+
+export function attachPerformanceApiIdleTracker(page, { quietMs = PERFORMANCE_API_QUIET_MS } = {}) {
+  if (!page || typeof page.on !== 'function' || !Number.isFinite(quietMs) || quietMs < 1) {
+    throw new Error('PERFORMANCE_API_IDLE_TRACKER_OPTIONS_INVALID');
+  }
+  const pending = new Set();
+  let activity = 0;
+  const isApiRequest = request => request.method() !== 'OPTIONS'
+    && /\/(?:rest|functions)\/v1\//.test(new URL(request.url()).pathname);
+  page.on('request', request => {
+    if (!isApiRequest(request)) return;
+    pending.add(request);
+    activity++;
+  });
+  const settle = request => {
+    if (!isApiRequest(request)) return;
+    pending.delete(request);
+    activity++;
+  };
+  page.on('requestfinished', settle);
+  page.on('requestfailed', settle);
+
+  return {
+    async waitForApiIdle({ timeoutMs = 15_000 } = {}) {
+      if (!Number.isFinite(timeoutMs) || timeoutMs <= quietMs) throw new Error('PERFORMANCE_API_IDLE_TIMEOUT_INVALID');
+      const deadline = Date.now() + timeoutMs;
+      while (Date.now() < deadline) {
+        if (pending.size) {
+          await new Promise(resolve => setTimeout(resolve, Math.min(10, Math.max(1, deadline - Date.now()))));
+          continue;
+        }
+        const observedActivity = activity;
+        const quietUntil = Date.now() + quietMs;
+        while (Date.now() < quietUntil && Date.now() < deadline && pending.size === 0 && activity === observedActivity) {
+          await new Promise(resolve => setTimeout(resolve, Math.min(10, Math.max(1, Math.min(quietUntil, deadline) - Date.now()))));
+        }
+        if (Date.now() >= deadline) throw new Error('PERFORMANCE_API_IDLE_TIMEOUT');
+        if (pending.size === 0 && activity === observedActivity && Date.now() >= quietUntil) {
+          return { quietMs, activityCount: activity };
+        }
+      }
+      throw new Error('PERFORMANCE_API_IDLE_TIMEOUT');
+    }
+  };
+}
+
 export async function installPerformanceFixture(page, origin, app) {
+  const apiIdleTracker = attachPerformanceApiIdleTracker(page);
   if (app === 'live') {
-    return installHlOrderFixture(page, origin, { username: 'performance_admin', role: 'ADMIN', master: inventoryRows,
+    const control = await installHlOrderFixture(page, origin, { username: 'performance_admin', role: 'ADMIN', master: inventoryRows,
       startupMode: 'cold', beforeLogin: async () => page.locator('#login-button').waitFor({ state: 'visible' }),
       beforeNavigate: async () => {
         await page.route('**/functions/v1/app-api', async route => {
@@ -22,6 +73,7 @@ export async function installPerformanceFixture(page, origin, app) {
             body: JSON.stringify({ ok: true, data: { rows, total: queueRows.length, offset, limit, hasMore: offset + rows.length < queueRows.length } }) });
         });
       } });
+    return Object.assign(control, apiIdleTracker);
   }
   await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
@@ -41,6 +93,7 @@ export async function installPerformanceFixture(page, origin, app) {
   });
   await page.goto('/v2/#home');
   await page.locator('.home-dashboard').waitFor();
+  return apiIdleTracker;
 }
 
 export async function openPerformanceView(page, app, view) {

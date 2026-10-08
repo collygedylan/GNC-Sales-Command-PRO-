@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import test from 'node:test';
 import { chromium } from 'playwright';
 import { waitForPerformanceVisibleElement } from '../scripts/performance-browser-fixture.mjs';
-import { attachPerformanceResponseTracker, drainPerformanceApiRequests } from '../scripts/performance-response-drain.mjs';
+import { attachPerformanceResponseTracker, drainPerformanceApiRequests, safePerformanceApiDiagnostic } from '../scripts/performance-response-drain.mjs';
 
 test('route readiness resolves on the first visible card frame instead of locator polling', async () => {
   const browser = await chromium.launch();
@@ -26,12 +26,13 @@ test('route readiness resolves on the first visible card frame instead of locato
 
 test('Playwright response ledger captures exact payloads, excludes late reads, and records header-stage aborts', async () => {
   const server = createServer((request, response) => {
-    if (request.url === '/rest/v1/rpc/complete') {
+    const pathname = new URL(request.url, 'http://fixture.invalid').pathname;
+    if (pathname === '/rest/v1/rpc/complete') {
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end('{"ok":true,"rows":[1,2]}');
       return;
     }
-    if (request.url === '/rest/v1/rpc/late') {
+    if (pathname === '/rest/v1/rpc/late') {
       setTimeout(() => {
         if (!response.destroyed) {
           response.writeHead(200, { 'content-type': 'application/json' });
@@ -40,16 +41,21 @@ test('Playwright response ledger captures exact payloads, excludes late reads, a
       }, 80);
       return;
     }
-    if (request.url === '/rest/v1/rpc/abort') {
+    if (pathname === '/rest/v1/rpc/abort') {
       response.writeHead(200, { 'content-type': 'application/json', 'content-length': '100' });
       response.flushHeaders();
       const timer = setTimeout(() => response.end('{"this body is deliberately delayed"}'), 1500);
       response.on('close', () => clearTimeout(timer));
       return;
     }
-    if (request.url === '/rest/v1/rpc/error') {
+    if (pathname === '/rest/v1/rpc/error') {
       response.writeHead(503, { 'content-type': 'application/json' });
       response.end('{"private":"error response body"}');
+      return;
+    }
+    if (pathname === '/functions/v1/app-api') {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end('{"ok":true}');
       return;
     }
     response.writeHead(404).end();
@@ -63,10 +69,14 @@ test('Playwright response ledger captures exact payloads, excludes late reads, a
   const origin = `http://127.0.0.1:${server.address().port}`;
   try {
     await page.goto(origin);
-    const completeText = await page.evaluate(async () => await (await fetch('/rest/v1/rpc/complete')).text());
+    const completeText = await page.evaluate(async () => await (await fetch('/rest/v1/rpc/complete?secret=never-log')).text());
     assert.equal(completeText, '{"ok":true,"rows":[1,2]}');
     await drainPerformanceApiRequests(totals, { startIndex: 0, endIndex: 1 });
     assert.equal(totals.apiRequests[0].bytes, Buffer.byteLength(completeText));
+    assert.deepEqual({ method: totals.apiRequests[0].method, path: totals.apiRequests[0].path, operation: totals.apiRequests[0].operation },
+      { method: 'GET', path: '/rest/v1/rpc/complete', operation: 'rpc:complete' });
+    assert.equal(JSON.stringify(safePerformanceApiDiagnostic(totals.apiRequests[0])).includes('never-log'), false,
+      'diagnostics exclude query values');
 
     const lateResponse = page.waitForResponse(response => response.url().endsWith('/rest/v1/rpc/late'));
     await page.evaluate(() => { window.lateFetch = fetch('/rest/v1/rpc/late').then(response => response.text()); });
@@ -96,14 +106,25 @@ test('Playwright response ledger captures exact payloads, excludes late reads, a
     assert.equal(totals.apiRequests[2].error, null);
     assert.deepEqual(totals.errors, []);
 
+    const appApiText = await page.evaluate(async () => await (await fetch('/functions/v1/app-api', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'dataset_read', dataset: 'request_queue', access_token: 'sensitive-test-token' })
+    })).text());
+    assert.equal(appApiText, '{"ok":true}');
+    await drainPerformanceApiRequests(totals, { startIndex: 3, endIndex: 4 });
+    assert.equal(totals.apiRequests[3].operation, 'action:dataset_read;dataset:request_queue');
+    const diagnostic = safePerformanceApiDiagnostic(totals.apiRequests[3]);
+    assert.equal(diagnostic.path, '/functions/v1/app-api');
+    assert.equal(JSON.stringify(diagnostic).includes('sensitive-test-token'), false);
+
     const errorText = await page.evaluate(async () => await (await fetch('/rest/v1/rpc/error')).text());
     assert.match(errorText, /error response body/);
-    await assert.rejects(drainPerformanceApiRequests(totals, { startIndex: 3, endIndex: 4 }), error => {
+    await assert.rejects(drainPerformanceApiRequests(totals, { startIndex: 4, endIndex: 5 }), error => {
       assert.match(error.message, /HTTP 503/);
       assert.equal(error.message.includes('error response body'), false);
       return true;
     });
-    assert.equal(totals.apiRequests[3].bytes, 0);
+    assert.equal(totals.apiRequests[4].bytes, 0);
   } finally {
     await context.close();
     await browser.close();

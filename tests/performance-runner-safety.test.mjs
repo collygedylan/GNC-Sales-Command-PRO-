@@ -1,5 +1,6 @@
 // @test-group: foundation
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -178,12 +179,14 @@ test('API restoration preserves parked sources when its root validation fails', 
 
 test('V2 performance fixture blocks non-fixture external requests and uses only a projected synthetic inventory route', async () => {
   const routes = [];
-  const page = {
+  const page = Object.assign(new EventEmitter(), {
     route: async (pattern, handler) => { routes.push({ pattern, handler }); },
     goto: async path => assert.equal(path, '/v2/#home'),
     locator: () => ({ waitFor: async () => {} })
-  };
-  await installPerformanceFixture(page, 'http://127.0.0.1:43210', 'v2');
+  });
+  const control = await installPerformanceFixture(page, 'http://127.0.0.1:43210', 'v2');
+  assert.equal(typeof control.waitForApiIdle, 'function');
+  assert.deepEqual(page.eventNames().sort(), ['request', 'requestfailed', 'requestfinished']);
   assert.equal(routes.length, 1);
   assert.equal(routes[0].pattern, '**/*');
   const route = url => ({

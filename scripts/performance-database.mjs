@@ -539,7 +539,7 @@ export function sanitizedApplicationErrorCode(responseBody) {
   return typeof code === 'string' && /^[A-Z0-9_]{1,80}$/.test(code) ? code : 'UNKNOWN';
 }
 
-async function createLocalIdentity(admin, apiUrl, publishableKey, role, nonce) {
+async function createLocalIdentity(db, admin, apiUrl, publishableKey, role, nonce) {
   const password = `Bench-${randomUUID()}-T9!`;
   const fixture = buildLocalIdentityFixture(role, nonce, password);
   const { username, email } = fixture;
@@ -563,7 +563,7 @@ async function createLocalIdentity(admin, apiUrl, publishableKey, role, nonce) {
     return { userId, legacyUserId, admin, browser, accessToken: signedIn.data.session.access_token, username };
   } catch (error) {
     try {
-      await cleanupLocalIdentity(admin, userId, legacyUserId);
+      await cleanupLocalIdentity(db, admin, userId, legacyUserId);
     } catch {
       throw errorCode('PERFORMANCE_LOCAL_AUTH_USER_CLEANUP_FAILED');
     }
@@ -571,11 +571,18 @@ async function createLocalIdentity(admin, apiUrl, publishableKey, role, nonce) {
   }
 }
 
-async function cleanupLocalIdentity(admin, userId, legacyUserId) {
+export async function cleanupLocalIdentity(db, admin, userId, legacyUserId) {
   let cleanupError;
   if (userId) {
+    try {
+      // The REP profile refresh trigger creates this synthetic mapping, whose
+      // FK intentionally prevents deleting a profile while the mapping exists.
+      await db.query('DELETE FROM sales_private.rep_identities WHERE profile_id = $1::uuid', [userId]);
+    } catch (error) {
+      cleanupError ||= sanitizedDatabaseFailureCode('PERFORMANCE_LOCAL_REP_IDENTITY_CLEANUP_FAILED', error);
+    }
     const profile = await admin.from('profiles').delete().eq('id', userId);
-    if (profile.error) cleanupError ||= errorCode('PERFORMANCE_LOCAL_PROFILE_CLEANUP_FAILED');
+    if (profile.error) cleanupError ||= sanitizedDatabaseFailureCode('PERFORMANCE_LOCAL_PROFILE_CLEANUP_FAILED', profile.error);
     const auth = await admin.auth.admin.deleteUser(userId);
     if (auth.error) cleanupError ||= errorCode('PERFORMANCE_LOCAL_AUTH_USER_CLEANUP_FAILED');
   }
@@ -824,7 +831,7 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
     await seedInventory(db, prefix, () => { seeded = true; });
     if (mode === 'api') {
       for (const role of ['admin', 'rep', 'foreman']) {
-        users.set(role, await createLocalIdentity(adminClient, apiUrl, values.ANON_KEY, role, prefix.slice(-8)));
+        users.set(role, await createLocalIdentity(db, adminClient, apiUrl, values.ANON_KEY, role, prefix.slice(-8)));
       }
     }
 
@@ -888,7 +895,7 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
     }
   } finally {
     for (const user of users.values()) {
-      try { await cleanupLocalIdentity(adminClient, user.userId, user.legacyUserId); } catch (error) { cleanupFailure ||= error; }
+      try { await cleanupLocalIdentity(db, adminClient, user.userId, user.legacyUserId); } catch (error) { cleanupFailure ||= error; }
     }
     if (seeded) {
       try { await cleanupInventory(db, prefix); } catch (error) { cleanupFailure ||= error; }

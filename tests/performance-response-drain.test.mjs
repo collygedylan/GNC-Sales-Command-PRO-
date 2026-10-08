@@ -1,6 +1,8 @@
 // @test-group: foundation
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 import test from 'node:test';
+import { attachPerformanceApiIdleTracker } from '../scripts/performance-browser-fixture.mjs';
 import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
 
 test('response body drain clears completed batches and captures responses added while waiting', async () => {
@@ -41,10 +43,10 @@ test('API request drain settles pending reads added during the drain and fails c
     response: null, capturePromise: null, canceled: false, error: '/rpc: reset' }] }), /PERFORMANCE_API_REQUEST_FAILED/);
 });
 
-test('API boundary waits for fixture revision idle before freezing the request index and propagates wait failures', async () => {
+test('API boundary waits for fixture API idle before freezing the request index and propagates wait failures', async () => {
   const totals = { apiRequests: [], pending: [], errors: [] };
   const events = [];
-  const control = { async waitForRevisionIdle() {
+  const control = { async waitForApiIdle() {
     events.push('idle');
     if (!totals.apiRequests.length) totals.apiRequests.push({ index: 0,
       outcome: Promise.resolve({ type: 'finished' }), response: {}, capturePromise: Promise.resolve(), canceled: false, error: null });
@@ -52,8 +54,47 @@ test('API boundary waits for fixture revision idle before freezing the request i
   assert.equal(await settlePerformanceApiBoundary(totals, control), 1);
   assert.deepEqual(events, ['idle']);
   await assert.rejects(settlePerformanceApiBoundary({ apiRequests: [], pending: [], errors: [] }, {
-    async waitForRevisionIdle() { throw new Error('fixture failure'); }
+    async waitForApiIdle() { throw new Error('fixture failure'); }
   }), /fixture failure/);
+});
+
+test('API idle tracker keeps a delayed non-revision request in the current boundary', async () => {
+  const page = new EventEmitter();
+  const tracker = attachPerformanceApiIdleTracker(page, { quietMs: 40 });
+  const makeRequest = path => ({ method: () => 'GET', url: () => `http://fixture.invalid/rest/v1/${path}` });
+  const first = makeRequest('rpc/startup');
+  const started = Date.now();
+  page.emit('request', first);
+  const idle = tracker.waitForApiIdle({ timeoutMs: 500 });
+  setTimeout(() => {
+    page.emit('requestfinished', first);
+    setTimeout(() => {
+      const late = makeRequest('ph_master_inventory');
+      page.emit('request', late);
+      setTimeout(() => page.emit('requestfinished', late), 10);
+    }, 15);
+  }, 5);
+
+  const result = await idle;
+  assert.equal(result.activityCount, 4);
+  assert.ok(Date.now() - started >= 60, 'the quiet period restarts when the delayed request begins');
+});
+
+test('API idle tracker times out instead of accepting a truncated quiet interval', async () => {
+  const page = new EventEmitter();
+  const tracker = attachPerformanceApiIdleTracker(page, { quietMs: 75 });
+  const request = { method: () => 'GET', url: () => 'http://fixture.invalid/rest/v1/ph_master_inventory' };
+  page.emit('request', request);
+  setTimeout(() => page.emit('requestfinished', request), 65);
+  await assert.rejects(tracker.waitForApiIdle({ timeoutMs: 100 }), /PERFORMANCE_API_IDLE_TIMEOUT/);
+});
+
+test('API idle tracker rejects an event-loop stall beyond the timeout', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
+  const tracker = attachPerformanceApiIdleTracker(new EventEmitter(), { quietMs: 75 });
+  const rejected = assert.rejects(tracker.waitForApiIdle({ timeoutMs: 100 }), /PERFORMANCE_API_IDLE_TIMEOUT/);
+  t.mock.timers.tick(150);
+  await rejected;
 });
 
 test('response byte capture waits for the complete network response before reading its body', async () => {

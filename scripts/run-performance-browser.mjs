@@ -5,8 +5,8 @@ import { chromium } from 'playwright';
 import { compareBenchmarks, parseBenchmarkManifest, percentile } from '../services/performanceBaseline.ts';
 import { startReleaseTestServer } from './serve-release-tests.mjs';
 import { verifyReleaseArtifact } from './release-artifact.mjs';
-import { installPerformanceFixture, openPerformanceView, returnPerformanceHome } from './performance-browser-fixture.mjs';
-import { attachPerformanceResponseTracker, drainPerformanceResponseBodies, settlePerformanceApiBoundary } from './performance-response-drain.mjs';
+import { installPerformanceFixture, openPerformanceView, returnPerformanceHome, PERFORMANCE_API_QUIET_MS } from './performance-browser-fixture.mjs';
+import { attachPerformanceResponseTracker, drainPerformanceResponseBodies, safePerformanceApiDiagnostic, settlePerformanceApiBoundary } from './performance-response-drain.mjs';
 
 const root = process.cwd();
 const manifest = parseBenchmarkManifest(JSON.parse(await readFile(path.join(root, 'performance/baseline.json'), 'utf8')));
@@ -28,9 +28,10 @@ async function sealInfo(site) {
 async function settle(page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
-async function measure(page, app, view, totals, fixtureControl) {
+async function measure(page, app, view, totals, fixtureControl, diagnosticCursor) {
   await settle(page);
   const startIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
+  const preludeRequests = totals.apiRequests.slice(diagnosticCursor, startIndex);
   await page.evaluate(() => { window.__phase6Metrics = { longTaskMs: 0, domRemovals: 0 }; });
   const started = performance.now();
   await openPerformanceView(page, app, view);
@@ -59,7 +60,8 @@ async function measure(page, app, view, totals, fixtureControl) {
   await drainPerformanceResponseBodies(totals);
   if (totals.errors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${totals.errors.join(',')}`);
   return { duration, reads: routeReads, bytes: routeBytes,
-    canceledReads: routeRequests.filter(request => request.canceled).length, ...evidence, scrollFrameP95 };
+    canceledReads: routeRequests.filter(request => request.canceled).length, requestRecords: routeRequests, preludeRequests,
+    boundaryStartIndex: startIndex, boundaryEndIndex: endIndex, ...evidence, scrollFrameP95 };
 }
 async function benchmark(site, info, profile, app) {
   const server = await startReleaseTestServer({ siteDir: site, port: 0 });
@@ -72,12 +74,22 @@ async function benchmark(site, info, profile, app) {
   const deferred = [];
   const initialExecutableJsBytes = [];
   const cancellationDiagnostics = [];
+  const apiReadDiagnostics = [];
+  const recordApiPhase = (indices, phase, requests) => {
+    for (const request of requests) {
+      if (indices.has(request.index)) throw new Error('PERFORMANCE_API_DIAGNOSTIC_DUPLICATE');
+      indices.add(request.index);
+    }
+    apiReadDiagnostics.push({ phase, reads: requests.map(safePerformanceApiDiagnostic) });
+  };
   try {
     for (let iteration = 0; iteration < manifest.coldSamples; iteration++) {
       const context = await browser.newContext({ viewport: { width: profile.width, height: profile.height }, baseURL: origin, serviceWorkers: 'block' });
       const page = await context.newPage();
       page.setDefaultTimeout(20000);
       const totals = { scriptBytes: 0, apiRequests: [], pending: [], errors: [] };
+      const apiDiagnosticIndices = new Set();
+      let apiDiagnosticCursor = 0;
       attachPerformanceResponseTracker(page, totals);
       await page.addInitScript(() => {
         window.__phase6Metrics = { longTaskMs: 0, domRemovals: 0 };
@@ -94,6 +106,12 @@ async function benchmark(site, info, profile, app) {
       });
       try {
         const fixtureControl = await installPerformanceFixture(page, origin, app);
+        const recordApiTransition = async phase => {
+          const endIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
+          const requests = totals.apiRequests.slice(apiDiagnosticCursor, endIndex);
+          recordApiPhase(apiDiagnosticIndices, phase, requests);
+          apiDiagnosticCursor = endIndex;
+        };
         await settle(page);
         const initialEndIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
         const initialRequests = totals.apiRequests.slice(0, initialEndIndex);
@@ -106,41 +124,59 @@ async function benchmark(site, info, profile, app) {
         cancellationDiagnostics.push({ view: 'home', phase: 'initial', canceledApiReads: initialRequests.filter(request => request.canceled).length });
         add('initial-api-reads', 'count', initialRequests.length);
         add('initial-api-bytes', 'bytes', initialRequests.reduce((sum, request) => sum + request.bytes, 0));
+        recordApiPhase(apiDiagnosticIndices, 'initial', initialRequests);
+        apiDiagnosticCursor = initialEndIndex;
         for (const view of ['request', 'drive']) {
-          const cold = await measure(page, app, view, totals, fixtureControl);
+          const cold = await measure(page, app, view, totals, fixtureControl, apiDiagnosticCursor);
+          recordApiPhase(apiDiagnosticIndices, `${view}.before-cold`, cold.preludeRequests);
+          recordApiPhase(apiDiagnosticIndices, `${view}.cold`, cold.requestRecords);
+          apiDiagnosticCursor = cold.boundaryEndIndex;
           cancellationDiagnostics.push({ view, phase: 'cold', canceledApiReads: cold.canceledReads });
           for (const [key, value] of Object.entries(cold)) {
-            if (key === 'canceledReads') continue;
+            if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests'
+              || key === 'boundaryStartIndex' || key === 'boundaryEndIndex') continue;
             add(`${view}.cold.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', value);
           }
           await returnPerformanceHome(page, app);
+          await recordApiTransition(`${view}.home-after-cold`);
           for (let warm = 0; warm < manifest.warmSamples / manifest.coldSamples; warm++) {
-            const value = await measure(page, app, view, totals, fixtureControl);
+            const value = await measure(page, app, view, totals, fixtureControl, apiDiagnosticCursor);
+            recordApiPhase(apiDiagnosticIndices, `${view}.before-warm-${warm + 1}`, value.preludeRequests);
+            recordApiPhase(apiDiagnosticIndices, `${view}.warm-${warm + 1}`, value.requestRecords);
+            apiDiagnosticCursor = value.boundaryEndIndex;
             cancellationDiagnostics.push({ view, phase: `warm-${warm + 1}`, canceledApiReads: value.canceledReads });
             for (const [key, sample] of Object.entries(value)) {
-              if (key === 'canceledReads') continue;
+              if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests'
+                || key === 'boundaryStartIndex' || key === 'boundaryEndIndex') continue;
               add(`${view}.warm.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', sample);
             }
             await returnPerformanceHome(page, app);
+            await recordApiTransition(`${view}.home-after-warm-${warm + 1}`);
           }
         }
-        await settlePerformanceApiBoundary(totals, fixtureControl);
+        const finalEndIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
+        recordApiPhase(apiDiagnosticIndices, 'final-settle', totals.apiRequests.slice(apiDiagnosticCursor, finalEndIndex));
+        apiDiagnosticCursor = finalEndIndex;
         const finalApiErrors = totals.apiRequests.map(request => request.error).filter(Boolean);
         if (totals.errors.length || finalApiErrors.length) {
           throw new Error(`PERFORMANCE_FINAL_RESPONSE_MEASUREMENT_FAILED:${[...totals.errors, ...finalApiErrors].join(',')}`);
         }
         cancellationDiagnostics.push({ view: 'all', phase: 'final-drain', canceledApiReads: totals.apiRequests.filter(request => request.canceled).length });
+        if (apiDiagnosticIndices.size !== totals.apiRequests.length) throw new Error('PERFORMANCE_API_DIAGNOSTIC_COVERAGE_MISMATCH');
+        add('all-api-reads', 'count', totals.apiRequests.length);
+        add('all-api-bytes', 'bytes', totals.apiRequests.reduce((sum, request) => sum + request.bytes, 0));
         deferred.push(totals.scriptBytes - initialBytes);
       } finally { await context.close(); }
     }
   } finally { await new Promise(resolve => server.close(resolve)); }
   const report = { schemaVersion: 1, commit: info.commit, baselineCommit: manifest.baselineCommit, artifactDigest: info.digest,
     fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browser.version()}`, viewport: { width: profile.width, height: profile.height },
-    method: `${app}:serial-cold-context-and-warm-route-v1;service-workers-blocked`, metrics: [...samples.values()], initialExecutableJsBytes };
+    method: `${app}:serial-cold-context-and-warm-route-v2;service-workers-blocked;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
-  reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics });
+  reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics });
   return report;
 }
+
 try {
   const baseline = await sealInfo(baselineSite), candidate = await sealInfo(candidateSite);
   if (baseline.commit !== manifest.baselineCommit) throw new Error('PERFORMANCE_BASELINE_COMMIT_MISMATCH');
