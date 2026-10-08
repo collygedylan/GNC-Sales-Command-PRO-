@@ -14182,7 +14182,9 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const requestRail = requestView ? requestView.querySelector(':scope > .freeze-panel') : null;
             if (requestRail) releaseFixedFilterRail(requestRail);
             if (requestView) {
-                if (typeof cancelChunkRenderWorkForView === 'function') cancelChunkRenderWorkForView('request');
+                // Layout cleanup can run after the first chunk is visible.
+                // Navigation and markup replacement own cancellation; an audit
+                // must allow the current Request page to finish rendering.
                 requestView.querySelectorAll('.fixed-filter-rail').forEach((rail) => releaseFixedFilterRail(rail));
                 requestView.querySelectorAll('.fixed-filter-spacer').forEach((spacer) => spacer.remove());
                 requestView.querySelectorAll('.performance-windowed-list').forEach((el) => {
@@ -35947,6 +35949,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function restoreProductionRefreshAnchor(anchor) {
             if (!anchor?.root.isConnected || getCurrentVisibleViewId() !== anchor.view) return;
             const { root, scroller } = anchor;
+            // The browser clamps scrollTop to its valid range. Reading the new
+            // scrollHeight here forces layout of every freshly inserted card.
+            if (!anchor.anchors.length) { scroller.scrollTop = anchor.top; return; }
             for (const item of anchor.anchors) {
                 const card = root.querySelector(`[${item.attribute}="${CSS.escape(item.value)}"]`);
                 if (!card) continue;
@@ -35954,7 +35959,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (Math.abs(delta) > 0.5) scroller.scrollTop += delta;
                 return;
             }
-            scroller.scrollTop = Math.min(anchor.top, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
+            scroller.scrollTop = anchor.top;
         }
 
         function isProductionRefreshCurrent(refresh) {
@@ -35982,6 +35987,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 && container.querySelectorAll('[data-request-uid]').length === rows.length) {
                 syncRequestCrumb(crumb, crumbText);
                 if (options.onComplete) options.onComplete();
+                refresh.retainedRequestList = true;
                 return true;
             }
             const staged = document.createElement('div');
@@ -36030,6 +36036,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const contextKey = productionVerifiedViewKey();
             const ui = VIEW_LOAD_UI[targetView];
             const waitingForContent = ui && getContainerUiState(document.getElementById(ui.container)) === 'loading';
+            const firstDisplay = waitingForContent && (options.cachedPreview === true
+                || (targetView === 'request' && productionLiveSyncVerifiedView === contextKey));
             const generation = ++productionLiveSyncRenderGeneration;
             productionLiveSyncRenderPending = true;
             scheduleTypingAwareUiRender('production-live-refresh:render', () => {
@@ -36068,18 +36076,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 try { markViewDirty(view); renderViewContent(view, false, true); }
                 finally {
                     productionLiveSyncRendering = false;
-                    if (isProductionRefreshCurrent(refresh)) restoreProductionRefreshAnchor(anchor);
+                    if (isProductionRefreshCurrent(refresh) && !refresh.retainedRequestList) restoreProductionRefreshAnchor(anchor);
                     finishProductionRefresh(refresh);
                 }
             }, immediate || waitingForContent ? 0 : 150, 120, {
                 deferUntilIdle: true,
                 ignoreChunkDuringInteraction: true,
-                // A verified saved preview is the first content for an empty
-                // screen. It may bypass only the grace window caused by the
-                // navigation click; active typing, touch, scroll and draft
-                // protections still apply in scheduleTypingAwareUiRender.
-                allowDuringRecentInteraction: options.cachedPreview === true && waitingForContent,
-                allowDuringRecentViewSwitch: options.cachedPreview === true && waitingForContent
+                // A preview or verified first Request display may bypass only
+                // the navigation click's grace window. Verification can replace
+                // a pending preview callback before that callback paints.
+                // Active typing, touch, scroll and draft guards still apply.
+                allowDuringRecentInteraction: firstDisplay,
+                allowDuringRecentViewSwitch: firstDisplay
             });
         }
 

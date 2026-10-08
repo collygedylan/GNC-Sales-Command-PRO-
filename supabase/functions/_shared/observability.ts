@@ -80,7 +80,7 @@ export async function withObservedRequest(
   functionName: string,
   req: Request,
   handler: () => Promise<Response>,
-  options: { action?: string } = {},
+  options: { action?: string; serverTiming?: boolean } = {},
 ) {
   const requestId = String(req.headers.get("x-request-id") || crypto.randomUUID()).slice(0, 96);
   const startedAt = performance.now();
@@ -106,6 +106,11 @@ export async function withObservedRequest(
     }
     const headers = new Headers(response.headers);
     headers.set("x-request-id", requestId);
+    // Opt-in aggregate handler time separates API work from gateway/transport
+    // delay without exposing queries, identities, or database contents.
+    if (options.serverTiming) {
+      headers.append("Server-Timing", `app;dur=${Math.max(0, performance.now() - startedAt).toFixed(1)}`);
+    }
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   } catch (error) {
     emitLog("error", {
@@ -125,6 +130,7 @@ export async function withObservedRequest(
         "Cache-Control": "private, no-store",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Max-Age": "86400",
+        ...(options.serverTiming ? { "Server-Timing": `app;dur=${Math.max(0, performance.now() - startedAt).toFixed(1)}` } : {}),
       },
     });
   }

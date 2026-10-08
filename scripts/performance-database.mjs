@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -14,6 +14,7 @@ import {
 import { jsonObject, jsonValue } from '../services/database-contract-runtime.ts';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { createApiSampleDiagnostics } from './performance-api-sample-diagnostics.mjs';
+import { parseAppServerTimingDuration } from './performance-function-sample-correlation.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 
 const MAX_SYNTHETIC_ROWS = 100_000;
@@ -709,6 +710,7 @@ async function expectedTotals(db, prefix, since, size) {
 
 async function callAppApi(apiUrl, identity, payload, apiDiagnostics) {
   const endpoint = new URL('/functions/v1/app-api', apiUrl);
+  const requestId = `perf-api-${randomBytes(16).toString('hex')}`;
   const requestEluStart = apiDiagnostics.snapshotEventLoopUtilization();
   const started = performance.now();
   const response = await fetch(endpoint, { method: 'POST', headers: {
@@ -716,6 +718,7 @@ async function callAppApi(apiUrl, identity, payload, apiDiagnostics) {
     Authorization: `Bearer ${identity.accessToken}`,
     'Content-Type': 'application/json',
     'Cache-Control': 'no-store',
+    'x-request-id': requestId,
   }, body: JSON.stringify({ action: 'inventory_read', ...payload }), signal: AbortSignal.timeout(30000) });
   const headersAt = performance.now();
   const bodyReadStartedAt = headersAt;
@@ -739,6 +742,8 @@ async function callAppApi(apiUrl, identity, payload, apiDiagnostics) {
   return { elapsed, bytes, body, timing: {
     requestStartedAt: started, headersAt, bodyReadStartedAt, bodyCompleteAt,
     decodeStartedAt, decodeEndedAt, requestEluStart, requestEluEnd, decodeEluStart, decodeEluEnd,
+    requestId, responseRequestId: response.headers.get('x-request-id'), responseStatus: response.status,
+    appServerDurationMs: parseAppServerTimingDuration(response.headers.get('server-timing')),
   } };
 }
 

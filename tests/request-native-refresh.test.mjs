@@ -295,6 +295,7 @@ test('completed pending request list reuses matching rendered rows and completes
   assert.equal(f.calls.complete, 1);
   assert.equal(f.calls.crumb.length, 1);
   assert.equal(f.refresh.pending, 0);
+  assert.equal(f.refresh.retainedRequestList, true);
 });
 
 test('changed, incomplete, non-pending, and Drive lists still use the staging renderer', () => {
@@ -367,4 +368,148 @@ test('request browse footer reuses identical HTML despite DOM decoration, replac
   syncFooter(second, changedMarkup);
   assert.equal(second.calls.inserted.length, 1, 'the WeakMap cache is independent per footer node');
   assert.equal(second.calls.removed, 0);
+});
+
+test('iOS layout cleanup preserves active request chunks while render replacement and navigation still cancel them', () => {
+  const clearedClasses = [];
+  const windowedList = {
+    classList: { remove: value => clearedClasses.push(value) },
+    style: { minHeight: '100px' }
+  };
+  const requestView = {
+    querySelector: () => null,
+    querySelectorAll(selector) {
+      return selector === '.performance-windowed-list' ? [windowedList] : [];
+    }
+  };
+  const calls = { cancel: [], sticky: [] };
+  const ctx = {
+    document: {
+      activeElement: null,
+      getElementById(id) {
+        if (id === 'view-request') return requestView;
+        if (id === 'main-scroll-area') return { style: {}, scrollTop: 0 };
+        return null;
+      }
+    },
+    isIosPhoneRequestFlowEnabled: () => true,
+    getCurrentVisibleViewId: () => 'request',
+    cancelChunkRenderWorkForView: view => calls.cancel.push(view),
+    releaseFixedFilterRail() {},
+    scheduleStickyRailOffsetSync: (...args) => calls.sticky.push(args)
+  };
+  vm.createContext(ctx);
+  const clear = extractFunction(html, 'clearIosPhoneRequestFlowState', 'function auditIosPhoneRequestFlow(');
+  vm.runInContext(clear, ctx);
+  assert.equal(ctx.clearIosPhoneRequestFlowState('layout-audit', { resetScroll: false }), true);
+  assert.deepEqual(calls.cancel, [], 'style cleanup must not cancel a chunk render still filling the visible list');
+  assert.deepEqual(clearedClasses, ['performance-windowed-list']);
+  assert.equal(windowedList.style.minHeight, '');
+  assert.equal(calls.sticky.length, 1);
+
+  const fastBack = extractFunction(html, 'fastBackToView', 'function fastBackHome(');
+  const switchView = extractFunction(html, 'switchView', 'function getVisibleSecondaryBack(');
+  const renderMarkup = extractFunction(html, 'applyRequestRenderMarkup', 'function renderRequestQueueFallbackCard(');
+  assert.match(fastBack, /cancelChunkRenderWorkForView\(currentViewId\)/);
+  assert.match(fastBack, /cancelChunkRenderWorkForView\(nextViewId\)/);
+  assert.match(switchView, /cancelChunkRenderWorkForView\(currentViewId\)/);
+  assert.match(switchView, /cancelChunkRenderWorkForView\(nextViewId\)/);
+  assert.match(renderMarkup, /cancelChunkRenderWorkForView\('request'\)/,
+    'replacing Request markup must still cancel the prior chunk job');
+});
+
+function productionRefreshSchedulerFixture({ view = 'request', viewState = 'loading', verified = true } = {}) {
+  const scheduled = [];
+  const ctx = {
+    window: { AgMetricLiveSyncRegistry: { views: { [view]: { kind: 'module' } } } },
+    VIEW_LOAD_UI: { request: { container: 'request-content' }, drive: { container: 'drive-content' } },
+    document: { getElementById: () => ({}) },
+    productionLiveSyncRenderGeneration: 0,
+    productionLiveSyncRenderPending: false,
+    productionLiveSyncVerifiedView: verified ? 'verified-context' : 'different-context',
+    getCurrentVisibleViewId: () => view,
+    productionVerifiedViewKey: () => 'verified-context',
+    getContainerUiState: () => viewState,
+    canUseProductionLiveSync: () => true,
+    scheduleTypingAwareUiRender: (...args) => scheduled.push(args),
+    scheduled
+  };
+  // A distinct verified key simulates a Request route without current proof.
+  if (!verified) ctx.productionVerifiedViewKey = () => 'unverified-context';
+  vm.createContext(ctx);
+  const fn = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
+  vm.runInContext(fn, ctx);
+  return { ctx, scheduled };
+}
+
+test('verified Request first display may bypass navigation grace without weakening interaction protections', () => {
+  const firstRequest = productionRefreshSchedulerFixture({ view: 'request', viewState: 'loading', verified: true });
+  firstRequest.ctx.scheduleProductionLiveSyncRender(false);
+  const firstOptions = firstRequest.scheduled[0][4];
+  assert.equal(firstOptions.allowDuringRecentInteraction, true);
+  assert.equal(firstOptions.allowDuringRecentViewSwitch, true);
+  assert.equal(firstOptions.deferUntilIdle, true);
+  assert.equal(firstOptions.ignoreChunkDuringInteraction, true);
+  for (const key of ['allowWhileTyping', 'allowDuringTouch', 'allowWhileScrolling']) {
+    assert.equal(Object.hasOwn(firstOptions, key), false);
+  }
+
+  const casesThatRemainDeferred = [
+    { view: 'request', viewState: 'loading', verified: false, options: {} },
+    { view: 'drive', viewState: 'loading', verified: true, options: {} },
+    { view: 'request', viewState: 'ready', verified: true, options: {} }
+  ];
+  for (const item of casesThatRemainDeferred) {
+    const f = productionRefreshSchedulerFixture(item);
+    f.ctx.scheduleProductionLiveSyncRender(false, item.options);
+    assert.equal(f.scheduled[0][4].allowDuringRecentInteraction, false);
+    assert.equal(f.scheduled[0][4].allowDuringRecentViewSwitch, false);
+  }
+
+  const cachedPreview = productionRefreshSchedulerFixture({ view: 'drive', viewState: 'loading', verified: false });
+  cachedPreview.ctx.scheduleProductionLiveSyncRender(false, { cachedPreview: true });
+  assert.equal(cachedPreview.scheduled[0][4].allowDuringRecentInteraction, true);
+  assert.equal(cachedPreview.scheduled[0][4].allowDuringRecentViewSwitch, true);
+  assert.equal(cachedPreview.scheduled[0][4].deferUntilIdle, true);
+  assert.equal(cachedPreview.scheduled[0][4].ignoreChunkDuringInteraction, true);
+});
+
+test('anchor restoration avoids forced layout on the fallback and preserves offsets when a row remains', () => {
+  const ctx = { getCurrentVisibleViewId: () => 'request', CSS: { escape: value => value } };
+  vm.createContext(ctx);
+  const restore = extractFunction(html, 'restoreProductionRefreshAnchor', 'function isProductionRefreshCurrent(');
+  vm.runInContext(restore, ctx);
+
+  const assignments = [];
+  const fallbackScroller = {
+    get scrollHeight() { throw new Error('fallback must not read scrollHeight'); },
+    get clientHeight() { throw new Error('fallback must not read clientHeight'); },
+    get scrollTop() { return 17; },
+    set scrollTop(value) { assignments.push(value); }
+  };
+  ctx.restoreProductionRefreshAnchor({
+    root: { isConnected: true }, scroller: fallbackScroller, view: 'request', top: 240, anchors: []
+  });
+  assert.deepEqual(assignments, [240], 'browser scrollTop assignment uses its native clamping behavior');
+
+  const remainingAssignments = [];
+  const card = { getBoundingClientRect: () => ({ top: 132 }) };
+  const anchorRoot = { isConnected: true, querySelector: selector => selector === '[id="row-1"]' ? card : null };
+  const anchoredScroller = {
+    getBoundingClientRect: () => ({ top: 100 }),
+    get scrollTop() { return 42; },
+    set scrollTop(value) { remainingAssignments.push(value); }
+  };
+  ctx.restoreProductionRefreshAnchor({
+    root: anchorRoot,
+    scroller: anchoredScroller,
+    view: 'request',
+    top: 42,
+    anchors: [{ attribute: 'id', value: 'row-1', offset: 12 }]
+  });
+  assert.deepEqual(remainingAssignments, [62], 'a surviving row restores its prior viewport offset');
+
+  const scheduler = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
+  assert.match(scheduler, /!refresh\.retainedRequestList\) restoreProductionRefreshAnchor\(anchor\)/,
+    'the exact unchanged Request list retained in the staging helper skips redundant anchor measurement');
 });

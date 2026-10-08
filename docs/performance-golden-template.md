@@ -228,6 +228,14 @@ All samples and assertions remain in the report, including slow first requests.
 The observer disconnects on success and failure and emits no response payloads
 or credentials.
 
+App-api opts into an aggregate `Server-Timing: app;dur=...` header measured by
+the existing request observer. It exposes only handler duration, including
+authentication and response preparation; it is not a database execution timer.
+The API benchmark records it when present alongside a unique request ID and
+correlates only allowlisted fields from sampled logs emitted by that pass's
+function server. Older baseline sources can lack the header or a sampled log.
+Missing diagnostics never remove samples or relax the end-to-end budgets.
+
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox
 RLS or authentication measurements. Browser fixtures exercise its actual REST

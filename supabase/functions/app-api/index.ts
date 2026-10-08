@@ -4698,4 +4698,4 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   return errorResponse("Unsupported action.", 400);
-}));
+}, { serverTiming: true }));

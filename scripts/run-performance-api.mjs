@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
 import { appApiReadinessLogSeen, appApiReadinessRequest, isAppApiReadyResponse } from './performance-function-readiness.mjs';
+import { attachAppApiSampleLogCorrelation } from './performance-function-sample-correlation.mjs';
 import { aggregateApiPassReports, API_PAIR_SCHEDULE } from './performance-api-passes.mjs';
 import { openFunctionServerLog, closeFunctionServerLog, getFunctionServerFailureDiagnostics } from './performance-function-server-diagnostics.mjs';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
@@ -57,6 +58,21 @@ function readFunctionServerLogTail(logPath) {
     return buffer.toString('utf8');
   } catch { return ''; }
   finally { if (fd !== undefined) closeSync(fd); }
+}
+
+function readFunctionServerCorrelationLog(logPath) {
+  const maxBytes = 4 * 1024 * 1024;
+  let fd;
+  try {
+    fd = openSync(logPath, 'r');
+    const totalBytes = fstatSync(fd).size;
+    const bytesRead = Math.min(totalBytes, maxBytes);
+    const buffer = Buffer.alloc(bytesRead);
+    readSync(fd, buffer, 0, bytesRead, totalBytes - bytesRead);
+    return { text: buffer.toString('utf8'), totalBytes, bytesRead, truncated: totalBytes > bytesRead, unavailable: false };
+  } catch {
+    return { text: '', totalBytes: null, bytesRead: 0, truncated: false, unavailable: true };
+  } finally { if (fd !== undefined) closeSync(fd); }
 }
 
 async function stopServer() {
@@ -119,7 +135,11 @@ async function measure(revision, passIndex, commit, source) {
     runNode(['scripts/performance-database.mjs', '--api-workspace', workspace, '--cli', cli], {
       capture: true, env: { EXPECTED_PROJECT_REF: 'local', PERFORMANCE_SOURCE_COMMIT: commit, PERFORMANCE_REPORT_PATH: reportPath }
     });
-    return JSON.parse(readFileSync(reportPath, 'utf8'));
+    let report = JSON.parse(readFileSync(reportPath, 'utf8'));
+    await stopServer();
+    report = attachAppApiSampleLogCorrelation(report, readFunctionServerCorrelationLog(logPath));
+    writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+    return report;
   } catch (error) {
     if (!ready) console.error('PERFORMANCE_FUNCTION_SERVER_DIAGNOSTICS ' + JSON.stringify({
       pass: passIndex, revision, ...getFunctionServerFailureDiagnostics({

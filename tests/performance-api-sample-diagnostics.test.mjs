@@ -50,6 +50,8 @@ test('sample diagnostics retain response timing boundaries and report separated 
   observer.entries.push(gc(120, 15, 1), gc(154, 10, 2), gc(300, 5, 3));
   diagnostics.recordSample({
     scenario: 'lookup.10k.admin.first.dataset-10k', sampleIndex: 0,
+    requestId: `perf-api-${'a'.repeat(32)}`, responseRequestId: `perf-api-${'a'.repeat(32)}`, responseStatus: 200,
+    appServerDurationMs: 5.5,
     requestStartedAt: 110, headersAt: 120, bodyReadStartedAt: 125, bodyCompleteAt: 150,
     decodeStartedAt: 152, decodeEndedAt: 158, validationStartedAt: 160, validationEndedAt: 170,
     requestEluStart: { marker: 0 }, requestEluEnd: { marker: 1 },
@@ -60,6 +62,11 @@ test('sample diagnostics retain response timing boundaries and report separated 
   const report = diagnostics.finalize();
   const [sample] = report.scenarios['lookup.10k.admin.first.dataset-10k'];
   assert.equal(sample.sample, 0);
+  assert.equal(sample.requestId, `perf-api-${'a'.repeat(32)}`);
+  assert.equal(sample.responseRequestId, sample.requestId);
+  assert.equal(sample.responseStatus, 200);
+  assert.equal(sample.appServerDurationMs, 5.5);
+  assert.equal(sample.headersMinusAppMs, 4.5);
   assert.equal(sample.responseMs, 40);
   assert.equal(sample.headersMs, 10);
   assert.equal(sample.bodyReadMs, 25);
@@ -90,6 +97,8 @@ test('GC diagnostics are capped and report dropped entries without changing samp
   FakePerformanceObserver.latest.entries.push(gc(2, 1), gc(4, 1));
   diagnostics.recordSample({
     scenario: 'master.100k.admin.browse.deep.dataset-100k', sampleIndex: 0,
+    requestId: `perf-api-${'b'.repeat(32)}`, responseRequestId: null, responseStatus: 200,
+    appServerDurationMs: null,
     requestStartedAt: 1, headersAt: 2, bodyReadStartedAt: 2, bodyCompleteAt: 3,
     decodeStartedAt: 3, decodeEndedAt: 4, validationStartedAt: 4, validationEndedAt: 5,
   });
@@ -104,6 +113,8 @@ test('duplicate and malformed sample intervals fail closed', () => {
   const diagnostics = createApiSampleDiagnostics({ now: () => 0, Observer: FakePerformanceObserver });
   const entry = {
     scenario: 'lookup.10k.admin.first.dataset-10k', sampleIndex: 0,
+    requestId: `perf-api-${'c'.repeat(32)}`, responseRequestId: `perf-api-${'c'.repeat(32)}`, responseStatus: 200,
+    appServerDurationMs: null,
     requestStartedAt: 1, headersAt: 2, bodyReadStartedAt: 2, bodyCompleteAt: 3,
     decodeStartedAt: 3, decodeEndedAt: 4, validationStartedAt: 4, validationEndedAt: 5,
   };

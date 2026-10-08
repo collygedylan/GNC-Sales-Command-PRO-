@@ -79,8 +79,13 @@ export function createApiSampleDiagnostics({
 
   function recordSample({ scenario, sampleIndex, requestStartedAt, headersAt, bodyReadStartedAt,
     bodyCompleteAt, decodeStartedAt, decodeEndedAt, validationStartedAt, validationEndedAt,
-    requestEluStart, requestEluEnd, decodeEluStart, decodeEluEnd, validationEluStart, validationEluEnd }) {
+    requestEluStart, requestEluEnd, decodeEluStart, decodeEluEnd, validationEluStart, validationEluEnd,
+    requestId, responseRequestId, responseStatus, appServerDurationMs }) {
     if (typeof scenario !== 'string' || !scenario || !Number.isSafeInteger(sampleIndex) || sampleIndex < 0
+        || typeof requestId !== 'string' || !/^perf-api-[a-f0-9]{32}$/.test(requestId)
+        || (responseRequestId !== null && (typeof responseRequestId !== 'string' || responseRequestId.length > 96))
+        || !Number.isInteger(responseStatus) || responseStatus < 100 || responseStatus > 599
+        || (appServerDurationMs !== null && (!Number.isFinite(appServerDurationMs) || appServerDurationMs < 0 || appServerDurationMs > 30_000))
         || !validInterval(requestStartedAt, headersAt) || !validInterval(headersAt, bodyReadStartedAt)
         || !validInterval(bodyReadStartedAt, bodyCompleteAt) || !validInterval(bodyCompleteAt, decodeStartedAt)
         || !validInterval(decodeStartedAt, decodeEndedAt) || !validInterval(decodeEndedAt, validationStartedAt)
@@ -91,6 +96,10 @@ export function createApiSampleDiagnostics({
     if (rows.some(row => row.sample === sampleIndex)) throw new Error('PERFORMANCE_API_SAMPLE_DIAGNOSTIC_DUPLICATE');
     rows.push({
       sample: sampleIndex,
+      requestId,
+      responseRequestId,
+      responseStatus,
+      appServerDurationMs,
       requestStartMs: requestStartedAt - origin,
       headersAtMs: headersAt - origin,
       bodyReadStartMs: bodyReadStartedAt - origin,
@@ -147,6 +156,8 @@ export function createApiSampleDiagnostics({
         const { _requestInterval, _decodeInterval, _validationInterval, ...visible } = sample;
         return {
           ...visible,
+          headersMinusAppMs: visible.appServerDurationMs === null
+            ? null : visible.headersMs - visible.appServerDurationMs,
           requestGcOverlapMs: requestGcOverlaps.reduce((sum, event) => sum + event.overlapMs, 0),
           decodeGcOverlapMs: decodeGcOverlaps.reduce((sum, event) => sum + event.overlapMs, 0),
           validationGcOverlapMs: validationGcOverlaps.reduce((sum, event) => sum + event.overlapMs, 0),
