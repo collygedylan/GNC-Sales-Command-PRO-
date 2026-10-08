@@ -2045,12 +2045,19 @@ body.ios-device .home-dashboard-sticky{transition:none!important;backdrop-filter
 #view-detail #det-not-on-inventory-content .focus\:border-amber-500:focus,#not-on-inventory-panel .focus\:border-amber-500:focus{border-color:var(--noi-red)!important}
 #camera-btn-not-on-inventory{border-color:var(--noi-red)!important;background-color:var(--noi-red-soft)!important;color:var(--noi-red)!important}
 #view-detail #det-not-on-inventory-content button[onclick="return createNotOnInventoryRow()"],#not-on-inventory-panel button[onclick="return createNotOnInventoryRow()"]{background:var(--noi-red)!important}
+#view-detail #det-tabs-container{margin-bottom:8px}
 #view-detail #det-title-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:end;column-gap:.55rem;min-width:0;overflow:hidden;color:#007a4d;padding-bottom:.08rem}
 #view-detail #det-title-row>*{min-width:0;white-space:nowrap}
 #view-detail #det-common{overflow:visible;text-overflow:clip;font-size:clamp(1.28rem,4.1vw,2.15rem);line-height:1.1;padding:.04em 0 .08em}
 #view-detail #det-size{font-size:clamp(1rem,3.2vw,1.42rem);line-height:1.05}
 #view-detail #det-location{font-size:clamp(1rem,3.1vw,1.38rem);line-height:1.05}
 #view-detail #det-size,#view-detail #det-location{white-space:nowrap}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-title-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:start;column-gap:.55rem;row-gap:.18rem;min-width:0;overflow:visible;color:#007a4d;padding-bottom:.08rem}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-title-row>*{min-width:0;white-space:normal;overflow-wrap:anywhere}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-common{overflow:visible;text-overflow:clip;font-size:clamp(1.28rem,4.1vw,2.15rem);line-height:1.12;padding:.04em 0 .08em}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-size{font-size:clamp(1rem,3.2vw,1.42rem);line-height:1.05;white-space:nowrap}
+#view-detail:has(#det-tabs-container:not(.hidden)) #det-location{font-size:clamp(1rem,3.1vw,1.38rem);line-height:1.05;white-space:normal;overflow-wrap:anywhere}
+@media(max-width:640px){#view-detail:has(#det-tabs-container:not(.hidden)) #det-title-row{grid-template-columns:minmax(0,1fr) auto;column-gap:.4rem;row-gap:.22rem}#view-detail:has(#det-tabs-container:not(.hidden)) #det-location{grid-column:1/-1}}
 #view-detail #det-crop-roll-form-content{padding:.5rem 0 .5rem;overflow:visible;scroll-margin-top:calc(var(--freeze-panel-offset,0px) + 1rem)}
 #view-detail #crop-roll-form-panel{padding-top:.45rem;overflow:visible}
 #view-detail #crop-roll-form-fit-shell{transform-origin:top left}
@@ -2208,7 +2215,7 @@ body.viewport-compact .detail-av-hero-photo img{min-height:clamp(14rem,66vw,20re
 body.viewport-compact .detail-av-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
 #view-detail.detail-request-mode .freeze-panel{position:relative!important;top:auto!important;margin-top:0!important;margin-bottom:.08rem!important;padding-top:.14rem!important;padding-bottom:.08rem!important}
 #view-detail.detail-request-mode .freeze-panel>.mb-4{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "meta" "desired" "camera";align-items:center;gap:.14rem;margin-bottom:.16rem!important;padding-top:0!important}
-#view-detail.detail-request-mode #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important;position:relative!important;z-index:6!important}
+#view-detail.detail-request-mode #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important}
 #view-detail.detail-request-mode #det-common{font-size:clamp(1.02rem,3.5vw,1.38rem)!important;line-height:1.05!important}
 #view-detail.detail-request-mode #det-size,#view-detail.detail-request-mode #det-location{font-size:clamp(.82rem,2.9vw,1rem)!important;line-height:1.05!important}
 #view-detail.detail-request-mode #det-extra-info{grid-area:meta;padding-bottom:.25rem!important}
@@ -2218,7 +2225,7 @@ body.viewport-compact .detail-av-stats{grid-template-columns:repeat(2,minmax(0,1
 #view-detail.detail-request-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card{min-height:3.15rem;border-radius:14px;padding:.56rem .72rem;font-size:.66rem;letter-spacing:.1em;gap:.5rem}
 #view-detail.detail-request-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card i{font-size:1.28rem}
 #view-detail.detail-request-mode #global-inputs-container{margin-bottom:.32rem!important}
-#view-detail.detail-request-mode #det-tabs-container{margin-bottom:.16rem!important}
+#view-detail.detail-request-mode #det-tabs-container{margin-bottom:8px!important}
 #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:.32rem;max-width:780px;margin:0 auto;padding:.08rem 0 .2rem!important}
 #view-detail #detail-shared-panels.detail-shared-single-panel:not(.hidden){grid-template-columns:minmax(0,1fr)!important}
 body.request-detail-av-options-open #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){grid-template-columns:minmax(0,1fr)!important;max-width:980px!important}
@@ -2321,7 +2328,7 @@ body.viewport-compact #view-detail.detail-request-mode .request-desired-chip,bod
 body.viewport-compact #view-detail.detail-request-mode .request-desired-label{font-size:6.5px;letter-spacing:.08em}
 body.viewport-compact #view-detail.detail-request-mode .request-desired-value{font-size:10px;line-height:1.05}
 body.viewport-compact #view-detail.detail-request-mode #det-request-content>div{padding:5px!important;margin-bottom:5px!important}
-body.viewport-compact #view-detail.detail-request-mode #det-tabs-container{margin-bottom:.14rem!important}
+body.viewport-compact #view-detail.detail-request-mode #det-tabs-container{margin-bottom:8px!important}
 body.viewport-compact #view-detail.detail-request-mode #detail-shared-panels:not(.hidden){gap:.22rem;padding:.08rem 0 .18rem!important}
 body.viewport-compact #view-detail.detail-request-mode #detail-shared-panels .request-av-options-header{min-height:3.18rem!important;height:auto!important;padding:.48rem .5rem!important;gap:.28rem!important}
 body.viewport-compact #view-detail.detail-request-mode #detail-shared-panels .request-av-options-header>span:first-child>span:first-child{font-size:.48rem!important;letter-spacing:.06em!important}
@@ -2349,7 +2356,7 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         #view-detail #req-comments{min-height:132px}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) .freeze-panel{position:relative!important;top:auto!important;margin-top:0!important;margin-bottom:.08rem!important;padding-top:.14rem!important;padding-bottom:.08rem!important}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) .freeze-panel>.mb-4{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"title" "meta" "camera";align-items:center;gap:.14rem;margin-bottom:.16rem!important;padding-top:0!important}
-        #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important;position:relative!important;z-index:6!important}
+        #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-title-row{grid-area:title;margin-bottom:0!important;padding-top:0!important}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-common{font-size:clamp(1.02rem,3.5vw,1.38rem)!important;line-height:1.05!important}
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-size,
         #view-detail.detail-photo-update-mode:not(.detail-request-mode) #det-location{font-size:clamp(.82rem,2.9vw,1rem)!important;line-height:1.05!important}
@@ -2359,7 +2366,7 @@ body.viewport-compact #view-detail.detail-request-mode #camera-btn-req.detail-ca
         #view-detail.detail-photo-update-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card{min-height:3.15rem;border-radius:14px;padding:.56rem .72rem;font-size:.66rem;letter-spacing:.1em;gap:.5rem}
         #view-detail.detail-photo-update-mode #task-detail-camera-quick.task-detail-camera-quick--request .task-detail-camera-card i{font-size:1.28rem}
         #view-detail.detail-photo-update-mode #global-inputs-container{margin-bottom:.32rem!important}
-        #view-detail.detail-photo-update-mode #det-tabs-container{margin-bottom:.16rem!important}
+        #view-detail.detail-photo-update-mode #det-tabs-container{margin-bottom:8px!important}
         #view-detail.detail-photo-update-mode #detail-shared-panels:not(.hidden){display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:.32rem;max-width:780px;margin:0 auto;padding:.08rem 0 .2rem!important}
         #view-detail.detail-photo-update-mode #detail-shared-panels.hidden{display:none!important}
         #view-detail.detail-photo-update-mode #detail-shared-panels>:not([hidden])~:not([hidden]){margin-top:0!important}
