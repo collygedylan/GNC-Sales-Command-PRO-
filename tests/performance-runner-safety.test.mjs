@@ -38,6 +38,10 @@ test('API pair requires a verified disposable workspace and restores moved candi
   assert.match(pair, /'functions', 'serve'/);
   assert.match(pair, /const logPath = path\.join\(temp, `function-server-pass-\$\{passIndex\}\.log`\)/);
   assert.match(pair, /stdio: \['ignore', logFd, logFd\]/);
+  assert.match(pair, /env: \{ \.\.\.process\.env, SUPABASE_INTERNAL_IMAGE_REGISTRY: 'ghcr\.io' \}/,
+    'functions serve uses the pinned CLI-supported registry override only in its child environment');
+  assert.doesNotMatch(pair, /process\.env\.SUPABASE_INTERNAL_IMAGE_REGISTRY\s*=/,
+    'the parent environment (and the already-running stack) is unchanged');
   assert.match(pair, /finally \{ closeFunctionServerLog\(logFd\); \}/);
   assert.match(pair, /getFunctionServerFailureDiagnostics\(\{/);
   assert.match(pair, /server\.signalCode !== null/);

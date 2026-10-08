@@ -196,8 +196,13 @@ Function-server startup failures report fixed diagnostic categories and process
 status from at most the final 64 KiB of a private temporary log. Raw logs and
 local credentials are never published; normal owned-workspace cleanup deletes
 them. This does not retry or replace any benchmark observation.
+The pinned CLI's `functions serve` resolves one image registry, unlike stack
+startup's registry fallback. Its benchmark child uses Supabase's GHCR mirror to
+avoid ECR throttling on shared runners; the CLI still selects the pinned Edge
+Runtime tag. This override applies identically to every baseline/candidate pass
+and does not change the parent environment or the database startup policy.
 Each API sample also records response-header and body-completion timestamps,
-then separate JSON decoding and parity-validation durations. The response metric
+then separate decoding/envelope/byte-sizing and parity-validation durations. The response metric
 still starts immediately before fetch and ends immediately after the complete
 response body. Bounded Node GC observations and event-loop utilization provide
 client-side diagnostic context; overlap does not establish a cause of latency.

@@ -76,7 +76,12 @@ async function measure(revision, passIndex, commit, source) {
     const logFd = openFunctionServerLog(logPath);
     try {
       server = spawn(process.execPath, [cli, '--workdir', workspace, 'functions', 'serve', '--env-file', envFile, '--no-verify-jwt'],
-        { cwd: repoRoot, detached: true, stdio: ['ignore', logFd, logFd], env: process.env });
+        { cwd: repoRoot, detached: true, stdio: ['ignore', logFd, logFd],
+          // CLI 2.111.0 `functions serve` resolves one edge-runtime image rather
+          // than using `start`'s retryable registry candidates. Use the CLI's
+          // supported mirror override for this child only; the stack startup
+          // keeps its own ECR/GHCR/Docker Hub fallback behavior.
+          env: { ...process.env, SUPABASE_INTERNAL_IMAGE_REGISTRY: 'ghcr.io' } });
     } finally { closeFunctionServerLog(logFd); }
     server.on('error', error => { startupError = error; });
     for (let attempt = 0; attempt < 60; attempt++) {
