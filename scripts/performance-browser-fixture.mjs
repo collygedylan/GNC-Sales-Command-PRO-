@@ -46,7 +46,7 @@ export async function installPerformanceFixture(page, origin, app) {
 export async function openPerformanceView(page, app, view) {
   if (app === 'v2') {
     await page.evaluate(next => { location.hash = next; }, view);
-    await page.locator(view === 'drive' ? '.drive-item-card' : '.request-card, .request-list > article, .request-list > button').first().waitFor();
+    await waitForPerformanceVisibleElement(page, view === 'drive' ? '.drive-item-card' : '.request-card, .request-list > article, .request-list > button');
     return;
   }
   await page.locator(view === 'drive' ? '#footer-drive-btn' : '#footer-request-btn').click();
@@ -61,10 +61,23 @@ export async function openPerformanceView(page, app, view) {
   }, view === 'drive' ? '#drive-content' : '#request-content');
 }
 
+export async function waitForPerformanceVisibleElement(page, selector) {
+  const handle = await page.waitForFunction(value => {
+    const element = document.querySelector(value);
+    if (!element || element.getClientRects().length === 0) return false;
+    const visibility = getComputedStyle(element).visibility;
+    if (visibility === 'hidden' || visibility === 'collapse') return false;
+    const { width, height } = element.getBoundingClientRect();
+    return width > 0 && height > 0 ? { width, height } : false;
+  }, selector, { polling: 'raf' });
+  try { return await handle.jsonValue(); }
+  finally { await handle.dispose(); }
+}
+
 export async function returnPerformanceHome(page, app) {
   if (app === 'v2') {
     await page.evaluate(() => { location.hash = 'home'; });
-    await page.locator('.home-dashboard').waitFor();
+    await waitForPerformanceVisibleElement(page, '.home-dashboard');
   } else {
     await page.locator('#global-header-inline-back').click();
     await page.locator('#view-home').waitFor({ state: 'visible' });

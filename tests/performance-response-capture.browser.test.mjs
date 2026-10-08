@@ -3,7 +3,26 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import test from 'node:test';
 import { chromium } from 'playwright';
+import { waitForPerformanceVisibleElement } from '../scripts/performance-browser-fixture.mjs';
 import { attachPerformanceResponseTracker, drainPerformanceApiRequests } from '../scripts/performance-response-drain.mjs';
+
+test('route readiness resolves on the first visible card frame instead of locator polling', async () => {
+  const browser = await chromium.launch();
+  const page = await browser.newPage();
+  try {
+    await page.setContent('<style>.card{display:none;width:120px;height:40px}</style><article class="card"></article>');
+    await page.evaluate(() => setTimeout(() => { document.querySelector('.card').style.display = 'block'; }, 40));
+    const box = await waitForPerformanceVisibleElement(page, '.card');
+    assert.equal(box.width, 120);
+    assert.equal(box.height, 40);
+    await page.locator('.card').evaluate(element => { element.style.visibility = 'hidden'; });
+    page.setDefaultTimeout(100);
+    await assert.rejects(waitForPerformanceVisibleElement(page, '.card'), /Timeout/);
+    page.setDefaultTimeout(30000);
+    await page.locator('.card').evaluate(element => { element.style.visibility = 'visible'; });
+    assert.equal((await waitForPerformanceVisibleElement(page, '.card')).width, 120);
+  } finally { await browser.close(); }
+});
 
 test('Playwright response ledger captures exact payloads, excludes late reads, and records header-stage aborts', async () => {
   const server = createServer((request, response) => {

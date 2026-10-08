@@ -58,6 +58,9 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
   createHistoricalWorkspace = prepareHistoricalDatabaseFixture, runRollback = runSqlRollbackTests,
   runDedicatedPostgres = runPostgresFixtureSqlTests, runLintWithTempContext = withSqlLintTempContext,
   runPerformance = runDatabasePerformanceBenchmark,
+  runApiPerformance = ({ root: runRoot, workspaceRoot, executeNode: runChild }) =>
+    runChild(['scripts/run-performance-api.mjs', workspaceRoot], { root: runRoot }),
+  environment = process.env,
   savePerformance = (report, reportRoot) => {
     const directory = path.join(reportRoot, 'artifacts', 'performance');
     mkdirSync(directory, { recursive: true });
@@ -65,6 +68,9 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
   },
   resolveCli = packageBin } = {}) {
   if (mode !== 'staged' && mode !== 'all') throw new Error('Usage: node scripts/database-check.mjs --staged|--all');
+  const apiBenchmarkRequested = environment.PERFORMANCE_API_BENCHMARK === 'true';
+  if (apiBenchmarkRequested && mode !== 'all') throw new Error('PERFORMANCE_API_BENCHMARK_REQUIRES_ALL_MODE');
+  if (apiBenchmarkRequested && environment.GITHUB_ACTIONS !== 'true') throw new Error('PERFORMANCE_API_BENCHMARK_CI_ONLY');
   const stagedFiles = stagedDatabaseFiles({ root, execute });
   if (mode === 'staged' && stagedFiles.length === 0) {
     throw new Error('DATABASE_STAGED_FILES_REQUIRED');
@@ -89,6 +95,7 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
       const reportPath = path.join(directory, `database-sql-attempt-${Date.now()}-${process.pid}.json`);
       const report = runPerformance({ root, workspaceRoot: workspace.root, cli, executeNode, reportPath });
       savePerformance(report, root);
+      if (apiBenchmarkRequested) runApiPerformance({ root, workspaceRoot: workspace.root, cli, executeNode });
     }
     runCli(['db', 'reset', '--local', '--no-seed']);
     strictLint(workspace, runCli);

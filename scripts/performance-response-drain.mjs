@@ -139,3 +139,30 @@ export async function drainPerformanceApiRequests(totals, { startIndex = 0, endI
     clearTimeout(timeout);
   }
 }
+
+export async function settlePerformanceApiBoundary(totals, fixtureControl, { maxBatches = 4, timeoutMs = 15_000 } = {}) {
+  if (!totals || !Array.isArray(totals.apiRequests) || !Array.isArray(totals.pending) || !Array.isArray(totals.errors)
+    || (fixtureControl != null && typeof fixtureControl.waitForRevisionIdle !== 'function')
+    || !Number.isInteger(maxBatches) || maxBatches < 1 || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error('PERFORMANCE_API_BOUNDARY_OPTIONS_INVALID');
+  }
+  const deadline = Date.now() + timeoutMs;
+  for (let batch = 0; batch < maxBatches; batch++) {
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) throw new Error('PERFORMANCE_API_BOUNDARY_TIMEOUT');
+    if (fixtureControl) {
+      let timer;
+      try {
+        await Promise.race([
+          fixtureControl.waitForRevisionIdle(),
+          new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('PERFORMANCE_REVISION_IDLE_TIMEOUT')), remainingMs); })
+        ]);
+      } finally { clearTimeout(timer); }
+    }
+    const endIndex = totals.apiRequests.length;
+    await drainPerformanceApiRequests(totals, { startIndex: 0, endIndex, timeoutMs: Math.max(1, deadline - Date.now()) });
+    await drainPerformanceResponseBodies(totals, { timeoutMs: Math.max(1, deadline - Date.now()) });
+    if (totals.apiRequests.length === endIndex) return endIndex;
+  }
+  throw new Error('PERFORMANCE_API_BOUNDARY_UNSTABLE');
+}

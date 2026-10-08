@@ -1,7 +1,7 @@
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody } from '../scripts/performance-response-drain.mjs';
+import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
 
 test('response body drain clears completed batches and captures responses added while waiting', async () => {
   const totals = { pending: [], errors: [] };
@@ -39,6 +39,21 @@ test('API request drain settles pending reads added during the drain and fails c
     response: null, capturePromise: null, canceled: false, error: null }] }), /PERFORMANCE_API_RESPONSE_MISSING/);
   await assert.rejects(drainPerformanceApiRequests({ apiRequests: [{ outcome: Promise.resolve({ type: 'failed', errorText: 'reset' }),
     response: null, capturePromise: null, canceled: false, error: '/rpc: reset' }] }), /PERFORMANCE_API_REQUEST_FAILED/);
+});
+
+test('API boundary waits for fixture revision idle before freezing the request index and propagates wait failures', async () => {
+  const totals = { apiRequests: [], pending: [], errors: [] };
+  const events = [];
+  const control = { async waitForRevisionIdle() {
+    events.push('idle');
+    if (!totals.apiRequests.length) totals.apiRequests.push({ index: 0,
+      outcome: Promise.resolve({ type: 'finished' }), response: {}, capturePromise: Promise.resolve(), canceled: false, error: null });
+  } };
+  assert.equal(await settlePerformanceApiBoundary(totals, control), 1);
+  assert.deepEqual(events, ['idle']);
+  await assert.rejects(settlePerformanceApiBoundary({ apiRequests: [], pending: [], errors: [] }, {
+    async waitForRevisionIdle() { throw new Error('fixture failure'); }
+  }), /fixture failure/);
 });
 
 test('response byte capture waits for the complete network response before reading its body', async () => {

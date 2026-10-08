@@ -19,7 +19,11 @@ current PR commit, checked by `check-performance-baseline-review.mjs`.
 - Define React lazy components at module scope. Load route code on render; put
   loading/error states inside the existing content area. A failed chunk offers
   a reload because browsers cache failed module imports. Key error boundaries by
-  route so an unrelated route remains usable.
+  route so an unrelated route remains usable. Mount the loading row as ordinary
+  content, then reveal the lazy child in a React transition inside that boundary.
+  This avoids the minimum display time of a newly committed Suspense fallback.
+  The departed route still unmounts immediately, and superseded loads cannot
+  remount it. Follow React's [revealed-content transition guidance](https://react.dev/reference/react/Suspense#preventing-already-revealed-content-from-hiding).
 - State ownership is a behavior contract: Que filters/rows/selection remain in
   App; Drive aborts its request and resets local state when unmounted. Do not add
   keep-alive caching as a side effect of splitting code.
@@ -99,11 +103,15 @@ accepted by this control run. The 15%/5ms comparator remains for genuinely disti
 SQL pairs. Row-copy measurements run only in SQL mode; authenticated local app-api
 measurements are a separate output. Compare equivalent results and serialization
 before claiming a payload or CPU improvement.
-The SQL gate measures before its mandatory reset, while the CLI workdir label is
-still independently verifiable by its child process. It then resets, lints, runs
-SQL assertions and compares generated types. The cloud API pair temporarily serves
-the pinned and candidate function sources against the same disposable stack and
-restores the candidate sources in `finally`.
+The canonical schema gate measures before its mandatory reset, while the CLI
+workdir label is still independently verifiable by its child process. When the
+GitHub-only `PERFORMANCE_API_BENCHMARK=true` opt-in is set, it runs the authenticated
+API pair after the SQL control on that same full canonical schema, then resets,
+lints, runs SQL assertions and compares generated types. The partial historical
+regression fixture remains separate and does not run the master-inventory API
+benchmark. The cloud API pair temporarily stages and serves the pinned and
+candidate function sources against the same disposable stack, then restores any
+source directories that existed before the comparison.
 
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox

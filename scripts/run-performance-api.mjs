@@ -1,10 +1,11 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
+import { assertPerformanceApiPath, assertPerformanceApiTree, PERFORMANCE_API_SOURCE_DIRECTORIES, clearPerformanceApiSources, restorePerformanceApiSources, stagePerformanceApiSources, validatePerformanceApiRoots } from './performance-api-source-snapshots.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 
 // Run before the existing Auth smoke starts its own function server.
@@ -20,17 +21,21 @@ const values = Object.fromEntries(status.split(/\r?\n/).map(line => line.match(/
 const api = new URL(values.API_URL);
 if (!['127.0.0.1', 'localhost', '[::1]'].includes(api.hostname) || api.protocol !== 'http:' || !values.SERVICE_ROLE_KEY) throw new Error('PERFORMANCE_LOCAL_AUTH_ENV_REQUIRED');
 const temp = mkdtempSync(path.join(os.tmpdir(), 'gnc-performance-api-'));
-const files = ['supabase/functions', 'services', 'utils'];
+const files = PERFORMANCE_API_SOURCE_DIRECTORIES;
 const output = path.join(repoRoot, 'artifacts/performance');
 mkdirSync(output, { recursive: true });
 const sources = path.join(temp, 'baseline');
 const backup = path.join(temp, 'candidate');
-const moved = [];
+let candidateSnapshot;
 let server;
 const envFile = path.join(temp, 'function.env');
 function removeOwnedTemporaryDirectory() {
   if (path.dirname(temp) !== path.resolve(os.tmpdir()) || !path.basename(temp).startsWith('gnc-performance-api-')) throw new Error('PERFORMANCE_CLEANUP_PATH_INVALID');
-  rmSync(temp, { recursive: true, force: true });
+  assertPerformanceApiPath(temp);
+  const info = lstatSync(temp);
+  if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('PERFORMANCE_CLEANUP_PATH_INVALID');
+  assertPerformanceApiTree(temp);
+  rmSync(temp, { recursive: true, force: false });
 }
 
 async function stopServer() {
@@ -46,11 +51,13 @@ async function stopServer() {
 }
 
 async function measure(label, commit, source) {
+  validatePerformanceApiRoots({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup });
   for (const relative of files) {
     const target = path.join(workspace, relative);
-    // Both paths are fixed descendants of the independently verified workspace.
-    if (lstatSync(path.dirname(target)).isSymbolicLink()) throw new Error('PERFORMANCE_SOURCE_PATH_UNSAFE');
-    cpSync(path.join(source, relative), target, { recursive: true, errorOnExist: true, force: false });
+    const sourceTree = path.join(source, relative);
+    assertPerformanceApiPath(target);
+    assertPerformanceApiTree(sourceTree);
+    cpSync(sourceTree, target, { recursive: true, errorOnExist: true, force: false });
   }
   server = spawn(process.execPath, [cli, '--workdir', workspace, 'functions', 'serve', '--env-file', envFile, '--no-verify-jwt'],
     { cwd: repoRoot, detached: true, stdio: 'ignore', env: process.env });
@@ -78,7 +85,7 @@ async function measure(label, commit, source) {
   } finally {
     try { await stopServer(); }
     finally {
-      for (const relative of files) rmSync(path.join(workspace, relative), { recursive: true, force: true });
+      clearPerformanceApiSources({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup });
     }
   }
 }
@@ -88,14 +95,7 @@ try {
   const archive = path.join(temp, 'source.tar');
   run('git', ['archive', '--format=tar', '--output', archive, manifest.baselineCommit, '--', ...files]);
   run('tar', ['-xf', archive, '-C', sources]);
-  for (const relative of files) {
-    const source = path.join(workspace, relative);
-    if (lstatSync(source).isSymbolicLink()) throw new Error('PERFORMANCE_SOURCE_PATH_UNSAFE');
-    const saved = path.join(backup, relative);
-    mkdirSync(path.dirname(saved), { recursive: true });
-    renameSync(source, saved);
-    moved.push(relative);
-  }
+  candidateSnapshot = stagePerformanceApiSources({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup });
   writeFileSync(envFile, `SUPABASE_URL=${api.origin}\nSUPABASE_SERVICE_ROLE_KEY=${values.SERVICE_ROLE_KEY}\nAPP_SESSION_SECRET=${randomBytes(32).toString('hex')}\n`, { flag: 'wx', mode: 0o600 });
   const baseline = await measure('baseline', manifest.baselineCommit, sources);
   const candidate = await measure('candidate', run('git', ['rev-parse', 'HEAD'], { capture: true }).trim(), backup);
@@ -114,11 +114,7 @@ try {
 } finally {
   try { await stopServer(); }
   finally {
-    for (const relative of moved) {
-      const target = path.join(workspace, relative);
-      rmSync(target, { recursive: true, force: true });
-      renameSync(path.join(backup, relative), target);
-    }
+    if (candidateSnapshot) restorePerformanceApiSources(candidateSnapshot);
     removeOwnedTemporaryDirectory();
   }
 }

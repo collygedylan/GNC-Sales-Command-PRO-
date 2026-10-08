@@ -20,6 +20,8 @@ jobs:
           fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - name: Replay canonical schema and verify database contracts
+        env:
+          PERFORMANCE_API_BENCHMARK: 'true'
         run: node scripts/database-check.mjs --all
       - uses: actions/upload-artifact@v4
         if: always()
@@ -69,10 +71,6 @@ jobs:
       - name: Start isolated Supabase stack
         id: stack
         run: node scripts/release-database-startup.mjs start
-      - name: Compare authenticated baseline and candidate inventory reads
-        # start applies the migrations and preserves the independently checked
-        # workdir label; reset below will replace this database container.
-        run: node scripts/run-performance-api.mjs "$SUPABASE_CI_ROOT"
       - name: Apply migrations and strictly lint the isolated database
         id: migrations
         run: node scripts/sql-lint-temp-context.mjs --historical-reset "$SUPABASE_CI_ROOT"

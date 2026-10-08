@@ -280,6 +280,59 @@ test('database-check uses the shared fail-closed runner for both disposable work
     'sandbox pgTAP runs after strict sandbox SQL lint');
 });
 
+test('API performance pair is explicit CI-only and runs on canonical schema before reset', () => {
+  const runCheck = (environment) => {
+    const events = [];
+    const productionWorkspace = { root: 'C:/tmp/gnc-performance-canonical', migrationCount: 4, dispose() {} };
+    const sandboxWorkspace = { root: 'C:/tmp/gnc-performance-sandbox', migrationCount: 1, testCount: 1, lintSchemas: ['public'], dispose() {} };
+    let apiRuns = 0;
+    runDatabaseCheck({
+      root, mode: 'all', environment, execute: () => '', preflight: () => {}, resolveCli: () => 'supabase-fixture',
+      createProductionWorkspace: () => productionWorkspace,
+      createSandboxWorkspace: () => sandboxWorkspace,
+      runLintWithTempContext: ({ action }) => action(),
+      runPerformance: ({ workspaceRoot }) => {
+        assert.equal(workspaceRoot, productionWorkspace.root);
+        events.push('sql-performance');
+        return { fixture: true };
+      },
+      savePerformance: () => events.push('sql-report'),
+      runApiPerformance: ({ workspaceRoot }) => {
+        assert.equal(workspaceRoot, productionWorkspace.root);
+        apiRuns += 1;
+        events.push('api-performance');
+      },
+      runRollback: () => {},
+      executeNode: (args, options = {}) => {
+        const workspaceRoot = args[2];
+        const command = args.slice(3).join(' ');
+        events.push(command.startsWith('db reset') ? 'canonical-reset' : `cli:${workspaceRoot}:${command}`);
+        if (args.includes('gen')) {
+          const typePath = workspaceRoot === sandboxWorkspace.root
+            ? 'v2/src/services/sandbox.database.types.ts' : 'supabase/functions/_shared/database.types.ts';
+          return readFileSync(path.join(root, typePath), 'utf8');
+        }
+        return options.capture ? '' : '';
+      },
+    });
+    return { events, apiRuns };
+  };
+
+  const optedIn = runCheck({ GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' });
+  assert.equal(optedIn.apiRuns, 1);
+  assert.ok(optedIn.events.indexOf('sql-performance') < optedIn.events.indexOf('api-performance'));
+  assert.ok(optedIn.events.indexOf('sql-report') < optedIn.events.indexOf('api-performance'));
+  assert.ok(optedIn.events.indexOf('api-performance') < optedIn.events.indexOf('canonical-reset'));
+
+  const localDefault = runCheck({});
+  assert.equal(localDefault.apiRuns, 0, 'ordinary local --all checks do not start the authenticated API benchmark');
+  assert.throws(() => runDatabaseCheck({ mode: 'all', environment: { PERFORMANCE_API_BENCHMARK: 'true' },
+    preflight: () => {}, createProductionWorkspace: () => { throw new Error('must fail before workspace creation'); } }),
+  /PERFORMANCE_API_BENCHMARK_CI_ONLY/);
+  assert.throws(() => runDatabaseCheck({ mode: 'staged', environment: { GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' },
+    execute: () => 'supabase/config.toml', preflight: () => {} }), /PERFORMANCE_API_BENCHMARK_REQUIRES_ALL_MODE/);
+});
+
 test('staged database-check executes changed rollback and discovered SQL fixtures in disposable workspaces', () => {
   const staged = ['supabase/tests/photo_history_rollback_canary.sql', 'supabase/tests/aura_internal_query_test.sql',
     'supabase/tests/bloomscapes_pending_orders_test.sql', 'supabase/sandbox/tests/sandbox_inventory_test.sql'];

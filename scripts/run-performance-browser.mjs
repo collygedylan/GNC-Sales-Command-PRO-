@@ -6,7 +6,7 @@ import { compareBenchmarks, parseBenchmarkManifest, percentile } from '../servic
 import { startReleaseTestServer } from './serve-release-tests.mjs';
 import { verifyReleaseArtifact } from './release-artifact.mjs';
 import { installPerformanceFixture, openPerformanceView, returnPerformanceHome } from './performance-browser-fixture.mjs';
-import { attachPerformanceResponseTracker, drainPerformanceApiRequests, drainPerformanceResponseBodies } from './performance-response-drain.mjs';
+import { attachPerformanceResponseTracker, drainPerformanceResponseBodies, settlePerformanceApiBoundary } from './performance-response-drain.mjs';
 
 const root = process.cwd();
 const manifest = parseBenchmarkManifest(JSON.parse(await readFile(path.join(root, 'performance/baseline.json'), 'utf8')));
@@ -28,19 +28,15 @@ async function sealInfo(site) {
 async function settle(page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
-async function measure(page, app, view, totals) {
+async function measure(page, app, view, totals, fixtureControl) {
   await settle(page);
-  await drainPerformanceApiRequests(totals);
-  await drainPerformanceResponseBodies(totals);
-  const startIndex = totals.apiRequests.length;
+  const startIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
   await page.evaluate(() => { window.__phase6Metrics = { longTaskMs: 0, domRemovals: 0 }; });
   const started = performance.now();
   await openPerformanceView(page, app, view);
   await settle(page);
   const duration = performance.now() - started;
-  const endIndex = totals.apiRequests.length;
-  await drainPerformanceApiRequests(totals, { startIndex, endIndex });
-  await drainPerformanceResponseBodies(totals);
+  const endIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
   const routeRequests = totals.apiRequests.slice(startIndex, endIndex);
   const routeErrors = [...totals.errors, ...routeRequests.map(request => request.error).filter(Boolean)];
   if (routeErrors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${routeErrors.join(',')}`);
@@ -97,11 +93,9 @@ async function benchmark(site, info, profile, app) {
         }).observe(document.body, { childList: true, subtree: true }), { once: true });
       });
       try {
-        await installPerformanceFixture(page, origin, app);
+        const fixtureControl = await installPerformanceFixture(page, origin, app);
         await settle(page);
-        const initialEndIndex = totals.apiRequests.length;
-        await drainPerformanceApiRequests(totals, { startIndex: 0, endIndex: initialEndIndex });
-        await drainPerformanceResponseBodies(totals);
+        const initialEndIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
         const initialRequests = totals.apiRequests.slice(0, initialEndIndex);
         const initialApiErrors = initialRequests.map(request => request.error).filter(Boolean);
         if (totals.errors.length || initialApiErrors.length) {
@@ -113,7 +107,7 @@ async function benchmark(site, info, profile, app) {
         add('initial-api-reads', 'count', initialRequests.length);
         add('initial-api-bytes', 'bytes', initialRequests.reduce((sum, request) => sum + request.bytes, 0));
         for (const view of ['request', 'drive']) {
-          const cold = await measure(page, app, view, totals);
+          const cold = await measure(page, app, view, totals, fixtureControl);
           cancellationDiagnostics.push({ view, phase: 'cold', canceledApiReads: cold.canceledReads });
           for (const [key, value] of Object.entries(cold)) {
             if (key === 'canceledReads') continue;
@@ -121,7 +115,7 @@ async function benchmark(site, info, profile, app) {
           }
           await returnPerformanceHome(page, app);
           for (let warm = 0; warm < manifest.warmSamples / manifest.coldSamples; warm++) {
-            const value = await measure(page, app, view, totals);
+            const value = await measure(page, app, view, totals, fixtureControl);
             cancellationDiagnostics.push({ view, phase: `warm-${warm + 1}`, canceledApiReads: value.canceledReads });
             for (const [key, sample] of Object.entries(value)) {
               if (key === 'canceledReads') continue;
@@ -130,8 +124,7 @@ async function benchmark(site, info, profile, app) {
             await returnPerformanceHome(page, app);
           }
         }
-        await drainPerformanceApiRequests(totals);
-        await drainPerformanceResponseBodies(totals);
+        await settlePerformanceApiBoundary(totals, fixtureControl);
         const finalApiErrors = totals.apiRequests.map(request => request.error).filter(Boolean);
         if (totals.errors.length || finalApiErrors.length) {
           throw new Error(`PERFORMANCE_FINAL_RESPONSE_MEASUREMENT_FAILED:${[...totals.errors, ...finalApiErrors].join(',')}`);
