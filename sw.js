@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.07.001';
+const APP_SHELL_BUILD = 'V2026.10.08.002';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -18,6 +18,52 @@ const IMAGE_CACHE_MAX_ENTRIES = 500;
 const IMAGE_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const IMAGE_CACHE_MAX_BYTES = 100 * 1024 * 1024;
 const OPAQUE_IMAGE_ESTIMATED_BYTES = 2 * 1024 * 1024;
+// BEGIN GENERATED BRANDING ASSETS
+// Derived from assets/branding/catalog.json by scripts/branding-assets.mjs.
+const BRANDING_LEGACY_ALIASES = Object.freeze({
+  "./ag-data-solutions-icon-v20260708023-32.png": "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./ag-data-solutions-icon-v2026080923-32.png": "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./ag-data-solutions-icon-v2026080925-32.png": "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./ag-data-solutions-icon-v20260708023-180.png": "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./ag-data-solutions-icon-v2026080923-180.png": "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./ag-data-solutions-icon-v2026080925-180.png": "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./ag-data-solutions-icon-v20260708023-192.png": "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./ag-data-solutions-icon-v2026080923-192.png": "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./ag-data-solutions-icon-v2026080925-192.png": "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./ag-data-solutions-icon-v20260708023-512.png": "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./ag-data-solutions-icon-v2026080923-512.png": "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./ag-data-solutions-icon-v2026080925-512.png": "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./ag-data-solutions-logo-v2026080923.png": "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./ag-data-solutions-logo-v2026080925.png": "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./ag-data-solutions-logo.png": "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./ag-data-solutions-logo-v2026090503-224.webp": "./assets/branding/ag-data-solutions-logo-v2026090503-224.webp",
+  "./ag-data-solutions-logo-v2026090503-448.webp": "./assets/branding/ag-data-solutions-logo-v2026090503-448.webp",
+  "./ag-data-solutions-splash-v202607141237.png": "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./ag-data-solutions-splash-v2026080923.png": "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./ag-data-solutions-splash-v2026080925.png": "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./ag-data-solutions-splash-v2026081615.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081701.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081702.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081703.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081704.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081705.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081706.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081707.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081708.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081709.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png"
+});
+const BRANDING_CANONICAL_ASSETS = Object.freeze([
+  "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./assets/branding/ag-data-solutions-logo-v2026090503-224.webp",
+  "./assets/branding/ag-data-solutions-logo-v2026090503-448.webp",
+  "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./assets/branding/ag-data-solutions-splash-v2026081709.png"
+]);
+// END GENERATED BRANDING ASSETS
 const ASSETS_TO_CACHE = [
   APP_SHELL_URL,
   './manifest.json',
@@ -51,14 +97,7 @@ const ASSETS_TO_CACHE = [
   './assets/vendor/phosphor/fill/Phosphor-Fill.woff2',
   './assets/vendor/phosphor/light/style.css',
   './assets/vendor/phosphor/light/Phosphor-Light.woff2',
-  './ag-data-solutions-logo-v2026080925.png',
-  './ag-data-solutions-logo-v2026090503-224.webp',
-  './ag-data-solutions-logo-v2026090503-448.webp',
-  './ag-data-solutions-splash-v2026081709.png',
-  './ag-data-solutions-icon-v2026080925-32.png',
-  './ag-data-solutions-icon-v2026080925-180.png',
-  './ag-data-solutions-icon-v2026080925-192.png',
-  './ag-data-solutions-icon-v2026080925-512.png'
+  ...BRANDING_CANONICAL_ASSETS
 ];
 const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
 const CONTENT_VERSION_REGEX = /(?:[._-](?:v?20\d{6,}|[a-f0-9]{8,})[._-]|\/assets\/vendor\/)/i;
@@ -187,6 +226,40 @@ function getAbsoluteAssetUrl(asset = '') {
     return new URL(String(asset || ''), self.registration.scope).href;
   } catch (error) {
     return '';
+  }
+}
+
+function getBrandingCanonicalUrl(requestOrUrl = null) {
+  const requestUrl = getRequestUrl(requestOrUrl);
+  const scopeUrl = getRequestUrl(self.registration.scope);
+  if (!requestUrl || !scopeUrl || requestUrl.origin !== scopeUrl.origin
+    || requestUrl.search || requestUrl.hash || !requestUrl.pathname.startsWith(scopeUrl.pathname)) return null;
+  const relativePath = './' + requestUrl.pathname.slice(scopeUrl.pathname.length);
+  const canonicalPath = BRANDING_LEGACY_ALIASES[relativePath];
+  if (typeof canonicalPath !== 'string' || !canonicalPath.startsWith('./assets/branding/')) return null;
+  try {
+    const canonicalUrl = new URL(canonicalPath, scopeUrl);
+    if (canonicalUrl.origin !== scopeUrl.origin
+      || !canonicalUrl.pathname.startsWith(new URL('./assets/branding/', scopeUrl).pathname)) return null;
+    return canonicalUrl;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function handleBrandingAliasRequest(canonicalUrl) {
+  const cache = await caches.open(CACHE_NAME).catch(() => null);
+  const cached = cache ? await cache.match(canonicalUrl.href).catch(() => null) : null;
+  if (cached) return cached;
+  try {
+    const response = await fetch(canonicalUrl.href, { cache: 'no-store', credentials: 'same-origin' });
+    if (cache && response && response.status === 200
+      && (!response.url || new URL(response.url).href === canonicalUrl.href)) {
+      await cache.put(canonicalUrl.href, response.clone()).catch(() => {});
+    }
+    return response || Response.error();
+  } catch (error) {
+    return Response.error();
   }
 }
 
@@ -485,6 +558,11 @@ function handleProductionFetch(event) {
     );
     return;
   }
+  const brandingCanonicalUrl = getBrandingCanonicalUrl(event.request);
+  if (brandingCanonicalUrl) {
+    event.respondWith(handleBrandingAliasRequest(brandingCanonicalUrl));
+    return;
+  }
   if (isRuntimeImageRequest(event.request)) {
     event.respondWith(handleRuntimeImageRequest(event));
     return;
@@ -555,7 +633,10 @@ self.addEventListener('push', (event) => {
     try { data = event.data.json(); } catch (error) { data = { title: 'Ag Data Message', body: event.data.text() }; }
   }
   const title = data.title || 'Ag Data Message';
-  const iconUrl = new URL(data.icon || './ag-data-solutions-icon-v2026080925-192.png', self.registration.scope).href;
+  const requestedIcon = data.icon ? new URL(data.icon, self.registration.scope) : null;
+  const iconUrl = (requestedIcon
+    ? (getBrandingCanonicalUrl(requestedIcon) || requestedIcon)
+    : new URL('./assets/branding/ag-data-solutions-icon-v2026080925-192.png', self.registration.scope)).href;
   const requestedTarget = getRequestUrl(data.url || APP_SHELL_URL);
   const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const options = {

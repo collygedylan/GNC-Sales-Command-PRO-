@@ -2,20 +2,20 @@
   "name": "GNC Field App v2",
   "short_name": "GNC v2",
   "description": "Ops Precision sandbox for Ag Data Solutions field workflows.",
-  "version": "V2026.10.07.001",
-  "start_url": "./?shellv=V2026.10.07.001",
+  "version": "V2026.10.08.002",
+  "start_url": "./?shellv=V2026.10.08.002",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4fbf7",
   "theme_color": "#f4fbf7",
   "icons": [
     {
-      "src": "../ag-data-solutions-icon-v2026080925-192.png",
+      "src": "../assets/branding/ag-data-solutions-icon-v2026080925-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "../ag-data-solutions-icon-v2026080925-512.png",
+      "src": "../assets/branding/ag-data-solutions-icon-v2026080925-512.png",
       "sizes": "512x512",
       "type": "image/png"
     }

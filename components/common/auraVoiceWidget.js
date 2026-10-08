@@ -1,8 +1,8 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.07.001";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.07.001";
-import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.07.001";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.07.001";
-import { mountAuraQueryPanel } from "./auraQueryPanel.js?v=V2026.10.07.001";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.08.002";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.08.002";
+import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.08.002";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.08.002";
+import { mountAuraQueryPanel } from "./auraQueryPanel.js?v=V2026.10.08.002";
 
 const STYLE_ID = "aura-voice-widget-styles";
 
