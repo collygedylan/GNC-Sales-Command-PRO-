@@ -1,11 +1,20 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 
-const bundle = fs.readFileSync(new URL('../assets/alpha-command-center.js', import.meta.url));
-const stylesheet = fs.readFileSync(new URL('../assets/alpha-command-center.css', import.meta.url));
+const repoRoot = fileURLToPath(new URL('../', import.meta.url));
+const assetRoot = path.resolve(repoRoot, process.env.GNC_BROWSER_ASSET_ROOT || '_site');
+const bundlePath = path.join(assetRoot, 'assets', 'alpha-command-center.js');
+const stylesheetPath = path.join(assetRoot, 'assets', 'alpha-command-center.css');
+if (!fs.existsSync(bundlePath) || !fs.existsSync(stylesheetPath)) {
+  throw new Error(`Compiled command-center browser assets are missing under ${assetRoot}; set GNC_BROWSER_ASSET_ROOT to the sealed release root.`);
+}
+const bundle = fs.readFileSync(bundlePath);
+const stylesheet = fs.readFileSync(stylesheetPath);
 let server;
 let origin;
 
@@ -233,7 +242,7 @@ test('weekly labor autosaves two job codes for the same employee and date', asyn
     window.savedLabor = [];
     window.handle = window.mountForVerifiedDylan('hr', {
       isAuthorized: () => window.identity?.active && window.identity?.verified && window.identity?.username === 'dylan_collyge',
-      profileId: 'profile-dylan',
+      profileId: '10000000-0000-4000-8000-000000000001',
       callApi: async () => ({ ok: true, rows: [] }),
       client: {
         from(table) {
@@ -245,7 +254,7 @@ test('weekly labor autosaves two job codes for the same employee and date', asyn
             },
           };
           const data = table === 'core_employees'
-            ? [{ id: 'employee-1', name: 'Alex Grower', emp_number: 'E123', department: 'Plant Evaluators' }]
+            ? [{ id: '10000000-0000-4000-8000-000000000002', name: 'Alex Grower', emp_number: 'E123', department: 'Plant Evaluators' }]
             : [{ job_code: 'CUT', description: 'Cuttings' }, { job_code: 'PACK', description: 'Packing' }];
           return { select() { return { eq() { return { order() { return { limit: async () => ({ data, error: null }) }; } }; } }; } };
         },
@@ -265,7 +274,8 @@ test('weekly labor autosaves two job codes for the same employee and date', asyn
   await page.waitForFunction(() => window.savedLabor.length === 2);
   const saved = await page.evaluate(() => window.savedLabor);
   assert.deepEqual(saved.map(row => row.entry.job_code).sort(), ['CUT', 'PACK']);
-  assert.ok(saved.every(row => row.entry.employee_id === 'employee-1' && row.entry.created_by_profile_id === 'profile-dylan'));
+  assert.ok(saved.every(row => row.entry.employee_id === '10000000-0000-4000-8000-000000000002'
+    && row.entry.created_by_profile_id === '10000000-0000-4000-8000-000000000001'));
   assert.equal(new Set(saved.map(row => row.entry.work_date)).size, 1);
   await page.evaluate(() => window.handle.destroy());
 });
