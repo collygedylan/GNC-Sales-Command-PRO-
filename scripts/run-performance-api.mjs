@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
 import { aggregateApiPassReports, API_PAIR_SCHEDULE } from './performance-api-passes.mjs';
+import { openFunctionServerLog, closeFunctionServerLog, getFunctionServerFailureDiagnostics } from './performance-function-server-diagnostics.mjs';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { assertPerformanceApiPath, assertPerformanceApiTree, PERFORMANCE_API_SOURCE_DIRECTORIES, clearPerformanceApiSources, restorePerformanceApiSources, stagePerformanceApiSources, validatePerformanceApiRoots } from './performance-api-source-snapshots.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
@@ -65,16 +66,21 @@ async function measure(revision, passIndex, commit, source) {
     assertPerformanceApiTree(sourceTree);
     cpSync(sourceTree, target, { recursive: true, errorOnExist: true, force: false });
   }
-  server = spawn(process.execPath, [cli, '--workdir', workspace, 'functions', 'serve', '--env-file', envFile, '--no-verify-jwt'],
-    { cwd: repoRoot, detached: true, stdio: 'ignore', env: process.env });
+  const logPath = path.join(temp, `function-server-pass-${passIndex}.log`);
   let startupError;
-  server.on('error', error => { startupError = error; });
   // The benchmark child runs synchronously; inherited pipes could fill and
-  // deadlock serving. Do not persist local credentials from function logs.
+  // deadlock serving. Keep logs in a private temporary file, report only finite
+  // diagnostic categories on failure, and delete raw output with the run's temp.
   let ready = false;
   try {
+    const logFd = openFunctionServerLog(logPath);
+    try {
+      server = spawn(process.execPath, [cli, '--workdir', workspace, 'functions', 'serve', '--env-file', envFile, '--no-verify-jwt'],
+        { cwd: repoRoot, detached: true, stdio: ['ignore', logFd, logFd], env: process.env });
+    } finally { closeFunctionServerLog(logFd); }
+    server.on('error', error => { startupError = error; });
     for (let attempt = 0; attempt < 60; attempt++) {
-      if (startupError || server.exitCode !== null) throw new Error('PERFORMANCE_FUNCTION_SERVER_FAILED', { cause: startupError });
+      if (startupError || server.exitCode !== null || server.signalCode !== null) throw new Error('PERFORMANCE_FUNCTION_SERVER_FAILED', { cause: startupError });
       try {
         const response = await fetch(new URL('/functions/v1/app-api', api), { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(2000) });
         await response.arrayBuffer();
@@ -88,6 +94,13 @@ async function measure(revision, passIndex, commit, source) {
       capture: true, env: { EXPECTED_PROJECT_REF: 'local', PERFORMANCE_SOURCE_COMMIT: commit, PERFORMANCE_REPORT_PATH: reportPath }
     });
     return JSON.parse(readFileSync(reportPath, 'utf8'));
+  } catch (error) {
+    if (!ready) console.error('PERFORMANCE_FUNCTION_SERVER_DIAGNOSTICS ' + JSON.stringify({
+      pass: passIndex, revision, ...getFunctionServerFailureDiagnostics({
+        logPath, exitCode: server?.exitCode, signalCode: server?.signalCode, spawnError: startupError,
+      }),
+    }));
+    throw error;
   } finally {
     try { await stopServer(); }
     finally {

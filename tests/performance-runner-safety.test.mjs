@@ -36,6 +36,11 @@ test('API pair requires a verified disposable workspace and restores moved candi
   assert.match(pair, /PERFORMANCE_API_PAIR_CLOUD_ONLY/);
   assert.match(pair, /inspectDisposableSupabaseWorkspace/);
   assert.match(pair, /'functions', 'serve'/);
+  assert.match(pair, /const logPath = path\.join\(temp, `function-server-pass-\$\{passIndex\}\.log`\)/);
+  assert.match(pair, /stdio: \['ignore', logFd, logFd\]/);
+  assert.match(pair, /finally \{ closeFunctionServerLog\(logFd\); \}/);
+  assert.match(pair, /getFunctionServerFailureDiagnostics\(\{/);
+  assert.match(pair, /server\.signalCode !== null/);
   assert.match(pair, /new URL\(values\.API_URL\)/);
   assert.match(pair, /127\.0\.0\.1.*localhost.*\[::1\]/s);
   assert.match(pair, /PERFORMANCE_LOCAL_AUTH_ENV_REQUIRED/);

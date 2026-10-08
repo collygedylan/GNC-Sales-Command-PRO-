@@ -183,6 +183,10 @@ order reduces broad time-order bias but does not eliminate machine noise or prov
 the cause of a slow sample. The current schema-contract job has a 35-minute limit;
 the six-pass comparison and complete schema gate passed in 22 minutes 32 seconds
 in run `37794447351`, including generated-type validation.
+Function-server startup failures report fixed diagnostic categories and process
+status from at most the final 64 KiB of a private temporary log. Raw logs and
+local credentials are never published; normal owned-workspace cleanup deletes
+them. This does not retry or replace any benchmark observation.
 
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox
