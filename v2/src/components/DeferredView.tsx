@@ -1,4 +1,4 @@
-import { Component, startTransition, Suspense, useEffect, useState, type ReactNode } from 'react';
+import { Component, startTransition, Suspense, useLayoutEffect, useState, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
 type BoundaryProps = { label: string; children: ReactNode; onRetry?: () => void };
@@ -30,10 +30,11 @@ function DeferredViewFallback({ label }: { label: string }) {
 
 export function DeferredView({ label, children, onRetry }: BoundaryProps) {
   const [renderContent, setRenderContent] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Reveal the lazy route as a transition from the already mounted loading row.
     // This avoids a new Suspense fallback's minimum display delay, while the old
     // route still unmounts immediately (including Drive's request cleanup).
+    // Schedule before paint so the first chunk does not wait for a passive effect.
     startTransition(() => setRenderContent(true));
   }, []);
   const loading = <DeferredViewFallback label={label} />;
