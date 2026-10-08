@@ -61,8 +61,11 @@ test('database workspace replays the production baseline and active chain withou
       .filter((name) => /^\d{14}_.+\.sql$/i.test(name))
       .map((name) => ({ name, sql: readFileSync(path.join(root, 'supabase/migrations', name), 'utf8') }))
       .filter(({ sql }) => /insert\s+into\s+private\.app_access_legacy_checks/i.test(sql));
-    assert.deepEqual(activePermissionReferences.map(({ name }) => name), ['20261006145333_reclass_split_move_inquiries_v4.sql']);
-    assert.match(activePermissionReferences[0].sql, /'drive\.reclass\.submit'/);
+    assert.deepEqual(activePermissionReferences.map(({ name }) => name), [
+      '20261006145333_reclass_split_move_inquiries_v4.sql',
+      '20261008190038_reclass_sheared_action_v5.sql',
+    ]);
+    for (const migration of activePermissionReferences) assert.match(migration.sql, /'drive\.reclass\.submit'/);
     assert.equal(readdirSync(path.join(root, 'supabase', 'migrations')).includes(workspaceNames[prerequisiteIndex]), false,
       'synthetic fixture is injected only into the disposable workspace');
     for (const [migrationName, jobName] of [

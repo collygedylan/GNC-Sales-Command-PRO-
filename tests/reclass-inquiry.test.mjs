@@ -92,16 +92,18 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = RECLASS_ACTION_WORKFLOW_V5_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_; this.RECLASS_INQUIRY_ACTION_ORDER_V5_ = RECLASS_INQUIRY_ACTION_ORDER_V5_;`, context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
 }
 
-function loadClientPayloadBuilder(values = {}) {
+function loadClientPayloadBuilder(values = {}, draftOverride = null) {
+  const policyStart = html.indexOf('function getArgosReclassActionWorkflowPolicyVersionV3(');
+  const policyEnd = html.indexOf('\n        }', policyStart) + '\n        }'.length;
   const start = html.indexOf('function buildArgosInventoryTransactionPayload');
   const end = html.indexOf('async function postArgosInventoryTransactionPayload', start);
-  assert.ok(start > 0 && end > start);
+  assert.ok(policyStart > 0 && policyEnd > policyStart && start > 0 && end > start);
   const context = {
     document: { addEventListener() {} },
     argosInventoryTransactionState: {
@@ -124,6 +126,8 @@ function loadClientPayloadBuilder(values = {}) {
     RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION: 'reclass-action-workflow-v3-row-actions-20260826',
     RECLASS_ACTION_WORKFLOW_V4_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
+    RECLASS_ACTION_WORKFLOW_V5_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION: 'reclass-action-workflow-v5-sheared-20261008',
     RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION: 'reclass-action-workflow-v2-live-20260826',
     getReclassActionWorkflowV2Config: (value) => ({ hold: { kind: 'hold_on' }, recount: { kind: 'recount' }, move_up: { kind: 'move' } }[value] || null),
@@ -131,7 +135,7 @@ function loadClientPayloadBuilder(values = {}) {
     parseAppNumber: (value) => Number(String(value).replaceAll(',', '')),
     normalizeArgosInventoryTransactionRequestAction: (value) => String(value || '').trim().toLowerCase(),
     isArgosInventoryTransactionMoveSeasonRequestAction: (value) => ['move_up', 'move_down'].includes(value),
-    collectArgosReclassV3Draft: () => ({
+    collectArgosReclassV3Draft: () => draftOverride || ({
       requestActions: ['hold', 'priority_change'],
       holdStopProposals: [{ action: 'hold', reason: 'field review' }],
       scope: { season: 'F1', salesYear: 2027 },
@@ -145,7 +149,7 @@ function loadClientPayloadBuilder(values = {}) {
     getCurrentRoleAccessValue: () => 'Manager',
   };
   vm.createContext(context);
-  vm.runInContext(`${html.slice(start, end)}; this.buildArgosInventoryTransactionPayload = buildArgosInventoryTransactionPayload;`, context);
+  vm.runInContext(`${html.slice(policyStart, policyEnd)}\n${html.slice(start, end)}; this.buildArgosInventoryTransactionPayload = buildArgosInventoryTransactionPayload;`, context);
   return context.buildArgosInventoryTransactionPayload;
 }
 
@@ -392,8 +396,8 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
   assert.match(outputs.priority_change, /Request:<\/strong> Priority Change/);
   assert.match(outputs.priority_change, /proposal-box[\s\S]*?\[blank\]/);
   assert.match(outputs.priority_change, /proposal-box[\s\S]*?<strong>1<\/strong>/);
-  assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?proposal-box[\s\S]*?UP 20 TO F1/);
-  assert.match(outputs.move_down, /<strong class="original-oh">36<\/strong>[\s\S]*?proposal-box[\s\S]*?DOWN 15 TO U2/);
+  assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?proposal-box[\s\S]*?20--&gt;F1/);
+  assert.match(outputs.move_down, /<strong class="original-oh">36<\/strong>[\s\S]*?proposal-box[\s\S]*?15--&gt;U2/);
   assert.doesNotMatch(outputs.move_up, /<th>Move Qty<\/th>|<th>To Season<\/th>/);
   assert.match(outputs.take_off_hold, /proposal-box[\s\S]*?\[blank\]/);
   assert.match(outputs.off_stop_ship, /proposal-box[\s\S]*?\[blank\]/);
@@ -487,7 +491,7 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
     'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'H/S', 'H/S Reason', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
   ]);
   assert.match(output, /proposal-box[\s\S]*?<strong>1<\/strong>/);
-  assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?proposal-box[\s\S]*?UP 150 TO F1/);
+  assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?proposal-box[\s\S]*?150--&gt;F1/);
   assert.doesNotMatch(output, /PROPOSED/i);
   assert.equal(model.identity.holdstopcode, 'H');
   assert.equal(model.identity.holdstopreason, 'sheared');
@@ -520,22 +524,19 @@ test('workflow V4 validates split moves, preserves repeated destination order, a
   const pdf = server.buildReclassInquiryCompactReportHtml_(model, true);
   const text = server.buildReclassInquiryReportText_(model);
   const htmlBody = server.buildReclassInquiryEmailHtml_(model);
-  assert.equal((pdf.match(/class="proposal-box proposal-box-movement"/g) || []).length, 7, 'four individual splits plus UP, DOWN, and combined totals are boxed');
-  assert.match(pdf, /A\.1 \/ 27\.F1 · UP 4 TO S1 · PLACE ON HOLD REQUESTED: inspect &amp; stage &lt;carefully&gt;/);
-  assert.match(pdf, /UP split total requested: 12/);
-  assert.match(pdf, /DOWN split total requested: 2/);
-  assert.match(pdf, /UP \+ DOWN total requested: 14/);
-  assert.match(text, /A\.1 \/ 27\.F1 \/ UP 4 to S1 \/ Place on Hold requested: inspect & stage <carefully>/);
+  assert.equal((pdf.match(/class="proposal-box proposal-box-movement"/g) || []).length, 5, 'four exact split lines and the separate hold instruction are boxed');
+  assert.match(pdf, /3--&gt;S1/);
+  assert.match(pdf, /4--&gt;S1/);
+  assert.match(pdf, /5--&gt;U1/);
+  assert.match(pdf, /2--&gt;U2/);
+  assert.match(pdf, /Place on Hold requested: inspect &amp; stage &lt;carefully&gt;/);
+  assert.doesNotMatch(pdf, /(?:UP|DOWN)\s+\d+\s+TO\s+/);
   assert.match(text, /UP 3 to S1/);
   assert.match(text, /UP 5 to U1/);
-  assert.match(text, /UP total requested: 12/);
-  assert.match(text, /DOWN total requested: 2/);
-  assert.match(text, /UP \+ DOWN total requested: 14/);
+  assert.match(text, /DOWN 2 to U2/);
+  assert.match(text, /Place on Hold requested: inspect & stage <carefully>/);
   assert.match(htmlBody, /UP 4 to S1/);
   assert.match(htmlBody, /inspect &amp; stage &lt;carefully&gt;/);
-  assert.match(htmlBody, /UP total requested: 12/);
-  assert.match(htmlBody, /DOWN total requested: 2/);
-  assert.match(htmlBody, /UP \+ DOWN total requested: 14/);
   assert.match(text, /inventory was not changed/);
 });
 
@@ -561,6 +562,53 @@ test('workflow V4 rejects invalid split totals, seasons, counts, and hold-reason
     unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
     proposals: [{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }],
   }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ }), /expected original OH/);
+});
+
+test('workflow V5 keeps shearing distinct and renders server-derived snapshot arrows', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', desigitem: 'ORIGINAL', season: 'F1', holdstopcode: '', holdstopreason: '' };
+  const transaction = { requestActions: ['move_up', 'sheared'], holdStopProposals: [], scope: {} };
+  const overlay = [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', desigitem: 'ORIGINAL' }, proposals: [
+    { action: 'move_up', splits: [{ quantity: 2, destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
+    { action: 'sheared', quantity: 3, desigitem: '3-->#' },
+  ] }];
+  const result = server.buildReclassInquiryActionRowsV3_(transaction, [row], overlay, null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ });
+  assert.equal(result.ok, true);
+  assert.deepEqual(Array.from(result.requestActions), ['move_up', 'sheared']);
+  assert.equal(result.rows[0].values.desigitem, 'ORIGINAL', 'the live designation remains unchanged');
+  assert.equal(result.rows[0].actionValues.shearedproposeddesigitem, '3-->#');
+  const payload = { workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_, transaction, actor: { display: 'Tester' } };
+  const model = server.buildReclassInquiryReportModel_(row, [row], result.rows, payload, new Date('2026-10-08T14:00:00Z'));
+  const pdf = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(pdf, /2--&gt;S1/);
+  assert.match(pdf, /3--&gt;#/);
+  assert.equal(result.rows[0].values.desigitem, 'ORIGINAL', 'the original designation is kept separate in the report snapshot');
+  assert.doesNotMatch(pdf, /(?:UP|DOWN)\s+\d+\s+TO\s+/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(transaction, [row], [{
+    ...overlay[0], proposals: [{ action: 'sheared', quantity: 3, desigitem: 'WRONG' }],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ }), /stored Sheared designation proposal is invalid/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(transaction, [row], [{
+    ...overlay[0], proposals: [{ action: 'move_up', splits: [{ quantity: 8, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }, { action: 'sheared', quantity: 3, desigitem: '3-->#' }],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ }), /Combined Move and Sheared quantities cannot exceed current OH/);
+  for (const quantity of [0, -1, 1.5, '2']) {
+    assert.throws(() => server.buildReclassInquiryActionRowsV3_(transaction, [row], [{
+    ...overlay[0], proposals: [{ action: 'sheared', quantity, desigitem: String(quantity) + '-->#' }],
+    }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ }), /positive whole number/);
+  }
+  const missingOriginal = [{ ...overlay[0], expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' }, proposals: [{ action: 'sheared', quantity: 1, desigitem: '1-->#' }] }];
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(
+    { requestActions: ['sheared'], holdStopProposals: [], scope: {} }, [row], missingOriginal, null,
+    { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ },
+  ), /require the original designation snapshot/);
+  const staleOriginal = [{ ...overlay[0], expected: { ...overlay[0].expected, desigitem: 'STALE' }, proposals: [{ action: 'sheared', quantity: 1, desigitem: '1-->#' }] }];
+  assert.equal(server.buildReclassInquiryActionRowsV3_(
+    { requestActions: ['sheared'], holdStopProposals: [], scope: {} }, [row], staleOriginal, null,
+    { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ },
+  ).status, 'conflict');
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(
+    { requestActions: ['sheared'], holdStopProposals: [], scope: {} }, [row], overlay, null,
+    { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ },
+  ), /unsupported action/);
 });
 
 test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is outside the affected scope', () => {
@@ -698,7 +746,7 @@ test('both movement proposals share the original OH cell and remain boxed in gra
     editSummary: { rowCount: 1, fieldCount: 4 },
   };
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  assert.match(output, /<strong class="original-oh">800<\/strong>[\s\S]*?UP 40 TO F1[\s\S]*?DOWN 20 TO S1/);
+  assert.match(output, /<strong class="original-oh">800<\/strong>[\s\S]*?40--&gt;F1[\s\S]*?20--&gt;S1/);
   assert.equal((output.match(/proposal-box proposal-box-movement/g) || []).length, 2, 'both requested movements must be boxed');
   assert.doesNotMatch(output, /PROPOSED/i);
   assert.match(output, /box-shadow:inset 0 0 0 1px #000/);
@@ -952,7 +1000,7 @@ test('every live Reclass row shows direct actions and progressively disclosed re
   const builder = html.slice(start, end);
   assert.match(builder, /data-reclass-v3-action/);
   assert.match(builder, /toggleArgosReclassV3Action/);
-  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V3_ORDER\.map/);
+  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.map/);
   assert.match(html, /<span>Hold code<\/span>/);
   assert.match(html, /<span>Hold reason<\/span>/);
   assert.match(html, /Inquiry-wide request:/);
@@ -1063,7 +1111,7 @@ test('Reclass client guards recipient selection and retains background drafts un
   assert.doesNotMatch(status, /Retry Queued/);
 });
 
-test('live Reclass payload uses the V4 policy and independent action proposal arrays', () => {
+test('live non-sheared Reclass payload retains V4 policy and independent action proposal arrays', () => {
   const buildPayload = loadClientPayloadBuilder({
     'argos-inventory-transaction-qty': '0',
     'argos-inventory-transaction-new-item': 'A1',
@@ -1082,6 +1130,23 @@ test('live Reclass payload uses the V4 policy and independent action proposal ar
   assert.deepEqual(JSON.parse(JSON.stringify(payload.rowOverlays[0].proposals)), [
     { action: 'priority_change', priority: '2' },
   ]);
+});
+
+test('live shear-only Reclass payload uses V5 while location-detail-only payload stays V4', () => {
+  const shearDraft = {
+    requestActions: ['sheared'], holdStopProposals: [], scope: {},
+    rowOverlays: [{ unique_id: 'u1', expected: { desigitem: '' }, proposals: [{ action: 'sheared', quantity: 4 }] }],
+  };
+  const shearPayload = loadClientPayloadBuilder({}, shearDraft)();
+  assert.equal(shearPayload.workflowPolicyVersion, 'reclass-action-workflow-v5-sheared-20261008');
+
+  const locationOnlyDraft = {
+    requestActions: [], holdStopProposals: [], scope: {},
+    rowOverlays: [{ unique_id: 'u1', expected: {}, proposals: [], temporaryValues: { locationnote: 'Updated note' }, temporaryChangedFields: ['locationnote'] }],
+  };
+  const locationPayload = loadClientPayloadBuilder({}, locationOnlyDraft)();
+  assert.equal(locationPayload.workflowPolicyVersion, 'reclass-action-workflow-v4-split-moves-20261006');
+  assert.deepEqual(JSON.parse(JSON.stringify(locationPayload.transaction.requestActions)), []);
 });
 
 test('live Reclass payload obtains its validation from the direct-action V3 draft collector', () => {
