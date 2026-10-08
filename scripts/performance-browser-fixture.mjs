@@ -1,5 +1,6 @@
 import { hlMaster, installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
 import { installPerformanceCoordinatorObserver } from './performance-coordinator-observer.mjs';
+import { installPerformanceShellObserver } from './performance-shell-observer.mjs';
 
 export const inventoryRows = Array.from({ length: 1000 }, (_, index) => hlMaster(`perf-${String(index).padStart(5, '0')}`, {
   itemcode: `00${Math.floor(index / 4)}`, commonname: `Performance plant ${String(Math.floor(index / 4)).padStart(3, '0')}`,
@@ -16,8 +17,35 @@ export const PERFORMANCE_API_QUIET_MS = 75;
 
 export const PERFORMANCE_HOME_READY_TIMEOUT_MS = 15_000;
 export const PERFORMANCE_VIEW_READY_TIMEOUT_MS = 15_000;
+export const PERFORMANCE_COLD_STARTUP_TIMEOUT_MS = 15_000;
 
 const performanceControlsByPage = new WeakMap();
+
+export function isPerformanceColdStartupReady(state = {}) {
+  if (state.documentReadyState !== 'complete' || state.runtimeBootState !== 'ready' || state.appSessionStartupStarted !== true) return false;
+  const attempts = Array.isArray(state.loginAttempts) ? state.loginAttempts : [];
+  const lastRestore = attempts.filter(attempt => attempt && attempt.kind === 'restore').at(-1);
+  return !!lastRestore && lastRestore.outcome === 'failed';
+}
+
+export function buildPerformanceColdStartupReadyExpression() {
+  return `(${isPerformanceColdStartupReady.toString()})( {
+    documentReadyState: document.readyState,
+    runtimeBootState: window.__gncRuntimeBootTiming?.state,
+    appSessionStartupStarted: window.eval('typeof appSessionStartupStarted !== "undefined" && appSessionStartupStarted === true'),
+    loginAttempts: window.GncLoginTrace?.snapshot?.().attempts
+  })`;
+}
+
+export async function waitForPerformanceColdStartupReady(page, { timeoutMs = PERFORMANCE_COLD_STARTUP_TIMEOUT_MS } = {}) {
+  if (!page || typeof page.waitForFunction !== 'function' || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error('PERFORMANCE_COLD_STARTUP_OPTIONS_INVALID');
+  }
+  const expression = buildPerformanceColdStartupReadyExpression();
+  const handle = await page.waitForFunction(value => window.eval(value), expression, { polling: 'raf', timeout: timeoutMs });
+  await handle.dispose();
+  return { method: 'load-runtime-startup-restore-failed', timeoutMs };
+}
 
 export function attachPerformanceApiIdleTracker(page, { quietMs = PERFORMANCE_API_QUIET_MS } = {}) {
   if (!page || typeof page.on !== 'function' || !Number.isFinite(quietMs) || quietMs < 1) {
@@ -91,7 +119,7 @@ export function isPerformanceHomeRuntimeReady(state = {}) {
 export function isPerformanceViewRuntimeReady(state = {}, expectedViewId = '') {
   const expectedView = String(expectedViewId || '').trim();
   if (!expectedView || state.viewId !== expectedView) return false;
-  if (state.coordinatorActivity?.pending !== false) return false;
+  if (state.coordinatorActivity?.pending !== false || state.shellActivity?.pending !== false) return false;
   if (state.nativeRoleRefreshPromise || Object.keys(state.runAfterTouchInteractionTasks || {}).length > 0) return false;
   const datasetStates = state.datasetLoadState && typeof state.datasetLoadState === 'object' ? Object.values(state.datasetLoadState) : [];
   if (datasetStates.some(dataset => dataset && (dataset.initialPromise || dataset.fullPromise))) return false;
@@ -118,7 +146,8 @@ export function buildPerformanceViewRuntimeReadyExpression(viewId) {
     productionLiveSyncViewLoadPending: !!productionLiveSyncViewLoad?.pending, uiRenderTimers, uiRenderFrames, uiRenderTokens,
     activeChunkRenderCount, chunkRenderActivityByKey, chunkRenderTimersByKey,
     nativeRoleRefreshPromise, runAfterTouchInteractionTasks,
-    coordinatorActivity: globalThis.__phase6CoordinatorObserver?.getPendingActivity()
+    coordinatorActivity: globalThis.__phase6CoordinatorObserver?.getPendingActivity(),
+    shellActivity: globalThis.__phase6ShellObserver?.getPendingActivity()
   }, ${JSON.stringify(safeViewId)})`;
 }
 
@@ -180,7 +209,11 @@ export async function installPerformanceFixture(page, origin, app) {
   if (app === 'live') {
     await page.addInitScript({ content: `(${installPerformanceCoordinatorObserver.toString()})(globalThis);` });
     const control = await installHlOrderFixture(page, origin, { username: 'performance_admin', role: 'ADMIN', master: inventoryRows,
-      startupMode: 'cold', beforeLogin: async () => page.locator('#login-button').waitFor({ state: 'visible' }),
+      startupMode: 'cold', beforeLogin: async () => {
+        await page.locator('#login-button').waitFor({ state: 'visible' });
+        await waitForPerformanceColdStartupReady(page);
+        await page.evaluate(`(${installPerformanceShellObserver.toString()})(globalThis)`);
+      },
       beforeNavigate: async () => {
         await page.route('**/functions/v1/app-api', async route => {
           const body = route.request().postDataJSON();

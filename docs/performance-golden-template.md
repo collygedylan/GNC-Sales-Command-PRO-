@@ -93,8 +93,18 @@ is allowed to remain scheduled; any reads it starts are still counted. Render
 queue entries require a live render token because the existing scheduler can
 retain a cleared timer entry after an immediate replacement has completed.
 Readiness also waits for pending touch-deferred startup tasks and role refreshes.
-The login subscription task otherwise fires on the first Que click and races its
-revision proof; its normal fallback now finishes while Home remains active.
+Before explicit login, it observes the existing shell callback scheduler as well.
+Its two animation frames and delayed callback remain unchanged and count as
+pending work until invocation. This closes the interval before a deferred Que
+wake registers its data/render queues; API silence alone does not end that work.
+The delayed login subscription task can otherwise overlap the first Que visit
+and race its revision proof; it now finishes while Home remains active.
+Before entering cold-login credentials, the fixture also waits for `document`
+load completion, runtime boot readiness, and the app-session startup initializer
+to finish its initial restore. The login trace must explicitly report the
+expected no-session restore failure. A missing trace, an active restore, or a
+successful/unexpected restore keeps the fixture blocked and eventually fails;
+this prevents startup work from racing the measured Home and route requests.
 Read counts include every API request started within the measurement window.
 Payload bytes come from those same requests after bounded completion; later
 background responses cannot enter the window. Deliberate browser cancellations
@@ -150,8 +160,8 @@ so one slowest request does not determine the gate. All observations remain in t
 reports, and response count/digest parity is checked in every pass. Alternating pass
 order reduces broad time-order bias but does not eliminate machine noise or prove
 the cause of a slow sample. The current schema-contract job has a 35-minute limit;
-the previous full schema-gate invocation reached this comparison after about 8.5
-minutes. The additional pass cost still needs confirmation in CI.
+the six-pass comparison and complete schema gate passed in 22 minutes 32 seconds
+in run `37794447351`, including generated-type validation.
 
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox

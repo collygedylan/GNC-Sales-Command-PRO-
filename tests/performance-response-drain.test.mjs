@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import { attachPerformanceApiIdleTracker, buildPerformanceViewRuntimeReadyExpression, isPerformanceHomeRuntimeReady, isPerformanceViewRuntimeReady,
+  buildPerformanceColdStartupReadyExpression, isPerformanceColdStartupReady, waitForPerformanceColdStartupReady,
   waitForPerformanceHomeReadiness, waitForPerformanceViewReadiness } from '../scripts/performance-browser-fixture.mjs';
 import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
 
@@ -147,7 +148,7 @@ test('Home readiness rejects a final state check completed after its deadline', 
 });
 
 test('Home readiness blocks on baseline per-reason and candidate coalesced refresh keys', () => {
-  const ready = { viewId: 'home', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
+  const ready = { viewId: 'home', coordinatorActivity: { pending: false }, shellActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
   assert.equal(isPerformanceHomeRuntimeReady(ready), true);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderTimers: { 'visible-dirty-refresh:dataset-refresh': 1 } }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderFrames: { 'visible-dirty-refresh:current': 1 } }), false);
@@ -189,7 +190,7 @@ test('source touch-deferred callback remains a readiness blocker through role re
     scheduleAppSessionHousekeeping() {},
   });
   vm.runInContext(schedulerSource, runtime);
-  const state = { viewId: 'request', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {},
+  const state = { viewId: 'request', coordinatorActivity: { pending: false }, shellActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {},
     uiRenderTimers: {}, uiRenderFrames: {}, runAfterTouchInteractionTasks: runtime.runAfterTouchInteractionTasks,
     nativeRoleRefreshPromise: null };
   const page = new EventEmitter();
@@ -230,12 +231,109 @@ test('source touch-deferred callback remains a readiness blocker through role re
   assert.equal(isPerformanceViewRuntimeReady(state, 'request'), true, 'readiness returns after the callback work settles');
 });
 
+test('cold-login gate waits for the real startup initializer and unresolved profile restore in both boot paths', async () => {
+  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const initializerStart = source.indexOf('        async function initializeAppSessionOnLoad()');
+  const initializerEnd = source.indexOf('\n        let appChromeStartupStarted', initializerStart);
+  const bindingStart = source.indexOf('        if (document.readyState === \'complete\') {', initializerEnd);
+  const bindingEnd = source.indexOf('\n    </script>', bindingStart);
+  assert.ok(initializerStart >= 0 && initializerEnd > initializerStart);
+  assert.ok(bindingStart > initializerEnd && bindingEnd > bindingStart);
+  const runtimeSource = `${source.slice(initializerStart, initializerEnd)}\n${source.slice(bindingStart, bindingEnd)}`;
+
+  for (const startupPath of ['direct-complete-document', 'load-event']) {
+    const listeners = new Map(), attempts = [{ kind: 'restore', outcome: 'active' }];
+    let finishRestore, primed = false;
+    const browserWindow = { addEventListener(type, callback) { const group = listeners.get(type) || []; group.push(callback); listeners.set(type, group); } };
+    const runtime = vm.createContext({
+      document: { readyState: startupPath === 'direct-complete-document' ? 'complete' : 'interactive' },
+      window: browserWindow,
+      appSessionStartupStarted: false,
+      ensureCurrentShellBuild: async () => false,
+      resetLoginUiState() {},
+      restoreNativeAuthSessionOnStartup: () => new Promise(resolve => { finishRestore = () => { attempts[0].outcome = 'failed'; resolve(false); }; }),
+      primeSavedLoginUiOnStartup() { primed = true; },
+      initializeAppChromeOnDomReady() {},
+      startReclassDeliveryPolling() {},
+    });
+    browserWindow.__gncRuntimeBootTiming = { state: 'ready' };
+    browserWindow.GncLoginTrace = { snapshot: () => ({ attempts }) };
+    browserWindow.window = browserWindow;
+    browserWindow.document = runtime.document;
+    browserWindow.eval = expression => vm.runInContext(expression, runtime);
+    vm.runInContext(runtimeSource, runtime);
+    const browserReady = () => vm.runInContext(buildPerformanceColdStartupReadyExpression(), runtime);
+    if (startupPath === 'load-event') {
+      assert.equal(runtime.appSessionStartupStarted, false, 'the real startup binding waits for window.load');
+      assert.equal(browserReady(), false,
+        'the generated browser expression rejects an incomplete load-event boot');
+      runtime.document.readyState = 'complete';
+      for (const callback of listeners.get('load') || []) callback();
+    }
+    assert.equal(runtime.appSessionStartupStarted, true, `${startupPath} starts the real initializer`);
+    assert.equal(browserReady(), false,
+      'the generated browser expression rejects a restore that is still active');
+    attempts.length = 0;
+    assert.equal(browserReady(), false, 'the generated browser expression rejects a missing restore trace');
+    attempts.push({ kind: 'restore', outcome: 'active' });
+    const readyState = () => isPerformanceColdStartupReady({ documentReadyState: 'complete', runtimeBootState: 'ready',
+      appSessionStartupStarted: runtime.appSessionStartupStarted, loginAttempts: attempts });
+    assert.equal(readyState(), false, 'the unresolved startup profile/session read must block cold login');
+    let gateResolved = false;
+    const wait = waitForPerformanceColdStartupReady({
+      waitForFunction: async (_predicate, _expression, options) => {
+        const deadline = Date.now() + options.timeout;
+        while (Date.now() < deadline) {
+          if (readyState()) return { dispose() {} };
+          await new Promise(resolve => setTimeout(resolve, 2));
+        }
+        throw new Error('fixture startup gate timed out');
+      },
+    }).then(() => { gateResolved = true; });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    assert.equal(gateResolved, false, 'the beforeLogin gate remains blocked while restore has no result');
+    finishRestore();
+    await wait;
+    await Promise.resolve();
+    assert.equal(primed, true, 'the startup initializer completes its no-session branch before login');
+    assert.equal(readyState(), true);
+    assert.equal(browserReady(), true,
+      'the generated browser expression accepts the completed no-session restore');
+    attempts[0].outcome = 'shell-ready';
+    assert.equal(browserReady(), false, 'the generated browser expression rejects a successful restore in this cold fixture');
+    attempts[0].outcome = 'failed';
+    assert.equal(browserReady(), true, 'the generated expression remains valid only for the expected no-session outcome');
+  }
+});
+
+test('cold-login readiness fails closed for missing, active, successful, or unexpected restore traces', () => {
+  const readyState = { documentReadyState: 'complete', runtimeBootState: 'ready', appSessionStartupStarted: true };
+  for (const loginAttempts of [
+    undefined,
+    [],
+    [{ kind: 'restore', outcome: 'active' }],
+    [{ kind: 'restore', outcome: 'succeeded' }],
+    [{ kind: 'restore', outcome: 'shell-ready' }],
+    [{ kind: 'login', outcome: 'failed' }],
+    [{ kind: 'restore', outcome: 'failed' }, { kind: 'restore', outcome: 'active' }],
+  ]) {
+    assert.equal(isPerformanceColdStartupReady({ ...readyState, loginAttempts }), false,
+      `restore trace ${JSON.stringify(loginAttempts)} must not permit cold credentials`);
+  }
+  assert.equal(isPerformanceColdStartupReady({ ...readyState, loginAttempts: [{ kind: 'restore', outcome: 'failed' }] }), true);
+  assert.equal(isPerformanceColdStartupReady({ ...readyState, documentReadyState: 'interactive', loginAttempts: [{ kind: 'restore', outcome: 'failed' }] }), false);
+  assert.equal(isPerformanceColdStartupReady({ ...readyState, runtimeBootState: 'starting', loginAttempts: [{ kind: 'restore', outcome: 'failed' }] }), false);
+  assert.equal(isPerformanceColdStartupReady({ ...readyState, appSessionStartupStarted: false, loginAttempts: [{ kind: 'restore', outcome: 'failed' }] }), false);
+});
+
 test('live route readiness waits for queued dataset, render, production refresh, and chunk work', () => {
-  const ready = { viewId: 'request', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
+  const ready = { viewId: 'request', coordinatorActivity: { pending: false }, shellActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
   assert.equal(isPerformanceViewRuntimeReady(ready, 'request'), true);
   assert.equal(isPerformanceViewRuntimeReady(ready, 'drive'), false);
   for (const pending of [
     { coordinatorActivity: undefined },
+    { shellActivity: undefined },
+    { shellActivity: { pending: true } },
     { coordinatorActivity: { pending: true } },
     { datasetQueueTimers: { 'requests:initial': 1 } },
     { datasetLoadState: { requests: { initialPromise: {} } } },
@@ -263,6 +361,7 @@ test('generated browser readiness expression passes the expected view and evalua
     chunkRenderActivityByKey: {}, chunkRenderTimersByKey: {},
     runAfterTouchInteractionTasks: {}, nativeRoleRefreshPromise: null,
     __phase6CoordinatorObserver: { getPendingActivity: () => ({ pending: false }) },
+    __phase6ShellObserver: { getPendingActivity: () => ({ pending: false }) },
   };
   assert.equal(vm.runInNewContext(expression, runtime), true);
   assert.equal(vm.runInNewContext(expression, { ...runtime, getCurrentVisibleViewId: () => 'drive' }), false);
@@ -289,7 +388,7 @@ test('route readiness waits for live render tokens but accepts a completed repla
     LONG_SESSION_CACHE_LIMIT: 100, scheduleAppSessionHousekeeping: () => {},
   });
   vm.runInContext(source.slice(start, end), runtime);
-  const state = { viewId: 'drive', coordinatorActivity: { pending: false }, uiRenderTimers: runtime.uiRenderTimers,
+  const state = { viewId: 'drive', coordinatorActivity: { pending: false }, shellActivity: { pending: false }, uiRenderTimers: runtime.uiRenderTimers,
     uiRenderFrames: runtime.uiRenderFrames, uiRenderTokens: runtime.uiRenderTokens };
   runtime.scheduleUiRender('production-live-refresh:render', () => { rendered++; }, 150);
   assert.equal(isPerformanceViewRuntimeReady(state, 'drive'), false);
@@ -308,7 +407,7 @@ test('route readiness waits for live render tokens but accepts a completed repla
 test('live route settlement includes a delayed queued read and waits again when state changes after API idle', async () => {
   const page = new EventEmitter();
   const tracker = attachPerformanceApiIdleTracker(page, { quietMs: 15 });
-  const state = { viewId: 'request', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: { 'requests:initial': true },
+  const state = { viewId: 'request', coordinatorActivity: { pending: false }, shellActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: { 'requests:initial': true },
     backgroundRefreshInFlight: false, uiRenderTimers: {}, uiRenderFrames: {} };
   const request = { method: () => 'POST', url: () => 'http://fixture.invalid/functions/v1/app-api' };
   const started = Date.now();
@@ -341,7 +440,7 @@ test('live route settlement includes a delayed queued read and waits again when 
 });
 
 test('live route settlement rechecks state after API idle before closing the boundary', async () => {
-  const state = { viewId: 'drive', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
+  const state = { viewId: 'drive', coordinatorActivity: { pending: false }, shellActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
   let idleCalls = 0;
   const isReady = () => isPerformanceViewRuntimeReady(state, 'drive');
   const waitForRuntimeReady = async timeoutMs => {
