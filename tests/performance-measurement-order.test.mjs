@@ -6,6 +6,9 @@ import vm from 'node:vm';
 
 function measurementFixture({ settlementError } = {}) {
   const source = readFileSync(new URL('../scripts/run-performance-browser.mjs', import.meta.url), 'utf8');
+  const classifierStart = source.indexOf('function classifyApiTraffic(');
+  const measureStart = source.indexOf('async function measure(');
+  assert.ok(classifierStart >= 0 && measureStart > classifierStart);
   const start = source.indexOf('async function measure(');
   const end = source.indexOf('\nasync function benchmark(', start);
   assert.ok(start >= 0 && end > start, 'the regression exercises the actual route measurement');
@@ -13,7 +16,7 @@ function measurementFixture({ settlementError } = {}) {
   let now = 100, evaluations = 0;
   const page = { async evaluate() {
     evaluations++;
-    if (evaluations === 1) { events.push('reset-observers'); return; }
+    if (evaluations === 1) { events.push('reset-observers'); return 123; }
     if (evaluations === 2) { events.push('read-observers'); return { longTaskMs: 75, domRemovals: 3 }; }
     assert.equal(evaluations, 3);
     events.push('scroll');
@@ -23,6 +26,7 @@ function measurementFixture({ settlementError } = {}) {
   const context = vm.createContext({
     performance: { now: () => now },
     async settle() { events.push('raf'); },
+    async waitForPerformancePollWindow() { events.push('poll-window'); },
     async openPerformanceView(actualPage, app, view) {
       assert.equal(actualPage, page); assert.equal(app, 'live'); assert.equal(view, 'request');
       events.push('first-visible'); now = 150;
@@ -32,7 +36,8 @@ function measurementFixture({ settlementError } = {}) {
       events.push('settle-queued-work');
       if (settlementError) throw settlementError;
       now = 900; // Deferred work remains accounted for without changing usable-content latency.
-      totals.apiRequests.push({ index: 0, bytes: 37, canceled: false, error: null });
+      totals.apiRequests.push({ index: 0, operation: 'rpc:get_sample', bytes: 37, canceled: false, error: null });
+      totals.apiRequests.push({ index: 1, operation: 'rpc:report_app_health_event', bytes: 1, canceled: false, error: null });
     },
     async settlePerformanceApiBoundary(actualTotals, actualControl) {
       assert.equal(actualTotals, totals); assert.equal(actualControl, control);
@@ -41,6 +46,7 @@ function measurementFixture({ settlementError } = {}) {
     },
     async drainPerformanceResponseBodies() { events.push('drain-bodies'); },
   });
+  vm.runInContext(source.slice(classifierStart, measureStart), context);
   vm.runInContext(source.slice(start, end), context);
   return { events, run: () => context.measure(page, 'live', 'request', totals, control, 0) };
 }
@@ -51,11 +57,15 @@ test('route measurement retains first-visible latency and counts queued reads be
   assert.equal(result.duration, 50);
   assert.equal(result.reads, 1);
   assert.equal(result.bytes, 37);
+  assert.equal(result.writes, 1);
+  assert.equal(result.writeBytes, 1);
+  assert.equal(result.reads + result.writes + result.otherRequests, result.boundaryEndIndex - result.boundaryStartIndex);
+  assert.equal(result.bytes + result.writeBytes + result.otherBytes, 38, 'traffic classification partitions every response byte');
   assert.equal(result.longTaskMs, 75);
   assert.equal(result.domRemovals, 3);
-  assert.equal(result.boundaryEndIndex, 1);
-  assert.deepEqual(fixture.events, ['raf', 'freeze-0', 'reset-observers', 'first-visible', 'raf',
-    'settle-queued-work', 'freeze-1', 'read-observers', 'scroll', 'drain-bodies']);
+  assert.equal(result.boundaryEndIndex, 2);
+  assert.deepEqual(fixture.events, ['poll-window', 'raf', 'freeze-0', 'reset-observers', 'first-visible', 'raf',
+    'settle-queued-work', 'freeze-2', 'read-observers', 'scroll', 'drain-bodies']);
 });
 
 test('unsettled route work invalidates the sample rather than reporting partial counts', async () => {

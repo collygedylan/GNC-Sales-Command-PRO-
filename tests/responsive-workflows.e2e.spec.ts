@@ -2397,6 +2397,7 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
 
 test('Desktop Reclass row actions preserve combined requests and disclose inquiry-wide Hold / Stop scope', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
+  await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
   page.on('dialog', dialog => dialog.accept());
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/?e2e=reclass-action-views', { waitUntil: 'domcontentloaded' });
@@ -2406,7 +2407,7 @@ test('Desktop Reclass row actions preserve combined requests and disclose inquir
       ['old', 'F1', '26', 'H', '10'], ['current', 'F1', '2027', 'S', '0'],
       ['future', 'F1', '28', '', '10'], ['other', 'S1', '27', '', '10'],
       ['unknown', 'F1', 'bad27', '', '10'],
-    ].map(([id, season, year, code, oh]) => ({ UNIQUE_ID: id, ITEMCODE: 'RECLASS-VIEW', COMMONNAME: 'Reclass view fixture', CONTSIZE: '3G',
+    ].map(([id, season, year, code, oh]) => ({ UNIQUE_ID: id, ITEMCODE: 'RECLASS-VIEW', COMMONNAME: 'Reclass view fixture', CONTSIZE: '3G', DESIGITEM: 'Original item designation',
       LOTCODE: `${year}.${season}`, LOCATIONCODE: id, SEASON: season, SALEYEAR: year,
       PRIORITY: '5', HOLDSTOPCODE: code, HOLDSTOPREASON: 'existing reason', PTRONHAND: oh, PTRAVAILABLE: oh, SOURCE_TABLE: 'ph_master_inventory' }));
     (window as any).processAndLoadData({ data: rows, _fromCache: true });
@@ -2416,11 +2417,12 @@ test('Desktop Reclass row actions preserve combined requests and disclose inquir
   const modal = page.locator('#argos-inventory-transaction-modal');
   const old = modal.locator('[data-reclass-row-card="old"]');
   const current = modal.locator('[data-reclass-row-card="current"]');
+  const future = modal.locator('[data-reclass-row-card="future"]');
   await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
   await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Choosing it from one row does not limit it to that row');
   await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('On Hold: 3');
-  await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(8);
+  await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(9);
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toBeDisabled();
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toContainText('Requires positive original OH');
   await old.locator('[data-reclass-v3-action="priority_change"]').click();
@@ -2443,13 +2445,26 @@ test('Desktop Reclass row actions preserve combined requests and disclose inquir
     // Deselect explicitly so the following choice needs no replacement confirmation.
     await old.locator(`[data-reclass-v3-action="${action}"]`).click();
   }
+  await old.locator('[data-reclass-v3-action="sheared"]').click();
+  await old.getByLabel('Sheared quantity', { exact: true }).fill('3');
+  await expect(old.locator('[data-sheared-request-preview="true"]')).toHaveText('3-->#');
+  await future.locator('[data-reclass-v3-action="sheared"]').click();
+  await future.getByLabel('Sheared quantity', { exact: true }).fill('2');
+  await expect(future.locator('[data-sheared-request-preview="true"]')).toHaveText('2-->#');
+  const shearedDraft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
+  expect(shearedDraft.requestActions).toEqual(expect.arrayContaining(['priority_change', 'recount', 'sheared']));
+  expect(shearedDraft.rowOverlays.find((row: any) => row.unique_id === 'old')?.expected).toMatchObject({ desigitem: 'Original item designation' });
+  expect(shearedDraft.rowOverlays.find((row: any) => row.unique_id === 'old')?.proposals).toEqual(expect.arrayContaining([{ action: 'sheared', quantity: 3 }]));
+  expect(shearedDraft.rowOverlays.find((row: any) => row.unique_id === 'future')?.proposals).toEqual(expect.arrayContaining([{ action: 'sheared', quantity: 2 }]));
+  await old.locator('[data-reclass-v3-action="sheared"]').click();
   await page.evaluate(() => localStorage.removeItem('gnc_current_season_settings_v1'));
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
   await expect(old.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveValue('');
 });
 
-test('Phone Reclass V3 supports all eight direct actions without row checkboxes or horizontal overflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+test('Phone Reclass V5 supports all nine direct actions without row checkboxes or horizontal overflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
+  await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
     await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
@@ -2564,7 +2579,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
-    await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(8);
+    await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(9);
     await expect(second.locator('[data-reclass-action-included]')).toHaveCount(0);
     await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="stop_ship"]')).toBeEnabled();
@@ -2583,9 +2598,12 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await second.locator('[data-reclass-v3-action="move_up"]').click();
     await second.getByLabel('Move Up quantity 1', { exact: true }).fill('150');
     await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
-    await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(3);
-    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
-    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Actions');
+    await second.locator('[data-reclass-v3-action="sheared"]').click();
+    await second.getByLabel('Sheared quantity', { exact: true }).fill('100');
+    await expect(second.locator('[data-sheared-request-preview="true"]')).toHaveText('100-->#');
+    await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(4);
+    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '4');
+    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('4 Actions');
     await expect(origin).toHaveAttribute('data-reclass-scope-actions', 'hold');
     await expect(second).toContainText('Inquiry-wide request: On Hold will be applied to all eligible rows');
     await second.locator('.argos-reclass-row-toggle').click();
@@ -2600,12 +2618,13 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.getByLabel('Move Up quantity 1', { exact: true })).toHaveValue('150');
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
-    expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up']);
+    expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up', 'sheared']);
     expect(draft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared' }]);
     expect(draft.rowOverlays).toHaveLength(41);
     expect(draft.rowOverlays[1].proposals).toEqual([
       { action: 'priority_change', priority: '1' },
       { action: 'move_up', splits: [{ quantity: 150, destinationSeason: 'F1' }], applyHold: false, holdReason: '' },
+      { action: 'sheared', quantity: 100 },
     ]);
     expect(draft.rowOverlays[40].proposals).toEqual([]);
     expect(draft.scope).toEqual({ season: 'F1', salesYear: 2027 });
@@ -2679,6 +2698,64 @@ test('Phone Drive Reclass skips the recipient picker and strips browser recipien
   expect(payload.actor).toBeUndefined();
   expect(payload.recipientEmails).toBeUndefined();
   expect(payload.emailRecipients).toBeUndefined();
+});
+
+test('Request and Bloom APP recipient groups use the refreshed active-user directory', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
+  await page.goto('/?e2e=request-recipient-directory', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('load');
+  await page.waitForFunction(() => typeof (window as any).GncDatabase?.requestRecipientDirectoryFromResult === 'function');
+  await page.waitForFunction(() => typeof (window as any).openBloomCropUpdateModal === 'function');
+  await page.evaluate(() => window.eval(`
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    // This browser case exercises directory rendering after authorization;
+    // the authorization allowlist itself is covered by the unit/API tests.
+    canUseBloomCropUpdateEmail = () => true;
+    canUseRequestEmailChainPicker = () => true;
+    getRequestRecipientDirectoryOwnerKey = () => 'profile:recipient-directory-dylan';
+    document.getElementById('view-login')?.classList.add('hidden');
+    nativeAuthProfile = { id: 'recipient-directory-dylan', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false };
+    window.__recipientDirectoryCalls = [];
+    postAppFunctionJson = async (_url, body) => {
+      window.__recipientDirectoryCalls.push(body.action);
+      if (body.action === 'request_recipient_directory') return {
+        ok: true,
+        revision: 'recipients-v1:${'a'.repeat(64)}',
+        users: [{ username: 'alyssa_beitz', displayName: 'Alyssa Beitz', role: 'CSR' }]
+      };
+      return { ok: true, users: [], rows: [] };
+    };
+    ensureAssignableAppUsers = async () => [];
+    getAssignableAppUserOptions = () => [{ username: 'legacy_only', display: 'Legacy Only', email: 'legacy_only@greenleafnursery.com' }];
+    supabaseFetch = async () => [{ username: 'legacy_only', display: 'Legacy Only', email: 'legacy_only@greenleafnursery.com' }];
+  `));
+
+  await page.evaluate(() => (window as any).eval(`openBloomCropUpdateModal([{ UNIQUE_ID: 'recipient-row', ITEMCODE: 'ROSE.001', COMMONNAME: 'Test Rose', SOURCE_TABLE: 'ph_master_inventory' }])`));
+  const bloom = page.locator('#bloom-crop-update-modal');
+  await expect(bloom).toBeVisible();
+  await bloom.getByRole('button', { name: /All App Users/ }).click();
+  const bloomDirectory = bloom.locator('input[data-bloom-crop-group="APP"]');
+  await expect(bloomDirectory).toHaveAttribute('data-rep-name', 'Alyssa Beitz');
+  await expect(bloom).not.toContainText('Legacy Only');
+  await page.waitForFunction(() => (window as any).__recipientDirectoryCalls.filter((action: string) => action === 'request_recipient_directory').length === 1);
+  await page.evaluate(() => (window as any).eval('closeBloomCropUpdateModal()'));
+
+  const requestStepOpened = await page.evaluate(() => (window as any).eval(`
+    canUseRequestEmailChainPicker = () => true;
+    getRequestRecipientDirectoryOwnerKey = () => 'profile:recipient-directory-dylan';
+    document.getElementById('request-rep-modal').classList.remove('hidden');
+    document.getElementById('step-3-qty').classList.remove('hidden');
+    showRequestEmailChainFinalStep();
+  `));
+  expect(requestStepOpened).toBe(true);
+  const requestPanel = page.locator('#request-email-chain-panel');
+  await expect(requestPanel).toBeVisible();
+  await requestPanel.getByRole('button', { name: /APP/ }).click();
+  await expect(requestPanel.locator('[data-request-email-chain-group="APP"][data-rep-name="Alyssa Beitz"]')).toBeAttached();
+  await expect(requestPanel).not.toContainText('Legacy Only');
+  await page.waitForFunction(() => (window as any).__recipientDirectoryCalls.filter((action: string) => action === 'request_recipient_directory').length === 2);
 });
 
 test('Phone Reclass hides intermediate delivery state and persists only the terminal result', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {

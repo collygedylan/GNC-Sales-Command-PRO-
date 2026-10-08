@@ -5,6 +5,8 @@ import globals from 'globals';
 export default [
   { ignores: ['node_modules/**', '.gnc-local/**', '_site/**', 'artifacts/**', 'v2/dist/**',
     'v2/storybook-static/**', 'assets/vendor/**', '**/*.min.js', '**/*.min.mjs', '**/*.database.types.ts',
+    // This externally built partner app is checked in with a pinned provenance hash; lint its editable source when available, not this sealed minified output.
+    'v2/public/partner/assets/index-B5eWPKuw.js',
     '**/database.types.ts', '**/*contracts.generated.ts', 'legacy_fallback/**', 'supabase/archive_migrations/**',
     'assets/alpha-command-center.js', 'assets/production-schedule.js', 'assets/assigned-items-table.js', 'assets/bunch-note-structured.js'] },
   { files: ['**/*.{js,mjs,cjs,jsx}'], languageOptions: { ecmaVersion: 'latest',

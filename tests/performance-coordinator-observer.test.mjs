@@ -48,7 +48,7 @@ function createFixture({ background = false, readHook = null } = {}) {
   };
   let reads = 0;
   const sandbox = {
-    module: { exports: {} }, AbortController,
+    module: { exports: {} }, AbortController, Date: { now: () => now },
     setTimeout(callback, delay) { const id = ++nextId; timers.set(id, { callback, at: now + delay }); return id; },
     clearTimeout(id) { timers.delete(id); }
   };
@@ -92,6 +92,7 @@ test('observer excludes only the persistent foreground safeguard and leaves its 
   const firstReadCount = fixture.reads;
   const before = fixture.observer.getPendingActivity();
   assert.equal(before.persistentPollTimers, 1);
+  assert.equal(before.nextPersistentPollInMs, 30000);
   assert.equal(before.pending, false);
   assert.equal(before.pendingTimers.length, 0);
 
@@ -99,6 +100,7 @@ test('observer excludes only the persistent foreground safeguard and leaves its 
   assert.equal(fixture.reads, firstReadCount + 1, 'the observed safeguard still performs its foreground check');
   const after = fixture.observer.getPendingActivity();
   assert.equal(after.persistentPollTimers, 1, 'the coordinator rearms the safeguard after the check');
+  assert.equal(after.nextPersistentPollInMs, 30000, 'the observer reports the new deadline without changing it');
   assert.equal(after.pending, false);
 });
 

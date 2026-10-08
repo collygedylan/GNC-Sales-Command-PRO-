@@ -4,6 +4,7 @@ export type BenchmarkMetric = { id: string; kind: MetricKind; samples: number[] 
 export type BenchmarkManifest = {
   schemaVersion: 1;
   baselineCommit: string;
+  sqlSchemaCommit: string;
   fixtureVersion: string;
   coldSamples: number;
   warmSamples: number;
@@ -51,7 +52,7 @@ export function parseBenchmarkManifest(input: unknown): BenchmarkManifest {
   if (new Set(profiles.map(entry => entry.id)).size !== profiles.length) throw new Error('PERFORMANCE_PROFILE_DUPLICATE');
   const coldSamples = integer(raw.coldSamples, 5, 30), warmSamples = integer(raw.warmSamples, 10, 100);
   if (warmSamples % coldSamples !== 0) throw new Error('PERFORMANCE_SAMPLE_RATIO_INVALID');
-  return { schemaVersion: 1, baselineCommit: sha(raw.baselineCommit, 40), fixtureVersion: string(raw.fixtureVersion),
+  return { schemaVersion: 1, baselineCommit: sha(raw.baselineCommit, 40), sqlSchemaCommit: sha(raw.sqlSchemaCommit, 40), fixtureVersion: string(raw.fixtureVersion),
     coldSamples, warmSamples, profiles,
     budgets: { relative: 0.15, browserNoiseMs: 25, databaseNoiseMs: 5 } };
 }

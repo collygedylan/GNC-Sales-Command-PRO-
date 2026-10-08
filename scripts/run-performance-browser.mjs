@@ -5,7 +5,10 @@ import { chromium } from 'playwright';
 import { compareBenchmarks, parseBenchmarkManifest, percentile } from '../services/performanceBaseline.ts';
 import { startReleaseTestServer } from './serve-release-tests.mjs';
 import { verifyReleaseArtifact } from './release-artifact.mjs';
-import { installPerformanceFixture, openPerformanceView, returnPerformanceHome, waitForPerformanceViewSettlement, PERFORMANCE_API_QUIET_MS } from './performance-browser-fixture.mjs';
+import { installPerformanceFixture, openPerformanceView, returnPerformanceHome, waitForPerformanceViewSettlement,
+  waitForPerformancePollWindow, PERFORMANCE_API_QUIET_MS } from './performance-browser-fixture.mjs';
+import { installPerformanceDomRemovalObserver } from './performance-dom-observer.mjs';
+import { installPerformanceLongTaskObserver } from './performance-longtask-observer.mjs';
 import { attachPerformanceResponseTracker, drainPerformanceResponseBodies, safePerformanceApiDiagnostic, settlePerformanceApiBoundary } from './performance-response-drain.mjs';
 import { installPerformanceRandomFixture, performanceRandomSeed } from './performance-random-fixture.mjs';
 import { runPerformanceBrowserPairs } from './performance-browser-pairs.mjs';
@@ -31,11 +34,36 @@ async function sealInfo(site) {
 async function settle(page) {
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
+function classifyApiTraffic(requests) {
+  const reads = [], writes = [], other = [];
+  let readBytes = 0, writeBytes = 0, otherBytes = 0;
+  for (const request of requests) {
+    if (request.operation === 'rpc:report_app_health_event') {
+      writes.push(request); writeBytes += request.bytes;
+    } else if (request.operation) {
+      reads.push(request); readBytes += request.bytes;
+    } else {
+      other.push(request); otherBytes += request.bytes;
+    }
+  }
+  return { reads, writes, other, readBytes, writeBytes, otherBytes };
+}
 async function measure(page, app, view, totals, fixtureControl, diagnosticCursor) {
+  if (app === 'live') await waitForPerformancePollWindow(page);
   await settle(page);
   const startIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
   const preludeRequests = totals.apiRequests.slice(diagnosticCursor, startIndex);
-  await page.evaluate(() => { window.__phase6Metrics = { longTaskMs: 0, domRemovals: 0 }; });
+  const sampleStart = await page.evaluate(viewId => {
+    window.__phase6Metrics = { viewId };
+    const dom = window.__phase6DomRemovalObserver;
+    if (!dom) throw new Error('PERFORMANCE_DOM_OBSERVER_MISSING');
+    dom.reset(viewId);
+    const longTasks = window.__phase6LongTaskObserver;
+    if (!longTasks) throw new Error('PERFORMANCE_LONGTASK_OBSERVER_MISSING');
+    const startedAt = longTasks.begin();
+    window.__phase6Metrics.sampleStart = startedAt;
+    return startedAt;
+  }, view);
   const started = performance.now();
   await openPerformanceView(page, app, view);
   await settle(page);
@@ -47,9 +75,11 @@ async function measure(page, app, view, totals, fixtureControl, diagnosticCursor
   const routeRequests = totals.apiRequests.slice(startIndex, endIndex);
   const routeErrors = [...totals.errors, ...routeRequests.map(request => request.error).filter(Boolean)];
   if (routeErrors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${routeErrors.join(',')}`);
-  const routeReads = endIndex - startIndex;
-  const routeBytes = routeRequests.reduce((sum, request) => sum + request.bytes, 0);
-  const evidence = await page.evaluate(() => window.__phase6Metrics);
+  const classified = classifyApiTraffic(routeRequests);
+  const evidence = await page.evaluate(({ viewId, startedAt }) => ({
+    ...window.__phase6LongTaskObserver.finish(startedAt),
+    ...window.__phase6DomRemovalObserver.snapshot(viewId)
+  }), { viewId: view, startedAt: sampleStart });
   const scrollFrameP95 = await page.evaluate(async appId => {
     const scroller = document.querySelector(appId === 'v2' ? 'main.main-scroll' : '#main-scroll-area');
     if (!(scroller instanceof HTMLElement)) throw new Error('PERFORMANCE_SCROLL_HOST_MISSING');
@@ -65,7 +95,9 @@ async function measure(page, app, view, totals, fixtureControl, diagnosticCursor
   }, app);
   await drainPerformanceResponseBodies(totals);
   if (totals.errors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${totals.errors.join(',')}`);
-  return { duration, reads: routeReads, bytes: routeBytes,
+  return { duration, reads: classified.reads.length, bytes: classified.readBytes,
+    writes: classified.writes.length, writeBytes: classified.writeBytes,
+    otherRequests: classified.other.length, otherBytes: classified.otherBytes,
     canceledReads: routeRequests.filter(request => request.canceled).length, requestRecords: routeRequests, preludeRequests,
     boundaryStartIndex: startIndex, boundaryEndIndex: endIndex, ...evidence, scrollFrameP95 };
 }
@@ -82,14 +114,20 @@ async function benchmark(site, info, profile, app, iteration) {
   const deferred = [];
   const initialExecutableJsBytes = [];
   const cancellationDiagnostics = [];
-  const apiReadDiagnostics = [];
+  const apiTrafficDiagnostics = [];
   const randomDiagnostics = [];
   const recordApiPhase = (indices, phase, requests) => {
     for (const request of requests) {
       if (indices.has(request.index)) throw new Error('PERFORMANCE_API_DIAGNOSTIC_DUPLICATE');
       indices.add(request.index);
     }
-    apiReadDiagnostics.push({ phase, reads: requests.map(safePerformanceApiDiagnostic) });
+    const classified = classifyApiTraffic(requests);
+    apiTrafficDiagnostics.push({ phase,
+      reads: classified.reads.map(safePerformanceApiDiagnostic),
+      writes: classified.writes.map(safePerformanceApiDiagnostic),
+      other: classified.other.map(safePerformanceApiDiagnostic),
+      requestCount: requests.length,
+      responseBytes: requests.reduce((sum, request) => sum + request.bytes, 0) });
   };
   try {
     // Each cold context gets a new Chromium process; warm visits stay inside it.
@@ -106,19 +144,9 @@ async function benchmark(site, info, profile, app, iteration) {
       const apiDiagnosticIndices = new Set();
       let apiDiagnosticCursor = 0;
       attachPerformanceResponseTracker(page, totals);
-      await page.addInitScript(() => {
-        window.__phase6Metrics = { longTaskMs: 0, domRemovals: 0 };
-        if (PerformanceObserver.supportedEntryTypes.includes('longtask')) new PerformanceObserver(entries => {
-          for (const entry of entries.getEntries()) window.__phase6Metrics.longTaskMs += entry.duration;
-        }).observe({ type: 'longtask' });
-        document.addEventListener('DOMContentLoaded', () => new MutationObserver(entries => {
-          for (const entry of entries) {
-            if (entry.target instanceof Element && entry.target.closest('#drive-content, #request-content, .request-list, .drive-item-list')) {
-              window.__phase6Metrics.domRemovals += entry.removedNodes.length;
-            }
-          }
-        }).observe(document.body, { childList: true, subtree: true }), { once: true });
-      });
+      await page.addInitScript({ content: `(${installPerformanceDomRemovalObserver.toString()})(globalThis);` });
+      await page.addInitScript({ content: `(${installPerformanceLongTaskObserver.toString()})(globalThis);` });
+      await page.addInitScript(() => { window.__phase6Metrics = {}; });
       try {
         const fixtureControl = await installPerformanceFixture(page, origin, app);
         const recordApiTransition = async phase => {
@@ -148,9 +176,9 @@ async function benchmark(site, info, profile, app, iteration) {
           apiDiagnosticCursor = cold.boundaryEndIndex;
           cancellationDiagnostics.push({ view, phase: 'cold', canceledApiReads: cold.canceledReads });
           for (const [key, value] of Object.entries(cold)) {
-            if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests'
+            if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests' || key === 'viewId'
               || key === 'boundaryStartIndex' || key === 'boundaryEndIndex') continue;
-            add(`${view}.cold.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', value);
+            add(`${view}.cold.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : /bytes$/i.test(key) ? 'bytes' : 'count', value);
           }
           await returnPerformanceHome(page, app);
           await recordApiTransition(`${view}.home-after-cold`);
@@ -161,9 +189,9 @@ async function benchmark(site, info, profile, app, iteration) {
             apiDiagnosticCursor = value.boundaryEndIndex;
             cancellationDiagnostics.push({ view, phase: `warm-${warm + 1}`, canceledApiReads: value.canceledReads });
             for (const [key, sample] of Object.entries(value)) {
-              if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests'
+              if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests' || key === 'viewId'
                 || key === 'boundaryStartIndex' || key === 'boundaryEndIndex') continue;
-              add(`${view}.warm.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : key === 'bytes' ? 'bytes' : 'count', sample);
+              add(`${view}.warm.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : /bytes$/i.test(key) ? 'bytes' : 'count', sample);
             }
             await returnPerformanceHome(page, app);
             await recordApiTransition(`${view}.home-after-warm-${warm + 1}`);
@@ -178,7 +206,11 @@ async function benchmark(site, info, profile, app, iteration) {
         }
         cancellationDiagnostics.push({ view: 'all', phase: 'final-drain', canceledApiReads: totals.apiRequests.filter(request => request.canceled).length });
         if (apiDiagnosticIndices.size !== totals.apiRequests.length) throw new Error('PERFORMANCE_API_DIAGNOSTIC_COVERAGE_MISMATCH');
-        add('all-api-reads', 'count', totals.apiRequests.length);
+        const fullTraffic = classifyApiTraffic(totals.apiRequests);
+        add('all-api-reads', 'count', fullTraffic.reads.length);
+        add('all-api-writes', 'count', fullTraffic.writes.length);
+        add('all-api-other', 'count', fullTraffic.other.length);
+        add('all-api-requests', 'count', totals.apiRequests.length);
         add('all-api-bytes', 'bytes', totals.apiRequests.reduce((sum, request) => sum + request.bytes, 0));
         deferred.push(totals.scriptBytes - initialBytes);
         randomDiagnostics.push(await page.evaluate(() => globalThis.__phase6RandomFixture.getState()));
@@ -190,9 +222,9 @@ async function benchmark(site, info, profile, app, iteration) {
   }
   const report = { schemaVersion: 1, commit: info.commit, baselineCommit: manifest.baselineCommit, artifactDigest: info.digest,
     fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browserVersion}`, viewport: { width: profile.width, height: profile.height },
-    method: `${app}:adjacent-counterbalanced-cold-process-and-warm-route-v7;service-workers-blocked;seeded-mulberry32-v1;healthSampling:${app === 'live' ? 'mulberry32-event-area-v1' : 'not-applicable'};all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-shell-dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
+    method: `${app}:adjacent-counterbalanced-cold-process-and-warm-route-v8;service-workers-blocked;seeded-mulberry32-v1;healthSampling:${app === 'live' ? 'mulberry32-event-area-v1' : 'not-applicable'};all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-shell-dataset-render-queues-api-idle-and-unmodified-poll-headroom-12s' : 'visible-content'};stable-route-root-dom-removals;traffic-read-write-classification-v1`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
-  const complete = { ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics, randomDiagnostics };
+  const complete = { ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiTrafficDiagnostics, randomDiagnostics };
   contextReports.push({ ...complete, iteration });
   return complete;
 }

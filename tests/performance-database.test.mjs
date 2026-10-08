@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   assertPairedSqlPerformance,
+  assertApprovedSqlSchemaExtension,
   assertPinnedReaderTextContract,
   assertSamePinnedMigrationSnapshot,
   assertSqlControlCoverage,
@@ -250,6 +251,23 @@ test('identical pinned readers and migration snapshots are required for shared S
   assert.throws(() => assertSamePinnedMigrationSnapshot(['supabase/migrations/a.sql'], ['supabase/migrations/a.sql'],
     [['supabase/migrations/a.sql', 'a'.repeat(40)]], [['supabase/migrations/a.sql', 'b'.repeat(40)]]),
   /PERFORMANCE_PINNED_SQL_MIGRATION_CONTENT_CHANGED/);
+});
+
+test('SQL schema pin permits the reviewed additive migration while locking old blobs and full current schema', () => {
+  const old = ['supabase/migrations/001_old.sql'];
+  const pinned = [...old, 'supabase/migrations/002_reviewed.sql'];
+  const oldHash = 'a'.repeat(40), newHash = 'b'.repeat(40);
+  assert.equal(assertApprovedSqlSchemaExtension(old, pinned, pinned,
+    [[old[0], oldHash]], [[old[0], oldHash], [pinned[1], newHash]], [[old[0], oldHash], [pinned[1], newHash]]), true);
+  assert.throws(() => assertApprovedSqlSchemaExtension(old, pinned, pinned,
+    [[old[0], oldHash]], [[old[0], 'c'.repeat(40)], [pinned[1], newHash]], [[old[0], 'c'.repeat(40)], [pinned[1], newHash]]),
+  /PERFORMANCE_PINNED_SQL_MIGRATION_CONTENT_CHANGED/);
+  assert.throws(() => assertApprovedSqlSchemaExtension(old, pinned, pinned,
+    [[old[0], oldHash]], [[old[0], oldHash], [pinned[1], newHash]], [[old[0], oldHash], [pinned[1], 'd'.repeat(40)]]),
+  /PERFORMANCE_PINNED_SQL_MIGRATION_CONTENT_CHANGED/);
+  assert.throws(() => assertApprovedSqlSchemaExtension(old, pinned, [...pinned, 'supabase/migrations/003_unreviewed.sql'],
+    [[old[0], oldHash]], [[old[0], oldHash], [pinned[1], newHash]], [[old[0], oldHash], [pinned[1], newHash], ['supabase/migrations/003_unreviewed.sql', 'e'.repeat(40)]]),
+  /PERFORMANCE_PINNED_SQL_MIGRATION_SET_CHANGED/);
 });
 
 test('identical SQL has shared-control coverage without synthetic baseline/candidate timing samples', () => {

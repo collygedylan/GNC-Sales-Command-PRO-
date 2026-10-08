@@ -14,7 +14,7 @@ const report = (revision, iteration) => ({
     { id: 'request.cold.duration', kind: 'duration', samples: [100 + iteration] },
     { id: 'request.warm.bytes', kind: 'bytes', samples: [iteration * 2, iteration * 2 + 1] }],
   initialExecutableJsBytes: [1000], deferredScriptBytes: [50], cancellationDiagnostics: [{ iteration, canceled: 1 }],
-  apiReadDiagnostics: [{ iteration, bytes: 5 }], randomDiagnostics: [{ iteration, seed: iteration + 1 }]
+  apiTrafficDiagnostics: [{ iteration, bytes: 5 }], randomDiagnostics: [{ iteration, seed: iteration + 1 }]
 });
 
 test('browser pairs run serial adjacent revisions with alternating first position and retain every sample', async () => {
@@ -37,7 +37,7 @@ test('browser pairs run serial adjacent revisions with alternating first positio
     for (const revision of ['baseline', 'candidate']) {
       assert.deepEqual(pair[revision].metrics[0].samples, [0, 1, 2, 3, 4]);
       assert.deepEqual(pair[revision].metrics[2].samples, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-      for (const key of ['initialExecutableJsBytes', 'deferredScriptBytes', 'cancellationDiagnostics', 'apiReadDiagnostics', 'randomDiagnostics']) {
+      for (const key of ['initialExecutableJsBytes', 'deferredScriptBytes', 'cancellationDiagnostics', 'apiTrafficDiagnostics', 'randomDiagnostics']) {
         assert.equal(pair[revision][key].length, manifest.coldSamples);
       }
     }
@@ -57,7 +57,7 @@ test('browser aggregation rejects mismatched identities, missing metrics, wrong 
     inputs => { inputs[1].metrics[0].samples.push(5); },
     inputs => { inputs[1].metrics[2].samples.pop(); },
     inputs => { inputs[1].metrics[0].kind = 'bytes'; },
-    inputs => { delete inputs[1].apiReadDiagnostics; },
+    inputs => { delete inputs[1].apiTrafficDiagnostics; },
     inputs => { inputs[1].randomDiagnostics = []; },
   ]) {
     const inputs = valid(); change(inputs);

@@ -11,7 +11,9 @@ const report = (kind, samples) => ({ schemaVersion: 1, commit: manifest.baseline
   method: 'paired-serial-v1', metrics: [{ id: 'drive', kind, samples }] });
 test('performance manifest pins a reviewed baseline and all device profiles', () => {
   assert.deepEqual(manifest.profiles.map(profile => profile.id), ['phone', 'tablet', 'desktop']);
+  assert.match(manifest.sqlSchemaCommit, /^[a-f0-9]{40}$/);
   assert.throws(() => parseBenchmarkManifest({ ...manifest, baselineCommit: 'main' }), /DIGEST_INVALID/);
+  assert.throws(() => parseBenchmarkManifest({ ...manifest, sqlSchemaCommit: 'main' }), /DIGEST_INVALID/);
   assert.throws(() => parseBenchmarkManifest({ ...manifest, budgets: { ...manifest.budgets, relative: 0.5 } }), /MANIFEST_INVALID/);
   assert.throws(() => parseBenchmarkManifest({ ...manifest, warmSamples: 11 }), /SAMPLE_RATIO_INVALID/);
 });

@@ -1,6 +1,7 @@
 import { hlMaster, installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
 import { installPerformanceCoordinatorObserver } from './performance-coordinator-observer.mjs';
 import { installPerformanceShellObserver } from './performance-shell-observer.mjs';
+import { isPerformancePollWindowReady } from './performance-dom-observer.mjs';
 
 export const inventoryRows = Array.from({ length: 1000 }, (_, index) => hlMaster(`perf-${String(index).padStart(5, '0')}`, {
   itemcode: `00${Math.floor(index / 4)}`, commonname: `Performance plant ${String(Math.floor(index / 4)).padStart(3, '0')}`,
@@ -18,6 +19,8 @@ export const PERFORMANCE_API_QUIET_MS = 75;
 export const PERFORMANCE_HOME_READY_TIMEOUT_MS = 15_000;
 export const PERFORMANCE_VIEW_READY_TIMEOUT_MS = 15_000;
 export const PERFORMANCE_COLD_STARTUP_TIMEOUT_MS = 15_000;
+export const PERFORMANCE_POLL_HEADROOM_MS = 12_000;
+export const PERFORMANCE_POLL_WINDOW_TIMEOUT_MS = 45_000;
 
 const performanceControlsByPage = new WeakMap();
 
@@ -45,6 +48,22 @@ export async function waitForPerformanceColdStartupReady(page, { timeoutMs = PER
   const handle = await page.waitForFunction(value => window.eval(value), expression, { polling: 'raf', timeout: timeoutMs });
   await handle.dispose();
   return { method: 'load-runtime-startup-restore-failed', timeoutMs };
+}
+
+export function buildPerformancePollWindowExpression(headroomMs = PERFORMANCE_POLL_HEADROOM_MS) {
+  if (!Number.isFinite(headroomMs) || headroomMs < 0) throw new Error('PERFORMANCE_POLL_HEADROOM_INVALID');
+  return `(${isPerformancePollWindowReady.toString()})(window.__phase6CoordinatorObserver?.getPendingActivity?.(), ${headroomMs})`;
+}
+
+export async function waitForPerformancePollWindow(page, { headroomMs = PERFORMANCE_POLL_HEADROOM_MS,
+  timeoutMs = PERFORMANCE_POLL_WINDOW_TIMEOUT_MS } = {}) {
+  if (!page || typeof page.waitForFunction !== 'function' || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
+    throw new Error('PERFORMANCE_POLL_WINDOW_OPTIONS_INVALID');
+  }
+  const expression = buildPerformancePollWindowExpression(headroomMs);
+  const handle = await page.waitForFunction(value => window.eval(value), expression, { polling: 'raf', timeout: timeoutMs });
+  await handle.dispose();
+  return { method: 'unmodified-coordinator-poll-headroom', headroomMs, timeoutMs };
 }
 
 export function attachPerformanceApiIdleTracker(page, { quietMs = PERFORMANCE_API_QUIET_MS } = {}) {

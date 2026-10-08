@@ -160,8 +160,12 @@ no increase. Existing Lighthouse, frame-gap and cached-view limits remain active
 No claim of real-device or production database latency follows from synthetic data.
 
 Database fixtures use 10,000 and 100,000 inventory rows, representative role
-predicates and first/deep pages. The SQL gate first verifies that the active migration
-paths and Git-clean contents match the pinned commit, the fixed app-api inventory
+predicates and first/deep pages. The browser/API baseline commit and SQL schema
+commit are pinned separately: browser comparisons keep their reviewed runtime
+baseline, while SQL controls use a reviewed schema snapshot. The SQL gate verifies
+that all migrations from the browser baseline retain their original blobs, the
+schema commit contains only the approved additive migration set, and the working
+tree matches that complete pinned schema. The fixed app-api inventory
 reader matches through its operation boundary (excluding only the old projector
 implementation), and the beta API reader matches apart from its release-version
 line. It then records 30 EXPLAIN samples for each identical page/count query as a

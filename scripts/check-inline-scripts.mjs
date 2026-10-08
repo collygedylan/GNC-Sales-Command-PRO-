@@ -19,7 +19,7 @@ while ((match = scriptPattern.exec(html))) {
   } catch (error) {
     const before = html.slice(0, match.index);
     const line = before.split(/\r?\n/).length;
-    throw new Error(`Inline script beginning near index.html:${line} did not parse: ${error.message}`);
+    throw new Error(`Inline script beginning near index.html:${line} did not parse: ${error.message}`, { cause: error });
   }
 }
 
@@ -41,7 +41,7 @@ for (const relativePath of [
   try {
     new Function(source);
   } catch (error) {
-    throw new Error(`${relativePath} did not parse: ${error.message}`);
+    throw new Error(`${relativePath} did not parse: ${error.message}`, { cause: error });
   }
 }
 

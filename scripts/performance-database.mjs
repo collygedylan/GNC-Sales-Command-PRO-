@@ -74,23 +74,22 @@ function stripAppVersionLine(source) {
 }
 
 /** Fail closed unless the SQL benchmark's pinned database and readers are unchanged. */
-export function assertPinnedSqlContract({ root = repoRoot, baselineCommit = manifest.baselineCommit, execute = run } = {}) {
-  if (!/^[a-f0-9]{40}$/.test(String(baselineCommit))) throw errorCode('PERFORMANCE_PINNED_SQL_BASELINE_INVALID');
+export function assertPinnedSqlContract({ root = repoRoot, baselineCommit = manifest.baselineCommit,
+  sqlSchemaCommit = manifest.sqlSchemaCommit, execute = run } = {}) {
+  if (!/^[a-f0-9]{40}$/.test(String(baselineCommit)) || !/^[a-f0-9]{40}$/.test(String(sqlSchemaCommit))) {
+    throw errorCode('PERFORMANCE_PINNED_SQL_BASELINE_INVALID');
+  }
   const baselinePaths = execute('git', ['ls-tree', '-r', '-z', '--name-only', baselineCommit, '--', 'supabase/migrations'], { root, capture: true })
     .split('\0').filter(Boolean).sort();
+  const schemaPaths = execute('git', ['ls-tree', '-r', '-z', '--name-only', sqlSchemaCommit, '--', 'supabase/migrations'], { root, capture: true })
+    .split('\0').filter(Boolean).sort();
   const currentPaths = listSqlFiles(path.join(root, 'supabase/migrations'), root);
-  if (JSON.stringify(currentPaths) !== JSON.stringify(baselinePaths)) throw errorCode('PERFORMANCE_PINNED_SQL_MIGRATION_SET_CHANGED');
-
-  const currentMigrationHashes = [];
-  const baselineMigrationHashes = [];
-  for (const file of currentPaths) {
-    const baselineHash = execute('git', ['rev-parse', `${baselineCommit}:${file}`], { root, capture: true }).trim();
+  const priorPaths = baselinePaths.map(file => [file, execute('git', ['rev-parse', `${baselineCommit}:${file}`], { root, capture: true }).trim()]);
+  const schemaHashes = schemaPaths.map(file => [file, execute('git', ['rev-parse', `${sqlSchemaCommit}:${file}`], { root, capture: true }).trim()]);
+  const currentHashes = currentPaths.map(file => [file,
     // --path applies Git's clean filters so Windows checkout line endings map to the pinned blob.
-    const currentHash = execute('git', ['hash-object', `--path=${file}`, '--', file], { root, capture: true }).trim();
-    baselineMigrationHashes.push([file, baselineHash]);
-    currentMigrationHashes.push([file, currentHash]);
-  }
-  assertSamePinnedMigrationSnapshot(baselinePaths, currentPaths, baselineMigrationHashes, currentMigrationHashes);
+    execute('git', ['hash-object', `--path=${file}`, '--', file], { root, capture: true }).trim()]);
+  assertApprovedSqlSchemaExtension(baselinePaths, schemaPaths, currentPaths, priorPaths, schemaHashes, currentHashes);
 
   const baselineAppApi = normalizeSourceText(execute('git', ['show', `${baselineCommit}:supabase/functions/app-api/index.ts`], { root, capture: true }));
   const currentAppApi = normalizeSourceText(readFileSync(path.join(root, 'supabase/functions/app-api/index.ts'), 'utf8'));
@@ -99,11 +98,40 @@ export function assertPinnedSqlContract({ root = repoRoot, baselineCommit = mani
   const readerDigests = assertPinnedReaderTextContract({ baselineAppApi, currentAppApi, baselineBetaApi, currentBetaApi });
   return {
     baselineCommit,
+    sqlSchemaCommit,
     migrationCount: currentPaths.length,
-    migrationDigest: createHash('sha256').update(JSON.stringify(baselineMigrationHashes)).digest('hex'),
+    migrationDigest: createHash('sha256').update(JSON.stringify(schemaHashes)).digest('hex'),
     ...readerDigests,
     comparison: 'pinned SQL contract unchanged; timing is shared-control only',
   };
+}
+
+/** Permit only reviewed additive migrations while requiring all old blobs and the pinned schema to match exactly. */
+export function assertApprovedSqlSchemaExtension(baselinePaths, schemaPaths, currentPaths, baselineHashes, schemaHashes, currentHashes) {
+  const normalize = value => Array.isArray(value) ? value.slice().sort() : [];
+  const previous = normalize(baselinePaths), pinned = normalize(schemaPaths), current = normalize(currentPaths);
+  if (!Array.isArray(baselinePaths) || !Array.isArray(schemaPaths) || !Array.isArray(currentPaths)
+      || new Set(previous).size !== previous.length || new Set(pinned).size !== pinned.length
+      || new Set(current).size !== current.length || previous.some(file => !pinned.includes(file))
+      || JSON.stringify(pinned) !== JSON.stringify(current)) {
+    throw errorCode('PERFORMANCE_PINNED_SQL_MIGRATION_SET_CHANGED');
+  }
+  const mapHashes = (entries, expected) => {
+    if (!Array.isArray(entries) || entries.length !== expected.length) throw errorCode('PERFORMANCE_PINNED_SQL_MIGRATION_CONTENT_CHANGED');
+    const result = new Map(entries);
+    if (result.size !== expected.length || expected.some(file => !/^[a-f0-9]{40}$/.test(String(result.get(file) || '')))) {
+      throw errorCode('PERFORMANCE_PINNED_SQL_MIGRATION_CONTENT_CHANGED');
+    }
+    return result;
+  };
+  const previousByPath = mapHashes(baselineHashes, previous);
+  const pinnedByPath = mapHashes(schemaHashes, pinned);
+  const currentByPath = mapHashes(currentHashes, current);
+  if (previous.some(file => previousByPath.get(file) !== pinnedByPath.get(file))
+      || pinned.some(file => pinnedByPath.get(file) !== currentByPath.get(file))) {
+    throw errorCode('PERFORMANCE_PINNED_SQL_MIGRATION_CONTENT_CHANGED');
+  }
+  return true;
 }
 
 export function assertSamePinnedMigrationSnapshot(baselinePaths, currentPaths, baselineHashes, currentHashes) {

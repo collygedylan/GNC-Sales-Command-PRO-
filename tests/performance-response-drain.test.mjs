@@ -6,7 +6,8 @@ import vm from 'node:vm';
 import test from 'node:test';
 import { attachPerformanceApiIdleTracker, buildPerformanceViewRuntimeReadyExpression, isPerformanceHomeRuntimeReady, isPerformanceViewRuntimeReady,
   buildPerformanceColdStartupReadyExpression, isPerformanceColdStartupReady, waitForPerformanceColdStartupReady,
-  waitForPerformanceHomeReadiness, waitForPerformanceViewReadiness } from '../scripts/performance-browser-fixture.mjs';
+  waitForPerformanceHomeReadiness, waitForPerformanceViewReadiness, buildPerformancePollWindowExpression } from '../scripts/performance-browser-fixture.mjs';
+import { isPerformancePollWindowReady } from '../scripts/performance-dom-observer.mjs';
 import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
 
 test('response body drain clears completed batches and captures responses added while waiting', async () => {
@@ -99,6 +100,17 @@ test('API idle tracker rejects an event-loop stall beyond the timeout', async t 
   const rejected = assert.rejects(tracker.waitForApiIdle({ timeoutMs: 100 }), /PERFORMANCE_API_IDLE_TIMEOUT/);
   t.mock.timers.tick(150);
   await rejected;
+});
+
+test('poll-headroom guard waits for a completed existing poll deadline and fails closed without instrumentation', () => {
+  const expression = buildPerformancePollWindowExpression(12000);
+  const evaluate = activity => vm.runInNewContext(expression, { window: { __phase6CoordinatorObserver: activity
+    ? { getPendingActivity: () => activity } : undefined } });
+  assert.equal(isPerformancePollWindowReady({ pending: false, persistentPollTimers: 1, nextPersistentPollInMs: 12000 }, 12000), false);
+  assert.equal(isPerformancePollWindowReady({ pending: true, persistentPollTimers: 1, nextPersistentPollInMs: 30000 }, 12000), false);
+  assert.equal(evaluate({ pending: false, persistentPollTimers: 1, nextPersistentPollInMs: 12001 }), true);
+  assert.equal(evaluate({ pending: false, persistentPollTimers: 1, nextPersistentPollInMs: 9000 }), false);
+  assert.equal(evaluate(null), false, 'missing coordinator evidence cannot silently pass the guard');
 });
 
 test('Home readiness waits for deferred loader work before accepting an idle API interval', async () => {

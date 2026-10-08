@@ -130,7 +130,7 @@ test('HL PO failures retain files and expose sanitized parse reason codes', () =
   }
   assert.match(appsScriptBackend, /failedFiles\.push\(\{ name: fileName, error: errorMessage, errorCode: errorCode \}\)/);
   assert.match(appsScriptBackend, /Keeping \$\{fileName\} in source folder for correction\/retry/);
-  assert.match(appsScriptBackend, /status\.errorCode = sanitizeManualSyncErrorCode_\(failedFileErrors\[0\]/);
+  assert.match(appsScriptBackend, /status\.errorCode = sanitizeManualSyncErrorCode_\(stageResult\.errorCode \|\| stageResult\.error_code \|\| \(failedFileErrors\[0\] && failedFileErrors\[0\]\.errorCode\), 'MANUAL_SYNC_STAGE_FAILED'\)/);
   assert.match(appsScriptBackend, /failedFileErrors\.map\(function\(entry\)[\s\S]*return \{ errorCode: sanitizeManualSyncErrorCode_/);
   assert.doesNotMatch(appsScriptBackend, /status\.error = buildManualSyncStageFailureMessage_[\s\S]*failedFileErrors\[0\]\.error/);
 });

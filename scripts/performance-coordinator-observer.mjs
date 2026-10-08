@@ -9,6 +9,7 @@ export function installPerformanceCoordinatorObserver(root = globalThis) {
 
   const coordinators = new Set();
   const observedApis = new WeakSet();
+  const now = () => Number(root.Date?.now?.() ?? Date.now());
   const observer = Object.freeze({
     getPendingActivity() {
       const pendingTimers = [];
@@ -17,9 +18,14 @@ export function installPerformanceCoordinatorObserver(root = globalThis) {
       let foregroundStatus = null;
       let backgroundStatus = null;
       let persistentPollTimers = 0;
+      let nextPersistentPollInMs = null;
       for (const state of coordinators) {
         for (const timer of state.timers.values()) {
-          if (timer.kind === 'poll') persistentPollTimers++;
+          if (timer.kind === 'poll') {
+            persistentPollTimers++;
+            const dueInMs = Math.max(0, timer.dueAt - now());
+            nextPersistentPollInMs = nextPersistentPollInMs === null ? dueInMs : Math.min(nextPersistentPollInMs, dueInMs);
+          }
           else pendingTimers.push({ kind: timer.kind, delayMs: timer.delayMs });
         }
         activeRevisionReads += state.activeRevisionReads;
@@ -38,7 +44,8 @@ export function installPerformanceCoordinatorObserver(root = globalThis) {
         backgroundActive,
         foregroundStatus,
         backgroundStatus,
-        persistentPollTimers
+        persistentPollTimers,
+        nextPersistentPollInMs
       });
     }
   });
@@ -72,7 +79,7 @@ export function installPerformanceCoordinatorObserver(root = globalThis) {
               return callback.apply(this, callbackArgs);
             };
             handle = originalSetTimeout.call(this, observedCallback, delay, ...args);
-            state.timers.set(handle, { kind, delayMs });
+            state.timers.set(handle, { kind, delayMs, dueAt: now() + delayMs });
             return handle;
           },
           clearTimeout(handle) {
