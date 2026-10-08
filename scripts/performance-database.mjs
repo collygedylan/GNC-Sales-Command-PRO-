@@ -13,6 +13,7 @@ import {
 } from '../supabase/functions/_shared/inventory-projections.ts';
 import { jsonObject, jsonValue } from '../services/database-contract-runtime.ts';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
+import { createApiSampleDiagnostics } from './performance-api-sample-diagnostics.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 
 const MAX_SYNTHETIC_ROWS = 100_000;
@@ -678,8 +679,9 @@ async function expectedTotals(db, prefix, since, size) {
   return totals;
 }
 
-async function callAppApi(apiUrl, identity, payload) {
+async function callAppApi(apiUrl, identity, payload, apiDiagnostics) {
   const endpoint = new URL('/functions/v1/app-api', apiUrl);
+  const requestEluStart = apiDiagnostics.snapshotEventLoopUtilization();
   const started = performance.now();
   const response = await fetch(endpoint, { method: 'POST', headers: {
     apikey: identity.publishableKey,
@@ -687,17 +689,29 @@ async function callAppApi(apiUrl, identity, payload) {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-store',
   }, body: JSON.stringify({ action: 'inventory_read', ...payload }), signal: AbortSignal.timeout(30000) });
+  const headersAt = performance.now();
+  const bodyReadStartedAt = headersAt;
   const bodyText = await response.text();
-  const elapsed = performance.now() - started;
+  const bodyCompleteAt = performance.now();
+  const requestEluEnd = apiDiagnostics.snapshotEventLoopUtilization();
+  const elapsed = bodyCompleteAt - started;
   if (!response.ok) {
     let responseBody = null;
     try { responseBody = JSON.parse(bodyText); } catch { /* Error responses may not be JSON. */ }
     throw errorCode(`PERFORMANCE_AUTHENTICATED_API_FAILED:${response.status}:${sanitizedApplicationErrorCode(responseBody)}`);
   }
+  const decodeEluStart = apiDiagnostics.snapshotEventLoopUtilization();
+  const decodeStartedAt = performance.now();
   let body;
   try { body = JSON.parse(bodyText); } catch { throw errorCode('PERFORMANCE_API_JSON_INVALID'); }
   if (body?.ok !== true || !body.data || !Array.isArray(body.data.rows)) throw errorCode('PERFORMANCE_API_RESPONSE_INVALID');
-  return { elapsed, bytes: Buffer.byteLength(bodyText), body };
+  const bytes = Buffer.byteLength(bodyText);
+  const decodeEndedAt = performance.now();
+  const decodeEluEnd = apiDiagnostics.snapshotEventLoopUtilization();
+  return { elapsed, bytes, body, timing: {
+    requestStartedAt: started, headersAt, bodyReadStartedAt, bodyCompleteAt,
+    decodeStartedAt, decodeEndedAt, requestEluStart, requestEluEnd, decodeEluStart, decodeEluEnd,
+  } };
 }
 
 function apiRequestFor(scenario) {
@@ -851,7 +865,9 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
   }) : null;
   let seeded = false;
   let report;
+  let apiSampleDiagnosticsSummary = null;
   let cleanupFailure;
+  const apiDiagnostics = mode === 'api' ? createApiSampleDiagnostics() : null;
   try {
     if (mode === 'api' && (!values.SERVICE_ROLE_KEY || !values.ANON_KEY || process.env.EXPECTED_PROJECT_REF !== 'local')) {
       throw errorCode('PERFORMANCE_LOCAL_AUTH_ENV_REQUIRED');
@@ -891,8 +907,16 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
         const expectedPageDigest = await expectedApiPageDigest(db, scenario);
         const samples = [];
         for (let index = 0; index < manifest.coldSamples + manifest.warmSamples; index += 1) {
-          const response = await callAppApi(apiUrl, identity, request);
+          const response = await callAppApi(apiUrl, identity, request, apiDiagnostics);
+          const validationEluStart = apiDiagnostics.snapshotEventLoopUtilization();
+          const validationStartedAt = performance.now();
           assertApiResponse(scenario, response, expectedPageDigest);
+          const validationEndedAt = performance.now();
+          const validationEluEnd = apiDiagnostics.snapshotEventLoopUtilization();
+          apiDiagnostics.recordSample({ scenario: scenario.id, sampleIndex: index,
+            ...response.timing,
+            validationStartedAt, validationEndedAt, validationEluStart, validationEluEnd,
+          });
           samples.push(response.elapsed);
           metrics.add(`api.${scenario.id}.response_ms`, 'duration', response.elapsed);
           metrics.add(`api.${scenario.id}.response_bytes`, 'bytes', response.bytes);
@@ -905,6 +929,21 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
     await runStage('10k');
     await insertInventoryRange(db, prefix, INITIAL_SYNTHETIC_ROWS + 1, MAX_SYNTHETIC_ROWS - INITIAL_SYNTHETIC_ROWS);
     await runStage('100k');
+    if (apiDiagnostics) {
+      const apiSampleDiagnostics = apiDiagnostics.finalize();
+      for (const evidence of planEvidence) {
+        const samples = apiSampleDiagnostics.scenarios[evidence.scenario];
+        if (samples) evidence.apiSampleDiagnostics = samples;
+      }
+      apiSampleDiagnosticsSummary = {
+        observerAvailable: apiSampleDiagnostics.observerAvailable,
+        gcEntryLimit: apiSampleDiagnostics.gcEntryLimit,
+        gcEntriesObserved: apiSampleDiagnostics.gcEntriesObserved,
+        gcEntriesDropped: apiSampleDiagnostics.gcEntriesDropped,
+        perScenario: Object.fromEntries(Object.entries(apiSampleDiagnostics.scenarios).map(([scenario, samples]) => [scenario, samples.length])),
+        method: 'All API samples retained. response_ms remains fetch start through response.text completion; JSON decode and parity validation are reported separately. GC overlaps are diagnostic only.',
+      };
+    }
     if (mode === 'sql') assertSqlControlCoverage(planEvidence, expectedSqlControls);
 
     const sourceRoot = mode === 'api' ? path.resolve(process.env.PERFORMANCE_SOURCE_ROOT || workspaceRoot) : root;
@@ -914,6 +953,9 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
     const sourceCommit = mode === 'api' ? String(process.env.PERFORMANCE_SOURCE_COMMIT || '').trim() : undefined;
     if (mode === 'api' && !/^[a-f0-9]{40}$/.test(sourceCommit)) throw errorCode('PERFORMANCE_SOURCE_COMMIT_INVALID');
     report = buildReport(metrics, planEvidence, { ...performanceArtifactDigest(sourceRoot, mode), mode });
+    if (apiSampleDiagnosticsSummary) {
+      report.diagnostics = { ...report.diagnostics, apiSampleDiagnostics: apiSampleDiagnosticsSummary };
+    }
     const indexes = await db.query(`SELECT indexname,indexdef FROM pg_indexes
       WHERE schemaname='public' AND tablename='ph_master_inventory' ORDER BY indexname`);
     report.diagnostics = { ...report.diagnostics,
@@ -930,6 +972,7 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
         sqlSampleMethod: '30 shared-control EXPLAIN samples per identical page/count query; no baseline/candidate timing comparison or SQL speedup claim' };
     }
   } finally {
+    apiDiagnostics?.close();
     for (const user of users.values()) {
       try { await cleanupLocalIdentity(db, adminClient, user.userId, user.legacyUserId); } catch (error) { cleanupFailure ||= error; }
     }

@@ -212,6 +212,17 @@ export async function installPerformanceFixture(page, origin, app) {
       startupMode: 'cold', beforeLogin: async () => {
         await page.locator('#login-button').waitFor({ state: 'visible' });
         await waitForPerformanceColdStartupReady(page);
+        await page.evaluate(() => {
+          const reporter = window.eval('reportPerformanceHealthEvent');
+          if (typeof reporter !== 'function' || reporter !== window.reportPerformanceHealthEvent
+              || window.__phase6RandomFixture?.healthReporterContract !== 'first-random-is-10-percent-gate-v1') {
+            throw new Error('PERFORMANCE_HEALTH_REPORTER_BINDING_INVALID');
+          }
+          window.eval('reportPerformanceHealthEvent = __phase6RandomFixture.wrapHealthReporter(reportPerformanceHealthEvent); window.reportPerformanceHealthEvent = reportPerformanceHealthEvent;');
+          if (window.eval('reportPerformanceHealthEvent === window.reportPerformanceHealthEvent') !== true) {
+            throw new Error('PERFORMANCE_HEALTH_REPORTER_INSTALL_FAILED');
+          }
+        });
         await page.evaluate(`(${installPerformanceShellObserver.toString()})(globalThis)`);
       },
       beforeNavigate: async () => {

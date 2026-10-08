@@ -118,6 +118,15 @@ existing sampled performance telemetry still runs and every emitted RPC is
 counted; unseeded sampling otherwise changes strict read/byte totals even for
 identical code. Each report records the seed, algorithm and number of random
 calls. Native cryptographic identifiers, real clocks and timers remain unchanged.
+The live fixture gives the existing 10% health-report gate a separately seeded
+stream per event name and area. Removing unrelated startup work can shift the
+global random sequence; this keeps matching health events comparable without
+suppressing telemetry. The wrapper validates the original synchronous sampling
+gate, consumes its original global draw, and restores that generator before the
+handler performs RPC work. No-user and offline paths retain their early return.
+It installs after cold startup and before login on both artifacts, without
+rewriting artifact bytes. Reports include bounded stream, draw and sample counts.
+Every emitted request and completed byte remains in the original budgets.
 Each cold context now owns a fresh Chromium process, while its warm revisits
 remain in that same context. Matching baseline/candidate contexts run adjacently;
 which revision runs first alternates by context number and viewport. The runner
@@ -187,6 +196,14 @@ Function-server startup failures report fixed diagnostic categories and process
 status from at most the final 64 KiB of a private temporary log. Raw logs and
 local credentials are never published; normal owned-workspace cleanup deletes
 them. This does not retry or replace any benchmark observation.
+Each API sample also records response-header and body-completion timestamps,
+then separate JSON decoding and parity-validation durations. The response metric
+still starts immediately before fetch and ends immediately after the complete
+response body. Bounded Node GC observations and event-loop utilization provide
+client-side diagnostic context; overlap does not establish a cause of latency.
+All samples and assertions remain in the report, including slow first requests.
+The observer disconnects on success and failure and emits no response payloads
+or credentials.
 
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox

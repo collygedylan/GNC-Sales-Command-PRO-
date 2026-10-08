@@ -190,7 +190,7 @@ async function benchmark(site, info, profile, app, iteration) {
   }
   const report = { schemaVersion: 1, commit: info.commit, baselineCommit: manifest.baselineCommit, artifactDigest: info.digest,
     fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browserVersion}`, viewport: { width: profile.width, height: profile.height },
-    method: `${app}:adjacent-counterbalanced-cold-process-and-warm-route-v6;service-workers-blocked;seeded-mulberry32-v1;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-shell-dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
+    method: `${app}:adjacent-counterbalanced-cold-process-and-warm-route-v7;service-workers-blocked;seeded-mulberry32-v1;healthSampling:${app === 'live' ? 'mulberry32-event-area-v1' : 'not-applicable'};all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-shell-dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
   const complete = { ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics, randomDiagnostics };
   contextReports.push({ ...complete, iteration });
