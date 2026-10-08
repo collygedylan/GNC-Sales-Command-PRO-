@@ -10,7 +10,7 @@ const { createCoordinator } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
 const settle = async () => { for (let i = 0; i < 25; i++) await Promise.resolve(); };
 function fixture() {
-    let revision = '1', state = 'ready', permission = 'role-v1', clock = 1000;
+    let revision = '1', state = 'ready', permission = 'role-v1', changedAt = '2026-10-08T00:00:00Z', clock = 1000;
     let rows = [{ id: 'dock-28' }], reads = 0, metadataReads = 0, subscriptions = 0, closes = 0;
     let fault = null, loadHook = null, metadataHook = null, notify = null;
     const commits = [], statuses = [], timers = new Map(); let timerId = 0;
@@ -23,7 +23,7 @@ function fixture() {
         readRevisions: async (keys) => {
             metadataReads++; if (metadataHook) await metadataHook();
             return { contractVersion: 1, permissionVersion: permission, serverTime: '2026-09-08T00:00:00Z',
-                sources: keys.map((key) => ({ key, revision, state, changedAt: '2026-09-08T00:00:00Z' })) };
+                sources: keys.map((key) => ({ key, revision, state, changedAt })) };
         },
         onStatus: (value) => statuses.push(value), now: () => clock,
         subscribe: (changed) => { subscriptions++; notify = changed; return () => { closes++; }; },
@@ -31,7 +31,7 @@ function fixture() {
         clearTimeout: (id) => timers.delete(id)
     });
     return { coordinator, context, adapter, commits, statuses, timers,
-        set revision(value) { revision = value; }, set state(value) { state = value; }, set rows(value) { rows = value; },
+        set revision(value) { revision = value; }, set state(value) { state = value; }, set changedAt(value) { changedAt = value; }, set rows(value) { rows = value; },
         set fault(value) { fault = value; }, set loadHook(value) { loadHook = value; }, set metadataHook(value) { metadataHook = value; },
         set permission(value) { permission = value; },
         set clock(value) { clock = value; },
@@ -74,6 +74,18 @@ test('same row count updates and deletions replace the old snapshot', async () =
     f.revision = '2'; f.rows = [{ id: 'dock-29' }]; await f.coordinator.check();
     f.revision = '3'; f.rows = []; await f.coordinator.check();
     assert.deepEqual(f.commits.at(-2), [{ id: 'dock-29' }]); assert.deepEqual(f.commits.at(-1), []);
+});
+test('a previous-day source revision invalidates the prior cache and applies current rows', async () => {
+    const f = fixture();
+    f.changedAt = '2026-10-07T23:59:59Z';
+    await f.coordinator.check();
+    const firstReads = f.reads;
+    f.revision = '2';
+    f.changedAt = '2026-10-08T00:00:00Z';
+    f.rows = [{ id: 'updated-after-yesterday-import' }];
+    await f.coordinator.check();
+    assert.equal(f.reads, firstReads + 1);
+    assert.deepEqual(f.commits.at(-1), [{ id: 'updated-after-yesterday-import' }]);
 });
 test('overlapping signals are deduplicated and do not duplicate full reads', async () => {
     const f = fixture(); const gate = deferred(); f.loadHook = () => gate.promise;

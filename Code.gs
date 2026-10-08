@@ -1561,10 +1561,10 @@ function emitManualSyncLiveEvent_(status) {
 }
 
 const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
-  drive: { label: 'Drive Around', run: runDriveAroundOnly },
+  drive: { label: 'Drive Around', run: runDriveAroundOnly, continueOnSourceValidationFailure: true },
   drive_history: { label: 'Drive Around History', run: runDriveAroundHistoryOnly },
-  soc: { label: 'SOC', run: runSOCOnly },
-  reserves: { label: 'Reserves', run: runReservesOnly },
+  soc: { label: 'SOC', run: runSOCOnly, continueOnSourceValidationFailure: true },
+  reserves: { label: 'Reserves', run: runReservesOnly, continueOnSourceValidationFailure: true },
   customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
   warehouse_assigned_items: { label: 'Warehouse Assigned Items', run: runWarehouseAssignedItemsOnly },
   cav: { label: 'CAV', run: runCavOnly },
@@ -1764,7 +1764,160 @@ function normalizeManualSyncFailedFileEntries_(stageResult) {
   }).filter(function(entry) { return entry.name || entry.error; });
 }
 
+const IMPORT_SOURCE_VALIDATION_ERROR_CODES_ = Object.freeze([
+  'IMPORT_SOURCE_EMPTY',
+  'IMPORT_SOURCE_NO_HEADER',
+  'IMPORT_SOURCE_NO_VALID_IDENTITIES'
+]);
+const IMPORT_SOURCE_REJECTION_MARKERS_KEY_ = 'IMPORT_SOURCE_REJECTION_MARKERS_V1';
+const IMPORT_SOURCE_REJECTION_MARKERS_MAX_ = 48;
+
+function createImportSourceRejectionTrackerError_(message) {
+  const error = new Error(String(message || 'Could not safely retain a rejected source file for review.'));
+  error.errorCode = 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED';
+  return error;
+}
+
+function readImportSourceRejectionMarkers_() {
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(IMPORT_SOURCE_REJECTION_MARKERS_KEY_) || '';
+  if (!raw) return { properties: properties, markers: {} };
+  let markers;
+  try { markers = JSON.parse(raw); } catch (ignored) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  if (!markers || typeof markers !== 'object' || Array.isArray(markers)) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  Object.keys(markers).forEach(function(key) {
+    const marker = markers[key];
+    if (!marker || typeof marker !== 'object' || !Number.isFinite(Number(marker.modifiedAt)) || !isImportSourceValidationErrorCode_(marker.errorCode)) {
+      throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+    }
+  });
+  return { properties: properties, markers: markers };
+}
+
+function getImportSourceRejectionFileIdentity_(tableName, file) {
+  const fileId = String(file && file.getId && file.getId() || '').trim();
+  const modifiedAt = Number(file && file.getLastUpdated && file.getLastUpdated().getTime());
+  if (!fileId || !Number.isFinite(modifiedAt) || modifiedAt < 0) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  return { key: `${String(tableName || '').trim()}|${fileId}`, fileId: fileId, modifiedAt: modifiedAt };
+}
+
+function saveImportSourceRejectionMarkers_(state) {
+  const markers = state && state.markers || {};
+  const keys = Object.keys(markers);
+  const serialized = JSON.stringify(markers);
+  if (keys.length > IMPORT_SOURCE_REJECTION_MARKERS_MAX_ || serialized.length > 7000) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  try {
+    state.properties.setProperty(IMPORT_SOURCE_REJECTION_MARKERS_KEY_, serialized);
+  } catch (ignored) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+}
+
+function pruneImportSourceRejectionMarkers_(tableName, pendingFiles) {
+  const state = readImportSourceRejectionMarkers_();
+  const prefix = `${String(tableName || '').trim()}|`;
+  const pendingById = new Map();
+  (Array.isArray(pendingFiles) ? pendingFiles : []).forEach(function(file) {
+    const identity = getImportSourceRejectionFileIdentity_(tableName, file);
+    pendingById.set(identity.fileId, identity.modifiedAt);
+  });
+  let changed = false;
+  Object.keys(state.markers).forEach(function(key) {
+    if (key.indexOf(prefix) !== 0) return;
+    const marker = state.markers[key];
+    const fileId = key.slice(prefix.length);
+    if (!pendingById.has(fileId) || pendingById.get(fileId) !== Number(marker.modifiedAt)) {
+      delete state.markers[key];
+      changed = true;
+    }
+  });
+  if (changed) saveImportSourceRejectionMarkers_(state);
+  return state;
+}
+
+function recordImportSourceRejection_(state, tableName, file, errorCode) {
+  const identity = getImportSourceRejectionFileIdentity_(tableName, file);
+  const code = String(errorCode || '').trim().toUpperCase();
+  if (!isImportSourceValidationErrorCode_(code)) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  state.markers[identity.key] = { modifiedAt: identity.modifiedAt, errorCode: code };
+  saveImportSourceRejectionMarkers_(state);
+  return identity;
+}
+
+function getImportSourceRejectionMarker_(state, tableName, file) {
+  const identity = getImportSourceRejectionFileIdentity_(tableName, file);
+  const marker = state && state.markers ? state.markers[identity.key] : null;
+  return marker && Number(marker.modifiedAt) === identity.modifiedAt ? marker : null;
+}
+
+function createImportSourceValidationError_(errorCode, message) {
+  const safeCode = String(errorCode || '').trim().toUpperCase();
+  if (IMPORT_SOURCE_VALIDATION_ERROR_CODES_.indexOf(safeCode) < 0) {
+    throw new Error('IMPORT_SOURCE_VALIDATION_CODE_INVALID');
+  }
+  const error = new Error(String(message || 'The import source did not contain a usable snapshot.'));
+  error.errorCode = safeCode;
+  return error;
+}
+
+function getImportSourceValidationErrorCode_(stats, totalRows) {
+  const safeStats = stats || {};
+  const sourceRows = Math.max(Number(safeStats.sourceRows) || 0, Number(totalRows) || 0);
+  const validIdentityRows = Number(safeStats.validIdentityRows) || 0;
+  if (sourceRows <= 0) return 'IMPORT_SOURCE_EMPTY';
+  if (validIdentityRows <= 0) return 'IMPORT_SOURCE_NO_VALID_IDENTITIES';
+  return '';
+}
+
+function throwIfSnapshotSourceInvalid_(stats, totalRows, sourceName, tableName) {
+  const errorCode = getImportSourceValidationErrorCode_(stats, totalRows);
+  if (!errorCode) return;
+  const safeSource = String(sourceName || 'source file').trim();
+  const safeTable = String(tableName || 'table').trim();
+  const message = errorCode === 'IMPORT_SOURCE_EMPTY'
+    ? `No data rows were found in ${safeSource}; skipped destructive sync for ${safeTable}.`
+    : `0 valid snapshot identities were found in ${safeSource}; skipped destructive sync for ${safeTable}.`;
+  throw createImportSourceValidationError_(errorCode, message);
+}
+
+function isImportSourceValidationErrorCode_(value) {
+  return IMPORT_SOURCE_VALIDATION_ERROR_CODES_.indexOf(String(value || '').trim().toUpperCase()) >= 0;
+}
+
+function isRecoverableManualSyncSourceFailure_(stageDef, stageResult, failedEntries) {
+  if (!stageDef || stageDef.continueOnSourceValidationFailure !== true || !stageResult || stageResult.fatalFailure === true || stageResult.error) return false;
+  const stageErrorCode = String(stageResult.errorCode || stageResult.error_code || '').trim().toUpperCase();
+  if (stageErrorCode && !isImportSourceValidationErrorCode_(stageErrorCode)) return false;
+  const entries = Array.isArray(failedEntries) ? failedEntries : [];
+  const failedCount = Math.max(0, Number(stageResult.failedFiles) || 0);
+  return failedCount > 0 && entries.length >= failedCount && entries.every(function(entry) {
+    return isImportSourceValidationErrorCode_(entry && entry.errorCode);
+  });
+}
+
+function createImportFileFailureEntry_(file, error) {
+  const message = String(error && error.message || error || 'Import source failed validation.');
+  return {
+    name: String(file && file.getName && file.getName() || ''),
+    error: message,
+    errorCode: getSafeImportFailureCode_(error)
+  };
+}
+
 function getSafeImportFailureCode_(error) {
+  const explicitCode = String(error && (error.errorCode || error.error_code) || '').trim().toUpperCase();
+  if (isImportSourceValidationErrorCode_(explicitCode)) return explicitCode;
+  if (explicitCode === 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED') return explicitCode;
   const message = String(error && error.message || error || '');
   // Publish only a structured SQLSTATE, never database details or source rows.
   const databaseError = /^Supabase (?:upsert|delete) failed for [a-zA-Z0-9_]+ \(\d{3}\):\s*(\{[\s\S]*\})$/.exec(message);
@@ -1790,6 +1943,7 @@ function sanitizeManualSyncStatusForClient_(status) {
   if (!status || typeof status !== 'object') return status || null;
   const next = JSON.parse(JSON.stringify(status));
   next.runId = String(next.runId || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 40);
+  next.sourceFailureCount = Math.max(0, Number(next.sourceFailureCount) || 0);
   next.stageResults = (Array.isArray(next.stageResults) ? next.stageResults : []).map(function(result) {
     return {
       key: String(result && result.key || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 64),
@@ -1797,6 +1951,13 @@ function sanitizeManualSyncStatusForClient_(status) {
       filesProcessed: Math.max(0, Number(result && result.filesProcessed || 0)),
       tempFilesRemoved: Math.max(0, Number(result && result.tempFilesRemoved || 0)),
       failedFiles: Math.max(0, Number(result && result.failedFiles || 0)),
+      skippedFiles: Math.max(0, Number(result && result.skippedFiles || 0)),
+      outcome: ['succeeded', 'partial', 'failed', 'skipped'].indexOf(String(result && result.outcome || '').toLowerCase()) >= 0
+        ? String(result.outcome).toLowerCase()
+        : '',
+      reasonCode: result && result.reasonCode
+        ? sanitizeManualSyncErrorCode_(result.reasonCode, 'MANUAL_SYNC_STAGE_FAILED')
+        : '',
       errorCode: result && result.errorCode
         ? sanitizeManualSyncErrorCode_(result.errorCode, 'MANUAL_SYNC_STAGE_FAILED')
         : '',
@@ -1807,8 +1968,15 @@ function sanitizeManualSyncStatusForClient_(status) {
     const safeCode = sanitizeManualSyncErrorCode_(next.errorCode, 'MANUAL_SYNC_STAGE_FAILED');
     const stageLabel = String(next.currentStageLabel || next.currentStage || 'Data update').replace(/[^a-z0-9 &()-]+/gi, '').slice(0, 80) || 'Data update';
     next.errorCode = safeCode;
-    next.error = `${stageLabel} did not finish. Error code: ${safeCode}.`;
-    next.message = `${next.error} The source file remains available for retry.`;
+    if (safeCode === 'MANUAL_SYNC_SOURCE_FAILURES') {
+      const count = Math.max(1, Number(next.sourceFailureCount) || 0);
+      next.sourceFailureCount = count;
+      next.error = `Manual sync finished with ${count} invalid source file${count === 1 ? '' : 's'}. Failed files remain available for review and retry.`;
+      next.message = next.error;
+    } else {
+      next.error = `${stageLabel} did not finish. Error code: ${safeCode}.`;
+      next.message = `${next.error} The source file remains available for retry.`;
+    }
   }
   return next;
 }
@@ -1821,6 +1989,29 @@ function buildManualSyncStageFailureMessage_(stageDef, stageResult, errorCode) {
   const failureCount = Math.max(failedFiles, failedEntries.length, 1);
   const safeCode = sanitizeManualSyncErrorCode_(errorCode, 'MANUAL_SYNC_STAGE_FAILED');
   return `${label} did not finish for ${failureCount} file${failureCount === 1 ? '' : 's'}. Error code: ${safeCode}. The file remains available for retry.`;
+}
+
+function appendSkippedManualSyncStages_(status, stageOrder, startIndex, reasonCode) {
+  if (!status || !Array.isArray(stageOrder)) return;
+  if (!Array.isArray(status.stageResults)) status.stageResults = [];
+  const safeStart = Math.max(0, Number(startIndex) || 0);
+  for (let index = safeStart; index < stageOrder.length; index++) {
+    const key = String(stageOrder[index] || '');
+    if (status.stageResults.some(function(result) { return String(result && result.key || '') === key; })) continue;
+    const stageDef = MANUAL_SYNC_STAGE_DEFINITIONS[key];
+    status.stageResults.push({
+      key: key,
+      label: String(stageDef && stageDef.label || key),
+      filesProcessed: 0,
+      tempFilesRemoved: 0,
+      failedFiles: 0,
+      skippedFiles: 0,
+      outcome: 'skipped',
+      reasonCode: sanitizeManualSyncErrorCode_(reasonCode, 'MANUAL_SYNC_STAGE_SKIPPED'),
+      errorCode: '',
+      completedAt: new Date().toISOString()
+    });
+  }
 }
 
 function queueManualSyncRequest_(options) {
@@ -1885,6 +2076,7 @@ function queueManualSyncRequest_(options) {
       currentStageLabel: 'Queued',
       completedStages: [],
       stageResults: [],
+      sourceFailureCount: 0,
       startedAt: timestamp,
       updatedAt: timestamp,
       finishedAt: '',
@@ -1986,6 +2178,9 @@ function runQueuedManualSyncStage_(options) {
       const failedFileNames = Array.isArray(stageResult.failedFileNames) ? stageResult.failedFileNames : [];
       const failedFileErrors = normalizeManualSyncFailedFileEntries_(stageResult);
       const completedAt = new Date().toISOString();
+      const stageHasFailure = failedFiles > 0 || failedFileErrors.length > 0 || !!stageResult.error;
+      const recoverableSourceFailure = stageHasFailure && isRecoverableManualSyncSourceFailure_(stageDef, stageResult, failedFileErrors);
+      const stageOutcome = !stageHasFailure ? 'succeeded' : (recoverableSourceFailure && filesProcessed > 0 ? 'partial' : 'failed');
 
       if (!Array.isArray(status.completedStages)) status.completedStages = [];
       if (!Array.isArray(status.stageResults)) status.stageResults = [];
@@ -1995,28 +2190,34 @@ function runQueuedManualSyncStage_(options) {
         filesProcessed: filesProcessed,
         tempFilesRemoved: tempFilesRemoved,
         failedFiles: failedFiles,
+        skippedFiles: Math.max(0, Number(stageResult.skippedFiles) || 0),
+        outcome: stageOutcome,
         importStatus: String(stageResult.importStatus || ''),
         awaitingReconciliation: stageResult.awaitingReconciliation === true,
         failedFileNames: failedFileNames,
         failedFileErrors: failedFileErrors.map(function(entry) {
           return { errorCode: sanitizeManualSyncErrorCode_(entry && entry.errorCode, 'MANUAL_SYNC_STAGE_FAILED') };
         }),
-        errorCode: (failedFiles > 0 || failedFileErrors.length || stageResult.error)
-          ? sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code, 'MANUAL_SYNC_STAGE_FAILED')
+        errorCode: stageHasFailure
+          ? sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code || (failedFileErrors[0] && failedFileErrors[0].errorCode), 'MANUAL_SYNC_STAGE_FAILED')
           : '',
         completedAt: completedAt
       });
 
-      if (failedFiles > 0 || failedFileErrors.length || stageResult.error) {
+      if (stageHasFailure && !recoverableSourceFailure) {
         status.updatedAt = completedAt;
-        status.errorCode = sanitizeManualSyncErrorCode_(failedFileErrors[0] && failedFileErrors[0].errorCode || stageResult.errorCode || stageResult.error_code, 'MANUAL_SYNC_STAGE_FAILED');
+        status.errorCode = sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code || (failedFileErrors[0] && failedFileErrors[0].errorCode), 'MANUAL_SYNC_STAGE_FAILED');
         status.error = buildManualSyncStageFailureMessage_(stageDef, stageResult, status.errorCode);
         status.message = status.error;
         saveManualSyncStatus_(status);
         throw new Error(status.error);
       }
 
-      status.completedStages.push(stageKey);
+      if (recoverableSourceFailure) {
+        status.sourceFailureCount = Math.max(0, Number(status.sourceFailureCount) || 0) + Math.max(failedFiles, failedFileErrors.length);
+      } else {
+        status.completedStages.push(stageKey);
+      }
 
       status.stageIndex = currentStageIndex + 1;
       const hasMoreStages = status.stageIndex < stageOrder.length;
@@ -2025,6 +2226,10 @@ function runQueuedManualSyncStage_(options) {
       const fileSummary = (filesProcessed > 0
         ? `${filesProcessed} file${filesProcessed === 1 ? '' : 's'} processed`
         : 'no files found') + (stageResult.awaitingReconciliation === true ? ', awaiting Dylan receipt reconciliation' : '');
+      const sourceFailureSummary = recoverableSourceFailure
+        ? `; ${failedFiles} invalid source file${failedFiles === 1 ? '' : 's'} left in the drop folder` +
+          (Number(stageResult.skippedFiles) > 0 ? `; ${Number(stageResult.skippedFiles)} related file${Number(stageResult.skippedFiles) === 1 ? '' : 's'} held for review` : '')
+        : '';
       const tempSummary = tempFilesRemoved > 0
         ? `, ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared`
         : '';
@@ -2032,10 +2237,21 @@ function runQueuedManualSyncStage_(options) {
       status.updatedAt = completedAt;
       if (!hasMoreStages) {
         status.active = false;
+        status.finishedAt = completedAt;
+        if (Number(status.sourceFailureCount) > 0) {
+          status.currentStage = 'failed';
+          status.currentStageLabel = 'Source Validation';
+          status.errorCode = 'MANUAL_SYNC_SOURCE_FAILURES';
+          status.error = `Manual sync finished with ${Number(status.sourceFailureCount)} invalid source file${Number(status.sourceFailureCount) === 1 ? '' : 's'}. Failed files remain available for review and retry.`;
+          status.message = status.error;
+          saveManualSyncStatus_(status);
+          removeManualSyncStageTriggers_();
+          console.warn(`[MANUAL SYNC][${status.runId}] MANUAL_SYNC_SOURCE_FAILURES`);
+          break;
+        }
         status.currentStage = 'complete';
         status.currentStageLabel = 'Complete';
-        status.finishedAt = completedAt;
-        status.message = `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Manual sync complete.`;
+        status.message = `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Manual sync complete.`;
         saveManualSyncStatus_(status);
         emitManualSyncLiveEvent_(status);
         removeManualSyncStageTriggers_();
@@ -2046,8 +2262,8 @@ function runQueuedManualSyncStage_(options) {
       const elapsedMs = Date.now() - invocationStartedAt;
       const shouldContinueInline = elapsedMs < nextStageStartCutoffMs && elapsedMs < executionBudgetMs;
       status.message = shouldContinueInline
-        ? `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Continuing to ${nextStageDef ? nextStageDef.label : nextStageKey}...`
-        : `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Queueing ${nextStageDef ? nextStageDef.label : nextStageKey}...`;
+        ? `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Continuing to ${nextStageDef ? nextStageDef.label : nextStageKey}...`
+        : `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Queueing ${nextStageDef ? nextStageDef.label : nextStageKey}...`;
       saveManualSyncStatus_(status);
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
@@ -2058,11 +2274,34 @@ function runQueuedManualSyncStage_(options) {
     }
   } catch (err) {
     if (status) {
+      const stageOrder = Array.isArray(status.stageOrder) ? status.stageOrder : MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
+      if (!Array.isArray(status.stageResults)) status.stageResults = [];
+      const failedStageKey = String(status.currentStage || '');
+      const failedStageIndex = stageOrder.indexOf(failedStageKey);
+      const currentResult = status.stageResults.find(function(result) { return String(result && result.key || '') === failedStageKey; });
+      if (!currentResult && failedStageKey && failedStageKey !== 'queued' && failedStageKey !== 'complete') {
+        const failedStageDef = MANUAL_SYNC_STAGE_DEFINITIONS[failedStageKey];
+        status.stageResults.push({
+          key: failedStageKey,
+          label: String(failedStageDef && failedStageDef.label || failedStageKey),
+          filesProcessed: 0,
+          tempFilesRemoved: 0,
+          failedFiles: 1,
+          skippedFiles: 0,
+          outcome: 'failed',
+          reasonCode: '',
+          errorCode: getSafeImportFailureCode_(err),
+          completedAt: new Date().toISOString()
+        });
+      }
+      const numericStageIndex = Math.max(0, Number(status.stageIndex) || 0);
+      const skippedStart = failedStageIndex >= 0 ? failedStageIndex + 1 : numericStageIndex;
+      appendSkippedManualSyncStages_(status, stageOrder, skippedStart, 'MANUAL_SYNC_ABORTED_AFTER_FATAL_FAILURE');
       status.active = false;
       status.updatedAt = new Date().toISOString();
       status.finishedAt = status.updatedAt;
       const stageLabel = status.currentStageLabel || status.currentStage || 'manual sync';
-      status.errorCode = sanitizeManualSyncErrorCode_(status.errorCode, 'MANUAL_SYNC_STAGE_FAILED');
+      status.errorCode = sanitizeManualSyncErrorCode_(status.errorCode || getSafeImportFailureCode_(err), 'MANUAL_SYNC_STAGE_FAILED');
       status.error = `${stageLabel} did not finish. Error code: ${status.errorCode}.`;
       status.message = status.error;
       saveManualSyncStatus_(status);
@@ -4018,10 +4257,7 @@ function combineSnapshotDeleteIds_(existingRows, seenIds) {
 }
 
 function shouldAbortSnapshotDelete_(stats, totalRows) {
-  const safeStats = stats || {};
-  const sourceRows = Math.max(Number(safeStats.sourceRows) || 0, Number(totalRows) || 0);
-  const validIdentityRows = Number(safeStats.validIdentityRows) || 0;
-  return sourceRows > 0 && validIdentityRows <= 0;
+  return !!getImportSourceValidationErrorCode_(stats, totalRows);
 }
 
 function fetchAllSupabaseData(tableName, selectColumns, options) {
@@ -4857,6 +5093,8 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     pendingFiles.push(file);
   }
 
+  const rejectionMarkerState = pruneImportSourceRejectionMarkers_(tableName, pendingFiles);
+
   if (!pendingFiles.length) {
     console.log(`[SKIP] No files found for ${tableName}.`);
     return {
@@ -4889,6 +5127,9 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   let syncDiagnostics = createDeltaSyncStats_();
   let failedFiles = [];
   let importSucceeded = false;
+  let skippedFiles = 0;
+  let fatalFailure = false;
+  let fatalErrorCode = '';
   let revisionFence = null;
 
   console.log(
@@ -4900,7 +5141,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     const syncStartTime = new Date().toISOString();
     const rawData = extractDataFromFile(newestFile, dropFolderId, options);
     if (!rawData || rawData.length < 1) {
-      throw new Error(`No readable rows were found in ${newestFileName}.`);
+      throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No readable rows were found in ${newestFileName}.`);
     }
     const selectColumns = (options && typeof options.selectColumnsBuilder === 'function')
       ? options.selectColumnsBuilder(rawData, tableName)
@@ -4911,9 +5152,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     const seenIds = results && results.seenIds instanceof Set ? results.seenIds : new Set();
     totalRows = Number(results && results.totalRows) || 0;
     syncDiagnostics = results && results.stats ? results.stats : createDeltaSyncStats_();
-    if (shouldAbortSnapshotDelete_(syncDiagnostics, totalRows)) {
-      throw new Error(`0 valid snapshot identities were found in ${newestFileName}; skipped destructive sync for ${tableName}.`);
-    }
+    throwIfSnapshotSourceInvalid_(syncDiagnostics, totalRows, newestFileName, tableName);
     const deletes = deltaMode ? combineSnapshotDeleteIds_(existingRows, seenIds) : [];
     syncDiagnostics.deletedRows = deletes.length;
     upsertCount = upserts.length;
@@ -4945,19 +5184,45 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     const errorMessage = err && err.message ? err.message : String(err);
     upsertCount = 0;
     deleteCount = 0;
-    failedFiles.push({ name: newestFileName, error: errorMessage });
+    const failureEntry = createImportFileFailureEntry_(newestFile, err);
+    if (isImportSourceValidationErrorCode_(failureEntry.errorCode)) {
+      try {
+        recordImportSourceRejection_(rejectionMarkerState, tableName, newestFile, failureEntry.errorCode);
+      } catch (trackerError) {
+        failureEntry.error = String(trackerError && trackerError.message || 'Could not safely retain the rejected source marker.');
+        failureEntry.errorCode = getSafeImportFailureCode_(trackerError);
+        fatalFailure = true;
+        fatalErrorCode = failureEntry.errorCode;
+      }
+    } else {
+      fatalFailure = true;
+      fatalErrorCode = failureEntry.errorCode;
+    }
+    failedFiles.push(failureEntry);
     console.error(`[ERROR] Failed processing latest file ${newestFileName} for ${tableName}: ${err && err.stack ? err.stack : errorMessage}`);
     console.warn(`[LEAVE] Keeping ${newestFileName} in drop folder for retry/manual review.`);
   }
 
   if (importSucceeded) {
     olderFiles.forEach(function(file) {
+      const rejectionMarker = getImportSourceRejectionMarker_(rejectionMarkerState, tableName, file);
+      if (rejectionMarker) {
+        failedFiles.push({
+          name: String(file.getName() || ''),
+          error: 'Previously rejected source remains in the drop folder for review and retry.',
+          errorCode: rejectionMarker.errorCode
+        });
+        skippedFiles++;
+        console.warn(`[LEAVE] Retaining previously rejected source ${file.getName()} in the drop folder for review.`);
+        return;
+      }
       console.log(`[ARCHIVE] Skipping older pending file for ${tableName}: ${file.getName()}`);
       moveDriveFileToFolderWithRetry_(file, processedFolder, `${tableName} archived older file ${file.getName()}`);
       skippedFilesArchived++;
     });
     syncDiagnostics.archivedOlderFiles = skippedFilesArchived;
   } else if (olderFiles.length) {
+    skippedFiles = olderFiles.length;
     console.warn(`[LEAVE] Newest file for ${tableName} failed, so ${olderFiles.length} older pending file${olderFiles.length === 1 ? '' : 's'} will stay in drop.`);
   }
 
@@ -4988,8 +5253,11 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     tempFilesRemoved: tempFilesRemoved,
     skippedFilesArchived: skippedFilesArchived,
     failedFiles: failedFiles.length,
+    skippedFiles: skippedFiles,
     failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
     failedFileErrors: failedFiles,
+    fatalFailure: fatalFailure,
+    errorCode: fatalFailure ? fatalErrorCode : (failedFiles.length ? failedFiles[0].errorCode : ''),
     upsertCount: upsertCount,
     deleteCount: deleteCount,
     totalRows: totalRows,
@@ -5006,10 +5274,8 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
   const seenIds = new Set();
 
   parsedFiles.forEach(function(entry) {
-    const preview = previewMasterSnapshotFile_(entry.rawData, tableName);
-    if (shouldAbortSnapshotDelete_(preview.stats, preview.totalRows)) {
-      throw new Error(`0 valid snapshot identities were found in ${entry.fileName}; skipped destructive sync for ${tableName}.`);
-    }
+    const preview = entry.preview || previewMasterSnapshotFile_(entry.rawData, tableName);
+    throwIfSnapshotSourceInvalid_(preview.stats, preview.totalRows, entry.fileName, tableName);
     mergeDeltaSyncStats_(previewStats, preview.stats);
     previewEntries.push({
       file: entry.file,
@@ -5023,9 +5289,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
     });
   });
 
-  if (shouldAbortSnapshotDelete_(previewStats, previewStats.sourceRows)) {
-    throw new Error(`0 valid snapshot identities were found for ${tableName}; skipped destructive sync.`);
-  }
+  throwIfSnapshotSourceInvalid_(previewStats, previewStats.sourceRows, tableName, tableName);
 
   console.log(`[MASTER SNAPSHOT][${tableName}] stage=existing_ids_scan | pendingFiles=${parsedFiles.length}`);
   const existingIds = fetchAllSupabaseRowIdsForMaster_(tableName);
@@ -5043,9 +5307,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
   previewEntries.forEach(function(entry) {
     const results = payloadBuilderFunc(entry.rawData, tableName, mutableExistingRows, syncStartTime, entry.fileName);
     const fileStats = results && results.stats ? results.stats : createDeltaSyncStats_();
-    if (shouldAbortSnapshotDelete_(fileStats, results && results.totalRows)) {
-      throw new Error(`0 valid snapshot identities were found in ${entry.fileName}; skipped destructive sync for ${tableName}.`);
-    }
+    throwIfSnapshotSourceInvalid_(fileStats, results && results.totalRows, entry.fileName, tableName);
     mergeDeltaSyncStats_(combinedStats, fileStats);
     (results.upserts || []).forEach(function(row) {
       const uid = String(row && row.unique_id || '').trim();
@@ -5059,9 +5321,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
     });
   });
 
-  if (shouldAbortSnapshotDelete_(combinedStats, combinedStats.sourceRows)) {
-    throw new Error(`0 valid snapshot identities were found for ${tableName}; skipped destructive sync.`);
-  }
+  throwIfSnapshotSourceInvalid_(combinedStats, combinedStats.sourceRows, tableName, tableName);
 
   const deletes = existingIds.filter(function(uid) {
     const safeUid = String(uid || '').trim();
@@ -5317,10 +5577,13 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   const syncStartTime = new Date().toISOString();
   const parsedFiles = [];
   const failedFiles = [];
+  const failedFileObjects = new Set();
   const combinedStats = createDeltaSyncStats_();
   let upsertCount = 0;
   let deleteCount = 0;
   let importSucceeded = false;
+  let fatalFailure = false;
+  let fatalErrorCode = '';
   let revisionFence = null;
   let evalReport2Reconciliation = null;
 
@@ -5330,12 +5593,63 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     pendingFiles.forEach(function(file) {
       const fileName = file.getName();
       console.log(`[PARSE] ${fileName}`);
-      const rawData = extractDataFromFile(file, dropFolderId);
-      if (!rawData || rawData.length < 1) {
-        throw new Error(`No readable rows were found in ${fileName}.`);
+      try {
+        const rawData = extractDataFromFile(file, dropFolderId);
+        if (!rawData || rawData.length < 2) {
+          throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No data rows were found in ${fileName}.`);
+        }
+        const entry = { file: file, fileName: fileName, rawData: rawData };
+        if (isMasterInventoryTable_(tableName)) {
+          entry.preview = previewMasterSnapshotFile_(rawData, tableName);
+          throwIfSnapshotSourceInvalid_(entry.preview.stats, entry.preview.totalRows, fileName, tableName);
+        }
+        parsedFiles.push(entry);
+      } catch (sourceError) {
+        if (!isImportSourceValidationErrorCode_(sourceError && sourceError.errorCode)) throw sourceError;
+        failedFiles.push(createImportFileFailureEntry_(file, sourceError));
+        failedFileObjects.add(file);
       }
-      parsedFiles.push({ file: file, fileName: fileName, rawData: rawData });
     });
+
+    const unsafeSourceFailure = isMasterInventoryTable_(tableName) && failedFiles.some(function(entry) {
+      return entry.errorCode !== 'IMPORT_SOURCE_EMPTY';
+    });
+
+    if (unsafeSourceFailure) {
+      console.warn(`[SKIP] Incomplete ${tableName} batch was not applied; all pending files remain available for review.`);
+      return {
+        tableName: tableName,
+        filesProcessed: 0,
+        skippedFiles: parsedFiles.length,
+        tempFilesRemoved: tempFilesRemoved,
+        failedFiles: failedFiles.length,
+        failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+        failedFileErrors: failedFiles,
+        fatalFailure: false,
+        errorCode: failedFiles.length ? failedFiles[0].errorCode : 'IMPORT_SOURCE_BATCH_INCOMPLETE',
+        upsertCount: 0,
+        deleteCount: 0,
+        diagnostics: combinedStats
+      };
+    }
+
+    if (!parsedFiles.length) {
+      console.warn(`[SKIP] No valid snapshot files were available for ${tableName}; invalid files remain in the drop folder.`);
+      return {
+        tableName: tableName,
+        filesProcessed: 0,
+        tempFilesRemoved: tempFilesRemoved,
+        failedFiles: failedFiles.length,
+        failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+        failedFileErrors: failedFiles,
+        fatalFailure: false,
+        skippedFiles: 0,
+        errorCode: failedFiles.length ? failedFiles[0].errorCode : '',
+        upsertCount: 0,
+        deleteCount: 0,
+        diagnostics: combinedStats
+      };
+    }
 
     let upserts = [];
     let deletes = [];
@@ -5360,9 +5674,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       parsedFiles.forEach(function(entry) {
         const results = payloadBuilderFunc(entry.rawData, tableName, mutableExistingRows, syncStartTime, entry.fileName);
         const fileStats = results && results.stats ? results.stats : createDeltaSyncStats_();
-        if (shouldAbortSnapshotDelete_(fileStats, results && results.totalRows)) {
-          throw new Error(`0 valid snapshot identities were found in ${entry.fileName}; skipped destructive sync for ${tableName}.`);
-        }
+        throwIfSnapshotSourceInvalid_(fileStats, results && results.totalRows, entry.fileName, tableName);
         mergeDeltaSyncStats_(combinedStats, fileStats);
         (results.upserts || []).forEach(function(row) {
           const uid = String(row && row.unique_id || '').trim();
@@ -5376,9 +5688,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
         });
       });
 
-      if (shouldAbortSnapshotDelete_(combinedStats, combinedStats.sourceRows)) {
-        throw new Error(`0 valid snapshot identities were found for ${tableName}; skipped destructive sync.`);
-      }
+      throwIfSnapshotSourceInvalid_(combinedStats, combinedStats.sourceRows, tableName, tableName);
 
       deletes = combineSnapshotDeleteIds_(existingRows, seenIds);
       combinedStats.deletedRows = deletes.length;
@@ -5438,17 +5748,22 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   } catch (err) {
     failDatasetImportFence_(revisionFence);
     const errorMessage = err && err.message ? err.message : String(err);
+    const caughtErrorCode = getSafeImportFailureCode_(err);
+    fatalFailure = !isImportSourceValidationErrorCode_(err && err.errorCode);
+    fatalErrorCode = fatalFailure ? caughtErrorCode : '';
     upsertCount = 0;
     deleteCount = 0;
-    failedFiles.push.apply(failedFiles, pendingFiles.map(function(file) {
-      return { name: file.getName(), error: errorMessage };
-    }));
+    pendingFiles.forEach(function(file) {
+      if (failedFileObjects.has(file)) return;
+      failedFiles.push(createImportFileFailureEntry_(file, err));
+      failedFileObjects.add(file);
+    });
     console.error(`[ERROR] Failed snapshot batch for ${tableName}: ${err && err.stack ? err.stack : errorMessage}`);
     console.warn(`[LEAVE] Keeping pending ${tableName} snapshot files in drop folder for retry/manual review.`);
   }
 
   console.log(
-    `[DONE] ${tableName}: ${importSucceeded ? `${pendingFiles.length} snapshot file${pendingFiles.length === 1 ? '' : 's'} processed` : 'snapshot batch failed'}` +
+    `[DONE] ${tableName}: ${importSucceeded ? `${parsedFiles.length} snapshot file${parsedFiles.length === 1 ? '' : 's'} processed` : 'snapshot batch failed'}` +
     `${failedFiles.length ? ` | ${failedFiles.length} file${failedFiles.length === 1 ? '' : 's'} left in drop` : ''}` +
     ` | ${deleteCount} removed row${deleteCount === 1 ? '' : 's'}` +
     ` | ${upsertCount} row${upsertCount === 1 ? '' : 's'} upserted` +
@@ -5457,7 +5772,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
 
   if (importSucceeded) {
     emitTableSyncLiveEvent_(tableName, {
-      filesProcessed: pendingFiles.length,
+      filesProcessed: parsedFiles.length,
       tempFilesRemoved: tempFilesRemoved,
       upsertCount: upsertCount,
       deleteCount: deleteCount,
@@ -5467,11 +5782,14 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
 
   return {
     tableName: tableName,
-    filesProcessed: importSucceeded ? pendingFiles.length : 0,
+    filesProcessed: importSucceeded ? parsedFiles.length : 0,
     tempFilesRemoved: tempFilesRemoved,
     failedFiles: failedFiles.length,
     failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
     failedFileErrors: failedFiles,
+    fatalFailure: !importSucceeded && fatalFailure,
+    errorCode: fatalFailure ? fatalErrorCode : (failedFiles.length ? failedFiles[0].errorCode : ''),
+    skippedFiles: 0,
     upsertCount: upsertCount,
     deleteCount: deleteCount,
     evalReport2Reconciliation: evalReport2Reconciliation,
@@ -5560,7 +5878,7 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
   const invoiceColumns = rawHeaders.map(function(header) { return normalizePayloadColumnKey_(header).replace(/_/g, ''); });
   const invoiceIdx = invoiceColumns.indexOf('invoicedate');
   if (logicalTable === 'ph_soc_master' && (invoiceIdx < 0 || invoiceColumns.lastIndexOf('invoicedate') !== invoiceIdx)) {
-    throw new Error('SOC report must contain exactly one INVOICEDATE column; no data was changed.');
+    throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', 'SOC report must contain exactly one INVOICEDATE column; no data was changed.');
   }
 
   let iIdx = getIdx('ITEMCODE'), dockIdx = getIdx('DOCK');
@@ -6026,9 +6344,19 @@ function extractDataFromFile(file, folderId, options) {
         : SpreadsheetApp.openById(sheetId);
       const sheets = ss.getSheets();
       if (!sheets || !sheets.length) {
-        throw new Error(`No sheets found in ${originalFileName}.`);
+        throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No sheets found in ${originalFileName}.`);
       }
       allValues = sheets[0].getDataRange().getValues();
+    }
+
+    if (!Array.isArray(allValues) || !allValues.length) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No source rows were found in ${originalFileName}.`);
+    }
+    const hasNonEmptyCell = allValues.some(function(row) {
+      return Array.isArray(row) && row.some(function(cell) { return cell != null && String(cell).trim() !== ''; });
+    });
+    if (!hasNonEmptyCell) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No source rows were found in ${originalFileName}.`);
     }
 
     let headerRowIdx = -1;
@@ -6048,7 +6376,7 @@ function extractDataFromFile(file, folderId, options) {
     }
 
     if (headerRowIdx === -1) {
-      throw new Error(`No recognized header row found in ${originalFileName}.`);
+      throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', `No recognized header row found in ${originalFileName}.`);
     }
 
     allValues.splice(0, headerRowIdx);
@@ -6056,6 +6384,7 @@ function extractDataFromFile(file, folderId, options) {
   } catch (err) {
     const errorMessage = err && err.message ? err.message : String(err);
     console.error(`[ERROR] extractDataFromFile failed for ${originalFileName}: ${errorMessage}`);
+    if (isImportSourceValidationErrorCode_(err && err.errorCode)) throw err;
     throw new Error(errorMessage);
   } finally {
     cleanupTempGoogleSheet_(tempSheetId, originalFileName);
