@@ -202,9 +202,11 @@ test('real alias-removal helper drops the last photo without clearing observatio
 });
 
 test('fetched rows retain explicit photo clears and distinguish missing stock from known zero', () => {
-  const ctx = runtime(['formatFetchedRows', 'normalizeRowPhotoFields', 'getSharedAppPhotoName'], {
+  const ctx = runtime(['formatFetchedRows', 'normalizeRowPhotoFields', 'getSharedAppPhotoName', 'preserveConfirmedDriveEvidence'], {
     normalizeAppTableName: (value) => value,
     normalizeFlyerShadowFields: () => {}, repairDisplayFieldsOnRow: () => {},
+    confirmedDriveEvidenceRows: new Map(),
+    getSupabaseReadIdentityScope: () => 'av-photo-evidence-fixture',
     sortPhotoCsvPairByCaptureOrder: (links, names) => ({ photoCsv: links || '', photoNameCsv: names || '' }),
     mergePhotoCsvList: (values) => values.filter(Boolean).join(','),
   });

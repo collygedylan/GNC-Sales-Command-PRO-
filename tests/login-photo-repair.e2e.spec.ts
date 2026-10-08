@@ -1,5 +1,6 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test, type Page } from '@playwright/test';
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 // @test-group: @local-e2e,@login-photo,@release-android,@release-timing
 
 
@@ -219,6 +220,16 @@ test('main-thread iPhone fallback emits bounded JPEG or WebP plus both thumbnail
 
 // Isolated native-auth attachment boundary: real compiled upload queue, save
 // coordinator, previews and RPC payloads; all external traffic is blocked.
+const photoMasterRow = inventoryReadFixture.row({
+  unique_id: 'isolated-photo-row', itemcode: 'PHOTO-TEST', locationcode: 'C.11.050',
+  lotcode: '26.F1', season: 'F1', saleyear: '26', salesyear: '26', contsize: '#3',
+  genusname: 'Acer', commonname: 'Isolated photo fixture',
+  photo_link: null, photo_name: null, ptravailable: '267', ptronhand: '267',
+  match: '94', spec: 'Stored specimen', caliper: '2.5', initial_ptr: '267', loc_match_qty: '251',
+  last_updated: '2026-09-15T14:00:00Z', av_rule_photo_updated_at: '2026-09-15T14:00:00Z',
+  app_tab_assignment: 'season'
+});
+
 async function drivePhotoHarness(page: Page, baseURL: string) {
   const origin = new URL(baseURL).origin;
   await page.route('**/*', route => {
@@ -229,18 +240,16 @@ async function drivePhotoHarness(page: Page, baseURL: string) {
   await page.routeWebSocket('**/*', socket => socket.close());
   await page.goto('/?post_deploy_access_canary=1&photo_attachment_canary=1', { waitUntil: 'load' });
   await page.waitForFunction(() => typeof (window as any).queueDrivePhotoAttachment === 'function');
-  await page.evaluate(() => window.eval(`(() => {
+  await page.evaluate((seedRow) => window.eval(`(() => {
     if (!installMutationBlockedAccessCanaryIdentity('dylan_collyge', 'Isolated Photo Test', 'ADMIN')) throw new Error('Photo fixture identity unavailable');
     nativeAuthSessionActive = true; nativeAuthProfile = { id: 'isolated-photo-user' };
     window.__photoTest = { calls: [], uploads: 0, held: false, fail: false, gate: null, replies: new Map(),
-      row: JSON.parse(localStorage.getItem('isolated-photo-row') || 'null') || {
-        unique_id: 'isolated-photo-row', itemcode: 'PHOTO-TEST', locationcode: 'C.11.050',
-        lotcode: '26.F1', contsize: '#3', commonname: 'Isolated photo fixture',
-        photo_link: null, photo_name: null, ptravailable: 267, ptronhand: 267,
-        last_updated: '2026-09-15T14:00:00Z'
-      } };
+      row: JSON.parse(localStorage.getItem('isolated-photo-row') || 'null') || ${JSON.stringify(seedRow)} };
     const f = window.__photoTest;
     fullInventory = formatFetchedRows([f.row], 'ph_master_inventory');
+    rebuildMasterInventoryIndexes();
+    avOpenInventory = fullInventory.map((item, idx) => ({ ...item, DOM_ID: 'avo_' + (item.UNIQUE_ID || idx) }));
+    avOpenInventoryById = rebuildInventoryByIdMap(avOpenInventory);
     activeItem = { ...fullInventory[0] };
     activeDetailSourceView = 'drive'; activeDetailTab = 'season';
     document.getElementById('view-login').style.setProperty('display','none','important');
@@ -262,7 +271,9 @@ async function drivePhotoHarness(page: Page, baseURL: string) {
       if (f.held) await new Promise(resolve => { f.gate = resolve; });
       if (f.fail) throw new Error('Isolated attachment failure');
       if (args.p_baseline.photo_link !== (f.row.photo_link || '')) throw new Error('Baseline lost the previous photo');
-      Object.assign(f.row, args.p_evidence, { last_updated: new Date().toISOString(), av_rule_photo_updated_at: new Date().toISOString() });
+      const savedAt = new Date().toISOString();
+      Object.assign(f.row, args.p_evidence, { last_updated: savedAt, av_rule_photo_updated_at: savedAt });
+      if (args.p_complete) f.row.date_completed = savedAt;
       localStorage.setItem('isolated-photo-row', JSON.stringify(f.row));
       if (f.conflictOnce) { f.conflictOnce = false; return { ok: false, code: 'DRIVE_FIELD_CONFLICT', row: { ...f.row }, conflictFields: ['photo_link'] }; }
       const reply = { ok: true, code: 'SAVED', canonicalConfirmed: true, row: { ...f.row }, requestRows: [] };
@@ -272,11 +283,37 @@ async function drivePhotoHarness(page: Page, baseURL: string) {
     };
     renderSavedPhotos();
     f.add = name => handlePhotoUpload({ files: [new File(['isolated'], name, { type: 'image/webp' })], value: '' }, 'ssn-');
-  })()`));
+  })()`), photoMasterRow);
+}
+
+async function readCachedPhotoEvidence(page: Page, source: 'drive' | 'av' = 'drive') {
+  return page.evaluate((sourceView) => window.eval(`(() => {
+    const sourceRows = sourceView === 'av' ? avOpenInventory : fullInventory;
+    const row = sourceRows.find(entry => String(entry.UNIQUE_ID || entry.unique_id || '') === 'isolated-photo-row');
+    if (!row) throw new Error('Photo fixture row is missing from the ' + sourceView + ' cache');
+    return {
+      photoLink: row.PHOTO_LINK ?? row.photo_link ?? row.SAVED_PHOTO_LINK ?? '',
+      photoName: row.PHOTO_NAME ?? row.photo_name ?? row.SAVED_PHOTO_NAME ?? '',
+      match: row.MATCH ?? row.match ?? '',
+      spec: row.SPEC ?? row.spec ?? '',
+      editorSpec: activeItem?.SPEC ?? activeItem?.spec ?? '',
+      ptrAvailable: row.PTRAVAILABLE ?? row.ptravailable ?? '',
+      ptrOnHand: row.PTRONHAND ?? row.ptronhand ?? '',
+      lastUpdated: row.LAST_UPDATED ?? row.last_updated ?? '',
+      photoUpdated: row.AV_RULE_PHOTO_UPDATED_AT ?? row.av_rule_photo_updated_at ?? ''
+    };
+  })()`.replaceAll('sourceView', JSON.stringify(sourceView))), source);
 }
 
 test('Drive photos remain pending until saved, append during a held save, and persist on reload', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page, baseURL }) => {
   await drivePhotoHarness(page, baseURL!);
+  const missingMatchRejected = await page.evaluate(() => {
+    const response: any = { ok: true, canonicalConfirmed: true, row: { ...(window as any).__photoTest.row } };
+    delete response.row.match;
+    try { (window as any).GncDatabase.confirmedDriveEvidence(response); return false; }
+    catch { return true; }
+  });
+  expect(missingMatchRejected).toBe(true);
   await page.evaluate(() => window.eval(`__photoTest.held = true; __photoTest.add('one.webp');`));
   await expect.poll(() => page.evaluate(() => (window as any).__photoTest.calls.length)).toBe(1);
   await expect(page.locator('#ssn-photo-preview')).toContainText('Saving');
@@ -289,7 +326,22 @@ test('Drive photos remain pending until saved, append during a held save, and pe
   expect(saved.row.photo_link.split(',')).toHaveLength(2);
   expect(saved.calls[0].p_evidence.photo_link).toContain('one.webp');
   expect(saved.calls[1].p_baseline.photo_link).toContain('one.webp');
+  const cached = await readCachedPhotoEvidence(page);
+  expect(cached.photoLink.split(',')).toHaveLength(2);
+  expect(cached.photoName.split(',')).toHaveLength(2);
+  expect(cached.match).toBe('94');
+  expect(cached.spec).toBe('Stored specimen');
+  expect(cached.ptrAvailable).toBe('267');
+  expect(cached.ptrOnHand).toBe('267');
+  expect(cached.match).toBe(saved.row.match);
+  expect(cached.spec).toBe(saved.row.spec);
+  expect(cached.ptrAvailable).toBe(saved.row.ptravailable);
+  expect(cached.ptrOnHand).toBe(saved.row.ptronhand);
+  expect(cached.lastUpdated).toBe(saved.row.last_updated);
+  expect(cached.photoUpdated).toBe(saved.row.av_rule_photo_updated_at);
+  expect(Date.parse(String(cached.lastUpdated))).toBeGreaterThan(Date.parse('2026-09-15T14:00:00Z'));
   await expect(page.locator('#ssn-spec')).toHaveValue('Unsaved specimen');
+  expect(cached.editorSpec).toBe('Stored specimen');
   await expect(page.locator('#ssn-photo-list-container img')).toHaveCount(2);
   await page.reload();
   await drivePhotoHarness(page, baseURL!);
@@ -340,8 +392,13 @@ test('Drive photo replay and a canonical-already-attached conflict do not duplic
   await expect.poll(() => page.evaluate(() => window.eval('drivePhotoAttachments.size'))).toBe(0);
   const state = await page.evaluate(() => (window as any).__photoTest);
   expect(state.uploads).toBe(2);
-  expect(state.calls).toHaveLength(3);
+  expect(state.calls).toHaveLength(4);
   expect(state.calls[0].p_idempotency_key).toBe(state.calls[1].p_idempotency_key);
+  expect(state.calls[2].p_evidence.photo_link).toContain('uncertain.webp');
+  expect(state.calls[2].p_evidence.photo_link).toContain('conflict.webp');
+  expect(state.calls[3].p_evidence).toEqual({});
+  expect(state.calls[3].p_baseline.photo_link).toContain('uncertain.webp');
+  expect(state.calls[3].p_baseline.photo_link).toContain('conflict.webp');
   await expect(page.locator('#ssn-photo-list-container img')).toHaveCount(2);
 });
 
@@ -352,4 +409,117 @@ test('Drive photo file selection appends every image and preserves an unsaved no
   await expect.poll(() => page.evaluate(() => window.eval('drivePhotoAttachments.size'))).toBe(0);
   await expect(page.locator('#ssn-photo-list-container img')).toHaveCount(3);
   await expect(page.locator('#ssn-spec')).toHaveValue('Unsaved specimen');
+});
+
+test('Drive completion reconciles the canonical saved row through saveData and preserves the entered spec', {"tag":["@local-e2e","@login-photo","@release-android","@release-timing"]}, async ({ page, baseURL }) => {
+  await drivePhotoHarness(page, baseURL!);
+  await page.evaluate(() => window.eval(`__photoTest.add('completion.webp')`));
+  await expect.poll(() => page.evaluate(() => (window as any).__photoTest.calls.length)).toBe(1);
+  await expect.poll(() => page.evaluate(() => window.eval('drivePhotoAttachments.size'))).toBe(0);
+  const beforeDrive = await readCachedPhotoEvidence(page, 'drive');
+  const beforeAv = await readCachedPhotoEvidence(page, 'av');
+  expect(beforeAv).toMatchObject({
+    photoLink: beforeDrive.photoLink,
+    photoName: beforeDrive.photoName,
+    match: beforeDrive.match,
+    spec: beforeDrive.spec,
+    ptrAvailable: beforeDrive.ptrAvailable,
+    ptrOnHand: beforeDrive.ptrOnHand,
+    lastUpdated: beforeDrive.lastUpdated,
+    photoUpdated: beforeDrive.photoUpdated,
+  });
+  await page.evaluate(() => window.eval(`(() => {
+    openMarkDoneConfirmModal = async () => true;
+    document.getElementById('ssn-spec').value = 'Completed specimen';
+    document.getElementById('ssn-match').value = '94';
+    document.getElementById('ssn-av-note').value = 'Fixture AV note';
+  })()`));
+  await page.evaluate(async () => window.eval("saveData(true, 'ssn-')"));
+  await expect.poll(() => page.evaluate(() => (window as any).__photoTest.calls.some((call: any) => call.p_complete))).toBe(true);
+  const state = await page.evaluate(() => ({
+    canonical: (window as any).__photoTest.row,
+    completionCall: (window as any).__photoTest.calls.find((call: any) => call.p_complete),
+  }));
+  const cached = await readCachedPhotoEvidence(page);
+  expect(state.completionCall.p_evidence.spec).toBe('Completed specimen');
+  expect(state.canonical.spec).toBe('Completed specimen');
+  expect(state.canonical.date_completed).toBeTruthy();
+  expect(cached.spec).toBe(state.canonical.spec);
+  expect(cached.match).toBe(state.canonical.match);
+  expect(cached.ptrAvailable).toBe(state.canonical.ptravailable);
+  expect(cached.ptrOnHand).toBe(state.canonical.ptronhand);
+  expect(cached.lastUpdated).toBe(state.canonical.last_updated);
+  expect(cached.photoUpdated).toBe(state.canonical.av_rule_photo_updated_at);
+  await expect(page.locator('#ssn-spec')).toHaveValue('Completed specimen');
+
+  const avAfterSave = await readCachedPhotoEvidence(page, 'av');
+  expect(avAfterSave).toMatchObject({
+    photoLink: state.canonical.photo_link,
+    photoName: state.canonical.photo_name,
+    match: state.canonical.match,
+    spec: state.canonical.spec,
+    ptrAvailable: state.canonical.ptravailable,
+    ptrOnHand: state.canonical.ptronhand,
+    lastUpdated: state.canonical.last_updated,
+    photoUpdated: state.canonical.av_rule_photo_updated_at,
+  });
+
+  await page.evaluate(() => window.eval("switchView('av')"));
+  await expect(page.locator('#view-av')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.eval("ensureViewRenderState('av').initialized"))).toBe(true);
+  const beforeAvNavigation = await page.evaluate(() => window.eval(`(() => {
+    const filterOptions = buildAvSharedFilterOptionsState(avOpenInventory);
+    activeAVTab = 'open';
+    activeAvSalesBucket = 'current';
+    selectedAvSeasons = new Set(['F1']);
+    avSeasonDefaultsInitialized = true;
+    selectedAvGenusNames = new Set(['Acer']);
+    avGenusSelectionMode = 'custom';
+    selectedAvContSizes = new Set(['#3']);
+    avContSizeSelectionMode = 'custom';
+    avFilterGenusOptions = filterOptions.genusOptions;
+    avFilterContSizeOptions = filterOptions.sizeOptions;
+    invalidateAvFilterSelectionCaches();
+    persistAppFilterStateNow();
+    return {
+      tab: activeAVTab,
+      salesBucket: activeAvSalesBucket,
+      seasons: [...selectedAvSeasons],
+      genera: [...selectedAvGenusNames],
+      sizes: [...selectedAvContSizes],
+    };
+  })()`));
+  await page.evaluate(() => window.eval(`(() => {
+    openDetail('isolated-photo-row', 'av', { __masterDetailRow: avOpenInventory[0] });
+  })()`));
+  await expect.poll(() => page.evaluate(() => window.eval('activeDetailSourceView'))).toBe('av');
+  const avDetail = await page.evaluate(() => window.eval(`({
+    photoLink: activeItem?.PHOTO_LINK ?? activeItem?.photo_link ?? '',
+    photoName: activeItem?.PHOTO_NAME ?? activeItem?.photo_name ?? '',
+    match: activeItem?.MATCH ?? activeItem?.match ?? '',
+    spec: activeItem?.SPEC ?? activeItem?.spec ?? '',
+    lastUpdated: activeItem?.LAST_UPDATED ?? activeItem?.last_updated ?? '',
+    photoUpdated: activeItem?.AV_RULE_PHOTO_UPDATED_AT ?? activeItem?.av_rule_photo_updated_at ?? '',
+  })`));
+  expect(avDetail.photoLink).toBe(state.canonical.photo_link);
+  expect(avDetail.photoName).toBe(state.canonical.photo_name);
+  expect(avDetail.match).toBe(state.canonical.match);
+  expect(avDetail.spec).toBe(state.canonical.spec);
+  expect(avDetail.lastUpdated).toBe(state.canonical.last_updated);
+  expect(avDetail.photoUpdated).toBe(state.canonical.av_rule_photo_updated_at);
+  await page.evaluate(() => window.eval('goBackFromDetail()'));
+  const afterAvNavigation = await page.evaluate(() => window.eval(`({
+    tab: activeAVTab,
+    salesBucket: activeAvSalesBucket,
+    seasons: [...selectedAvSeasons],
+    genera: [...selectedAvGenusNames],
+    sizes: [...selectedAvContSizes],
+  })`));
+  expect(afterAvNavigation).toEqual(beforeAvNavigation);
+  expect(await readCachedPhotoEvidence(page, 'av')).toMatchObject(avAfterSave);
+
+  await page.evaluate(() => window.eval("switchView('drive')"));
+  await expect(page.locator('#view-drive')).toBeVisible();
+  const afterSwitchBack = await readCachedPhotoEvidence(page, 'drive');
+  expect(afterSwitchBack).toMatchObject(avAfterSave);
 });
