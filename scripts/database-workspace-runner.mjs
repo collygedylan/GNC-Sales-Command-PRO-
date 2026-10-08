@@ -5,11 +5,17 @@ import { forgetDisposableSupabaseWorkspace, inspectDisposableSupabaseWorkspace }
 import { sqlStatements } from './database-catalog.mjs';
 
 export const localSupabaseExcludeServices = 'gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor';
+// The API benchmark needs Auth and REST behind the local gateway. Its own
+// functions serve process starts Edge Runtime after staging the measured code.
+const benchmarkHttpServices = new Set(['gotrue', 'kong', 'postgrest']);
+const benchmarkSupabaseExcludeServices = localSupabaseExcludeServices.split(',')
+  .filter(service => !benchmarkHttpServices.has(service)).join(',');
 const errorText = error => error instanceof Error ? error.message : String(error);
 
 /** Run and clean up one isolated Supabase stack, failing closed on cleanup errors. */
 export function withDisposableSupabase({ root = repoRoot, workspace, cli, execute, executeDocker = run,
-  inspectWorkspace = inspectDisposableSupabaseWorkspace, action }) {
+  inspectWorkspace = inspectDisposableSupabaseWorkspace, serviceProfile = 'database', action }) {
+  if (!['database', 'benchmark-http'].includes(serviceProfile)) throw new Error('DATABASE_SERVICE_PROFILE_INVALID');
   let startAttempted = false;
   let result;
   let failure;
@@ -39,7 +45,18 @@ export function withDisposableSupabase({ root = repoRoot, workspace, cli, execut
   };
   try {
     startAttempted = true;
-    runCli(['start', '--exclude', localSupabaseExcludeServices]);
+    runCli(['start', '--exclude', serviceProfile === 'benchmark-http'
+      ? benchmarkSupabaseExcludeServices : localSupabaseExcludeServices]);
+    if (serviceProfile === 'benchmark-http') {
+      const status = runCli(['status', '--output', 'env'], { capture: true });
+      const apiUrl = status.match(/^API_URL="([^"\r\n]+)"\r?$/m)?.[1];
+      let ready = false;
+      try {
+        const url = new URL(apiUrl);
+        ready = url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
+      } catch { /* Report the service setup failure without printing keys. */ }
+      if (!ready) throw new Error('DATABASE_BENCHMARK_HTTP_SERVICES_UNAVAILABLE: local API_URL is missing or invalid');
+    }
     result = action(runCli);
   } catch (error) {
     failure = error;

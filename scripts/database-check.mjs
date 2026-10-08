@@ -85,7 +85,8 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     root, workspaceRoot: targetWorkspace.root, cli, executeNode, executeDocker: execute, allowMissingFunctions,
     action: () => runCli(['db', 'lint', '--local', '--schema', DATABASE_LINT_SCHEMAS.join(','), '--fail-on', 'error']),
   });
-  const productionResult = withDisposableSupabase({ root, workspace, cli, execute: executeNode, action: runCli => {
+  const productionResult = withDisposableSupabase({ root, workspace, cli, execute: executeNode,
+    serviceProfile: apiBenchmarkRequested ? 'benchmark-http' : 'database', action: runCli => {
     // start has applied the complete migration chain. Measure before reset so
     // the child can independently verify the CLI's workdir container label;
     // reset replaces the container and retains proof only in this process.

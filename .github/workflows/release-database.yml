@@ -21,6 +21,8 @@ jobs:
       - uses: ./.github/actions/setup-node-dependencies
       - name: Replay canonical schema and verify database contracts
         env:
+          # Starts local Auth, REST and gateway services for the canonical API pair.
+          # Ordinary SQL and sandbox checks keep the database-only service profile.
           PERFORMANCE_API_BENCHMARK: 'true'
         run: node scripts/database-check.mjs --all
       - uses: actions/upload-artifact@v4
