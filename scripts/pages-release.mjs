@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { GitHubPaginationError, listGitHubApiItems } from './github-api-pagination.mjs';
 import { verifyReleaseProof, verifySameRunReleaseProof } from './release-proof.mjs';
 
 const workflowPath = '.github/workflows/performance-monitor.yml';
@@ -14,11 +15,12 @@ const unavailable = reason => { throw new Unavailable(reason); };
 function identity(repository, commit) {
   if (!/^[\w-]+\/[\w.-]+$/.test(repository || '') || ['.', '..'].includes(repository.split('/')[1]) || !sha(commit)) fail('IDENTITY_INVALID');
 }
-function complete(page, field) {
-  const items = page?.[field];
-  if (!Array.isArray(items) || page.total_count !== items.length || items.length > 100
-    || new Set(items.map(item => item.id)).size !== items.length) unavailable(`${field.toUpperCase()}_INCOMPLETE`);
-  return items;
+async function complete(api, endpoint, field) {
+  try { return await listGitHubApiItems({ api, endpoint, field }); }
+  catch (error) {
+    if (error instanceof GitHubPaginationError) unavailable(`${field.toUpperCase()}_INCOMPLETE`);
+    throw error;
+  }
 }
 
 // PR runs report the branch HEAD in the API, but build GITHUB_SHA: the synthetic
@@ -38,7 +40,7 @@ async function matchingProof({ repository, commit, api, now }) {
   const workflow = await api(`${root}/actions/workflows/performance-monitor.yml`);
   if (!positive(workflow.id) || workflow.path !== workflowPath || workflow.state !== 'active') unavailable('WORKFLOW_INVALID');
   const latest = async () => {
-    const runs = complete(await api(`${root}/actions/workflows/${workflow.id}/runs?head_sha=${pr.head.sha}&event=pull_request&per_page=100`), 'workflow_runs');
+    const runs = await complete(api, `${root}/actions/workflows/${workflow.id}/runs?head_sha=${pr.head.sha}&event=pull_request`, 'workflow_runs');
     if (!runs.length || new Set(runs.map(run => run.run_number)).size !== runs.length) unavailable('NO_UNIQUE_RUN');
     for (const run of runs) {
       if (!positive(run.id) || !positive(run.run_number) || !positive(run.run_attempt)
@@ -50,14 +52,14 @@ async function matchingProof({ repository, commit, api, now }) {
     return { ...run };
   };
   const run = await latest();
-  const jobs = complete(await api(`${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`), 'jobs');
+  const jobs = await complete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs`, 'jobs');
   if (jobs.some(job => !positive(job.id) || job.run_id !== run.id || job.head_sha !== pr.head.sha
     || job.status !== 'completed' || (job.conclusion !== 'success'
       && !(job.name === 'validation / production-health' && job.conclusion === 'skipped')))) unavailable('JOB_NOT_GREEN');
   const gates = jobs.filter(job => job.name === 'validation / release-gate');
   if (gates.length !== 1 || !gates[0].steps?.some(step => step.name === 'Require every safety lane for this commit'
     && step.status === 'completed' && step.conclusion === 'success')) unavailable('GATE_MISSING');
-  const artifacts = complete(await api(`${root}/actions/runs/${run.id}/artifacts?per_page=100`), 'artifacts');
+  const artifacts = await complete(api, `${root}/actions/runs/${run.id}/artifacts`, 'artifacts');
   const proofs = artifacts.filter(artifact => new RegExp(`^release-proof-[a-f0-9]{40}-${run.run_attempt}$`).test(artifact.name));
   if (proofs.length !== 1) unavailable('PROOF_AMBIGUOUS');
   const proof = proofs[0];

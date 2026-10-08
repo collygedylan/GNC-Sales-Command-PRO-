@@ -6,8 +6,9 @@ function fixture() {
   const run={id:12,run_number:4,run_attempt:1,workflow_id:9,path:'.github/workflows/performance-monitor.yml',event:'workflow_dispatch',head_sha:commit,head_branch:'repair/example',head_repository:{full_name:repository},status:'completed',conclusion:'success'};
   const job={id:2,run_id:12,head_sha:commit,name:'validation / release-gate',status:'completed',conclusion:'success',steps:[{name:'Require every safety lane for this commit',status:'completed',conclusion:'success'}]};
   const artifacts=[{id:30,name:`release-site-${commit}`},{id:31,name:`release-proof-${commit}-1`}].map(a=>({...a,expired:false,expires_at:'2999-01-01T00:00:00Z',workflow_run:{id:12,head_sha:commit}}));
-  const f={runs:[run],jobs:[job],artifacts};
-  f.api=async url=>url.includes('/artifacts?')?{total_count:f.artifacts.length,artifacts:f.artifacts}:url.includes('/jobs?')?{total_count:f.jobs.length,jobs:f.jobs}:url.includes('/runs?')?{total_count:f.runs.length,workflow_runs:f.runs}:{id:9,path:run.path,state:'active'};
+  const f={runs:[run],jobs:[job],artifacts,listRequests:[]};
+  const page=(url,field,rows)=>{const parsed=new URL(url,'https://fixture.invalid'),pageNumber=Number(parsed.searchParams.get('page')||1),pageSize=Number(parsed.searchParams.get('per_page')||100);f.listRequests.push({field,pageNumber,pageSize});return{total_count:rows.length,[field]:rows.slice((pageNumber-1)*pageSize,pageNumber*pageSize)};};
+  f.api=async url=>url.includes('/artifacts?')?page(url,'artifacts',f.artifacts):url.includes('/jobs?')?page(url,'jobs',f.jobs):url.includes('/runs?')?page(url,'workflow_runs',f.runs):{id:9,path:run.path,state:'active'};
   f.select=()=>selectReleaseProof({repository,commit,api:f.api});return f;
 }
 test('a release-branch benchmark supplies an immutable same-commit artifact for main',async()=>{
@@ -49,4 +50,35 @@ for(const [name,change] of [
 test('proof rejects a new run arriving during verification',async()=>{
   const f=fixture(),api=f.api;let calls=0;f.api=async url=>{if(url.includes('/runs?') && ++calls===2)f.runs[0].run_attempt=2;return api(url);};
   await assert.rejects(f.select(),/RELEASE_PROOF_RUN_CHANGED/);
+});
+
+test('release proof accepts 102 complete jobs and finds its gate on page two',async()=>{
+  const f=fixture(),gate=f.jobs[0];
+  f.jobs=Array.from({length:100},(_,index)=>({...gate,id:100+index,name:`validation / extra-${index}`})).concat([gate,{...gate,id:999,name:'validation / unit'}]);
+  const selected=await f.select();
+  assert.equal(selected.siteArtifactId,30);
+  assert.ok(f.listRequests.some(request=>request.field==='jobs'&&request.pageNumber===2));
+});
+
+for(const [name,mutate] of [
+  ['a non-green page-two job',f=>{f.jobs[101]={...f.jobs[101],conclusion:'failure'};}],
+  ['a foreign page-two job',f=>{f.jobs[101]={...f.jobs[101],head_sha:'c'.repeat(40)};}],
+  ['a duplicate page-two job ID',f=>{f.jobs[101]={...f.jobs[101],id:f.jobs[0].id};}],
+]) test(`release proof rejects ${name}`,async()=>{
+  const f=fixture(),gate=f.jobs[0];
+  f.jobs=Array.from({length:100},(_,index)=>({...gate,id:100+index,name:`validation / extra-${index}`})).concat([{...gate,id:998},{...gate,id:999,name:'validation / unit'}]);
+  mutate(f);
+  await assert.rejects(f.select(),/RELEASE_PROOF_|GITHUB_PAGINATION/);
+});
+
+for(const [name,mutate] of [
+  ['inconsistent page totals',f=>{const api=f.api;f.api=async url=>{const result=await api(url);if(url.includes('/jobs?')&&new URL(url,'https://fixture.invalid').searchParams.get('page')==='2')result.total_count++;return result;};}],
+  ['a truncated page',f=>{const api=f.api;f.api=async url=>{if(url.includes('/jobs?')&&new URL(url,'https://fixture.invalid').searchParams.get('page')==='2'){const result=await api(url);result.jobs=[];return result;}return api(url);};}],
+  ['an API error on page two',f=>{const api=f.api;f.api=async url=>{if(url.includes('/jobs?')&&new URL(url,'https://fixture.invalid').searchParams.get('page')==='2')throw new Error('API_PAGE_TWO_FAILED');return api(url);};}],
+]) test(`release proof fails closed for ${name}`,async()=>{
+  const f=fixture(),gate=f.jobs[0];
+  f.jobs=Array.from({length:100},(_,index)=>({...gate,id:100+index,name:`validation / extra-${index}`})).concat([gate,{...gate,id:999,name:'validation / unit'}]);
+  mutate(f);
+  if(name.includes('API error')) await assert.rejects(f.select(),/API_PAGE_TWO_FAILED|GITHUB_PAGINATION/);
+  else await assert.rejects(f.select(),/RELEASE_PROOF_|GITHUB_PAGINATION/);
 });
