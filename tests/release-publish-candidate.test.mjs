@@ -14,6 +14,8 @@ const script = workflow.jobs.publish.steps.find(step => step.uses === 'actions/g
 const repository = 'example/gnc';
 const headSha = 'validated-head-sha';
 const mergeSha = 'validated-merge-sha';
+const openCodexPr = { state: 'open', merged: false, merge_commit_sha: null, auto_merge: null,
+  head: { ref: 'codex/aura-repair', sha: headSha, repo: { full_name: repository } } };
 
 function fixture(options = {}) {
   const eventRun = { id: 71, run_attempt: 2, head_sha: headSha,
@@ -78,20 +80,33 @@ test('an enabled deferred auto-merge uses the validated head as the merge guard'
   assert.equal(f.calls.dispatches.length, 1);
 });
 
+test('an open codex candidate without auto-merge is merged only after the exact successful validation run', async () => {
+  const f = fixture({ pr: openCodexPr });
+  await f.execute();
+  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.merges)), [{ owner: 'example', repo: 'gnc', pull_number: 18, sha: headSha, merge_method: 'merge' }]);
+  assert.equal(f.calls.dispatches.length, 1);
+});
+
 test('untrusted, failed, cancelled, superseded, or non-PR validation runs cannot publish', async t => {
   const cases = [
-    ['failed', { validatedRun: { conclusion: 'failure' } }],
-    ['cancelled', { validatedRun: { conclusion: 'cancelled' } }],
-    ['wrong workflow', { validatedRun: { path: '.github/workflows/other.yml' } }],
-    ['wrong attempt', { validatedRun: { run_attempt: 1 } }],
-    ['wrong source event', { validatedRun: { event: 'push' } }],
-    ['fork validation', { validatedRun: { head_repository: { full_name: 'fork/gnc' } } }],
+    ['failed', { validatedRun: { conclusion: 'failure' }, pr: openCodexPr }],
+    ['cancelled', { validatedRun: { conclusion: 'cancelled' }, pr: openCodexPr }],
+    ['wrong workflow', { validatedRun: { path: '.github/workflows/other.yml' }, pr: openCodexPr }],
+    ['wrong attempt', { validatedRun: { run_attempt: 1 }, pr: openCodexPr }],
+    ['wrong source event', { validatedRun: { event: 'push' }, pr: openCodexPr }],
+    ['fork validation', { validatedRun: { head_repository: { full_name: 'fork/gnc' } }, pr: openCodexPr }],
+    ['superseded successful run', { eventRun: { run_attempt: 3 }, pr: openCodexPr }],
     ['fork PR', { candidates: [{ ...fixture().pr, head: { ref: 'candidate', sha: headSha, repo: { full_name: 'fork/gnc' } } }] }],
     ['changed head', { candidates: [{ ...fixture().pr, head: { ref: 'candidate', sha: 'new-head', repo: { full_name: repository } } }] }],
+    ['codex branch with changed head', { pr: { state: 'open', merged: false, merge_commit_sha: null, auto_merge: null,
+      head: { ref: 'codex/aura-repair', sha: 'new-head', repo: { full_name: repository } } } }],
     ['non-main PR', { candidates: [{ ...fixture().pr, base: { ref: 'release', repo: { full_name: repository } } }] }],
+    ['codex branch targeting non-main', { pr: { state: 'open', merged: false, merge_commit_sha: null, auto_merge: null,
+      base: { ref: 'release', repo: { full_name: repository } },
+      head: { ref: 'codex/aura-repair', sha: headSha, repo: { full_name: repository } } } }],
     ['ambiguous PR', { candidates: [fixture().pr, { ...fixture().pr, number: 19 }] }],
     ['closed without merge', { pr: { state: 'closed', merged: false, merge_commit_sha: null, auto_merge: null } }],
-    ['no auto-merge opt-in', { pr: { state: 'open', merged: false, merge_commit_sha: null, auto_merge: null } }],
+    ['non-codex branch without auto-merge opt-in', { pr: { state: 'open', merged: false, merge_commit_sha: null, auto_merge: null } }],
     ['draft PR', { pr: { draft: true } }],
     ['main advanced', { mainSha: 'newer-main-sha' }],
   ];
@@ -99,7 +114,7 @@ test('untrusted, failed, cancelled, superseded, or non-PR validation runs cannot
     const f = fixture(options);
     await f.execute();
     assert.deepEqual(f.calls.dispatches, []);
-    if (['closed without merge', 'no auto-merge opt-in', 'draft PR'].includes(name)) assert.deepEqual(f.calls.merges, []);
+    assert.deepEqual(f.calls.merges, []);
   });
 });
 
