@@ -118,6 +118,14 @@ existing sampled performance telemetry still runs and every emitted RPC is
 counted; unseeded sampling otherwise changes strict read/byte totals even for
 identical code. Each report records the seed, algorithm and number of random
 calls. Native cryptographic identifiers, real clocks and timers remain unchanged.
+Each cold context now owns a fresh Chromium process, while its warm revisits
+remain in that same context. Matching baseline/candidate contexts run adjacently;
+which revision runs first alternates by context number and viewport. The runner
+retains all five cold and ten warm observations per revision, with no retries,
+trimming, percentile changes or budget changes. Raw context reports and the
+execution order accompany the aggregate report. This removes shared-browser
+process state and reduces time-order bias; it does not establish that either
+caused a prior failure or eliminate runner noise.
 
 A shared callback that coalesced all live refresh reasons was tested and then
 reverted after the unchanged retry reproduced request-read, DOM-removal and

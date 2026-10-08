@@ -8,6 +8,7 @@ import { verifyReleaseArtifact } from './release-artifact.mjs';
 import { installPerformanceFixture, openPerformanceView, returnPerformanceHome, waitForPerformanceViewSettlement, PERFORMANCE_API_QUIET_MS } from './performance-browser-fixture.mjs';
 import { attachPerformanceResponseTracker, drainPerformanceResponseBodies, safePerformanceApiDiagnostic, settlePerformanceApiBoundary } from './performance-response-drain.mjs';
 import { installPerformanceRandomFixture, performanceRandomSeed } from './performance-random-fixture.mjs';
+import { runPerformanceBrowserPairs } from './performance-browser-pairs.mjs';
 
 const root = process.cwd();
 const manifest = parseBenchmarkManifest(JSON.parse(await readFile(path.join(root, 'performance/baseline.json'), 'utf8')));
@@ -15,9 +16,10 @@ const baselineSite = path.resolve(process.env.PERFORMANCE_BASELINE_SITE || path.
 const candidateSite = path.resolve(process.env.GNC_LOCAL_SITE_DIR || '_site');
 const output = path.join(root, 'artifacts', 'performance');
 await mkdir(output, { recursive: true });
-const browser = await chromium.launch();
 const failures = [];
 const reports = [];
+const contextReports = [];
+const contextSchedules = [];
 
 async function sealInfo(site) {
   const bytes = await readFile(path.join(site, 'release-manifest.json'));
@@ -67,9 +69,11 @@ async function measure(page, app, view, totals, fixtureControl, diagnosticCursor
     canceledReads: routeRequests.filter(request => request.canceled).length, requestRecords: routeRequests, preludeRequests,
     boundaryStartIndex: startIndex, boundaryEndIndex: endIndex, ...evidence, scrollFrameP95 };
 }
-async function benchmark(site, info, profile, app) {
+async function benchmark(site, info, profile, app, iteration) {
   const server = await startReleaseTestServer({ siteDir: site, port: 0 });
   const origin = `http://127.0.0.1:${server.address().port}`;
+  let browser;
+  let browserVersion;
   const samples = new Map();
   const add = (id, kind, value) => {
     if (!samples.has(id)) samples.set(id, { id, kind, samples: [] });
@@ -88,7 +92,11 @@ async function benchmark(site, info, profile, app) {
     apiReadDiagnostics.push({ phase, reads: requests.map(safePerformanceApiDiagnostic) });
   };
   try {
-    for (let iteration = 0; iteration < manifest.coldSamples; iteration++) {
+    // Each cold context gets a new Chromium process; warm visits stay inside it.
+    // This prevents a previous revision's process caches/heap from carrying over.
+    browser = await chromium.launch();
+    browserVersion = browser.version();
+    {
       const context = await browser.newContext({ viewport: { width: profile.width, height: profile.height }, baseURL: origin, serviceWorkers: 'block' });
       const page = await context.newPage();
       page.setDefaultTimeout(20000);
@@ -176,29 +184,33 @@ async function benchmark(site, info, profile, app) {
         randomDiagnostics.push(await page.evaluate(() => globalThis.__phase6RandomFixture.getState()));
       } finally { await context.close(); }
     }
-  } finally { await new Promise(resolve => server.close(resolve)); }
+  } finally {
+    try { if (browser) await browser.close(); }
+    finally { await new Promise(resolve => server.close(resolve)); }
+  }
   const report = { schemaVersion: 1, commit: info.commit, baselineCommit: manifest.baselineCommit, artifactDigest: info.digest,
-    fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browser.version()}`, viewport: { width: profile.width, height: profile.height },
-    method: `${app}:serial-cold-context-and-warm-route-v5;service-workers-blocked;seeded-mulberry32-v1;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-shell-dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
+    fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browserVersion}`, viewport: { width: profile.width, height: profile.height },
+    method: `${app}:adjacent-counterbalanced-cold-process-and-warm-route-v6;service-workers-blocked;seeded-mulberry32-v1;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-shell-dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
-  reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics, randomDiagnostics });
-  return report;
+  const complete = { ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics, randomDiagnostics };
+  contextReports.push({ ...complete, iteration });
+  return complete;
 }
 
 try {
   const baseline = await sealInfo(baselineSite), candidate = await sealInfo(candidateSite);
   if (baseline.commit !== manifest.baselineCommit) throw new Error('PERFORMANCE_BASELINE_COMMIT_MISMATCH');
   for (const profile of manifest.profiles) for (const app of ['live', 'v2']) {
-    // Alternate execution order by profile to avoid always rewarding warm host caches.
-    const reverse = profile.id === 'tablet';
-    let previous, current;
-    if (reverse) { current = await benchmark(candidateSite, candidate, profile, app); previous = await benchmark(baselineSite, baseline, profile, app); }
-    else { previous = await benchmark(baselineSite, baseline, profile, app); current = await benchmark(candidateSite, candidate, profile, app); }
+    const pair = await runPerformanceBrowserPairs(manifest, (revision, iteration) => benchmark(
+      revision === 'baseline' ? baselineSite : candidateSite,
+      revision === 'baseline' ? baseline : candidate, profile, app, iteration), { reverse: profile.id === 'tablet' });
+    const previous = pair.baseline, current = pair.candidate;
+    reports.push(previous, current);
+    contextSchedules.push({ profile: profile.id, app, schedule: pair.schedule });
     failures.push(...compareBenchmarks(manifest, previous, current).map(message => `${app}/${profile.id}: ${message}`));
     console.log(`PERFORMANCE_MEASURED ${app}/${profile.id}: initial JS ${percentile(previous.initialExecutableJsBytes, 0.5)} -> ${percentile(current.initialExecutableJsBytes, 0.5)} bytes`);
   }
 } finally {
-  await browser.close();
-  await writeFile(path.join(output, 'browser.json'), JSON.stringify({ manifest, reports, failures }, null, 2) + '\n');
+  await writeFile(path.join(output, 'browser.json'), JSON.stringify({ manifest, reports, contextReports, contextSchedules, failures }, null, 2) + '\n');
 }
 if (failures.length) throw new Error(`PERFORMANCE_REGRESSION:\n${failures.join('\n')}`);
