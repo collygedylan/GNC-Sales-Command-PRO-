@@ -7,6 +7,7 @@ import { startReleaseTestServer } from './serve-release-tests.mjs';
 import { verifyReleaseArtifact } from './release-artifact.mjs';
 import { installPerformanceFixture, openPerformanceView, returnPerformanceHome, waitForPerformanceViewSettlement, PERFORMANCE_API_QUIET_MS } from './performance-browser-fixture.mjs';
 import { attachPerformanceResponseTracker, drainPerformanceResponseBodies, safePerformanceApiDiagnostic, settlePerformanceApiBoundary } from './performance-response-drain.mjs';
+import { installPerformanceRandomFixture, performanceRandomSeed } from './performance-random-fixture.mjs';
 
 const root = process.cwd();
 const manifest = parseBenchmarkManifest(JSON.parse(await readFile(path.join(root, 'performance/baseline.json'), 'utf8')));
@@ -78,6 +79,7 @@ async function benchmark(site, info, profile, app) {
   const initialExecutableJsBytes = [];
   const cancellationDiagnostics = [];
   const apiReadDiagnostics = [];
+  const randomDiagnostics = [];
   const recordApiPhase = (indices, phase, requests) => {
     for (const request of requests) {
       if (indices.has(request.index)) throw new Error('PERFORMANCE_API_DIAGNOSTIC_DUPLICATE');
@@ -90,6 +92,8 @@ async function benchmark(site, info, profile, app) {
       const context = await browser.newContext({ viewport: { width: profile.width, height: profile.height }, baseURL: origin, serviceWorkers: 'block' });
       const page = await context.newPage();
       page.setDefaultTimeout(20000);
+      const seed = performanceRandomSeed(profile.id, app, iteration);
+      await page.addInitScript({ content: `(${installPerformanceRandomFixture.toString()})(${seed});` });
       const totals = { scriptBytes: 0, apiRequests: [], pending: [], errors: [] };
       const apiDiagnosticIndices = new Set();
       let apiDiagnosticCursor = 0;
@@ -169,14 +173,15 @@ async function benchmark(site, info, profile, app) {
         add('all-api-reads', 'count', totals.apiRequests.length);
         add('all-api-bytes', 'bytes', totals.apiRequests.reduce((sum, request) => sum + request.bytes, 0));
         deferred.push(totals.scriptBytes - initialBytes);
+        randomDiagnostics.push(await page.evaluate(() => globalThis.__phase6RandomFixture.getState()));
       } finally { await context.close(); }
     }
   } finally { await new Promise(resolve => server.close(resolve)); }
   const report = { schemaVersion: 1, commit: info.commit, baselineCommit: manifest.baselineCommit, artifactDigest: info.digest,
     fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browser.version()}`, viewport: { width: profile.width, height: profile.height },
-    method: `${app}:serial-cold-context-and-warm-route-v3;service-workers-blocked;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
+    method: `${app}:serial-cold-context-and-warm-route-v4;service-workers-blocked;seeded-mulberry32-v1;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
-  reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics });
+  reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics, randomDiagnostics });
   return report;
 }
 

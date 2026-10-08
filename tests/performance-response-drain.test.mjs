@@ -157,7 +157,77 @@ test('Home readiness blocks on baseline per-reason and candidate coalesced refre
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, productionLiveSyncRenderTimer: true }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, activeChunkRenderCount: 1 }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, chunkRenderTimersByKey: { 'drive:name:list': [1] } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, runAfterTouchInteractionTasks: { 'current-view-realtime-subscriptions': { timerId: 1 } } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, nativeRoleRefreshPromise: Promise.resolve() }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, viewId: 'request' }), false);
+});
+
+test('source touch-deferred callback remains a readiness blocker through role refresh and API idle', async () => {
+  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const extract = (startMarker, endMarker) => {
+    const start = source.indexOf(startMarker), end = source.indexOf(endMarker, start + 1);
+    assert.ok(start >= 0 && end > start, `source function exists: ${startMarker}`);
+    return source.slice(start, end);
+  };
+  const schedulerSource = [
+    extract('        function runAfterShellInteractive(', '        function cancelRunAfterTouchInteractionTask('),
+    extract('        function cancelRunAfterTouchInteractionTask(', '        function trimRunAfterTouchInteractionTasks('),
+    extract('        function trimRunAfterTouchInteractionTasks(', '        function runAfterTouchInteraction('),
+    extract('        function runAfterTouchInteraction(', '        function getLoginWarmupPlan('),
+  ].join('\n');
+  let handle = 0;
+  const timers = new Map(), frames = new Map();
+  const runtime = vm.createContext({
+    ACTIVE_TOUCH_GRACE_MS: 90, window: { addEventListener() {}, removeEventListener() {} },
+    runAfterTouchInteractionTasks: {},
+    setTimeout: callback => { timers.set(++handle, callback); return handle; },
+    clearTimeout: id => timers.delete(id),
+    requestAnimationFrame: callback => { frames.set(++handle, callback); return handle; },
+    cancelAnimationFrame: id => frames.delete(id),
+    isTouchConstrainedDevice: () => true, shouldHoldFollowupChunkFramesForInteraction: () => false,
+    getFollowupChunkInteractionDelayMs: () => 20, getInternalPlainObjectSize: value => Object.keys(value).length,
+    scheduleAppSessionHousekeeping() {},
+  });
+  vm.runInContext(schedulerSource, runtime);
+  const state = { viewId: 'request', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {},
+    uiRenderTimers: {}, uiRenderFrames: {}, runAfterTouchInteractionTasks: runtime.runAfterTouchInteractionTasks,
+    nativeRoleRefreshPromise: null };
+  const page = new EventEmitter();
+  const apiIdle = attachPerformanceApiIdleTracker(page, { quietMs: 10 });
+  const request = { method: () => 'GET', url: () => 'http://fixture.invalid/rest/v1/profiles' };
+  let resolveRefresh, finishRequest;
+  runtime.runAfterTouchInteraction(() => {
+    state.nativeRoleRefreshPromise = new Promise(resolve => { resolveRefresh = resolve; });
+    state.datasetQueueTimers['request:realtime-refresh'] = true;
+    page.emit('request', request);
+    finishRequest = () => {
+      delete state.datasetQueueTimers['request:realtime-refresh'];
+      page.emit('requestfinished', request);
+    };
+  }, 2800, 'current-view-realtime-subscriptions');
+  assert.equal(isPerformanceViewRuntimeReady(state, 'request'), false, 'the deferred touch task blocks readiness');
+
+  const timeoutId = [...timers.keys()][0];
+  timers.get(timeoutId)();
+  timers.delete(timeoutId);
+  assert.equal(Object.keys(state.runAfterTouchInteractionTasks).length, 0, 'the scheduler removes the task when it invokes it');
+  const firstFrame = [...frames.values()][0];
+  frames.clear(); firstFrame();
+  const secondFrame = [...frames.values()][0];
+  frames.clear(); secondFrame();
+  const callbackId = [...timers.keys()][0];
+  timers.get(callbackId)();
+  assert.equal(isPerformanceViewRuntimeReady(state, 'request'), false, 'the ensuing role refresh and read block readiness');
+
+  const idlePromise = apiIdle.waitForApiIdle({ timeoutMs: 500 });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(isPerformanceViewRuntimeReady(state, 'request'), false, 'the active profile request remains unsettled');
+  finishRequest();
+  await idlePromise;
+  resolveRefresh();
+  await state.nativeRoleRefreshPromise;
+  state.nativeRoleRefreshPromise = null;
+  assert.equal(isPerformanceViewRuntimeReady(state, 'request'), true, 'readiness returns after the callback work settles');
 });
 
 test('live route readiness waits for queued dataset, render, production refresh, and chunk work', () => {
@@ -177,6 +247,8 @@ test('live route readiness waits for queued dataset, render, production refresh,
     { activeChunkRenderCount: 1 },
     { chunkRenderActivityByKey: { 'drive:name:list': 1 } },
     { chunkRenderTimersByKey: { 'drive:name:list': [1] } },
+    { runAfterTouchInteractionTasks: { 'current-view-realtime-subscriptions': { timerId: 1 } } },
+    { nativeRoleRefreshPromise: Promise.resolve() },
   ]) assert.equal(isPerformanceViewRuntimeReady({ ...ready, ...pending }, 'request'), false);
 });
 
@@ -189,6 +261,7 @@ test('generated browser readiness expression passes the expected view and evalua
     productionLiveSyncRenderTimer: false, productionLiveSyncViewLoad: { pending: false },
     uiRenderTimers: {}, uiRenderFrames: {}, uiRenderTokens: {}, activeChunkRenderCount: 0,
     chunkRenderActivityByKey: {}, chunkRenderTimersByKey: {},
+    runAfterTouchInteractionTasks: {}, nativeRoleRefreshPromise: null,
     __phase6CoordinatorObserver: { getPendingActivity: () => ({ pending: false }) },
   };
   assert.equal(vm.runInNewContext(expression, runtime), true);

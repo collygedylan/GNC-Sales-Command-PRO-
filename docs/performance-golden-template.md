@@ -92,6 +92,9 @@ delays and callbacks are preserved. The identified recurring 30-second safeguard
 is allowed to remain scheduled; any reads it starts are still counted. Render
 queue entries require a live render token because the existing scheduler can
 retain a cleared timer entry after an immediate replacement has completed.
+Readiness also waits for pending touch-deferred startup tasks and role refreshes.
+The login subscription task otherwise fires on the first Que click and races its
+revision proof; its normal fallback now finishes while Home remains active.
 Read counts include every API request started within the measurement window.
 Payload bytes come from those same requests after bounded completion; later
 background responses cannot enter the window. Deliberate browser cancellations
@@ -99,6 +102,12 @@ are recorded separately with zero completed payload, while unexpected HTTP,
 network and body-capture failures invalidate the measurement.
 React render isolation has separate deterministic mount tests because the normal
 production React build does not enable profiling.
+The isolated browser fixture seeds non-cryptographic randomness per profile,
+application and cold-context number, identically for both revisions. The app's
+existing sampled performance telemetry still runs and every emitted RPC is
+counted; unseeded sampling otherwise changes strict read/byte totals even for
+identical code. Each report records the seed, algorithm and number of random
+calls. Native cryptographic identifiers, real clocks and timers remain unchanged.
 
 A shared callback that coalesced all live refresh reasons was tested and then
 reverted after the unchanged retry reproduced request-read, DOM-removal and
@@ -132,7 +141,17 @@ lints, runs SQL assertions and compares generated types. The partial historical
 regression fixture remains separate and does not run the master-inventory API
 benchmark. The cloud API pair temporarily stages and serves the pinned and
 candidate function sources against the same disposable stack, then restores any
-source directories that existed before the comparison.
+source directories that existed before the comparison. The API comparison repeats
+each revision three times in the fixed order baseline/candidate, candidate/baseline,
+baseline/candidate. It pools all 45 samples per metric and retains each of the six
+raw pass reports under `artifacts/performance/database-api-passes-*`. The p50/p95
+budgets remain unchanged; at 45 samples, nearest-rank p95 is the 43rd observation,
+so one slowest request does not determine the gate. All observations remain in the
+reports, and response count/digest parity is checked in every pass. Alternating pass
+order reduces broad time-order bias but does not eliminate machine noise or prove
+the cause of a slow sample. The current schema-contract job has a 35-minute limit;
+the previous full schema-gate invocation reached this comparison after about 8.5
+minutes. The additional pass cost still needs confirmation in CI.
 
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox

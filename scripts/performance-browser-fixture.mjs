@@ -92,6 +92,7 @@ export function isPerformanceViewRuntimeReady(state = {}, expectedViewId = '') {
   const expectedView = String(expectedViewId || '').trim();
   if (!expectedView || state.viewId !== expectedView) return false;
   if (state.coordinatorActivity?.pending !== false) return false;
+  if (state.nativeRoleRefreshPromise || Object.keys(state.runAfterTouchInteractionTasks || {}).length > 0) return false;
   const datasetStates = state.datasetLoadState && typeof state.datasetLoadState === 'object' ? Object.values(state.datasetLoadState) : [];
   if (datasetStates.some(dataset => dataset && (dataset.initialPromise || dataset.fullPromise))) return false;
   if (Object.keys(state.datasetQueueTimers || {}).length > 0 || state.backgroundRefreshInFlight
@@ -116,6 +117,7 @@ export function buildPerformanceViewRuntimeReadyExpression(viewId) {
     productionLiveSyncRenderPending, productionLiveSyncRenderTimer: !!productionLiveSyncRenderTimer,
     productionLiveSyncViewLoadPending: !!productionLiveSyncViewLoad?.pending, uiRenderTimers, uiRenderFrames, uiRenderTokens,
     activeChunkRenderCount, chunkRenderActivityByKey, chunkRenderTimersByKey,
+    nativeRoleRefreshPromise, runAfterTouchInteractionTasks,
     coordinatorActivity: globalThis.__phase6CoordinatorObserver?.getPendingActivity()
   }, ${JSON.stringify(safeViewId)})`;
 }

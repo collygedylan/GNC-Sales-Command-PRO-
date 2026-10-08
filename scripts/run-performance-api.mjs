@@ -4,6 +4,7 @@ import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeF
 import os from 'node:os';
 import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
+import { aggregateApiPassReports, API_PAIR_SCHEDULE } from './performance-api-passes.mjs';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { assertPerformanceApiPath, assertPerformanceApiTree, PERFORMANCE_API_SOURCE_DIRECTORIES, clearPerformanceApiSources, restorePerformanceApiSources, stagePerformanceApiSources, validatePerformanceApiRoots } from './performance-api-source-snapshots.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
@@ -20,10 +21,15 @@ const status = runNode([cli, '--workdir', workspace, 'status', '--output', 'env'
 const values = Object.fromEntries(status.split(/\r?\n/).map(line => line.match(/^([A-Z_]+)="(.*)"$/)).filter(Boolean).map(match => [match[1], match[2]]));
 const api = new URL(values.API_URL);
 if (!['127.0.0.1', 'localhost', '[::1]'].includes(api.hostname) || api.protocol !== 'http:' || !values.SERVICE_ROLE_KEY) throw new Error('PERFORMANCE_LOCAL_AUTH_ENV_REQUIRED');
+const runId = process.env.GITHUB_RUN_ID || '';
+const runAttempt = process.env.GITHUB_RUN_ATTEMPT || '';
+if (!/^\d+$/.test(runId) || !/^\d+$/.test(runAttempt)) throw new Error('PERFORMANCE_CI_RUN_ID_INVALID');
 const temp = mkdtempSync(path.join(os.tmpdir(), 'gnc-performance-api-'));
 const files = PERFORMANCE_API_SOURCE_DIRECTORIES;
 const output = path.join(repoRoot, 'artifacts/performance');
 mkdirSync(output, { recursive: true });
+const passOutput = path.join(output, `database-api-passes-${runId}-${runAttempt}`);
+mkdirSync(passOutput, { recursive: true });
 const sources = path.join(temp, 'baseline');
 const backup = path.join(temp, 'candidate');
 let candidateSnapshot;
@@ -50,7 +56,7 @@ async function stopServer() {
   server = undefined;
 }
 
-async function measure(label, commit, source) {
+async function measure(revision, passIndex, commit, source) {
   validatePerformanceApiRoots({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup });
   for (const relative of files) {
     const target = path.join(workspace, relative);
@@ -77,7 +83,7 @@ async function measure(label, commit, source) {
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
     if (!ready) throw new Error('PERFORMANCE_FUNCTION_SERVER_NOT_READY');
-    const reportPath = path.join(output, `database-api-${label}.json`);
+    const reportPath = path.join(passOutput, `pass-${String(passIndex).padStart(2, '0')}-${revision}.json`);
     runNode(['scripts/performance-database.mjs', '--api-workspace', workspace, '--cli', cli], {
       capture: true, env: { EXPECTED_PROJECT_REF: 'local', PERFORMANCE_SOURCE_COMMIT: commit, PERFORMANCE_REPORT_PATH: reportPath }
     });
@@ -97,19 +103,24 @@ try {
   run('tar', ['-xf', archive, '-C', sources]);
   candidateSnapshot = stagePerformanceApiSources({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup });
   writeFileSync(envFile, `SUPABASE_URL=${api.origin}\nSUPABASE_SERVICE_ROLE_KEY=${values.SERVICE_ROLE_KEY}\nAPP_SESSION_SECRET=${randomBytes(32).toString('hex')}\n`, { flag: 'wx', mode: 0o600 });
-  const baseline = await measure('baseline', manifest.baselineCommit, sources);
-  const candidate = await measure('candidate', run('git', ['rev-parse', 'HEAD'], { capture: true }).trim(), backup);
-  const resultIdentity = report => {
-    const scenarios = report.diagnostics?.scenarios;
-    if (!Array.isArray(scenarios)) throw new Error('PERFORMANCE_API_RESULT_EVIDENCE_MISSING');
-    const rows = scenarios.filter(entry => typeof entry.expectedPageDigest === 'string')
-      .map(entry => ({ scenario: entry.scenario, total: entry.total, offset: entry.offset, digest: entry.expectedPageDigest }));
-    if (!rows.length) throw new Error('PERFORMANCE_API_RESULT_EVIDENCE_EMPTY');
-    return JSON.stringify(rows);
-  };
-  if (resultIdentity(baseline) !== resultIdentity(candidate)) throw new Error('PERFORMANCE_API_RESULTS_CHANGED');
+  const candidateCommit = run('git', ['rev-parse', 'HEAD'], { capture: true }).trim();
+  const reports = [];
+  for (let index = 0; index < API_PAIR_SCHEDULE.length; index += 1) {
+    const revision = API_PAIR_SCHEDULE[index];
+    reports.push({ revision, report: await measure(revision, index + 1,
+      revision === 'baseline' ? manifest.baselineCommit : candidateCommit,
+      revision === 'baseline' ? sources : backup) });
+  }
+  const { baseline, candidate } = aggregateApiPassReports(reports, {
+    baselineCommit: manifest.baselineCommit, candidateCommit,
+    expectedSamplesPerPass: manifest.coldSamples + manifest.warmSamples,
+  });
   const failures = compareBenchmarks(manifest, baseline, candidate);
-  writeFileSync(path.join(output, 'database-api-comparison.json'), `${JSON.stringify({ manifest, failures }, null, 2)}\n`);
+  writeFileSync(path.join(output, 'database-api-comparison.json'), `${JSON.stringify({ manifest,
+    passSchedule: API_PAIR_SCHEDULE, passFiles: reports.map((entry, index) => ({
+      pass: index + 1, revision: entry.revision,
+      file: path.relative(output, path.join(passOutput, `pass-${String(index + 1).padStart(2, '0')}-${entry.revision}.json`)).replaceAll(path.sep, '/'),
+    })), baseline, candidate, failures }, null, 2)}\n`);
   if (failures.length) throw new Error(`PERFORMANCE_API_REGRESSION:\n${failures.join('\n')}`);
 } finally {
   try { await stopServer(); }
