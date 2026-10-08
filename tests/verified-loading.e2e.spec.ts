@@ -61,13 +61,62 @@ async function waitForVerifiedDrive(page: Page) {
       verified: productionLiveSyncVerifiedView === productionVerifiedViewKey(),
       skeletons: document.querySelectorAll('#drive-content .skeleton').length,
       visibleCards: Array.from(document.querySelectorAll('#drive-content [role="button"]')).filter(node => node.getClientRects().length).length,
-      statistics: getProductionLiveSyncCoordinator().getStatistics()
+      statistics: getProductionLiveSyncCoordinator().getStatistics(),
+      drivePreparationDiagnostics: window.__drivePreparationDiagnostics || []
     })`));
     throw new Error(`${String(error)}\nDrive verification diagnostic: ${state}`);
   });
   const rows = page.locator('#drive-content').getByRole('button', { name: /^Open / });
   await expect(rows.first()).toBeVisible();
   return rows.count();
+}
+
+async function installDrivePreparationDiagnostics(page: Page) {
+  const installed = await page.evaluate(() => window.eval(`(() => {
+    const events = window.__drivePreparationDiagnostics = [];
+    const check = pending => pending && ({
+      pendingIdentity: driveCommonNamePreparation === pending,
+      visible: !document.hidden && getCurrentVisibleViewId() === 'drive',
+      nameTab: activeDriveTab === 'name',
+      selectionMatches: getDriveDrillSelectionStateKey() === pending.selection,
+      searchMatches: String(document.getElementById('drive-search')?.value || '') === pending.search,
+      filterMatches: driveVisibleItemsStateCacheKey === pending.filterKey,
+      userRoleMatches: String(currentUser || '') === pending.user && String(currentRole || '') === pending.role,
+      chunkTokenCurrent: isChunkRenderCurrentForContainer(pending.container, 'drive:name:list', pending.token),
+      nativeProofCurrent: !pending.native || (canUseProductionLiveSync() && productionVerifiedViewKey() === pending.proof),
+      readGenerationCurrent: !pending.native || productionLiveSyncReadGeneration === pending.generation
+    });
+    const originalCheck = isDriveCommonNamePreparationCurrent;
+    const wrappedCheck = function(pending) {
+      const result = originalCheck.call(this, pending);
+      if (pending && !result && events.length < 16) {
+        window.__drivePreparationLastInvalidation = {
+          kind: 'predicate-false', at: Math.round(performance.now()),
+          generation: productionLiveSyncReadGeneration, pendingGeneration: Number(pending?.generation), checks: check(pending)
+        };
+        events.push(window.__drivePreparationLastInvalidation);
+      } else if (result) window.__drivePreparationLastInvalidation = null;
+      return result;
+    };
+    isDriveCommonNamePreparationCurrent = wrappedCheck;
+    const originalCancel = cancelDriveCommonNamePreparation;
+    const wrappedCancel = function(...args) {
+      const pending = driveCommonNamePreparation;
+      if (pending && events.length < 16) {
+        events.push({
+          kind: 'cancel', at: Math.round(performance.now()),
+          generation: productionLiveSyncReadGeneration,
+          pendingGeneration: Number(pending?.generation),
+          checks: pending ? check(pending) : null,
+          precededByInvalidation: window.__drivePreparationLastInvalidation?.kind === 'predicate-false'
+        });
+      }
+      return originalCancel.apply(this, args);
+    };
+    cancelDriveCommonNamePreparation = wrappedCancel;
+    return isDriveCommonNamePreparationCurrent === wrappedCheck && cancelDriveCommonNamePreparation === wrappedCancel;
+  })()`));
+  expect(installed, 'Drive preparation diagnostics install before the retry scenario').toBe(true);
 }
 
 async function visitView(page: Page, totals: Totals, phase: VisitPhase, view: 'Drive' | 'Tasks'): Promise<Visit> {
@@ -518,6 +567,7 @@ test('Drive season denial stays recoverable and makes no automatic retry before 
       await expect(page.locator('#login-button')).toBeEnabled();
     },
   });
+  await installDrivePreparationDiagnostics(page);
   await page.locator('#home-tile-drive').click();
   await expect(page.locator('#drive-content')).toContainText('Drive inventory unavailable');
   const attempts = settingReads;
