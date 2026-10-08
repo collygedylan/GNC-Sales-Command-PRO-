@@ -35973,6 +35973,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function stageProductionRefreshList(key, container, crumb, rows, crumbText, renderRow, options) {
             const refresh = productionLiveSyncActiveRender;
+            // A completed Pending preview already has the same row contract as
+            // its verified snapshot. Preserve those cards instead of bypassing
+            // the normal signature check through an empty staging container.
+            if (key === 'request-main' && activeReqTab === 'pending'
+                && options.renderSignature
+                && getContainerRenderSignature(container) === normalizeRenderSignature(options.renderSignature)
+                && container.querySelectorAll('[data-request-uid]').length === rows.length) {
+                syncRequestCrumb(crumb, crumbText);
+                if (options.onComplete) options.onComplete();
+                return true;
+            }
             const staged = document.createElement('div');
             refresh.pending++;
             (refresh.containers ||= new Set()).add(container);
@@ -114193,6 +114204,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return false;
         }
 
+        const requestBrowseFooterMarkup = new WeakMap();
+        function syncRequestBrowseFooter(container, html) {
+            const footer = container.querySelector('.browse-page-footer');
+            if (footer && requestBrowseFooterMarkup.get(footer) === html) return;
+            footer?.remove();
+            if (html) {
+                container.insertAdjacentHTML('beforeend', html);
+                const nextFooter = container.querySelector('.browse-page-footer');
+                if (nextFooter) requestBrowseFooterMarkup.set(nextFooter, html);
+            }
+        }
+
         function renderRequest() {
             updateFooterRequestBadge();
             updateFooterChatBadge();
@@ -114435,8 +114458,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
                     onComplete: () => {
                         decorateRequestRows();
-                        container.querySelector('.browse-page-footer')?.remove();
-                        if (pageFooter) container.insertAdjacentHTML('beforeend', pageFooter);
+                        syncRequestBrowseFooter(container, pageFooter);
                     }
                 }));
                 return;
@@ -114689,6 +114711,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const minInterval = force ? 0 : Math.max(0, Number(safeOptions.minIntervalMs ?? REQUEST_VIEW_VISIBLE_FORCE_REFRESH_MIN_INTERVAL_MS) || 0);
             if (!force && lastRequestLiveWakeAt && (now - lastRequestLiveWakeAt) < minInterval) return false;
             lastRequestLiveWakeAt = now;
+            if (getNativeForegroundRequestRefreshAdapter()) {
+                // Navigation joins the current verified cohort. Forcing a new
+                // legacy refresh here rereads and replaces the same queue.
+                signalProductionLiveSync('view-entry', 0);
+                return true;
+            }
             if (safeOptions.subscribeVisible === true && isPrimaryRequestLiveSyncContextVisible()) {
                 setRealtimeSubscriptionsForView('request', true);
             }
@@ -115159,6 +115187,15 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
         }
 
+        function getNativeForegroundRequestRefreshAdapter() {
+            if (!productionLiveSyncCoordinator || !canUseProductionLiveSync()) return null;
+            const context = getProductionLiveSyncContext();
+            if (!context.scope || !context.dataPermissionVersion || !context.visible || !context.online) return null;
+            if ((context.surfaces || []).includes('request:bunch-notes')) return null;
+            return (context.adapters || []).find((adapter) => adapter.id === 'core:requests'
+                && Array.isArray(adapter.sourceKeys) && adapter.sourceKeys.includes(ACTIVE_REQUEST_TABLE)) || null;
+        }
+
         async function forceRefreshRequestsForView(reason = 'request-view', options = {}) {
             const safeOptions = options && typeof options === 'object' ? options : {};
             if (isRequestViewReadTerminalForCurrentIdentity() && safeOptions.manualRetry !== true) return false;
@@ -115183,6 +115220,27 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             requestViewForceRefreshInFlight = true;
             lastRequestViewForceRefreshAt = now;
             try {
+                const nativeAdapter = getNativeForegroundRequestRefreshAdapter();
+                if (nativeAdapter) {
+                    const owner = getProductionLiveSyncContext();
+                    const didRefresh = await productionLiveSyncCoordinator.ensure(nativeAdapter,
+                        safeOptions.force === true || safeOptions.manualRetry === true);
+                    const currentOwner = getProductionLiveSyncContext();
+                    const currentAdapter = getNativeForegroundRequestRefreshAdapter();
+                    if (!didRefresh || owner.scope !== currentOwner.scope
+                        || owner.dataPermissionVersion !== currentOwner.dataPermissionVersion
+                        || owner.view !== currentOwner.view || owner.viewKey !== currentOwner.viewKey || !currentAdapter
+                        || nativeAdapter.cacheKey !== currentAdapter.cacheKey) return false;
+                    // The coordinator owns snapshot validation, cache commits and
+                    // rendering. Reapplying its rows through the legacy path can
+                    // cancel a verified preview and rebuild the same list twice.
+                    await refreshActiveRequestQueueSideData(reason || 'request-force-refresh', {
+                        force: safeOptions.force === true,
+                        allowWhileInteractive: true,
+                        minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
+                    });
+                    return true;
+                }
                 const rows = await fetchActiveRequestLiveRows('*');
                 if (retryIfInteractive()) return false;
                 const formattedRows = formatFetchedRows(rows, ACTIVE_REQUEST_TABLE);

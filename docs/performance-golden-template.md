@@ -148,6 +148,15 @@ prevents a redundant `request-check` signal from interrupting the coordinator's
 background read; legacy and Bunch Notes-only contexts retain their existing
 fallback. Coordinator revision proofs and explicit refresh signals still apply.
 
+Request navigation uses that same authorized foreground ownership to join the
+native `view-entry` cohort instead of forcing a second legacy read. Explicit
+refreshes still honor force/retry guards and recheck scope, permission version,
+view and adapter after completion. A completed Pending list whose existing
+render signature and row count match the verified snapshot retains its cards;
+changed or incomplete lists still stage normally. Page-footer markup is tracked
+by node identity so decoration does not cause an otherwise unchanged footer to
+be replaced. Legacy and Bunch Notes refresh paths retain their behavior.
+
 The beta lazy boundary schedules its existing transition in a layout effect so
 chunk discovery does not wait for a passive effect. This schedules work before
 paint; it does not promise the transition commits before paint. Route keys,
@@ -200,6 +209,11 @@ Function-server startup failures report fixed diagnostic categories and process
 status from at most the final 64 KiB of a private temporary log. Raw logs and
 local credentials are never published; normal owned-workspace cleanup deletes
 them. This does not retry or replace any benchmark observation.
+Readiness requires a harmless unsupported-action response from app-api, its
+unique request ID echoed in the response, and the matching app-api log emitted
+by the function-server child. The probe sends only the local publishable key,
+without a bearer token or inventory query, so it verifies the new child handled
+the request without warming the authenticated inventory path measured below.
 The pinned CLI's `functions serve` resolves one image registry, unlike stack
 startup's registry fallback. Its benchmark child uses Supabase's GHCR mirror to
 avoid ECR throttling on shared runners; the CLI still selects the pinned Edge

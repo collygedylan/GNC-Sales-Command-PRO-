@@ -1,9 +1,10 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { closeSync, cpSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
+import { appApiReadinessLogSeen, appApiReadinessRequest, isAppApiReadyResponse } from './performance-function-readiness.mjs';
 import { aggregateApiPassReports, API_PAIR_SCHEDULE } from './performance-api-passes.mjs';
 import { openFunctionServerLog, closeFunctionServerLog, getFunctionServerFailureDiagnostics } from './performance-function-server-diagnostics.mjs';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
@@ -43,6 +44,19 @@ function removeOwnedTemporaryDirectory() {
   if (!info.isDirectory() || info.isSymbolicLink()) throw new Error('PERFORMANCE_CLEANUP_PATH_INVALID');
   assertPerformanceApiTree(temp);
   rmSync(temp, { recursive: true, force: false });
+}
+
+function readFunctionServerLogTail(logPath) {
+  let fd;
+  try {
+    fd = openSync(logPath, 'r');
+    const size = fstatSync(fd).size;
+    const length = Math.min(size, 64 * 1024);
+    const buffer = Buffer.alloc(length);
+    readSync(fd, buffer, 0, length, size - length);
+    return buffer.toString('utf8');
+  } catch { return ''; }
+  finally { if (fd !== undefined) closeSync(fd); }
 }
 
 async function stopServer() {
@@ -87,9 +101,16 @@ async function measure(revision, passIndex, commit, source) {
     for (let attempt = 0; attempt < 60; attempt++) {
       if (startupError || server.exitCode !== null || server.signalCode !== null) throw new Error('PERFORMANCE_FUNCTION_SERVER_FAILED', { cause: startupError });
       try {
-        const response = await fetch(new URL('/functions/v1/app-api', api), { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}', signal: AbortSignal.timeout(2000) });
-        await response.arrayBuffer();
-        if ([400, 401, 403, 405, 422].includes(response.status)) { ready = true; break; }
+        const requestId = `perf-ready-${randomBytes(16).toString('hex')}`;
+        const response = await fetch(new URL('/functions/v1/app-api', api), { ...appApiReadinessRequest(values.ANON_KEY, requestId), signal: AbortSignal.timeout(2000) });
+        if (await isAppApiReadyResponse(response, requestId)) {
+          for (let logAttempt = 0; logAttempt < 20; logAttempt++) {
+            const logText = readFunctionServerLogTail(logPath);
+            if (appApiReadinessLogSeen(logText, requestId)) { ready = true; break; }
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          if (ready) break;
+        }
       } catch { /* bounded readiness retry */ }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
