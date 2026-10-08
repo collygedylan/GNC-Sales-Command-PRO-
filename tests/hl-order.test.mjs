@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { appApiDatabaseBridge, installDatabaseBridge } from './helpers/database-bridge.mjs';
-import { hlOrderFixtureRpcResult } from './fixtures/hl-order-state.mjs';
+import { hlOrderFixtureRpcResult, hlProfileRow, hlSeasonSettingsRows } from './fixtures/hl-order-state.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const blockStart = html.indexOf('        // HL selections mirror');
@@ -33,6 +33,29 @@ test('HL browser fixture returns a contract-valid health RPC result through the 
       duration_ms: null, sample_rate: 1, app_build: 'fixture', metadata: {} })
   }, 1000, 'fixture semantic health event');
   assert.equal((await response.json()), 1);
+});
+
+test('HL profile and season-settings fixtures satisfy the app-selected database response contracts', async () => {
+  const liveDatabase = readFileSync(new URL('../services/liveDatabase.ts', import.meta.url), 'utf8');
+  const profileSelect = liveDatabase.match(/\.select\('([^']+)'\)/)?.[1];
+  assert.ok(profileSelect, 'profile projection must be read from the live database adapter');
+  const settingsSelect = html.match(/select=([^&'`]+)&key=eq\.\$\{encodeURIComponent\(APP_SEASON_SETTINGS_KEY\)\}/)?.[1];
+  assert.ok(settingsSelect, 'season settings projection must be read from the application');
+  const bridge = appApiDatabaseBridge(async (url) => {
+    const table = new URL(url).pathname.split('/').at(-1);
+    const rows = table === 'profiles' ? [hlProfileRow()] : table === 'ph_app_settings' ? hlSeasonSettingsRows() : null;
+    assert.ok(rows, `unexpected fixture table ${table}`);
+    return new Response(JSON.stringify(table === 'profiles' ? rows[0] : rows), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  });
+  const profileResponse = await bridge.fetchTable('https://fixture.invalid', 'profiles', `select=${profileSelect}`, { method: 'GET' }, 1000, 'HL profile fixture');
+  assert.equal((await profileResponse.json()).passkey_pilot, false);
+  const settingsQuery = `select=${settingsSelect}&key=eq.current_season_salesyear&limit=1`;
+  const settingsResponse = await bridge.fetchTable('https://fixture.invalid', 'ph_app_settings', settingsQuery, { method: 'GET' }, 1000, 'HL season settings fixture');
+  const [settingsRow] = await settingsResponse.json();
+  assert.equal(settingsRow.updated_by, null);
+  assert.equal(settingsRow.updated_at, '2026-01-01T00:00:00Z');
 });
 const row = (unique_id = 'soc-a', changes = {}) => ({ unique_id, itemcode: 'PLANT.003', commonname: 'Synthetic Holly', contsize: '#3',
   locationcode: 'C.12.001', lotcode: '27.F1', quantityordered: '10', dock: '4', planstartdate: '2026-09-15', stopnumber: '2',

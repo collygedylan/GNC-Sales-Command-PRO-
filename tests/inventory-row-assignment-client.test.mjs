@@ -3,8 +3,29 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import { appApiDatabaseBridge } from './helpers/database-bridge.mjs';
+import { inventoryRowAssignmentFixture } from './fixtures/inventory-row-assignment.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+test('stable-refresh assignment fixture satisfies the strict PostgREST row contract', async () => {
+  const row = inventoryRowAssignmentFixture({ unique_id: 'fixture-row', master_unique_id: 'fixture-row', itemcode: 'FIXTURE.001',
+    itemcode_normalized: 'FIXTURE.001', contsize: '#3', locationcode: 'A.01.001', assignedto: 'dylan_collyge', present_in_drive: true });
+  const bridge = appApiDatabaseBridge(async () => new Response(JSON.stringify([row]), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  }));
+  const response = await bridge.fetchTable('https://example.test', 'ph_inventory_row_assignments',
+    'select=*&present_in_drive=eq.true&order=master_unique_id.asc', { method: 'GET' }, 1000, 'assignment fixture contract');
+  assert.deepEqual(await response.json(), [row]);
+  assert.throws(() => inventoryRowAssignmentFixture({ warehouseid: 'invalid-column' }), /INVENTORY_ROW_ASSIGNMENT_FIXTURE_FIELDS_UNSUPPORTED/);
+  const invalidBridge = appApiDatabaseBridge(async () => new Response(JSON.stringify([{ ...row, revision: 'invalid' }]), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  }));
+  await assert.rejects(invalidBridge.fetchTable('https://example.test', 'ph_inventory_row_assignments', 'select=*',
+    { method: 'GET' }, 1000, 'invalid assignment fixture override'), /fields and values must match the database schema/);
+});
 const names = ['firstNonEmptyValue', 'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart',
   'getWarehouseAssignedIdentityParts', 'buildWarehouseAssignedLookupKeys', 'clearWarehouseAssignedItemCaches',
   'normalizeWarehouseAssignedItemRow', 'rebuildWarehouseAssignedItemIndexes', 'getWarehouseAssignedRowsForItem',

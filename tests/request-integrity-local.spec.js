@@ -67,7 +67,7 @@ async function rpc(name, token, payload) {
 }
 
 test.describe('Drive-canonical request transactions', {"tag":["@database","@local-e2e"]}, () => {
-  test.skip(!localUrl || !anonKey || !serviceKey, {"tag":["@database","@local-e2e"]}, 'Local Supabase environment is required.');
+  test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
 
   test('roles, retries, History/outbox, push, assignments, and browser outbox', {"tag":["@database","@local-e2e"]}, async ({ page }) => {
     const suffix = Date.now().toString(36);

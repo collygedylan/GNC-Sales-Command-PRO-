@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
+import { inventoryRowAssignmentFixture } from './fixtures/inventory-row-assignment.mjs';
 // @test-group: @stable-background-refresh
 
 
@@ -163,10 +164,13 @@ const inventory = Array.from({ length: itemCount }, (_, index) => {
     hlMaster(`eval2-u1-${index + 1}`, { ...shared, lotcode: '26.U1', season: 'U1', saleyear: '26', s_lts: '999', ptronhand: '1', ptravailable: '1' })
   ];
 }).flat();
-const assignments = inventory.map((row, index) => ({
+const assignments = inventory.map(row => inventoryRowAssignmentFixture({
   unique_id: row.unique_id, master_unique_id: row.unique_id, itemcode: row.itemcode, genusname: row.genusname,
-  contsize: row.contsize, locationcode: row.locationcode, warehouseid: row.warehouseid,
-  assignedto: 'dylan_collyge'
+  itemcode_normalized: row.itemcode.toUpperCase(), commonname: row.commonname, contsize: row.contsize,
+  locationcode: row.locationcode, lotcode: row.lotcode, warehousei: row.warehousei,
+  assignedto: 'dylan_collyge', assignment_reason: 'itemcode_default', default_assignedto: 'dylan_collyge',
+  default_revision: 1, policy_revision: 1, present_in_drive: true, review_required: false, revision: 1,
+  source_revision: 1, zone_override_active: false, updated_at: '2026-10-01T00:00:00Z'
 }));
 
 async function installAssignmentsRoute(page: any) {
@@ -398,7 +402,7 @@ test('verified background refresh keeps Eval Reports #2 LowStock location cards 
 });
 
 test('Eval Reports #2 loading status preserves card geometry when its message wraps', {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }, testInfo) => {
-  test.skip(!/(android|iphone)/.test(testInfo.project.name), {"tag":["@stable-background-refresh"]}, 'exercise narrow status wrapping on mobile');
+  test.skip(!/(android|iphone)/.test(testInfo.project.name), 'exercise narrow status wrapping on mobile');
   await setupEval2Location(page, baseURL!);
   const measurements = [];
   for (const width of [320, 360, 390]) {
@@ -428,7 +432,7 @@ test('Eval Reports #2 loading status preserves card geometry when its message wr
 
 for (const overlapRecordsRender of [false, true]) {
 test(`touch-held Eval Reports #2 refresh keeps location cards in place until the gesture ends${overlapRecordsRender ? ' with a queued records render' : ''}`, {"tag":["@stable-background-refresh"]}, async ({ page, baseURL }, testInfo) => {
-  test.skip(!/(android|iphone)/.test(testInfo.project.name), {"tag":["@stable-background-refresh"]}, 'exercise the touch-specific scheduler on mobile profiles');
+  test.skip(!/(android|iphone)/.test(testInfo.project.name), 'exercise the touch-specific scheduler on mobile profiles');
   const fixture = await setupEval2Location(page, baseURL!);
   const scroller = page.locator('#main-scroll-area');
   await page.evaluate(() => window.eval(`(() => {

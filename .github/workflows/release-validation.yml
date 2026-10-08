@@ -661,6 +661,8 @@ jobs:
         run: npx playwright test --config ${{ matrix.config }} --workers=1 --reporter=github,blob --project=${{ matrix.project }} --shard=${{ matrix.shard }}/${{ matrix.total }} --max-failures=1
       - name: AURA command center browser interactions
         if: matrix.suite == 'command-center'
+        env:
+          GNC_BROWSER_ASSET_ROOT: _site
         run: node scripts/run-discovered-tests.mjs node-browser
       - name: Verify tests did not change the release package
         env:

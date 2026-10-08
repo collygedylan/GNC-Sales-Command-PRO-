@@ -30,7 +30,7 @@ async function serviceRpc(name, body) {
 }
 
 test.describe('Native Auth password profile reconciliation', {"tag":["@database"]}, () => {
-  test.skip(!localUrl || !anonKey || !serviceKey, {"tag":["@database"]}, 'Local Supabase environment is required.');
+  test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
 
   test('repairs an orphan profile and atomically synchronizes a forced password change', {"tag":["@database"]}, async () => {
     const suffix = `${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`;

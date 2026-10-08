@@ -217,6 +217,32 @@ test('compiled browser Node lane executes every discovered browser-test file', (
   assert.throws(() => runDiscoveredNodeTests({ root, group: 'unknown', print() {} }), /DISCOVERED_NODE_GROUP_UNSUPPORTED/);
 });
 
+test('command-center browser checks consume the downloaded compiled assets without a source fallback', () => {
+  const workflow = require('js-yaml').load(readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8'));
+  const steps = workflow.jobs.compiled.steps;
+  const browserIndex = steps.findIndex(step => step.run === 'node scripts/run-discovered-tests.mjs node-browser');
+  const downloadIndex = steps.findIndex(step => step.uses === './.github/actions/download-release');
+  assert.ok(downloadIndex >= 0 && browserIndex > downloadIndex);
+  assert.equal(steps[browserIndex].env.GNC_BROWSER_ASSET_ROOT, '_site');
+  const filename = 'tests/alpha-command-center.browser.test.mjs';
+  const source = readFileSync(path.join(root, filename), 'utf8');
+  const header = source.slice(0, source.indexOf('let server;'))
+    .replace(/^import .*;\r?$/gm, '')
+    .replaceAll('import.meta.url', JSON.stringify(new URL('../' + filename, import.meta.url).href));
+  function load(env, exists = true) {
+    const reads = [];
+    vm.runInNewContext(header, { path, fileURLToPath, URL, process: { env }, fs: {
+      existsSync: () => exists,
+      readFileSync: filename => { reads.push(filename); return Buffer.from('compiled fixture'); },
+    } });
+    return reads;
+  }
+  assert.deepEqual(load({}), ['js', 'css'].map(extension => path.join(root, '_site/assets', `alpha-command-center.${extension}`)));
+  assert.deepEqual(load({ GNC_BROWSER_ASSET_ROOT: '.gnc-local/focused site' }),
+    ['js', 'css'].map(extension => path.join(root, '.gnc-local/focused site/assets', `alpha-command-center.${extension}`)));
+  assert.throws(() => load({}, false), /Compiled command-center browser assets are missing/);
+});
+
 test('functional, timing and database lanes cover the original browser files without overlap', () => {
   const load = configLoader();
   const base = load('playwright.config.ts');

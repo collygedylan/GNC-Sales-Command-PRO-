@@ -26,7 +26,7 @@ export default defineConfig({
     { name: 'sw-isolation-webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command: `node --input-type=module -e "import { startReleaseTestServer } from './scripts/serve-release-tests.mjs'; await startReleaseTestServer({ port: 43126, rootFixture: '<!doctype html><title>Local test fixture only</title><p>Local test fixture only</p>' });"`,
+    command: `node --input-type=module -e "import { startReleaseTestServer } from './scripts/serve-release-tests.mjs'; await startReleaseTestServer({ port: 43126, rootFixture: '<!doctype html><title>Local test fixture only</title><h1>Local test fixture only</h1>' });"`,
     url: 'http://127.0.0.1:43126',
     reuseExistingServer: false,
     timeout: 20_000,

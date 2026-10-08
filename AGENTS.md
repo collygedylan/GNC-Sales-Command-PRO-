@@ -19,7 +19,8 @@ This file is the authoritative repository workflow for local development, candid
 ## Development-to-Production Flow
 
 - Target `main` from an isolated `codex/` branch. Run focused local checks; let the full required GitHub Actions validation run on the PR.
-- The existing Auto-Merge workflow opts eligible PRs into GitHub auto-merge. Auto-merge relies on the target branch's configured protections and required checks; creating a PR or enabling auto-merge is not proof that validation passed.
+- The `publish-candidate` workflow is the only automatic merge path for same-repository `codex/` branches. It waits for the exact full `PWA and Supabase performance` validation run to succeed, then merges the validated head SHA and dispatches the backend-to-Pages handoff. Do not enable GitHub Auto-Merge before validation; branch protection may not defer it.
+- Other branches still require an explicit GitHub Auto-Merge opt-in, and the validated publisher will honor that opt-in only after the same full successful-run and exact-head checks.
 - Production publication is a separate mandatory cloud gate: it validates the exact candidate commit, deploys backend changes before Pages, and verifies the live release. Do not write directly to production or use an alternate publication path.
 - The aborted staging-teardown experiment adds no staging detour or prerequisite to this production flow.
 

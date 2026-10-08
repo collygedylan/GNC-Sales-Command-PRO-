@@ -3228,7 +3228,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
 });
 
 test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', {"tag":["@local-e2e","@release-functional"]}, async ({ page, browserName }) => {
-  test.skip(browserName !== 'webkit', {"tag":["@local-e2e","@release-functional"]}, 'This regression reproduces the iPhone WebKit focus lifecycle.');
+  test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.09.04.04', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).ensureRequestDetailEntryVisible === 'function');

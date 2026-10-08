@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import ts from 'typescript';
 import { auditTestDiscovery, discoverAllTests, discoverTests, readTestAnnotations, testDiscoveryGroups } from '../scripts/test-discovery.mjs';
 
 test('test discovery sorts repo-relative files and separates browser Node tests from unit tests', () => {
@@ -152,6 +153,31 @@ test('every Playwright spec declares at least one discovered suite tag', () => {
     .flatMap(annotation => annotation.value.split(','));
   assert.ok(canary.includes('@production-canary'));
   assert.ok(!canary.includes('@local-e2e'));
+});
+
+test('runtime test.skip calls use the condition-and-reason overload while skipped declarations retain tags', () => {
+  const specs = discoverTests({ group: 'playwright' });
+  let declarationCount = 0;
+  for (const file of specs) {
+    const source = ts.createSourceFile(file, readFileSync(new URL('../' + file, import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+    const visit = node => {
+      if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)
+          && node.expression.expression.getText(source) === 'test' && node.expression.name.text === 'skip') {
+        const first = node.arguments[0];
+        const isDeclaration = first && (ts.isStringLiteral(first) || ts.isNoSubstitutionTemplateLiteral(first) || ts.isTemplateExpression(first));
+        if (isDeclaration) {
+          declarationCount++;
+        } else {
+          const reason = node.arguments[1];
+          assert.ok(!reason || !ts.isObjectLiteralExpression(reason),
+            `${file}:${source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1} runtime test.skip must not pass declaration options as its reason`);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+  }
+  assert.ok(declarationCount > 0, 'valid skipped test declarations remain part of the suite');
 });
 
 test('isolated PostgreSQL runtime tests are discovered separately from PGlite and default units', () => {

@@ -67,10 +67,13 @@ async function fixture(t, { start = true, rootFixture } = {}) {
 }
 
 test('worker isolation substitutes only the root document without modifying the sealed app', async t => {
-  const rootFixture = '<!doctype html><title>Local test fixture only</title>';
+  const configuration = await readFile(new URL('../playwright.sw-isolation.config.ts', import.meta.url), 'utf8');
+  const rootFixture = configuration.match(/rootFixture: '([^']+)'/)?.[1];
+  assert.ok(rootFixture, 'exercise the root fixture supplied by the actual browser configuration');
   const f = await fixture(t, { rootFixture });
   assert.equal((await f.get('/')).body, rootFixture);
   assert.equal((await f.get('/index.html')).body, rootFixture);
+  assert.match((await f.get('/index.html')).body, /<h1>Local test fixture only<\/h1>/);
   assert.equal((await f.get('/', 'HEAD')).body, '');
   assert.equal((await f.get('/v2/')).body, '<html>SEALED V2</html>');
   assert.equal(await readFile(path.join(f.siteDir, 'index.html'), 'utf8'), '<html>SEALED COMPILED SHELL</html>');

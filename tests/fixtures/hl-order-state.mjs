@@ -2,6 +2,13 @@ import { inventoryReadFixture } from './inventory-list-read-fixture.mjs';
 
 export const hlUserId = '54c87ebf-d76d-452b-96b4-beaaeb1742d9';
 export const hlRecipient = 'dylan_collyge@greenleafnursery.com';
+export function hlProfileRow({ id = hlUserId, username = 'dylan_collyge', role = 'ADMIN' } = {}) {
+  return { id, legacy_user_id: null, username, display_name: username, role, division: '10', language: 'English',
+    disabled_at: null, locked_until: null, must_change_password: false, passkey_pilot: false };
+}
+export function hlSeasonSettingsRows() {
+  return [{ key: 'current_season_salesyear', value: { seasonCode: 'F1', salesYear: '27' }, updated_by: null, updated_at: '2026-01-01T00:00:00Z' }];
+}
 export const hlSoc = (source_id, changes = {}) => ({ source_id, unique_id: source_id, itemcode: 'SYNTH.003', commonname: 'Synthetic HL Holly',
   contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', quantityordered: '10', ptravailable: null, dock: '4', planstartdate: '2026-09-15',
   stopnumber: '2', tripnumber: '1', transactionnumber: 'SYNTH-ORDER', purchaseordernumber: 'SYNTH-PO', customername: 'Synthetic Customer',
@@ -463,10 +470,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     control.commands.length = 0;
   }
   const origin = new URL(baseURL).origin;
-  const seasonSettings = [{ key: 'current_season_salesyear', value: { seasonCode: 'F1', salesYear: '27' } }];
+  const seasonSettings = hlSeasonSettingsRows();
   const claims = { sub: hlUserId, aud: 'authenticated', role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000) };
   const token = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify(claims)).toString('base64url'), 'synthetic'].join('.');
-  const profile = { id: hlUserId, username, display_name: username, role, division: '10', language: 'English', disabled_at: null, locked_until: null, must_change_password: false };
+  const profile = hlProfileRow({ username, role });
   const session = { access_token: token, refresh_token: 'synthetic', expires_at: claims.exp, expires_in: 3600, token_type: 'bearer', user: { id: hlUserId, aud: 'authenticated', role: 'authenticated', email: 'hl-test@example.invalid', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } };
   const json = (route, value, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers: {
     'access-control-allow-origin': origin,
