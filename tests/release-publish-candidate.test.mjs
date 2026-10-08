@@ -166,6 +166,18 @@ test('the dispatcher is trusted, least-scoped, and cannot recursively dispatch i
   assert.doesNotMatch(workflow.on.workflow_run.workflows.join(' '), /Publish validated candidate|Deploy static app to Pages/);
 });
 
+test('no pull-request workflow can merge early or enable auto-merge before validation', () => {
+  const workflowDirectory = new URL('../.github/workflows/', import.meta.url);
+  const names = fs.readdirSync(workflowDirectory).filter(name => /\.ya?ml$/i.test(name));
+  assert.equal(names.includes('auto-merge.yml'), false, 'the old eager auto-merge workflow must stay removed');
+  for (const name of names) {
+    const candidate = yaml.load(fs.readFileSync(new URL(name, workflowDirectory), 'utf8'));
+    if (!['pull_request', 'pull_request_target'].some(event => Object.hasOwn(candidate.on || {}, event))) continue;
+    assert.doesNotMatch(JSON.stringify(candidate.jobs || {}), /gh\s+pr\s+merge|pulls\.merge\s*\(|enablePullRequestAutoMerge|mergePullRequest/i,
+      `${name} must not merge or enable auto-merge from a pull-request event`);
+  }
+});
+
 const publish = backend.jobs['publish-pages'];
 
 test('backend schema and functions deploy before guarded Pages publication', () => {

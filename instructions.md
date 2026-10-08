@@ -21,7 +21,7 @@ Once core changes, applicable migration checks, and focused local tests pass, co
 
 Keep release markers synchronized with package.json using the repository's release-version tooling when preparing an application release. Use the date-based VYYYY.MM.DD.NNN version scheme for application releases. CI-only and documentation-only changes retain the current application version and must pass its consistency check.
 
-After pushing a candidate, create or reuse its PR and monitor with the fail-fast workflow in AGENTS.md. The Auto-Merge workflow relies on configured branch protections and required checks; the separate exact-commit publication gate must also pass, deploying backend changes before Pages. Do not patch production directly. See the Development-to-Production Flow in AGENTS.md.
+After pushing a candidate, create or reuse its PR and monitor with the fail-fast workflow in AGENTS.md. Same-repository `codex/` candidates merge only after the exact full `PWA and Supabase performance` run succeeds; that guarded publisher then dispatches the backend deployment before Pages. Do not enable GitHub Auto-Merge before validation or patch production directly. See the Development-to-Production Flow in AGENTS.md.
 
 ## Cleanup
 
