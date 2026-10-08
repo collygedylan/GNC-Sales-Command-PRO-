@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import test from 'node:test';
-import { attachPerformanceApiIdleTracker } from '../scripts/performance-browser-fixture.mjs';
+import { attachPerformanceApiIdleTracker, isPerformanceHomeRuntimeReady, waitForPerformanceHomeReadiness } from '../scripts/performance-browser-fixture.mjs';
 import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
 
 test('response body drain clears completed batches and captures responses added while waiting', async () => {
@@ -95,6 +95,63 @@ test('API idle tracker rejects an event-loop stall beyond the timeout', async t 
   const rejected = assert.rejects(tracker.waitForApiIdle({ timeoutMs: 100 }), /PERFORMANCE_API_IDLE_TIMEOUT/);
   t.mock.timers.tick(150);
   await rejected;
+});
+
+test('Home readiness waits for deferred loader work before accepting an idle API interval', async () => {
+  const page = new EventEmitter();
+  const tracker = attachPerformanceApiIdleTracker(page, { quietMs: 15 });
+  const state = { scheduled: true, loading: false, completed: false };
+  const request = { method: () => 'GET', url: () => 'http://fixture.invalid/functions/v1/app-api' };
+  const waitUntilReady = async timeoutMs => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (!state.scheduled && !state.loading) return;
+      await new Promise(resolve => setTimeout(resolve, 2));
+    }
+    throw new Error('fixture Home loader did not settle');
+  };
+  setTimeout(() => {
+    state.scheduled = false;
+    state.loading = true;
+    page.emit('request', request);
+    setTimeout(() => {
+      page.emit('requestfinished', request);
+      state.loading = false;
+      state.completed = true;
+    }, 20);
+  }, 25);
+
+  const result = await waitForPerformanceHomeReadiness({
+    waitForRuntimeReady: waitUntilReady,
+    isRuntimeReady: () => !state.scheduled && !state.loading && state.completed,
+    waitForApiIdle: tracker.waitForApiIdle.bind(tracker),
+    quietMs: tracker.quietMs,
+    timeoutMs: 500,
+  });
+  assert.equal(result.method, 'home-loader-queues-and-api-idle');
+  assert.equal(result.quietMs, 15);
+  assert.equal(state.completed, true);
+});
+
+test('Home readiness rejects a final state check completed after its deadline', async t => {
+  t.mock.timers.enable({ apis: ['Date'], now: 1000 });
+  await assert.rejects(waitForPerformanceHomeReadiness({
+    waitForRuntimeReady: async () => {},
+    waitForApiIdle: async () => {},
+    isRuntimeReady: async () => { t.mock.timers.setTime(1101); return true; },
+    timeoutMs: 100,
+  }), /PERFORMANCE_HOME_READINESS_TIMEOUT/);
+});
+
+test('Home readiness blocks on baseline per-reason and candidate coalesced refresh keys', () => {
+  const ready = { viewId: 'home', datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
+  assert.equal(isPerformanceHomeRuntimeReady(ready), true);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderTimers: { 'visible-dirty-refresh:dataset-refresh': 1 } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderFrames: { 'visible-dirty-refresh:current': 1 } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderTimers: { 'production-live-refresh:render': 1 } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, datasetLoadState: { requests: { initialPromise: {} } } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, datasetQueueTimers: { 'requests:initial': 1 } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, viewId: 'request' }), false);
 });
 
 test('response byte capture waits for the complete network response before reading its body', async () => {

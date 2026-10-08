@@ -13,6 +13,10 @@ const queueRows = inventoryRows.slice(0, 200).map(row => ({ ...row, unique_id: `
 // reported in its route or between-phase partition; this never cancels reads.
 export const PERFORMANCE_API_QUIET_MS = 75;
 
+export const PERFORMANCE_HOME_READY_TIMEOUT_MS = 15_000;
+
+const performanceControlsByPage = new WeakMap();
+
 export function attachPerformanceApiIdleTracker(page, { quietMs = PERFORMANCE_API_QUIET_MS } = {}) {
   if (!page || typeof page.on !== 'function' || !Number.isFinite(quietMs) || quietMs < 1) {
     throw new Error('PERFORMANCE_API_IDLE_TRACKER_OPTIONS_INVALID');
@@ -35,6 +39,7 @@ export function attachPerformanceApiIdleTracker(page, { quietMs = PERFORMANCE_AP
   page.on('requestfailed', settle);
 
   return {
+    quietMs,
     async waitForApiIdle({ timeoutMs = 15_000 } = {}) {
       if (!Number.isFinite(timeoutMs) || timeoutMs <= quietMs) throw new Error('PERFORMANCE_API_IDLE_TIMEOUT_INVALID');
       const deadline = Date.now() + timeoutMs;
@@ -58,6 +63,53 @@ export function attachPerformanceApiIdleTracker(page, { quietMs = PERFORMANCE_AP
   };
 }
 
+export async function waitForPerformanceHomeReadiness({ waitForRuntimeReady, isRuntimeReady, waitForApiIdle,
+  timeoutMs = PERFORMANCE_HOME_READY_TIMEOUT_MS, quietMs = PERFORMANCE_API_QUIET_MS } = {}) {
+  if (typeof waitForRuntimeReady !== 'function' || typeof isRuntimeReady !== 'function'
+    || typeof waitForApiIdle !== 'function' || !Number.isFinite(timeoutMs) || timeoutMs <= 0
+    || !Number.isFinite(quietMs) || quietMs < 1) {
+    throw new Error('PERFORMANCE_HOME_READINESS_OPTIONS_INVALID');
+  }
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const remaining = deadline - Date.now();
+    await waitForRuntimeReady(remaining);
+    await waitForApiIdle({ timeoutMs: Math.max(1, deadline - Date.now()) });
+    const ready = await isRuntimeReady();
+    if (Date.now() >= deadline) throw new Error('PERFORMANCE_HOME_READINESS_TIMEOUT');
+    if (ready) return { method: 'home-loader-queues-and-api-idle', quietMs };
+  }
+  throw new Error('PERFORMANCE_HOME_READINESS_TIMEOUT');
+}
+
+export function isPerformanceHomeRuntimeReady(state = {}) {
+  if (state.viewId !== 'home') return false;
+  const datasetStates = state.datasetLoadState && typeof state.datasetLoadState === 'object' ? Object.values(state.datasetLoadState) : [];
+  if (datasetStates.some(dataset => dataset && (dataset.initialPromise || dataset.fullPromise))) return false;
+  if (Object.keys(state.datasetQueueTimers || {}).length > 0 || state.backgroundRefreshInFlight
+    || state.productionLiveSyncRendering || state.productionLiveSyncRenderPending || state.productionLiveSyncViewLoadPending) return false;
+  const renderKeys = [...Object.keys(state.uiRenderTimers || {}), ...Object.keys(state.uiRenderFrames || {})];
+  return !renderKeys.some(key => key.startsWith('visible-dirty-refresh:')
+    || ['production-live-refresh:render', 'view:home', 'view-interactive:home'].includes(key));
+}
+
+async function waitForLiveHomeReadiness(page, apiIdleTracker) {
+  const runtimeReadyExpression = `(${isPerformanceHomeRuntimeReady.toString()})({
+    viewId: typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '',
+    datasetLoadState, datasetQueueTimers, backgroundRefreshInFlight, productionLiveSyncRendering,
+    productionLiveSyncRenderPending, productionLiveSyncViewLoadPending: !!productionLiveSyncViewLoad?.pending,
+    uiRenderTimers, uiRenderFrames
+  })`;
+  const waitForRuntimeReady = async timeout => {
+    const handle = await page.waitForFunction(expression => window.eval(expression), runtimeReadyExpression,
+      { polling: 'raf', timeout });
+    await handle.dispose();
+  };
+  const isRuntimeReady = () => page.evaluate(expression => window.eval(expression), runtimeReadyExpression);
+  return waitForPerformanceHomeReadiness({ waitForRuntimeReady, isRuntimeReady,
+    waitForApiIdle: apiIdleTracker.waitForApiIdle.bind(apiIdleTracker), quietMs: apiIdleTracker.quietMs });
+}
+
 export async function installPerformanceFixture(page, origin, app) {
   const apiIdleTracker = attachPerformanceApiIdleTracker(page);
   if (app === 'live') {
@@ -73,7 +125,10 @@ export async function installPerformanceFixture(page, origin, app) {
             body: JSON.stringify({ ok: true, data: { rows, total: queueRows.length, offset, limit, hasMore: offset + rows.length < queueRows.length } }) });
         });
       } });
-    return Object.assign(control, apiIdleTracker);
+    const fixtureControl = Object.assign(control, apiIdleTracker);
+    performanceControlsByPage.set(page, fixtureControl);
+    await waitForLiveHomeReadiness(page, fixtureControl);
+    return fixtureControl;
   }
   await page.route('**/*', async route => {
     const request = route.request(), url = new URL(request.url());
@@ -93,7 +148,9 @@ export async function installPerformanceFixture(page, origin, app) {
   });
   await page.goto('/v2/#home');
   await page.locator('.home-dashboard').waitFor();
-  return apiIdleTracker;
+  const fixtureControl = apiIdleTracker;
+  performanceControlsByPage.set(page, fixtureControl);
+  return fixtureControl;
 }
 
 export async function openPerformanceView(page, app, view) {
@@ -134,5 +191,8 @@ export async function returnPerformanceHome(page, app) {
   } else {
     await page.locator('#global-header-inline-back').click();
     await page.locator('#view-home').waitFor({ state: 'visible' });
+    const fixtureControl = performanceControlsByPage.get(page);
+    if (!fixtureControl) throw new Error('PERFORMANCE_HOME_FIXTURE_CONTROL_MISSING');
+    await waitForLiveHomeReadiness(page, fixtureControl);
   }
 }

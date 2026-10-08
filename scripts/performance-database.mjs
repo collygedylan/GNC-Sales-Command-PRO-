@@ -539,6 +539,34 @@ export function sanitizedApplicationErrorCode(responseBody) {
   return typeof code === 'string' && /^[A-Z0-9_]{1,80}$/.test(code) ? code : 'UNKNOWN';
 }
 
+/** Compact only the owned, empty inventory relation before a disposable fixture pass. */
+export async function vacuumEmptyPerformanceInventory(db) {
+  const ownership = await db.query(`SELECT pg_get_userbyid(c.relowner) AS owner
+    FROM pg_class c WHERE c.oid='public.ph_master_inventory'::regclass`);
+  const current = await db.query('SELECT current_user');
+  if (!ownership.rows[0]?.owner || ownership.rows[0].owner !== current.rows[0]?.current_user) {
+    throw errorCode('PERFORMANCE_FIXTURE_TABLE_OWNER_REQUIRED');
+  }
+  const existing = await db.query('SELECT count(*)::bigint AS total FROM public.ph_master_inventory');
+  if (Number(existing.rows[0]?.total) !== 0) throw errorCode('PERFORMANCE_FIXTURE_REQUIRES_EMPTY_INVENTORY');
+  // VACUUM FULL is deliberately limited to this empty table in the verified
+  // disposable workspace. It removes fixture dead tuples, but does not flush
+  // PostgreSQL shared buffers or claim cold-cache measurements.
+  await db.query('VACUUM (FULL, ANALYZE) public.ph_master_inventory');
+}
+
+export async function readInventoryPhysicalSizes(db) {
+  const { rows } = await db.query(`SELECT pg_relation_size('public.ph_master_inventory')::bigint AS heap_bytes,
+    pg_indexes_size('public.ph_master_inventory')::bigint AS index_bytes,
+    pg_total_relation_size('public.ph_master_inventory')::bigint AS total_bytes`);
+  const row = rows[0];
+  const sizes = { heapBytes: Number(row?.heap_bytes), indexBytes: Number(row?.index_bytes), totalBytes: Number(row?.total_bytes) };
+  if (Object.values(sizes).some(value => !Number.isSafeInteger(value) || value < 0)) {
+    throw errorCode('PERFORMANCE_RELATION_SIZE_INVALID');
+  }
+  return sizes;
+}
+
 async function createLocalIdentity(db, admin, apiUrl, publishableKey, role, nonce) {
   const password = `Bench-${randomUUID()}-T9!`;
   const fixture = buildLocalIdentityFixture(role, nonce, password);
@@ -828,6 +856,7 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
     if (mode === 'api' && (!values.SERVICE_ROLE_KEY || !values.ANON_KEY || process.env.EXPECTED_PROJECT_REF !== 'local')) {
       throw errorCode('PERFORMANCE_LOCAL_AUTH_ENV_REQUIRED');
     }
+    await vacuumEmptyPerformanceInventory(db);
     await seedInventory(db, prefix, () => { seeded = true; });
     if (mode === 'api') {
       for (const role of ['admin', 'rep', 'foreman']) {
@@ -837,6 +866,9 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
 
     const runStage = async size => {
       const totals = await expectedTotals(db, prefix, recentSince, size);
+      const physicalSizes = await readInventoryPhysicalSizes(db);
+      planEvidence.push({ scenario: `fixture.${size}.physical-relation-size`, ...physicalSizes,
+        sharedBuffersFlushed: false, purpose: 'observe table/index storage after deterministic fixture seeding and ANALYZE' });
       const nullTimestampRows = await db.query({ text: `SELECT count(*)::bigint AS total
         FROM public.ph_master_inventory WHERE unique_id LIKE $1 || '-%' AND last_updated IS NULL`, values: [prefix] });
       const expectedNullTimestampRows = Number(size === '10k' ? INITIAL_SYNTHETIC_ROWS : MAX_SYNTHETIC_ROWS) / 1000;
@@ -884,7 +916,11 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
     report = buildReport(metrics, planEvidence, { ...performanceArtifactDigest(sourceRoot, mode), mode });
     const indexes = await db.query(`SELECT indexname,indexdef FROM pg_indexes
       WHERE schemaname='public' AND tablename='ph_master_inventory' ORDER BY indexname`);
-    report.diagnostics = { ...report.diagnostics, unchangedQueryIndexes: indexes.rows,
+    report.diagnostics = { ...report.diagnostics,
+      fixturePhysicalReset: { statement: 'VACUUM (FULL, ANALYZE) public.ph_master_inventory',
+        scope: 'only after the verified disposable inventory table is confirmed owned by the current role and empty',
+        sharedBuffersFlushed: false },
+      unchangedQueryIndexes: indexes.rows,
       queryIndexNote: 'Read from local disposable schema after seeding; no index or migration changes are made by this benchmark.' };
     if (sqlContract) {
       const postgres = await db.query('SELECT version() AS version');

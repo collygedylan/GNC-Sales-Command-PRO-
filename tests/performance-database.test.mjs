@@ -17,7 +17,9 @@ import {
   pinnedBaselineProjections,
   parseBenchmarkCliArgs,
   readTomlInteger,
+  readInventoryPhysicalSizes,
   resolveLocalApiUrl,
+  vacuumEmptyPerformanceInventory,
   sanitizedApplicationErrorCode,
   sanitizedDatabaseFailureCode,
   runDatabasePerformanceBenchmark,
@@ -78,6 +80,59 @@ test('database fixture diagnostics retain only a validated SQLSTATE', () => {
     code: 'not-a-sqlstate', message: 'secret',
   }).message, 'PERFORMANCE_LOCAL_PROFILE_CREATE_FAILED:UNKNOWN');
   assert.throws(() => sanitizedDatabaseFailureCode('profile failed', { code: '23514' }), /PERFORMANCE_LOCAL_ERROR_PREFIX_INVALID/);
+});
+
+test('physical fixture reset requires the verified owner and zero rows before vacuum', async () => {
+  const calls = [];
+  const db = { async query(sql) {
+    calls.push(sql);
+    if (sql.includes('pg_get_userbyid')) return { rows: [{ owner: 'postgres' }] };
+    if (sql === 'SELECT current_user') return { rows: [{ current_user: 'postgres' }] };
+    if (sql.startsWith('SELECT count(*)')) return { rows: [{ total: '0' }] };
+    if (sql === 'VACUUM (FULL, ANALYZE) public.ph_master_inventory') return { rows: [] };
+    throw new Error('unexpected query');
+  } };
+  await vacuumEmptyPerformanceInventory(db);
+  assert.deepEqual(calls, [
+    `SELECT pg_get_userbyid(c.relowner) AS owner
+    FROM pg_class c WHERE c.oid='public.ph_master_inventory'::regclass`,
+    'SELECT current_user',
+    'SELECT count(*)::bigint AS total FROM public.ph_master_inventory',
+    'VACUUM (FULL, ANALYZE) public.ph_master_inventory',
+  ]);
+});
+
+test('physical fixture reset never vacuums an unowned or nonempty inventory table', async () => {
+  const ownerDb = { async query(sql) {
+    if (sql.includes('pg_get_userbyid')) return { rows: [{ owner: 'another_role' }] };
+    if (sql === 'SELECT current_user') return { rows: [{ current_user: 'postgres' }] };
+    throw new Error('owner guard should stop before inventory count or vacuum');
+  } };
+  await assert.rejects(vacuumEmptyPerformanceInventory(ownerDb), /PERFORMANCE_FIXTURE_TABLE_OWNER_REQUIRED/);
+
+  const calls = [];
+  const nonemptyDb = { async query(sql) {
+    calls.push(sql);
+    if (sql.includes('pg_get_userbyid')) return { rows: [{ owner: 'postgres' }] };
+    if (sql === 'SELECT current_user') return { rows: [{ current_user: 'postgres' }] };
+    if (sql.startsWith('SELECT count(*)')) return { rows: [{ total: '1' }] };
+    throw new Error('nonempty guard should stop before vacuum');
+  } };
+  await assert.rejects(vacuumEmptyPerformanceInventory(nonemptyDb), /PERFORMANCE_FIXTURE_REQUIRES_EMPTY_INVENTORY/);
+  assert.ok(!calls.some(sql => sql.startsWith('VACUUM')));
+});
+
+test('physical relation diagnostics expose only checked heap, index, and total byte counts', async () => {
+  const db = { async query(sql) {
+    assert.match(sql, /pg_relation_size\('public\.ph_master_inventory'\)/);
+    assert.match(sql, /pg_indexes_size\('public\.ph_master_inventory'\)/);
+    assert.match(sql, /pg_total_relation_size\('public\.ph_master_inventory'\)/);
+    return { rows: [{ heap_bytes: '2490368', index_bytes: '21905408', total_bytes: '24428544' }] };
+  } };
+  assert.deepEqual(await readInventoryPhysicalSizes(db), { heapBytes: 2490368, indexBytes: 21905408, totalBytes: 24428544 });
+  await assert.rejects(readInventoryPhysicalSizes({ async query() {
+    return { rows: [{ heap_bytes: 'NaN', index_bytes: '-1', total_bytes: 'unknown' }] };
+  } }), /PERFORMANCE_RELATION_SIZE_INVALID/);
 });
 
 test('local identity cleanup removes only its rep mapping before profile and Auth deletion', async () => {
