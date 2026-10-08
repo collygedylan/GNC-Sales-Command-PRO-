@@ -1,8 +1,11 @@
 // @test-group: foundation
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import test from 'node:test';
-import { attachPerformanceApiIdleTracker, isPerformanceHomeRuntimeReady, waitForPerformanceHomeReadiness } from '../scripts/performance-browser-fixture.mjs';
+import { attachPerformanceApiIdleTracker, buildPerformanceViewRuntimeReadyExpression, isPerformanceHomeRuntimeReady, isPerformanceViewRuntimeReady,
+  waitForPerformanceHomeReadiness, waitForPerformanceViewReadiness } from '../scripts/performance-browser-fixture.mjs';
 import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
 
 test('response body drain clears completed batches and captures responses added while waiting', async () => {
@@ -144,14 +147,160 @@ test('Home readiness rejects a final state check completed after its deadline', 
 });
 
 test('Home readiness blocks on baseline per-reason and candidate coalesced refresh keys', () => {
-  const ready = { viewId: 'home', datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
+  const ready = { viewId: 'home', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
   assert.equal(isPerformanceHomeRuntimeReady(ready), true);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderTimers: { 'visible-dirty-refresh:dataset-refresh': 1 } }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderFrames: { 'visible-dirty-refresh:current': 1 } }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, uiRenderTimers: { 'production-live-refresh:render': 1 } }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, datasetLoadState: { requests: { initialPromise: {} } } }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, datasetQueueTimers: { 'requests:initial': 1 } }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, productionLiveSyncRenderTimer: true }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, activeChunkRenderCount: 1 }), false);
+  assert.equal(isPerformanceHomeRuntimeReady({ ...ready, chunkRenderTimersByKey: { 'drive:name:list': [1] } }), false);
   assert.equal(isPerformanceHomeRuntimeReady({ ...ready, viewId: 'request' }), false);
+});
+
+test('live route readiness waits for queued dataset, render, production refresh, and chunk work', () => {
+  const ready = { viewId: 'request', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
+  assert.equal(isPerformanceViewRuntimeReady(ready, 'request'), true);
+  assert.equal(isPerformanceViewRuntimeReady(ready, 'drive'), false);
+  for (const pending of [
+    { coordinatorActivity: undefined },
+    { coordinatorActivity: { pending: true } },
+    { datasetQueueTimers: { 'requests:initial': 1 } },
+    { datasetLoadState: { requests: { initialPromise: {} } } },
+    { uiRenderTimers: { 'commit:drive:name:list': 1 } },
+    { uiRenderFrames: { 'production-live-refresh:render': 1 } },
+    { productionLiveSyncRenderTimer: true },
+    { productionLiveSyncRenderPending: true },
+    { productionLiveSyncViewLoadPending: true },
+    { activeChunkRenderCount: 1 },
+    { chunkRenderActivityByKey: { 'drive:name:list': 1 } },
+    { chunkRenderTimersByKey: { 'drive:name:list': [1] } },
+  ]) assert.equal(isPerformanceViewRuntimeReady({ ...ready, ...pending }, 'request'), false);
+});
+
+test('generated browser readiness expression passes the expected view and evaluates actual runtime state', () => {
+  const expression = buildPerformanceViewRuntimeReadyExpression('request');
+  const runtime = {
+    getCurrentVisibleViewId: () => 'request',
+    datasetLoadState: {}, datasetQueueTimers: {}, backgroundRefreshInFlight: false,
+    productionLiveSyncRendering: false, productionLiveSyncRenderPending: false,
+    productionLiveSyncRenderTimer: false, productionLiveSyncViewLoad: { pending: false },
+    uiRenderTimers: {}, uiRenderFrames: {}, uiRenderTokens: {}, activeChunkRenderCount: 0,
+    chunkRenderActivityByKey: {}, chunkRenderTimersByKey: {},
+    __phase6CoordinatorObserver: { getPendingActivity: () => ({ pending: false }) },
+  };
+  assert.equal(vm.runInNewContext(expression, runtime), true);
+  assert.equal(vm.runInNewContext(expression, { ...runtime, getCurrentVisibleViewId: () => 'drive' }), false);
+  assert.equal(vm.runInNewContext(expression, { ...runtime, datasetQueueTimers: { 'requests:initial': 1 } }), false);
+  assert.throws(() => buildPerformanceViewRuntimeReadyExpression(''), /PERFORMANCE_VIEW_ID_REQUIRED/);
+  assert.equal(vm.runInNewContext(buildPerformanceViewRuntimeReadyExpression('home'), { ...runtime, getCurrentVisibleViewId: () => 'home' }), true);
+});
+
+test('route readiness waits for live render tokens but accepts a completed replacement frame with stale timer bookkeeping', () => {
+  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = source.indexOf('        function scheduleUiRender(');
+  const end = source.indexOf('\n        function ', start + 1);
+  assert.ok(start >= 0 && end > start);
+  const timeouts = new Map(), frames = new Map();
+  let handle = 0, rendered = 0;
+  const runtime = vm.createContext({
+    uiRenderTimers: {}, uiRenderFrames: {}, uiRenderTokens: {},
+    setTimeout: callback => { timeouts.set(++handle, callback); return handle; },
+    clearTimeout: id => timeouts.delete(id),
+    requestAnimationFrame: callback => { frames.set(++handle, callback); return handle; },
+    cancelAnimationFrame: id => frames.delete(id),
+    beginInternalPerfMeasure: () => 0, getAdaptivePerfElapsedMs: () => 0,
+    recordAdaptiveRenderDuration: () => {}, getInternalPlainObjectSize: value => Object.keys(value).length,
+    LONG_SESSION_CACHE_LIMIT: 100, scheduleAppSessionHousekeeping: () => {},
+  });
+  vm.runInContext(source.slice(start, end), runtime);
+  const state = { viewId: 'drive', coordinatorActivity: { pending: false }, uiRenderTimers: runtime.uiRenderTimers,
+    uiRenderFrames: runtime.uiRenderFrames, uiRenderTokens: runtime.uiRenderTokens };
+  runtime.scheduleUiRender('production-live-refresh:render', () => { rendered++; }, 150);
+  assert.equal(isPerformanceViewRuntimeReady(state, 'drive'), false);
+  runtime.scheduleUiRender('production-live-refresh:render', () => { rendered++; }, 0);
+  assert.equal(timeouts.size, 0, 'the prior delayed callback was canceled');
+  assert.equal(isPerformanceViewRuntimeReady(state, 'drive'), false, 'the replacement frame is still active');
+  for (const callback of frames.values()) callback();
+  assert.equal(rendered, 1);
+  assert.equal(Object.keys(state.uiRenderTimers).length, 1, 'the existing scheduler retains this cleared timer entry');
+  assert.deepEqual(Object.keys(state.uiRenderTokens), []);
+  assert.equal(isPerformanceViewRuntimeReady(state, 'drive'), true);
+  assert.equal(isPerformanceViewRuntimeReady({ ...state, uiRenderTokens: undefined }, 'drive'), false,
+    'unknown token state cannot establish that a queued key is stale');
+});
+
+test('live route settlement includes a delayed queued read and waits again when state changes after API idle', async () => {
+  const page = new EventEmitter();
+  const tracker = attachPerformanceApiIdleTracker(page, { quietMs: 15 });
+  const state = { viewId: 'request', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: { 'requests:initial': true },
+    backgroundRefreshInFlight: false, uiRenderTimers: {}, uiRenderFrames: {} };
+  const request = { method: () => 'POST', url: () => 'http://fixture.invalid/functions/v1/app-api' };
+  const started = Date.now();
+  setTimeout(() => {
+    delete state.datasetQueueTimers['requests:initial'];
+    state.uiRenderTimers['commit:request'] = true;
+    page.emit('request', request);
+    setTimeout(() => {
+      state.uiRenderTimers = {};
+      page.emit('requestfinished', request);
+      state.datasetLoadState = { requests: { fullPromise: true } };
+      setTimeout(() => { state.datasetLoadState = {}; }, 20);
+    }, 20);
+  }, 260);
+  const isReady = () => isPerformanceViewRuntimeReady(state, 'request');
+  const waitForRuntimeReady = async timeoutMs => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (isReady()) return;
+      await new Promise(resolve => setTimeout(resolve, 2));
+    }
+    throw new Error('PERFORMANCE_VIEW_READINESS_TIMEOUT');
+  };
+  const result = await waitForPerformanceViewReadiness({ waitForRuntimeReady, isRuntimeReady: isReady,
+    waitForApiIdle: tracker.waitForApiIdle.bind(tracker), viewId: 'request', timeoutMs: 800, quietMs: tracker.quietMs });
+  assert.equal(result.method, 'live-view-work-and-api-idle');
+  assert.equal(result.viewId, 'request');
+  assert.equal(tracker.quietMs, 15);
+  assert.ok(Date.now() - started >= 290, 'settlement waits for the delayed request and its follow-up state change');
+});
+
+test('live route settlement rechecks state after API idle before closing the boundary', async () => {
+  const state = { viewId: 'drive', coordinatorActivity: { pending: false }, datasetLoadState: {}, datasetQueueTimers: {}, uiRenderTimers: {}, uiRenderFrames: {} };
+  let idleCalls = 0;
+  const isReady = () => isPerformanceViewRuntimeReady(state, 'drive');
+  const waitForRuntimeReady = async timeoutMs => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      if (isReady()) return;
+      await new Promise(resolve => setTimeout(resolve, 1));
+    }
+    throw new Error('PERFORMANCE_VIEW_READINESS_TIMEOUT');
+  };
+  const result = await waitForPerformanceViewReadiness({ waitForRuntimeReady, isRuntimeReady: isReady,
+    waitForApiIdle: async () => {
+      idleCalls++;
+      if (idleCalls === 1) {
+        state.uiRenderTimers['production-live-refresh:render'] = true;
+        setTimeout(() => { state.uiRenderTimers = {}; }, 10);
+      }
+    }, viewId: 'drive', timeoutMs: 200, quietMs: 5 });
+  assert.equal(result.method, 'live-view-work-and-api-idle');
+  assert.equal(idleCalls, 2, 'work queued by the first idle interval must settle and be followed by a second idle interval');
+});
+
+test('live route settlement fails closed when queued work never settles', async () => {
+  await assert.rejects(waitForPerformanceViewReadiness({
+    waitForRuntimeReady: async timeoutMs => {
+      await new Promise(resolve => setTimeout(resolve, timeoutMs));
+      throw new Error('PERFORMANCE_VIEW_READINESS_TIMEOUT');
+    },
+    isRuntimeReady: () => false,
+    waitForApiIdle: async () => {},
+    viewId: 'drive', timeoutMs: 25, quietMs: 5,
+  }), /PERFORMANCE_VIEW_READINESS_TIMEOUT/);
 });
 
 test('response byte capture waits for the complete network response before reading its body', async () => {

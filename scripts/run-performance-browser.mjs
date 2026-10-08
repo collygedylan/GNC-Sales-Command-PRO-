@@ -5,7 +5,7 @@ import { chromium } from 'playwright';
 import { compareBenchmarks, parseBenchmarkManifest, percentile } from '../services/performanceBaseline.ts';
 import { startReleaseTestServer } from './serve-release-tests.mjs';
 import { verifyReleaseArtifact } from './release-artifact.mjs';
-import { installPerformanceFixture, openPerformanceView, returnPerformanceHome, PERFORMANCE_API_QUIET_MS } from './performance-browser-fixture.mjs';
+import { installPerformanceFixture, openPerformanceView, returnPerformanceHome, waitForPerformanceViewSettlement, PERFORMANCE_API_QUIET_MS } from './performance-browser-fixture.mjs';
 import { attachPerformanceResponseTracker, drainPerformanceResponseBodies, safePerformanceApiDiagnostic, settlePerformanceApiBoundary } from './performance-response-drain.mjs';
 
 const root = process.cwd();
@@ -37,6 +37,9 @@ async function measure(page, app, view, totals, fixtureControl, diagnosticCursor
   await openPerformanceView(page, app, view);
   await settle(page);
   const duration = performance.now() - started;
+  // Keep first-visible timing separate from attribution of deferred route work.
+  // Existing interaction-aware timers can start reads/renders after API silence.
+  await waitForPerformanceViewSettlement(page, app, view);
   const endIndex = await settlePerformanceApiBoundary(totals, fixtureControl);
   const routeRequests = totals.apiRequests.slice(startIndex, endIndex);
   const routeErrors = [...totals.errors, ...routeRequests.map(request => request.error).filter(Boolean)];
@@ -171,7 +174,7 @@ async function benchmark(site, info, profile, app) {
   } finally { await new Promise(resolve => server.close(resolve)); }
   const report = { schemaVersion: 1, commit: info.commit, baselineCommit: manifest.baselineCommit, artifactDigest: info.digest,
     fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browser.version()}`, viewport: { width: profile.width, height: profile.height },
-    method: `${app}:serial-cold-context-and-warm-route-v2;service-workers-blocked;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;home-ready-${app === 'live' ? 'dataset-queues-and-api-idle' : 'dashboard-visible'}`, metrics: [...samples.values()], initialExecutableJsBytes };
+    method: `${app}:serial-cold-context-and-warm-route-v3;service-workers-blocked;all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'dataset-render-queues-and-api-idle' : 'visible-content'}`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
   reports.push({ ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiReadDiagnostics });
   return report;

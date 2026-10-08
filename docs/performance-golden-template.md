@@ -78,6 +78,20 @@ the existing Lighthouse and compiled artifact size limits continue to govern cod
 size. The zero-growth payload budget applies to unchanged query results. Route metrics
 include usable-content latency, long-task duration, content-node removals,
 API reads and response bytes captured before the separate scroll-frame exercise.
+Usable-content latency stops at the same first-visible-content boundary for both
+artifacts. Live route attribution then waits, with a fixed timeout, for existing
+dataset loads, queued renders and chunk work to finish and for API traffic to
+settle. A short network-idle interval alone is insufficient because interaction
+gates can defer work beyond it. The harness observes those queues; it does not
+cancel timers, change app state or disable polling. Initial, route, between-route
+and final partitions account for every API request exactly once, and full-context
+read and byte totals remain subject to the original no-growth budgets.
+The fixture also observes the coordinator's injected scheduler so its private
+background and signal timers cannot evade the boundary. Original timer handles,
+delays and callbacks are preserved. The identified recurring 30-second safeguard
+is allowed to remain scheduled; any reads it starts are still counted. Render
+queue entries require a live render token because the existing scheduler can
+retain a cleared timer entry after an immediate replacement has completed.
 Read counts include every API request started within the measurement window.
 Payload bytes come from those same requests after bounded completion; later
 background responses cannot enter the window. Deliberate browser cancellations

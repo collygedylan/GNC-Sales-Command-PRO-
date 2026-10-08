@@ -1,4 +1,5 @@
 import { hlMaster, installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
+import { installPerformanceCoordinatorObserver } from './performance-coordinator-observer.mjs';
 
 export const inventoryRows = Array.from({ length: 1000 }, (_, index) => hlMaster(`perf-${String(index).padStart(5, '0')}`, {
   itemcode: `00${Math.floor(index / 4)}`, commonname: `Performance plant ${String(Math.floor(index / 4)).padStart(3, '0')}`,
@@ -14,6 +15,7 @@ const queueRows = inventoryRows.slice(0, 200).map(row => ({ ...row, unique_id: `
 export const PERFORMANCE_API_QUIET_MS = 75;
 
 export const PERFORMANCE_HOME_READY_TIMEOUT_MS = 15_000;
+export const PERFORMANCE_VIEW_READY_TIMEOUT_MS = 15_000;
 
 const performanceControlsByPage = new WeakMap();
 
@@ -83,23 +85,65 @@ export async function waitForPerformanceHomeReadiness({ waitForRuntimeReady, isR
 }
 
 export function isPerformanceHomeRuntimeReady(state = {}) {
-  if (state.viewId !== 'home') return false;
+  return isPerformanceViewRuntimeReady(state, 'home');
+}
+
+export function isPerformanceViewRuntimeReady(state = {}, expectedViewId = '') {
+  const expectedView = String(expectedViewId || '').trim();
+  if (!expectedView || state.viewId !== expectedView) return false;
+  if (state.coordinatorActivity?.pending !== false) return false;
   const datasetStates = state.datasetLoadState && typeof state.datasetLoadState === 'object' ? Object.values(state.datasetLoadState) : [];
   if (datasetStates.some(dataset => dataset && (dataset.initialPromise || dataset.fullPromise))) return false;
   if (Object.keys(state.datasetQueueTimers || {}).length > 0 || state.backgroundRefreshInFlight
-    || state.productionLiveSyncRendering || state.productionLiveSyncRenderPending || state.productionLiveSyncViewLoadPending) return false;
+    || state.productionLiveSyncRendering || state.productionLiveSyncRenderPending || state.productionLiveSyncRenderTimer
+    || state.productionLiveSyncViewLoadPending || Number(state.activeChunkRenderCount) > 0
+    || Object.keys(state.chunkRenderActivityByKey || {}).length > 0
+    || Object.values(state.chunkRenderTimersByKey || {}).some(timers => Array.isArray(timers) && timers.length > 0)) return false;
   const renderKeys = [...Object.keys(state.uiRenderTimers || {}), ...Object.keys(state.uiRenderFrames || {})];
-  return !renderKeys.some(key => key.startsWith('visible-dirty-refresh:')
-    || ['production-live-refresh:render', 'view:home', 'view-interactive:home'].includes(key));
+  // scheduleUiRender can retain a cleared timer's map entry when a zero-delay
+  // frame replaces it. Its token is removed after completion/cancellation.
+  // Without token evidence, conservatively consider every queued key active.
+  const tokensKnown = state.uiRenderTokens && typeof state.uiRenderTokens === 'object' && !Array.isArray(state.uiRenderTokens);
+  return !renderKeys.some(key => !tokensKnown || Object.hasOwn(state.uiRenderTokens, key));
+}
+
+export function buildPerformanceViewRuntimeReadyExpression(viewId) {
+  const safeViewId = String(viewId || '').trim();
+  if (!safeViewId) throw new Error('PERFORMANCE_VIEW_ID_REQUIRED');
+  return `(${isPerformanceViewRuntimeReady.toString()})({
+    viewId: typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '',
+    datasetLoadState, datasetQueueTimers, backgroundRefreshInFlight, productionLiveSyncRendering,
+    productionLiveSyncRenderPending, productionLiveSyncRenderTimer: !!productionLiveSyncRenderTimer,
+    productionLiveSyncViewLoadPending: !!productionLiveSyncViewLoad?.pending, uiRenderTimers, uiRenderFrames, uiRenderTokens,
+    activeChunkRenderCount, chunkRenderActivityByKey, chunkRenderTimersByKey,
+    coordinatorActivity: globalThis.__phase6CoordinatorObserver?.getPendingActivity()
+  }, ${JSON.stringify(safeViewId)})`;
+}
+
+export async function waitForPerformanceViewReadiness({ waitForRuntimeReady, isRuntimeReady, waitForApiIdle,
+  viewId, timeoutMs = PERFORMANCE_VIEW_READY_TIMEOUT_MS, quietMs = PERFORMANCE_API_QUIET_MS } = {}) {
+  const safeViewId = String(viewId || '').trim();
+  if (!safeViewId || typeof waitForRuntimeReady !== 'function' || typeof isRuntimeReady !== 'function'
+    || typeof waitForApiIdle !== 'function' || !Number.isFinite(timeoutMs) || timeoutMs <= 0
+    || !Number.isFinite(quietMs) || quietMs < 1) {
+    throw new Error('PERFORMANCE_VIEW_READINESS_OPTIONS_INVALID');
+  }
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const remaining = deadline - Date.now();
+    await waitForRuntimeReady(remaining);
+    const idleTimeout = deadline - Date.now();
+    if (idleTimeout <= quietMs) throw new Error('PERFORMANCE_VIEW_READINESS_TIMEOUT');
+    await waitForApiIdle({ timeoutMs: idleTimeout });
+    const ready = await isRuntimeReady();
+    if (Date.now() >= deadline) throw new Error('PERFORMANCE_VIEW_READINESS_TIMEOUT');
+    if (ready) return { method: 'live-view-work-and-api-idle', viewId: safeViewId, quietMs };
+  }
+  throw new Error('PERFORMANCE_VIEW_READINESS_TIMEOUT');
 }
 
 async function waitForLiveHomeReadiness(page, apiIdleTracker) {
-  const runtimeReadyExpression = `(${isPerformanceHomeRuntimeReady.toString()})({
-    viewId: typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : '',
-    datasetLoadState, datasetQueueTimers, backgroundRefreshInFlight, productionLiveSyncRendering,
-    productionLiveSyncRenderPending, productionLiveSyncViewLoadPending: !!productionLiveSyncViewLoad?.pending,
-    uiRenderTimers, uiRenderFrames
-  })`;
+  const runtimeReadyExpression = buildPerformanceViewRuntimeReadyExpression('home');
   const waitForRuntimeReady = async timeout => {
     const handle = await page.waitForFunction(expression => window.eval(expression), runtimeReadyExpression,
       { polling: 'raf', timeout });
@@ -110,9 +154,29 @@ async function waitForLiveHomeReadiness(page, apiIdleTracker) {
     waitForApiIdle: apiIdleTracker.waitForApiIdle.bind(apiIdleTracker), quietMs: apiIdleTracker.quietMs });
 }
 
+export async function waitForPerformanceViewSettlement(page, app, view, { timeoutMs = PERFORMANCE_VIEW_READY_TIMEOUT_MS } = {}) {
+  if (app === 'v2') return { method: 'view-ready-already-measured', viewId: view };
+  const apiIdleTracker = performanceControlsByPage.get(page);
+  if (!apiIdleTracker || typeof apiIdleTracker.waitForApiIdle !== 'function') {
+    throw new Error('PERFORMANCE_VIEW_FIXTURE_CONTROL_MISSING');
+  }
+  const safeViewId = String(view || '').trim();
+  const runtimeReadyExpression = buildPerformanceViewRuntimeReadyExpression(safeViewId);
+  const waitForRuntimeReady = async timeout => {
+    const handle = await page.waitForFunction(expression => window.eval(expression), runtimeReadyExpression,
+      { polling: 'raf', timeout });
+    await handle.dispose();
+  };
+  const isRuntimeReady = () => page.evaluate(expression => window.eval(expression), runtimeReadyExpression);
+  return waitForPerformanceViewReadiness({ waitForRuntimeReady, isRuntimeReady,
+    waitForApiIdle: apiIdleTracker.waitForApiIdle.bind(apiIdleTracker), viewId: safeViewId,
+    timeoutMs, quietMs: apiIdleTracker.quietMs });
+}
+
 export async function installPerformanceFixture(page, origin, app) {
   const apiIdleTracker = attachPerformanceApiIdleTracker(page);
   if (app === 'live') {
+    await page.addInitScript({ content: `(${installPerformanceCoordinatorObserver.toString()})(globalThis);` });
     const control = await installHlOrderFixture(page, origin, { username: 'performance_admin', role: 'ADMIN', master: inventoryRows,
       startupMode: 'cold', beforeLogin: async () => page.locator('#login-button').waitFor({ state: 'visible' }),
       beforeNavigate: async () => {
