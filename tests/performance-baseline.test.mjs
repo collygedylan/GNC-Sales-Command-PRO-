@@ -32,31 +32,49 @@ test('missing metrics, samples, changed fixtures, and invalid data fail closed',
   assert.throws(() => compareBenchmarks(manifest, report('duration', [1]), { ...report('duration', [1]), fixtureVersion: 'changed' }), /CONTEXT_MISMATCH/);
   assert.throws(() => compareBenchmarks(manifest, report('duration', [1]), report('duration', [1, 2])), /COVERAGE_MISMATCH/);
 });
-test('live background refresh reasons coalesce without caching data or losing dirty views', () => {
+test('live background refresh keeps reason deadlines and resolves current visible dirty views safely', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const start = html.indexOf('        function scheduleDeferredVisibleDirtyViewRefresh(');
   const end = html.indexOf('\n        function ', start + 1);
-  const pending = new Map(), rendered = [], states = { drive: { dirty: true }, request: { dirty: true } };
-  const uiRenderFrames = {};
-  let scheduled = 0;
-  let visible = ['drive'];
+  const pending = new Map(), scheduled = [], rendered = [], states = { drive: { dirty: true }, request: { dirty: true } };
+  const staleViews = new Set(), staleSkips = [], durations = [];
+  let visible = ['drive', 'request'];
   const context = vm.createContext({
-    scheduleTypingAwareUiRender: (key, callback) => { scheduled++; uiRenderFrames[key] = 1; pending.set(key, callback); },
-    uiRenderFrames, uiRenderTimers: {}, ACTIVE_TYPING_GRACE_MS: 200,
+    scheduleTypingAwareUiRender: (key, callback, delay, typingDelay, options) => {
+      scheduled.push({ key, delay, typingDelay, options }); pending.set(key, callback);
+    },
+    ACTIVE_TYPING_GRACE_MS: 200,
     beginInternalPerfMeasure: () => 0, getVisibleTrackedViewIds: () => visible,
     ensureViewRenderState: view => states[view], isViewVisible: view => visible.includes(view),
-    prepareLatestViewRender: () => 1, isLatestViewRenderToken: () => true,
-    incrementInternalPerfCounter: () => {}, recordInternalPerfDuration: () => {},
-    renderViewContent: view => { rendered.push(view); states[view].dirty = false; }
+    prepareLatestViewRender: () => 1, isLatestViewRenderToken: view => !staleViews.has(view),
+    incrementInternalPerfCounter: name => staleSkips.push(name),
+    recordInternalPerfDuration: (name, startedAt, reason) => durations.push(reason),
+    renderViewContent: (view, fromCache, force) => { rendered.push([view, fromCache, force]); states[view].dirty = false; }
   });
   vm.runInContext(html.slice(start, end), context);
-  for (let i = 0; i < 100; i++) context.scheduleDeferredVisibleDirtyViewRefresh(`change-${i}`);
-  assert.equal(pending.size, 1);
-  assert.equal(scheduled, 1, 'later signals retain the original deadline instead of starving the pending refresh');
-  visible = ['request']; // Navigation happened while deferred; render current state.
-  [...pending.values()][0]();
-  assert.deepEqual(rendered, ['request']);
+  context.scheduleDeferredVisibleDirtyViewRefresh('realtime:request-ui', 24, 260);
+  context.scheduleDeferredVisibleDirtyViewRefresh('dataset-refresh', 35, 180);
+  context.scheduleDeferredVisibleDirtyViewRefresh('committed-edit', 60, 300);
+  assert.equal(pending.size, 3);
+  assert.deepEqual(scheduled.map(({ key, delay, typingDelay }) => ({ key, delay, typingDelay })), [
+    { key: 'visible-dirty-refresh:realtime:request-ui', delay: 24, typingDelay: 260 },
+    { key: 'visible-dirty-refresh:dataset-refresh', delay: 35, typingDelay: 200 },
+    { key: 'visible-dirty-refresh:committed-edit', delay: 60, typingDelay: 300 },
+  ]);
+
+  visible = ['request']; // Resolve visibility when the delayed callback runs.
+  staleViews.add('request');
+  pending.get('visible-dirty-refresh:dataset-refresh')();
+  assert.deepEqual(rendered, []);
+  assert.deepEqual(staleSkips, ['staleViewRenderSkips']);
+  assert.equal(states.drive.dirty, true, 'hidden dirty views remain dirty');
+
+  staleViews.clear();
+  pending.get('visible-dirty-refresh:realtime:request-ui')();
+  assert.deepEqual(rendered, [['request', false, false]]);
+  assert.equal(states.request.dirty, false);
+  pending.get('visible-dirty-refresh:committed-edit')();
+  assert.deepEqual(rendered, [['request', false, false]], 'a clean visible view is not rendered again');
+  assert.deepEqual(durations, ['dataset-refresh', 'realtime:request-ui']);
   assert.equal(states.drive.dirty, true);
-  [...pending.values()][0]();
-  assert.deepEqual(rendered, ['request']);
 });

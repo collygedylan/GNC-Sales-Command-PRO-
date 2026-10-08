@@ -30,9 +30,11 @@ current PR commit, checked by `check-performance-baseline-review.mjs`.
 - Keep callbacks stable and memoize measured list boundaries. Scroll decoration
   belongs on the shell element, not in global React state. Tests must show that
   unrelated menu/toast/scroll updates do not rerender unchanged rows.
-- In the live app, coalesce background refresh reasons into one pending callback.
-  Read the current visible/dirty views when it runs. Preserve render tokens,
-  mutation invalidation, revision/identity checks, chunk cancellation and scroll.
+- In the live app, schedule background refresh reasons independently so each
+  keeps its own typing and interaction deadline. Each callback resolves the
+  current visible and dirty views when it runs, preserves dirty state for hidden
+  views, and skips clean or stale render tokens. Preserve mutation invalidation,
+  revision/identity checks, chunk cancellation and scroll.
 - Service workers may download deferred static code for offline use without
   executing it. Preserve separate root, V2 and partner scopes and all private-data
   exclusions. Initial executable-code measurements block service workers; offline
@@ -83,6 +85,11 @@ are recorded separately with zero completed payload, while unexpected HTTP,
 network and body-capture failures invalidate the measurement.
 React render isolation has separate deterministic mount tests because the normal
 production React build does not enable profiling.
+
+A shared callback that coalesced all live refresh reasons was tested and then
+reverted after the unchanged retry reproduced request-read, DOM-removal and
+timing regressions. That experiment is not part of the retained optimization;
+the reason-specific scheduler described above remains the live behavior.
 
 Duration budgets permit the larger of 15% or 25 ms above baseline; database
 duration uses 5 ms. Count, unchanged-render and equal-result payload budgets allow

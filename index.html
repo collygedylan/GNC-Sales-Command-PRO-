@@ -66135,13 +66135,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function scheduleDeferredVisibleDirtyViewRefresh(reason = 'interactive-refresh', delay = 0, typingDelay = 240) {
             const safeReason = String(reason || 'interactive-refresh').trim() || 'interactive-refresh';
-            // Every background reason reads the same current visible/dirty state.
-            // Coalesce the work, not the data: mutations still mark their views dirty
-            // and the callback resolves visibility and render tokens when it runs.
-            // Keep the first deadline so sustained background signals cannot
-            // continually postpone a refresh that is already waiting for idle.
-            if (uiRenderTimers['visible-dirty-refresh:current'] || uiRenderFrames['visible-dirty-refresh:current']) return;
-            scheduleTypingAwareUiRender('visible-dirty-refresh:current', () => {
+            scheduleTypingAwareUiRender(`visible-dirty-refresh:${safeReason}`, () => {
                 const refreshStartedAt = beginInternalPerfMeasure();
                 const visibleDirtyViewIds = getVisibleTrackedViewIds().filter((viewId) => ensureViewRenderState(viewId).dirty);
                 if (!visibleDirtyViewIds.length) return;
