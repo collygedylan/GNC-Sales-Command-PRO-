@@ -132,6 +132,19 @@ reverted after the unchanged retry reproduced request-read, DOM-removal and
 timing regressions. That experiment is not part of the retained optimization;
 the reason-specific scheduler described above remains the live behavior.
 
+The request badge's legacy timer yields only when an initialized native
+coordinator has a visible, online, permission-scoped `core:requests` adapter for
+the active request table. Recheck ownership when a queued timer fires. This
+prevents a redundant `request-check` signal from interrupting the coordinator's
+background read; legacy and Bunch Notes-only contexts retain their existing
+fallback. Coordinator revision proofs and explicit refresh signals still apply.
+
+The beta lazy boundary schedules its existing transition in a layout effect so
+chunk discovery does not wait for a passive effect. This schedules work before
+paint; it does not promise the transition commits before paint. Route keys,
+immediate unmount cleanup, loading content and chunk-error recovery are unchanged.
+The paired cloud benchmark remains the evidence for any latency improvement.
+
 Duration budgets permit the larger of 15% or 25 ms above baseline; database
 duration uses 5 ms. Count, unchanged-render and equal-result payload budgets allow
 no increase. Existing Lighthouse, frame-gap and cached-view limits remain active.

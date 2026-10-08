@@ -52946,10 +52946,25 @@ let avTopControlsRenderToken = 0;
         }
 
         function queueRequestBadgeLiveSync(delay = 450) {
+            const nativeCoordinatorOwnsBadge = () => {
+                if (!productionLiveSyncCoordinator || !canUseProductionLiveSync()) return false;
+                const context = getProductionLiveSyncContext();
+                return !!(context.scope && context.dataPermissionVersion && context.visible && context.online
+                    && [...(context.adapters || []), ...(context.backgroundAdapters || [])].some(adapter =>
+                        adapter.id === 'core:requests' && adapter.sourceKeys.includes(ACTIVE_REQUEST_TABLE)));
+            };
+            // Native badge rows already share the coordinator's revision proof.
+            // A legacy badge timer must not restart its in-flight background load.
+            if (nativeCoordinatorOwnsBadge()) {
+                if (requestBadgeLiveSyncTimer) clearTimeout(requestBadgeLiveSyncTimer);
+                requestBadgeLiveSyncTimer = null;
+                return;
+            }
             if (!currentUser || navigator.onLine === false || requestBadgeLiveSyncTimer) return;
             if (requestViewLiveSyncTimer || requestViewLiveSyncInFlight) return;
             requestBadgeLiveSyncTimer = setTimeout(() => {
                 requestBadgeLiveSyncTimer = null;
+                if (nativeCoordinatorOwnsBadge()) return;
                 if (!currentUser || navigator.onLine === false) return;
                 if (requestViewLiveSyncTimer || requestViewLiveSyncInFlight) return;
                 syncAlwaysOnRequestData(0, {
