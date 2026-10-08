@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "baselineCommit": "3763b8270b9af1c573b64c29d70556b0adbd7e8d",
+  "fixtureVersion": "que-drive-v1",
+  "coldSamples": 5,
+  "warmSamples": 10,
+  "profiles": [
+    { "id": "phone", "width": 390, "height": 844 },
+    { "id": "tablet", "width": 820, "height": 1180 },
+    { "id": "desktop", "width": 1440, "height": 900 }
+  ],
+  "budgets": { "relative": 0.15, "browserNoiseMs": 25, "databaseNoiseMs": 5 }
+}

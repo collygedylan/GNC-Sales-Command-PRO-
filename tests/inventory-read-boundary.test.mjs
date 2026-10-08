@@ -4,6 +4,17 @@ import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {
+  INVENTORY_MASTER_BROWSE_FIELDS as MASTER_BROWSE_FIELDS,
+  INVENTORY_MASTER_FULL_FIELDS as MASTER_FULL_FIELDS,
+  INVENTORY_MASTER_INITIAL_BASE_FIELDS as MASTER_INITIAL_BASE_FIELDS,
+  INVENTORY_MASTER_INITIAL_FIELDS as MASTER_INITIAL_FIELDS,
+  INVENTORY_NCR_QUEUE_FIELDS,
+  INVENTORY_NOT_ON_INVENTORY_FIELDS,
+  INVENTORY_PO_DETAIL_FIELDS,
+  inventoryProjectionMatcher,
+  projectInventoryRows,
+} from '../supabase/functions/_shared/inventory-projections.ts';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const edgeSource = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
@@ -120,6 +131,14 @@ function appApiHarness({ moduleAllowed = true } = {}) {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
       return value;
     },
+    projectInventoryRows,
+    MASTER_BROWSE_FIELDS,
+    MASTER_FULL_FIELDS,
+    MASTER_INITIAL_BASE_FIELDS,
+    MASTER_INITIAL_FIELDS,
+    INVENTORY_NCR_QUEUE_FIELDS,
+    INVENTORY_NOT_ON_INVENTORY_FIELDS,
+    INVENTORY_PO_DETAIL_FIELDS,
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
     hasTableReadAccess: (role, _table, username) => ['admin', 'qc supervisor', 'rep'].includes(String(role || '').toLowerCase())
@@ -149,9 +168,25 @@ function appApiHarness({ moduleAllowed = true } = {}) {
       }
     }
   });
-  vm.runInContext(transpiled, context);
-  return { handler: context.inventoryReadTest, queries };
+  vm.runInContext(`${transpiled}\nthis.inventoryProjectionTest = projectInventoryRows;`, context);
+  return { handler: context.inventoryReadTest, queries, context };
 }
+
+test('inventory row projection validates rows and copies only selected fields in source order', () => {
+  const { context } = appApiHarness();
+  const project = context.inventoryProjectionTest;
+  const source = { unique_id: 'row-1', itemcode: null, unexpected: { nested: true } };
+  const projected = project([source], 'unique_id,itemcode');
+  assert.deepEqual(JSON.parse(JSON.stringify(projected)), [{ unique_id: 'row-1', itemcode: null }]);
+  assert.deepEqual(Object.keys(projected[0]), ['unique_id', 'itemcode']);
+  assert.deepEqual(source, { unique_id: 'row-1', itemcode: null, unexpected: { nested: true } });
+  assert.equal(inventoryProjectionMatcher(MASTER_BROWSE_FIELDS), inventoryProjectionMatcher(MASTER_BROWSE_FIELDS));
+  assert.notEqual(inventoryProjectionMatcher('unique_id,itemcode'), inventoryProjectionMatcher('unique_id,itemcode'));
+  assert.deepEqual(JSON.parse(JSON.stringify(project([source], '*'))), [source]);
+  assert.deepEqual(project(null, 'unique_id'), []);
+  assert.throws(() => project([null], 'unique_id'), /Expected a JSON object/);
+  assert.throws(() => project([{ unique_id: 'row-2', unexpected: () => 'not JSON' }], 'unique_id'), /Expected a finite JSON value/);
+});
 
 test('browse inventory preserves filters and readouts with explicit field coverage and bounded pages', async () => {
   const { handler, queries } = appApiHarness();

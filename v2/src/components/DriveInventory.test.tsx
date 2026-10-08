@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { Profiler, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DriveInventory, aggregateDriveRows, safeInventoryPhotoUrl } from './DriveInventory';
 import { fetchInventoryPage } from '../services/api';
@@ -59,6 +60,20 @@ describe('Drive Mode sandbox inventory', () => {
     const [group] = aggregateDriveRows([inventoryRow({ ptravailable: undefined, ptronhand: undefined })]);
     expect(group.available).toBeNull();
     expect(group.onHand).toBeNull();
+  });
+
+  it('groups large result sets in stable item/location order without changing incomplete totals', () => {
+    const rows = Array.from({ length: 1000 }, (_, index) => inventoryRow({
+      unique_id: `uid-${index}`,
+      locationcode: `A.${String(index % 10).padStart(2, '0')}.001`,
+      ptravailable: index === 999 ? null : 1,
+      ptronhand: 2
+    }));
+    const [group] = aggregateDriveRows(rows);
+    expect(group).toMatchObject({ rowCount: 1000, available: null, onHand: 2000 });
+    expect(group.locations).toHaveLength(10);
+    expect(group.locations[0]).toMatchObject({ name: 'A.00.001', available: 100, onHand: 200 });
+    expect(group.locations[9]).toMatchObject({ name: 'A.09.001', available: null, onHand: 200 });
   });
 
   it('loads only same-origin or configured sandbox-storage photos', () => {
@@ -137,5 +152,29 @@ describe('Drive Mode sandbox inventory', () => {
     const signal = fetchPage.mock.calls[0][0]?.signal;
     view.unmount();
     expect(signal?.aborted).toBe(true);
+  });
+
+  it('keeps Drive rendering isolated from unrelated shell state changes', async () => {
+    fetchPage.mockResolvedValue(page([inventoryRow()]));
+    const commits = vi.fn();
+    function ShellHarness() {
+      const [notice, setNotice] = useState(false);
+      return <>
+        <button type="button" onClick={() => setNotice(value => !value)}>Toggle shell notice</button>
+        {notice ? <output>Saved</output> : null}
+        <Profiler id="drive" onRender={commits}><DriveInventory /></Profiler>
+      </>;
+    }
+
+    render(<ShellHarness />);
+    await screen.findByRole('article');
+    await screen.findByText(/Sandbox inventory/);
+    const settledCommitCount = commits.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle shell notice' }));
+    expect(screen.getByText('Saved')).toBeTruthy();
+    const [, , actualDuration, baseDuration] = commits.mock.calls[commits.mock.calls.length - 1];
+    expect(commits.mock.calls.length).toBeGreaterThan(settledCommitCount);
+    expect(actualDuration).toBeLessThan(baseDuration * 0.1);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 });

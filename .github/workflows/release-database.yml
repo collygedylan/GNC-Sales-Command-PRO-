@@ -16,9 +16,17 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - name: Replay canonical schema and verify database contracts
         run: node scripts/database-check.mjs --all
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-database-sql-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/performance
+          if-no-files-found: ignore
   suspend-tag-approval:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -41,6 +49,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - id: dependencies
         uses: ./.github/actions/setup-node-dependencies
       - uses: supabase/setup-cli@v1
@@ -59,6 +69,10 @@ jobs:
       - name: Start isolated Supabase stack
         id: stack
         run: node scripts/release-database-startup.mjs start
+      - name: Compare authenticated baseline and candidate inventory reads
+        # start applies the migrations and preserves the independently checked
+        # workdir label; reset below will replace this database container.
+        run: node scripts/run-performance-api.mjs "$SUPABASE_CI_ROOT"
       - name: Apply migrations and strictly lint the isolated database
         id: migrations
         run: node scripts/sql-lint-temp-context.mjs --historical-reset "$SUPABASE_CI_ROOT"

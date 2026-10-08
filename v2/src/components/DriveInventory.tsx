@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronRight, Image as ImageIcon, Loader2, RefreshCw, Search } from 'lucide-react';
 import { fetchInventoryPage } from '../services/api';
 import { loadRuntimeConfig } from '../services/runtime';
@@ -26,6 +26,26 @@ export type DriveItemGroup = {
   onHand: number | null;
   rowCount: number;
   locations: Array<{ key: string; name: string; lot: string; available: number | null; onHand: number | null }>;
+};
+
+type QuantityAccumulator = { sum: number; count: number; incomplete: boolean };
+type DriveLocationAccumulator = {
+  key: string;
+  name: string;
+  lot: string;
+  available: QuantityAccumulator;
+  onHand: QuantityAccumulator;
+};
+type DriveGroupAccumulator = {
+  key: string;
+  itemcode: string;
+  name: string;
+  size: string;
+  photo: string;
+  rowCount: number;
+  available: QuantityAccumulator;
+  onHand: QuantityAccumulator;
+  locations: Map<string, DriveLocationAccumulator>;
 };
 
 function value(row: InventoryRow, names: string[]) {
@@ -60,47 +80,81 @@ export function safeInventoryPhotoUrl(row: InventoryRow, trustedStorageHost = ''
   }
 }
 
-function sumKnown(values: Array<number | null>): number | null {
-  return values.length && values.every(item => item !== null) ? values.reduce<number>((sum, item) => sum + (item ?? 0), 0) : null;
-}
-
 export function aggregateDriveRows(rows: InventoryRow[], trustedStorageHost = ''): DriveItemGroup[] {
-  const groups = new Map<string, { rows: InventoryRow[]; name: string; itemcode: string; size: string }>();
+  const groups = new Map<string, DriveGroupAccumulator>();
   for (const row of rows) {
     const itemcode = value(row, ['itemcode', 'ITEMCODE']);
     const name = value(row, ['commonname', 'COMMONNAME']) || 'Unnamed item';
     const size = value(row, ['contsize', 'CONTSIZE']);
     const key = itemcode ? `${itemcode}|${size.toLowerCase()}` : `${name.toLowerCase()}|${size.toLowerCase()}`;
-    const current = groups.get(key) || { rows: [], name, itemcode, size };
-    current.rows.push(row);
-    groups.set(key, current);
+    let current = groups.get(key);
+    if (!current) {
+      current = {
+        key,
+        itemcode,
+        name,
+        size,
+        photo: '',
+        rowCount: 0,
+        available: { sum: 0, count: 0, incomplete: false },
+        onHand: { sum: 0, count: 0, incomplete: false },
+        locations: new Map()
+      };
+      groups.set(key, current);
+    }
+    current.rowCount += 1;
+    if (!current.photo) current.photo = safeInventoryPhotoUrl(row, trustedStorageHost);
+    addQuantity(current.available, quantity(row, ['ptravailable', 'PTRAVAILABLE', 'available', 'AVAILABLE']));
+    addQuantity(current.onHand, quantity(row, ['ptronhand', 'PTRONHAND', 'onhand', 'ONHAND', 'on_hand', 'ON_HAND']));
+    const location = value(row, ['locationcode', 'LOCATIONCODE']) || 'Location not listed';
+    const lot = value(row, ['lotcode', 'LOTCODE']);
+    const locationKey = `${location}|${lot}`;
+    let locationGroup = current.locations.get(locationKey);
+    if (!locationGroup) {
+      locationGroup = {
+        key: locationKey,
+        name: location,
+        lot,
+        available: { sum: 0, count: 0, incomplete: false },
+        onHand: { sum: 0, count: 0, incomplete: false }
+      };
+      current.locations.set(locationKey, locationGroup);
+    }
+    addQuantity(locationGroup.available, quantity(row, ['ptravailable', 'PTRAVAILABLE', 'available', 'AVAILABLE']));
+    addQuantity(locationGroup.onHand, quantity(row, ['ptronhand', 'PTRONHAND', 'onhand', 'ONHAND', 'on_hand', 'ON_HAND']));
   }
-  return [...groups.entries()].map(([key, group]) => {
-    const locationGroups = new Map<string, InventoryRow[]>();
-    group.rows.forEach(row => {
-      const location = value(row, ['locationcode', 'LOCATIONCODE']) || 'Location not listed';
-      const lot = value(row, ['lotcode', 'LOTCODE']);
-      const locationKey = `${location}|${lot}`;
-      locationGroups.set(locationKey, [...(locationGroups.get(locationKey) || []), row]);
-    });
+  return [...groups.values()].map(group => {
     return {
-      key,
+      key: group.key,
       itemcode: group.itemcode,
       name: group.name,
       size: group.size,
-      photo: group.rows.map(row => safeInventoryPhotoUrl(row, trustedStorageHost)).find(Boolean) || '',
-      available: sumKnown(group.rows.map(row => quantity(row, ['ptravailable', 'PTRAVAILABLE', 'available', 'AVAILABLE']))),
-      onHand: sumKnown(group.rows.map(row => quantity(row, ['ptronhand', 'PTRONHAND', 'onhand', 'ONHAND', 'on_hand', 'ON_HAND']))),
-      rowCount: group.rows.length,
-      locations: [...locationGroups.entries()].map(([locationKey, locationRows]) => ({
-        key: `${key}|${locationKey}`,
-        name: value(locationRows[0], ['locationcode', 'LOCATIONCODE']) || 'Location not listed',
-        lot: value(locationRows[0], ['lotcode', 'LOTCODE']),
-        available: sumKnown(locationRows.map(row => quantity(row, ['ptravailable', 'PTRAVAILABLE', 'available', 'AVAILABLE']))),
-        onHand: sumKnown(locationRows.map(row => quantity(row, ['ptronhand', 'PTRONHAND', 'onhand', 'ONHAND', 'on_hand', 'ON_HAND'])))
+      photo: group.photo,
+      available: accumulatedQuantity(group.available),
+      onHand: accumulatedQuantity(group.onHand),
+      rowCount: group.rowCount,
+      locations: [...group.locations.values()].map(location => ({
+        key: `${group.key}|${location.key}`,
+        name: location.name,
+        lot: location.lot,
+        available: accumulatedQuantity(location.available),
+        onHand: accumulatedQuantity(location.onHand)
       }))
     };
   });
+}
+
+function addQuantity(accumulator: QuantityAccumulator, quantityValue: number | null) {
+  if (quantityValue === null) {
+    accumulator.incomplete = true;
+    return;
+  }
+  accumulator.count += 1;
+  accumulator.sum += quantityValue;
+}
+
+function accumulatedQuantity(accumulator: QuantityAccumulator): number | null {
+  return accumulator.count && !accumulator.incomplete ? accumulator.sum : null;
 }
 
 function displayQuantity(value: number | null) {
@@ -117,7 +171,7 @@ function mergeRows(existing: InventoryRow[], incoming: InventoryRow[]) {
   return [...merged.values()];
 }
 
-export function DriveInventory({ onOpen }: { onOpen?: (row: InventoryRow) => void }) {
+function DriveInventoryView({ onOpen }: { onOpen?: (row: InventoryRow) => void }) {
   const [search, setSearch] = useState('');
   const [settledSearch, setSettledSearch] = useState('');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -275,6 +329,8 @@ export function DriveInventory({ onOpen }: { onOpen?: (row: InventoryRow) => voi
     </section>
   );
 }
+
+export const DriveInventory = memo(DriveInventoryView);
 
 function isAbort(reason: unknown) {
   return Boolean(reason && typeof reason === 'object' && 'name' in reason && reason.name === 'AbortError');

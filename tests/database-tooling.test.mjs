@@ -256,6 +256,8 @@ test('database-check uses the shared fail-closed runner for both disposable work
   const check = (executeNodeMock) => runDatabaseCheck({
     root, mode: 'all', execute: () => '', executeNode: executeNodeMock, preflight: () => {},
     runLintWithTempContext: ({ action }) => action(),
+    runPerformance: ({ workspaceRoot }) => { assert.equal(workspaceRoot, productionWorkspace.root); return { fixture: true }; },
+    savePerformance: report => { assert.deepEqual(report, { fixture: true }); },
     runRollback: options => { rollbackRuns.push(options.files); return { files: options.files }; },
     resolveCli: () => 'supabase-fixture',
     createProductionWorkspace: () => productionWorkspace,

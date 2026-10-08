@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createDatabaseWorkspace, DATABASE_LINT_SCHEMAS } from './database-workspace.mjs';
@@ -13,6 +13,7 @@ import { prepareHistoricalDatabaseFixture, readHistoricalMigrationManifest } fro
 import { runSqlRollbackTests } from './run-sql-rollback-tests.mjs';
 import { runPostgresFixtureSqlTests, selectAffectedPostgresFixtureSqlGroups } from './run-postgres-fixture-sql-tests.mjs';
 import { withSqlLintTempContext } from './sql-lint-temp-context.mjs';
+import { runDatabasePerformanceBenchmark } from './performance-database.mjs';
 
 const historicalFixtureTooling = new Set([
   'scripts/sql-lint-temp-context.mjs',
@@ -56,6 +57,12 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
   createProductionWorkspace = createDatabaseWorkspace, createSandboxWorkspace = createSandboxDatabaseWorkspace,
   createHistoricalWorkspace = prepareHistoricalDatabaseFixture, runRollback = runSqlRollbackTests,
   runDedicatedPostgres = runPostgresFixtureSqlTests, runLintWithTempContext = withSqlLintTempContext,
+  runPerformance = runDatabasePerformanceBenchmark,
+  savePerformance = (report, reportRoot) => {
+    const directory = path.join(reportRoot, 'artifacts', 'performance');
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(path.join(directory, 'database-sql.json'), `${JSON.stringify(report, null, 2)}\n`);
+  },
   resolveCli = packageBin } = {}) {
   if (mode !== 'staged' && mode !== 'all') throw new Error('Usage: node scripts/database-check.mjs --staged|--all');
   const stagedFiles = stagedDatabaseFiles({ root, execute });
@@ -73,6 +80,16 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     action: () => runCli(['db', 'lint', '--local', '--schema', DATABASE_LINT_SCHEMAS.join(','), '--fail-on', 'error']),
   });
   const productionResult = withDisposableSupabase({ root, workspace, cli, execute: executeNode, action: runCli => {
+    // start has applied the complete migration chain. Measure before reset so
+    // the child can independently verify the CLI's workdir container label;
+    // reset replaces the container and retains proof only in this process.
+    if (mode === 'all') {
+      const directory = path.join(root, 'artifacts', 'performance');
+      mkdirSync(directory, { recursive: true });
+      const reportPath = path.join(directory, `database-sql-attempt-${Date.now()}-${process.pid}.json`);
+      const report = runPerformance({ root, workspaceRoot: workspace.root, cli, executeNode, reportPath });
+      savePerformance(report, root);
+    }
     runCli(['db', 'reset', '--local', '--no-seed']);
     strictLint(workspace, runCli);
     runCli(['test', 'db']);

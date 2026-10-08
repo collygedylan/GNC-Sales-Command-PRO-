@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   BarChart3,
@@ -28,7 +28,6 @@ import {
   ShoppingBag,
   Store,
   Sun,
-  Trash2,
   Truck,
   UserRound,
   XCircle
@@ -54,15 +53,16 @@ import {
 } from '../services/api';
 import type { AvOptionRow } from '../types';
 import { PartnerWorkspace } from '../components/PartnerWorkspace';
-import { DriveInventory } from '../components/DriveInventory';
 import { CompanyDirectory } from '../components/CompanyDirectory';
+import { DeferredView } from '../components/DeferredView';
+import { defaultRequestColumnKeys, requestGridColumns, type RequestColumnKey, type RequestDisplayMode as DisplayMode, type RequestTabId as TabId } from './requestQueueConfig';
+
+const LazyRequestQueue = lazy(() => import('./RequestQueue'));
+const LazyDriveInventory = lazy(() => import('../components/DriveInventory').then(module => ({ default: module.DriveInventory })));
 
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'partner-av' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
-type TabId = 'request' | 'sales' | 'location' | 'recount' | 'av' | 'shear';
 type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
-type DisplayMode = 'cards' | 'grid';
 type ThemeMode = 'light' | 'dark';
-type RequestColumnKey = 'item' | 'common' | 'loc' | 'lot' | 'size' | 'src' | 'pri' | 'qty' | 'hand' | 'review' | 'avail' | 'open' | 'rep' | 'customer';
 type ModuleFilter = { id: string; label: string };
 type MessageThread = {
   id: string;
@@ -83,15 +83,6 @@ export function viewFromHash(hash: string): ViewId {
   return viewIds.has(candidate) ? candidate : 'home';
 }
 
-const tabs: Array<{ id: TabId; label: string }> = [
-  { id: 'request', label: 'Request' },
-  { id: 'sales', label: 'Sales Reps' },
-  { id: 'location', label: 'Location Move' },
-  { id: 'recount', label: 'Recount' },
-  { id: 'av', label: 'AV Check' },
-  { id: 'shear', label: 'Shear List' }
-];
-
 const navItems: Array<{ id: ViewId; label: string; icon: typeof Home }> = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'drive', label: 'Drive', icon: Truck },
@@ -106,25 +97,6 @@ const DISPLAY_KEY_PREFIX = 'gnc:v2:display-mode:';
 const REQUEST_DISPLAY_KEY_PREFIX = 'gnc:v2:request-display:';
 const REQUEST_COLUMNS_KEY_PREFIX = 'gnc:v2:request-columns:';
 const THEME_KEY_PREFIX = 'gnc:v2:theme:';
-
-const requestGridColumns: Array<{ key: RequestColumnKey; label: string; className?: string; render: (row: RequestRow) => string | number }> = [
-  { key: 'item', label: 'Item', render: row => field(row, ['ITEMCODE', 'itemcode'], String(uniqueId(row) || '-')) },
-  { key: 'common', label: 'Common Name', className: 'strong-cell', render: row => field(row, ['COMMONNAME', 'commonname'], 'Unnamed item') },
-  { key: 'loc', label: 'Loc', render: row => field(row, ['LOCATIONCODE', 'locationcode'], '-') },
-  { key: 'lot', label: 'Lot', render: row => field(row, ['LOTCODE', 'lotcode'], '-') },
-  { key: 'size', label: 'Size', render: row => field(row, ['CONTSIZE', 'contsize'], '-') },
-  { key: 'src', label: 'Src', render: row => field(row, ['SRC', 'src'], '-') },
-  { key: 'pri', label: 'Pri', render: row => field(row, ['PRI', 'priority'], '-') },
-  { key: 'qty', label: 'Qty', render: row => field(row, ['QTY', 'qty', 'REQ_QTY', 'req_qty'], '0') },
-  { key: 'hand', label: 'Hand', render: row => numberField(row, ['ON_HAND', 'on_hand', 'HAND']) },
-  { key: 'review', label: 'Rev', render: row => numberField(row, ['REVIEW', 'review', 'REV']) },
-  { key: 'avail', label: 'Avail', render: row => numberField(row, ['AVAILABLE', 'available', 'AVAIL']) },
-  { key: 'open', label: 'Open', render: row => numberField(row, ['OPEN_STOCK', 'open_stock', 'OPEN']) },
-  { key: 'rep', label: 'Rep', render: row => field(row, ['REQUESTED_BY', 'requested_by', 'SALES_REP', 'sales_rep'], '-') },
-  { key: 'customer', label: 'Customer', render: row => field(row, ['CUSTOMER', 'customer', 'CONSIGNEE', 'consignee'], '-') }
-];
-
-const defaultRequestColumnKeys = requestGridColumns.map(column => column.key);
 
 function displayModeKey(session: Session | null) {
   return `${DISPLAY_KEY_PREFIX}${session?.username || 'demo'}`;
@@ -215,30 +187,6 @@ function usePhoneViewport() {
   return isPhone;
 }
 
-function useChunkedRows<T>(rows: T[], batch = 30, maximum = 96) {
-  const [count, setCount] = useState(batch);
-  useEffect(() => {
-    let cancelled = false;
-    let frame = 0;
-    const target = Math.min(rows.length, maximum);
-    setCount(Math.min(batch, target));
-    const pump = () => {
-      if (cancelled) return;
-      setCount(current => {
-        const next = Math.min(current + batch, target);
-        if (next < target) frame = window.requestAnimationFrame(pump);
-        return next;
-      });
-    };
-    if (target > batch) frame = window.requestAnimationFrame(pump);
-    return () => {
-      cancelled = true;
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [rows, batch, maximum]);
-  return rows.slice(0, count);
-}
-
 export function App() {
   const [session, setSession] = useState<Session | null>(() => readStoredSession());
   const [demoMode, setDemoMode] = useState(SANDBOX_ONLY);
@@ -253,7 +201,6 @@ export function App() {
   const [toast, setToast] = useState('');
   const [undoRemove, setUndoRemove] = useState<RequestRow | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isScrolling, setIsScrolling] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>(() => readDisplayMode(readStoredSession()));
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => readThemeMode(readStoredSession()));
   const [requestColumnKeys, setRequestColumnKeys] = useState<RequestColumnKey[]>(() => readRequestColumnKeys(readStoredSession()));
@@ -262,6 +209,7 @@ export function App() {
   const topRef = useRef<HTMLDivElement | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -281,14 +229,15 @@ export function App() {
     if (!node) return;
     let settleTimer = 0;
     const onScroll = () => {
-      setIsScrolling(true);
+      shellRef.current?.classList.add('is-scrolling');
       window.clearTimeout(settleTimer);
-      settleTimer = window.setTimeout(() => setIsScrolling(false), 180);
+      settleTimer = window.setTimeout(() => shellRef.current?.classList.remove('is-scrolling'), 180);
     };
     node.addEventListener('scroll', onScroll, { passive: true });
     return () => {
       node.removeEventListener('scroll', onScroll);
       window.clearTimeout(settleTimer);
+      shellRef.current?.classList.remove('is-scrolling');
     };
   }, []);
 
@@ -312,7 +261,7 @@ export function App() {
     };
   }, []);
 
-  const reloadRows = async () => {
+  const reloadRows = useCallback(async () => {
     if (SANDBOX_ONLY || demoMode) {
       setRows(demoRows());
       setError('');
@@ -328,11 +277,11 @@ export function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [demoMode, session]);
 
   useEffect(() => {
     void reloadRows();
-  }, [session, demoMode]);
+  }, [session, demoMode, reloadRows]);
 
   useEffect(() => {
     setDisplayMode(readDisplayMode(session));
@@ -368,6 +317,18 @@ export function App() {
     scrollerRef.current?.scrollTo({ top: 0 });
   };
 
+  const openRequestDetail = useCallback((row: RequestRow) => {
+    setDetailRow(row);
+    scrollerRef.current?.scrollTo({ top: 0 });
+  }, []);
+  const selectRequestTab = useCallback((tab: TabId) => {
+    setActiveTab(tab);
+    scrollerRef.current?.scrollTo({ top: 0 });
+  }, []);
+  const removeRequestRow = useCallback((row: RequestRow) => {
+    removeRow(row, session, SANDBOX_ONLY || demoMode, setRows, setToast, setUndoRemove);
+  }, [session, demoMode]);
+
   const itemWorkflowDetail = Boolean(moduleDetail && ['drive', 'tasks', 'inventory'].includes(moduleDetail.view));
   const title = detailRow || itemWorkflowDetail ? 'Item Detail' : moduleDetail ? moduleDetail.row.title : view === 'request' ? 'Que' : view === 'home' ? 'Home' : labelForView(view);
   const activeShellView = detailRow ? 'detail' : moduleDetail ? 'module-detail' : view;
@@ -396,7 +357,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''} ${isScrolling ? 'is-scrolling' : ''}`}>
+    <div ref={shellRef} className={`app-shell app-view-${activeShellView} theme-${themeMode} ${demoMode ? 'demo-shell' : ''}`}>
       <div className="top-chrome" ref={topRef}>
         <div className="brand-strip">
           <button className="app-back-button" type="button" aria-label="Back" onClick={() => detailRow ? setDetailRow(null) : moduleDetail ? setModuleDetail(null) : openView('home')}>
@@ -481,20 +442,22 @@ export function App() {
         ) : view === 'bloom' || view === 'partner-av' ? (
           <PartnerWorkspace key={view} view={view === 'partner-av' ? 'av' : 'orders'} />
         ) : view === 'request' ? (
-          <RequestView
-            rows={filteredRows}
-            allRows={rows}
-            activeTab={activeTab}
-            displayMode={effectiveDisplayMode}
-            columnKeys={requestColumnKeys}
-            loading={loading}
-            onTab={tab => { setActiveTab(tab); scrollerRef.current?.scrollTo({ top: 0 }); }}
-            onOpen={row => { setDetailRow(row); scrollerRef.current?.scrollTo({ top: 0 }); }}
-            onRemove={(row) => removeRow(row, session, SANDBOX_ONLY || demoMode, setRows, setToast, setUndoRemove)}
-            onRefresh={reloadRows}
-          />
+          <DeferredView key="request" label="Que">
+            <LazyRequestQueue
+              rows={filteredRows}
+              allRows={rows}
+              activeTab={activeTab}
+              displayMode={effectiveDisplayMode}
+              columnKeys={requestColumnKeys}
+              loading={loading}
+              onTab={selectRequestTab}
+              onOpen={openRequestDetail}
+              onRemove={removeRequestRow}
+              onRefresh={reloadRows}
+            />
+          </DeferredView>
         ) : view === 'drive' ? (
-          <DriveInventory />
+          <DeferredView key="drive" label="Drive"><LazyDriveInventory /></DeferredView>
         ) : view === 'tasks' ? (
           <TasksWorkspace onOpen={row => { setModuleDetail({ view: 'tasks', row }); scrollerRef.current?.scrollTo({ top: 0 }); }} />
         ) : view === 'comm' ? (
@@ -656,136 +619,6 @@ function HomeView({ onOpen }: { onOpen: (view: ViewId) => void }) {
         })}
       </div>
     </section>
-  );
-}
-
-function RequestView(props: {
-  rows: RequestRow[];
-  allRows: RequestRow[];
-  activeTab: TabId;
-  displayMode: DisplayMode;
-  columnKeys: RequestColumnKey[];
-  loading: boolean;
-  onTab: (tab: TabId) => void;
-  onOpen: (row: RequestRow) => void;
-  onRemove: (row: RequestRow) => void;
-  onRefresh: () => void;
-}) {
-  const visibleRows = useChunkedRows(props.rows, props.displayMode === 'grid' ? 80 : 24);
-  const counts = useMemo(() => {
-    const map = new Map<TabId, number>();
-    tabs.forEach(tab => map.set(tab.id, 0));
-    props.allRows.filter(row => !isArchived(row) && !isCompleted(row)).forEach(row => {
-      const tab = requestTab(row) as TabId;
-      map.set(tab, (map.get(tab) || 0) + 1);
-    });
-    return map;
-  }, [props.allRows]);
-  return (
-    <section className="request-flow">
-      <div className="filter-rail">
-        <div className="filter-dropdown-row">
-          <label className="filter-select">
-            <span>Que View</span>
-            <select value={props.activeTab} onChange={event => props.onTab(event.target.value as TabId)}>
-              {tabs.map(tab => (
-                <option key={tab.id} value={tab.id}>{tab.label} ({counts.get(tab.id) || 0})</option>
-              ))}
-            </select>
-            <ChevronDown size={18} />
-          </label>
-          <div className="request-actions">
-            <span>{tabLabel(props.activeTab)} Que</span>
-            <button type="button" onClick={props.onRefresh}><RefreshCw size={18} /> Refresh</button>
-          </div>
-        </div>
-      </div>
-      {props.loading && !props.rows.length ? <div className="empty-state"><Loader2 className="spin" /> Loading rows...</div> : null}
-      {!props.loading && !props.rows.length ? <div className="empty-state">No rows match this view.</div> : null}
-      {props.displayMode === 'grid' ? (
-        <RequestGrid rows={visibleRows} columnKeys={props.columnKeys} onOpen={props.onOpen} onRemove={props.onRemove} />
-      ) : (
-        <div className="request-list">
-          {visibleRows.map(row => (
-            <RequestCard key={String(uniqueId(row))} row={row} onOpen={() => props.onOpen(row)} onRemove={() => props.onRemove(row)} />
-          ))}
-        </div>
-      )}
-      {props.rows.length > visibleRows.length ? (
-        <p className="render-limit-note">
-          Showing the first {visibleRows.length.toLocaleString()} of {props.rows.length.toLocaleString()} matching rows. Refine the search or filter to narrow the list.
-        </p>
-      ) : null}
-    </section>
-  );
-}
-
-function RequestGrid({ rows, columnKeys, onOpen, onRemove }: { rows: RequestRow[]; columnKeys: RequestColumnKey[]; onOpen: (row: RequestRow) => void; onRemove: (row: RequestRow) => void }) {
-  const columns = requestGridColumns.filter(column => columnKeys.includes(column.key));
-  return (
-    <div className="request-grid-wrap" role="region" aria-label="Request rows grid">
-      <table className="request-grid-table">
-        <thead>
-          <tr>
-            {columns.map(column => <th key={column.key}>{column.label}</th>)}
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(row => (
-            <tr key={String(uniqueId(row))} onDoubleClick={() => onOpen(row)}>
-              {columns.map(column => <td className={column.className} key={column.key}>{column.render(row)}</td>)}
-              <td>
-                <div className="grid-row-actions">
-                  <button type="button" onClick={() => onOpen(row)}>Open</button>
-                  <button type="button" className="danger" onClick={() => onRemove(row)}>Remove</button>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function RequestCard({ row, onOpen, onRemove }: { row: RequestRow; onOpen: () => void; onRemove: () => void }) {
-  return (
-    <article className="request-card live-row-card" onClick={onOpen}>
-      <div className="card-main">
-        <div className="card-copy">
-          <h2>{field(row, ['COMMONNAME', 'commonname'], 'Unnamed item')}</h2>
-          <a>{field(row, ['LOCATIONCODE', 'locationcode'], '-')}</a>
-          <div className="card-meta-line">
-            {field(row, ['ITEMCODE', 'itemcode'], '-')} | Lot {field(row, ['LOTCODE', 'lotcode'], '-')} | {field(row, ['CONTSIZE', 'contsize'], '-')}
-          </div>
-          <p>{field(row, ['REQUESTED_BY', 'requested_by', 'SALES_REP', 'sales_rep'], 'No rep')}</p>
-          <p>{field(row, ['CUSTOMER', 'customer', 'CONSIGNEE', 'consignee'], 'No customer')}</p>
-        </div>
-        <div className="card-side">
-          <span className="color-chip">{field(row, ['COLOR', 'color', 'DESIGCUST', 'desigcust'], '')}</span>
-          <strong>{field(row, ['CONTSIZE', 'contsize'], '')}</strong>
-          <span>{field(row, ['SRC', 'src'], '')}</span>
-          <ModernPhoto row={row} />
-          <em>Open <ChevronRight size={15} /></em>
-        </div>
-      </div>
-      <div className="chip-grid">
-        <Chip tone="warning" label="Pending" />
-        <Chip label={`Reserve: ${field(row, ['RESERVE', 'reserve'], 'NO')}`} />
-        <Chip tone="purple" label={`Qty: ${field(row, ['QTY', 'qty', 'REQ_QTY', 'req_qty'], '0')}`} />
-        <Chip tone="blue" label={`Loc: ${field(row, ['LOCATIONCODE', 'locationcode'], '-')}`} />
-        <Chip label={`Lot: ${field(row, ['LOTCODE', 'lotcode'], '-')}`} />
-        <Chip tone="orange" label={`Pri: ${field(row, ['PRI', 'priority'], '-')}`} />
-        <Chip tone="green" label={`On hand - ${numberField(row, ['ON_HAND', 'on_hand', 'HAND'])}`} />
-        <Chip tone="blue" label={`Review - ${numberField(row, ['REVIEW', 'review', 'REV'])}`} />
-        <Chip tone="blue" label={`Available - ${numberField(row, ['AVAILABLE', 'available', 'AVAIL'])}`} />
-        <Chip tone="purple" label={`Open stock - ${numberField(row, ['OPEN_STOCK', 'open_stock', 'OPEN'])}`} />
-      </div>
-      <button className="remove-row-button" type="button" onClick={event => { event.stopPropagation(); onRemove(); }}>
-        <Trash2 size={18} /> Remove
-      </button>
-    </article>
   );
 }
 
@@ -2000,10 +1833,6 @@ function communicationThreads(): MessageThread[] {
       ]
     }
   ];
-}
-
-function tabLabel(tab: TabId) {
-  return tabs.find(item => item.id === tab)?.label || 'Request';
 }
 
 function delay(ms: number) {

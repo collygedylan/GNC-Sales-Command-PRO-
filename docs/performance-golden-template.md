@@ -1,0 +1,121 @@
+# Performance Golden Template
+
+## Contract and scope
+
+The live app retains its classic runtime and persistent route DOM. `/v2` is a
+separate sandbox React application. Que means the top-level Request workspace.
+Its beta rows are demo data; an unused request reader is not a performance win.
+
+The reviewed comparison commit and fixture version live in
+`performance/baseline.json`. Changing either requires an explicit reviewed diff
+and an explanation of comparability. Never update a baseline automatically after
+a failure. The candidate release gate requires the performance lane alongside
+the existing SQL, Edge, browser, CSS and Lighthouse lanes.
+Subsequent manifest changes require an approval from a human collaborator on the
+current PR commit, checked by `check-performance-baseline-review.mjs`.
+
+## Frontend standard
+
+- Define React lazy components at module scope. Load route code on render; put
+  loading/error states inside the existing content area. A failed chunk offers
+  a reload because browsers cache failed module imports. Key error boundaries by
+  route so an unrelated route remains usable.
+- State ownership is a behavior contract: Que filters/rows/selection remain in
+  App; Drive aborts its request and resets local state when unmounted. Do not add
+  keep-alive caching as a side effect of splitting code.
+- Keep callbacks stable and memoize measured list boundaries. Scroll decoration
+  belongs on the shell element, not in global React state. Tests must show that
+  unrelated menu/toast/scroll updates do not rerender unchanged rows.
+- In the live app, coalesce background refresh reasons into one pending callback.
+  Read the current visible/dirty views when it runs. Preserve render tokens,
+  mutation invalidation, revision/identity checks, chunk cancellation and scroll.
+- Service workers may download deferred static code for offline use without
+  executing it. Preserve separate root, V2 and partner scopes and all private-data
+  exclusions. Initial executable-code measurements block service workers; offline
+  coverage verifies their separate precache path.
+
+## Reader standard
+
+Use generated Database types for fixed table/column/RPC contracts. Validate JSON
+at the boundary and retain nulls, explicit field coverage and row identity.
+Lists use their existing browse projection; details use their existing full-row
+reader. A partial list must never masquerade as a complete detail snapshot.
+
+Keep authorization and source predicates ahead of counts and pagination. Keep
+stable ordering, page bounds, exact totals and duplicate/incomplete-page checks.
+Do not infer a snapshot guarantee from a first-page total. This phase deliberately
+does not remove later counts or introduce cursor pagination.
+
+Use local `EXPLAIN (ANALYZE, BUFFERS)` before proposing an index. Record actual
+rows, selectivity, buffer usage and write cost. A sequential scan can be correct;
+never disable it to manufacture an index-use result. No production probes or
+credentials are needed. Schema changes, when justified, use the existing additive
+migration and SQL validation process.
+
+## Repeatable measurements
+
+`services/performanceBaseline.ts` validates manifests/reports and implements the
+budget comparison. Every report identifies the commit, artifact digest, fixture
+version, browser/runtime, viewport and measurement method. Missing/invalid samples
+and mismatched contexts fail rather than producing a pass.
+
+The cloud performance lane builds the pinned historical code in a separate
+directory and verifies both sealed artifacts. It runs the same fixtures serially
+on both. Phone (390×844), tablet (820×1180) and desktop (1440×900) each get five cold
+contexts and ten warm visits per route/application. Report median and p95; do not
+use a developer machine's one-shot timing as the release budget. Browser fixtures
+contain 1,000 inventory rows and 200 live Queue rows, with external requests blocked.
+
+Initial executable JavaScript is measured as decoded response bytes, excluding
+worker precaching. Initial and deferred JavaScript sizes are reported separately;
+the existing Lighthouse and compiled artifact size limits continue to govern code
+size. The zero-growth payload budget applies to unchanged query results. Route metrics
+include usable-content latency, long-task duration, content-node removals,
+API reads and response bytes captured before the separate scroll-frame exercise.
+React render isolation has separate deterministic mount tests because the normal
+production React build does not enable profiling.
+
+Duration budgets permit the larger of 15% or 25 ms above baseline; database
+duration uses 5 ms. Count, unchanged-render and equal-result payload budgets allow
+no increase. Existing Lighthouse, frame-gap and cached-view limits remain active.
+No claim of real-device or production database latency follows from synthetic data.
+
+Database fixtures use 10,000 and 100,000 inventory rows, representative role
+predicates and first/deep pages. The SQL gate first verifies that the active migration
+paths and Git-clean contents match the pinned commit, the fixed app-api inventory
+reader matches through its operation boundary (excluding only the old projector
+implementation), and the beta API reader matches apart from its release-version
+line. It then records 30 EXPLAIN samples for each identical page/count query as a
+shared control, retaining result hashes, counts and raw plan evidence. Since this is
+the same SQL on both sides, it makes no baseline-versus-candidate database speedup
+claim and does not compare duplicated timing samples. Any change to these pinned
+contracts requires a separately measured reader/schema baseline; it cannot be
+accepted by this control run. The 15%/5ms comparator remains for genuinely distinct
+SQL pairs. Row-copy measurements run only in SQL mode; authenticated local app-api
+measurements are a separate output. Compare equivalent results and serialization
+before claiming a payload or CPU improvement.
+The SQL gate measures before its mandatory reset, while the CLI workdir label is
+still independently verifiable by its child process. It then resets, lints, runs
+SQL assertions and compares generated types. The cloud API pair temporarily serves
+the pinned and candidate function sources against the same disposable stack and
+restores the candidate sources in `finally`.
+
+The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
+canonical inventory schema as a physical-read proxy. They do not claim sandbox
+RLS or authentication measurements. Browser fixtures exercise its actual REST
+boundary separately. No new index is included in this phase: preserve the query
+plans and equivalent outputs rather than claiming a database speedup from an
+unchanged SQL statement.
+
+## Validation and review
+
+Run focused Node/Vitest tests, lint, inline syntax, project TypeScript, applicable
+Deno checks, focused Chromium/WebKit checks, and
+`node scripts/database-check.mjs --all`. Keep hooks enabled. The latter uses only
+verified disposable local resources and includes generated-type comparison.
+
+GitHub Actions owns paired compiled-artifact measurements, full browser matrices,
+merge, backend-before-PWA deployment and production verification. Inspect retained
+`artifacts/performance` evidence on failure; repair the cause rather than loosening
+budgets, skipping coverage or silently rebaselining. Preserve previous release
+compatibility and the existing service-worker update/reload flow.

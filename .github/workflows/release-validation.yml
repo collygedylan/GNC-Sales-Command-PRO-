@@ -26,6 +26,7 @@ on:
 permissions:
   contents: read
   actions: read
+  pull-requests: read
 
 concurrency:
   group: release-validation-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -718,6 +719,44 @@ jobs:
           path: test-results
           if-no-files-found: ignore
 
+  performance:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: chromium
+      - uses: ./.github/actions/download-release
+        with:
+          digest: ${{ needs.build.outputs.digest }}
+      - name: Require review for changes to the pinned performance baseline
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/check-performance-baseline-review.mjs
+      - name: Restore immutable reviewed performance baseline
+        uses: actions/cache@v4
+        with:
+          path: .gnc-local/performance-baseline-*/_site
+          key: performance-baseline-v1-${{ runner.os }}-${{ hashFiles('performance/baseline.json', 'package-lock.json', 'scripts/build-performance-baseline.mjs') }}
+      - name: Build or verify the pinned historical baseline
+        run: node scripts/build-performance-baseline.mjs
+      - name: Compare cold and warm routes serially on the same runner
+        run: node scripts/run-performance-browser.mjs
+      - name: Verify benchmark did not mutate the candidate artifact
+        env:
+          EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
+        run: node scripts/release-artifact.mjs verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-${{ github.run_attempt }}
+          path: artifacts/performance
+          if-no-files-found: error
+
   lighthouse:
     needs: build
     runs-on: ubuntu-latest
@@ -763,7 +802,7 @@ jobs:
 
   release-gate:
     if: always()
-    needs: [unit, database, build, foundation, functional, compiled, timing, lighthouse, production-health]
+    needs: [unit, database, build, foundation, functional, compiled, timing, performance, lighthouse, production-health]
     runs-on: ubuntu-latest
     outputs:
       run-id: ${{ github.run_id }}
@@ -779,7 +818,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
-          const required = ['unit','database','build','foundation','functional','compiled','timing','lighthouse'];
+          const required = ['unit','database','build','foundation','functional','compiled','timing','performance','lighthouse'];
           if (process.env.REQUIRE_PRODUCTION_HEALTH === 'true') required.push('production-health');
           for (const name of required) {
             if (jobs[name]?.result !== 'success') throw new Error(`RELEASE_GATE_FAILED_${name}`);

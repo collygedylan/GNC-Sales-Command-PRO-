@@ -1,17 +1,17 @@
 import { readFileSync } from 'node:fs';
 
 const inventorySchema = JSON.parse(readFileSync(new URL('./inventory-list-schema.json', import.meta.url), 'utf8'));
-const appApiSource = readFileSync(new URL('../../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
+const projectionSource = readFileSync(new URL('../../supabase/functions/_shared/inventory-projections.ts', import.meta.url), 'utf8');
 
-function extractApiFieldList(name) {
-  const match = appApiSource.match(new RegExp(`const ${name} = \\[([\\s\\S]*?)\\]\\.join\\(\",\"\\);`));
+function extractProjectionFieldList(name) {
+  const match = projectionSource.match(new RegExp(`export const ${name} = \\[([\\s\\S]*?)\\] as const satisfies`));
   if (!match) throw new Error(`Missing inventory projection fixture source: ${name}`);
   return [...match[1].matchAll(/\"([a-z0-9_]+)\"/g)].map((field) => field[1]);
 }
 const apiProjections = {
-  initial: extractApiFieldList('INVENTORY_MASTER_INITIAL_FIELDS'),
-  full: extractApiFieldList('INVENTORY_MASTER_FULL_FIELDS'),
-  browse: extractApiFieldList('INVENTORY_MASTER_BROWSE_FIELDS')
+  initial: extractProjectionFieldList('INVENTORY_MASTER_INITIAL_COLUMNS'),
+  full: extractProjectionFieldList('INVENTORY_MASTER_FULL_COLUMNS'),
+  browse: extractProjectionFieldList('INVENTORY_MASTER_BROWSE_COLUMNS')
 };
 apiProjections.initial_base = apiProjections.initial.filter((field) => !field.startsWith('hold_release_') && !field.startsWith('av_rule_'));
 

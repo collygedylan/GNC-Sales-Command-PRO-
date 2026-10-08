@@ -89,7 +89,7 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -161,7 +161,7 @@ test('browser shards and compiled suites use isolated runners without racing per
 });
 
 test('every build consumer verifies the original manifest, never rebuilds or reseals', () => {
-  for (const name of ['foundation','functional','compiled','timing','lighthouse']) {
+  for (const name of ['foundation','functional','compiled','timing','performance','lighthouse']) {
     const job = validation.jobs[name];
     assert.deepEqual(job.needs, ['functional','compiled'].includes(name) ? ['build','foundation'] : 'build');
     assert.equal(job.steps.filter(s => s.uses === './.github/actions/download-release').length, 1);
@@ -177,6 +177,18 @@ test('every build consumer verifies the original manifest, never rebuilds or res
   assert.equal(download.runs.steps[1].env.EXPECTED_RELEASE_COMMIT, '${{ inputs.commit || github.sha }}');
   assert.equal(download.runs.steps[1].env.GITHUB_SHA, undefined);
   assert.equal(validation.jobs.build.steps.find(s=>s.uses?.startsWith('actions/upload-artifact@')).with['include-hidden-files'], true);
+});
+
+test('performance is a required serial paired comparison with immutable baseline evidence', () => {
+  const job = validation.jobs.performance;
+  assert.equal(job.strategy, undefined, 'matched measurements share one quiet runner');
+  assert.ok(job.steps.some(step => step.run === 'node scripts/build-performance-baseline.mjs'));
+  assert.ok(job.steps.some(step => step.run === 'node scripts/run-performance-browser.mjs'));
+  assert.ok(job.steps.some(step => step.run === 'node scripts/release-artifact.mjs verify'));
+  const upload = job.steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
+  assert.equal(upload.if, 'always()');
+  assert.equal(upload.with.path, 'artifacts/performance');
+  assert.match(validation.jobs['release-gate'].steps[0].run, /'performance'/);
 });
 
 test('manual Pages recovery retains guarded validation while candidate dispatch owns automatic publication', () => {
