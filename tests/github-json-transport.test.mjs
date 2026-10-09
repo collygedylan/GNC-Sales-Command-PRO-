@@ -6,6 +6,27 @@ import { fetchGitHubJson } from '../scripts/lib/github-json-transport.mjs';
 const failure = code => new RegExp(`GITHUB_API_${code}`);
 const response = (body, status = 200, headers = {}) => new Response(body, { status, headers });
 
+function pendingFixtureIoUntilAbort(signal) {
+  return new Promise((_, reject) => {
+    const cleanup = () => {
+      clearTimeout(watchdog);
+      signal.removeEventListener('abort', onAbort);
+    };
+    const onAbort = () => {
+      cleanup();
+      const error = new Error('fixture I/O aborted');
+      error.name = 'TimeoutError';
+      reject(error);
+    };
+    const watchdog = setTimeout(() => {
+      cleanup();
+      reject(new Error('Fixture abort signal was not delivered.'));
+    }, 1_000);
+    signal.addEventListener('abort', onAbort, { once: true });
+    if (signal.aborted) onAbort();
+  });
+}
+
 function transport({ fetchImpl, delays = [], diagnostics = [] }) {
   return fetchGitHubJson({
     endpoint: 'repos/example/private/actions/runs?head_sha=private-sha&per_page=100',
@@ -162,11 +183,7 @@ test('an actual request timeout uses the abort signal and remains bounded', asyn
     fetchImpl: async (_url, { signal }) => {
       assert.ok(signal instanceof AbortSignal);
       calls++;
-      return new Promise((_, reject) => signal.addEventListener('abort', () => {
-        const error = new Error('request timeout');
-        error.name = 'TimeoutError';
-        reject(error);
-      }, { once: true }));
+      return pendingFixtureIoUntilAbort(signal);
     },
     sleepImpl: async () => {},
     logger: () => {}
@@ -185,11 +202,7 @@ test('an actual response-body timeout aborts and retries the response read', asy
       if (calls > 1) return response('{"object":{"sha":"recovered"}}');
       return {
         ok: true, status: 200, headers: new Headers(), body: { cancel: () => Promise.resolve() },
-        text: () => new Promise((_, reject) => signal.addEventListener('abort', () => {
-          const error = new Error('body timeout');
-          error.name = 'TimeoutError';
-          reject(error);
-        }, { once: true }))
+        text: () => pendingFixtureIoUntilAbort(signal)
       };
     },
     sleepImpl: async () => {},
