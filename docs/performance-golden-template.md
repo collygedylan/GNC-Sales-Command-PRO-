@@ -295,6 +295,15 @@ correlates only allowlisted fields from sampled logs emitted by that pass's
 function server. Older baseline sources can lack the header or a sampled log.
 Missing diagnostics never remove samples or relax the end-to-end budgets.
 
+Per-pass reports also count allowlisted Edge Runtime boot, CPU-limit, memory-limit,
+and wall-clock-limit messages from the same bounded private log. A lifecycle
+event receives a scenario/sample ordinal only when exactly one matched readiness
+record is followed by exactly the complete measured app-api dispatch sequence.
+Truncated, unavailable, or ambiguous logs stay unmapped. This is log-order
+correlation, not proof that an event caused a request's latency. No runtime
+policy, worker limit, measurement boundary, or observation is changed by this
+diagnostic, and no raw paths, log text, credentials, or response data are retained.
+
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox
 RLS or authentication measurements. Browser fixtures exercise its actual REST

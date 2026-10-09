@@ -6,6 +6,7 @@ import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
 import { appApiReadinessLogSeen, appApiReadinessRequest, isAppApiReadyResponse } from './performance-function-readiness.mjs';
 import { attachAppApiSampleLogCorrelation } from './performance-function-sample-correlation.mjs';
+import { attachFunctionLifecycleDiagnostics } from './performance-function-lifecycle-diagnostics.mjs';
 import { aggregateApiPassReports, API_PAIR_SCHEDULE } from './performance-api-passes.mjs';
 import { openFunctionServerLog, closeFunctionServerLog, getFunctionServerFailureDiagnostics } from './performance-function-server-diagnostics.mjs';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
@@ -102,6 +103,7 @@ async function measure(revision, passIndex, commit, source) {
   // deadlock serving. Keep logs in a private temporary file, report only finite
   // diagnostic categories on failure, and delete raw output with the run's temp.
   let ready = false;
+  let readinessRequestId = null;
   try {
     const logFd = openFunctionServerLog(logPath);
     try {
@@ -125,7 +127,7 @@ async function measure(revision, passIndex, commit, source) {
             if (appApiReadinessLogSeen(logText, requestId)) { ready = true; break; }
             await new Promise(resolve => setTimeout(resolve, 50));
           }
-          if (ready) break;
+          if (ready) { readinessRequestId = requestId; break; }
         }
       } catch { /* bounded readiness retry */ }
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -137,7 +139,9 @@ async function measure(revision, passIndex, commit, source) {
     });
     let report = JSON.parse(readFileSync(reportPath, 'utf8'));
     await stopServer();
-    report = attachAppApiSampleLogCorrelation(report, readFunctionServerCorrelationLog(logPath));
+    const functionLog = readFunctionServerCorrelationLog(logPath);
+    report = attachAppApiSampleLogCorrelation(report, functionLog);
+    report = attachFunctionLifecycleDiagnostics(report, functionLog, readinessRequestId);
     writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
     return report;
   } catch (error) {
