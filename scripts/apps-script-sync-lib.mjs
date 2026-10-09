@@ -58,6 +58,46 @@ async function delay(ms) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/** Wait for the issued update to become visible without repeating any write. */
+export async function verifyDeploymentVersion({
+  script,
+  scriptId,
+  deploymentId,
+  versionNumber,
+  sleep = delay,
+  now = () => Date.now(),
+  attempts = 13,
+  retryDelayMs = 5000,
+  onObservation = () => {}
+}) {
+  if (!Number.isSafeInteger(versionNumber) || versionNumber < 1
+      || !Number.isSafeInteger(attempts) || attempts < 1 || attempts > 13
+      || !Number.isFinite(retryDelayMs) || retryDelayMs < 0 || retryDelayMs > 5000) {
+    throw syncError('APPS_SCRIPT_DEPLOYMENT_VERIFICATION_CONFIGURATION_INVALID');
+  }
+  const deadline = Number(now()) + 90000;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const remaining = deadline - Number(now());
+    if (!Number.isFinite(remaining) || remaining <= 0) break;
+    const deployment = await script.projects.deployments.get({ scriptId, deploymentId }, {
+      timeout: Math.min(12000, remaining), retry: false
+    });
+    const observedVersion = deployment?.data?.deploymentConfig?.versionNumber;
+    if (!Number.isSafeInteger(observedVersion) || observedVersion < 1) {
+      throw syncError('APPS_SCRIPT_DEPLOYMENT_VERSION_INVALID');
+    }
+    if (observedVersion > versionNumber) {
+      throw syncError('APPS_SCRIPT_DEPLOYMENT_VERSION_ADVANCED');
+    }
+    const observedAt = Number(now());
+    if (!Number.isFinite(observedAt) || observedAt >= deadline) break;
+    if (observedVersion === versionNumber) return observedVersion;
+    onObservation({ attempt, expectedVersion: versionNumber, observedVersion });
+    if (attempt < attempts) await sleep(Math.min(retryDelayMs, Math.max(0, deadline - Number(now()))));
+  }
+  throw syncError('APPS_SCRIPT_DEPLOYMENT_VERSION_MISMATCH');
+}
+
 export async function verifyDeploymentHealth({
   deploymentId,
   githubSha,
@@ -174,11 +214,10 @@ export async function syncAppsScriptProject({
     }
   });
 
-  const deployment = await script.projects.deployments.get({ scriptId, deploymentId });
-  const deployedVersionNumber = Number(deployment?.data?.deploymentConfig?.versionNumber);
-  if (deployedVersionNumber !== versionNumber) {
-    throw syncError('APPS_SCRIPT_DEPLOYMENT_VERSION_MISMATCH');
-  }
+  const deployedVersionNumber = await verifyDeploymentVersion({
+    script, scriptId, deploymentId, versionNumber, sleep,
+    onObservation: observation => logger.warn(`APPS_SCRIPT_DEPLOYMENT_VERSION_PENDING ${JSON.stringify(observation)}`)
+  });
 
   const health = await verifyDeploymentHealth({
     deploymentId,
