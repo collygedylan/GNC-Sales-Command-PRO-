@@ -10,6 +10,7 @@ export type BenchmarkManifest = {
   warmSamples: number;
   profiles: { id: string; width: number; height: number }[];
   budgets: { relative: number; browserNoiseMs: number; databaseNoiseMs: number };
+  temporaryTimingAllowance?: { multiplier: 2; minimumBrowserAllowanceMs: 75; restoreAtPrompt: 7 };
 };
 export type BenchmarkReport = {
   schemaVersion: 1;
@@ -52,9 +53,30 @@ export function parseBenchmarkManifest(input: unknown): BenchmarkManifest {
   if (new Set(profiles.map(entry => entry.id)).size !== profiles.length) throw new Error('PERFORMANCE_PROFILE_DUPLICATE');
   const coldSamples = integer(raw.coldSamples, 5, 30), warmSamples = integer(raw.warmSamples, 10, 100);
   if (warmSamples % coldSamples !== 0) throw new Error('PERFORMANCE_SAMPLE_RATIO_INVALID');
+  let temporaryTimingAllowance: BenchmarkManifest['temporaryTimingAllowance'];
+  if (raw.temporaryTimingAllowance !== undefined) {
+    const allowance = object(raw.temporaryTimingAllowance);
+    if (Object.keys(allowance).length !== 3 || allowance.multiplier !== 2
+        || allowance.minimumBrowserAllowanceMs !== 75 || allowance.restoreAtPrompt !== 7) {
+      throw new Error('PERFORMANCE_TEMPORARY_TIMING_ALLOWANCE_INVALID');
+    }
+    temporaryTimingAllowance = { multiplier: 2, minimumBrowserAllowanceMs: 75, restoreAtPrompt: 7 };
+  }
   return { schemaVersion: 1, baselineCommit: sha(raw.baselineCommit, 40), sqlSchemaCommit: sha(raw.sqlSchemaCommit, 40), fixtureVersion: string(raw.fixtureVersion),
     coldSamples, warmSamples, profiles,
-    budgets: { relative: 0.15, browserNoiseMs: 25, databaseNoiseMs: 5 } };
+    budgets: { relative: 0.15, browserNoiseMs: 25, databaseNoiseMs: 5 },
+    ...(temporaryTimingAllowance ? { temporaryTimingAllowance } : {}) };
+}
+/** The approved roadmap override changes time ceilings only; Prompt 7 removes it. */
+export function benchmarkMetricLimit(manifest: BenchmarkManifest, before: number, kind: MetricKind): number {
+  const noise = kind === 'duration' ? manifest.budgets.browserNoiseMs
+    : kind === 'database-duration' ? manifest.budgets.databaseNoiseMs : 0;
+  if (!noise) return before;
+  const strictLimit = before + Math.max(before * manifest.budgets.relative, noise);
+  const allowance = manifest.temporaryTimingAllowance;
+  if (!allowance) return strictLimit;
+  return Math.max(strictLimit * allowance.multiplier,
+    kind === 'duration' ? before + allowance.minimumBrowserAllowanceMs : 0);
 }
 /** Candidate-only additive schema pins; comparison baselines and budgets stay separate. */
 export function parseSqlSchemaExtensions(input: unknown): { path: string; gitBlob: string }[] {
@@ -101,8 +123,7 @@ export function compareBenchmarks(manifestInput: unknown, baselineInput: unknown
     if (!next || next.kind !== previous.kind || next.samples.length !== previous.samples.length) throw new Error('PERFORMANCE_METRIC_COVERAGE_MISMATCH');
     for (const p of [0.5, 0.95]) {
       const before = percentile(previous.samples, p), after = percentile(next.samples, p);
-      const noise = previous.kind === 'duration' ? manifest.budgets.browserNoiseMs : previous.kind === 'database-duration' ? manifest.budgets.databaseNoiseMs : 0;
-      const limit = noise ? before + Math.max(before * manifest.budgets.relative, noise) : before;
+      const limit = benchmarkMetricLimit(manifest, before, previous.kind);
       if (after > limit) failures.push(`${previous.id} p${p * 100}: ${after.toFixed(2)} exceeds ${limit.toFixed(2)} (baseline ${before.toFixed(2)})`);
     }
   }

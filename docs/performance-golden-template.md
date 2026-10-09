@@ -11,8 +11,14 @@ The reviewed comparison commit and fixture version live in
 and an explanation of comparability. Never update a baseline automatically after
 a failure. The candidate release gate requires the performance lane alongside
 the existing SQL, Edge, browser, CSS and Lighthouse lanes.
-Subsequent manifest changes require an approval from a human collaborator on the
-current PR commit, checked by `check-performance-baseline-review.mjs`.
+
+PR 349 has a narrow, owner-approved temporary exception: add only the
+`temporaryTimingAllowance` profile documented below, then remove it for Prompt 7.
+This exception does not authorize changes to the baseline commit, fixtures,
+sample counts, collected samples, strict count/payload/render assertions, or any
+other budget. Other manifest changes still require an approval from a human
+collaborator on the current PR commit, checked by
+`check-performance-baseline-review.mjs`.
 
 Additive application migrations are pinned separately in
 `performance/sql-schema-extensions.json` by repository path and Git blob hash.
@@ -224,10 +230,19 @@ paint; it does not promise the transition commits before paint. Route keys,
 immediate unmount cleanup, loading content and chunk-error recovery are unchanged.
 The paired cloud benchmark remains the evidence for any latency improvement.
 
-Duration budgets permit the larger of 15% or 25 ms above baseline; database
-duration uses 5 ms. Count, unchanged-render and equal-result payload budgets allow
-no increase. Existing Lighthouse, frame-gap and cached-view limits remain active.
-No claim of real-device or production database latency follows from synthetic data.
+The original duration ceilings are baseline plus the larger of 15% or 25 ms for
+browser/API durations, and baseline plus the larger of 15% or 5 ms for SQL duration.
+For Prompts 1 through 6, the approved `temporaryTimingAllowance` doubles each
+calculated strict ceiling; for browser/API durations it also applies a minimum
+ceiling of baseline plus 75 ms. In formula form, the temporary browser/API ceiling
+is `max(strictCeiling * 2, baseline + 75 ms)` and the temporary SQL ceiling is
+`strictCeiling * 2`. Prompt 7 removes the manifest override and restores the
+original 15%/25 ms browser/API and 15%/5 ms SQL ceilings. The temporary profile
+changes duration thresholds only. Count, unchanged-render and equal-result payload
+budgets allow no increase, and baseline commits, fixtures, sample counts, and
+collected samples remain unchanged. Existing Lighthouse, frame-gap and cached-view
+limits remain active. No claim of real-device or production database latency
+follows from synthetic data.
 
 Database fixtures use 10,000 and 100,000 inventory rows, representative role
 predicates and first/deep pages. The browser/API baseline commit and SQL schema

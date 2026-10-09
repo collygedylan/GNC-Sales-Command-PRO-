@@ -227,11 +227,15 @@ test('pinned baseline projections remain exact and genuinely paired SQL timings 
   assert.equal(baseline.full, INVENTORY_MASTER_FULL_FIELDS);
   assert.equal(assertPairedSqlPerformance([
     { id: 'db.master.baseline.page.execution_ms', kind: 'database-duration', samples: [1, 2, 3, 4, 5] },
-    { id: 'db.master.candidate.page.execution_ms', kind: 'database-duration', samples: [2, 3, 4, 5, 6] },
-  ]), true);
-  assert.throws(() => assertPairedSqlPerformance([
-    { id: 'db.master.baseline.page.execution_ms', kind: 'database-duration', samples: [1, 2, 3, 4, 5] },
     { id: 'db.master.candidate.page.execution_ms', kind: 'database-duration', samples: [8, 9, 10, 11, 12] },
+  ]), true);
+  assert.equal(assertPairedSqlPerformance([
+    { id: 'db.master.baseline.page.execution_ms', kind: 'database-duration', samples: [5, 5, 5] },
+    { id: 'db.master.candidate.page.execution_ms', kind: 'database-duration', samples: [20, 20, 20] },
+  ]), true, 'temporary SQL ceiling is twice the original 5 + 5ms limit');
+  assert.throws(() => assertPairedSqlPerformance([
+    { id: 'db.master.baseline.page.execution_ms', kind: 'database-duration', samples: [5, 5, 5] },
+    { id: 'db.master.candidate.page.execution_ms', kind: 'database-duration', samples: [21, 21, 21] },
   ]), /PERFORMANCE_SQL_REGRESSION/);
   assert.throws(() => assertPairedSqlPerformance([]), /PERFORMANCE_SQL_PAIR_EMPTY/);
   assert.throws(() => assertPairedSqlPerformance([

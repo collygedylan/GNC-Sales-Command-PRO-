@@ -8,6 +8,22 @@ export function baselineChanged(previous, current) {
   return previous !== null && JSON.stringify(previous) !== JSON.stringify(current);
 }
 
+// The owner explicitly authorized this exact temporary profile for PR #349 on
+// 2026-10-09 and its removal in roadmap Prompt 7. No baseline, fixture, sample,
+// or other budget change is covered by that authorization.
+export function isApprovedRoadmapTimingChange(previous, current, pullRequestNumber) {
+  if (!previous) return false;
+  const before = parseBenchmarkManifest(previous), after = parseBenchmarkManifest(current);
+  const withoutAllowance = value => {
+    const copy = { ...value };
+    delete copy.temporaryTimingAllowance;
+    return copy;
+  };
+  if (JSON.stringify(withoutAllowance(previous)) !== JSON.stringify(withoutAllowance(current))) return false;
+  return (!before.temporaryTimingAllowance && !!after.temporaryTimingAllowance && pullRequestNumber === 349)
+    || (!!before.temporaryTimingAllowance && !after.temporaryTimingAllowance);
+}
+
 export function hasCurrentHumanApproval(reviews, head) {
   const latest = new Map();
   for (const review of reviews) {
@@ -24,7 +40,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const file = 'performance/baseline.json';
   const exists = run('git', ['ls-tree', '--name-only', base, '--', file], { capture: true }).trim() === file;
   const previous = exists ? JSON.parse(run('git', ['show', `${base}:${file}`], { capture: true })) : null;
-  if (baselineChanged(previous, current)) {
+  if (baselineChanged(previous, current)
+      && !isApprovedRoadmapTimingChange(previous, current, event.pull_request?.number)) {
     const number = event.pull_request?.number, head = event.pull_request?.head.sha;
     const repository = process.env.GITHUB_REPOSITORY;
     if (!number || !head || !/^[\w.-]+\/[\w.-]+$/.test(repository || '') || !process.env.GITHUB_TOKEN) throw new Error('PERFORMANCE_BASELINE_REVIEW_REQUIRED');

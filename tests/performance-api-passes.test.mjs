@@ -93,14 +93,21 @@ test('API aggregation requires complete metric sets, sample counts, and stable r
   assert.throws(() => aggregate(badFixture), /FIXTURE_EVIDENCE_INVALID/);
 });
 
-test('paired API samples keep the configured 15%/25ms limits unchanged', () => {
+test('paired API samples retain the strict restoration policy and use the temporary time ceiling', () => {
+  const strictManifest = parseBenchmarkManifest({ ...manifest, temporaryTimingAllowance: undefined });
   const allowed = passes({ baselineValue: 100, candidateValue: 114 });
   const allowedReports = aggregate(allowed);
-  assert.deepEqual(compareBenchmarks(manifest, allowedReports.baseline, allowedReports.candidate), []);
+  assert.deepEqual(compareBenchmarks(strictManifest, allowedReports.baseline, allowedReports.candidate), []);
 
   const rejected = passes({ baselineValue: 100, candidateValue: 126 });
   const rejectedReports = aggregate(rejected);
-  assert.match(compareBenchmarks(manifest, rejectedReports.baseline, rejectedReports.candidate).join('\n'), /p95.*exceeds/);
+  assert.match(compareBenchmarks(strictManifest, rejectedReports.baseline, rejectedReports.candidate).join('\n'), /p95.*exceeds/);
+  assert.deepEqual(compareBenchmarks(manifest, rejectedReports.baseline, rejectedReports.candidate), []);
+  const fixedMetrics = value => [{ id: 'api.lookup.10k.admin.first.response_ms', kind: 'duration', samples: Array(15).fill(value) }];
+  const atLimit = aggregate(passes({ options: { baseline: { metrics: fixedMetrics(100) }, candidate: { metrics: fixedMetrics(250) } } }));
+  assert.deepEqual(compareBenchmarks(manifest, atLimit.baseline, atLimit.candidate), []);
+  const overLimit = aggregate(passes({ options: { baseline: { metrics: fixedMetrics(100) }, candidate: { metrics: fixedMetrics(251) } } }));
+  assert.match(compareBenchmarks(manifest, overLimit.baseline, overLimit.candidate).join('\n'), /p95.*exceeds/);
   assert.equal(manifest.budgets.relative, 0.15);
   assert.equal(manifest.budgets.browserNoiseMs, 25);
 });

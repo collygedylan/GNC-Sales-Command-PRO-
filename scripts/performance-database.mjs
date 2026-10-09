@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from 'pg';
 import { createClient } from '@supabase/supabase-js';
-import { parseBenchmarkManifest, parseSqlSchemaExtensions, percentile } from '../services/performanceBaseline.ts';
+import { benchmarkMetricLimit, parseBenchmarkManifest, parseSqlSchemaExtensions, percentile } from '../services/performanceBaseline.ts';
 import {
   INVENTORY_MASTER_BROWSE_FIELDS,
   INVENTORY_MASTER_FULL_FIELDS,
@@ -864,7 +864,7 @@ export function assertPairedSqlPerformance(metrics) {
     for (const p of [0.5, 0.95]) {
       const before = percentile(baseline.samples, p);
       const after = percentile(candidate.samples, p);
-      const limit = before + Math.max(before * manifest.budgets.relative, manifest.budgets.databaseNoiseMs);
+      const limit = benchmarkMetricLimit(manifest, before, 'database-duration');
       if (after > limit) regressions.push(`${candidate.id} p${p * 100}: ${after.toFixed(2)} exceeds ${limit.toFixed(2)} (pinned baseline ${before.toFixed(2)})`);
     }
   }
