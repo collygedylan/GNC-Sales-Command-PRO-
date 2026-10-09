@@ -260,10 +260,7 @@ export async function fetchInventoryPage(options: PageOptions = {}): Promise<Pag
   const session = readStoredSession();
   const sessionToken = session?.token ?? '';
   const revision = sandboxSessionRevision;
-  const [sessionKey, client] = await Promise.all([
-    sessionToken ? opaqueSessionCacheKey(sessionToken) : Promise.resolve(null),
-    sandboxClient()
-  ]);
+  const sessionKey = sessionToken ? await opaqueSessionCacheKey(sessionToken) : null;
   const scope = [sessionKey ?? '', session?.username?.trim().toLowerCase() ?? '', session?.role?.trim().toLowerCase() ?? ''];
   const scopeKey = JSON.stringify(scope);
   const isCurrentScope = () => {
@@ -279,6 +276,7 @@ export async function fetchInventoryPage(options: PageOptions = {}): Promise<Pag
     : null;
   // Configuration and production-project guards must succeed even when a
   // matching offline page exists. Only data-read failures may use that page.
+  const client = await sandboxClient();
   try {
     let query = client
       .from(INVENTORY_TABLE)
