@@ -48,6 +48,18 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
               label: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
               value: chip.querySelector('.app-card-qty-value')?.textContent?.trim() || '',
             })),
+            quantityTextBounds: [...element.querySelectorAll('.app-card-qty-chip')].map((chip) => {
+              const chipRect = chip.getBoundingClientRect();
+              return [...chip.querySelectorAll('.app-card-qty-label, .app-card-qty-value')].map((node) => {
+                const textRect = node.getBoundingClientRect();
+                return {
+                  text: node.textContent?.trim() || '',
+                  chipLeft: chipRect.left, chipRight: chipRect.right,
+                  textLeft: textRect.left, textRight: textRect.right,
+                  scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
+                };
+              });
+            }),
           };
         });
         expect(metrics.card.x).toBeGreaterThanOrEqual(-1);
@@ -66,6 +78,13 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
           { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
           { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
         ]);
+        for (const chip of metrics.quantityTextBounds) {
+          for (const text of chip) {
+            expect(text.textLeft, `${text.text} must stay inside its quantity column`).toBeGreaterThanOrEqual(text.chipLeft - 1);
+            expect(text.textRight, `${text.text} must stay inside its quantity column`).toBeLessThanOrEqual(text.chipRight + 1);
+            expect(text.scrollWidth - text.clientWidth, `${text.text} must wrap rather than collide with the next column`).toBeLessThanOrEqual(1);
+          }
+        }
         expect(metrics.docOverflow).toBeLessThanOrEqual(1);
         expect(metrics.cardOverflow).toBeLessThanOrEqual(1);
         expect(metrics.text).toContain('Synthetic hold reason');
