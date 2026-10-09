@@ -15,6 +15,7 @@ import { jsonObject, jsonValue } from '../services/database-contract-runtime.ts'
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { createApiSampleDiagnostics } from './performance-api-sample-diagnostics.mjs';
 import { parseAppServerTimingDuration } from './performance-function-sample-correlation.mjs';
+import { assertPerformanceFunctionPolicy, PERFORMANCE_API_FUNCTION_POLICY } from './performance-function-policy.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 
 const MAX_SYNTHETIC_ROWS = 100_000;
@@ -238,6 +239,13 @@ export function buildInventoryPageSql({ fields, role = 'admin', itemcode = null,
     count: `SELECT count(*)::bigint AS total FROM public.ph_master_inventory ${where.sql}`,
     values: where.values,
   };
+}
+
+export function validateApiFunctionPolicy(mode, policy) {
+  if (mode === 'api' && policy !== PERFORMANCE_API_FUNCTION_POLICY) {
+    throw errorCode('PERFORMANCE_API_FUNCTION_POLICY_REQUIRED');
+  }
+  return mode === 'api' ? PERFORMANCE_API_FUNCTION_POLICY : null;
 }
 
 export function buildBetaDrivePageSql({ search = null, offset = 0, limit = 250 } = {}) {
@@ -794,7 +802,7 @@ function buildReport(metrics, sqlPlanEvidence, digest) {
   return { schemaVersion: 1, commit: digest.commit, baselineCommit: manifest.baselineCommit, artifactDigest: digest.artifactDigest,
     fixtureVersion: manifest.fixtureVersion, browser: digest.mode === 'api' ? 'authenticated-http-local' : 'postgres', viewport: { width: 1, height: 1 },
     method: digest.mode === 'api'
-      ? 'local-disposable-postgres-authenticated-app-api-v1; stable 10k-then-100k fixtures; exact row/count/projection parity enforced'
+      ? 'local-disposable-postgres-authenticated-app-api-v2; edge-runtime=oneshot (every measured request uses a fresh isolate); stable 10k-then-100k fixtures; exact row/count/projection parity enforced'
       : 'local-disposable-postgres-pinned-reader-shared-control-v1; identical SQL measured once; no SQL speedup claim; beta Drive is canonical-schema physical-read proxy only (sandbox RLS/auth not measured); shared buffers reported, not flushed',
     metrics: metrics.list(), diagnostics: { scenarios: sqlPlanEvidence } };
 }
@@ -814,9 +822,11 @@ function performanceArtifactDigest(sourceRoot, mode) {
   for (const file of sourceFiles) {
     hash.update(file).update('\0').update(readFileSync(path.join(sourceRoot, file))).update('\0');
   }
-  hash.update(JSON.stringify({ fixtureVersion: manifest.fixtureVersion, stagedRows: [INITIAL_SYNTHETIC_ROWS, MAX_SYNTHETIC_ROWS],
+  const artifactContext = { fixtureVersion: manifest.fixtureVersion, stagedRows: [INITIAL_SYNTHETIC_ROWS, MAX_SYNTHETIC_ROWS],
     rowFormula: 'index:1..100000; itemcode:10k-cohort-then-90k-cohort; season/lotcode U3 every20th; recount every10th; timestamp age modulo7200s',
-    timestampAnchor: '2026-10-08T16:00:00Z', roleScopes: ['admin', 'rep', 'foreman'], pageSize: API_LIMIT, mode }));
+    timestampAnchor: '2026-10-08T16:00:00Z', roleScopes: ['admin', 'rep', 'foreman'], pageSize: API_LIMIT, mode };
+  if (mode === 'api') artifactContext.functionPolicy = PERFORMANCE_API_FUNCTION_POLICY;
+  hash.update(JSON.stringify(artifactContext));
   const commit = mode === 'api' ? String(process.env.PERFORMANCE_SOURCE_COMMIT || '').trim()
     : run('git', ['rev-parse', 'HEAD'], { root: sourceRoot, capture: true }).trim();
   if (!/^[a-f0-9]{40}$/.test(commit)) throw errorCode('PERFORMANCE_SOURCE_COMMIT_INVALID');
@@ -888,8 +898,10 @@ export function assertSqlControlCoverage(evidence, expectedScenarioIds, sampleCo
 
 async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packageBin('supabase', 'supabase', root), executeNode = runNode, execute = run } = {}) {
   if (!['sql', 'api'].includes(mode)) throw errorCode('PERFORMANCE_MODE_INVALID');
+  validateApiFunctionPolicy(mode, process.env.PERFORMANCE_FUNCTION_POLICY);
   const sqlContract = mode === 'sql' ? assertPinnedSqlContract({ root }) : null;
   const { identity: workspace, values, apiUrl } = await verifiedWorkspace({ root, workspaceRoot, cli, executeNode, execute, requireApi: mode === 'api' });
+  if (mode === 'api') assertPerformanceFunctionPolicy(workspace, root, PERFORMANCE_API_FUNCTION_POLICY);
   const baselineProjections = pinnedBaselineProjections(root);
   const db = new Client({ connectionString: workspace.dbUrl.href, connectionTimeoutMillis: 10000,
     query_timeout: 180000, application_name: `gnc_inventory_perf_${mode}` });
@@ -980,12 +992,14 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
         if (samples) evidence.apiSampleDiagnostics = samples;
       }
       apiSampleDiagnosticsSummary = {
+        functionPolicy: PERFORMANCE_API_FUNCTION_POLICY,
+        sampleLifecycle: 'cold-isolate-per-request',
         observerAvailable: apiSampleDiagnostics.observerAvailable,
         gcEntryLimit: apiSampleDiagnostics.gcEntryLimit,
         gcEntriesObserved: apiSampleDiagnostics.gcEntriesObserved,
         gcEntriesDropped: apiSampleDiagnostics.gcEntriesDropped,
         perScenario: Object.fromEntries(Object.entries(apiSampleDiagnostics.scenarios).map(([scenario, samples]) => [scenario, samples.length])),
-        method: 'All API samples retained. response_ms remains fetch start through response.text completion; JSON decode and parity validation are reported separately. GC overlaps are diagnostic only.',
+        method: 'All API samples retained. Supabase Edge Runtime oneshot policy serves each measured request on a fresh isolate; response_ms remains fetch start through response.text completion. JSON decode and parity validation are reported separately. GC overlaps are diagnostic only.',
       };
     }
     if (mode === 'sql') assertSqlControlCoverage(planEvidence, expectedSqlControls);

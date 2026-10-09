@@ -24,12 +24,20 @@ import {
   sanitizedApplicationErrorCode,
   sanitizedDatabaseFailureCode,
   runDatabasePerformanceBenchmark,
+  validateApiFunctionPolicy,
   validateLocalBenchmarkUrl,
 } from '../scripts/performance-database.mjs';
 import {
   INVENTORY_MASTER_BROWSE_FIELDS,
   INVENTORY_MASTER_FULL_FIELDS,
 } from '../supabase/functions/_shared/inventory-projections.ts';
+
+test('API benchmark requires oneshot policy while SQL benchmark policy remains unchanged', () => {
+  assert.equal(validateApiFunctionPolicy('api', 'oneshot'), 'oneshot');
+  assert.throws(() => validateApiFunctionPolicy('api', undefined), /PERFORMANCE_API_FUNCTION_POLICY_REQUIRED/);
+  assert.throws(() => validateApiFunctionPolicy('api', 'per_worker'), /PERFORMANCE_API_FUNCTION_POLICY_REQUIRED/);
+  assert.equal(validateApiFunctionPolicy('sql', undefined), null);
+});
 
 test('performance benchmark accepts only loopback URLs and configured API port', () => {
   assert.equal(validateLocalBenchmarkUrl('http://127.0.0.1:54321/', ['http:'], '/').port, '54321');

@@ -5,6 +5,8 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, 
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import vm from 'node:vm';
+import { parse } from 'acorn';
 import { installPerformanceFixture } from '../scripts/performance-browser-fixture.mjs';
 import {
   PERFORMANCE_API_SOURCE_DIRECTORIES,
@@ -50,8 +52,33 @@ test('API pair requires a verified disposable workspace and restores moved candi
   assert.match(pair, /PERFORMANCE_LOCAL_AUTH_ENV_REQUIRED/);
   assert.match(pair, /removeOwnedTemporaryDirectory\(\)/);
   assert.match(pair, /if \(error\.code !== 'ESRCH'\) throw error/);
-  assert.match(pair, /if \(candidateSnapshot\) restorePerformanceApiSources\(candidateSnapshot\);\s+removeOwnedTemporaryDirectory\(\);/);
+  assert.match(pair, /if \(candidateSnapshot\) restorePerformanceApiSources\(candidateSnapshot\);\s+\} finally \{\s+try \{ restoreFunctionPolicy\?\.\(\); \}\s+finally \{ removeOwnedTemporaryDirectory\(\); \}/);
   assert.doesNotMatch(pair, /rmSync\(temp, \{ recursive: true, force: true \}\)/);
+});
+
+test('API cleanup attempts policy restoration and temp cleanup after every earlier cleanup failure', async () => {
+  const pair = source('../scripts/run-performance-api.mjs');
+  const finalStatement = parse(pair, { ecmaVersion: 'latest', sourceType: 'module' }).body.at(-1);
+  assert.equal(finalStatement.type, 'TryStatement');
+  assert.ok(finalStatement.finalizer);
+  const cleanup = pair.slice(finalStatement.finalizer.start, finalStatement.finalizer.end);
+  for (const failedStage of [null, 'server', 'sources', 'policy', 'temporary']) {
+    const calls = [];
+    const record = stage => {
+      calls.push(stage);
+      if (stage === failedStage) throw new Error(`INJECTED_${stage}`);
+    };
+    const result = vm.runInNewContext(`(async () => ${cleanup})()`, {
+      candidateSnapshot: {},
+      stopServer: async () => record('server'),
+      restorePerformanceApiSources: () => record('sources'),
+      restoreFunctionPolicy: () => record('policy'),
+      removeOwnedTemporaryDirectory: () => record('temporary'),
+    });
+    if (failedStage) await assert.rejects(result, new RegExp(`INJECTED_${failedStage}`));
+    else await result;
+    assert.deepEqual(calls, ['server', 'sources', 'policy', 'temporary']);
+  }
 });
 
 test('API source roots reject overlap before any source tree is copied or removed', t => {

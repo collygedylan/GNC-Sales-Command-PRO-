@@ -266,6 +266,25 @@ order reduces broad time-order bias but does not eliminate machine noise or prov
 the cause of a slow sample. The current schema-contract job has a 35-minute limit;
 the six-pass comparison and complete schema gate passed in 22 minutes 32 seconds
 in run `37794447351`, including generated-type validation.
+
+The authenticated API comparison uses the CLI's `oneshot` policy **only in the
+verified disposable workspace**, then restores that workspace's configuration
+byte-for-byte before subsequent database checks. Each measured request therefore
+includes a fresh Edge isolate's startup. Both the pinned baseline and candidate
+use this same policy, encoded in their report method; reports from different
+policies cannot be compared. All 45 response samples per scenario, response-body
+timing boundaries, result checks, and existing budgets remain enforced.
+
+This is a cold API-call measurement, not a warm API latency claim. The browser
+gate continues to measure both cold entry and warm navigation. The previous API
+method reused workers across scenarios, allowing the CLI's CPU soft limit to
+retire workers at different points for each revision. Reports from run
+`37925681616` showed roughly 200 ms of pre-handler startup after retirement,
+which could compare a warm baseline percentile with a cold candidate percentile.
+The explicit per-request lifecycle removes that unequal starting condition;
+it does not discard, subtract, or retry slow samples. Production runtime policy,
+CPU limits, database schemas, and the baseline commit are unchanged.
+
 Function-server startup failures report fixed diagnostic categories and process
 status from at most the final 64 KiB of a private temporary log. Raw logs and
 local credentials are never published; normal owned-workspace cleanup deletes
