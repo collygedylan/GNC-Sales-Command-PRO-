@@ -104,7 +104,7 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         expect(layout.quantity).toEqual([
           { label: 'On Hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
           { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
-          { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
+          { label: 'Loc Photo Match', value: 'N/A' }, { label: 'Loc On Hand', value: 'Unknown' },
         ]);
         expect(layout.text).toContain('Synthetic long sales note');
         expect(layout.pageOverflow).toBeLessThanOrEqual(1);
@@ -112,7 +112,7 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         expect(layout.matchColor).toBe(layout.quantityColor);
 
         if (theme === 'light' && width === 1280) {
-          await renderDriveLayoutCard(page, { theme, photo: true, knownQuantities: true });
+          await renderDriveLayoutCard(page, { theme, photo: true, knownQuantities: true }, fixture);
           const values = await card.locator('.app-card-qty-chip').evaluateAll((chips) => chips.map((chip) => ({
             label: chip.querySelector('.app-card-qty-label')?.textContent?.trim(),
             value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
@@ -120,7 +120,7 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
           expect(values).toEqual([
             { label: 'On Hand', value: '15' }, { label: 'Review', value: '2' },
             { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
-            { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
+            { label: 'Loc Photo Match', value: 'N/A' }, { label: 'Loc On Hand', value: '15' },
           ]);
         }
 
@@ -2421,6 +2421,10 @@ test('Desktop Reclass row actions preserve combined requests and disclose author
       LOTCODE: `${year}.${season}`, LOCATIONCODE: id, SEASON: season, SALEYEAR: year,
       PRIORITY: '5', HOLDSTOPCODE: code, HOLDSTOPREASON: 'existing reason', PTRONHAND: oh, PTRAVAILABLE: oh, SOURCE_TABLE: 'ph_master_inventory' }));
     (window as any).processAndLoadData({ data: rows, _fromCache: true });
+    const masterState = (window as any).getDatasetState('master');
+    masterState.initialLoaded = masterState.fullLoaded = true;
+    masterState.fieldCoverage = 'full';
+    masterState.rowCompleteness = 'complete';
     (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: 27 });
     (window as any).openArgosInventoryTransactionModal('old', 'reclass', '');
   });
@@ -2429,7 +2433,7 @@ test('Desktop Reclass row actions preserve combined requests and disclose author
   const current = modal.locator('[data-reclass-row-card="current"]');
   const future = modal.locator('[data-reclass-row-card="future"]');
   await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
-  await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Priority and Hold / Stop edits also update live inventory after confirmation.');
+  await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Editable inventory fields update live inventory after confirmation and remain protected until the legacy import matches.');
   await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Quantity, season, and sheared instructions remain requests for keyers.');
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
   await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('The selected row receives the Hold / Stop request');
@@ -2565,6 +2569,10 @@ test('Phone Reclass V6 controls support all nine direct actions without row chec
         SOURCE_TABLE: 'ph_master_inventory',
       }));
       (window as any).processAndLoadData({ data: (window as any).__reclassResponsiveRows, _fromCache: true });
+      const masterState = (window as any).getDatasetState('master');
+      masterState.initialLoaded = masterState.fullLoaded = true;
+      masterState.fieldCoverage = 'full';
+      masterState.rowCompleteness = 'complete';
       (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: '2027' });
       (window as any).__reclassResponsiveSetup = {
         found: !!(window as any).findItemByUniqueId('row-0'),
