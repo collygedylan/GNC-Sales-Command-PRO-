@@ -1,8 +1,8 @@
-import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.08.003";
-import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.08.003";
-import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.08.003";
-import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.08.003";
-import { mountAuraQueryPanel } from "./auraQueryPanel.js?v=V2026.10.08.003";
+import { createAuraVoiceSession } from "../../services/auraVoiceService.js?v=V2026.10.08.004";
+import { parseAuraIntent } from "../../utils/auraIntentParser.js?v=V2026.10.08.004";
+import { canonicalAuraSize } from "../../utils/auraLingo.js?v=V2026.10.08.004";
+import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js?v=V2026.10.08.004";
+import { mountAuraQueryPanel } from "./auraQueryPanel.js?v=V2026.10.08.004";
 
 const STYLE_ID = "aura-voice-widget-styles";
 
@@ -262,8 +262,6 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     else if (voiceStatus.status === "starting") status.textContent = "Starting voice…";
     else if (voiceStatus.status === "restarting") status.textContent = "Reconnecting…";
     else if (voiceStatus.message && !/^checking speech recognition|starting on-device|starting browser|on-device english recognition is ready|using browser speech recognition/i.test(voiceStatus.message)) status.textContent = voiceStatus.message;
-    else if (voiceStatus.status === "speaking") status.textContent = "AURA is responding…";
-    else if (voiceStatus.status === "paused") status.textContent = "Paused while the app is hidden.";
     else if (wakeArmed) status.textContent = "Say your command";
     else status.textContent = "Ready when you are.";
   }
@@ -443,7 +441,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     if (resultMode === "browser") input.value = fullText.replace(/^.*?\b(?:hey|okay)\s+aura\b[\s,:-]*/i, "").trim();
     if (!fullText) return;
 
-    let commandText = "";
+    let commandText;
     let commandStart = 0;
     const wakeMatch = fullText.match(/\b(?:hey|okay)\s+aura\b[\s,:-]*/i);
     if (resultMode === "browser") {

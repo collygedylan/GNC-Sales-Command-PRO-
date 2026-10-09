@@ -1,0 +1,40 @@
+{
+  "../node_modules/workbox-window/build/workbox-window.prod.es5.mjs": {
+    "file": "assets/workbox-window.prod.es5-Bd17z0YL.js",
+    "name": "workbox-window.prod.es5",
+    "src": "../node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
+    "isDynamicEntry": true
+  },
+  "index.html": {
+    "file": "assets/index-XUQzYLkN.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "dynamicImports": [
+      "../node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
+      "src/pages/RequestQueue.tsx",
+      "src/components/DriveInventory.tsx"
+    ],
+    "css": [
+      "assets/index-C6yYEw_8.css"
+    ]
+  },
+  "src/components/DriveInventory.tsx": {
+    "file": "assets/DriveInventory-CWQIUj7X.js",
+    "name": "DriveInventory",
+    "src": "src/components/DriveInventory.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  },
+  "src/pages/RequestQueue.tsx": {
+    "file": "assets/RequestQueue-D3lnaWe7.js",
+    "name": "RequestQueue",
+    "src": "src/pages/RequestQueue.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  }
+}
