@@ -207,7 +207,7 @@ export function migrationContractQuery(name) {
     and not has_function_privilege('anon','public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)','execute')
     and not has_function_privilege('authenticated','public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)','execute')
     and has_function_privilege('service_role','public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)','execute')
-    and not has_table_privilege('service_role','private.ph_request_queue_removal_commands','select') as ok`;
+    and not has_table_privilege('service_role','private.ph_request_queue_removal_commands','select') as installed`;
   if (name === sqlLintRuntimeContextMigrationName) return `select
     exists(select 1 from pg_proc where oid=to_regprocedure('private.transfer_remaining_handover_assignments_v1(text,integer)')
       and prosecdef and array_to_string(proconfig,',') like '%search_path=%'
