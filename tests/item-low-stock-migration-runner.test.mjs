@@ -517,6 +517,34 @@ test('hybrid activation blocks conflicting saved owners and inactive rose owner'
   assert.match(perennialPreviewSql,/where a\.present_in_drive/);
 });
 
+test('every release migration probe names the result consumed by the deployment runner', () => {
+  for (const name of releaseDatabaseMigrations) {
+    assert.match(migrationContractQuery(name), /\bas installed\s*$/i, name);
+  }
+});
+
+test('queue removal deployment consumes the probe alias and rolls back a failed contract', async () => {
+  const contract = migrationContractQuery(requestQueueRemoveMigrationName);
+  const resultColumn = contract.match(/\bas\s+(\w+)\s*$/i)?.[1];
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${requestQueueRemoveMigrationName}`, import.meta.url), 'utf8');
+  for (const installed of [true, false]) {
+    const calls = [];
+    const client = { query: async (sql) => {
+      calls.push(sql);
+      return { rows: sql === contract ? [{ [resultColumn]: installed }] : [] };
+    } };
+    const operation = applyItemLowStockMigration({ client, source, targetMigrationName: requestQueueRemoveMigrationName });
+    if (installed) {
+      assert.deepEqual(await operation, { status: 'applied' });
+      assert.equal(calls.at(-1), 'commit');
+    } else {
+      await assert.rejects(operation, /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+      assert.equal(calls.at(-1), 'rollback');
+      assert.ok(!calls.includes('commit'));
+    }
+  }
+});
+
 test('queue removal migration is ordered after raw importer and has the guarded service-only contract', () => {
   assert.equal(releaseDatabaseMigrations.at(-1), requestQueueRemoveMigrationName);
   assert.equal(releaseDatabaseMigrations.indexOf(requestQueueRemoveMigrationName), releaseDatabaseMigrations.indexOf(smartShieldRawImportMigrationName) + 1);
