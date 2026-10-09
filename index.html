@@ -36068,7 +36068,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     return;
                 }
                 productionLiveSyncDraftChanged = false;
-                const anchor = captureProductionRefreshAnchor(view);
+                // Pending Request lists either keep their identical DOM or
+                // capture their own anchor at staged commit time. Avoid a
+                // redundant pre-render geometry scan for that path.
+                const anchor = view === 'request' && activeReqTab === 'pending'
+                    ? null : captureProductionRefreshAnchor(view);
                 const refresh = { view, context: contextKey, generation,
                     token: Number(latestViewRenderTokensByView[view]) || bumpLatestViewRenderToken(view), pending: 0 };
                 productionLiveSyncActiveRender = refresh;
@@ -36076,7 +36080,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 try { markViewDirty(view); renderViewContent(view, false, true); }
                 finally {
                     productionLiveSyncRendering = false;
-                    if (isProductionRefreshCurrent(refresh) && !refresh.retainedRequestList) restoreProductionRefreshAnchor(anchor);
+                    if (anchor && isProductionRefreshCurrent(refresh) && !refresh.retainedRequestList) restoreProductionRefreshAnchor(anchor);
                     finishProductionRefresh(refresh);
                 }
             }, immediate || waitingForContent ? 0 : 150, 120, {

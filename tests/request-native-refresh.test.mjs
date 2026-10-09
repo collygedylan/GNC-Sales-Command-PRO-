@@ -334,21 +334,28 @@ test('legacy request wake retains its subscription, refresh, periodic sync, and 
 });
 
 function productionListFixture({ key = 'request-main', tab = 'pending', signature = 'same', rowCount = 2 } = {}) {
-  const calls = { crumb: [], complete: 0, staged: [], created: 0, classes: [] };
+  const calls = { crumb: [], complete: 0, staged: [], created: 0, classes: [], capture: 0, restore: 0, replaced: 0 };
   const container = {
     querySelectorAll: selector => ({ length: selector === '[data-request-uid]' ? rowCount : 0 }),
     classList: { add: value => calls.classes.push(value) },
+    replaceChildren: () => { calls.replaced++; },
     isConnected: true
   };
   const refresh = { pending: 0, containers: new Set() };
   const ctx = {
     productionLiveSyncActiveRender: refresh,
     activeReqTab: tab,
-    document: { createElement: () => { calls.created++; return { childNodes: [] }; } },
+    document: { createElement: () => { calls.created++; return { childNodes: [], querySelectorAll: () => ({ length: 0 }) }; } },
     normalizeRenderSignature: value => String(value).trim(),
     getContainerRenderSignature: () => signature,
+    setContainerRenderSignature: () => {},
     syncRequestCrumb: (...args) => calls.crumb.push(args),
     renderMarkupChunkedByKey: (...args) => { calls.staged.push(args); return 'staged'; },
+    scheduleTypingAwareUiRender: (_key, callback) => callback(),
+    isProductionRefreshCurrent: () => true,
+    captureProductionRefreshAnchor: () => { calls.capture++; return { view: 'request' }; },
+    restoreProductionRefreshAnchor: () => { calls.restore++; },
+    finishProductionRefresh: () => {},
     calls
   };
   vm.createContext(ctx);
@@ -415,7 +422,13 @@ test('changed, incomplete, non-pending, and Drive lists still use the staging re
     }), 'staged');
     assert.equal(f.calls.created, 1);
     assert.equal(f.calls.staged.length, 1);
-    assert.equal(f.refresh.pending, 1);
+    if (key === 'request-main' && item.tab !== 'completed') {
+      f.calls.staged[0][6].onComplete();
+      assert.equal(f.calls.capture, 1, 'changed Pending Request rows capture at commit time');
+      assert.equal(f.calls.restore, 1, 'changed Pending Request rows restore at commit time');
+      assert.equal(f.calls.replaced, 1);
+    }
+    assert.equal(f.refresh.pending, key === 'request-main' && item.tab !== 'completed' ? 0 : 1);
     assert.equal(f.container.classList ? f.calls.classes.length : 0, 1);
   }
 });
@@ -519,20 +532,37 @@ test('iOS layout cleanup preserves active request chunks while render replacemen
     'replacing Request markup must still cancel the prior chunk job');
 });
 
-function productionRefreshSchedulerFixture({ view = 'request', viewState = 'loading', verified = true } = {}) {
+function productionRefreshSchedulerFixture({ view = 'request', viewState = 'loading', tab = 'pending', verified = true } = {}) {
   const scheduled = [];
+  const calls = { capture: 0, restore: 0, render: 0, finish: 0 };
   const ctx = {
     window: { AgMetricLiveSyncRegistry: { views: { [view]: { kind: 'module' } } } },
     VIEW_LOAD_UI: { request: { container: 'request-content' }, drive: { container: 'drive-content' } },
-    document: { getElementById: () => ({}) },
+    document: { hidden: false, activeElement: null, getElementById: () => ({}) },
     productionLiveSyncRenderGeneration: 0,
     productionLiveSyncRenderPending: false,
+    productionLiveSyncRendering: false,
+    productionLiveSyncActiveRender: null,
+    productionLiveSyncDraftChanged: false,
     productionLiveSyncVerifiedView: verified ? 'verified-context' : 'different-context',
+    productionLiveSyncCoordinator: { getStatus: () => ({}) },
+    activeReqTab: tab,
+    latestViewRenderTokensByView: { [view]: 1 },
     getCurrentVisibleViewId: () => view,
     productionVerifiedViewKey: () => 'verified-context',
     getContainerUiState: () => viewState,
     canUseProductionLiveSync: () => true,
-    scheduleTypingAwareUiRender: (...args) => scheduled.push(args),
+    hasProductionLiveSyncDraft: () => false,
+    scheduleTypingAwareUiRender: (key, callback, ...args) => scheduled.push([key, callback, ...args]),
+    captureProductionRefreshAnchor: () => { calls.capture++; return { view }; },
+    restoreProductionRefreshAnchor: () => { calls.restore++; },
+    isProductionRefreshCurrent: () => true,
+    bumpLatestViewRenderToken: () => 1,
+    markViewDirty: () => {},
+    renderViewContent: () => { calls.render++; },
+    finishProductionRefresh: () => { calls.finish++; },
+    cancelProductionRefresh: () => {},
+    calls,
     scheduled
   };
   // A distinct verified key simulates a Request route without current proof.
@@ -540,7 +570,7 @@ function productionRefreshSchedulerFixture({ view = 'request', viewState = 'load
   vm.createContext(ctx);
   const fn = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
   vm.runInContext(fn, ctx);
-  return { ctx, scheduled };
+  return { ctx, scheduled, calls };
 }
 
 test('verified Request first display may bypass navigation grace without weakening interaction protections', () => {
@@ -551,6 +581,9 @@ test('verified Request first display may bypass navigation grace without weakeni
   assert.equal(firstOptions.allowDuringRecentViewSwitch, true);
   assert.equal(firstOptions.deferUntilIdle, true);
   assert.equal(firstOptions.ignoreChunkDuringInteraction, true);
+  firstRequest.scheduled[0][1]();
+  assert.equal(firstRequest.calls.capture, 0, 'Pending Request defers anchor work to the row commit');
+  assert.equal(firstRequest.calls.restore, 0);
   for (const key of ['allowWhileTyping', 'allowDuringTouch', 'allowWhileScrolling']) {
     assert.equal(Object.hasOwn(firstOptions, key), false);
   }
@@ -558,13 +591,18 @@ test('verified Request first display may bypass navigation grace without weakeni
   const casesThatRemainDeferred = [
     { view: 'request', viewState: 'loading', verified: false, options: {} },
     { view: 'drive', viewState: 'loading', verified: true, options: {} },
-    { view: 'request', viewState: 'ready', verified: true, options: {} }
+    { view: 'request', viewState: 'ready', tab: 'completed', verified: true, options: {} }
   ];
   for (const item of casesThatRemainDeferred) {
     const f = productionRefreshSchedulerFixture(item);
     f.ctx.scheduleProductionLiveSyncRender(false, item.options);
     assert.equal(f.scheduled[0][4].allowDuringRecentInteraction, false);
     assert.equal(f.scheduled[0][4].allowDuringRecentViewSwitch, false);
+    if (item.view === 'request' && item.viewState === 'ready') {
+      f.scheduled[0][1]();
+      assert.equal(f.calls.capture, 1, 'other Request tabs retain the outer anchor');
+      assert.equal(f.calls.restore, 1);
+    }
   }
 
   const cachedPreview = productionRefreshSchedulerFixture({ view: 'drive', viewState: 'loading', verified: false });
@@ -573,6 +611,26 @@ test('verified Request first display may bypass navigation grace without weakeni
   assert.equal(cachedPreview.scheduled[0][4].allowDuringRecentViewSwitch, true);
   assert.equal(cachedPreview.scheduled[0][4].deferUntilIdle, true);
   assert.equal(cachedPreview.scheduled[0][4].ignoreChunkDuringInteraction, true);
+});
+
+test('Pending Request refresh keeps commit anchoring and skips outer anchoring for empty or cancelled renders', () => {
+  const source = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
+  assert.match(source, /view === 'request' && activeReqTab === 'pending'\s*\? null : captureProductionRefreshAnchor\(view\)/,
+    'only Pending Request defers anchor capture; the staged commit still captures its own anchor');
+  const stage = extractFunction(html, 'stageProductionRefreshList', 'function cancelProductionRefresh(');
+  assert.match(stage, /const anchor = captureProductionRefreshAnchor\(refresh\.view\)/);
+  assert.match(stage, /restoreProductionRefreshAnchor\(anchor\)/);
+  const renderRequest = extractFunction(html, 'renderRequest', 'function createRequestSwipeState(');
+  assert.match(renderRequest, /if\s*\(pendingItems\.length === 0\)/);
+  assert.match(renderRequest, /applyRequestRenderMarkup\(container, crumb, crumbText, `<div[^`]*No pending requests\./,
+    'empty Pending Request results use the synchronous markup fallback, which relies on native scroll clamping');
+
+  const cancelled = productionRefreshSchedulerFixture();
+  cancelled.ctx.scheduleProductionLiveSyncRender(false);
+  cancelled.ctx.getCurrentVisibleViewId = () => 'home';
+  cancelled.scheduled[0][1]();
+  assert.equal(cancelled.calls.capture, 0, 'a navigation-cancelled refresh performs no anchor scan');
+  assert.equal(cancelled.calls.render, 0);
 });
 
 test('anchor restoration avoids forced layout on the fallback and preserves offsets when a row remains', () => {

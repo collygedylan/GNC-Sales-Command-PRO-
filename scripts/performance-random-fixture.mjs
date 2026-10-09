@@ -19,7 +19,7 @@ export function installPerformanceRandomFixture(seed, root = globalThis) {
     return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
   };
   const healthSeed = key => {
-    const identity = `health-event-area-v1:${seed}:${key}`;
+    const identity = `health-event-area-reason-v1:${seed}:${key}`;
     let value = 2166136261;
     for (const character of identity) value = Math.imul(value ^ character.charCodeAt(0), 16777619) >>> 0;
     return value;
@@ -27,7 +27,9 @@ export function installPerformanceRandomFixture(seed, root = globalThis) {
   const nextHealthSample = args => {
     const eventName = String(args[0] || 'performance_trace').slice(0, 120);
     const area = String(args[1] || 'app').slice(0, 80);
-    const key = JSON.stringify([eventName, area]);
+    const metadata = args[3] && typeof args[3] === 'object' && !Array.isArray(args[3]) ? args[3] : null;
+    const reason = typeof metadata?.reason === 'string' ? metadata.reason.slice(0, 120) : '';
+    const key = JSON.stringify([eventName, area, reason]);
     let stream = healthStreams.get(key);
     if (!stream) {
       if (healthStreams.size >= maxHealthStreams) throw new Error('PERFORMANCE_HEALTH_STREAM_LIMIT');
@@ -85,7 +87,7 @@ export function installPerformanceRandomFixture(seed, root = globalThis) {
   };
   const evidence = Object.freeze({
     getState: () => ({ algorithm: 'mulberry32-v1', seed, calls,
-      healthSampling: { algorithm: 'mulberry32-event-area-v1', seed, calls: healthDraws,
+      healthSampling: { algorithm: 'mulberry32-event-area-reason-v1', seed, calls: healthDraws,
         sampled: healthSamples, streams: healthStreams.size, maxStreams: maxHealthStreams } }),
     wrapHealthReporter,
     healthReporterContract: 'first-random-is-10-percent-gate-v1'

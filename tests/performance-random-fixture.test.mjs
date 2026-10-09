@@ -19,7 +19,7 @@ test('browser fixture retains every deterministic random sample and leaves nativ
   assert.ok(samples.some(value => value >= 0.1));
   assert.equal(new Set(samples).size, samples.length);
   assert.deepEqual(evidence.getState(), { algorithm: 'mulberry32-v1', seed, calls: 1000,
-    healthSampling: { algorithm: 'mulberry32-event-area-v1', seed, calls: 0, sampled: 0, streams: 0, maxStreams: 64 } });
+    healthSampling: { algorithm: 'mulberry32-event-area-reason-v1', seed, calls: 0, sampled: 0, streams: 0, maxStreams: 64 } });
   assert.deepEqual([left.crypto, left.Date, left.performance, left.setTimeout], nativeServices);
   assert.throws(() => installPerformanceRandomFixture(seed, left), /ALREADY_INSTALLED/);
 });
@@ -45,7 +45,7 @@ test('the real health reporter has the validated 10 percent gate as its only ran
   assert.equal((source.match(/window\.reportPerformanceHealthEvent\s*=\s*reportPerformanceHealthEvent/g) || []).length, 1);
 });
 
-test('real sampled telemetry calls are stable per event and area despite unrelated random and UUID calls', async () => {
+test('real sampled telemetry calls are stable per event, area and reason despite unrelated random and UUID calls', async () => {
   const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const start = source.indexOf('        function reportPerformanceHealthEvent(');
   const end = source.indexOf('\n        window.reportSemanticHealthEvent', start);
@@ -73,7 +73,8 @@ test('real sampled telemetry calls are stable per event and area despite unrelat
         context.crypto.randomUUID();
       }
       const event = index % 2 === 0 ? ['view_render', 'rendering'] : ['view_switch', 'navigation'];
-      results.push(await context.reportPerformanceHealthEvent(event[0], event[1], index + 1, { sequence: index }));
+      const reason = event[0] === 'view_render' ? 'request-main' : 'drive-main';
+      results.push(await context.reportPerformanceHealthEvent(event[0], event[1], index + 1, { reason, sequence: index }));
     }
     return { calls, results, uuidCalls, state: context.__phase6RandomFixture.getState() };
   }
@@ -88,7 +89,7 @@ test('real sampled telemetry calls are stable per event and area despite unrelat
   assert.equal(first.uuidCalls, 0);
   assert.equal(second.uuidCalls, 200);
   assert.notEqual(first.state.calls, second.state.calls);
-  assert.equal(first.state.healthSampling.algorithm, 'mulberry32-event-area-v1');
+  assert.equal(first.state.healthSampling.algorithm, 'mulberry32-event-area-reason-v1');
   assert.equal(first.state.healthSampling.seed, second.state.healthSampling.seed);
   assert.equal(first.state.healthSampling.calls, 100);
   assert.equal(first.state.healthSampling.sampled, first.calls.length);
@@ -97,13 +98,64 @@ test('real sampled telemetry calls are stable per event and area despite unrelat
   assert.equal(Object.keys(first.state.healthSampling).some(key => /event|area|metadata/i.test(key)), false);
 });
 
+test('health sampling isolates earlier Request reasons while repeated same-reason calls advance the stream', async () => {
+  const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = source.indexOf('        function reportPerformanceHealthEvent(');
+  const end = source.indexOf('\n        window.reportSemanticHealthEvent', start);
+  assert.ok(start > 0 && end > start);
+
+  async function driveResult({ requestCalls = 0, extraDriveCalls = 0 }) {
+    let invocations = 0;
+    const rpcEvents = [];
+    const context = vm.createContext({ currentUser: 'synthetic', navigator: { onLine: true }, window: {}, Math: Object.create(Math), APP_SHELL_BUILD: 'fixture',
+      sanitizeHealthMetadata: value => value, withProductionLiveSyncSignal: (_signal, operation) => operation(undefined),
+      supabaseRpc: async (_operation, body) => { rpcEvents.push(body.event_name); return 1; } });
+    vm.runInContext(`(${installPerformanceRandomFixture.toString()})(0);${source.slice(start, end)}`, context);
+    const actualReporter = context.reportPerformanceHealthEvent;
+    const wrapped = context.__phase6RandomFixture.wrapHealthReporter(actualReporter);
+    // Count all attempted calls while letting the fixture wrap the real reporter.
+    const countedWrapped = function reportPerformanceHealthEvent(...args) {
+      invocations++;
+      return wrapped.apply(this, args);
+    };
+    context.reportPerformanceHealthEvent = countedWrapped;
+    context.window.reportPerformanceHealthEvent = countedWrapped;
+    for (let index = 0; index < requestCalls; index++) {
+      await countedWrapped('view_render', 'rendering', index, { reason: 'request-main' });
+    }
+    for (let index = 0; index < extraDriveCalls; index++) {
+      await countedWrapped('view_render', 'rendering', index, { reason: 'drive-main' });
+    }
+    rpcEvents.length = 0;
+    const result = await countedWrapped('view_render', 'rendering', 999, { reason: 'drive-main' });
+    return { result, invocations, rpcEvents, state: context.__phase6RandomFixture.getState() };
+  }
+
+  const noRequest = await driveResult({});
+  const withRequest = await driveResult({ requestCalls: 40 });
+  assert.equal(withRequest.result, noRequest.result, 'Request events with another reason must not shift the Drive sample');
+  assert.equal(withRequest.invocations, 41);
+  assert.equal(withRequest.state.healthSampling.calls, 41);
+  assert.equal(noRequest.state.healthSampling.streams, 1);
+  assert.equal(withRequest.state.healthSampling.streams, 2);
+
+  const duplicateBeforeDrive = await driveResult({ extraDriveCalls: 1 });
+  assert.notEqual(duplicateBeforeDrive.result, noRequest.result,
+    'an extra same-reason Drive event must consume its stream draw rather than being hidden');
+  assert.equal(duplicateBeforeDrive.invocations, 2);
+  assert.equal(duplicateBeforeDrive.state.healthSampling.calls, 2);
+  // The wrapped production handler is still invoked for every event, regardless of sampling.
+  assert.equal(noRequest.rpcEvents.length, noRequest.result ? 1 : 0);
+  assert.equal(withRequest.rpcEvents.length, withRequest.result ? 1 : 0);
+});
+
 test('health wrapper keeps this, arguments and returned promise and restores random on nesting or synchronous failure', () => {
   const promise = Promise.resolve('same-promise');
   const thisValue = { promise };
   const math = Object.create(Math);
   math.random = () => 0.5;
   const context = vm.createContext({ currentUser: 'synthetic', navigator: { onLine: true }, Math: math });
-  vm.runInContext(`(${installPerformanceRandomFixture.toString()})(49);
+  vm.runInContext(`(${installPerformanceRandomFixture.toString()})(93);
     function reportPerformanceHealthEvent(eventName,area='app',durationMs=0,metadata={}){
       if(!currentUser||navigator.onLine===false||Math.random()>=0.10)return Promise.resolve(false);
       this.seen=[eventName,area,durationMs,metadata];
@@ -143,7 +195,7 @@ test('no-user and offline early returns consume neither global nor health-sampli
     assert.strictEqual(context.Math.random, originalRandom);
     assert.deepEqual(JSON.parse(JSON.stringify(context.__phase6RandomFixture.getState())), {
       algorithm: 'mulberry32-v1', seed: 12, calls: 0,
-      healthSampling: { algorithm: 'mulberry32-event-area-v1', seed: 12, calls: 0, sampled: 0, streams: 0, maxStreams: 64 }
+      healthSampling: { algorithm: 'mulberry32-event-area-reason-v1', seed: 12, calls: 0, sampled: 0, streams: 0, maxStreams: 64 }
     });
     context.currentUser = 'synthetic';
     context.navigator.onLine = false;
