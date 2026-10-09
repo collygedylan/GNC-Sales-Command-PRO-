@@ -14,50 +14,79 @@ function loadWorkflowPolicySelector() {
   const context = {
     RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
     RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION: 'reclass-action-workflow-v5-sheared-20261008',
+    RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'reclass-action-workflow-v6-smart-shield-20261009',
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
   };
   vm.createContext(context);
   vm.runInContext(`${html.slice(start, end)}; this.selectPolicy = getArgosReclassActionWorkflowPolicyVersionV3;`, context);
   return context.selectPolicy;
 }
 
-test('Eval Work and Drive select V5 only when a row actually carries a shear proposal', () => {
+test('Reclass policy selects V6 for live priority/hold, V5 for shear, and V4 otherwise', () => {
   const selectPolicy = loadWorkflowPolicySelector();
   assert.equal(selectPolicy({ requestActions: [], rowOverlays: [] }), 'reclass-action-workflow-v4-split-moves-20261006');
-  assert.equal(selectPolicy({ requestActions: ['priority_change'], rowOverlays: [{ proposals: [{ action: 'priority_change' }] }] }), 'reclass-action-workflow-v4-split-moves-20261006');
+  assert.equal(selectPolicy({ requestActions: ['priority_change'], rowOverlays: [{ proposals: [{ action: 'priority_change' }] }] }), 'reclass-action-workflow-v6-smart-shield-20261009');
+  assert.equal(selectPolicy({ requestActions: ['move_down'], rowOverlays: [{ proposals: [{ action: 'move_down' }] }] }), 'reclass-action-workflow-v4-split-moves-20261006');
   assert.equal(selectPolicy({ requestActions: ['sheared'], rowOverlays: [{ proposals: [{ action: 'Sheared' }] }] }), 'reclass-action-workflow-v5-sheared-20261008');
-  assert.match(html, /workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3\(\{ rowOverlays \}\)/);
-  assert.match(html, /workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3\(draft\)/);
+  assert.equal(selectPolicy({ requestActions: [], holdStopProposals: [{ action: 'hold', reason: 'safety' }], rowOverlays: [] }), 'reclass-action-workflow-v6-smart-shield-20261009');
+  assert.match(html, /workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3\(\{ rowOverlays, holdStopProposals \}, \{ allowLiveEdits: true \}\)/);
+  assert.match(html, /workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3\(draft, \{ allowLiveEdits: true \}\)/);
+});
+
+test('active Reclass picker describes priority and hold as live updates with queued inquiries', () => {
+  const blockStart = html.indexOf('const ARGOS_INVENTORY_TRANSACTION_HOLD_ACTION_OPTIONS = Object.freeze([');
+  const blockEnd = html.indexOf('\n        ]);', blockStart);
+  assert.ok(blockStart > 0 && blockEnd > blockStart);
+  const options = html.slice(blockStart, blockEnd);
+  for (const action of ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'priority_change']) {
+    const option = options.match(new RegExp(`\\{ value: '${action}',[^\\n]+`));
+    assert.ok(option, `picker option ${action} exists`);
+    assert.match(option[0], /detail: 'Live update \+ queued inquiry'/);
+    assert.doesNotMatch(option[0], /Email(?: report)? only/i);
+  }
+  assert.match(options, /\{ value: 'move_up', label: 'Move Up Request', detail: 'Email only' \}/);
+  assert.match(options, /\{ value: 'move_down', label: 'Move Down Request', detail: 'Email only' \}/);
 });
 
 function loadDraftCollector(rowMap = {}) {
   const start = html.indexOf('function collectArgosReclassV3Draft()');
   const end = html.indexOf('function collectArgosReclassInquiryOverlays()', start);
+  const guardStart = html.indexOf('function hasArgosReclassMoveUpProposal()');
+  const guardEnd = html.indexOf('function cloneArgosReclassProposal(', guardStart);
   assert.ok(start > 0 && end > start);
+  assert.ok(guardStart > 0 && guardEnd > guardStart);
   const entry = {
     unique_id: 'row-1',
     sourceRow: { ITEMCODE: 'A100' },
-    values: { itemcode: 'A100', lotcode: '27.F1', locationcode: 'A.01.001', ptronhand: '10', desigitem: 'Original designation' },
+    values: { itemcode: 'A100', lotcode: '27.F1', locationcode: 'A.01.001', ptronhand: '10', desigitem: 'Original designation', priority: '3', holdstopcode: 'H', holdstopreason: 'legacy hold' },
   };
   const context = {
     argosInventoryTransactionState: { inquiryModel: { locationRows: [entry] }, sourceView: 'drive' },
     RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
     RECLASS_ACTION_WORKFLOW_V5_ORDER: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down', 'sheared'],
-    getArgosReclassV3HoldProposal: () => null,
+    getArgosReclassV3HoldProposal: () => rowMap.__hold || null,
     getArgosReclassScopeSettings: () => ({ season: '', salesYear: null }),
+    getReclassActionWorkflowV2Config: action => ({ kind: ['hold', 'stop_ship'].includes(action) ? 'hold_on' : 'hold_off', label: action }),
     getArgosReclassRowProposalMap: () => rowMap,
+    getArgosReclassV3Proposal: (_uid, action) => rowMap[action] || null,
     getReclassActionWorkflowV5Config: (action) => ({
       hold: { kind: 'hold_on' }, take_off_hold: { kind: 'hold_off' }, stop_ship: { kind: 'hold_on' }, off_stop_ship: { kind: 'hold_off' },
       recount: { kind: 'recount' }, priority_change: { kind: 'priority' }, move_up: { kind: 'move', label: 'Move Up' }, move_down: { kind: 'move', label: 'Move Down' },
       sheared: { kind: 'sheared', label: 'Sheared' },
     }[action]),
-    collectArgosReclassMoveProposal: (proposal) => ({ action: proposal.action, splits: proposal.splits.map((split) => ({ quantity: Number(split.quantity), destinationSeason: split.destinationSeason })) }),
+    collectArgosReclassMoveProposal: (proposal, _entry, _rule, allowHold = true) => ({
+      action: proposal.action,
+      splits: proposal.splits.map((split) => ({ quantity: Number(split.quantity), destinationSeason: split.destinationSeason })),
+      applyHold: allowHold && proposal.applyHold === true,
+      holdReason: allowHold && proposal.applyHold === true ? proposal.holdReason : '',
+    }),
     getArgosReclassTemporaryOverlay: () => null,
     getItemInquiryItemCode: (source) => source.ITEMCODE,
     getEvalWorkInquiryRowResolution: () => '',
     window: { GncDatabase: { reclassShearedProposal: value => value } },
   };
   vm.createContext(context);
-  vm.runInContext(`${html.slice(start, end)}; this.collect = collectArgosReclassV3Draft;`, context);
+  vm.runInContext(`${html.slice(guardStart, guardEnd)}; ${html.slice(start, end)}; this.collect = collectArgosReclassV3Draft;`, context);
   return context.collect;
 }
 
@@ -125,12 +154,25 @@ test('V5 sheared action uses the typed proposal and preserves the expected origi
   assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].expected)), {
     itemcode: 'A100', lotcode: '27.F1', locationcode: 'A.01.001', ptronhand: '10', desigitem: 'Original designation',
   });
+  assert.equal(loadWorkflowPolicySelector()(draft), 'reclass-action-workflow-v5-sheared-20261008');
   assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].proposals)), [{ action: 'sheared', quantity: 4 }]);
   assert.equal(JSON.stringify(draft).includes('desigitem'), true);
   assert.match(html, /window\.GncDatabase\.reclassShearedProposal\(\{ action: 'sheared', quantity \}\)/);
   assert.match(html, /data-sheared-request-preview="true"/);
   assert.match(html, /\$\{value\.trim\(\)\}-->#/);
   assert.match(html, /RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION/);
+});
+
+test('V6 live proposals freeze the original priority and hold values in each row snapshot', () => {
+  const priorityDraft = loadDraftCollector({ priority_change: { action: 'priority_change', priority: '2' } })();
+  assert.equal(loadWorkflowPolicySelector()(priorityDraft), 'reclass-action-workflow-v6-smart-shield-20261009');
+  assert.deepEqual(JSON.parse(JSON.stringify(priorityDraft.rowOverlays[0].expected)), {
+    itemcode: 'A100', lotcode: '27.F1', locationcode: 'A.01.001', ptronhand: '10',
+    priority: '3', holdstopcode: 'H', holdstopreason: 'legacy hold',
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(priorityDraft.rowOverlays[0].proposals)), [{ action: 'priority_change', priority: '2' }]);
+  assert.match(html, /workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3\(draft, \{ allowLiveEdits: true \}\)/);
+  assert.match(html, /RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION/);
 });
 
 test('V5 sheared quantity validates whole numbers, original OH, and combined movement limits', () => {
@@ -141,6 +183,115 @@ test('V5 sheared quantity validates whole numbers, original OH, and combined mov
     sheared: { action: 'sheared', quantity: '4' },
     move_up: { action: 'move_up', splits: [{ quantity: '7', destinationSeason: 'S1' }] },
   })(), /Combined Move Up, Move Down, and Sheared quantities cannot exceed original OH/);
+});
+
+function loadMoveUpHoldGuard(rows = []) {
+  const start = html.indexOf('function hasArgosReclassMoveUpProposal()');
+  const end = html.indexOf('function cloneArgosReclassProposal(', start);
+  assert.ok(start > 0 && end > start);
+  const rowMaps = new Map(rows.map(row => [row.unique_id, row.proposals || {}]));
+  const context = {
+    argosInventoryTransactionState: { inquiryModel: { locationRows: rows.map(({ unique_id }) => ({ unique_id })) } },
+    argosReclassMultiActionState: { holdStopProposals: { hold: { action: 'hold', reason: 'draft' } } },
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
+    getArgosReclassV3Proposal: (uid, action) => rowMaps.get(uid)?.[action] || null,
+    getArgosReclassRowProposalMap: uid => rowMaps.get(uid) || {},
+  };
+  vm.createContext(context);
+  vm.runInContext(`${html.slice(start, end)}; this.hasMoveUp = hasArgosReclassMoveUpProposal; this.clearHold = clearArgosReclassHoldDraftForMoveUp;`, context);
+  return { context, rowMaps };
+}
+
+test('Move Up clears global and split-move hold drafts without touching saved inventory values', () => {
+  const fixture = loadMoveUpHoldGuard([
+    { unique_id: 'up', proposals: { move_up: { action: 'move_up' } } },
+    { unique_id: 'down', proposals: { move_down: { action: 'move_down', applyHold: true, holdReason: 'draft reason' } } },
+  ]);
+  assert.equal(fixture.context.hasMoveUp(), true);
+  fixture.context.clearHold();
+  assert.deepEqual(JSON.parse(JSON.stringify(fixture.context.argosReclassMultiActionState.holdStopProposals)), {});
+  assert.deepEqual(JSON.parse(JSON.stringify(fixture.rowMaps.get('up').move_up)), { action: 'move_up', applyHold: false, holdReason: '' });
+  assert.deepEqual(JSON.parse(JSON.stringify(fixture.rowMaps.get('down').move_down)), { action: 'move_down', applyHold: false, holdReason: '' });
+  assert.equal(fixture.context.hasMoveUp(), true);
+});
+
+test('Move Up hold controls are unavailable while priority proposals remain available', () => {
+  assert.match(html, /const disabledByMoveUp = moveUpSelected && RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS\.includes\(action\)/);
+  assert.match(html, /const holdControlsEnabled = !hasArgosReclassMoveUpProposal\(\)/);
+  assert.match(html, /Move Up before adding a Hold\/Stop draft/);
+  assert.match(html, /collectArgosReclassMoveProposal\(proposal, entry, rule, !hasArgosReclassMoveUpProposal\(\)\)/);
+  assert.doesNotMatch(html, /if \(normalized === 'move_up'\) clearArgosReclassHoldDraftForMoveUp\(\);[\s\S]{0,180}values\.priority/);
+});
+
+test('Move Up collection omits hold drafts but keeps priority and movement inquiry proposals', () => {
+  const collect = loadDraftCollector({
+    __hold: { action: 'hold', reason: 'draft reason' },
+    priority_change: { action: 'priority_change', priority: '2' },
+    move_up: { action: 'move_up', splits: [{ quantity: '3', destinationSeason: 'S1' }], applyHold: true, holdReason: 'stale draft' },
+  });
+  const draft = collect();
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.requestActions)), ['priority_change', 'move_up']);
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.holdStopProposals)), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].proposals)), [
+    { action: 'priority_change', priority: '2' },
+    { action: 'move_up', splits: [{ quantity: 3, destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
+  ]);
+});
+
+test('Move Down can retain a hold draft when Move Up is absent', () => {
+  const collect = loadDraftCollector({
+    move_down: { action: 'move_down', splits: [{ quantity: '3', destinationSeason: 'S1' }], applyHold: true, holdReason: 'keep plants safe' },
+  });
+  const draft = collect();
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].proposals)), [
+    { action: 'move_down', splits: [{ quantity: 3, destinationSeason: 'S1' }], applyHold: true, holdReason: 'keep plants safe' },
+  ]);
+});
+
+test('a future source hold stays a V6 selected-row proposal without client fanout settings', () => {
+  const draft = loadDraftCollector({ __hold: { action: 'hold', reason: 'future stock', sourceUid: 'row-1' } })();
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.requestActions)), ['hold']);
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.holdStopProposals)), [{ action: 'hold', reason: 'future stock', sourceUid: 'row-1' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.scope)), {});
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].expected)), {
+    itemcode: 'A100', lotcode: '27.F1', locationcode: 'A.01.001', ptronhand: '10',
+    priority: '3', holdstopcode: 'H', holdstopreason: 'legacy hold',
+  });
+  assert.match(html, /getArgosReclassActionWorkflowPolicyVersionV3\(draft, \{ allowLiveEdits: true \}\)/);
+  assert.match(html, /getArgosReclassActionWorkflowPolicyVersionV3\(\{ rowOverlays, holdStopProposals \}, \{ allowLiveEdits: true \}\)/);
+});
+
+test('a selected future row can start a hold draft without current-season settings', () => {
+  const start = html.indexOf('function toggleArgosReclassV3Action(');
+  const end = html.indexOf('function handleArgosReclassV3ProposalInput(', start);
+  assert.ok(start > 0 && end > start);
+  const entry = { unique_id: 'future-1', values: { ptronhand: '0', season: 'U2' } };
+  const rowMap = new Map();
+  const context = {
+    argosInventoryTransactionState: { inquiryModel: { locationRows: [entry] }, sourceView: 'eval-work' },
+    argosReclassMultiActionState: { holdStopProposals: {}, rowResolutions: new Map(), rowProposals: new Map() },
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
+    getArgosReclassRowEditorEntry: uid => uid === entry.unique_id ? entry : null,
+    getArgosReclassRowProposalMap: (uid, create = false) => {
+      if (!rowMap.has(uid) && create) rowMap.set(uid, {});
+      return rowMap.get(uid) || null;
+    },
+    getArgosReclassV3Proposal: () => null,
+    getArgosReclassV3HoldProposal: () => null,
+    getArgosReclassScopeSettings: () => ({ season: '', salesYear: null }),
+    getReclassActionWorkflowV5Config: action => ({ kind: action === 'hold' || action === 'stop_ship' ? 'hold_on' : 'hold_off', label: action }),
+    getReclassActionWorkflowV2Config: action => ({ kind: action === 'hold' || action === 'stop_ship' ? 'hold_on' : 'hold_off', label: action }),
+    hasArgosReclassMoveUpProposal: () => false,
+    generateArgosInventoryTransactionId: () => 'next-token',
+    refreshArgosReclassMultiActionUi() {}, captureEvalWorkLocalDraftSoon() {}, showToast() {},
+    window: { confirm: () => true },
+  };
+  vm.createContext(context);
+  vm.runInContext(`${html.slice(start, end)}; this.toggle = toggleArgosReclassV3Action;`, context);
+  context.toggle(null, 'hold', entry.unique_id);
+  assert.deepEqual(JSON.parse(JSON.stringify(context.argosReclassMultiActionState.holdStopProposals)), {
+    hold: { action: 'hold', reason: '', sourceUid: 'future-1' },
+  });
 });
 
 test('recipient directory refresh is a no-parameter authenticated request and deduplicates concurrent picker opens', async () => {

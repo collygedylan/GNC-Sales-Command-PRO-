@@ -3629,9 +3629,13 @@ function clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow) {
   return nextRow;
 }
 
-function applyMasterImportAppFieldRules_(nextRow, existingRow) {
+function applyMasterImportAppFieldRules_(nextRow, existingRow, tableName) {
   if (!nextRow || !existingRow) return nextRow;
-  if (shouldSuppressMasterImportHoldByRelease_(nextRow, existingRow)) suppressMasterImportHoldForApprovedRelease_(nextRow);
+  // The PH database must see the source tuple unchanged to acknowledge its
+  // pending app-edit shield. Other site importers retain their release policy.
+  if (tableName !== 'ph_master_inventory' && shouldSuppressMasterImportHoldByRelease_(nextRow, existingRow)) {
+    suppressMasterImportHoldForApprovedRelease_(nextRow);
+  }
   clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow);
   preserveMasterImportAppOwnedFields_(nextRow, existingRow);
   return nextRow;
@@ -6127,7 +6131,7 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
     }
 
     const existingRow = existingMap[uniqueId];
-    applyMasterImportAppFieldRules_(obj, existingRow);
+    applyMasterImportAppFieldRules_(obj, existingRow, tableName);
 
     const existingAssignedTo = existingRow && existingRow.assignedto
       ? String(existingRow.assignedto).trim()
@@ -12627,6 +12631,7 @@ const RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = 'reclass-action-workflow-v4-split-moves-20261006';
 const RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = 'reclass-action-workflow-v5-sheared-20261008';
+const RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ = 'reclass-action-workflow-v6-smart-shield-20261009';
 const RECLASS_INQUIRY_DESTINATION_SEASONS_V2_ = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
 const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request' }),
@@ -13533,6 +13538,199 @@ function hasReclassInquiryHoldProposalV3_(transaction, overlays) {
   });
 }
 
+function getProtectedLiveEditDelivery_(payload, sourceUid, transaction, overlays, origins) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const protectedDelivery = safePayload.protectedDelivery && typeof safePayload.protectedDelivery === 'object'
+    ? safePayload.protectedDelivery : {};
+  const rows = protectedDelivery.v6FrozenRows;
+  const edits = protectedDelivery.liveEdits;
+  const revision = String(protectedDelivery.inventoryRevision == null ? '' : protectedDelivery.inventoryRevision);
+  if (!Array.isArray(rows) || !rows.length || rows.length > 5000 || !Array.isArray(edits) || !edits.length
+      || !/^[1-9]\d*$/.test(revision)) {
+    throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_SNAPSHOT_INVALID');
+  }
+  const required = new Set([normalizeInventoryTransactionText_(sourceUid)]);
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  (Array.isArray(overlays) ? overlays : []).forEach(function(overlay) {
+    const uid = normalizeInventoryTransactionText_(overlay && overlay.unique_id);
+    if (uid) required.add(uid);
+  });
+  (Array.isArray(origins) ? origins : []).forEach(function(origin) {
+    const uid = normalizeInventoryTransactionText_(origin && firstNonEmptyRequestValue_(origin.unique_id, origin.uniqueId));
+    if (uid) required.add(uid);
+  });
+  (Array.isArray(safeTransaction.holdStopProposals) ? safeTransaction.holdStopProposals : []).forEach(function(proposal) {
+    const uid = normalizeInventoryTransactionText_(proposal && proposal.sourceUid);
+    if (uid) required.add(uid);
+  });
+  const rowsByUid = new Map();
+  rows.forEach(function(row) {
+    const uid = getInventoryTransactionRowUid_(row);
+    if (!uid || rowsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_ROWS_INVALID');
+    rowsByUid.set(uid, row);
+  });
+  required.forEach(function(uid) {
+    if (!uid || !rowsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_ROW_MISSING');
+  });
+  const editsByUid = new Map();
+  edits.forEach(function(edit) {
+    const uid = normalizeInventoryTransactionText_(edit && edit.unique_id);
+    if (!uid || editsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_RESULT_INVALID');
+    ['priority', 'holdstopcode', 'holdstopreason', 'av_rule_last_clear_reason', 'av_rule_last_cleared_at', 'last_updated'].forEach(function(field) {
+      if (!Object.prototype.hasOwnProperty.call(edit, field)
+          || (edit[field] !== null && typeof edit[field] !== 'string')) {
+        throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_RESULT_INVALID');
+      }
+    });
+    editsByUid.set(uid, edit);
+  });
+  const scope = protectedDelivery.liveEditScope && typeof protectedDelivery.liveEditScope === 'object'
+    ? protectedDelivery.liveEditScope : {};
+  const holdProposals = Array.isArray(safeTransaction.holdStopProposals) ? safeTransaction.holdStopProposals : [];
+  if (holdProposals.length) {
+    const holdSourceUid = normalizeInventoryTransactionText_(holdProposals[0] && holdProposals[0].sourceUid);
+    const fanoutCount = Number(scope.holdFanoutCount);
+    const siblingCount = Number(scope.holdFanoutSiblingCount);
+    if (holdProposals.length !== 1 || scope.holdSourceUid !== holdSourceUid || !editsByUid.has(holdSourceUid)
+        || typeof scope.holdFanoutApplied !== 'boolean' || !Number.isInteger(fanoutCount) || fanoutCount < 1
+        || (scope.holdFanoutApplied && (!Number.isInteger(siblingCount) || siblingCount < 0 || fanoutCount !== siblingCount + 1))
+        || (!scope.holdFanoutApplied && fanoutCount !== 1)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_SCOPE_INVALID');
+    }
+  } else if (scope.holdFanoutApplied === true) {
+    throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_SCOPE_INVALID');
+  }
+  editsByUid.forEach(function(edit, uid) {
+    if (!rowsByUid.has(uid) && (!holdProposals.length || scope.holdFanoutApplied !== true)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_ROW_MISSING');
+    }
+  });
+  return {
+    rows: rows,
+    rowsByUid: rowsByUid,
+    edits: edits,
+    editsByUid: editsByUid,
+    revision: revision,
+    scope: scope,
+    protectedDelivery: protectedDelivery
+  };
+}
+
+function buildProtectedLiveEditSummary_(delivery, transaction) {
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  const scope = delivery && delivery.scope && typeof delivery.scope === 'object' ? delivery.scope : {};
+  const proposal = Array.isArray(safeTransaction.holdStopProposals) ? safeTransaction.holdStopProposals[0] : null;
+  const rule = proposal ? getReclassInquiryActionRuleV2_(proposal.action) : null;
+  const holdAction = rule && (rule.kind === 'hold_on' || rule.kind === 'hold_off')
+    ? String(proposal.action || '').trim().toLowerCase() : '';
+  const sourceEdit = holdAction ? delivery.editsByUid.get(normalizeInventoryTransactionText_(scope.holdSourceUid)) : null;
+  const sourceRow = holdAction ? delivery.rowsByUid.get(normalizeInventoryTransactionText_(scope.holdSourceUid)) : null;
+  const holdCode = sourceEdit ? String(sourceEdit.holdstopcode || '').trim().toUpperCase() : '';
+  const holdReason = sourceEdit ? String(sourceEdit.holdstopreason || '').trim().toLowerCase() : '';
+  const fanoutApplied = scope.holdFanoutApplied === true;
+  const fanoutCount = Number(scope.holdFanoutCount);
+  const count = Number.isFinite(fanoutCount) && fanoutCount >= 0 ? Math.trunc(fanoutCount) : (holdAction ? 1 : 0);
+  const season = String(scope.holdSeason || getReclassInquiryExactValue_(sourceRow, ['season', 'SEASON'], '') || '').trim().toUpperCase();
+  const salesYear = normalizeReclassInquirySalesYearV3_(scope.holdSalesYearMax || getReclassInquiryExactValue_(sourceRow, ['saleyear', 'SALEYEAR', 'salesyear', 'SALESYEAR'], ''));
+  const itemcode = String(scope.holdItemcode || getReclassInquiryExactValue_(sourceRow, ['itemcode', 'ITEMCODE'], '') || '').trim();
+  let scopeNote = '';
+  if (holdAction) {
+    if (fanoutApplied && itemcode && season && salesYear != null) {
+      const displayYear = salesYear >= 2000 && salesYear <= 2099 ? String(salesYear).slice(-2) : String(salesYear);
+      scopeNote = 'Same item ' + itemcode + ' | ' + season + ' | sales year <= ' + displayYear + ' | ' + count + ' row' + (count === 1 ? '' : 's') + ' in scope';
+    } else {
+      scopeNote = 'Selected row only | ' + count + ' row' + (count === 1 ? '' : 's') + ' in scope';
+    }
+  }
+  return {
+    inventoryRevision: delivery.revision,
+    rowCount: delivery.edits.length,
+    priorityCount: delivery.edits.filter(function(edit) { return edit.priority !== null; }).length,
+    holdAction: holdAction,
+    holdCode: holdCode,
+    holdReason: holdReason,
+    holdFanoutApplied: fanoutApplied,
+    holdFanoutCount: count,
+    holdItemcode: itemcode,
+    holdSeason: season,
+    holdSalesYearMax: salesYear,
+    scopeNote: scopeNote
+  };
+}
+
+function buildProtectedLiveEditReportRows_(transaction, frozenRows, overlays, liveEditDelivery, options) {
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  const safeOptions = options && typeof options === 'object' ? options : {};
+  const holdActions = RECLASS_INQUIRY_HOLD_ACTIONS_V3_;
+  const sanitizedTransaction = {
+    requestActions: (Array.isArray(safeTransaction.requestActions) ? safeTransaction.requestActions : [])
+      .filter(function(action) { return holdActions.indexOf(String(action || '').trim().toLowerCase()) === -1; }),
+    holdStopProposals: [],
+    scope: {}
+  };
+  if (safeTransaction.seasonPriority) {
+    sanitizedTransaction.seasonPriority = Object.assign({}, safeTransaction.seasonPriority, { contractVersion: 'manager-season-priority-v1' });
+  }
+  const safeOverlays = (Array.isArray(overlays) ? overlays : []).map(function(overlay) {
+    const rawOverlay = overlay && typeof overlay === 'object' ? overlay : {};
+    const safeOverlay = {
+      unique_id: rawOverlay.unique_id,
+      proposals: Array.isArray(rawOverlay.proposals) ? rawOverlay.proposals : []
+    };
+    if (rawOverlay.temporaryValues && typeof rawOverlay.temporaryValues === 'object') safeOverlay.temporaryValues = rawOverlay.temporaryValues;
+    if (Array.isArray(rawOverlay.temporaryChangedFields)) safeOverlay.temporaryChangedFields = rawOverlay.temporaryChangedFields;
+    const expected = rawOverlay.expected && typeof rawOverlay.expected === 'object' ? rawOverlay.expected : {};
+    const allowedExpected = {};
+    ['itemcode', 'lotcode', 'locationcode', 'ptronhand', 'priority', 'ptravailable', 'lineageHash', 'lineage', 'desigitem']
+      .forEach(function(key) {
+        if (Object.prototype.hasOwnProperty.call(expected, key)) allowedExpected[key] = expected[key];
+      });
+    safeOverlay.expected = allowedExpected;
+    return safeOverlay;
+  });
+  const proposal = buildReclassInquiryActionRowsV3_(sanitizedTransaction, frozenRows, safeOverlays, null, {
+    allowEmptyActions: true,
+    now: safeOptions.now instanceof Date ? safeOptions.now : new Date(),
+    policyVersion: RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_
+  });
+  if (!proposal.ok) throw new Error('RECLASS_CONFLICT:' + String(proposal.message || 'FROZEN_ROW_PROPOSAL_INVALID'));
+  safeOverlays.forEach(function(overlay) {
+    const uid = normalizeInventoryTransactionText_(overlay.unique_id);
+    (Array.isArray(overlay.proposals) ? overlay.proposals : []).forEach(function(rawProposal) {
+      if (String(rawProposal && rawProposal.action || '').trim().toLowerCase() !== 'priority_change') return;
+      const liveEdit = liveEditDelivery.editsByUid.get(uid);
+      const proposedPriority = String(rawProposal.priority == null ? '' : rawProposal.priority).trim();
+      const confirmedPriority = liveEdit ? String(liveEdit.priority == null ? '' : liveEdit.priority).trim() : null;
+      if (!liveEdit || proposedPriority !== confirmedPriority) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_PRIORITY_MISMATCH');
+    });
+  });
+  proposal.rows.forEach(function(row) {
+    const edit = liveEditDelivery.editsByUid.get(normalizeInventoryTransactionText_(row.unique_id));
+    if (!edit) return;
+    const fields = ['priority', 'holdstopcode', 'holdstopreason'];
+    fields.forEach(function(field) {
+      const oldValue = String(row.values[field] == null ? '' : row.values[field]);
+      const nextValue = String(edit[field] == null ? '' : edit[field]);
+      if (oldValue === nextValue) return;
+      row.values[field] = nextValue;
+      if (row.changedFields.indexOf(field) === -1) row.changedFields.push(field);
+    });
+    row.liveEditConfirmed = true;
+  });
+  if (Array.isArray(safeTransaction.holdStopProposals) && safeTransaction.holdStopProposals.length) {
+    const holdProposal = safeTransaction.holdStopProposals[0];
+    const action = String(holdProposal && holdProposal.action || '').trim().toLowerCase();
+    if (safeTransaction.holdStopProposals.length !== 1 || holdActions.indexOf(action) === -1) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_HOLD_ACTION_INVALID');
+    }
+    const sourceUid = normalizeInventoryTransactionText_(holdProposal.sourceUid);
+    if (!sourceUid || !liveEditDelivery.editsByUid.has(sourceUid)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_HOLD_SOURCE_MISSING');
+    }
+  }
+  return proposal.rows;
+}
+
 function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, payload, now) {
   const identity = {};
   RECLASS_INQUIRY_IDENTITY_FIELDS_.forEach(function(field) {
@@ -13582,7 +13780,9 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   });
   const actor = payload && payload.actor && typeof payload.actor === 'object' ? payload.actor : {};
   const transaction = payload && payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {};
-  const isV5 = String(payload && payload.workflowPolicyVersion || '') === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
+  const isV6 = String(payload && payload.workflowPolicyVersion || '') === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_
+    || String(transaction.seasonPriority && transaction.seasonPriority.contractVersion || '') === 'manager-season-priority-v2';
+  const isV5 = String(payload && payload.workflowPolicyVersion || '') === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ || isV6;
   const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
   const requestActions = Array.isArray(transaction.requestActions)
     ? (isV5 ? RECLASS_INQUIRY_ACTION_ORDER_V5_ : RECLASS_INQUIRY_ACTION_ORDER_V3_).filter(function(action) { return transaction.requestActions.indexOf(action) !== -1; })
@@ -13594,9 +13794,13 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   const holdProposalSummary = holdProposalRule && (holdProposalRule.kind === 'hold_on' || holdProposalRule.kind === 'hold_off')
     ? {
         action: String(rawHoldProposal.action || '').trim().toLowerCase(),
-        code: holdProposalRule.kind === 'hold_on' ? String(holdProposalRule.code || '').trim().toUpperCase() : '',
-        reason: holdProposalRule.kind === 'hold_on' ? String(rawHoldProposal.reason || '').trim().toLowerCase() : '',
-        affectedCount: Math.max(0, Math.trunc(Number(transaction.scope && transaction.scope.affectedCount) || 0))
+        code: isV6 && payload.liveEditSummary ? String(payload.liveEditSummary.holdCode || '').trim().toUpperCase()
+          : (holdProposalRule.kind === 'hold_on' ? String(holdProposalRule.code || '').trim().toUpperCase() : ''),
+        reason: isV6 && payload.liveEditSummary ? String(payload.liveEditSummary.holdReason || '').trim().toLowerCase()
+          : (holdProposalRule.kind === 'hold_on' ? String(rawHoldProposal.reason || '').trim().toLowerCase() : ''),
+        affectedCount: isV6 && payload.liveEditSummary
+          ? Math.max(0, Math.trunc(Number(payload.liveEditSummary.holdFanoutCount) || 0))
+          : Math.max(0, Math.trunc(Number(transaction.scope && transaction.scope.affectedCount) || 0))
       }
     : null;
   const editedRows = normalizedReportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
@@ -13611,13 +13815,16 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     holdProposalSummary: holdProposalSummary,
     requestAction: requestAction,
     requestActions: requestActions,
-    requestActionLabel: transaction.seasonPriority ? 'Season Priority - Make Priority 1 (requested)' : hasLocationDetailChanges && !requestActions.length
+    requestActionLabel: transaction.seasonPriority
+      ? (isV6 && payload.liveEditSummary ? 'Season Priority - Make Priority 1 (applied)' : 'Season Priority - Make Priority 1 (requested)')
+      : hasLocationDetailChanges && !requestActions.length
       ? 'Location Detail Update'
       : (requestActions.length > 1 || (!requestAction && requestActions.length)
         ? (isV5 ? getReclassInquiryActionsLabelV5_(requestActions) : getReclassInquiryActionsLabelV3_(requestActions))
         : getReclassInquiryActionLabel_(requestAction)),
     actorDisplay: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, 'Unknown User')),
     submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a'),
+    liveEditSummary: payload && payload.liveEditSummary && typeof payload.liveEditSummary === 'object' ? payload.liveEditSummary : null,
     editSummary: {
       rowCount: editedRows.length,
       fieldCount: editedRows.reduce(function(total, row) { return total + row.changedFields.length; }, 0)
@@ -13650,7 +13857,8 @@ function buildReclassInquiryReportText_(model) {
     'Container: ' + String(identity.contsize || ''),
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
-    buildSeasonPriorityDecisionText_(safeModel)
+    buildSeasonPriorityDecisionText_(safeModel),
+    buildProtectedLiveEditDecisionText_(safeModel)
   ];
   const splitMoveText = buildReclassInquirySplitMoveText_(safeModel);
   if (splitMoveText) body.push(splitMoveText);
@@ -13660,12 +13868,25 @@ function buildReclassInquiryReportText_(model) {
 
 function buildSeasonPriorityDecisionText_(model) {
   if (!(model && model.transaction && model.transaction.seasonPriority)) return '';
-  return ['Requested priorities only - no inventory has been changed.'].concat((model.rows || []).filter(function(row) {
+  const liveConfirmed = model.liveEditSummary && Number(model.liveEditSummary.rowCount) > 0;
+  return [liveConfirmed ? 'Season priorities were applied to inventory in the same transaction as this inquiry.' : 'Requested priorities only - no inventory has been changed.'].concat((model.rows || []).filter(function(row) {
     return (row.changedFields || []).indexOf('priority') !== -1;
   }).map(function(row) {
     return String(row.values.locationcode || '') + ' / ' + String(row.values.lotcode || '') + ' / ' + String(row.values.source || '')
       + ': ' + String(row.expectedPriority || '[blank]') + ' -> ' + String(row.values.priority || '[blank]');
   })).join('\n');
+}
+
+function buildProtectedLiveEditDecisionText_(model) {
+  const summary = model && model.liveEditSummary;
+  if (!summary || !(Number(summary.rowCount) > 0)) return '';
+  const lines = ['Confirmed live priority / Hold / Stop edits were applied atomically with this inquiry.'];
+  if (summary.holdAction) lines.push(String(summary.scopeNote || 'The selected Hold/Stop source row was updated.'));
+  const actions = Array.isArray(model.transaction && model.transaction.requestActions) ? model.transaction.requestActions : [];
+  if (actions.some(function(action) { return ['move_up', 'move_down', 'sheared'].indexOf(String(action || '').trim().toLowerCase()) !== -1; })) {
+    lines.push('Requested quantity, season, and designation moves remain inquiry proposals; inventory quantities were not changed.');
+  }
+  return lines.join('\n');
 }
 
 function buildReclassInquiryEmailHtml_(model) {
@@ -13795,7 +14016,8 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const actionLabel = String(firstNonEmptyRequestValue_(safeModel.requestActionLabel, getReclassInquiryActionLabel_(safeModel.requestAction), 'Reclass Item Inquiry'));
   const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions);
   const identityChangedFields = Array.isArray(safeModel.identityChangedFields) ? safeModel.identityChangedFields : [];
-  const scopeNote = formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
+  const scopeNote = String(safeModel.liveEditSummary && safeModel.liveEditSummary.scopeNote || '')
+    || formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
     if (field.key === 'holdstopcode') {
       const identityWasEdited = identityChangedFields.indexOf('holdstopcode') !== -1 || identityChangedFields.indexOf('holdstopreason') !== -1;
@@ -13881,6 +14103,10 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const pilotBanner = safeModel.isSyntheticPilot
     ? '<div class="pilot-banner">TEST PILOT - SYNTHETIC DATA ONLY</div>'
     : '';
+  const liveEditSummary = safeModel.liveEditSummary && typeof safeModel.liveEditSummary === 'object' ? safeModel.liveEditSummary : null;
+  const proposalLegend = liveEditSummary && Number(liveEditSummary.rowCount) > 0
+    ? 'Confirmed priority / Hold / Stop values were applied to inventory. Yellow, boxed movement values are inquiry proposals; inventory quantities were not changed.'
+    : 'Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.';
   const evidenceRows = Array.isArray(safeModel.evaluationResultsRows)
     ? safeModel.evaluationResultsRows
     : (safeModel.evaluationResults && typeof safeModel.evaluationResults === 'object' ? [safeModel.evaluationResults] : []);
@@ -13902,7 +14128,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
     '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
-    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span>Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
+    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span>' + esc(proposalLegend) + '</span></div>' +
     '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + supplementalTemporaryHtml + '</body></html>';
 }
 
@@ -14163,21 +14389,28 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
     const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
     if (!sourceUid) throw new Error('RECLASS_VALIDATION:SOURCE_ID_REQUIRED');
-    const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+    const now = new Date();
+    const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
+    const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
+    const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
+    const rawProtected = safePayload.protectedDelivery && typeof safePayload.protectedDelivery === 'object' ? safePayload.protectedDelivery : {};
+    const isManagerV2 = String(transaction.seasonPriority && transaction.seasonPriority.contractVersion || '') === 'manager-season-priority-v2'
+      && String(rawProtected.liveEditVersion || '') === 'manager-season-priority-v2';
+    const isV6 = policyVersion === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ || isManagerV2;
+    const liveEditDelivery = isV6
+      ? getProtectedLiveEditDelivery_(safePayload, sourceUid, transaction, safePayload.rowOverlays, [])
+      : null;
+    const sourceRow = liveEditDelivery ? liveEditDelivery.rowsByUid.get(sourceUid) : fetchEmailApprovalMasterRow_(sourceUid);
     if (!sourceRow) throw new Error('RECLASS_CONFLICT:SOURCE_ROW_MISSING');
     try {
       validateInventoryTransactionSourceIdentity_(sourceRow, source);
     } catch (identityError) {
       throw new Error('RECLASS_CONFLICT:SOURCE_ROW_CHANGED');
     }
-    const authoritativeRows = fetchReclassInquiryItemRows_(sourceRow);
-    const now = new Date();
-    const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
-    const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
-    const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
+    const authoritativeRows = liveEditDelivery ? liveEditDelivery.rows : fetchReclassInquiryItemRows_(sourceRow);
     const isV5 = RECLASS_ACTION_WORKFLOW_V5_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
     const isV4 = RECLASS_ACTION_WORKFLOW_V4_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
-    const isV3 = (RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_) || isV4 || isV5;
+    const isV3 = (RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_) || isV4 || isV5 || isV6;
     const isV2 = RECLASS_ACTION_WORKFLOW_V2_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
     if (!isV3 && !isV2) {
       throw new Error('RECLASS_CONFLICT:WORKFLOW_POLICY_CHANGED');
@@ -14187,27 +14420,30 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
         throw new Error('RECLASS_VALIDATION:ACTION_REQUIRED');
       }
     }
-    const authoritativeScope = isV3 && hasReclassInquiryHoldProposalV3_(transaction, safePayload.rowOverlays)
+    const authoritativeScope = isV3 && !isV6 && hasReclassInquiryHoldProposalV3_(transaction, safePayload.rowOverlays)
       ? fetchReclassInquiryScopeSettingsV3_()
       : null;
     const allowLocationDetailOnly = isV3 && hasReclassInquiryLocationDetailProposalV3_(safePayload.rowOverlays);
     let overlayResult;
     try {
-      overlayResult = isV3
+      overlayResult = isV6
+        ? { ok: true, rows: buildProtectedLiveEditReportRows_(transaction, authoritativeRows, safePayload.rowOverlays, liveEditDelivery, { now: now }) }
+        : (isV3
         ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now, policyVersion: isV5 ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '') })
-        : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
+        : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays));
     } catch (validationError) {
       throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
     }
     if (!overlayResult.ok) throw new Error('RECLASS_CONFLICT:' + String(overlayResult.message || 'ROW_IDENTITY_CHANGED'));
-    if (isV3 && !overlayResult.requestActions.length && !hasReclassInquiryLocationDetailChangeV3_(overlayResult.rows)) {
+    if (isV3 && !isV6 && !overlayResult.requestActions.length && !hasReclassInquiryLocationDetailChangeV3_(overlayResult.rows)) {
       throw new Error('RECLASS_VALIDATION:LOCATION_DETAIL_CHANGE_REQUIRED');
     }
-    const reportPayload = isV3 ? Object.assign({}, safePayload, {
+    const liveEditSummary = liveEditDelivery ? buildProtectedLiveEditSummary_(liveEditDelivery, transaction) : null;
+    const reportPayload = isV3 ? Object.assign({}, safePayload, liveEditSummary ? { liveEditSummary: liveEditSummary } : {}, {
       transaction: Object.assign({}, transaction, {
-        requestActions: overlayResult.requestActions,
-        holdStopProposals: overlayResult.holdStopProposals || [],
-        scope: overlayResult.scope || {}
+        requestActions: isV6 ? (Array.isArray(transaction.requestActions) ? transaction.requestActions : []) : overlayResult.requestActions,
+        holdStopProposals: isV6 ? (Array.isArray(transaction.holdStopProposals) ? transaction.holdStopProposals : []) : (overlayResult.holdStopProposals || []),
+        scope: isV6 ? {} : (overlayResult.scope || {})
       })
     }) : safePayload;
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, reportPayload, now);
@@ -14242,8 +14478,11 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
       });
       result.subject = subject;
       result.submittedAt = now.toISOString();
-      result.policyVersion = isV5 ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : (isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_));
-      result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Requested changes are highlighted yellow; no inventory data was changed.';
+      result.policyVersion = isV6 ? (isManagerV2 ? 'manager-season-priority-v2' : RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_)
+        : (isV5 ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : (isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_)));
+      result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. ' + (liveEditSummary
+        ? 'Confirmed priority / Hold / Stop edits are live; requested movement effects remain inquiry-only.'
+        : 'Requested changes are highlighted yellow; no inventory data was changed.');
       return result;
     } catch (emailError) {
       if (/^RECLASS_/.test(String(emailError && emailError.message || ''))) throw emailError;
@@ -17018,14 +17257,21 @@ function buildEvalWorkReportModel_(eventPayload) {
   const contractVersion = String(payload.contractVersion || 'eval-work-v1');
   const selectedOrigins = contractVersion === 'eval-work-v2-multi-origin' && Array.isArray(payload.origins)
     ? payload.origins.filter(Boolean) : [];
-  const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+  const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
+  const inquiryPolicyVersion = normalizeInventoryTransactionText_(inquiry.workflowPolicyVersion);
+  const isV6Inquiry = String(payload.deliveryKind || '') === 'completion'
+    && inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_;
+  const liveEditDelivery = isV6Inquiry
+    ? getProtectedLiveEditDelivery_(payload, sourceUid, transaction, inquiry.rowOverlays, selectedOrigins)
+    : null;
+  const sourceRow = liveEditDelivery ? liveEditDelivery.rowsByUid.get(sourceUid) : fetchEmailApprovalMasterRow_(sourceUid);
   if (!sourceRow) throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_MISSING');
   try {
     validateInventoryTransactionSourceIdentity_(sourceRow, source);
   } catch (error) {
     throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_CHANGED');
   }
-  const allCurrentItemRows = fetchReclassInquiryItemRows_(sourceRow);
+  const allCurrentItemRows = liveEditDelivery ? liveEditDelivery.rows : fetchReclassInquiryItemRows_(sourceRow);
   if (String(payload.scopeContract || '') === 'itemcode-all-rows-v1') {
     const expectedCount = Math.max(0, Number(payload.membershipCount) || 0);
     const selectedIds = selectedOrigins.map(function(originInput) {
@@ -17041,7 +17287,7 @@ function buildEvalWorkReportModel_(eventPayload) {
   }
   const authoritativeRows = selectedOrigins.length ? selectedOrigins.map(function(originInput) {
     const uid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(originInput.unique_id, originInput.uniqueId));
-    const current = uid ? fetchEmailApprovalMasterRow_(uid) : null;
+    const current = uid ? (liveEditDelivery ? liveEditDelivery.rowsByUid.get(uid) : fetchEmailApprovalMasterRow_(uid)) : null;
     if (!current) throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_MISSING');
     try { validateInventoryTransactionSourceIdentity_(current, originInput); }
     catch (error) { throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_CHANGED'); }
@@ -17052,9 +17298,7 @@ function buildEvalWorkReportModel_(eventPayload) {
     }
     return current;
   }) : allCurrentItemRows;
-  const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
-  const inquiryPolicyVersion = normalizeInventoryTransactionText_(inquiry.workflowPolicyVersion);
-  const isV5Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
+  const isV5Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ || isV6Inquiry;
   const isV4Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ || isV5Inquiry;
   const requestActions = Array.isArray(transaction.requestActions)
     ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
@@ -17066,13 +17310,21 @@ function buildEvalWorkReportModel_(eventPayload) {
   let proposalResult = null;
   if (requestActions.length || hasTemporaryChanges || hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)) {
     try {
-      const authoritativeScope = hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)
+      const authoritativeScope = !isV6Inquiry && hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)
         ? fetchReclassInquiryScopeSettingsV3_()
         : null;
-      proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, {
-        allowEmptyActions: true,
-        policyVersion: isV5Inquiry ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4Inquiry ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '')
-      });
+      proposalResult = isV6Inquiry
+        ? {
+            ok: true,
+            rows: buildProtectedLiveEditReportRows_(transaction, authoritativeRows, inquiry.rowOverlays, liveEditDelivery, { now: new Date() }),
+            requestActions: Array.isArray(transaction.requestActions) ? transaction.requestActions : [],
+            holdStopProposals: Array.isArray(transaction.holdStopProposals) ? transaction.holdStopProposals : [],
+            scope: {}
+          }
+        : buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, {
+          allowEmptyActions: true,
+          policyVersion: isV5Inquiry ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4Inquiry ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '')
+        });
     } catch (error) {
       throw new Error('EVAL_WORK_VALIDATION:' + String(error && error.message || 'PROPOSAL_INVALID'));
     }
@@ -17099,6 +17351,7 @@ function buildEvalWorkReportModel_(eventPayload) {
     : firstNonEmptyRequestValue_(payload.creatorDisplay, payload.creatorUsername, 'Eval Work Manager');
   const reportPayload = Object.assign({}, inquiry, {
     source: source,
+    liveEditSummary: liveEditDelivery ? buildProtectedLiveEditSummary_(liveEditDelivery, transaction) : null,
     actor: { display: actorDisplay, username: firstNonEmptyRequestValue_(payload.assigneeUsername, payload.creatorUsername, '') },
     transaction: Object.assign({ requestActions: [], holdStopProposals: [], scope: {} }, transaction, proposalResult ? {
       requestActions: proposalResult.requestActions,

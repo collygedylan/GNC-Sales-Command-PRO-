@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from 'pg';
 import { createClient } from '@supabase/supabase-js';
-import { parseBenchmarkManifest, percentile } from '../services/performanceBaseline.ts';
+import { parseBenchmarkManifest, parseSqlSchemaExtensions, percentile } from '../services/performanceBaseline.ts';
 import {
   INVENTORY_MASTER_BROWSE_FIELDS,
   INVENTORY_MASTER_FULL_FIELDS,
@@ -33,6 +33,7 @@ export const BETA_DRIVE_CARD_FIELDS = [
 ].join(',');
 const manifestPath = path.join(repoRoot, 'performance', 'baseline.json');
 const manifest = parseBenchmarkManifest(JSON.parse(readFileSync(manifestPath, 'utf8')));
+const schemaExtensions = parseSqlSchemaExtensions(JSON.parse(readFileSync(path.join(repoRoot, 'performance', 'sql-schema-extensions.json'), 'utf8')));
 const errorCode = code => Object.assign(new Error(code), { code });
 
 function normalizeSourceText(value) {
@@ -76,7 +77,7 @@ function stripAppVersionLine(source) {
 
 /** Fail closed unless the SQL benchmark's pinned database and readers are unchanged. */
 export function assertPinnedSqlContract({ root = repoRoot, baselineCommit = manifest.baselineCommit,
-  sqlSchemaCommit = manifest.sqlSchemaCommit, execute = run } = {}) {
+  sqlSchemaCommit = manifest.sqlSchemaCommit, sqlSchemaExtensions = schemaExtensions, execute = run } = {}) {
   if (!/^[a-f0-9]{40}$/.test(String(baselineCommit)) || !/^[a-f0-9]{40}$/.test(String(sqlSchemaCommit))) {
     throw errorCode('PERFORMANCE_PINNED_SQL_BASELINE_INVALID');
   }
@@ -87,6 +88,15 @@ export function assertPinnedSqlContract({ root = repoRoot, baselineCommit = mani
   const currentPaths = listSqlFiles(path.join(root, 'supabase/migrations'), root);
   const priorPaths = baselinePaths.map(file => [file, execute('git', ['rev-parse', `${baselineCommit}:${file}`], { root, capture: true }).trim()]);
   const schemaHashes = schemaPaths.map(file => [file, execute('git', ['rev-parse', `${sqlSchemaCommit}:${file}`], { root, capture: true }).trim()]);
+  // Explicit blob pins allow a reviewed additive migration in the same candidate
+  // that introduces it. They never repin prior migrations, readers, or budgets.
+  for (const extension of sqlSchemaExtensions) {
+    if (schemaPaths.includes(extension.path) || extension.path <= schemaPaths.at(-1)) {
+      throw errorCode('PERFORMANCE_SCHEMA_EXTENSION_INVALID');
+    }
+    schemaPaths.push(extension.path);
+    schemaHashes.push([extension.path, extension.gitBlob]);
+  }
   const currentHashes = currentPaths.map(file => [file,
     // --path applies Git's clean filters so Windows checkout line endings map to the pinned blob.
     execute('git', ['hash-object', `--path=${file}`, '--', file], { root, capture: true }).trim()]);
@@ -100,10 +110,11 @@ export function assertPinnedSqlContract({ root = repoRoot, baselineCommit = mani
   return {
     baselineCommit,
     sqlSchemaCommit,
+    sqlSchemaExtensions,
     migrationCount: currentPaths.length,
     migrationDigest: createHash('sha256').update(JSON.stringify(schemaHashes)).digest('hex'),
     ...readerDigests,
-    comparison: 'pinned SQL contract unchanged; timing is shared-control only',
+    comparison: 'pinned readers and explicit schema pins verified; timing is shared-control only',
   };
 }
 

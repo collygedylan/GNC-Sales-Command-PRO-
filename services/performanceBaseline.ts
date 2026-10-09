@@ -56,6 +56,19 @@ export function parseBenchmarkManifest(input: unknown): BenchmarkManifest {
     coldSamples, warmSamples, profiles,
     budgets: { relative: 0.15, browserNoiseMs: 25, databaseNoiseMs: 5 } };
 }
+/** Candidate-only additive schema pins; comparison baselines and budgets stay separate. */
+export function parseSqlSchemaExtensions(input: unknown): { path: string; gitBlob: string }[] {
+  if (!Array.isArray(input)) throw new Error('PERFORMANCE_SCHEMA_EXTENSION_INVALID');
+  const extensions = input.map(value => {
+    const entry = object(value), path = string(entry.path);
+    if (!/^supabase\/migrations\/\d{14}_[a-z0-9_]+\.sql$/.test(path)) throw new Error('PERFORMANCE_SCHEMA_EXTENSION_INVALID');
+    return { path, gitBlob: sha(entry.gitBlob, 40) };
+  });
+  if (new Set(extensions.map(entry => entry.path)).size !== extensions.length) {
+    throw new Error('PERFORMANCE_SCHEMA_EXTENSION_DUPLICATE');
+  }
+  return extensions;
+}
 export function parseBenchmarkReport(input: unknown): BenchmarkReport {
   const raw = object(input), viewport = object(raw.viewport);
   if (raw.schemaVersion !== 1 || !Array.isArray(raw.metrics) || !raw.metrics.length) throw new Error('PERFORMANCE_METRICS_REQUIRED');

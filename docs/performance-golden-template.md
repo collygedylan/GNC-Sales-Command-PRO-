@@ -14,6 +14,15 @@ the existing SQL, Edge, browser, CSS and Lighthouse lanes.
 Subsequent manifest changes require an approval from a human collaborator on the
 current PR commit, checked by `check-performance-baseline-review.mjs`.
 
+Additive application migrations are pinned separately in
+`performance/sql-schema-extensions.json` by repository path and Git blob hash.
+They extend the pinned SQL schema without changing the comparison commit,
+fixtures, readers, or budgets. Review each addition with its migration. The
+SQL gate rejects omitted, modified, reordered, or unlisted migrations and still
+executes its synthetic plans and behavior checks. Never regenerate these pins
+automatically after a failed benchmark. Changes to existing pinned migrations
+remain forbidden.
+
 ## Frontend standard
 
 - Define React lazy components at module scope. Load route code on render or

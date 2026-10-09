@@ -50,6 +50,45 @@ test('create and submit tokens make assignment and completion idempotent', () =>
   assert.match(html, /submissionToken = `eval-submit-/);
 });
 
+test('Eval Work preserves V6 selected-row live-edit intent in inert drafts', () => {
+  const snapshotStart = html.indexOf('function buildEvalWorkLocalInquirySnapshot(');
+  const snapshotEnd = html.indexOf('function captureEvalWorkLocalDraftSoon(', snapshotStart);
+  const payloadStart = html.indexOf('function collectEvalWorkInquiryPayload(', snapshotEnd);
+  const payloadEnd = html.indexOf('function collectEvalWorkEvidence(', payloadStart);
+  const saveStart = html.indexOf('async function saveEvalWorkDraft(', payloadEnd);
+  const saveEnd = html.indexOf('function applyEvalWorkEvidenceLocally(', saveStart);
+  assert.ok(snapshotStart > 0 && snapshotEnd > snapshotStart && payloadStart > snapshotEnd && payloadEnd > payloadStart && saveStart > payloadEnd && saveEnd > saveStart);
+  const snapshot = html.slice(snapshotStart, snapshotEnd);
+  const payload = html.slice(payloadStart, payloadEnd);
+  const save = html.slice(saveStart, saveEnd);
+  assert.match(snapshot, /sourceUid: String(globalHoldProposal.sourceUid || '')/);
+  assert.ok(snapshot.includes('holdstopcode:') && snapshot.includes('holdstopreason:') && snapshot.includes('globalHoldProposal.sourceUid'));
+  assert.ok(snapshot.includes('getArgosReclassActionWorkflowPolicyVersionV3({ rowOverlays, holdStopProposals }, { allowLiveEdits: true })'));
+  assert.ok(payload.includes('workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3(draft, { allowLiveEdits: true })'));
+  assert.match(payload, /transaction: { requestActions: draft.requestActions, holdStopProposals: draft.holdStopProposals, scope: draft.scope }/);
+  assert.ok(save.includes('collectEvalWorkInquiryPayload(work)'));
+  assert.ok(save.includes("evalWorkApi('save'"));
+  assert.equal(save.includes("evalWorkApi('submit'"), false);
+});
+
+test('Eval Work V6 submit waits for authoritative inventory refresh before local evidence merge', () => {
+  const refreshStart = html.indexOf('async function refreshEvalWorkLiveEditsAfterSubmit(');
+  const refreshEnd = html.indexOf('function applyConfirmedArgosReclassLiveEdits(', refreshStart);
+  const submitStart = html.indexOf('async function submitEvalWork(');
+  const submitEnd = html.indexOf('async function reassignEvalWork(', submitStart);
+  assert.ok(refreshStart > 0 && refreshEnd > refreshStart && submitStart > 0 && submitEnd > submitStart);
+  const refresh = html.slice(refreshStart, refreshEnd);
+  const submit = html.slice(submitStart, submitEnd);
+  assert.match(refresh, /invalidateArgosReclassLiveEditCaches\('eval-work-live-edit-confirmed', \{ signal: false \}\)/);
+  assert.match(refresh, /await coordinator.check\('eval-work-live-edit-confirmed'\)/);
+  assert.match(refresh, /status.state === 'Up to date'[\s\S]*productionLiveSyncVerifiedView === productionVerifiedViewKey\(\)/);
+  const reconcileIndex = submit.indexOf('await refreshEvalWorkLiveEditsAfterSubmit(submitIdentityKey)');
+  const evidenceIndex = submit.indexOf('applyEvalWorkEvidenceLocally(work, rowEvidence');
+  assert.ok(reconcileIndex >= 0 && evidenceIndex > reconcileIndex);
+  assert.ok(submit.includes('if (liveEditsRefreshed) {') && submit.includes('applyEvalWorkEvidenceLocally'));
+  assert.match(submit, /Live inventory is awaiting refresh before it is shown as confirmed/);
+});
+
 test('submission validates current identities and updates only exact-row evaluation evidence', () => {
   assert.match(migration, /where unique_id = work\.origin_unique_id for update/);
   assert.match(migration, /eval_work_origin_identity_conflict/);
