@@ -49,7 +49,15 @@ function scriptFunction(name) {
 function emailHarness() {
   const sent=[], props=new Map(), receipts=new Map(); let releases=0;
   const ctx=vm.createContext({ Date, Object, String, encodeURIComponent,
-    Utilities:{getUuid:()=>approval.id},
+    TextEncoder,
+    Utilities:{
+      getUuid:()=>approval.id,
+      base64Encode:value=>Buffer.from(value).toString('base64'),
+      newBlob:value=>{
+        const bytes=Array.isArray(value)?Uint8Array.from(value,byte=>byte&255):new TextEncoder().encode(String(value??''));
+        return {getBytes:()=>Array.from(bytes)};
+      },
+    },
     escapeEmailHtml_: value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),
     buildRequestEmailTableItemsHtml_: data=>{ assert.equal(data.requestItems[0].req_qty,0); return '<table><tr><td>Request layout</td></tr></table>'; },
     LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>releases++})},
@@ -59,7 +67,7 @@ function emailHarness() {
     resolveOperationalEmailHeaders_: to=>({to}),resolveAutomatedEmailSenderAddress_:()=> 'app@example.test',
     sendGmailApiMessage_: options=>{sent.push(options);return {ok:true,gmailMessageId:'gmail-1',threadId:'thread-1',recipients:[options.toList]};},
   });
-  vm.runInContext(['buildSuspendTagApprovalEmail_','handleSignedSuspendTagDelivery_','buildMimeEmail_','formatMimeMailbox_'].map(scriptFunction).join('\n'),ctx);
+  vm.runInContext(['encodeMimeHeaderWord_','encodeMimeBody_','buildSuspendTagApprovalEmail_','handleSignedSuspendTagDelivery_','buildMimeEmail_','formatMimeMailbox_'].map(scriptFunction).join('\n'),ctx);
   return {ctx,sent,props,receipts,releases:()=>releases};
 }
 test('Request-style email has the exact recipient, Reply-To, escaped details, photos and zero quantity',()=>{

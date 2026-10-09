@@ -222,12 +222,15 @@ test('fetched rows retain explicit photo clears and distinguish missing stock fr
 test('known thumbnail failure invalidates only that card display and does not fetch originals', () => {
   const ctx = runtime(['invalidateCardPhotoMatchOnLoadFailure', 'hydrateDeferredCardPhoto']);
   const output = { textContent: '174', setAttribute(name, value) { this[name] = value; } };
-  const card = { querySelectorAll: () => [output] };
+  const card = { classList: { contains: () => false }, querySelectorAll: () => [output] };
   const image = { dataset: { src: PHOTO }, classList: { add() {} }, closest: () => card };
   ctx.hydrateDeferredCardPhoto(image);
   assert.equal(image.src, PHOTO);
   image.onerror();
   assert.equal(output.textContent, 'Not verified');
+  card.classList.contains = () => true;
+  ctx.invalidateCardPhotoMatchOnLoadFailure(image);
+  assert.equal(output.textContent, 'N/A', 'Drive uses the compact invalid-match label');
   assert.equal(image.dataset.photoLoadFailed, '1');
   assert.equal(image.src, PHOTO);
   assert.match(output.title, /could not be loaded/);

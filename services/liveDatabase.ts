@@ -5,6 +5,7 @@ import { confirmedDriveEvidence, driveEvidenceRevision, driveEvidenceColumns } f
 import { requestRecipientDirectoryFromResult } from './requestRecipients';
 import { reclassShearedProposal } from './reclassSheared';
 import { confirmedReclassLiveEditsFromResult } from './reclassLiveEdits';
+import { inquiryFieldEdits, validateReclassEditableFieldProposals } from './reclassEditableFields';
 export { tableName, rpcName, validateQuery, tableRequest } from './databaseRest';
 type Profile = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'legacy_user_id' | 'username' | 'display_name' | 'role' | 'division' | 'language' | 'disabled_at' | 'locked_until' | 'must_change_password' | 'passkey_pilot'>;
 export function databaseClient(url: string, key: string, options?: SupabaseClientOptions<'public'>) {
@@ -17,6 +18,7 @@ export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout) {
     requestRecipientDirectoryFromResult,
     reclassShearedProposal,
     confirmedReclassLiveEditsFromResult,
+    inquiryFieldEdits, validateReclassEditableFieldProposals,
     readProfile(client: SupabaseClient<Database>, userId: string): PromiseLike<PostgrestSingleResponse<Profile | null>> {
       if (typeof userId !== 'string' || !userId) throw new Error('An authenticated user ID is required.');
       return client.from('profiles')

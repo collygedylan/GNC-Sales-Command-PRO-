@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { transformSync } from 'esbuild';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -59,7 +60,22 @@ test('Drive Reclass recipients are active verified profiles derived on the serve
 
 test('app API discards browser actor and recipients and returns only allowlisted errors', () => {
   const sanitizer = api.slice(api.indexOf('function sanitizeDriveReclassPayload'), api.indexOf('function driveReclassErrorResponse'));
-  assert.doesNotMatch(sanitizer, /actor|recipientEmails|emailRecipients|recipients/);
+  assert.doesNotMatch(sanitizer, /actor|emailRecipients|canonicalRowIds|protectedDelivery/);
+  const policy = 'reclass-action-workflow-v7-editable-fields-20261009';
+  const js = transformSync(sanitizer, {loader:'ts'}).code;
+  const sanitize = new Function('RECLASS_EDITABLE_FIELDS_POLICY','jsonObject',js+'; return sanitizeDriveReclassPayload;')(
+    policy, value => value && typeof value === 'object' && !Array.isArray(value) ? value : {});
+  const untrusted = {actorUsername:'fake',actor:{username:'fake'},recipientEmails:['unverified@example.invalid'],
+    sourceContext:{sourceMode:'drive',canonicalRowIds:['other'],reportLabel:'forged'},protectedDelivery:{frozen:true}};
+  assert.equal(sanitize(untrusted).recipientEmails,undefined,'legacy Drive cannot choose delivery recipients');
+  const drive = sanitize({...untrusted,workflowPolicyVersion:policy});
+  assert.deepEqual(drive.recipientEmails,[],'V7 Drive keeps server-fixed recipients');
+  assert.deepEqual(drive.sourceContext,{sourceMode:'drive'});
+  const inquiry = sanitize({...untrusted,workflowPolicyVersion:policy,sourceContext:{sourceMode:'item-inquiry'}});
+  assert.deepEqual(inquiry.recipientEmails,untrusted.recipientEmails,'only item-inquiry selections reach authoritative SQL validation');
+  for (const value of [drive,inquiry]) {
+    assert.equal(value.actor,undefined); assert.equal(value.actorUsername,undefined); assert.equal(value.protectedDelivery,undefined);
+  }
   assert.match(api, /actorUsername/);
   assert.match(api, /enqueue_drive_reclass_inquiry_v1/);
   assert.match(api, /workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"[\s\S]*enqueue_drive_reclass_inquiry_v4/);

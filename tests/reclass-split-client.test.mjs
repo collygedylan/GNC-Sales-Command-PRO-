@@ -7,8 +7,9 @@ import { parseExpressionAt } from 'acorn';
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 function source(name) {
-  const start = html.indexOf(`function ${name}(`);
+  let start = html.indexOf(`function ${name}(`);
   assert.ok(start > 0, name);
+  if (html.slice(Math.max(0, start - 6), start) === 'async ') start -= 6;
   return html.slice(start, parseExpressionAt(html, start, { ecmaVersion: 'latest' }).end);
 }
 const functions = ['cloneArgosReclassProposal', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
@@ -33,6 +34,7 @@ function fixture() {
     getReclassActionWorkflowV5Config: action => ({ kind: action === 'sheared' ? 'sheared' : 'move', label: action === 'sheared' ? 'Sheared Request' : (action === 'move_up' ? 'Move Up Request' : 'Move Down Request') }),
     getArgosReclassRowCurrentSeason: row => row.values.season,
     getArgosReclassTemporaryOverlay: () => null,
+    collectArgosReclassInventoryFieldEdits: () => [],
     getItemInquiryItemCode: row => row.ITEMCODE,
     captureEvalWorkLocalDraftSoon() {}, refreshArgosReclassMultiActionUi() {},
     generateArgosInventoryTransactionId: () => 'edited-token',

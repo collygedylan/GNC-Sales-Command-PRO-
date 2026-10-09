@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.09.002';
+const APP_SHELL_BUILD = 'V2026.10.09.003';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -81,7 +81,7 @@ const ASSETS_TO_CACHE = [
   './assets/live-sync-coordinator.js',
   './assets/inventory-list-contract.js',
   './assets/live-tailwind-v2026082010.min.css',
-  './assets/live-app-runtime-v2026082010.min.js',
+  './assets/live-app-runtime-v2026082010.min.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
   './assets/live-app-styles-base-v2026090503.css',
   './assets/live-app-styles-authority-v2026090503.css',
   './assets/image-optimize-worker-v2026090401.js',

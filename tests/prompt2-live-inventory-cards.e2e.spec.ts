@@ -111,6 +111,8 @@ async function readCardMetrics(page: Page, sourceView: 'drive' | 'av-photo') {
     const quantity = [...card.querySelectorAll('.app-card-qty-chip')].map((chip) => ({
       label: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
       value: chip.querySelector('.app-card-qty-value')?.textContent?.trim() || '',
+      top: chip.getBoundingClientRect().top,
+      overflow: chip.scrollWidth - chip.clientWidth,
     }));
     const metricValue = (name: string) => card.querySelector(`[data-inventory-card-metric="${name}"] .app-card-qty-value`)?.textContent?.trim() || '';
     const box = card.getBoundingClientRect();
@@ -194,6 +196,9 @@ test('live Drive and AV cards show scoped quantities and Drive-only tag color on
         ]);
         expect(metrics.locOnHand, 'sum same item code and normalized location across lots only').toBe('5');
         expect(metrics.locPhotoMatch).not.toBe('');
+        expect(metrics.quantityGridColumns).toBe(sourceView === 'drive' ? 6 : 3);
+        if (sourceView === 'drive') expect(Math.max(...metrics.quantity.map(entry => entry.top)) - Math.min(...metrics.quantity.map(entry => entry.top))).toBeLessThanOrEqual(1);
+        expect(metrics.quantity.every(entry => entry.overflow <= 1)).toBe(true);
         expect(metrics.cardBounds.left).toBeGreaterThanOrEqual(-1);
         expect(metrics.cardBounds.right).toBeLessThanOrEqual(361);
         expect(metrics.overflow).toBeLessThanOrEqual(1);
@@ -214,6 +219,7 @@ test('live Drive and AV cards show scoped quantities and Drive-only tag color on
         expect(metrics.holdCells[0].right).toBeLessThanOrEqual(metrics.holdCells[1].left + 1);
         expect(metrics.holdCells[1].right).toBeLessThanOrEqual(metrics.holdCells[2].left + 1);
         if (sourceView === 'drive') {
+          expect(metrics.price).toBe('');
           expect(metrics.fieldTag).toContain('Cerise');
           expect(metrics.source).toContain('Synthetic Master');
         } else {
@@ -239,6 +245,45 @@ test('live Drive and AV cards show scoped quantities and Drive-only tag color on
     }
   }
 
+  expect(fixture.blockedMutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
+
+
+test('Drive keeps all six metrics on one row and sums every season at the exact item/location', { tag: ['@local-e2e', '@release-functional'] }, async ({ page, baseURL }, testInfo) => {
+  const fixture = await installDriveCardLayoutFixture(page, baseURL!);
+  await settleDriveLayoutShell(page, testInfo.project.name);
+  await installRows(page, 'full');
+  await page.evaluate(() => window.eval(`(() => {
+    const original = window.__prompt2SyntheticRows[0];
+    window.__prompt2SyntheticRows = ['F1', 'S1', 'U2', 'Y'].map((season, index) => ({
+      ...original, UNIQUE_ID: index ? 'prompt25-season-' + season : 'prompt2-card-a',
+      DOM_ID: index ? 'prompt25-season-' + season : 'prompt2-card-a',
+      SEASON: season, LOCATIONCODE: 'D.29.000', LOTCODE: '27.' + season,
+      PTRONHAND: [41,491,210,490][index], MATCH: '', INITIAL_PTR: '',
+      PHOTO_LINK: '', PHOTO_NAME: '', DATE_COMPLETED: ''
+    })).concat([
+      {...original, UNIQUE_ID:'other-location', LOCATIONCODE:'D.29.001', PTRONHAND:9000},
+      {...original, UNIQUE_ID:'other-item', ITEMCODE:'OTHER', LOCATIONCODE:'D.29.000', PTRONHAND:9000}
+    ]);
+  })()`));
+  for (const width of [320, 768]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const theme of ['light', 'dark'] as const) {
+      await renderCard(page, 'drive', theme);
+      const metrics = await readCardMetrics(page, 'drive');
+      expect(metrics.locOnHand).toBe('1,232');
+      expect(metrics.locPhotoMatch).toBe('N/A');
+      expect(metrics.price).toBe('');
+      expect(metrics.quantity).toHaveLength(6);
+      expect(metrics.quantityGridColumns).toBe(6);
+      expect(Math.max(...metrics.quantity.map(entry => entry.top)) - Math.min(...metrics.quantity.map(entry => entry.top))).toBeLessThanOrEqual(1);
+      expect(metrics.quantity.every(entry => entry.overflow <= 1)).toBe(true);
+      expect(metrics.overflow).toBeLessThanOrEqual(1);
+      expect(metrics.documentOverflow).toBeLessThanOrEqual(1);
+      await page.locator('#drive-content .app-drive-compact-card').screenshot({ path: testInfo.outputPath(`prompt25-metrics-${width}-${theme}.png`) });
+    }
+  }
   expect(fixture.blockedMutations).toEqual([]);
   expect(fixture.errors).toEqual([]);
 });

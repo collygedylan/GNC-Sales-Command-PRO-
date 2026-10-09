@@ -53,7 +53,8 @@ async function mockDatabase<T>(options: {
     }));
     if (url.pathname === "/rest/v1/profiles") return json(options.profile === undefined ? activeProfile : options.profile);
     if (url.pathname === "/rest/v1/rpc/app_account_active_v1") return json(options.accountActive !== false);
-    if (url.pathname === "/rest/v1/rpc/enqueue_drive_reclass_inquiry_v6"
+    if (url.pathname === "/rest/v1/rpc/enqueue_drive_reclass_inquiry_v7"
+      || url.pathname === "/rest/v1/rpc/enqueue_drive_reclass_inquiry_v6"
       || url.pathname === "/rest/v1/rpc/submit_manager_season_priority_v2") {
       return options.error
         ? json({ message: options.error, code: "40001", details: null, hint: null }, 409)
@@ -157,5 +158,80 @@ Deno.test("Managers priority submission uses the same atomic live edit contract 
       p_actor_id: activeProfile.id, p_source_unique_id: "synthetic-row", p_expected_priority: 2,
       p_scope_fingerprint: "a".repeat(64), p_idempotency_token: "manager-priority-edge-fixture-0001",
     });
+  });
+});
+
+const editablePolicy = "reclass-action-workflow-v7-editable-fields-20261009";
+function editablePayload() {
+  const previous = payload();
+  return {
+    ...previous, workflowPolicyVersion: editablePolicy,
+    transaction: { requestActions: ["inventory_fields"], holdStopProposals: [], scope: {} },
+    rowOverlays: [{ ...previous.rowOverlays[0], proposals: [],
+      fieldEdits: [{ field: "locationnote", expected: "Existing note", value: "Updated note" }] }],
+  };
+}
+
+Deno.test("V7 editable fields use one authenticated atomic RPC and discard forged delivery authority", async () => {
+  for (const sourceMode of ["drive", "item-inquiry", "eval-report-2"]) {
+    await mockDatabase({}, async calls => {
+      const input = editablePayload();
+      const response = await handleDriveReclassAction(session, {
+        ...input, actorUsername: "forged_actor", frozenRows: [{ unique_id: "forged" }],
+        recipientEmails: ["active-csr@example.test"],
+        sourceContext: { sourceMode, reportId: "REPORT-2", itemcode: "00001",
+          canonicalRowIds: ["forged"], reportLabel: "Forged label" },
+      });
+      assertEquals(response.status, 200);
+      const writes = calls.filter(call => call.path.includes("enqueue_"));
+      assertEquals(writes.length, 1);
+      assertEquals(writes[0].path, "/rest/v1/rpc/enqueue_drive_reclass_inquiry_v7");
+      assertEquals(writes[0].body, { p_payload: {
+        workflowPolicyVersion: editablePolicy, idempotencyToken: input.idempotencyToken,
+        source: input.source, transaction: input.transaction, rowOverlays: input.rowOverlays,
+        sourceContext: { sourceMode, ...(sourceMode === "eval-report-2"
+          ? { reportId: "report-2", itemcode: "00001" } : {}) },
+        recipientEmails: sourceMode === "item-inquiry" ? ["active-csr@example.test"] : [],
+        clientVersion: "", actorUsername: activeProfile.username,
+      } });
+      assertEquals(calls.some(call => call.path === "/rest/v1/ph_master_inventory"), false);
+    });
+  }
+});
+
+Deno.test("V7 refuses untyped quantity edits and readonly stamps before the database write", async () => {
+  for (const field of ["ptronhand", "photo_link", "prisetby", "last_updated"]) {
+    await mockDatabase({}, async calls => {
+      const input = editablePayload();
+      input.rowOverlays[0].fieldEdits[0].field = field;
+      const response = await handleDriveReclassAction(session, input);
+      assertEquals(response.status, 400, field);
+      assertEquals(calls.some(call => call.path.includes("enqueue_")), false);
+    });
+  }
+  for (const sourceContext of ["item-inquiry", ["drive"], 42]) {
+    await mockDatabase({}, async calls => {
+      assertEquals((await handleDriveReclassAction(session, { ...editablePayload(), sourceContext })).status, 400);
+      assertEquals(calls.some(call => call.path.includes("enqueue_")), false);
+    });
+  }
+});
+
+Deno.test("V7 retains the active-profile gate and reports stale editable-field conflicts", async () => {
+  await mockDatabase({ profile: { ...activeProfile, disabled_at: "2026-10-09T00:00:00Z" } }, async calls => {
+    assertEquals((await handleDriveReclassAction(session, editablePayload())).status, 403);
+    assertEquals(calls.some(call => call.path.includes("enqueue_")), false);
+  });
+  await mockDatabase({ error: "RECLASS_V7_FIELD_CONFLICT" }, async calls => {
+    const response = await handleDriveReclassAction(session, editablePayload());
+    assertEquals(response.status, 409);
+    assertEquals((await response.json()).code, "DRIVE_RECLASS_SOURCE_CHANGED");
+    assertEquals(calls.filter(call => call.path.includes("enqueue_")).length, 1);
+  });
+  await mockDatabase({ error: "RECLASS_V7_INVENTORY_REVISION_MISSING" }, async calls => {
+    const response = await handleDriveReclassAction(session, editablePayload());
+    assertEquals(response.status, 503);
+    assertEquals((await response.json()).code, "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED");
+    assertEquals(calls.filter(call => call.path.includes("enqueue_")).length, 1);
   });
 });

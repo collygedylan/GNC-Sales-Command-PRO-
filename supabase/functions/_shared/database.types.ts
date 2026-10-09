@@ -17250,6 +17250,10 @@ export type Database = {
         Args: { p_payload: Json }
         Returns: Json
       }
+      enqueue_drive_reclass_inquiry_v7: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       fail_dataset_import_v1: { Args: { p_run_id: string }; Returns: Json }
       fail_request_delivery_event: {
         Args: {

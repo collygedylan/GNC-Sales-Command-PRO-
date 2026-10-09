@@ -1040,12 +1040,14 @@ test('Item Inquiry keeps the full Reclass model while adding a phone-specific re
     html.indexOf('const ITEM_INQUIRY_IDENTITY_FIELDS'),
     html.indexOf('function setDriveAltLocSeason')
   );
-  for (const field of ['PLANTGROUPCODE', 'COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY']) {
+  for (const field of ['COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY']) {
     assert.match(renderer, new RegExp(`label: '${field}'`));
   }
-  for (const field of ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'LOCATIONNOTEDATE', 'LOCATIONNOTE', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'LOCATIONPTN1', 'LOCATIONPTN2', 'HOLDSTOPCODE', 'HOLDSTOPREASON']) {
+  for (const field of ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'PTRONHAND', 'Rev', 'PTRAVAILABLE', 'LOCATIONNOTEDATE', 'Loc Note', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'Loc PTN1', 'LOCATIONPTN2', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'Pull', 'OS%', 'Sales Note', 'SUS']) {
     assert.match(renderer, new RegExp(`label: '${field}'`));
   }
+  assert.doesNotMatch(renderer, /key: '(?:plantgroupcode|brandlabel|inventorynote)'/,
+    'Item Inquiry omits PGC, Brand Label and Int Inv Note');
   for (const field of ['SALEYEAR', 'SEASON', 'S_LTS', 'SUPPLY', 'ON HAND', 'DEMAND']) {
     assert.match(renderer, new RegExp(`label: '${field}'`));
   }

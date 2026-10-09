@@ -1,5 +1,6 @@
 import type { Database } from '../supabase/functions/_shared/database.types';
 import { confirmedDriveEvidence, driveEvidenceColumns, driveEvidenceRevision, type DriveEvidenceRow } from './driveEvidence';
+import { confirmedInquiryFields, RECLASS_EDITABLE_FIELDS_POLICY, type ConfirmedInquiryFields } from './reclassEditableFields';
 
 type MasterPriorityHoldFields = Pick<
   Database['public']['Tables']['ph_master_inventory']['Row'],
@@ -21,6 +22,8 @@ export interface ConfirmedReclassLiveEdit {
 export interface ConfirmedReclassLiveEdits {
   inventoryRevision: string;
   liveEdits: ConfirmedReclassLiveEdit[];
+  inventoryFields?: ConfirmedInquiryFields[];
+  workflowPolicyVersion?: typeof RECLASS_EDITABLE_FIELDS_POLICY;
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -84,5 +87,10 @@ export function confirmedReclassLiveEditsFromResult(value: unknown): ConfirmedRe
       evidence,
     };
   });
+  if (value.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY) {
+    return { inventoryRevision, liveEdits, workflowPolicyVersion: RECLASS_EDITABLE_FIELDS_POLICY,
+      inventoryFields: confirmedInquiryFields(value.inventoryFields, seen) };
+  }
+  if (Object.hasOwn(value, 'inventoryFields')) throw new Error('RECLASS_INVENTORY_POLICY_INVALID');
   return { inventoryRevision, liveEdits };
 }
