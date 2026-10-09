@@ -8,7 +8,44 @@ import { attachPerformanceApiIdleTracker, buildPerformanceViewRuntimeReadyExpres
   buildPerformanceColdStartupReadyExpression, isPerformanceColdStartupReady, waitForPerformanceColdStartupReady,
   waitForPerformanceHomeReadiness, waitForPerformanceViewReadiness, buildPerformancePollWindowExpression } from '../scripts/performance-browser-fixture.mjs';
 import { isPerformancePollWindowReady } from '../scripts/performance-dom-observer.mjs';
-import { drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
+import { attachPerformanceResponseTracker, drainPerformanceApiRequests, drainPerformanceResponseBodies, readCompletePerformanceResponseBody,
+  safePerformanceApiDiagnostic, settlePerformanceApiBoundary } from '../scripts/performance-response-drain.mjs';
+
+test('API diagnostics retain only allowlisted health event identity without telemetry payload details', () => {
+  const page = new EventEmitter();
+  const totals = { apiRequests: [], pending: [], errors: [] };
+  attachPerformanceResponseTracker(page, totals);
+  const makeRequest = (body, path = '/rest/v1/rpc/report_app_health_event') => ({
+    method: () => 'POST', url: () => `http://fixture.invalid${path}`, postDataJSON: () => body,
+  });
+  const valid = makeRequest({ event_name: 'view_render', area: 'rendering', duration_ms: 392,
+    severity: 'info', sanitized_code: 'PERFORMANCE_SAMPLE', sample_rate: 0.1, app_build: 'private-build',
+    metadata: { reason: 'request-main', affected_count: 4, user_email: 'secret@example.invalid' } });
+  page.emit('request', valid);
+  page.emit('requestfinished', valid);
+  const diagnostic = safePerformanceApiDiagnostic(totals.apiRequests[0]);
+  assert.deepEqual(diagnostic.healthEvent, { eventName: 'view_render', area: 'rendering', reason: 'request-main' });
+  assert.doesNotMatch(JSON.stringify(diagnostic), /392|PERFORMANCE_SAMPLE|private-build|secret@example|affected_count|sample_rate|severity/);
+
+  const unsafe = makeRequest({ event_name: 'view_render', area: 'rendering',
+    metadata: { reason: 'person@example.invalid', access_token: 'do-not-record' } });
+  page.emit('request', unsafe);
+  page.emit('requestfinished', unsafe);
+  const unsafeDiagnostic = safePerformanceApiDiagnostic(totals.apiRequests[1]);
+  assert.equal(Object.hasOwn(unsafeDiagnostic, 'healthEvent'), false);
+  assert.doesNotMatch(JSON.stringify(unsafeDiagnostic), /person@example|do-not-record/);
+
+  const unknown = makeRequest({ event_name: 'semantic_failure', area: 'app', metadata: { reason: 'request-main' } });
+  page.emit('request', unknown);
+  page.emit('requestfinished', unknown);
+  assert.equal(Object.hasOwn(safePerformanceApiDiagnostic(totals.apiRequests[2]), 'healthEvent'), false);
+  assert.throws(() => safePerformanceApiDiagnostic({ method: 'POST', path: '/rest/v1/rpc/report_app_health_event',
+    operation: 'rpc:report_app_health_event', bytes: 1, canceled: false,
+    healthEvent: { eventName: 'view_render', area: 'rendering', reason: 'private/path' } }), /DIAGNOSTIC_INVALID/);
+  assert.throws(() => safePerformanceApiDiagnostic({ method: 'POST', path: '/rest/v1/rpc/another_rpc',
+    operation: 'rpc:another_rpc', bytes: 1, canceled: false,
+    healthEvent: { eventName: 'view_render', area: 'rendering', reason: 'request-main' } }), /DIAGNOSTIC_INVALID/);
+});
 
 test('response body drain clears completed batches and captures responses added while waiting', async () => {
   const totals = { pending: [], errors: [] };

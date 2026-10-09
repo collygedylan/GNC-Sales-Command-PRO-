@@ -23704,7 +23704,8 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const dynamicContent = document.getElementById('home-dynamic-content');
             const isHomeVisible = !!(homeView && !homeView.classList.contains('hidden'));
             const repModules = document.getElementById('home-rep-dashboard-modules');
-            const desktopRep = window.innerWidth >= 1100 && repModules && !repModules.classList.contains('hidden');
+            const desktopRep = isHomeVisible && repModules && window.innerWidth >= 1100
+                && !repModules.classList.contains('hidden');
             const isDashboardVisible = !!(isHomeVisible && (desktopRep || (
                 dashboardContent
                 && !dashboardContent.classList.contains('hidden')
@@ -23722,11 +23723,14 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 .toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/^-+|-+$/g, '') || 'home';
+            const currentViewClass = `current-view-${safeViewId}`;
             Array.from(document.body.classList).forEach((className) => {
-                if (className.indexOf('current-view-') === 0) document.body.classList.remove(className);
+                if (className.indexOf('current-view-') === 0 && className !== currentViewClass) {
+                    document.body.classList.remove(className);
+                }
             });
-            document.body.dataset.currentView = safeViewId;
-            document.body.classList.add(`current-view-${safeViewId}`);
+            if (document.body.dataset.currentView !== safeViewId) document.body.dataset.currentView = safeViewId;
+            if (!document.body.classList.contains(currentViewClass)) document.body.classList.add(currentViewClass);
             syncHomeDashboardBodyMode();
         }
 

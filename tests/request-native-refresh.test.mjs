@@ -27,6 +27,113 @@ function requestContext({ surfaces = ['request:pending'], adapters = [requestAda
   };
 }
 
+function trackedClassList(initial = []) {
+  const values = new Set(initial);
+  const writes = [];
+  return {
+    values,
+    writes,
+    contains: value => values.has(value),
+    add(value) { writes.push(['add', value]); values.add(value); },
+    remove(value) { writes.push(['remove', value]); values.delete(value); },
+    toggle(value, force) {
+      writes.push(['toggle', value, force]);
+      if (force) values.add(value); else values.delete(value);
+      return !!force;
+    },
+    [Symbol.iterator]: () => values[Symbol.iterator]()
+  };
+}
+
+test('home dashboard mode avoids viewport reads away from Home and preserves Home fit scheduling', () => {
+  const offHomeClasses = trackedClassList(['hidden']);
+  const offHomeBody = { classList: trackedClassList() };
+  let widthReads = 0;
+  const offHome = {
+    document: {
+      body: offHomeBody,
+      getElementById: id => id === 'view-home' ? { classList: offHomeClasses }
+        : id === 'home-rep-dashboard-modules' ? { classList: trackedClassList(['hidden']) }
+          : id === 'home-dynamic-content' ? { childElementCount: 0 }
+            : { classList: trackedClassList() }
+    },
+    window: Object.defineProperty({}, 'innerWidth', { get() { widthReads++; throw new Error('off-Home path must not read viewport width'); } }),
+    scheduleHomeDashboardFit: () => { throw new Error('off-Home path must not schedule Home fit'); }
+  };
+  vm.createContext(offHome);
+  vm.runInContext(extractFunction(html, 'syncHomeDashboardBodyMode', 'function syncCurrentViewBodyClass('), offHome);
+  assert.equal(offHome.syncHomeDashboardBodyMode(), false);
+  assert.equal(widthReads, 0);
+  assert.deepEqual(offHomeBody.classList.writes, [['toggle', 'home-dashboard-mode', false]]);
+
+  let fitCalls = 0;
+  const home = {
+    document: {
+      body: { classList: trackedClassList() },
+      getElementById: id => id === 'view-home' ? { classList: trackedClassList() }
+        : id === 'home-rep-dashboard-modules' ? { classList: trackedClassList() }
+          : id === 'home-dynamic-content' ? { childElementCount: 0 }
+            : { classList: trackedClassList() }
+    },
+    window: { innerWidth: 1200 },
+    scheduleHomeDashboardFit: reason => { assert.equal(reason, 'home-dashboard-mode'); fitCalls++; }
+  };
+  vm.createContext(home);
+  vm.runInContext(extractFunction(html, 'syncHomeDashboardBodyMode', 'function syncCurrentViewBodyClass('), home);
+  assert.equal(home.syncHomeDashboardBodyMode(), true);
+  assert.equal(home.document.body.classList.values.has('home-dashboard-mode'), true);
+  assert.equal(fitCalls, 1);
+  assert.equal(home.syncHomeDashboardBodyMode(false), true);
+  assert.equal(fitCalls, 1, 'schedule=false keeps the Home layout decision without scheduling another fit');
+});
+
+test('current view body sync leaves matching classes and dataset untouched, repairing only stale view classes', () => {
+  const classes = trackedClassList(['current-view-request', 'shell-state']);
+  let datasetWrites = 0;
+  const dataset = { currentView: 'request' };
+  Object.defineProperty(dataset, 'currentView', {
+    get() { return this.value ?? 'request'; },
+    set(value) { datasetWrites++; this.value = value; },
+    configurable: true
+  });
+  let dashboardSyncs = 0;
+  const ctx = {
+    document: { body: { classList: classes, dataset } },
+    getCurrentVisibleViewId: () => 'request',
+    syncHomeDashboardBodyMode: () => { dashboardSyncs++; }
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractFunction(html, 'syncCurrentViewBodyClass', 'function showOnlyPrimaryView('), ctx);
+  ctx.syncCurrentViewBodyClass('request');
+  assert.deepEqual(classes.writes, []);
+  assert.equal(datasetWrites, 0);
+  assert.equal(dashboardSyncs, 1);
+
+  classes.values.add('current-view-drive');
+  dataset.value = 'drive';
+  datasetWrites = 0;
+  classes.writes.length = 0;
+  ctx.syncCurrentViewBodyClass('request');
+  assert.deepEqual(classes.writes, [['remove', 'current-view-drive']]);
+  assert.deepEqual([...classes.values].sort(), ['current-view-request', 'shell-state']);
+  assert.equal(datasetWrites, 1);
+  assert.equal(dataset.value, 'request');
+  assert.equal(dashboardSyncs, 2);
+
+  classes.values.add('current-view-request');
+  classes.values.add('shell-state');
+  classes.values.delete('current-view-drive');
+  classes.writes.length = 0;
+  datasetWrites = 0;
+  ctx.getCurrentVisibleViewId = () => 'drive';
+  ctx.syncCurrentViewBodyClass('drive');
+  assert.deepEqual(classes.writes, [['remove', 'current-view-request'], ['add', 'current-view-drive']]);
+  assert.deepEqual([...classes.values].sort(), ['current-view-drive', 'shell-state']);
+  assert.equal(datasetWrites, 1);
+  assert.equal(dataset.value, 'drive');
+  assert.equal(dashboardSyncs, 3);
+});
+
 function renderSignatureFixture() {
   const ctx = {
     firstNonEmptyValue(...values) {

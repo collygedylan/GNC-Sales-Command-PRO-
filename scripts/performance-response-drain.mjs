@@ -13,6 +13,29 @@ export async function readCompletePerformanceResponseBody(response, requestOutco
   return body;
 }
 
+const PERFORMANCE_HEALTH_EVENT_AREAS = Object.freeze({
+  dataset_load: 'data_sync',
+  view_data_ready: 'rendering',
+  view_render: 'rendering',
+  view_switch: 'navigation',
+});
+const SAFE_PERFORMANCE_REASON = /^[a-z][a-z0-9_-]{0,63}(?::[a-z][a-z0-9_-]{0,31})?$/;
+
+function safeHealthEventDetails(request, operation, path) {
+  if (request.method() !== 'POST' || path !== '/rest/v1/rpc/report_app_health_event'
+      || operation !== 'rpc:report_app_health_event') return null;
+  try {
+    const body = request.postDataJSON();
+    const eventName = body?.event_name;
+    const area = body?.area;
+    const reason = body?.metadata?.reason;
+    if (typeof eventName !== 'string' || !Object.hasOwn(PERFORMANCE_HEALTH_EVENT_AREAS, eventName)
+        || area !== PERFORMANCE_HEALTH_EVENT_AREAS[eventName]
+        || typeof reason !== 'string' || reason.length > 96 || !SAFE_PERFORMANCE_REASON.test(reason)) return null;
+    return { eventName, area, reason };
+  } catch { return null; }
+}
+
 function safeApiRequestDetails(request) {
   const url = new URL(request.url());
   const path = url.pathname;
@@ -27,7 +50,10 @@ function safeApiRequestDetails(request) {
       }
     } catch { /* Opaque or malformed bodies stay undisclosed in diagnostics. */ }
   }
-  return { method: request.method(), path, operation };
+  const details = { method: request.method(), path, operation };
+  const healthEvent = safeHealthEventDetails(request, operation, path);
+  if (healthEvent) details.healthEvent = healthEvent;
+  return details;
 }
 
 export function safePerformanceApiDiagnostic(request) {
@@ -36,8 +62,20 @@ export function safePerformanceApiDiagnostic(request) {
     || typeof request.bytes !== 'number' || typeof request.canceled !== 'boolean') {
     throw new Error('PERFORMANCE_API_DIAGNOSTIC_INVALID');
   }
-  return { method: request.method, path: request.path, operation: request.operation,
+  const diagnostic = { method: request.method, path: request.path, operation: request.operation,
     bytes: request.bytes, canceled: request.canceled, failed: Boolean(request.error) };
+  if (request.healthEvent !== undefined) {
+    const event = request.healthEvent;
+    if (request.method !== 'POST' || request.path !== '/rest/v1/rpc/report_app_health_event'
+        || request.operation !== 'rpc:report_app_health_event'
+        || !event || !Object.hasOwn(PERFORMANCE_HEALTH_EVENT_AREAS, event.eventName)
+        || event.area !== PERFORMANCE_HEALTH_EVENT_AREAS[event.eventName]
+        || typeof event.reason !== 'string' || event.reason.length > 96 || !SAFE_PERFORMANCE_REASON.test(event.reason)) {
+      throw new Error('PERFORMANCE_API_DIAGNOSTIC_INVALID');
+    }
+    diagnostic.healthEvent = { eventName: event.eventName, area: event.area, reason: event.reason };
+  }
+  return diagnostic;
 }
 
 export function attachPerformanceResponseTracker(page, totals) {
