@@ -50,6 +50,16 @@ test('native Request navigation and refresh preserve unchanged verified cards', 
   await page.evaluate(() => window.eval(`(() => {
     window.__requestLegacyReads = 0;
     window.__requestRenderCalls = 0;
+    window.__requestFirstBatchCounts = [];
+    const originalSetContainerHtml = setContainerHtml;
+    setContainerHtml = function(container, ...args) {
+      const result = originalSetContainerHtml.call(this, container, ...args);
+      if (container?.id === 'request-content') {
+        const count = container.querySelectorAll('[data-request-uid]').length;
+        if (count) window.__requestFirstBatchCounts.push(count);
+      }
+      return result;
+    };
     const originalRenderRequest = renderRequest;
     renderRequest = function(...args) {
       window.__requestRenderCalls++;
@@ -64,6 +74,10 @@ test('native Request navigation and refresh preserve unchanged verified cards', 
   await openPerformanceView(page, 'live', 'request');
   await settleRequest(page);
   await expect(page.locator('#request-content [data-request-uid]')).toHaveCount(100);
+  const firstBatch: unknown = await page.evaluate(() => window.eval('window.__requestFirstBatchCounts[0]'));
+  expect(typeof firstBatch).toBe('number');
+  expect(Number(firstBatch)).toBeGreaterThan(0);
+  expect(Number(firstBatch)).toBeLessThanOrEqual(8);
   await expect(page.locator('#request-content .browse-page-footer')).toHaveCount(1);
   await waitForCompletedPendingRender(page);
   const initialRenderCallsResult: unknown = await page.evaluate(() => window.eval('window.__requestRenderCalls'));

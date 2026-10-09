@@ -113939,6 +113939,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
         }
 
+        function getPendingRequestChunkRenderOptions(options = {}) {
+            const resolved = getRequestChunkRenderOptions(options);
+            // Keep the first paint bounded; subsequent rows use the existing
+            // budgeted chunks, completion checks, and cancellation tokens.
+            return { ...resolved, initialRows: Number(resolved.initialRows) > 0 ? resolved.initialRows : 8 };
+        }
+
         function getApprovedMoveRequestRowsForCurrentUser(items = requestsInventory) {
             const access = getRoleAccessState();
             if (!canSeeMovesRequestTab(access)) return [];
@@ -114966,7 +114973,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     return;
                 }
                 const contextSnapshot = plan && !plan.empty ? getRequestPendingReuseContextSnapshot() : null;
-                renderMarkupChunkedByKey('request-main', container, crumb, plan.rows, plan.crumbText, (item) => generateCard(item, 'request', 'status-purple'), getRequestChunkRenderOptions({
+                renderMarkupChunkedByKey('request-main', container, crumb, plan.rows, plan.crumbText, (item) => generateCard(item, 'request', 'status-purple'), getPendingRequestChunkRenderOptions({
                     renderSignature: plan.renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
                     onComplete: () => {

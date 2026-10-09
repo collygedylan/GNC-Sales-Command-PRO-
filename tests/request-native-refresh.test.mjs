@@ -613,6 +613,38 @@ test('legacy request wake retains its subscription, refresh, periodic sync, and 
   await Promise.resolve();
 });
 
+test('Pending Request bounds its first paint while preserving iOS pacing and completion contracts', () => {
+  let ios = false;
+  let level = 0;
+  const ctx = {
+    isIosPhoneRequestFlowView: view => { assert.equal(view, 'request'); return ios; },
+    getAdaptivePerformanceLevel: () => level,
+    IOS_CHUNK_SYNC_ROW_LIMIT: 24,
+    renderRequestQueueFallbackCard: () => ''
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractFunction(html, 'getRequestChunkRenderOptions', 'function getApprovedMoveRequestRowsForCurrentUser('), ctx);
+  const onComplete = () => {};
+  const input = { renderSignature: 'all-rows-signature:page:0', onComplete };
+  const desktop = ctx.getPendingRequestChunkRenderOptions(input);
+  assert.equal(desktop.initialRows, 8);
+  assert.equal(desktop.renderSignature, input.renderSignature);
+  assert.equal(desktop.onComplete, onComplete);
+  assert.equal(desktop.onCompleteAfterInteractive, true);
+  assert.equal(desktop.onCompleteDelayMs, 140);
+  assert.equal(ctx.getRequestChunkRenderOptions(input).initialRows, undefined, 'other Request subviews keep their existing first batch');
+  assert.equal(ctx.getPendingRequestChunkRenderOptions({ initialRows: 3 }).initialRows, 3, 'explicit pacing remains authoritative');
+  ios = true;
+  const phone = ctx.getPendingRequestChunkRenderOptions(input);
+  assert.equal(phone.initialRows, 6);
+  assert.equal(phone.iosSyncRowLimit, 80);
+  assert.equal(phone.verifyRowSelector, '[data-request-uid]');
+  assert.equal(phone.completionDeadlineMs, 1200);
+  level = 2;
+  assert.equal(ctx.getPendingRequestChunkRenderOptions(input).initialRows, 4);
+  assert.equal(input.initialRows, undefined, 'caller options are not mutated');
+});
+
 function productionListFixture({ key = 'request-main', tab = 'pending', signature = 'same', rowCount = 2 } = {}) {
   const calls = { crumb: [], complete: 0, staged: [], created: 0, classes: [], capture: 0, restore: 0, replaced: 0 };
   const container = {
