@@ -113285,38 +113285,71 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function buildRequestItemRenderSignature(item) {
             if (!item) return '';
             const clean = (value = '') => String(value == null ? '' : value).trim();
-            const holdCode = firstNonEmptyValue(item.HOLD, item.HOLDCODE, item.HOLD_CODE, '');
-            const holdReason = firstNonEmptyValue(item.HOLD_REASON, item.HOLDREASON, item.CUSTOMERHOLDREASON, '');
-            const salesNote = firstNonEmptyValue(item.SALES_NOTE, item.SALESNOTE, '');
-            const photoLink = getRequestPhotoLinkCsv(item);
+            const holdReleaseOverrideActive = isHoldReleaseOverrideActiveForItem(item);
+            const holdCode = holdReleaseOverrideActive ? '' : String(firstNonEmptyValue(
+                item.HOLDSTOPCODE, item.holdstopcode, item.HOLSTOPCODE, item.holstopcode,
+                item.HOLD_STOP_CODE, item.HOLDSTOP, ''
+            ) || '').trim().replace(/^(NULL|UNDEFINED|-|--|N\/A|NA)$/i, '').toUpperCase();
+            const holdReason = holdReleaseOverrideActive ? '' : String(firstNonEmptyValue(
+                item.HOLDSTOPREASON, item.holdstopreason, item.HOLD_STOP_REASON, item.hold_stop_reason,
+                item.HOLDREASON, item.holdreason, ''
+            ) || '').trim().replace(/^(NULL|UNDEFINED|-|--|N\/A|NA)$/i, '');
+            const salesNote = firstNonEmptyValue(
+                getItemDisplayValue(item, 'SALES_NOTE', 'request'), item.SALES_DESC, item.SALESDESC, ''
+            );
+            const photoLink = getRowPhotoLink(item, 'request');
+            const photoDate = getRowPhotoDateLabel(item, 'request', photoLink);
+            const requestDone = isRequestComplete(item);
+            const requestDeliverySending = requestDone && isRequestDeliverySending(item);
+            const requestDeliveryNeedsAttention = requestDone && isRequestDeliveryNeedsAttention(item);
+            const isDockRequest = item.DOCK_SUSPEND_DC_REQUEST === true
+                || String(firstNonEmptyValue(item.SOURCE_TABLE, item.source_table, '') || '').trim().toLowerCase() === 'ph_soc_master'
+                || String(firstNonEmptyValue(item.REQUEST_SOURCE, item.request_source, '') || '').trim().toLowerCase() === 'docks';
             return [
                 clean(item.UNIQUE_ID),
                 clean(item.DOM_ID),
-                clean(item.COMMONNAME),
-                clean(item.CONTSIZE),
-                clean(item.LOCATIONCODE),
-                clean(item.LOTCODE),
+                String(item.COMMONNAME || 'Unknown'),
+                String(item.CONTSIZE || '-'),
+                clean(getInventoryCardFieldTagColorDisplayValue(item)),
+                String(item.LOCATIONCODE || 'No Loc'),
+                String(item.LOTCODE || '-'),
                 clean(getRequestCardSourceLabel(item)),
-                clean(item.REQUESTED_BY),
-                clean(item.REQ_CUSTOMER),
-                clean(item.REQ_QTY),
+                String(item.REQUESTED_BY || 'Unknown'),
+                String(item.REQ_CUSTOMER || 'Unknown'),
+                String(item.REQ_QTY || '0'),
                 clean(item.REQ_STATUS),
                 item.REQUEST_HISTORY ? '1' : '0',
                 item.REQ_ARCHIVED ? '1' : '0',
-                clean(item.REQ_RESERVE),
-                clean(item.REQ_REP_ACTION),
+                String(item.REQ_RESERVE || 'NO'),
+                String(item.REQ_REP_ACTION || ''),
                 clean(item.suspend_tag_version ?? item.SUSPEND_TAG_VERSION),
                 clean(item.suspend_tag_status ?? item.SUSPEND_TAG_STATUS),
                 clean(item.suspend_tag_delivery_status ?? item.SUSPEND_TAG_DELIVERY_STATUS),
                 clean(item.REQUEST_FOLDER),
                 clean(item.ASSIGNEDTO),
                 clean(item.assignedto),
-                clean(item.PTRAVAILABLE),
-                clean(item.PRIORITY),
+                clean(getCardPtrOnHandValue(item)),
+                clean(getCardPtrReviewedValue(item)),
+                clean(getCardPtrAvailableValue(item)),
+                clean(getCardOpenStockValue(item)),
+                clean(getInventoryCardDesigCustValue(item)),
+                clean(getInventoryCardDesigItemValue(item)),
+                clean(getInventoryCardDesigLocValue(item)),
+                String(item.PRIORITY || '-'),
                 clean(holdCode),
                 clean(holdReason),
-                clean(salesNote),
+                String(salesNote == null ? '' : salesNote),
                 clean(photoLink),
+                clean(photoDate),
+                requestDone ? 'complete' : 'pending',
+                requestDeliverySending ? 'sending' : '',
+                requestDeliveryNeedsAttention ? 'needs-attention' : '',
+                item.REQUEST_HISTORY ? 'history' : '',
+                item.REQ_ARCHIVED ? 'archived' : '',
+                clean(item.REQ_REP_ACTION),
+                isSeasonSalesNoteCardItem(item) ? 'season-sales-note' : '',
+                isDockRequest ? 'dock-request' : '',
+                isDockSuspendDcRequestMirrorRow(item) ? 'dock-suspend-mirror' : '',
                 clean(item.MOVE_BATCH_ID),
                 clean(item.move_batch_id),
                 clean(item.MOVE_APPROVAL_STAGE),

@@ -27,6 +27,43 @@ function requestContext({ surfaces = ['request:pending'], adapters = [requestAda
   };
 }
 
+function renderSignatureFixture() {
+  const ctx = {
+    firstNonEmptyValue(...values) {
+      return values.find(value => value != null && String(value).trim() !== '') ?? '';
+    },
+    selectedItems: new Set(),
+    isHoldReleaseOverrideActiveForItem: item => item.holdReleaseOverride === true,
+    getItemDisplayValue: (item, key) => key === 'SALES_NOTE' ? item.SALES_NOTE || '' : '',
+    getRowPhotoLink: item => item.REQ_PHOTO_LINK || '',
+    getRowPhotoDateLabel: (_item, _view, link) => link ? 'Oct 8' : '',
+    isRequestComplete: item => item.REQ_STATUS === 'Complete',
+    isRequestDeliverySending: item => item.DELIVERY_STATUS === 'pending',
+    isRequestDeliveryNeedsAttention: item => item.DELIVERY_STATUS === 'failed',
+    getRequestCardSourceLabel: item => item.REQUEST_SOURCE || '',
+    isSeasonSalesNoteCardItem: item => item.seasonSalesNote === true,
+    isDockSuspendDcRequestMirrorRow: item => item.dockSuspendMirror === true
+  };
+  const normalizedQuantity = (item, ...keys) => {
+    const value = ctx.firstNonEmptyValue(...keys.map(key => item[key]),
+      ...keys.map(key => item.SNAPSHOT && item.SNAPSHOT[key]));
+    return value === '' ? '0' : String(Number(value));
+  };
+  ctx.getCardPtrOnHandValue = item => normalizedQuantity(item, 'PTRONHAND', 'ptronhand', 'PTR_ON_HAND', 'ptr_on_hand');
+  ctx.getCardPtrReviewedValue = item => normalizedQuantity(item, 'PTRREVIEWED', 'ptrreviewed', 'PTR_REVIEWED', 'ptr_reviewed', 'PTRREVIEW', 'ptrreview', 'REVIEWED', 'reviewed');
+  ctx.getCardPtrAvailableValue = item => normalizedQuantity(item, 'PTRAVAILABLE', 'ptravailable', 'PRTAVAILABLE', 'prtavailable', 'LOC_AVAIL', 'loc_avail', 'LOC_AVAILABLE', 'loc_available', 'LOCAVA', 'locava', 'AVAILABLE', 'available');
+  ctx.getCardOpenStockValue = item => normalizedQuantity(item, 'S_LTS', 's_lts');
+  const displayValue = (item, keys) => String(ctx.firstNonEmptyValue(...keys.map(key => item[key])) || '').trim();
+  ctx.getInventoryCardFieldTagColorDisplayValue = item => displayValue(item, ['FIELDTAGCOLOR', 'fieldtagcolor', 'FIELD_TAG_COLOR', 'field_tag_color', 'FieldTagColor']);
+  ctx.getInventoryCardDesigCustValue = item => displayValue(item, ['DESIGCUST', 'desigcust', 'DESIG_CUST', 'desig_cust', 'DesigCust', 'DESIGNCUST', 'designcust', 'CUSTOMERDESIG', 'customerdesig']);
+  ctx.getInventoryCardDesigItemValue = item => displayValue(item, ['DESIGITEM', 'desigitem', 'DESIG_ITEM', 'desig_item', 'DesigItem', 'DESIGNITEM', 'designitem', 'ITEMDESIG', 'itemdesig']);
+  ctx.getInventoryCardDesigLocValue = item => displayValue(item, ['DESIGLOC', 'desigloc', 'DESIG_LOC', 'desig_loc', 'DesigLoc', 'DESIGNLOC', 'designloc', 'DESIG_LOCATION', 'desig_location']);
+  vm.createContext(ctx);
+  const fn = extractFunction(html, 'buildRequestItemRenderSignature', 'function buildRequestChunkRenderKey(');
+  vm.runInContext(fn, ctx);
+  return ctx.buildRequestItemRenderSignature;
+}
+
 function fixture({ native = true, context = requestContext(), ensureResult = true,
   ensureError = null, onEnsure = null, terminal = false, lastForceAt = 0 } = {}) {
   const calls = { ensure: [], fetch: [], process: [], sideRefresh: [], failures: [], clears: [], dirty: [],
@@ -86,6 +123,43 @@ function fixture({ native = true, context = requestContext(), ensureResult = tru
   vm.runInContext(`${helper}\n${forceRefresh}`, ctx);
   return { ctx, calls, state, adapter: requestAdapter() };
 }
+
+test('request card signature tracks normalized visible inventory chips and design fields', () => {
+  const signature = renderSignatureFixture();
+  const row = {
+    UNIQUE_ID: 'request-1', DOM_ID: 'dom-1', COMMONNAME: 'Rose', CONTSIZE: '1 gal',
+    LOCATIONCODE: 'C.06.001', LOTCODE: 'LOT-1', REQUEST_SOURCE: 'Drive',
+    REQUESTED_BY: 'Rep', REQ_CUSTOMER: 'Customer', REQ_QTY: '2', REQ_STATUS: 'Pending',
+    REQ_RESERVE: 'NO', PRIORITY: 'High', PTRONHAND: '12.0', PTRREVIEWED: 8,
+    PTRAVAILABLE: 4, S_LTS: 2, DESIGCUST: 'Garden', DESIGITEM: 'Rose #1',
+    DESIGLOC: 'North', FIELDTAGCOLOR: 'Blue'
+  };
+  const original = signature(row);
+  assert.equal(signature({ ...row }), original, 'an unchanged row copy keeps the same signature');
+  assert.equal(signature({
+    ...row,
+    PTRONHAND: undefined,
+    PTRREVIEWED: undefined,
+    PTRAVAILABLE: undefined,
+    S_LTS: undefined,
+    SNAPSHOT: { PTRONHAND: 12, PTRREVIEWED: 8, PTRAVAILABLE: 4, S_LTS: 2 }
+  }), original, 'equivalent canonical snapshot aliases normalize to the same rendered chip values');
+
+  const displayedChanges = [
+    { PTRONHAND: '13' },
+    { PTRREVIEWED: '9' },
+    { PTRAVAILABLE: '5' },
+    { S_LTS: '3' },
+    { DESIGCUST: 'Landscape' },
+    { DESIGITEM: 'Rose #2' },
+    { DESIGLOC: 'South' },
+    { FIELDTAGCOLOR: 'Red' }
+  ];
+  for (const change of displayedChanges) {
+    assert.notEqual(signature({ ...row, ...change }), original,
+      `${Object.keys(change)[0]} changes a value rendered on the request card`);
+  }
+});
 
 test('native request refresh helper accepts only an authorized foreground request-source adapter', () => {
   const valid = fixture();
