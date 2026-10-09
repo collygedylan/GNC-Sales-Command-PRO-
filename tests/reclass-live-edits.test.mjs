@@ -194,6 +194,142 @@ test('stale revision, timestamp, or account never overwrites a newer local row',
   assert.equal(ordered.apply(older, ordered.identityKey).stale, true);
 });
 
+test('a malformed receipt from a different account cannot invalidate the current account cache', () => {
+  const fixture = loadConfirmedApplyFixture({ UNIQUE_ID: 'row-1', PRIORITY: '3', LAST_UPDATED: '2026-10-09T12:00:00.000Z' });
+  const result = fixture.apply(null, 'different-account');
+  assert.equal(result.stale, true);
+  assert.equal(result.applied, 0);
+  assert.deepEqual(fixture.dirtyViews, []);
+  assert.equal(fixture.masterState.liveVerifiedRevision, '9');
+  assert.equal(fixture.fullInventory[0].PRIORITY, '3');
+});
+
+test('accepted Reclass submit is retained for its owner but cannot close or repaint a newer session modal', async () => {
+  const submitStart = html.indexOf('async function submitArgosInventoryTransaction(');
+  const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease(', submitStart);
+  assert.ok(submitStart > 0 && submitEnd > submitStart);
+  const submitSource = html.slice(submitStart, submitEnd);
+  let identity = 'account-a';
+  let currentState = { sourceView: 'drive', submitting: false };
+  const originalState = currentState;
+  const button = { disabled: false, textContent: 'New modal draft' };
+  let resolvePost;
+  const postResult = new Promise(resolve => { resolvePost = resolve; });
+  let signalPostStarted;
+  const postStarted = new Promise(resolve => { signalPostStarted = resolve; });
+  const retained = [];
+  const sideEffects = [];
+  const context = {
+    argosInventoryTransactionState: currentState,
+    getArgosReclassLiveEditIdentityKey: () => identity,
+    getCurrentReclassDeliveryActor: () => 'account_a',
+    buildArgosInventoryTransactionPayload: () => ({ workflowPolicyVersion: 'v6', idempotencyToken: 'token-a', source: { unique_id: 'row-a' } }),
+    applyArgosInventoryTransactionSourceContext: payload => payload,
+    applyArgosInventoryTransactionEmailRecipients: async payload => payload,
+    postArgosInventoryTransactionPayload: () => { signalPostStarted(); return postResult; },
+    rememberQueuedReclassDelivery: (...args) => retained.push(args),
+    applyConfirmedArgosReclassLiveEdits: () => sideEffects.push('apply-receipt'),
+    closeArgosInventoryTransactionModal: () => sideEffects.push('close-modal'),
+    showToast: () => sideEffects.push('toast'),
+    pollReclassDeliveryJobs: () => sideEffects.push('poll'),
+    document: { getElementById: () => button },
+    window: {},
+    RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'v6',
+  };
+  vm.createContext(context);
+  vm.runInContext(`${submitSource}; this.submit = submitArgosInventoryTransaction;`, context);
+  const pending = context.submit(null);
+  await postStarted;
+  assert.equal(originalState.submitting, true);
+  currentState = { sourceView: 'drive', submitting: false };
+  context.argosInventoryTransactionState = currentState;
+  identity = 'account-b';
+  button.disabled = true;
+  button.textContent = 'Current account draft';
+  resolvePost({ ok: true, jobId: 'job-a', status: 'queued' });
+  await pending;
+  assert.equal(retained.length, 1, 'the accepted result is retained with the captured owner and source view');
+  assert.equal(retained[0][2], 'account_a');
+  assert.equal(retained[0][3], 'drive');
+  assert.deepEqual(sideEffects, []);
+  assert.equal(currentState.submitting, false);
+  assert.equal(button.disabled, true);
+  assert.equal(button.textContent, 'Current account draft');
+});
+
+test('accepted same-account Reclass receipt still reconciles when its original modal was replaced', async () => {
+  const submitStart = html.indexOf('async function submitArgosInventoryTransaction(');
+  const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease(', submitStart);
+  const submitSource = html.slice(submitStart, submitEnd);
+  const originalState = { sourceView: 'drive', submitting: false };
+  const currentState = { sourceView: 'drive', submitting: false };
+  let resolvePost;
+  let signalPostStarted;
+  const postResult = new Promise(resolve => { resolvePost = resolve; });
+  const postStarted = new Promise(resolve => { signalPostStarted = resolve; });
+  const sideEffects = [];
+  const context = {
+    argosInventoryTransactionState: originalState,
+    getArgosReclassLiveEditIdentityKey: () => 'same-account-session',
+    getCurrentReclassDeliveryActor: () => 'account_a',
+    buildArgosInventoryTransactionPayload: () => ({ workflowPolicyVersion: 'v6', idempotencyToken: 'token-a', source: { unique_id: 'row-a' } }),
+    applyArgosInventoryTransactionSourceContext: payload => payload,
+    applyArgosInventoryTransactionEmailRecipients: async payload => payload,
+    postArgosInventoryTransactionPayload: () => { signalPostStarted(); return postResult; },
+    rememberQueuedReclassDelivery: () => sideEffects.push('remember'),
+    applyConfirmedArgosReclassLiveEdits: () => { sideEffects.push('apply-receipt'); return { applied: 1, stale: false }; },
+    closeArgosInventoryTransactionModal: () => sideEffects.push('close-modal'),
+    showToast: () => sideEffects.push('toast'),
+    pollReclassDeliveryJobs: () => sideEffects.push('poll'),
+    document: { getElementById: () => ({ disabled: false, textContent: '' }) },
+    window: {},
+    RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'v6',
+  };
+  vm.createContext(context);
+  vm.runInContext(`${submitSource}; this.submit = submitArgosInventoryTransaction;`, context);
+  const pending = context.submit(null);
+  await postStarted;
+  context.argosInventoryTransactionState = currentState;
+  resolvePost({ ok: true, jobId: 'job-a', status: 'queued' });
+  await pending;
+  assert.deepEqual(sideEffects, ['remember', 'apply-receipt']);
+  assert.equal(currentState.submitting, false);
+});
+
+test('identity changes during recipient selection prevent posting the old Reclass draft', async () => {
+  const submitStart = html.indexOf('async function submitArgosInventoryTransaction(');
+  const submitEnd = html.indexOf('function canSendDriveRowToHoldRelease(', submitStart);
+  const submitSource = html.slice(submitStart, submitEnd);
+  let identity = 'account-a';
+  let resolveRecipients;
+  const recipients = new Promise(resolve => { resolveRecipients = resolve; });
+  const calls = [];
+  const state = { sourceView: 'drive', submitting: false };
+  const context = {
+    argosInventoryTransactionState: state,
+    getArgosReclassLiveEditIdentityKey: () => identity,
+    getCurrentReclassDeliveryActor: () => 'account_a',
+    buildArgosInventoryTransactionPayload: () => ({ source: { unique_id: 'row-a' } }),
+    applyArgosInventoryTransactionSourceContext: payload => payload,
+    applyArgosInventoryTransactionEmailRecipients: () => recipients,
+    postArgosInventoryTransactionPayload: () => { calls.push('post'); return Promise.resolve({ ok: true }); },
+    rememberQueuedReclassDelivery: () => calls.push('remember'),
+    closeArgosInventoryTransactionModal: () => calls.push('close'),
+    showToast: () => calls.push('toast'),
+    document: { getElementById: () => ({ disabled: false, textContent: '' }) },
+    window: {},
+    RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'v6',
+  };
+  vm.createContext(context);
+  vm.runInContext(`${submitSource}; this.submit = submitArgosInventoryTransaction;`, context);
+  const pending = context.submit(null);
+  identity = 'account-b';
+  resolveRecipients({ source: { unique_id: 'row-a' } });
+  await pending;
+  assert.deepEqual(calls, []);
+  assert.equal(state.submitting, false);
+});
+
 test('already-current local fields never receive an older server timestamp', () => {
   const current = { UNIQUE_ID: 'row-1', PRIORITY: '2', HOLDSTOPCODE: '', HOLDSTOPREASON: '', LAST_UPDATED: '2026-10-09T12:02:00.000Z' };
   const fixture = loadConfirmedApplyFixture(current, '10');

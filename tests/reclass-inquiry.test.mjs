@@ -1116,7 +1116,7 @@ test('Reclass client guards recipient selection and retains background drafts un
   const statusStart = html.indexOf('function readReclassDeliveryJobs');
   const statusEnd = html.indexOf('async function postArgosInventoryTransactionPayload', statusStart);
   const status = html.slice(statusStart, statusEnd);
-  assert.ok(submit.indexOf('argosInventoryTransactionState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
+  assert.ok(submit.indexOf('submitState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
   assert.match(submit, /rememberQueuedReclassDelivery/);
   assert.doesNotMatch(submit, /Sending in Background/);
   assert.match(status, /RECLASS_DELIVERY_STORAGE_KEY/);

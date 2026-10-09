@@ -37796,6 +37796,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let evalWorkDraftEditRevision = 0;
         let evalWorkAutoSubmitting = false;
         let evalWorkSubmitInFlight = false;
+        let evalWorkSubmitToken = null;
         let evalWorkAutomaticCompletionPromise = null;
         let evalWorkStatusFilter = 'active';
         let evalWorkAssigneeFilter = 'all';
@@ -38738,6 +38739,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             evalWorkDraftEditRevision = 0;
             evalWorkAutoSubmitting = false;
             evalWorkSubmitInFlight = false;
+            evalWorkSubmitToken = null;
             scheduleRequestRender(0, 0, true);
             return false;
         }
@@ -38750,6 +38752,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             evalWorkEvidenceByOrigin = {};
             evalWorkAutoSubmitting = false;
             evalWorkSubmitInFlight = false;
+            evalWorkSubmitToken = null;
             argosInventoryTransactionState = null;
             resetArgosReclassMultiActionState();
             scheduleRequestRender(0, 0, true);
@@ -38881,15 +38884,24 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function submitEvalWork(button = null, options = {}) {
             const work = getEvalWorkById(activeEvalWorkDetailId);
             if (!work || evalWorkSubmitInFlight) return false;
+            const submitToken = {};
+            evalWorkSubmitToken = submitToken;
+            const submitWorkId = String(work.id || '').trim();
+            const submitDetailId = String(activeEvalWorkDetailId || '').trim();
+            const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
             const automatic = !!(options && options.automatic);
             evalWorkSubmitInFlight = true;
             let inquiry;
             let evidence;
             let evidenceByOrigin;
-            let submitIdentityKey = '';
+            const submitIdentityIsCurrent = () => submitIdentityKey === getArgosReclassLiveEditIdentityKey();
+            const submitContextIsCurrent = () => !!submitIdentityKey
+                && submitIdentityIsCurrent()
+                && evalWorkSubmitToken === submitToken
+                && activeEvalWorkDetailId === submitDetailId
+                && getEvalWorkById(submitWorkId) === work;
             try {
                 inquiry = collectEvalWorkInquiryPayload(work);
-                submitIdentityKey = getArgosReclassLiveEditIdentityKey();
                 evidence = collectEvalWorkEvidence(work);
                 evidenceByOrigin = collectEvalWorkEvidenceByOrigin(work);
                 const resolutionSummary = validateEvalWorkInquiryRowResolutions(work, inquiry);
@@ -38905,14 +38917,16 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const confirmed = await showAppConfirm(`Send all ${resolutionSummary.total} reviewed Item Inquiry rows (${resolutionSummary.done} Done, ${resolutionSummary.noAction} No Action) to ${getEvalWorkCompletionRecipientCopy(work)}?`, { title: 'Send Eval Work', confirmLabel: 'Send' });
                     if (!confirmed) return false;
                 }
-                if (submitIdentityKey !== getArgosReclassLiveEditIdentityKey()) throw new Error('The signed-in account changed. Reopen Eval Work before sending.');
+                if (!submitContextIsCurrent()) return false;
                 if (button) button.disabled = true;
                 persistEvalWorkLocalDraft(work.id, inquiry, evidenceByOrigin || evidence, work.version);
                 const submissionToken = `eval-submit-${work.id}-v${work.version}`;
                 const result = await evalWorkApi('submit', { workId: work.id, expectedVersion: work.version, inquiry, ...(evidenceByOrigin ? { evidenceByOrigin } : { evidence }), submissionToken }, { timeoutMs: 45000, idempotencyKey: submissionToken });
-                Object.assign(work, result.data || {});
+                if (!submitIdentityIsCurrent()) return false;
                 const liveEditRequested = inquiry.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION;
                 const liveEditsRefreshed = !liveEditRequested || await refreshEvalWorkLiveEditsAfterSubmit(submitIdentityKey);
+                if (!submitContextIsCurrent()) return false;
+                Object.assign(work, result.data || {});
                 if (liveEditsRefreshed) {
                     if (evidenceByOrigin) Object.entries(evidenceByOrigin).forEach(([uid, rowEvidence]) => applyEvalWorkEvidenceLocally(work, rowEvidence, uid));
                     else applyEvalWorkEvidenceLocally(work, evidence);
@@ -38929,6 +38943,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 activeEvalWorkDetailId = '';
                 await loadEvalWorkAssignments(true);
             } catch (error) {
+                if (!submitContextIsCurrent()) return false;
                 const code = String(error && error.payload && error.payload.code || '');
                 const rawError = String(error && error.message ? error.message : 'Eval Work could not be sent.');
                 const fallback = /eval_work_report2_completion_recipient_unavailable/i.test(`${code} ${rawError}`)
@@ -38939,9 +38954,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     : fallback;
                 showToast(automatic ? 'Pictures & Specs Required' : 'Send Failed', retryCopy, true);
             } finally {
-                if (button) button.disabled = false;
-                evalWorkSubmitInFlight = false;
-                evalWorkAutoSubmitting = false;
+                if (button && submitContextIsCurrent()) button.disabled = false;
+                if (evalWorkSubmitToken === submitToken) {
+                    evalWorkSubmitToken = null;
+                    evalWorkSubmitInFlight = false;
+                    evalWorkAutoSubmitting = false;
+                }
             }
             return false;
         }
@@ -50121,6 +50139,7 @@ let avTopControlsRenderToken = 0;
         }
 
         function applyConfirmedArgosReclassLiveEdits(result = null, expectedIdentity = '') {
+            if (expectedIdentity && expectedIdentity !== getArgosReclassLiveEditIdentityKey()) return { applied: 0, stale: true };
             let confirmed;
             try {
                 confirmed = window.GncDatabase.confirmedReclassLiveEditsFromResult(result);
@@ -50258,11 +50277,14 @@ let avTopControlsRenderToken = 0;
         async function submitArgosInventoryTransaction(event = null) {
             if (event && typeof event.preventDefault === 'function') event.preventDefault();
             if (!argosInventoryTransactionState || argosInventoryTransactionState.submitting) return false;
+            const submitState = argosInventoryTransactionState;
             const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
+            const submitIdentityIsCurrent = () => submitIdentityKey === getArgosReclassLiveEditIdentityKey();
+            const submitContextIsCurrent = () => argosInventoryTransactionState === submitState && submitIdentityIsCurrent();
             const submitActorUsername = getCurrentReclassDeliveryActor();
-            const submitSourceView = String(argosInventoryTransactionState.sourceView || 'drive');
+            const submitSourceView = String(submitState.sourceView || 'drive');
             const apply = document.getElementById('argos-inventory-transaction-apply');
-            argosInventoryTransactionState.submitting = true;
+            submitState.submitting = true;
             if (apply) {
                 apply.disabled = true;
                 apply.textContent = 'Preparing inquiry...';
@@ -50272,6 +50294,7 @@ let avTopControlsRenderToken = 0;
                     let inquiryPayload = applyArgosInventoryTransactionSourceContext(buildArgosInventoryTransactionPayload());
                     inquiryPayload = await applyArgosInventoryTransactionEmailRecipients(inquiryPayload);
                     if (!inquiryPayload) return false;
+                    if (!submitContextIsCurrent()) return false;
                     if (apply) apply.textContent = 'Queueing...';
                     const inquiryResult = await postArgosInventoryTransactionPayload(inquiryPayload);
                     if (!inquiryResult || inquiryResult.ok === false) {
@@ -50281,10 +50304,12 @@ let avTopControlsRenderToken = 0;
                         throw new Error(getFriendlyBackendErrorMessage(firstNonEmptyValue(inquiryResult && inquiryResult.message, inquiryResult && inquiryResult.error, inquiryResult && inquiryResult.rawResponse, ''), fallback));
                     }
                     const liveEditRequested = inquiryPayload.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION;
+                    rememberQueuedReclassDelivery(inquiryPayload, inquiryResult, submitActorUsername, submitSourceView);
+                    if (!submitIdentityIsCurrent()) return false;
                     const liveEditResult = liveEditRequested
                         ? applyConfirmedArgosReclassLiveEdits(inquiryResult, submitIdentityKey)
                         : null;
-                    rememberQueuedReclassDelivery(inquiryPayload, inquiryResult, submitActorUsername, submitSourceView);
+                    if (!submitContextIsCurrent()) return false;
                     const unavailableUsers = Array.isArray(inquiryResult.unavailableUsernames)
                         ? inquiryResult.unavailableUsernames.map((value) => String(value || '').trim()).filter(Boolean)
                         : [];
@@ -50336,6 +50361,7 @@ let avTopControlsRenderToken = 0;
                 const currentViewId = getCurrentVisibleViewId();
                 if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
             } catch (error) {
+                if (!submitContextIsCurrent()) return false;
                 if (window.__gncOpsPilot && typeof window.__gncOpsPilot.captureFailure === 'function') {
                     window.__gncOpsPilot.captureFailure('commit', error);
                 }
@@ -50343,10 +50369,10 @@ let avTopControlsRenderToken = 0;
                 const message = getFriendlyBackendErrorMessage(error, priorityReportOnly ? 'Priority Change report did not send.' : 'Reclass inquiry did not send. Your draft is still open so you can retry.');
                 showToast('Email Error', message, true);
             } finally {
-                if (argosInventoryTransactionState) argosInventoryTransactionState.submitting = false;
-                if (apply) {
+                submitState.submitting = false;
+                if (apply && submitContextIsCurrent() && document.getElementById('argos-inventory-transaction-apply') === apply) {
                     apply.disabled = false;
-                    setArgosInventoryTransactionAction(argosInventoryTransactionState && argosInventoryTransactionState.action || 'reclass');
+                    setArgosInventoryTransactionAction(submitState.action || 'reclass');
                 }
             }
             return false;
@@ -137648,6 +137674,10 @@ C.14.043 C.15.000
             if (!canViewManagerSeasonPriority()) return false;
             const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
             const state = getManagerSeasonPriorityState();
+            const submitIdentityIsCurrent = () => submitIdentityKey === getArgosReclassLiveEditIdentityKey();
+            const submitContextIsCurrent = () => state === managerSeasonPriorityState
+                && state.account === normalizeSessionIdentity(currentUser)
+                && submitIdentityIsCurrent();
             const row = state.rows.find(item => item.sourceUid === uid);
             if (!row || state.loading || state.error || state.pending.has(uid)) return false;
             const existing = getManagerSeasonPriorityRequest(row, state);
@@ -137660,9 +137690,10 @@ C.14.043 C.15.000
             scheduleManagersRender(true);
             try {
                 const result = await driveReclassApi('season_priority_submit', { ...request, idempotencyToken: state.tokens.get(key) }, { timeoutMs: 25000 });
-                if (state !== managerSeasonPriorityState || state.account !== normalizeSessionIdentity(currentUser)) return false;
+                if (!submitIdentityIsCurrent()) return false;
                 if (!result?.ok) throw new Error(result?.error || 'The request was not accepted. Refresh and review the current priorities.');
                 const liveEditResult = applyConfirmedArgosReclassLiveEdits(result, submitIdentityKey);
+                if (!submitContextIsCurrent()) return false;
                 // Keep the token for uncertain outcomes only. A later, fulfilled rotation may be requested anew.
                 state.tokens.delete(key);
                 state.requests = [result, ...state.requests.filter(item => item.eventId !== result.eventId)];
@@ -137672,12 +137703,12 @@ C.14.043 C.15.000
                 if (isManagerSeasonPriorityVisible(state)) loadManagerSeasonPriority(true);
                 else state.needsRefresh = true;
             } catch (error) {
-                if (state === managerSeasonPriorityState && state.account === normalizeSessionIdentity(currentUser)) {
+                if (submitContextIsCurrent()) {
                     state.error = `${String(error?.message || 'The request could not be confirmed.')} Refresh status before retrying; an accepted request will not be duplicated.`;
                 }
             } finally {
                 state.pending.delete(uid);
-                if (isManagerSeasonPriorityVisible(state)) scheduleManagersRender(true);
+                if (submitContextIsCurrent() && isManagerSeasonPriorityVisible(state)) scheduleManagersRender(true);
             }
             return false;
         }
