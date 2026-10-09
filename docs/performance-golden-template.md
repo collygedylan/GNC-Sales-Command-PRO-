@@ -127,6 +127,14 @@ to finish its initial restore. The login trace must explicitly report the
 expected no-session restore failure. A missing trace, an active restore, or a
 successful/unexpected restore keeps the fixture blocked and eventually fails;
 this prevents startup work from racing the measured Home and route requests.
+The fixture also observes the existing 2.2-second background login validation
+from scheduling through completion of its asynchronous callback. Without that
+pending state, the same profile refresh can land in baseline cold entry and
+candidate warm entry even when total requests and response bytes are identical.
+Readiness waits for the original callback to finish; its delay, handle, arguments,
+authorization checks, response and scheduling behavior remain unchanged. Those
+requests remain counted in startup and full-context totals. A missing scheduler
+contract or unfinished validation fails readiness instead of dropping a read.
 Read counts include every API request started within the measurement window.
 Payload bytes come from those same requests after bounded completion; later
 background responses cannot enter the window. Deliberate browser cancellations
