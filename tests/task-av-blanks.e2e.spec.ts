@@ -399,7 +399,8 @@ test('ordinary compact AV cards stay within the row budget', {"tag":["@task-av-b
         expect(compact.height, `${width}px ${hasPhoto ? 'photo' : 'empty'} ${source || 'standard'} card height`)
           .toBeLessThanOrEqual(width <= 900 ? (hasPhoto ? 460 : 380) : (hasPhoto ? 440 : 390));
         expect(compact.thumbnail.width).toBeCloseTo(width <= 900 ? 64 : 88, 0);
-        expect(compact.thumbnail.height).toBeCloseTo(width <= 900 ? 64 : 88, 0);
+        // Compact AV matches Drive's 64×62 mobile media frame.
+        expect(compact.thumbnail.height).toBeCloseTo(width <= 900 ? 62 : 88, 0);
         expect(compact.besideHeader).toBe(true);
         expect(compact.phoneDetailsFullWidth).toBe(true);
         if (hasPhoto && width <= 900) {

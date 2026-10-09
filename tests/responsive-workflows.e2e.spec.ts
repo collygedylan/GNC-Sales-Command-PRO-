@@ -130,12 +130,15 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         const restrictedLayout = await card.evaluate((element) => ({
           overflow: element.scrollWidth - element.clientWidth,
           notes: element.querySelectorAll('.app-drive-card-notes').length,
-          evidenceDisplay: getComputedStyle(element.querySelector('.app-drive-card-evidence')!).display,
+          evidenceVisible: (() => {
+            const evidence = element.querySelector('.app-drive-card-evidence');
+            return !!evidence && getComputedStyle(evidence).display !== 'none';
+          })(),
           gridAreas: getComputedStyle(element.querySelector('.app-drive-card-grid')!).gridTemplateAreas,
         }));
         expect(restrictedLayout.overflow).toBeLessThanOrEqual(1);
         expect(restrictedLayout.notes).toBe(0);
-        expect(restrictedLayout.evidenceDisplay).toBe('none');
+        expect(restrictedLayout.evidenceVisible).toBe(false);
         expect(restrictedLayout.gridAreas).not.toContain('reclass');
 
         await renderSharedHlDriveLayoutCard(page);
