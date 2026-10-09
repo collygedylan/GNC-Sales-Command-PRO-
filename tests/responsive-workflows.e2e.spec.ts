@@ -2340,6 +2340,13 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
       LOCATIONPTN1: '', LOCATIONNOTE: '', SOURCE_TABLE: 'ph_master_inventory',
     }));
     (window as any).processAndLoadData({ data: rows, _fromCache: true });
+    // These synthetic rows stand in for a completed full master projection;
+    // the inquiry editor correctly defers opening while only a partial/cache
+    // projection is available.
+    const masterState = (window as any).getDatasetState('master');
+    masterState.initialLoaded = masterState.fullLoaded = true;
+    masterState.fieldCoverage = 'full';
+    masterState.rowCompleteness = 'complete';
     (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: 27 });
     (window as any).openArgosInventoryTransactionModal('mobile-density-0', 'reclass', '');
   });
