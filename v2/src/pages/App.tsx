@@ -57,6 +57,7 @@ import { CompanyDirectory } from '../components/CompanyDirectory';
 import { DeferredView } from '../components/DeferredView';
 import { createDeferredModule } from '../utils/deferredModule';
 import { createDriveInventoryPrefetch, type DriveInventoryPrefetch } from '../services/driveInventoryPrefetch';
+import { createDriveRoutePreparation } from '../services/driveRoutePreparation';
 import { defaultRequestColumnKeys, requestGridColumns, type RequestColumnKey, type RequestDisplayMode as DisplayMode, type RequestTabId as TabId } from './requestQueueConfig';
 
 const requestQueueModule = createDeferredModule(() => import('./RequestQueue'));
@@ -215,22 +216,31 @@ export function App() {
   const navRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
-  const driveInitialPageRef = useRef<DriveInventoryPrefetch | null>(null);
+  const viewRef = useRef(view);
+  const [driveRoutePreparation] = useState(() => createDriveRoutePreparation<DriveInventoryPrefetch>({
+    preloadModule: () => driveInventoryModule.preload(),
+    createPrefetch: createDriveInventoryPrefetch,
+    publish: setDriveInitialPage
+  }));
   const cancelDriveInitialPage = useCallback(() => {
-    driveInitialPageRef.current?.abort();
-    driveInitialPageRef.current = null;
-    setDriveInitialPage(null);
-  }, []);
+    driveRoutePreparation.cancel();
+  }, [driveRoutePreparation]);
+  const prepareDriveInitialPage = useCallback(() => {
+    driveRoutePreparation.prepare(SANDBOX_ONLY || demoMode || Boolean(session?.token));
+  }, [demoMode, driveRoutePreparation, session?.token]);
 
   useEffect(() => () => {
-    driveInitialPageRef.current?.abort();
-    driveInitialPageRef.current = null;
-  }, []);
+    driveRoutePreparation.cancel();
+  }, [driveRoutePreparation]);
 
   useEffect(() => {
     const onHashChange = () => {
       const nextView = viewFromHash(window.location.hash);
-      if (nextView !== 'drive') cancelDriveInitialPage();
+      const currentView = viewRef.current;
+      if (nextView === 'drive' && currentView !== 'drive') prepareDriveInitialPage();
+      else if (nextView !== 'drive') cancelDriveInitialPage();
+      if (nextView === 'request' && currentView !== 'request') requestQueueModule.preload();
+      viewRef.current = nextView;
       setView(nextView);
       setDetailRow(null);
       setModuleDetail(null);
@@ -240,7 +250,7 @@ export function App() {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, [cancelDriveInitialPage]);
+  }, [cancelDriveInitialPage, prepareDriveInitialPage]);
 
   useEffect(() => {
     cancelDriveInitialPage();
@@ -339,18 +349,13 @@ export function App() {
     // update instead of waiting for the lazy boundary's layout transition.
     if (next === 'request') requestQueueModule.preload();
     if (next === 'drive') {
-      driveInventoryModule.preload();
       const enteringDrive = view !== 'drive' || Boolean(detailRow || moduleDetail);
-      if (enteringDrive) {
-        cancelDriveInitialPage();
-        const prefetch = createDriveInventoryPrefetch();
-        driveInitialPageRef.current = prefetch;
-        setDriveInitialPage(prefetch);
-      }
+      if (enteringDrive) prepareDriveInitialPage();
     } else {
       cancelDriveInitialPage();
     }
     if (window.location.hash !== `#${next}`) window.location.hash = next;
+    viewRef.current = next;
     setView(next);
     setDetailRow(null);
     setModuleDetail(null);

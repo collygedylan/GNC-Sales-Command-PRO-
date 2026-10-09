@@ -36042,12 +36042,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         let completedPendingRequestRender = null;
+        let requestLocationCollator = null;
+
+        function compareRequestLocationCodes(left, right) {
+            if (!requestLocationCollator) requestLocationCollator = new Intl.Collator(undefined, { numeric: true });
+            return requestLocationCollator.compare(String(left || ''), String(right || ''));
+        }
 
         function buildPendingRequestRenderPlan(items) {
             const crumbText = 'All Request Que';
             const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
-            pendingItems.sort((a, b) => String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true }));
+            pendingItems.sort((a, b) => compareRequestLocationCodes(a.LOCATIONCODE, b.LOCATIONCODE));
             const renderKey = buildRequestChunkRenderKey('request:pending', crumbText, pendingItems);
             const browsePage = getClientBrowsePage('request', renderKey, pendingItems);
             return {

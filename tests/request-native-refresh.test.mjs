@@ -147,6 +147,8 @@ function pendingRequestReuseFixture() {
   };
   vm.createContext(ctx);
   vm.runInContext([
+    'let requestLocationCollator = null;',
+    extractFunction(html, 'compareRequestLocationCodes', 'function buildPendingRequestRenderPlan('),
     extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot('),
     extractFunction(html, 'getRequestPendingReuseContextSnapshot', 'function rememberCompletedPendingRequestRender('),
     extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome()'),

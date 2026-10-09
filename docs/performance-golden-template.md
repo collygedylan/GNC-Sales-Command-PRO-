@@ -52,6 +52,8 @@ remain forbidden.
 - Keep callbacks stable and memoize measured list boundaries. Scroll decoration
   belongs on the shell element, not in global React state. Tests must show that
   unrelated menu/toast/scroll updates do not rerender unchanged rows.
+- Route clicks and browser hash/history navigation share the selected route's
+  chunk and first-page preparation; leaving Drive aborts any unfinished prefetch.
 - In the live app, schedule background refresh reasons independently so each
   keeps its own typing and interaction deadline. Each callback resolves the
   current visible and dirty views when it runs, preserves dirty state for hidden
