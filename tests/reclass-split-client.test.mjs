@@ -127,3 +127,105 @@ test('move renderer escapes drafts and shows accessible per-split controls and s
   assert.match(output, /&lt;script&gt;bad&lt;\/script&gt;/); assert.doesNotMatch(output, /<script>/);
   assert.doesNotMatch(output, /<option value="F1"/);
 });
+
+function holdTargetFixture(rows, sourceUid = '', currentUsername = 'dylan_collyge', { profileUsername = currentUsername, displayUsername = '' } = {}) {
+  const names = ['normalizeArgosReclassSalesYear', 'getArgosReclassScopeSettings', 'isArgosReclassHoldFanoutActorHint', 'isArgosReclassHoldScopeEntry',
+    'getArgosReclassHoldScopeEntries', 'getArgosReclassHoldTargetEntries', 'getArgosReclassHoldProposalTargetEntries'];
+  const currentProposal = sourceUid ? { action: 'hold', sourceUid } : null;
+  const ctx = {
+    argosInventoryTransactionState: { inquiryModel: { locationRows: rows } },
+    argosReclassMultiActionState: { holdStopProposals: currentProposal ? { hold: currentProposal } : {} },
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
+    AV_OPTION_EVAL_MANAGER_USERS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly', 'mitch_kaiser']),
+    currentUser: currentUsername, currentUserDisplay: displayUsername,
+    nativeAuthProfile: profileUsername ? { username: profileUsername } : null,
+    normalizeEvalAccessUserKey: value => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, ''),
+    getArgosReclassV3HoldProposal: () => currentProposal,
+    getReclassActionWorkflowV5Config: action => ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(action) ? ({
+      kind: ['take_off_hold', 'off_stop_ship'].includes(action) ? 'hold_off' : 'hold_on',
+      code: ['stop_ship', 'off_stop_ship'].includes(action) ? 'S' : 'H',
+    }) : null,
+    getConfiguredCurrentSeasonCode: () => 'F1',
+    getConfiguredCurrentSalesYearCode: () => 2026,
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+  };
+  vm.createContext(ctx);
+  vm.runInContext(names.map(source).join('\n'), ctx);
+  return ctx;
+}
+
+test('future-season and future-year hold origins remain selectable as selected-row-only requests', () => {
+  const current = { unique_id: 'current', values: { season: 'F1', saleyear: '2025', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'current' } };
+  const futureSeason = { unique_id: 'future-season', values: { season: 'S1', saleyear: '2025', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'future-season' } };
+  const futureYear = { unique_id: 'future-year', values: { season: 'F1', saleyear: '2027', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'future-year' } };
+  const futureCodedSibling = { unique_id: 'future-coded-sibling', values: { season: 'S1', saleyear: '2027', holdstopcode: 'H' }, sourceRow: { UNIQUE_ID: 'future-coded-sibling' } };
+  const ctx = holdTargetFixture([current, futureSeason, futureYear, futureCodedSibling]);
+
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('hold', 'future-season')), [futureSeason]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('stop_ship', 'future-year')), [futureYear]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'future-coded-sibling')), [futureCodedSibling]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'future-year')), [],
+    'a coded but unrelated future row does not make Hold Off eligible for an uncoded origin');
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('unsupported', 'future-year')), [], 'unknown actions have no targets');
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'missing-source')), [], 'missing origins have no targets');
+  assert.deepEqual(plain(ctx.getArgosReclassHoldProposalTargetEntries('hold')), [],
+    'no proposal means no effective targets');
+  assert.match(source('buildArgosReclassActionFieldsHtml'), /getArgosReclassHoldTargetEntries\(action, uid\)/,
+    'the row action buttons use the selected origin eligibility helper');
+});
+
+test('current-scope hold origins preserve manager fanout and Hold Off coded-row eligibility', () => {
+  const origin = { unique_id: 'origin', values: { season: 'F1', saleyear: '2026', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'origin' } };
+  const olderCoded = { unique_id: 'older-coded', values: { season: 'F1', saleyear: '2025', holdstopcode: 'H' }, sourceRow: { UNIQUE_ID: 'older-coded' } };
+  const olderUncoded = { unique_id: 'older-uncoded', values: { season: 'F1', saleyear: '2024', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'older-uncoded' } };
+  const futureCoded = { unique_id: 'future-coded', values: { season: 'F1', saleyear: '2027', holdstopcode: 'H' }, sourceRow: { UNIQUE_ID: 'future-coded' } };
+  const ctx = holdTargetFixture([origin, olderCoded, olderUncoded, futureCoded], 'origin');
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('hold', 'origin')), [origin, olderCoded, olderUncoded]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'origin')), [olderCoded]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldProposalTargetEntries('hold')), [origin, olderCoded, olderUncoded]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'future-coded')), [futureCoded],
+    'future origin can clear its own matching code but cannot fan out to current or sibling rows');
+});
+
+test('ordinary users preview selected-row-only scope and cannot infer Hold Off from unrelated sibling codes', () => {
+  const ordinaryOrigin = { unique_id: 'ordinary-origin', values: { season: 'F1', saleyear: '2026', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'ordinary-origin' } };
+  const codedSibling = { unique_id: 'coded-sibling', values: { season: 'F1', saleyear: '2025', holdstopcode: 'H' }, sourceRow: { UNIQUE_ID: 'coded-sibling' } };
+  const ctx = holdTargetFixture([ordinaryOrigin, codedSibling], 'ordinary-origin', 'ordinary_user');
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('hold', 'ordinary-origin')), [ordinaryOrigin]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldProposalTargetEntries('hold')), [ordinaryOrigin]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'ordinary-origin')), [],
+    'a sibling code does not imply fanout or enable a no-op for an ordinary actor');
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'coded-sibling')), [codedSibling],
+    'the ordinary actor may still target the selected row that actually has H');
+});
+
+test('fanout hint uses authenticated profile username, not display name or stale shell username', () => {
+  const origin = { unique_id: 'origin', values: { season: 'F1', saleyear: '2026', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'origin' } };
+  const sibling = { unique_id: 'sibling', values: { season: 'F1', saleyear: '2025', holdstopcode: '' }, sourceRow: { UNIQUE_ID: 'sibling' } };
+  const displayNameOnly = holdTargetFixture([origin, sibling], '', 'ordinary_user', { profileUsername: 'ordinary_user', displayUsername: 'Dylan Collyge' });
+  assert.deepEqual(plain(displayNameOnly.getArgosReclassHoldTargetEntries('hold', 'origin')), [origin],
+    'a display-name match does not grant the UI fanout hint');
+  const profileWins = holdTargetFixture([origin, sibling], '', 'ordinary_user', { profileUsername: 'dylan_collyge', displayUsername: 'Ordinary User' });
+  assert.deepEqual(plain(profileWins.getArgosReclassHoldTargetEntries('hold', 'origin')), [origin, sibling],
+    'the authenticated profile username is authoritative over the shell username');
+});
+
+test('Hold Off and Stop Off recognize composite SQL H/S codes', () => {
+  const codedOrigin = { unique_id: 'composite-origin', values: { season: 'F1', saleyear: '2027', holdstopcode: 'HS' }, sourceRow: { UNIQUE_ID: 'composite-origin' } };
+  const ctx = holdTargetFixture([codedOrigin], 'composite-origin', 'ordinary_user');
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('take_off_hold', 'composite-origin')), [codedOrigin]);
+  assert.deepEqual(plain(ctx.getArgosReclassHoldTargetEntries('off_stop_ship', 'composite-origin')), [codedOrigin]);
+  const scopeSource = source('getArgosReclassHoldScopeEntries');
+  assert.match(scopeSource, /toUpperCase\(\)\.includes\(rule\.code\)/,
+    'current manager fanout preview matches the SQL helper’s H/S token removal');
+});
+
+test('Hold/Stop action copy describes the selected origin and server-authorized scope', () => {
+  const panelSource = source('buildArgosReclassActionFieldsHtml');
+  const proposalSource = source('buildArgosReclassV3ProposalHtml');
+  assert.match(panelSource, /starts from the selected row; the server determines any authorized matching-row scope/);
+  assert.doesNotMatch(panelSource, /inquiry-wide scope/);
+  assert.match(proposalSource, /The selected row is the origin\. The server determines whether matching rows/);
+  assert.match(proposalSource, /matching hold code will be removed\. Its reason clears only if no hold\/stop code remains/);
+  assert.doesNotMatch(proposalSource, /apply to every eligible row/);
+});

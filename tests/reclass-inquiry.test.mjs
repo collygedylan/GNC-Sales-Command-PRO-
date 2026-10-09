@@ -1063,7 +1063,7 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
   const collectorStart = html.indexOf('function collectArgosReclassV3Draft');
   const collectorEnd = html.indexOf('function buildArgosInventoryTransactionPayload', collectorStart);
   assert.match(html.slice(collectorStart, collectorEnd), /globalHoldProposal\.reason \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
-  assert.match(html, /The code and reason appear in the PDF and apply to every eligible row in the configured season scope/);
+  assert.match(html, /The selected row is the origin\. The server determines whether matching rows in the configured season\/year scope are also affected/);
 });
 
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {

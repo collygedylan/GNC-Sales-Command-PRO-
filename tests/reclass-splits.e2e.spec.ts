@@ -21,12 +21,15 @@ function confirmedEvidence(uid: string, lastUpdated: string) {
 
 // The real editor/submit handlers run against intercepted requests. Unknown
 // writes remain rejected by the existing fixture; no real inventory/email is used.
-async function fixture(page: Page, baseURL: string, project: string) {
+async function fixture(page: Page, baseURL: string, project: string,
+  scope: { season: string; salesYear: string } = { season: 'F1', salesYear: '27' }) {
+  const lotcode = `${scope.salesYear}.${scope.season}`;
   // The backend fixture must return the same row as the mounted Drive card.
   // Background inventory hydration can replace manually mounted rows.
   const control = await installHlOrderFixture(page, baseURL, { role: 'ADMIN', username: 'dylan_collyge',
     master: [hlMaster('drive-layout-synthetic-1-no-photo', { itemcode: 'LAYOUT.001-NO-PHOTO',
-      commonname: 'Synthetic Drive Card', contsize: '#3', locationcode: 'A.01.001', lotcode: '27.F1',
+      commonname: 'Synthetic Drive Card', contsize: '#3', locationcode: 'A.01.001', lotcode,
+      season: scope.season, saleyear: scope.salesYear,
       ptronhand: '25', ptrreviewed: '2', ptravailable: '13', priority: '2', holdstopcode: '',
       photo_link: 'https://example.test/old.jpg', photo_name: 'old.jpg', spec: 'old spec', caliper: 'old caliper',
       match: 'old match', av_note: 'old AV note', pic_note: 'old pick', sales_note: 'old sales', last_updated: '2026-10-08T12:00:00Z' })],
@@ -53,11 +56,14 @@ async function fixture(page: Page, baseURL: string, project: string) {
   });
   const mount = async () => {
     await renderDriveLayoutCard(page, { theme: 'light', knownQuantities: true });
-    await page.evaluate(() => window.eval(`(() => {
-      fullInventory[0].PTRONHAND = 25; fullInventory[0].SEASON = 'F1'; fullInventory[0].SALEYEAR = '27';
+    await page.evaluate(values => window.eval(`(() => {
+      fullInventory[0].PTRONHAND = 25;
+      fullInventory[0].SEASON = ${JSON.stringify(values.season)};
+      fullInventory[0].SALEYEAR = ${JSON.stringify(values.salesYear)};
+      fullInventory[0].LOTCODE = ${JSON.stringify(values.lotcode)};
       fullInventory[0].LAST_UPDATED = '2026-10-08T12:00:00Z'; fullInventory[0].last_updated = '2026-10-08T12:00:00Z';
       rebuildMasterInventoryIndexes();
-    })()`));
+    })()`), { ...scope, lotcode });
   };
   await mount();
   const open = async () => {
@@ -183,6 +189,37 @@ test('V6 confirms priority and Hold locally only after the server returns the li
   expect(queued[0].payload.workflowPolicyVersion).toBe('reclass-action-workflow-v6-smart-shield-20261009');
   expect(f.control.blockedMutations).toEqual([]);
 });
+
+for (const scope of [{ season: 'S1', salesYear: '27' }, { season: 'F1', salesYear: '28' }]) {
+  test(`future row ${scope.salesYear}.${scope.season} can submit a selected-row Hold inquiry`, { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
+    const f = await fixture(page, baseURL!, info.project.name, scope);
+    const row = await f.open();
+    await expect(row.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
+    await expect(row.locator('[data-reclass-v3-action="stop_ship"]')).toBeEnabled();
+    await row.locator('[data-reclass-v3-action="hold"]').click();
+    await row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Quality Review');
+    f.setCreateReply(() => {
+      const reply = confirmedLiveEditResponse('2');
+      Object.assign(reply.liveEdits[0].evidence, { lotcode: `${scope.salesYear}.${scope.season}` });
+      return reply;
+    });
+    await page.locator('#argos-inventory-transaction-apply').click();
+    await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
+    await expect(page.locator('#toast-notification')).toContainText('Live edits are confirmed');
+    expect(f.calls).toHaveLength(1);
+    expect(f.calls[0].workflowPolicyVersion).toBe('reclass-action-workflow-v6-smart-shield-20261009');
+    expect(f.calls[0].transaction.holdStopProposals).toEqual([
+      { action: 'hold', reason: 'quality review', sourceUid: 'drive-layout-synthetic-1-no-photo' },
+    ]);
+    expect(f.calls[0].rowOverlays).toHaveLength(1);
+    expect(f.calls[0].rowOverlays[0].expected).toMatchObject({ priority: '2', holdstopcode: '', holdstopreason: '' });
+    expect(await page.evaluate(() => window.eval(`(() => ({
+      quantity: Number(fullInventory[0].PTRONHAND), season: fullInventory[0].SEASON, year: fullInventory[0].SALEYEAR,
+      hold: fullInventory[0].HOLDSTOPCODE, reason: fullInventory[0].HOLDSTOPREASON
+    }))()`))).toEqual({ quantity: 25, season: scope.season, year: scope.salesYear, hold: 'H', reason: 'quality review' });
+    expect(f.control.blockedMutations).toEqual([]);
+  });
+}
 
 test('rejected and stale V6 replies do not overwrite local inventory or discard the inquiry draft', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name); await f.open();

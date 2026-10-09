@@ -47838,7 +47838,18 @@ let avTopControlsRenderToken = 0;
             return { season, salesYear };
         }
 
+        function isArgosReclassHoldFanoutActorHint() {
+            const allowedUsers = typeof AV_OPTION_EVAL_MANAGER_USERS !== 'undefined' && AV_OPTION_EVAL_MANAGER_USERS
+                && typeof AV_OPTION_EVAL_MANAGER_USERS.has === 'function'
+                ? AV_OPTION_EVAL_MANAGER_USERS : null;
+            if (!allowedUsers) return false;
+            const profileUsername = String(nativeAuthProfile && nativeAuthProfile.username || '').trim();
+            const actorUsername = profileUsername || String(currentUser || '').trim();
+            return !!actorUsername && allowedUsers.has(normalizeEvalAccessUserKey(actorUsername));
+        }
+
         function isArgosReclassHoldScopeEntry(entry = null) {
+            if (!isArgosReclassHoldFanoutActorHint()) return false;
             const values = entry && entry.values && typeof entry.values === 'object' ? entry.values : {};
             const sourceRow = entry && entry.sourceRow && typeof entry.sourceRow === 'object' ? entry.sourceRow : {};
             const settings = getArgosReclassScopeSettings();
@@ -47855,8 +47866,28 @@ let avTopControlsRenderToken = 0;
             return rows.filter((entry) => {
                 if (!isArgosReclassHoldScopeEntry(entry)) return false;
                 if (!rule || rule.kind !== 'hold_off') return true;
-                return String(entry && entry.values && entry.values.holdstopcode || '').trim().toUpperCase() === rule.code;
+                return String(entry && entry.values && entry.values.holdstopcode || '').trim().toUpperCase().includes(rule.code);
             });
+        }
+
+        function getArgosReclassHoldTargetEntries(action = '', sourceUid = '') {
+            const normalized = String(action || '').trim().toLowerCase();
+            if (!RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized)) return [];
+            const sourceKey = String(sourceUid || '').trim();
+            const model = argosInventoryTransactionState && argosInventoryTransactionState.inquiryModel;
+            const rows = model && Array.isArray(model.locationRows) ? model.locationRows : [];
+            const source = rows.find((entry) => String(entry && entry.unique_id || '').trim() === sourceKey);
+            if (!sourceKey || !source || !source.sourceRow || !getReclassActionWorkflowV5Config(normalized)) return [];
+            if (isArgosReclassHoldScopeEntry(source)) return getArgosReclassHoldScopeEntries(normalized);
+            const rule = getReclassActionWorkflowV5Config(normalized);
+            if (rule.kind === 'hold_off'
+                && !String(source.values && source.values.holdstopcode || '').trim().toUpperCase().includes(rule.code)) return [];
+            return [source];
+        }
+
+        function getArgosReclassHoldProposalTargetEntries(action = '') {
+            const proposal = getArgosReclassV3HoldProposal();
+            return proposal ? getArgosReclassHoldTargetEntries(action, proposal.sourceUid) : [];
         }
 
         function getArgosReclassRowProposalMap(uid = '', create = false) {
@@ -48255,7 +48286,7 @@ let avTopControlsRenderToken = 0;
                     if (globalHoldProposal && globalHoldProposal.action !== normalized) {
                         const conflictingRule = getReclassActionWorkflowV2Config(globalHoldProposal.action);
                         const hasEnteredData = !!String(globalHoldProposal.reason || '').trim();
-                        if (!window.confirm(`Replace ${conflictingRule.label} with ${rule.label} for the complete Item Inquiry${hasEnteredData ? ' and discard its entered reason' : ''}?`)) return false;
+                        if (!window.confirm(`Replace ${conflictingRule.label} with ${rule.label} for this selected row and any server-authorized matching rows${hasEnteredData ? ' and discard its entered reason' : ''}?`)) return false;
                     }
                     argosReclassMultiActionState.holdStopProposals = {
                         [normalized]: { action: normalized, reason: '', sourceUid: uid }
@@ -48326,10 +48357,10 @@ let avTopControlsRenderToken = 0;
             if (rule.kind === 'hold_on') {
                 const lowerReason = String(proposal.reason || '').toLowerCase();
                 if (proposal.reason !== lowerReason) proposal.reason = lowerReason;
-                return `<div class="argos-reclass-action-proposal"><label><span>Hold code</span><input class="argos-reclass-row-input" value="${escapeHtml(rule.code)}" readonly aria-label="Hold code"></label><label><span>Hold reason</span><textarea class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="reason" oninput="return handleArgosReclassV3ProposalInput(this)" placeholder="Required reason">${escapeHtml(lowerReason)}</textarea></label><small>The code and reason appear in the PDF and apply to every eligible row in the configured season scope.</small></div>`;
+                return `<div class="argos-reclass-action-proposal"><label><span>Hold code</span><input class="argos-reclass-row-input" value="${escapeHtml(rule.code)}" readonly aria-label="Hold code"></label><label><span>Hold reason</span><textarea class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="reason" oninput="return handleArgosReclassV3ProposalInput(this)" placeholder="Required reason">${escapeHtml(lowerReason)}</textarea></label><small>The selected row is the origin. The server determines whether matching rows in the configured season/year scope are also affected.</small></div>`;
             }
             if (rule.kind === 'hold_off') {
-                return `<div class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)}</span><strong>Hold code and hold reason will be cleared.</strong><small>The request applies to every eligible coded row in the configured season scope.</small></div>`;
+                return `<div class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)}</span><strong>The matching hold code will be removed. Its reason clears only if no hold/stop code remains.</strong><small>The selected row is the origin. The server determines whether matching rows in the configured season/year scope are also affected.</small></div>`;
             }
             if (rule.kind === 'priority') {
                 return `<label class="argos-reclass-action-proposal"><span>Priority Change</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" max="99" step="1" value="${escapeHtml(proposal.priority || '')}" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="priority" oninput="return handleArgosReclassV3ProposalInput(this)"><small>Enter 1–99, or clear the field to remove Priority.</small></label>`;
@@ -48383,9 +48414,10 @@ let avTopControlsRenderToken = 0;
             const moveUpSelected = hasArgosReclassMoveUpProposal();
             const buttons = RECLASS_ACTION_WORKFLOW_V5_ORDER.map((action) => {
                 const rule = getReclassActionWorkflowV5Config(action);
-                const scopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldScopeEntries(action) : [];
+                const scopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldTargetEntries(action, uid) : [];
+                const proposalScopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldProposalTargetEntries(action) : [];
                 const active = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action)
-                    ? !!(globalHoldProposal && globalHoldProposal.action === action && (String(globalHoldProposal.sourceUid || '') === uid || scopeEntries.some((candidate) => String(candidate && candidate.unique_id || '') === uid)))
+                    ? !!(globalHoldProposal && globalHoldProposal.action === action && (String(globalHoldProposal.sourceUid || '') === uid || proposalScopeEntries.some((candidate) => String(candidate && candidate.unique_id || '') === uid)))
                     : !!getArgosReclassV3Proposal(uid, action);
                 let eligible = true;
                 let title = '';
@@ -48419,7 +48451,7 @@ let avTopControlsRenderToken = 0;
             const resolutionHtml = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
                 ? `<section class="eval-work-row-resolution"><div><strong>Finish this row</strong><small>Use Mark Done after choosing an action or changing a location detail, or No Action when nothing needs to change. The final row automatically sends the PDF.</small></div><div class="eval-work-row-resolution-actions"><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="done" aria-pressed="${resolution === 'done' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'done')"><i class="ph-bold ph-check-circle"></i> Mark Done</button><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="no_action" aria-pressed="${resolution === 'no_action' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'no_action')"><i class="ph-bold ph-minus-circle"></i> No Action</button></div></section>`
                 : '';
-            return `<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span>${mobileEditor ? '' : `<small>Choose an action to show its request fields. Hold / Stop uses the inquiry-wide scope above (${escapeHtml(scopeCopy)}).</small>`}</div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${locationDetailsHtml}${resolutionHtml}`;
+            return `<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span>${mobileEditor ? '' : `<small>Choose an action to show its request fields. Hold / Stop starts from the selected row; the server determines any authorized matching-row scope (${escapeHtml(scopeCopy)}).</small>`}</div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${locationDetailsHtml}${resolutionHtml}`;
         }
 
         function buildArgosReclassRowFieldsHtml(entry = null) {
