@@ -97,17 +97,25 @@ insert into public.profiles(id, username, display_name, role, must_change_passwo
 values ('961b0a0f-11a6-4db5-b066-582f772ab8e7', 'nelly_aguilar', 'Nelly (synthetic CI)', 'Admin', false);
 
 -- Seed the smallest valid audit policy using the archived access-control seed
--- contract: one module permission, one scoped action, and matching Admin grants.
+-- contract, plus historical protected-Reclass actions referenced by later
+-- migrations. These catalog rows exist only in the guarded local workspace.
 insert into private.app_access_permissions
   (permission_key, permission_kind, module_key, label, description, scope_options, sort_order, active)
 values
   ('module.drive.view', 'module', 'drive', 'Drive', 'Synthetic canonical replay permission.', '{}'::text[], 100, true),
+  -- Exact catalog metadata from the archived access-control seed. Visibility
+  -- is granted only by each behavior test's explicit actor override.
+  ('module.managers.view', 'module', 'managers', 'Managers', 'Open Managers.', '{}'::text[], 190, true),
   ('request.view_queue', 'action', 'request', 'View Queue', 'Synthetic canonical replay permission.',
     array['own','assigned','division','global']::text[], 1000, true),
   -- Exact permission metadata from the archived protected Drive reclass seed.
   ('drive.reclass.submit', 'action', 'drive', 'Submit Reclass inquiry',
     'Managers may submit any Drive row; evaluators are limited to their authoritative assignments.',
-    array['assigned','global']::text[], 614, true);
+    array['assigned','global']::text[], 614, true),
+  -- Exact metadata from 20260922233000_manager_season_priority_inquiry_v1.sql.
+  ('managers.season_priority.submit', 'action', 'managers', 'Request Season Priority change',
+    'Create a protected Reclass inquiry that rotates an eligible Season Sales Notes item to Priority 1.',
+    array['global']::text[], 616, true);
 do $audit_policy$
 declare v_policy_id bigint;
 begin
@@ -123,6 +131,12 @@ begin
   values (v_policy_id, 'ADMIN', 'module.drive.view', true, null),
          (v_policy_id, 'ADMIN', 'request.view_queue', true, 'global'),
          (v_policy_id, 'ADMIN', 'drive.reclass.submit', true, 'global');
+
+  -- Preserve the archived Manager action's three permitted roles, without
+  -- adding module visibility or granting this action to other roles.
+  insert into private.app_access_role_grants(policy_id, role_key, permission_key, allowed, access_scope)
+  select v_policy_id, role.role_key, 'managers.season_priority.submit', true, 'global'
+  from (values ('ADMIN'), ('ADMINISTRATOR'), ('MANAGER')) role(role_key);
 end;
 $audit_policy$;
 

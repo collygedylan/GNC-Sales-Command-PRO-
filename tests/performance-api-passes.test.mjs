@@ -50,6 +50,12 @@ test('API aggregation enforces alternating three-pass order and pools every raw 
   assert.equal(candidate.diagnostics.pairedPasses.revision, 'candidate');
 });
 
+test('API aggregation rejects mixed worker policies across baseline and candidate passes', () => {
+  const mixedPolicy = passes();
+  mixedPolicy[2].report.method = 'local-disposable-postgres-authenticated-app-api-v1; edge-runtime=per_worker';
+  assert.throws(() => aggregate(mixedPolicy), /PASS_CONTEXT_MISMATCH/);
+});
+
 test('API aggregation requires complete metric sets, sample counts, and stable response parity', () => {
   const missingPass = passes().slice(0, 5);
   assert.throws(() => aggregateApiPassReports(missingPass, { baselineCommit, candidateCommit }), /PASS_COUNT_INVALID/);

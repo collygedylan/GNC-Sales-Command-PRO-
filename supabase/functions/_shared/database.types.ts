@@ -17246,6 +17246,10 @@ export type Database = {
         Args: { p_payload: Json }
         Returns: Json
       }
+      enqueue_drive_reclass_inquiry_v6: {
+        Args: { p_payload: Json }
+        Returns: Json
+      }
       fail_dataset_import_v1: { Args: { p_run_id: string }; Returns: Json }
       fail_request_delivery_event: {
         Args: {
@@ -18967,6 +18971,16 @@ export type Database = {
         }
       }
       submit_manager_season_priority_v1: {
+        Args: {
+          p_actor_id: string
+          p_expected_priority: number
+          p_idempotency_token: string
+          p_scope_fingerprint: string
+          p_source_unique_id: string
+        }
+        Returns: Json
+      }
+      submit_manager_season_priority_v2: {
         Args: {
           p_actor_id: string
           p_expected_priority: number

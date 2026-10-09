@@ -1,6 +1,7 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
+import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
 import { readAvPage } from "../_shared/av-read.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
@@ -1210,6 +1211,15 @@ function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
 
 function driveReclassErrorResponse(message: string) {
   const raw = String(message || "").trim().toUpperCase();
+  if (/V6_INVENTORY_REFRESH_REQUIRED|V6_INVENTORY_REVISION_MISSING/.test(raw)) {
+    return errorResponse("Inventory is refreshing. Wait for the import to finish, then review and retry this inquiry.", 503, { code: "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED" });
+  }
+  if (/V6_.*(?:SETTINGS|SEASON_SETTING).*(?:UNAVAILABLE|INVALID|MISSING)/.test(raw)) {
+    return errorResponse("Current season settings are unavailable. Reload the Managers setting before submitting a hold.", 503, { code: "DRIVE_RECLASS_SEASON_SETTINGS_UNAVAILABLE" });
+  }
+  if (/V6_LIVE_EDIT_(CONFLICT|ROW_MISSING)|V6_ORIGINAL_SNAPSHOT_CONFLICT/.test(raw)) {
+    return errorResponse("Inventory changed. Refresh Drive Mode and review the priority and hold fields before sending again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
   if (/TOKEN_OWNERSHIP/.test(raw)) {
     return errorResponse("This saved inquiry belongs to another user.", 403, { code: "DRIVE_RECLASS_TOKEN_OWNERSHIP_CONFLICT" });
   }
@@ -1225,7 +1235,7 @@ function driveReclassErrorResponse(message: string) {
   if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
     return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
   }
-  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|V5_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
+  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|V5_|V6_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
   return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
@@ -1286,7 +1296,7 @@ async function handlePhotoHistoryAction(
   }
 }
 
-async function handleDriveReclassAction(
+export async function handleDriveReclassAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
 ) {
@@ -1309,7 +1319,7 @@ async function handleDriveReclassAction(
     }
     if (operation === "season_priority_submit") {
       const expectedPriority = Number(payload.expectedPriority ?? payload.expected_priority);
-      const { data, error } = await supabase.rpc("submit_manager_season_priority_v1", {
+      const { data, error } = await supabase.rpc("submit_manager_season_priority_v2", {
         p_actor_id: String(activeProfile.id),
         p_source_unique_id: String(payload.sourceUid || payload.source_uid || "").trim(),
         p_expected_priority: Number.isInteger(expectedPriority) ? expectedPriority : 0,
@@ -1343,10 +1353,15 @@ async function handleDriveReclassAction(
         ...sanitizeDriveReclassPayload(payload),
         actorUsername,
       };
-      try { validateReclassShearedProposals(protectedPayload); }
+      try {
+        validateReclassShearedProposals(protectedPayload);
+        validateReclassSmartShieldProposals(protectedPayload);
+      }
       catch (error) { return driveReclassErrorResponse(error instanceof Error ? error.message : "DRIVE_RECLASS_V5_PAYLOAD_INVALID"); }
-      const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_SHEARED_POLICY
-        ? "enqueue_drive_reclass_inquiry_v5"
+      const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_SMART_SHIELD_POLICY
+        ? "enqueue_drive_reclass_inquiry_v6"
+        : protectedPayload.workflowPolicyVersion === RECLASS_SHEARED_POLICY
+          ? "enqueue_drive_reclass_inquiry_v5"
         : protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
           ? "enqueue_drive_reclass_inquiry_v4"
           : "enqueue_drive_reclass_inquiry_v1";
@@ -1374,6 +1389,7 @@ async function handleDriveReclassAction(
 
 function seasonPriorityErrorResponse(error: unknown) {
   const raw = String(error || "SEASON_PRIORITY_SERVICE_UNAVAILABLE").toUpperCase();
+  if (/RECLASS_V6_/.test(raw)) return driveReclassErrorResponse(raw);
   const code = (raw.match(/SEASON_PRIORITY_[A-Z0-9_]+/) || ["SEASON_PRIORITY_SERVICE_UNAVAILABLE"])[0];
   if (/FORBIDDEN|PERMISSION_REQUIRED|TOKEN_OWNERSHIP_CONFLICT/.test(code)) {
     return errorResponse("Season Priority is available only to active Managers and Administrators.", 403, { code });
@@ -2141,6 +2157,10 @@ function evalWorkError(error: unknown) {
   const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const code = String(source.code || "").trim();
   const message = String(source.message || error || "eval_work_failed").trim();
+  if (/RECLASS_V6_/i.test(message)) return driveReclassErrorResponse(message);
+  if (/EVAL_WORK_V6_COMPLETION_OUTBOX_MISSING/i.test(message)) {
+    return errorResponse("Eval Work delivery is unavailable. No live edit was committed; retry with the same submission.", 503, { code: "EVAL_WORK_DELIVERY_UNAVAILABLE" });
+  }
   const reviewCode = (message.match(/\bREVIEW_[A-Z_]+\b/i) || [""])[0].toUpperCase();
   const reviewMessages: Record<string, string> = {
     REVIEW_SOURCE_MISSING: "The opening inventory row is no longer available. Close this review and reopen the current row.",

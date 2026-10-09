@@ -37,9 +37,9 @@ export function mergePerformanceBrowserContexts(manifestInput, inputs) {
   const metrics = first.metrics.map(metric => ({ ...metric,
     samples: parsed.flatMap(report => report.metrics.find(value => value.id === metric.id).samples) }));
   const output = { ...inputs[0], ...first, metrics };
-  for (const key of ['initialExecutableJsBytes', 'deferredScriptBytes', 'cancellationDiagnostics', 'apiTrafficDiagnostics', 'randomDiagnostics']) {
+  for (const key of ['initialExecutableJsBytes', 'deferredScriptBytes', 'cancellationDiagnostics', 'apiTrafficDiagnostics', 'randomDiagnostics', 'renderingDiagnostics']) {
     if (inputs.some(input => !Array.isArray(input[key]))) throw new Error('PERFORMANCE_BROWSER_CONTEXT_DIAGNOSTICS_MISSING');
-    if (['initialExecutableJsBytes', 'deferredScriptBytes', 'randomDiagnostics'].includes(key)
+    if (['initialExecutableJsBytes', 'deferredScriptBytes', 'randomDiagnostics', 'renderingDiagnostics'].includes(key)
       && inputs.some(input => input[key].length !== 1)) throw new Error('PERFORMANCE_BROWSER_CONTEXT_DIAGNOSTICS_INVALID');
     output[key] = inputs.flatMap(input => input[key]);
   }

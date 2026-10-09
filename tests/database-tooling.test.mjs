@@ -55,8 +55,17 @@ test('database workspace replays the production baseline and active chain withou
     assert.match(prerequisites, /trigger_function\.proname = 'touch_source'/);
     assert.match(prerequisites, /\('drive\.reclass\.submit', 'action', 'drive', 'Submit Reclass inquiry',[\s\S]*?array\['assigned','global'\]::text\[\], 614, true\)/);
     assert.match(prerequisites, /'ADMIN', 'drive\.reclass\.submit', true, 'global'/);
+    const accessSeed = readFileSync(path.join(root, 'supabase/archive_migrations/20260828024750_centralized_access_control_audit_v1.sql'), 'utf8');
+    assert.ok(accessSeed.includes("('module.managers.view', 'module', 'managers', 'Managers', 'Open Managers.', '{}', 190)"));
+    assert.ok(prerequisites.includes("('module.managers.view', 'module', 'managers', 'Managers', 'Open Managers.', '{}'::text[], 190, true)"));
     const permissionSeed = readFileSync(path.join(root, 'supabase/archive_migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql'), 'utf8');
     assert.match(permissionSeed, /\('drive\.reclass\.submit', 'action', 'drive', 'Submit Reclass inquiry',[\s\S]*?array\['assigned', 'global'\]::text\[\], 614, true\)/);
+    const managerPermission = /\('managers\.season_priority\.submit', 'action', 'managers', 'Request Season Priority change',[\s\S]*?array\['global'\]::text\[\], 616, true\)/;
+    const managerSeed = readFileSync(path.join(root, 'supabase/archive_migrations/20260922233000_manager_season_priority_inquiry_v1.sql'), 'utf8');
+    assert.ok(managerPermission.test(prerequisites));
+    assert.equal(prerequisites.match(managerPermission)[0].replace(/\s+/g, ' '), managerSeed.match(managerPermission)[0].replace(/\s+/g, ' '),
+      'canonical replay restores the historical Manager permission without changing its contract');
+    assert.match(prerequisites, /select v_policy_id, role\.role_key, 'managers\.season_priority\.submit', true, 'global'\s+from \(values \('ADMIN'\), \('ADMINISTRATOR'\), \('MANAGER'\)\) role\(role_key\)/);
     const activePermissionReferences = readdirSync(path.join(root, 'supabase/migrations'))
       .filter((name) => /^\d{14}_.+\.sql$/i.test(name))
       .map((name) => ({ name, sql: readFileSync(path.join(root, 'supabase/migrations', name), 'utf8') }))
@@ -64,6 +73,7 @@ test('database workspace replays the production baseline and active chain withou
     assert.deepEqual(activePermissionReferences.map(({ name }) => name), [
       '20261006145333_reclass_split_move_inquiries_v4.sql',
       '20261008190038_reclass_sheared_action_v5.sql',
+      '20261009053029_reclass_smart_priority_hold_shield_v6.sql',
     ]);
     for (const migration of activePermissionReferences) assert.match(migration.sql, /'drive\.reclass\.submit'/);
     assert.equal(readdirSync(path.join(root, 'supabase', 'migrations')).includes(workspaceNames[prerequisiteIndex]), false,
@@ -463,7 +473,7 @@ test('database pre-commit recognizes staged database tooling and schema configur
     'scripts/run-discovered-database-tests.mjs',
     'scripts/test-discovery.mjs',
     'scripts/sandbox-database-workspace.mjs',
-    '.github/workflows/release-database.yml', 'supabase/config.toml', 'services/database-contracts.generated.ts', 'v2/src/services/sandbox.database.types.ts'];
+    '.github/workflows/release-database.yml', 'supabase/config.toml', 'services/database-contracts.generated.ts', 'v2/src/services/sandbox.database.types.ts', 'performance/sql-schema-extensions.json'];
   const actual = stagedDatabaseFiles({ root, execute: () => files.join('\0') });
   assert.deepEqual(actual, files);
 });

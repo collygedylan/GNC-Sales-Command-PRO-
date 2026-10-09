@@ -147,7 +147,7 @@ test('app API exposes only the three actor-bound Season Priority operations', ()
   for (const operation of ['season_priority_list', 'season_priority_submit', 'season_priority_state']) {
     assert.match(api, new RegExp(`operation === "${operation}"`));
   }
-  for (const rpc of ['manager_season_priority_list_v1', 'submit_manager_season_priority_v1', 'manager_season_priority_state_v1']) {
+  for (const rpc of ['manager_season_priority_list_v1', 'submit_manager_season_priority_v2', 'manager_season_priority_state_v1']) {
     assert.match(api, new RegExp(`supabase\\.rpc\\("${rpc}"`));
   }
   assert.match(api, /p_actor_id: String\(activeProfile\.id\)/);

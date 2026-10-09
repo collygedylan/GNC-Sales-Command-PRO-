@@ -86467,6 +86467,22 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "enqueue_drive_reclass_inquiry_v6": {
+      "oneOf": [
+        {
+          "object": {
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "fail_dataset_import_v1": {
       "oneOf": [
         {
@@ -91256,6 +91272,54 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "submit_manager_season_priority_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_priority": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_idempotency_token": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_scope_fingerprint": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_unique_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "submit_manager_season_priority_v2": {
       "oneOf": [
         {
           "object": {
@@ -96475,6 +96539,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "enqueue_drive_reclass_inquiry_v5": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "enqueue_drive_reclass_inquiry_v6": {
       "oneOf": [
         "json"
       ]
@@ -103956,6 +104025,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "submit_manager_season_priority_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "submit_manager_season_priority_v2": {
       "oneOf": [
         "json"
       ]

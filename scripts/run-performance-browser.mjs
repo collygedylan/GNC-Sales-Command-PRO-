@@ -80,18 +80,21 @@ async function measure(page, app, view, totals, fixtureControl, diagnosticCursor
     ...window.__phase6LongTaskObserver.finish(startedAt),
     ...window.__phase6DomRemovalObserver.snapshot(viewId)
   }), { viewId: view, startedAt: sampleStart });
-  const scrollFrameP95 = await page.evaluate(async appId => {
+  const scroll = await page.evaluate(async appId => {
     const scroller = document.querySelector(appId === 'v2' ? 'main.main-scroll' : '#main-scroll-area');
     if (!(scroller instanceof HTMLElement)) throw new Error('PERFORMANCE_SCROLL_HOST_MISSING');
     const gaps = [], start = scroller.scrollTop, distance = Math.min(600, Math.max(0, scroller.scrollHeight - scroller.clientHeight));
     let previous = performance.now();
+    const startedAt = previous;
     for (let frame = 0; frame < 16; frame++) {
       await new Promise(resolve => requestAnimationFrame(resolve));
       const now = performance.now(); gaps.push(now - previous); previous = now;
       scroller.scrollTop = distance * frame / 15;
     }
     scroller.scrollTop = start;
-    return gaps.sort((a, b) => a - b)[Math.ceil(gaps.length * 0.95) - 1];
+    const frameGaps = gaps.slice();
+    return { scrollFrameP95: gaps.sort((a, b) => a - b)[Math.ceil(gaps.length * 0.95) - 1],
+      diagnostics: { startTime: startedAt, endTime: previous, frameGaps } };
   }, app);
   await drainPerformanceResponseBodies(totals);
   if (totals.errors.length) throw new Error(`PERFORMANCE_RESPONSE_MEASUREMENT_FAILED:${totals.errors.join(',')}`);
@@ -99,7 +102,8 @@ async function measure(page, app, view, totals, fixtureControl, diagnosticCursor
     writes: classified.writes.length, writeBytes: classified.writeBytes,
     otherRequests: classified.other.length, otherBytes: classified.otherBytes,
     canceledReads: routeRequests.filter(request => request.canceled).length, requestRecords: routeRequests, preludeRequests,
-    boundaryStartIndex: startIndex, boundaryEndIndex: endIndex, ...evidence, scrollFrameP95 };
+    boundaryStartIndex: startIndex, boundaryEndIndex: endIndex, ...evidence, scrollFrameP95: scroll.scrollFrameP95,
+    renderingDiagnostics: { sampleStart, scroll: scroll.diagnostics } };
 }
 async function benchmark(site, info, profile, app, iteration) {
   const server = await startReleaseTestServer({ siteDir: site, port: 0 });
@@ -116,6 +120,8 @@ async function benchmark(site, info, profile, app, iteration) {
   const cancellationDiagnostics = [];
   const apiTrafficDiagnostics = [];
   const randomDiagnostics = [];
+  const renderingDiagnostics = [];
+  const routeRenderingDiagnostics = [];
   const recordApiPhase = (indices, phase, requests) => {
     for (const request of requests) {
       if (indices.has(request.index)) throw new Error('PERFORMANCE_API_DIAGNOSTIC_DUPLICATE');
@@ -175,9 +181,10 @@ async function benchmark(site, info, profile, app, iteration) {
           recordApiPhase(apiDiagnosticIndices, `${view}.cold`, cold.requestRecords);
           apiDiagnosticCursor = cold.boundaryEndIndex;
           cancellationDiagnostics.push({ view, phase: 'cold', canceledApiReads: cold.canceledReads });
+          routeRenderingDiagnostics.push({ view, phase: 'cold', ...cold.renderingDiagnostics });
           for (const [key, value] of Object.entries(cold)) {
             if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests' || key === 'viewId'
-              || key === 'boundaryStartIndex' || key === 'boundaryEndIndex') continue;
+              || key === 'boundaryStartIndex' || key === 'boundaryEndIndex' || key === 'renderingDiagnostics') continue;
             add(`${view}.cold.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : /bytes$/i.test(key) ? 'bytes' : 'count', value);
           }
           await returnPerformanceHome(page, app);
@@ -188,9 +195,10 @@ async function benchmark(site, info, profile, app, iteration) {
             recordApiPhase(apiDiagnosticIndices, `${view}.warm-${warm + 1}`, value.requestRecords);
             apiDiagnosticCursor = value.boundaryEndIndex;
             cancellationDiagnostics.push({ view, phase: `warm-${warm + 1}`, canceledApiReads: value.canceledReads });
+            routeRenderingDiagnostics.push({ view, phase: `warm-${warm + 1}`, ...value.renderingDiagnostics });
             for (const [key, sample] of Object.entries(value)) {
               if (key === 'canceledReads' || key === 'requestRecords' || key === 'preludeRequests' || key === 'viewId'
-                || key === 'boundaryStartIndex' || key === 'boundaryEndIndex') continue;
+                || key === 'boundaryStartIndex' || key === 'boundaryEndIndex' || key === 'renderingDiagnostics') continue;
               add(`${view}.warm.${key}`, ['duration', 'longTaskMs', 'scrollFrameP95'].includes(key) ? 'duration' : /bytes$/i.test(key) ? 'bytes' : 'count', sample);
             }
             await returnPerformanceHome(page, app);
@@ -213,7 +221,12 @@ async function benchmark(site, info, profile, app, iteration) {
         add('all-api-requests', 'count', totals.apiRequests.length);
         add('all-api-bytes', 'bytes', totals.apiRequests.reduce((sum, request) => sum + request.bytes, 0));
         deferred.push(totals.scriptBytes - initialBytes);
-        randomDiagnostics.push(await page.evaluate(() => globalThis.__phase6RandomFixture.getState()));
+        const diagnostics = await page.evaluate(() => ({
+          random: globalThis.__phase6RandomFixture.getState(),
+          rendering: globalThis.__phase6LongTaskObserver.getDiagnostics()
+        }));
+        randomDiagnostics.push(diagnostics.random);
+        renderingDiagnostics.push({ routes: routeRenderingDiagnostics, ...diagnostics.rendering });
       } finally { await context.close(); }
     }
   } finally {
@@ -222,9 +235,9 @@ async function benchmark(site, info, profile, app, iteration) {
   }
   const report = { schemaVersion: 1, commit: info.commit, baselineCommit: manifest.baselineCommit, artifactDigest: info.digest,
     fixtureVersion: manifest.fixtureVersion, browser: `chromium-${browserVersion}`, viewport: { width: profile.width, height: profile.height },
-    method: `${app}:adjacent-counterbalanced-cold-process-and-warm-route-v9;service-workers-blocked;seeded-mulberry32-v1;healthSampling:${app === 'live' ? 'mulberry32-event-area-reason-v1' : 'not-applicable'};all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-shell-dataset-render-queues-api-idle-and-unmodified-poll-headroom-12s' : 'visible-content'};stable-route-root-dom-removals;traffic-read-write-classification-v1`, metrics: [...samples.values()], initialExecutableJsBytes };
+    method: `${app}:adjacent-counterbalanced-cold-process-and-warm-route-v10;service-workers-blocked;seeded-mulberry32-v1;healthSampling:${app === 'live' ? 'mulberry32-event-area-reason-v1' : 'not-applicable'};all-api-quiet-${PERFORMANCE_API_QUIET_MS}ms;route-settlement-${app === 'live' ? 'cold-session-restore-background-login-validation-shell-dataset-render-queues-api-idle-and-unmodified-poll-headroom-12s' : 'visible-content'};stable-route-root-dom-removals;traffic-read-write-classification-v1`, metrics: [...samples.values()], initialExecutableJsBytes };
   // Background SW precache is deliberately measured separately by offline tests.
-  const complete = { ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiTrafficDiagnostics, randomDiagnostics };
+  const complete = { ...report, profile: profile.id, app, deferredScriptBytes: deferred, cancellationDiagnostics, apiTrafficDiagnostics, randomDiagnostics, renderingDiagnostics };
   contextReports.push({ ...complete, iteration });
   return complete;
 }

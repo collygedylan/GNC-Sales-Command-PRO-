@@ -14,6 +14,15 @@ the existing SQL, Edge, browser, CSS and Lighthouse lanes.
 Subsequent manifest changes require an approval from a human collaborator on the
 current PR commit, checked by `check-performance-baseline-review.mjs`.
 
+Additive application migrations are pinned separately in
+`performance/sql-schema-extensions.json` by repository path and Git blob hash.
+They extend the pinned SQL schema without changing the comparison commit,
+fixtures, readers, or budgets. Review each addition with its migration. The
+SQL gate rejects omitted, modified, reordered, or unlisted migrations and still
+executes its synthetic plans and behavior checks. Never regenerate these pins
+automatically after a failed benchmark. Changes to existing pinned migrations
+remain forbidden.
+
 ## Frontend standard
 
 - Define React lazy components at module scope. Load route code on render or
@@ -43,6 +52,8 @@ current PR commit, checked by `check-performance-baseline-review.mjs`.
 - Keep callbacks stable and memoize measured list boundaries. Scroll decoration
   belongs on the shell element, not in global React state. Tests must show that
   unrelated menu/toast/scroll updates do not rerender unchanged rows.
+- Route clicks and browser hash/history navigation share the selected route's
+  chunk and first-page preparation; leaving Drive aborts any unfinished prefetch.
 - In the live app, schedule background refresh reasons independently so each
   keeps its own typing and interaction deadline. Each callback resolves the
   current visible and dirty views when it runs, preserves dirty state for hidden
@@ -118,6 +129,14 @@ to finish its initial restore. The login trace must explicitly report the
 expected no-session restore failure. A missing trace, an active restore, or a
 successful/unexpected restore keeps the fixture blocked and eventually fails;
 this prevents startup work from racing the measured Home and route requests.
+The fixture also observes the existing 2.2-second background login validation
+from scheduling through completion of its asynchronous callback. Without that
+pending state, the same profile refresh can land in baseline cold entry and
+candidate warm entry even when total requests and response bytes are identical.
+Readiness waits for the original callback to finish; its delay, handle, arguments,
+authorization checks, response and scheduling behavior remain unchanged. Those
+requests remain counted in startup and full-context totals. A missing scheduler
+contract or unfinished validation fails readiness instead of dropping a read.
 Read counts include every API request started within the measurement window.
 Payload bytes come from those same requests after bounded completion; later
 background responses cannot enter the window. Deliberate browser cancellations
@@ -150,6 +169,20 @@ trimming, percentile changes or budget changes. Raw context reports and the
 execution order accompany the aggregate report. This removes shared-browser
 process state and reduces time-order bias; it does not establish that either
 caused a prior failure or eliminate runner noise.
+
+Benchmark artifacts also retain bounded diagnostic histories of long tasks and,
+where supported, long animation frames with script attribution. Route windows
+use the observer's existing start/end timestamps; separate scroll diagnostics
+retain all 16 frame gaps and their existing clock boundaries. Only selected
+primitive attribution fields are recorded, with source URLs stripped to paths.
+Unsupported frame attribution is explicit. Dropped diagnostic entries are
+counted and never removed from the original metric accumulation. See the
+[Long Animation Frames API](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing).
+Health sampling diagnostics include bounded invocation decisions, including
+unsampled calls, so repeated events can be distinguished from changes in sampling
+position. They preserve the handler, random draw sequence, request accounting,
+timers and budgets. These records explain failures; they do not exclude slow
+samples, reset baselines, or establish that a coincident task caused a stall.
 
 A shared callback that coalesced all live refresh reasons was tested and then
 reverted after the unchanged retry reproduced request-read, DOM-removal and
@@ -233,6 +266,25 @@ order reduces broad time-order bias but does not eliminate machine noise or prov
 the cause of a slow sample. The current schema-contract job has a 35-minute limit;
 the six-pass comparison and complete schema gate passed in 22 minutes 32 seconds
 in run `37794447351`, including generated-type validation.
+
+The authenticated API comparison uses the CLI's `oneshot` policy **only in the
+verified disposable workspace**, then restores that workspace's configuration
+byte-for-byte before subsequent database checks. Each measured request therefore
+includes a fresh Edge isolate's startup. Both the pinned baseline and candidate
+use this same policy, encoded in their report method; reports from different
+policies cannot be compared. All 45 response samples per scenario, response-body
+timing boundaries, result checks, and existing budgets remain enforced.
+
+This is a cold API-call measurement, not a warm API latency claim. The browser
+gate continues to measure both cold entry and warm navigation. The previous API
+method reused workers across scenarios, allowing the CLI's CPU soft limit to
+retire workers at different points for each revision. Reports from run
+`37925681616` showed roughly 200 ms of pre-handler startup after retirement,
+which could compare a warm baseline percentile with a cold candidate percentile.
+The explicit per-request lifecycle removes that unequal starting condition;
+it does not discard, subtract, or retry slow samples. Production runtime policy,
+CPU limits, database schemas, and the baseline commit are unchanged.
+
 Function-server startup failures report fixed diagnostic categories and process
 status from at most the final 64 KiB of a private temporary log. Raw logs and
 local credentials are never published; normal owned-workspace cleanup deletes
@@ -263,6 +315,15 @@ The API benchmark records it when present alongside a unique request ID and
 correlates only allowlisted fields from sampled logs emitted by that pass's
 function server. Older baseline sources can lack the header or a sampled log.
 Missing diagnostics never remove samples or relax the end-to-end budgets.
+
+Per-pass reports also count allowlisted Edge Runtime boot, CPU-limit, memory-limit,
+and wall-clock-limit messages from the same bounded private log. A lifecycle
+event receives a scenario/sample ordinal only when exactly one matched readiness
+record is followed by exactly the complete measured app-api dispatch sequence.
+Truncated, unavailable, or ambiguous logs stay unmapped. This is log-order
+correlation, not proof that an event caused a request's latency. No runtime
+policy, worker limit, measurement boundary, or observation is changed by this
+diagnostic, and no raw paths, log text, credentials, or response data are retained.
 
 The beta Drive SQL scenarios use its exact 18-column, 250-row reader on the
 canonical inventory schema as a physical-read proxy. They do not claim sandbox

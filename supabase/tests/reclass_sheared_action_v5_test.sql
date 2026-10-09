@@ -9,8 +9,12 @@ select ok(not has_function_privilege('authenticated','public.enqueue_drive_recla
 select ok(not has_function_privilege('anon','public.enqueue_drive_reclass_inquiry_v5(jsonb)','execute'),'anonymous users cannot enqueue V5');
 select has_function('private','project_reclass_sheared_v5',array['jsonb'],'V5 has a strict request-only projector');
 select has_function('private','validate_eval_work_inquiry_sheared_v5',array['jsonb','text','jsonb'],'Eval Work uses the same V5 projection and validation');
-select ok(position('validate_eval_work_inquiry_sheared_v5' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0,'Eval Work V1 submission stores the server projection');
-select ok(position('validate_eval_work_inquiry_sheared_v5' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0,'Eval Work V2 submission stores the server projection');
+select ok(position('validate_eval_work_inquiry_sheared_v5' in pg_get_functiondef('private.submit_eval_work_v1_v5_impl(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0
+  and position('submit_eval_work_v1_v5_impl' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0,
+  'Eval Work V1 retains the V5 projection behind its V6 wrapper');
+select ok(position('validate_eval_work_inquiry_sheared_v5' in pg_get_functiondef('private.submit_eval_work_v2_v5_impl(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0
+  and position('submit_eval_work_v2_v5_impl' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0,
+  'Eval Work V2 retains the V5 projection behind its V6 wrapper');
 select ok(position('update public.ph_master_inventory' in lower(pg_get_functiondef('public.enqueue_drive_reclass_inquiry_v5(jsonb)'::regprocedure)))=0,'V5 never mutates live inventory');
 
 create function pg_temp.reclass_v5_payload(p_uid text,p_quantity integer,p_oh text,p_desigitem text,p_actions text[],p_proposals jsonb)

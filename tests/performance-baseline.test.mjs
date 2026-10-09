@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
-import { compareBenchmarks, parseBenchmarkManifest, parseBenchmarkReport } from '../services/performanceBaseline.ts';
+import { compareBenchmarks, parseBenchmarkManifest, parseBenchmarkReport, parseSqlSchemaExtensions } from '../services/performanceBaseline.ts';
 
 const manifest = parseBenchmarkManifest(JSON.parse(readFileSync(new URL('../performance/baseline.json', import.meta.url), 'utf8')));
 const report = (kind, samples) => ({ schemaVersion: 1, commit: manifest.baselineCommit, baselineCommit: manifest.baselineCommit,
@@ -16,6 +16,15 @@ test('performance manifest pins a reviewed baseline and all device profiles', ()
   assert.throws(() => parseBenchmarkManifest({ ...manifest, sqlSchemaCommit: 'main' }), /DIGEST_INVALID/);
   assert.throws(() => parseBenchmarkManifest({ ...manifest, budgets: { ...manifest.budgets, relative: 0.5 } }), /MANIFEST_INVALID/);
   assert.throws(() => parseBenchmarkManifest({ ...manifest, warmSamples: 11 }), /SAMPLE_RATIO_INVALID/);
+});
+
+test('additive SQL schema pins require explicit safe paths and immutable blob hashes', () => {
+  const entry = { path: 'supabase/migrations/20261009053029_example.sql', gitBlob: 'a'.repeat(40) };
+  assert.deepEqual(parseSqlSchemaExtensions([entry]), [entry]);
+  assert.throws(() => parseSqlSchemaExtensions([{ ...entry, path: '../new.sql' }]), /SCHEMA_EXTENSION_INVALID/);
+  assert.throws(() => parseSqlSchemaExtensions([{ ...entry, gitBlob: 'HEAD' }]), /DIGEST_INVALID/);
+  assert.throws(() => parseSqlSchemaExtensions([entry, entry]), /SCHEMA_EXTENSION_DUPLICATE/);
+  assert.throws(() => parseSqlSchemaExtensions('latest'), /SCHEMA_EXTENSION_INVALID/);
 });
 test('timing budgets use the larger relative or noise allowance, never add both', () => {
   assert.deepEqual(compareBenchmarks(manifest, report('duration', [100]), report('duration', [125])), []);

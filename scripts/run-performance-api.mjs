@@ -6,8 +6,10 @@ import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
 import { appApiReadinessLogSeen, appApiReadinessRequest, isAppApiReadyResponse } from './performance-function-readiness.mjs';
 import { attachAppApiSampleLogCorrelation } from './performance-function-sample-correlation.mjs';
+import { attachFunctionLifecycleDiagnostics } from './performance-function-lifecycle-diagnostics.mjs';
 import { aggregateApiPassReports, API_PAIR_SCHEDULE } from './performance-api-passes.mjs';
 import { openFunctionServerLog, closeFunctionServerLog, getFunctionServerFailureDiagnostics } from './performance-function-server-diagnostics.mjs';
+import { assertPerformanceFunctionPolicy, PERFORMANCE_API_FUNCTION_POLICY, setPerformanceFunctionPolicy } from './performance-function-policy.mjs';
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { assertPerformanceApiPath, assertPerformanceApiTree, PERFORMANCE_API_SOURCE_DIRECTORIES, clearPerformanceApiSources, restorePerformanceApiSources, stagePerformanceApiSources, validatePerformanceApiRoots } from './performance-api-source-snapshots.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
@@ -19,7 +21,8 @@ if (process.env.GITHUB_ACTIONS !== 'true' || process.platform === 'win32') throw
 if (process.argv.length !== 3) throw new Error('Usage: node scripts/run-performance-api.mjs <verified-workspace>');
 const manifest = parseBenchmarkManifest(JSON.parse(readFileSync(path.join(repoRoot, 'performance/baseline.json'), 'utf8')));
 const cli = packageBin('supabase', 'supabase');
-const workspace = inspectDisposableSupabaseWorkspace({ workspaceRoot: process.argv[2], cli }).absolute;
+const verifiedWorkspace = inspectDisposableSupabaseWorkspace({ workspaceRoot: process.argv[2], cli });
+const workspace = verifiedWorkspace.absolute;
 const status = runNode([cli, '--workdir', workspace, 'status', '--output', 'env'], { capture: true });
 const values = Object.fromEntries(status.split(/\r?\n/).map(line => line.match(/^([A-Z_]+)="(.*)"$/)).filter(Boolean).map(match => [match[1], match[2]]));
 const api = new URL(values.API_URL);
@@ -38,6 +41,7 @@ const backup = path.join(temp, 'candidate');
 let candidateSnapshot;
 let server;
 const envFile = path.join(temp, 'function.env');
+let restoreFunctionPolicy;
 function removeOwnedTemporaryDirectory() {
   if (path.dirname(temp) !== path.resolve(os.tmpdir()) || !path.basename(temp).startsWith('gnc-performance-api-')) throw new Error('PERFORMANCE_CLEANUP_PATH_INVALID');
   assertPerformanceApiPath(temp);
@@ -102,7 +106,11 @@ async function measure(revision, passIndex, commit, source) {
   // deadlock serving. Keep logs in a private temporary file, report only finite
   // diagnostic categories on failure, and delete raw output with the run's temp.
   let ready = false;
+  let readinessRequestId = null;
   try {
+    // Recheck the verified workspace config immediately before each child so
+    // every baseline/candidate pass uses the same cold-isolate policy.
+    assertPerformanceFunctionPolicy(verifiedWorkspace, repoRoot, PERFORMANCE_API_FUNCTION_POLICY);
     const logFd = openFunctionServerLog(logPath);
     try {
       server = spawn(process.execPath, [cli, '--workdir', workspace, 'functions', 'serve', '--env-file', envFile, '--no-verify-jwt'],
@@ -125,7 +133,7 @@ async function measure(revision, passIndex, commit, source) {
             if (appApiReadinessLogSeen(logText, requestId)) { ready = true; break; }
             await new Promise(resolve => setTimeout(resolve, 50));
           }
-          if (ready) break;
+          if (ready) { readinessRequestId = requestId; break; }
         }
       } catch { /* bounded readiness retry */ }
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -133,11 +141,14 @@ async function measure(revision, passIndex, commit, source) {
     if (!ready) throw new Error('PERFORMANCE_FUNCTION_SERVER_NOT_READY');
     const reportPath = path.join(passOutput, `pass-${String(passIndex).padStart(2, '0')}-${revision}.json`);
     runNode(['scripts/performance-database.mjs', '--api-workspace', workspace, '--cli', cli], {
-      capture: true, env: { EXPECTED_PROJECT_REF: 'local', PERFORMANCE_SOURCE_COMMIT: commit, PERFORMANCE_REPORT_PATH: reportPath }
+      capture: true, env: { EXPECTED_PROJECT_REF: 'local', PERFORMANCE_SOURCE_COMMIT: commit,
+        PERFORMANCE_REPORT_PATH: reportPath, PERFORMANCE_FUNCTION_POLICY: PERFORMANCE_API_FUNCTION_POLICY }
     });
     let report = JSON.parse(readFileSync(reportPath, 'utf8'));
     await stopServer();
-    report = attachAppApiSampleLogCorrelation(report, readFunctionServerCorrelationLog(logPath));
+    const functionLog = readFunctionServerCorrelationLog(logPath);
+    report = attachAppApiSampleLogCorrelation(report, functionLog);
+    report = attachFunctionLifecycleDiagnostics(report, functionLog, readinessRequestId);
     writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
     return report;
   } catch (error) {
@@ -156,6 +167,9 @@ async function measure(revision, passIndex, commit, source) {
 }
 
 try {
+  // This config belongs to the workspace proven by inspectDisposableSupabaseWorkspace.
+  // The original bytes are restored in finally, including on source cleanup errors.
+  restoreFunctionPolicy = setPerformanceFunctionPolicy(verifiedWorkspace, repoRoot, PERFORMANCE_API_FUNCTION_POLICY);
   mkdirSync(sources, { recursive: true });
   const archive = path.join(temp, 'source.tar');
   run('git', ['archive', '--format=tar', '--output', archive, manifest.baselineCommit, '--', ...files]);
@@ -184,7 +198,11 @@ try {
 } finally {
   try { await stopServer(); }
   finally {
-    if (candidateSnapshot) restorePerformanceApiSources(candidateSnapshot);
-    removeOwnedTemporaryDirectory();
+    try {
+      if (candidateSnapshot) restorePerformanceApiSources(candidateSnapshot);
+    } finally {
+      try { restoreFunctionPolicy?.(); }
+      finally { removeOwnedTemporaryDirectory(); }
+    }
   }
 }

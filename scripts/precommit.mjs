@@ -19,6 +19,7 @@ export function requiredChecks(files) {
       || /contracts\.generated\.ts$/.test(file)
       || /^scripts\/(?:database-|sandbox-database-workspace|db-|generate-database|check-database|historical-database-|disposable-supabase-container|run-sql-rollback-tests|run-postgres-fixture-sql-tests|run-discovered-database-tests|prepare-isolated-sql-tests|test-discovery)/.test(file)
       || file === '.github/workflows/release-database.yml' || file === 'scripts/sql-lint-temp-context.mjs'
+      || file === 'performance/sql-schema-extensions.json'
       || /^supabase\/(?:config\.toml|schema\/|ci\/.*(?:baseline|fixture))/.test(file)),
   };
 }

@@ -8,12 +8,12 @@ const root = process.cwd();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const code = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
 
-test('Reclass editor removes the action view and discloses inquiry-wide Hold / Stop scope', () => {
+test('Reclass editor removes the action view and discloses server-determined Hold / Stop scope', () => {
   assert.doesNotMatch(html, /id="argos-reclass-action-view"/);
   assert.doesNotMatch(html, /function applyArgosReclassActionView\(/);
   assert.match(html, /function renderArgosReclassHoldScopeNotice\(/);
-  assert.match(html, /Choosing it from one row does not limit it to that row/);
-  assert.match(html, /eligible rows by action/);
+  assert.match(html, /The selected row receives the Hold \/ Stop request/);
+  assert.match(html, /the server determines that scope/);
   assert.match(html, /data-reclass-v3-proposal-field="reason"/);
 });
 
@@ -93,8 +93,25 @@ function loadServerModel() {
   };
   vm.createContext(context);
   vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = RECLASS_ACTION_WORKFLOW_V5_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_; this.RECLASS_INQUIRY_ACTION_ORDER_V5_ = RECLASS_INQUIRY_ACTION_ORDER_V5_;`, context);
+  vm.runInContext('this.getProtectedLiveEditDelivery_ = getProtectedLiveEditDelivery_; this.buildProtectedLiveEditReportRows_ = buildProtectedLiveEditReportRows_; this.buildProtectedLiveEditSummary_ = buildProtectedLiveEditSummary_; this.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_;', context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
+  return context;
+}
+
+function loadEvalServerModel() {
+  const context = loadServerModel();
+  const start = code.indexOf('function buildEvalWorkReportModel_(');
+  const end = code.indexOf('\nfunction buildEvalWorkEmailText_', start);
+  assert.ok(start > 0 && end > start);
+  vm.runInContext(`${code.slice(start, end)}; this.buildEvalWorkReportModel_ = buildEvalWorkReportModel_;`, context);
+  context.fetchEmailApprovalMasterRow_ = () => { throw new Error('mutable source read is forbidden for V6 completion'); };
+  context.fetchReclassInquiryItemRows_ = () => { throw new Error('mutable item read is forbidden for V6 completion'); };
+  context.validateInventoryTransactionSourceIdentity_ = (row, source) => {
+    for (const field of ['unique_id', 'itemcode', 'lotcode', 'locationcode']) {
+      if (String(row?.[field] ?? '') !== String(source?.[field] ?? '')) throw new Error(`source mismatch: ${field}`);
+    }
+  };
   return context;
 }
 
@@ -128,6 +145,9 @@ function loadClientPayloadBuilder(values = {}, draftOverride = null) {
     RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
     RECLASS_ACTION_WORKFLOW_V5_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION: 'reclass-action-workflow-v5-sheared-20261008',
+    RECLASS_ACTION_WORKFLOW_V6_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'reclass-action-workflow-v6-smart-shield-20261009',
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
     RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION: 'reclass-action-workflow-v2-live-20260826',
     getReclassActionWorkflowV2Config: (value) => ({ hold: { kind: 'hold_on' }, recount: { kind: 'recount' }, move_up: { kind: 'move' } }[value] || null),
@@ -137,7 +157,7 @@ function loadClientPayloadBuilder(values = {}, draftOverride = null) {
     isArgosInventoryTransactionMoveSeasonRequestAction: (value) => ['move_up', 'move_down'].includes(value),
     collectArgosReclassV3Draft: () => draftOverride || ({
       requestActions: ['hold', 'priority_change'],
-      holdStopProposals: [{ action: 'hold', reason: 'field review' }],
+      holdStopProposals: [{ action: 'hold', reason: 'field review', sourceUid: 'u1' }],
       scope: { season: 'F1', salesYear: 2027 },
       rowOverlays: [{ unique_id: 'u1', expected: {}, proposals: [
         { action: 'priority_change', priority: '2' },
@@ -865,7 +885,7 @@ test('every Hold/Stop action combines with priority, move and recount on the sam
   }
 });
 
-test('approved pilot sender is removed and the live Reclass handler accepts V4, V3, and V2 compatibility', () => {
+test('approved pilot sender is removed and the live Reclass handler accepts V6, V4, V3, and V2 compatibility', () => {
   const handlerStart = code.indexOf('function deliverReclassInquiryPayload_');
   const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
   const handler = code.slice(handlerStart, handlerEnd);
@@ -884,7 +904,7 @@ test('approved pilot sender is removed and the live Reclass handler accepts V4, 
   assert.match(handler, /allowEmptyActions: allowLocationDetailOnly/);
   assert.match(handler, /LOCATION_DETAIL_CHANGE_REQUIRED/);
   assert.match(handler, /fetchReclassInquiryScopeSettingsV3_/);
-  assert.match(handler, /scope: overlayResult\.scope/);
+  assert.match(handler, /scope: isV6 \? \{\} : \(overlayResult\.scope \|\| \{\}\)/);
   assert.match(handler, /const subject = buildReclassInquiryEmailSubject_\(model\)/);
 });
 
@@ -1003,7 +1023,7 @@ test('every live Reclass row shows direct actions and progressively disclosed re
   assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.map/);
   assert.match(html, /<span>Hold code<\/span>/);
   assert.match(html, /<span>Hold reason<\/span>/);
-  assert.match(html, /Inquiry-wide request:/);
+  assert.match(html, /Eligible managers may also update matching rows/);
   assert.match(builder, /Location details \(optional\)/);
   assert.match(builder, /data-reclass-temporary-field="locationptn1"/);
   assert.match(builder, /data-reclass-temporary-field="locationnote"/);
@@ -1043,7 +1063,7 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
   const collectorStart = html.indexOf('function collectArgosReclassV3Draft');
   const collectorEnd = html.indexOf('function buildArgosInventoryTransactionPayload', collectorStart);
   assert.match(html.slice(collectorStart, collectorEnd), /globalHoldProposal\.reason \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
-  assert.match(html, /The code and reason appear in the PDF and apply to every eligible row/);
+  assert.match(html, /The selected row is the origin\. The server determines whether matching rows in the configured season\/year scope are also affected/);
 });
 
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {
@@ -1096,7 +1116,7 @@ test('Reclass client guards recipient selection and retains background drafts un
   const statusStart = html.indexOf('function readReclassDeliveryJobs');
   const statusEnd = html.indexOf('async function postArgosInventoryTransactionPayload', statusStart);
   const status = html.slice(statusStart, statusEnd);
-  assert.ok(submit.indexOf('argosInventoryTransactionState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
+  assert.ok(submit.indexOf('submitState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
   assert.match(submit, /rememberQueuedReclassDelivery/);
   assert.doesNotMatch(submit, /Sending in Background/);
   assert.match(status, /RECLASS_DELIVERY_STORAGE_KEY/);
@@ -1111,7 +1131,7 @@ test('Reclass client guards recipient selection and retains background drafts un
   assert.doesNotMatch(status, /Retry Queued/);
 });
 
-test('live non-sheared Reclass payload retains V4 policy and independent action proposal arrays', () => {
+test('live non-sheared Reclass payload uses V6 for live Hold and Priority edits', () => {
   const buildPayload = loadClientPayloadBuilder({
     'argos-inventory-transaction-qty': '0',
     'argos-inventory-transaction-new-item': 'A1',
@@ -1123,9 +1143,9 @@ test('live non-sheared Reclass payload retains V4 policy and independent action 
   const payload = buildPayload();
   assert.equal(payload.type, 'reclass_inquiry_email');
   assert.deepEqual(Array.from(payload.transaction.requestActions), ['hold', 'priority_change']);
-  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.holdStopProposals)), [{ action: 'hold', reason: 'field review' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.holdStopProposals)), [{ action: 'hold', reason: 'field review', sourceUid: 'u1' }]);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.scope)), { season: 'F1', salesYear: 2027 });
-  assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v4-split-moves-20261006');
+  assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v6-smart-shield-20261009');
   assert.equal(payload.transaction.quantity, undefined);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.rowOverlays[0].proposals)), [
     { action: 'priority_change', priority: '2' },
@@ -1196,4 +1216,125 @@ test('Bloom Picker Order is Dylan-only and optional Productivity schema failure 
   const warning = html.slice(warningStart, warningEnd);
   assert.match(warning, /console\.warn/);
   assert.doesNotMatch(warning, /showToast/);
+});
+
+test('V6 Reclass PDF uses the frozen report rows and marks only server-confirmed hold fanout', () => {
+  const server = loadServerModel();
+  const rows = [
+    { unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1', source: 'LD', season: 'F1', saleyear: '27', ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'sibling', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '26.F1', locationcode: 'B.1', source: 'LD', season: 'F1', saleyear: '26', ptronhand: '8', ptrreviewed: '0', ptravailable: '8', priority: '', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'other-season', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.S1', locationcode: 'C.1', source: 'LD', season: 'S1', saleyear: '27', ptronhand: '7', ptrreviewed: '0', ptravailable: '7', priority: '', holdstopcode: '', holdstopreason: '' },
+  ];
+  const transaction = {
+    requestActions: ['hold', 'move_down'],
+    holdStopProposals: [{ action: 'hold', reason: 'leaf review', sourceUid: 'origin' }],
+    scope: {},
+  };
+  const overlays = rows.map((row, index) => ({
+    unique_id: row.unique_id,
+    expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode, ptronhand: row.ptronhand, priority: row.priority },
+    proposals: index === 0 ? [{ action: 'move_down', splits: [{ quantity: 2, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }] : [],
+  }));
+  const delivery = server.getProtectedLiveEditDelivery_({
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_,
+    transaction,
+    rowOverlays: overlays,
+    protectedDelivery: {
+      v6FrozenRows: rows,
+      liveEdits: ['origin', 'sibling'].map((unique_id) => ({ unique_id, priority: unique_id === 'origin' ? '3' : null, holdstopcode: 'H', holdstopreason: 'leaf review', av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' })),
+      inventoryRevision: '42',
+      liveEditScope: { holdSourceUid: 'origin', holdFanoutApplied: true, holdFanoutCount: 2, holdFanoutSiblingCount: 1, holdItemcode: 'A1', holdSeason: 'F1', holdSalesYearMax: 2027 },
+    },
+  }, 'origin', transaction, overlays, []);
+  const reportRows = server.buildProtectedLiveEditReportRows_(transaction, rows, overlays, delivery, { now: new Date('2026-10-09T12:00:00Z') });
+  assert.equal(reportRows.find((row) => row.unique_id === 'origin').values.holdstopcode, 'H');
+  assert.equal(reportRows.find((row) => row.unique_id === 'sibling').values.holdstopreason, 'leaf review');
+  assert.equal(reportRows.find((row) => row.unique_id === 'other-season').values.holdstopcode, '');
+  assert.ok(reportRows.find((row) => row.unique_id === 'other-season').changedFields.length === 0);
+  const liveEditSummary = server.buildProtectedLiveEditSummary_(delivery, transaction);
+  assert.equal(liveEditSummary.scopeNote, 'Same item A1 | F1 | sales year <= 27 | 2 rows in scope');
+  const reportPayload = { workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_, transaction, liveEditSummary, actor: { display: 'Tester' } };
+  const model = server.buildReclassInquiryReportModel_(rows[0], rows, reportRows, reportPayload, new Date('2026-10-09T12:00:00Z'));
+  const htmlOutput = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(htmlOutput, /Confirmed priority \/ Hold \/ Stop values were applied to inventory/);
+  assert.match(htmlOutput, /Same item A1 \| F1 \| sales year &lt;= 27 \| 2 rows in scope/);
+  assert.doesNotMatch(htmlOutput, /Report only; no inventory was changed/);
+  assert.match(server.buildReclassInquiryReportText_(model), /Requested quantity, season, and designation moves remain inquiry proposals/);
+});
+
+test('V6 confirmed Hold clear prints blank values and source-only scope without claiming no inventory change', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1', source: 'LD', season: 'F1', saleyear: '27', ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3', holdstopcode: 'H', holdstopreason: 'leaf review' };
+  const transaction = { requestActions: ['take_off_hold'], holdStopProposals: [{ action: 'take_off_hold', reason: '', sourceUid: 'origin' }], scope: {} };
+  const overlays = [{ unique_id: 'origin', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', priority: '3' }, proposals: [] }];
+  const delivery = server.getProtectedLiveEditDelivery_({
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_, transaction, rowOverlays: overlays,
+    protectedDelivery: { v6FrozenRows: [row], liveEdits: [{ unique_id: 'origin', priority: '3', holdstopcode: null, holdstopreason: null, av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:00:00Z', last_updated: '2026-10-09T12:00:00Z' }], inventoryRevision: '43', liveEditScope: { holdSourceUid: 'origin', holdFanoutApplied: false, holdFanoutCount: 1 } },
+  }, 'origin', transaction, overlays, []);
+  const reportRows = server.buildProtectedLiveEditReportRows_(transaction, [row], overlays, delivery, { now: new Date('2026-10-09T12:00:00Z') });
+  assert.equal(reportRows[0].values.holdstopcode, '');
+  assert.equal(reportRows[0].values.holdstopreason, '');
+  const summary = server.buildProtectedLiveEditSummary_(delivery, transaction);
+  assert.equal(summary.holdCode, '');
+  assert.equal(summary.holdReason, '');
+  assert.equal(summary.scopeNote, 'Selected row only | 1 row in scope');
+  const model = server.buildReclassInquiryReportModel_(row, [row], reportRows, { workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_, transaction, liveEditSummary: summary }, new Date('2026-10-09T12:00:00Z'));
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(output, /Confirmed priority \/ Hold \/ Stop values were applied to inventory/);
+  assert.match(output, /Selected row only \| 1 row in scope/);
+  assert.match(output, /\[blank\]/);
+  assert.doesNotMatch(output, /Report only; no inventory was changed/);
+});
+
+test('protected live-edit snapshots fail closed for missing, duplicate, and incomplete rows', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' };
+  const transaction = { requestActions: ['priority_change'], holdStopProposals: [], scope: {} };
+  const overlays = [{ unique_id: 'origin', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' }, proposals: [{ action: 'priority_change', priority: '2' }] }];
+  const makePayload = (rows, edits = [{ unique_id: 'origin', priority: '2', holdstopcode: null, holdstopreason: null, av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' }]) => ({
+    protectedDelivery: { v6FrozenRows: rows, liveEdits: edits, inventoryRevision: '44', liveEditScope: {} },
+  });
+  assert.throws(() => server.getProtectedLiveEditDelivery_(makePayload([]), 'origin', transaction, overlays, []), /PROTECTED_LIVE_EDIT_SNAPSHOT_INVALID/);
+  assert.throws(() => server.getProtectedLiveEditDelivery_(makePayload([row, row]), 'origin', transaction, overlays, []), /PROTECTED_LIVE_EDIT_ROWS_INVALID/);
+  assert.throws(() => server.getProtectedLiveEditDelivery_(makePayload([row], [{ unique_id: 'origin', priority: '2' }]), 'origin', transaction, overlays, []), /PROTECTED_LIVE_EDIT_RESULT_INVALID/);
+});
+
+test('Eval completion PDF uses the frozen V6 rows and confirmed live edits without rereading mutable inventory', () => {
+  const server = loadEvalServerModel();
+  const row = {
+    unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3',
+    lotcode: '27.F1', locationcode: 'A.1', source: 'LD', season: 'F1', saleyear: '27',
+    ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3',
+    holdstopcode: '', holdstopreason: '', av_rule_last_clear_reason: null, av_rule_last_cleared_at: null,
+  };
+  const transaction = { requestActions: ['priority_change'], holdStopProposals: [], scope: {} };
+  const overlays = [{
+    unique_id: 'origin',
+    expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', priority: '3', holdstopcode: '', holdstopreason: '' },
+    proposals: [{ action: 'priority_change', priority: '2' }],
+  }];
+  const model = server.buildEvalWorkReportModel_({
+    contractVersion: 'eval-work-v1', deliveryKind: 'completion', evalWorkId: 'eval-1',
+    assigneeDisplay: 'Evaluator', assigneeUsername: 'evaluator',
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    inquiry: {
+      workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_,
+      source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+      transaction, rowOverlays: overlays,
+    },
+    protectedDelivery: {
+      v6FrozenRows: [row],
+      liveEdits: [{ unique_id: 'origin', priority: '2', holdstopcode: null, holdstopreason: null,
+        av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' }],
+      inventoryRevision: '45',
+      liveEditScope: { holdFanoutApplied: false, holdFanoutCount: 0 },
+    },
+  });
+
+  assert.equal(model.rows.find((entry) => entry.unique_id === 'origin').values.priority, '2');
+  assert.equal(model.liveEditSummary.inventoryRevision, '45');
+  assert.equal(model.liveEditSummary.priorityCount, 1);
+  assert.equal(model.evalWork.deliveryKind, 'completion');
 });

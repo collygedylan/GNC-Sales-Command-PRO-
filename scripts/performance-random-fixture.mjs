@@ -10,6 +10,38 @@ export function installPerformanceRandomFixture(seed, root = globalThis) {
   let healthDraws = 0;
   let healthSamples = 0;
   const maxHealthStreams = 64;
+  const maxHealthDiagnosticRecords = 256;
+  const healthDiagnosticRecords = [];
+  const healthDiagnosticCounts = { calls: 0, sampled: 0, unsampled: 0, noDraw: 0, dropped: 0 };
+
+  const safeClockNow = () => {
+    try {
+      const value = root.performance?.now?.();
+      return Number.isFinite(value) ? value : null;
+    } catch {
+      return null;
+    }
+  };
+  const safeLabel = (value, fallback, limit) => typeof value === 'string' && /^[A-Za-z0-9_.:-]+$/.test(value)
+    ? value.slice(0, limit) : fallback;
+  const safeReason = metadata => {
+    if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return '';
+    try {
+      const descriptor = Object.getOwnPropertyDescriptor(metadata, 'reason');
+      return descriptor && Object.hasOwn(descriptor, 'value')
+        ? safeLabel(descriptor.value, '<other>', 120) : '';
+    } catch {
+      return '<other>';
+    }
+  };
+  const recordHealthDiagnostic = record => {
+    healthDiagnosticCounts.calls++;
+    if (record.decision === 'sampled') healthDiagnosticCounts.sampled++;
+    else if (record.decision === 'unsampled') healthDiagnosticCounts.unsampled++;
+    else healthDiagnosticCounts.noDraw++;
+    if (healthDiagnosticRecords.length < maxHealthDiagnosticRecords) healthDiagnosticRecords.push(record);
+    else healthDiagnosticCounts.dropped++;
+  };
 
   const nextMulberry = stream => {
     stream.state = (stream.state + 0x6D2B79F5) >>> 0;
@@ -66,7 +98,13 @@ export function installPerformanceRandomFixture(seed, root = globalThis) {
     }
     return function performanceHealthRandomIsolated(...args) {
       const originalRandom = root.Math.random;
+      const startedAtMs = safeClockNow();
+      const eventName = safeLabel(args[0], '<other>', 120);
+      const area = safeLabel(args[1], '<other>', 80);
+      const reason = safeReason(args[3]);
+      const duration = typeof args[2] === 'number' && Number.isFinite(args[2]) ? Math.max(0, Math.round(args[2])) : null;
       let intercepted = false;
+      let decision = 'no-draw';
       const scopedRandom = function performanceHealthSamplingRandom(...randomArgs) {
         if (intercepted) return originalRandom.apply(this, randomArgs);
         intercepted = true;
@@ -75,20 +113,26 @@ export function installPerformanceRandomFixture(seed, root = globalThis) {
         // reporter constructs or sends its RPC payload.
         root.Math.random = originalRandom;
         void globalDraw;
-        return nextHealthSample(args);
+        const healthDraw = nextHealthSample(args);
+        decision = healthDraw < 0.10 ? 'sampled' : 'unsampled';
+        return healthDraw;
       };
       root.Math.random = scopedRandom;
       try {
         return handler.apply(this, args);
       } finally {
         if (root.Math.random === scopedRandom) root.Math.random = originalRandom;
+        recordHealthDiagnostic({ eventName, area, reason, durationMs: duration, startedAtMs,
+          returnedAtMs: safeClockNow(), decision });
       }
     };
   };
   const evidence = Object.freeze({
     getState: () => ({ algorithm: 'mulberry32-v1', seed, calls,
       healthSampling: { algorithm: 'mulberry32-event-area-reason-v1', seed, calls: healthDraws,
-        sampled: healthSamples, streams: healthStreams.size, maxStreams: maxHealthStreams } }),
+        sampled: healthSamples, streams: healthStreams.size, maxStreams: maxHealthStreams },
+      healthDiagnostics: { algorithm: 'health-invocation-v1', ...healthDiagnosticCounts,
+        maxRecords: maxHealthDiagnosticRecords, records: healthDiagnosticRecords.map(record => ({ ...record })) } }),
     wrapHealthReporter,
     healthReporterContract: 'first-random-is-10-percent-gate-v1'
   });

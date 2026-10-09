@@ -1,5 +1,6 @@
 import { hlMaster, installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
 import { installPerformanceCoordinatorObserver } from './performance-coordinator-observer.mjs';
+import { installPerformanceLoginValidationObserver } from './performance-login-validation-observer.mjs';
 import { installPerformanceShellObserver } from './performance-shell-observer.mjs';
 import { isPerformancePollWindowReady } from './performance-dom-observer.mjs';
 
@@ -135,9 +136,15 @@ export function isPerformanceHomeRuntimeReady(state = {}) {
   return isPerformanceViewRuntimeReady(state, 'home');
 }
 
-export function isPerformanceViewRuntimeReady(state = {}, expectedViewId = '') {
+export function isPerformanceViewRuntimeReady(state = {}, expectedViewId = '', requireLoginValidation = false) {
   const expectedView = String(expectedViewId || '').trim();
   if (!expectedView || state.viewId !== expectedView) return false;
+  if (requireLoginValidation) {
+    const activity = state.loginValidationActivity;
+    if (!activity) throw new Error('PERFORMANCE_LOGIN_VALIDATION_OBSERVER_MISSING');
+    if (activity.contractValid !== true) throw new Error('PERFORMANCE_LOGIN_VALIDATION_CONTRACT_INVALID');
+    if (!Number.isInteger(activity.calls) || activity.calls < 1 || activity.pending !== false) return false;
+  }
   if (state.coordinatorActivity?.pending !== false || state.shellActivity?.pending !== false) return false;
   if (state.nativeRoleRefreshPromise || Object.keys(state.runAfterTouchInteractionTasks || {}).length > 0) return false;
   const datasetStates = state.datasetLoadState && typeof state.datasetLoadState === 'object' ? Object.values(state.datasetLoadState) : [];
@@ -155,7 +162,7 @@ export function isPerformanceViewRuntimeReady(state = {}, expectedViewId = '') {
   return !renderKeys.some(key => !tokensKnown || Object.hasOwn(state.uiRenderTokens, key));
 }
 
-export function buildPerformanceViewRuntimeReadyExpression(viewId) {
+export function buildPerformanceViewRuntimeReadyExpression(viewId, { requireLoginValidation = false } = {}) {
   const safeViewId = String(viewId || '').trim();
   if (!safeViewId) throw new Error('PERFORMANCE_VIEW_ID_REQUIRED');
   return `(${isPerformanceViewRuntimeReady.toString()})({
@@ -166,8 +173,9 @@ export function buildPerformanceViewRuntimeReadyExpression(viewId) {
     activeChunkRenderCount, chunkRenderActivityByKey, chunkRenderTimersByKey,
     nativeRoleRefreshPromise, runAfterTouchInteractionTasks,
     coordinatorActivity: globalThis.__phase6CoordinatorObserver?.getPendingActivity(),
-    shellActivity: globalThis.__phase6ShellObserver?.getPendingActivity()
-  }, ${JSON.stringify(safeViewId)})`;
+    shellActivity: globalThis.__phase6ShellObserver?.getPendingActivity(),
+    loginValidationActivity: globalThis.__phase6LoginValidationObserver?.getPendingActivity()
+  }, ${JSON.stringify(safeViewId)}, ${requireLoginValidation === true})`;
 }
 
 export async function waitForPerformanceViewReadiness({ waitForRuntimeReady, isRuntimeReady, waitForApiIdle,
@@ -192,8 +200,8 @@ export async function waitForPerformanceViewReadiness({ waitForRuntimeReady, isR
   throw new Error('PERFORMANCE_VIEW_READINESS_TIMEOUT');
 }
 
-async function waitForLiveHomeReadiness(page, apiIdleTracker) {
-  const runtimeReadyExpression = buildPerformanceViewRuntimeReadyExpression('home');
+async function waitForLiveHomeReadiness(page, apiIdleTracker, requireLoginValidation = false) {
+  const runtimeReadyExpression = buildPerformanceViewRuntimeReadyExpression('home', { requireLoginValidation });
   const waitForRuntimeReady = async timeout => {
     const handle = await page.waitForFunction(expression => window.eval(expression), runtimeReadyExpression,
       { polling: 'raf', timeout });
@@ -211,7 +219,7 @@ export async function waitForPerformanceViewSettlement(page, app, view, { timeou
     throw new Error('PERFORMANCE_VIEW_FIXTURE_CONTROL_MISSING');
   }
   const safeViewId = String(view || '').trim();
-  const runtimeReadyExpression = buildPerformanceViewRuntimeReadyExpression(safeViewId);
+  const runtimeReadyExpression = buildPerformanceViewRuntimeReadyExpression(safeViewId, { requireLoginValidation: app === 'live' });
   const waitForRuntimeReady = async timeout => {
     const handle = await page.waitForFunction(expression => window.eval(expression), runtimeReadyExpression,
       { polling: 'raf', timeout });
@@ -242,6 +250,17 @@ export async function installPerformanceFixture(page, origin, app) {
             throw new Error('PERFORMANCE_HEALTH_REPORTER_INSTALL_FAILED');
           }
         });
+        await page.evaluate((installerSource) => {
+          const original = window.eval('scheduleBackgroundLoginValidation');
+          const installer = window.eval(`(${installerSource})`);
+          const observer = installer(window, original);
+          const wrapped = observer.wrap(original);
+          Object.defineProperty(window, '__phase6LoginValidationSchedule', { configurable: false, enumerable: false, value: wrapped });
+          window.eval('scheduleBackgroundLoginValidation = window.__phase6LoginValidationSchedule');
+          if (window.eval('scheduleBackgroundLoginValidation') !== wrapped) {
+            throw new Error('PERFORMANCE_LOGIN_VALIDATION_INSTALL_FAILED');
+          }
+        }, installPerformanceLoginValidationObserver.toString());
         await page.evaluate(`(${installPerformanceShellObserver.toString()})(globalThis)`);
       },
       beforeNavigate: async () => {
@@ -256,7 +275,7 @@ export async function installPerformanceFixture(page, origin, app) {
       } });
     const fixtureControl = Object.assign(control, apiIdleTracker);
     performanceControlsByPage.set(page, fixtureControl);
-    await waitForLiveHomeReadiness(page, fixtureControl);
+    await waitForLiveHomeReadiness(page, fixtureControl, true);
     return fixtureControl;
   }
   await page.route('**/*', async route => {

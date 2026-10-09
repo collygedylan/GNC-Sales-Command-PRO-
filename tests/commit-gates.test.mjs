@@ -20,7 +20,7 @@ test('SQL and generated contracts require a database; ordinary frontend changes 
     'scripts/historical-database-fixture.mjs', 'scripts/historical-database-migrations.json', 'scripts/run-sql-rollback-tests.mjs',
     'scripts/disposable-supabase-container.mjs', 'scripts/sql-lint-temp-context.mjs',
     'scripts/run-postgres-fixture-sql-tests.mjs', 'scripts/run-discovered-database-tests.mjs', 'scripts/prepare-isolated-sql-tests.mjs',
-    'scripts/test-discovery.mjs', 'scripts/sandbox-database-workspace.mjs', '.github/workflows/release-database.yml']) {
+    'scripts/test-discovery.mjs', 'scripts/sandbox-database-workspace.mjs', '.github/workflows/release-database.yml', 'performance/sql-schema-extensions.json']) {
     assert.equal(requiredChecks([file]).database, true, file);
   }
   assert.equal(requiredChecks(['v2/src/pages/App.tsx']).database, false);
