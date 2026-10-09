@@ -36296,6 +36296,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
         }
 
+        function isProductionDisplayWaitingForRender(view) {
+            const ui = VIEW_LOAD_UI[view];
+            const container = ui && document.getElementById(ui.container);
+            if (!container || getContainerUiState(container) !== 'loading') return false;
+            const pending = driveCommonNamePreparation;
+            // The current native preparation owns this loading display. A
+            // verification event must not queue a second render behind it.
+            return !(view === 'drive' && pending?.native === true && pending.container === container
+                && isDriveCommonNamePreparationCurrent(pending));
+        }
+
         function getProductionLiveSyncCoordinator() {
             if (productionLiveSyncCoordinator) return productionLiveSyncCoordinator;
             if (!canUseProductionLiveSync()) return null;
@@ -36353,8 +36364,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     driveDemandStatus = status;
                     const demand = getDriveDemandContext();
                     if (demand) renderDriveDemandPanel(demand.kind);
-                    const visibleUi = VIEW_LOAD_UI[getCurrentVisibleViewId()];
-                    const waitingForDisplay = visibleUi && getContainerUiState(document.getElementById(visibleUi.container)) === 'loading';
+                    const waitingForDisplay = isProductionDisplayWaitingForRender(getCurrentVisibleViewId());
                     if (status.state === 'Up to date' && (waitingForDisplay || driveCommonNameNeedsPreparation()
                         || (productionLiveSyncRenderPending && !productionLiveSyncActiveRender && !hasProductionLiveSyncDraft()))) {
                         cancelScheduledUiRenderByPrefix(`view-switch-render:${getCurrentVisibleViewId()}`);
