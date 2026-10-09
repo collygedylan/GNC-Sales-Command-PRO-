@@ -56,20 +56,21 @@ test('optional PR production-health skip is allowed; fresh production health is 
   assert.equal((await f.select()).reuse, true);
 });
 
-test('Pages accepts complete 102-job proof metadata and finds the release gate on page two', async () => {
+test('Pages accepts complete 102-job proof metadata and finds the gate on the fifth bounded page', async () => {
   const f = fixture();
   const gate = f.jobs[0];
   f.jobs = Array.from({ length: 100 }, (_, index) => ({ ...gate, id: 100 + index, name: `validation / extra-${index}` }))
     .concat([gate, { ...gate, id: 999, name: 'validation / unit' }]);
   const selected = await f.select();
   assert.equal(selected.reuse, true);
-  assert.ok(f.listRequests.some(request => request.field === 'jobs' && request.pageNumber === 2));
+  assert.deepEqual(f.listRequests.filter(request => request.field === 'jobs'),
+    [1, 2, 3, 4, 5].map(pageNumber => ({ field: 'jobs', pageNumber, pageSize: 25 })));
 });
 
 for (const [name, mutate] of [
-  ['a non-green job on page two', f => { f.jobs[101] = { ...f.jobs[101], conclusion: 'failure' }; }],
-  ['a foreign job on page two', f => { f.jobs[101] = { ...f.jobs[101], head_sha: buildCommit }; }],
-  ['a duplicate page-two job ID', f => { f.jobs[101] = { ...f.jobs[101], id: f.jobs[0].id }; }],
+  ['a non-green job on the last page', f => { f.jobs[101] = { ...f.jobs[101], conclusion: 'failure' }; }],
+  ['a foreign job on the last page', f => { f.jobs[101] = { ...f.jobs[101], head_sha: buildCommit }; }],
+  ['a duplicate last-page job ID', f => { f.jobs[101] = { ...f.jobs[101], id: f.jobs[0].id }; }],
 ]) test(`Pages fails closed for ${name}`, async () => {
   const f = fixture(), gate = f.jobs[0];
   f.jobs = Array.from({ length: 100 }, (_, index) => ({ ...gate, id: 100 + index, name: `validation / extra-${index}` }))

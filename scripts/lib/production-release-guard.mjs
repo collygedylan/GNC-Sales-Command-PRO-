@@ -3,6 +3,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { selectReleaseProof } from '../release-proof.mjs';
 import { selectPagesRelease } from '../pages-release.mjs';
+import { fetchGitHubJson } from './github-json-transport.mjs';
 
 const COMPLETE_SHA = /^[a-f0-9]{40}$/;
 const REPOSITORY = /^[\w.-]+\/[\w.-]+$/;
@@ -100,19 +101,11 @@ export async function authorizeProductionRelease({
 
 async function githubApi(endpoint) {
   const token = String(process.env.GH_TOKEN || process.env.GITHUB_TOKEN || '').trim();
-  if (!token) throw guardError('GITHUB_TOKEN_MISSING');
-  const response = await fetch(`https://api.github.com/${endpoint}`, {
-    headers: {
-      accept: 'application/vnd.github+json',
-      authorization: `Bearer ${token}`,
-      'x-github-api-version': '2022-11-28'
-    }
-  });
-  if (!response.ok) throw guardError(`GITHUB_API_HTTP_${response.status}`);
   try {
-    return await response.json();
-  } catch {
-    throw guardError('GITHUB_API_RESPONSE_INVALID');
+    return await fetchGitHubJson({ endpoint, token });
+  } catch (error) {
+    if (error?.code === 'TOKEN_MISSING') throw guardError('GITHUB_TOKEN_MISSING');
+    throw guardError(error?.code ? `GITHUB_API_${error.code}` : 'GITHUB_API_FAILED');
   }
 }
 

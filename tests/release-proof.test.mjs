@@ -52,18 +52,19 @@ test('proof rejects a new run arriving during verification',async()=>{
   await assert.rejects(f.select(),/RELEASE_PROOF_RUN_CHANGED/);
 });
 
-test('release proof accepts 102 complete jobs and finds its gate on page two',async()=>{
+test('release proof accepts 102 complete jobs and finds its gate on the fifth bounded page',async()=>{
   const f=fixture(),gate=f.jobs[0];
   f.jobs=Array.from({length:100},(_,index)=>({...gate,id:100+index,name:`validation / extra-${index}`})).concat([gate,{...gate,id:999,name:'validation / unit'}]);
   const selected=await f.select();
   assert.equal(selected.siteArtifactId,30);
-  assert.ok(f.listRequests.some(request=>request.field==='jobs'&&request.pageNumber===2));
+  assert.deepEqual(f.listRequests.filter(request=>request.field==='jobs'),
+    [1,2,3,4,5].map(pageNumber=>({field:'jobs',pageNumber,pageSize:25})));
 });
 
 for(const [name,mutate] of [
-  ['a non-green page-two job',f=>{f.jobs[101]={...f.jobs[101],conclusion:'failure'};}],
-  ['a foreign page-two job',f=>{f.jobs[101]={...f.jobs[101],head_sha:'c'.repeat(40)};}],
-  ['a duplicate page-two job ID',f=>{f.jobs[101]={...f.jobs[101],id:f.jobs[0].id};}],
+  ['a non-green last-page job',f=>{f.jobs[101]={...f.jobs[101],conclusion:'failure'};}],
+  ['a foreign last-page job',f=>{f.jobs[101]={...f.jobs[101],head_sha:'c'.repeat(40)};}],
+  ['a duplicate last-page job ID',f=>{f.jobs[101]={...f.jobs[101],id:f.jobs[0].id};}],
 ]) test(`release proof rejects ${name}`,async()=>{
   const f=fixture(),gate=f.jobs[0];
   f.jobs=Array.from({length:100},(_,index)=>({...gate,id:100+index,name:`validation / extra-${index}`})).concat([{...gate,id:998},{...gate,id:999,name:'validation / unit'}]);

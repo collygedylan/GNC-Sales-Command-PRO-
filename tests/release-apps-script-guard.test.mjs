@@ -142,7 +142,7 @@ test('merged PR Pages proof authorizes exact current-main Code.gs deployment wit
   });
 });
 
-test('production authorization reads all 102 validated PR jobs before accepting the page-two release gate', async () => {
+test('production authorization reads all 102 validated PR jobs before accepting the fifth-page release gate', async () => {
   const fixture = mergedPagesProofFixture();
   const gate = fixture.state.jobs[0];
   const jobs = Array.from({ length: 101 }, (_, index) => ({ ...gate, id: index + 100,
@@ -152,9 +152,9 @@ test('production authorization reads all 102 validated PR jobs before accepting 
     if (url.includes('/attempts/1/jobs?')) {
       const params = new URL(url, 'https://api.github.com/').searchParams;
       const page = Number(params.get('page') || 1);
-      assert.equal(params.get('per_page'), '100');
+      assert.equal(params.get('per_page'), '25');
       pages.push(page);
-      return { total_count: jobs.length, jobs: jobs.slice((page - 1) * 100, page * 100) };
+      return { total_count: jobs.length, jobs: jobs.slice((page - 1) * 25, page * 25) };
     }
     assert.ok(!url.includes('event=workflow_dispatch'), 'a complete green PR proof must not fall back to a manual main run');
     return fixture.api(url);
@@ -163,7 +163,7 @@ test('production authorization reads all 102 validated PR jobs before accepting 
   assert.equal(result.proof.reuse, true);
   assert.equal(result.proof.runId, 12);
   assert.equal(fixture.state.mainRefReads, 2, 'current main is checked before and after pagination');
-  assert.deepEqual(pages, [1, 2]);
+  assert.deepEqual(pages, [1, 2, 3, 4, 5]);
 });
 
 test('Pages proof still requires the merge commit to be exact current main', async () => {
