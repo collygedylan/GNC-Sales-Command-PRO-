@@ -253,7 +253,7 @@ test('current view body sync leaves matching classes and dataset untouched, repa
   assert.equal(dashboardSyncs, 3);
 });
 
-function renderSignatureFixture() {
+function renderSignatureFixture(overrides = {}) {
   const ctx = {
     firstNonEmptyValue(...values) {
       return values.find(value => value != null && String(value).trim() !== '') ?? '';
@@ -284,11 +284,65 @@ function renderSignatureFixture() {
   ctx.getInventoryCardDesigCustValue = item => displayValue(item, ['DESIGCUST', 'desigcust', 'DESIG_CUST', 'desig_cust', 'DesigCust', 'DESIGNCUST', 'designcust', 'CUSTOMERDESIG', 'customerdesig']);
   ctx.getInventoryCardDesigItemValue = item => displayValue(item, ['DESIGITEM', 'desigitem', 'DESIG_ITEM', 'desig_item', 'DesigItem', 'DESIGNITEM', 'designitem', 'ITEMDESIG', 'itemdesig']);
   ctx.getInventoryCardDesigLocValue = item => displayValue(item, ['DESIGLOC', 'desigloc', 'DESIG_LOC', 'desig_loc', 'DesigLoc', 'DESIGNLOC', 'designloc', 'DESIG_LOCATION', 'desig_location']);
+  Object.assign(ctx, overrides);
   vm.createContext(ctx);
   const fn = extractFunction(html, 'buildRequestItemRenderSignature', 'function buildRequestChunkRenderKey(');
   vm.runInContext(fn, ctx);
   return ctx.buildRequestItemRenderSignature;
 }
+
+test('request signatures resolve owned photos once and skip dates only for empty links', () => {
+  const calls = { photos: 0, dates: 0 };
+  const signature = renderSignatureFixture({
+    getRowPhotoLink(item, view) {
+      assert.equal(view, 'request');
+      calls.photos++;
+      return item.REQ_PHOTO_LINK || '';
+    },
+    getRowPhotoDateLabel(item, view, link) {
+      assert.equal(view, 'request');
+      assert.equal(link, item.REQ_PHOTO_LINK);
+      assert.ok(link);
+      calls.dates++;
+      return item.PHOTO_DATE || '';
+    }
+  });
+  const row = { UNIQUE_ID: 'r-1', REQ_PHOTO_LINK: '' };
+  const empty = signature(row);
+  assert.deepEqual(calls, { photos: 1, dates: 0 });
+  row.REQ_PHOTO_LINK = 'https://example.test/request.jpg';
+  row.PHOTO_DATE = 'Oct 8';
+  const photographed = signature(row);
+  assert.notEqual(photographed, empty);
+  assert.deepEqual(calls, { photos: 2, dates: 1 });
+  row.PHOTO_DATE = 'Oct 9';
+  assert.notEqual(signature(row), photographed, 'fresh date values still invalidate the signature');
+  row.REQ_PHOTO_LINK = '';
+  assert.equal(signature(row), empty, 'removed or expired photos do not retain a cached date');
+  assert.deepEqual(calls, { photos: 4, dates: 2 });
+});
+
+test('request and dock photo lookups do not evaluate unused shared inventory photos', () => {
+  const calls = { shared: 0, request: 0, dock: 0 };
+  const row = { REQ_PHOTO_LINK: 'request-owned', DOCK_PHOTO_LINK: 'dock-owned' };
+  const ctx = {
+    getSharedAppPhotoLinkCsv(item) { assert.equal(item, row); calls.shared++; return 'retained-shared'; },
+    getRequestPhotoLinkCsv(item) { calls.request++; return item.REQ_PHOTO_LINK; },
+    getDockOwnedPhotoLinkCsv(item) { calls.dock++; return item.DOCK_PHOTO_LINK; },
+    shouldPreferFlyerOwnedFields: () => false
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractFunction(html, 'getRowPhotoLink', 'function extractPhotoDateIsoFromText_('), ctx);
+  assert.equal(ctx.getRowPhotoLink(row, ' Request '), 'request-owned');
+  assert.equal(ctx.getRowPhotoLink(row, 'DOCKS'), 'dock-owned');
+  assert.deepEqual(calls, { shared: 0, request: 1, dock: 1 });
+  row.REQ_PHOTO_LINK = '';
+  assert.equal(ctx.getRowPhotoLink(row, 'request'), '', 'empty owned photos never borrow shared photos');
+  assert.equal(ctx.getRowPhotoLink(row, 'av'), 'retained-shared');
+  assert.equal(ctx.getRowPhotoLink(row, ''), 'retained-shared');
+  assert.deepEqual(calls, { shared: 2, request: 2, dock: 1 });
+  assert.equal(ctx.getRowPhotoLink(null, 'request'), '');
+});
 
 function fixture({ native = true, context = requestContext(), ensureResult = true,
   ensureError = null, onEnsure = null, terminal = false, lastForceAt = 0 } = {}) {

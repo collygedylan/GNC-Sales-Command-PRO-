@@ -19565,9 +19565,9 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         function getRowPhotoLink(item, sourceView='') {
             if (!item) return '';
             const normalizedSourceView = String(sourceView || '').trim().toLowerCase();
-            const sharedLink = getSharedAppPhotoLinkCsv(item);
             if (normalizedSourceView === 'request') return getRequestPhotoLinkCsv(item);
             if (normalizedSourceView === 'docks') return getDockOwnedPhotoLinkCsv(item);
+            const sharedLink = getSharedAppPhotoLinkCsv(item);
             const preferFlyerFields = shouldPreferFlyerOwnedFields(item, normalizedSourceView);
             if (normalizedSourceView === 'flyer' || preferFlyerFields) return getFlyerVisiblePhotoLinkCsv(item);
             if (normalizedSourceView === 'drive') {
@@ -113785,7 +113785,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 getItemDisplayValue(item, 'SALES_NOTE', 'request'), item.SALES_DESC, item.SALESDESC, ''
             );
             const photoLink = getRowPhotoLink(item, 'request');
-            const photoDate = getRowPhotoDateLabel(item, 'request', photoLink);
+            const photoDate = photoLink ? getRowPhotoDateLabel(item, 'request', photoLink) : '';
             const requestDone = isRequestComplete(item);
             const requestDeliverySending = requestDone && isRequestDeliverySending(item);
             const requestDeliveryNeedsAttention = requestDone && isRequestDeliveryNeedsAttention(item);
@@ -152651,11 +152651,41 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const CLIENT_BROWSE_PAGE_SIZE = 100;
         const clientBrowsePageCounts = new Map();
+        const CLIENT_BROWSE_PAGE_KEY_CACHE_LIMIT = 12;
+        const clientBrowsePageKeyCache = new Map();
+        const clientBrowsePageKeyCacheOrder = [];
+        let clientBrowsePageKeyCacheEntryCount = 0;
+        let clientBrowsePageKeyCacheIdentityKey = null;
+        function clearClientBrowsePageKeyCache(identityKey = '') {
+            clientBrowsePageKeyCache.clear();
+            clientBrowsePageKeyCacheOrder.length = 0;
+            clientBrowsePageKeyCacheEntryCount = 0;
+            clientBrowsePageKeyCacheIdentityKey = String(identityKey);
+        }
         function getClientBrowsePageKey(view = '', key = '') {
             const safeView = String(view || '').trim();
-            const identityKey = typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '';
+            const identityKey = String(typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '');
+            if (clientBrowsePageKeyCacheIdentityKey !== identityKey) clearClientBrowsePageKeyCache(identityKey);
             const sourceKey = String(key || '').trim();
-            return `${safeView}:${buildRowsRenderSignature(`browse:${safeView}`, [{ UNIQUE_ID: `${identityKey}:${sourceKey}` }])}`;
+            let viewCache = clientBrowsePageKeyCache.get(safeView);
+            if (viewCache?.has(sourceKey)) return viewCache.get(sourceKey);
+            const pageKey = `${safeView}:${buildRowsRenderSignature(`browse:${safeView}`, [{ UNIQUE_ID: `${identityKey}:${sourceKey}` }])}`;
+            while (clientBrowsePageKeyCacheEntryCount >= CLIENT_BROWSE_PAGE_KEY_CACHE_LIMIT) {
+                const oldest = clientBrowsePageKeyCacheOrder.shift();
+                if (!oldest) break;
+                const oldestViewCache = clientBrowsePageKeyCache.get(oldest.view);
+                if (oldestViewCache?.delete(oldest.sourceKey)) clientBrowsePageKeyCacheEntryCount--;
+                if (oldestViewCache && !oldestViewCache.size) clientBrowsePageKeyCache.delete(oldest.view);
+            }
+            viewCache = clientBrowsePageKeyCache.get(safeView);
+            if (!viewCache) {
+                viewCache = new Map();
+                clientBrowsePageKeyCache.set(safeView, viewCache);
+            }
+            viewCache.set(sourceKey, pageKey);
+            clientBrowsePageKeyCacheOrder.push({ view: safeView, sourceKey });
+            clientBrowsePageKeyCacheEntryCount++;
+            return pageKey;
         }
         function getClientBrowsePage(view = '', key = '', rows = []) {
             const safeView = String(view || '').trim();
