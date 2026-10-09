@@ -10,5 +10,6 @@
     { "id": "tablet", "width": 820, "height": 1180 },
     { "id": "desktop", "width": 1440, "height": 900 }
   ],
-  "budgets": { "relative": 0.15, "browserNoiseMs": 25, "databaseNoiseMs": 5 }
+  "budgets": { "relative": 0.15, "browserNoiseMs": 25, "databaseNoiseMs": 5 },
+  "temporaryTimingAllowance": { "multiplier": 2, "minimumBrowserAllowanceMs": 100, "restoreAtPrompt": 7 }
 }

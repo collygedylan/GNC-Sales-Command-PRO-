@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
-import { compareBenchmarks, parseBenchmarkManifest, parseBenchmarkReport, parseSqlSchemaExtensions } from '../services/performanceBaseline.ts';
+import { benchmarkMetricLimit, compareBenchmarks, parseBenchmarkManifest, parseBenchmarkReport, parseSqlSchemaExtensions } from '../services/performanceBaseline.ts';
 
 const manifest = parseBenchmarkManifest(JSON.parse(readFileSync(new URL('../performance/baseline.json', import.meta.url), 'utf8')));
+const strictManifest = parseBenchmarkManifest({ ...manifest, temporaryTimingAllowance: undefined });
 const report = (kind, samples) => ({ schemaVersion: 1, commit: manifest.baselineCommit, baselineCommit: manifest.baselineCommit,
   artifactDigest: 'a'.repeat(64), fixtureVersion: manifest.fixtureVersion, browser: 'chromium-fixture', viewport: { width: 390, height: 844 },
   method: 'paired-serial-v1', metrics: [{ id: 'drive', kind, samples }] });
@@ -27,10 +28,28 @@ test('additive SQL schema pins require explicit safe paths and immutable blob ha
   assert.throws(() => parseSqlSchemaExtensions('latest'), /SCHEMA_EXTENSION_INVALID/);
 });
 test('timing budgets use the larger relative or noise allowance, never add both', () => {
-  assert.deepEqual(compareBenchmarks(manifest, report('duration', [100]), report('duration', [125])), []);
-  assert.equal(compareBenchmarks(manifest, report('duration', [100]), report('duration', [126])).length, 2);
-  assert.deepEqual(compareBenchmarks(manifest, report('database-duration', [100]), report('database-duration', [115])), []);
-  assert.equal(compareBenchmarks(manifest, report('database-duration', [100]), report('database-duration', [116])).length, 2);
+  assert.deepEqual(compareBenchmarks(strictManifest, report('duration', [100]), report('duration', [125])), []);
+  assert.equal(compareBenchmarks(strictManifest, report('duration', [100]), report('duration', [126])).length, 2);
+  assert.deepEqual(compareBenchmarks(strictManifest, report('database-duration', [100]), report('database-duration', [115])), []);
+  assert.equal(compareBenchmarks(strictManifest, report('database-duration', [100]), report('database-duration', [116])).length, 2);
+});
+
+test('temporary profile doubles time ceilings with a 100ms browser jitter floor', () => {
+  assert.deepEqual(manifest.temporaryTimingAllowance, { multiplier: 2, minimumBrowserAllowanceMs: 100, restoreAtPrompt: 7 });
+  for (const [kind, before, limit] of [
+    ['duration', 0, 100], ['duration', 17.8, 117.8], ['duration', 100, 250], ['duration', 1000, 2300],
+    ['database-duration', 0, 10], ['database-duration', 100, 230],
+  ]) {
+    assert.equal(benchmarkMetricLimit(manifest, before, kind), limit);
+    assert.deepEqual(compareBenchmarks(manifest, report(kind, [before]), report(kind, [limit])), []);
+    assert.equal(compareBenchmarks(manifest, report(kind, [before]), report(kind, [limit + 1])).length, 2);
+  }
+  assert.equal(benchmarkMetricLimit(strictManifest, 0, 'duration'), 25, 'Prompt 7 restores the original browser allowance');
+  assert.equal(benchmarkMetricLimit(strictManifest, 0, 'database-duration'), 5, 'Prompt 7 restores the original SQL allowance');
+  for (const change of [{ multiplier: 3 }, { minimumBrowserAllowanceMs: 150 }, { restoreAtPrompt: 8 }, { extra: true }]) {
+    assert.throws(() => parseBenchmarkManifest({ ...manifest,
+      temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, ...change } }), /TEMPORARY_TIMING_ALLOWANCE_INVALID/);
+  }
 });
 test('bytes, duplicate reads and unchanged-row renders cannot regress', () => {
   for (const kind of ['bytes', 'count', 'renders']) {

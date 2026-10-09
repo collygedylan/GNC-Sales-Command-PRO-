@@ -10,6 +10,34 @@ test('zero-item pages are complete and valid', async () => {
   assert.deepEqual(items, []);
 });
 
+test('default job pages are bounded at 25 while retaining the complete 2,000-job ceiling', async () => {
+  const all = Array.from({ length: 2000 }, (_, index) => row(index + 1));
+  const pages = [];
+  const items = await listGitHubApiItems({ endpoint: '/jobs?per_page=100', field: 'jobs',
+    api: async endpoint => {
+      const params = new URL(endpoint, 'https://fixture.invalid').searchParams;
+      const page = Number(params.get('page') || 1);
+      assert.equal(params.get('per_page'), '25');
+      pages.push(page);
+      return { total_count: all.length, jobs: all.slice((page - 1) * 25, page * 25) };
+    },
+  });
+  assert.deepEqual(items, all);
+  assert.deepEqual(pages, Array.from({ length: 80 }, (_, index) => index + 1));
+  await assert.rejects(listGitHubApiItems({ endpoint: '/jobs', field: 'jobs',
+    api: async () => ({ total_count: 2001, jobs: [] }),
+  }), failure('TOTAL_INVALID'));
+});
+
+test('non-job envelopes retain their existing page and item bounds', async () => {
+  for (const field of ['workflow_runs', 'artifacts']) {
+    await listGitHubApiItems({ endpoint: '/metadata', field, api: async endpoint => {
+      assert.equal(new URL(endpoint, 'https://fixture.invalid').searchParams.get('per_page'), '100');
+      return { total_count: 0, [field]: [] };
+    } });
+  }
+});
+
 for (const field of ['workflow_runs', 'jobs', 'artifacts']) test(`collects complete multi-page ${field} envelopes`, async () => {
   const requests = [];
   const all = [row(1), row(2), row(3)];

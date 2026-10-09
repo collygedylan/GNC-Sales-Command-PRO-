@@ -6,6 +6,7 @@ import path from 'node:path';
 import { parseBenchmarkManifest, compareBenchmarks } from '../services/performanceBaseline.ts';
 import { appApiReadinessLogSeen, appApiReadinessRequest, isAppApiReadyResponse } from './performance-function-readiness.mjs';
 import { attachAppApiSampleLogCorrelation } from './performance-function-sample-correlation.mjs';
+import { correlateApiFailureWithFunctionLog, readApiFailureDiagnosticFile } from './performance-api-failure-diagnostics.mjs';
 import { attachFunctionLifecycleDiagnostics } from './performance-function-lifecycle-diagnostics.mjs';
 import { aggregateApiPassReports, API_PAIR_SCHEDULE } from './performance-api-passes.mjs';
 import { openFunctionServerLog, closeFunctionServerLog, getFunctionServerFailureDiagnostics } from './performance-function-server-diagnostics.mjs';
@@ -107,6 +108,9 @@ async function measure(revision, passIndex, commit, source) {
   // diagnostic categories on failure, and delete raw output with the run's temp.
   let ready = false;
   let readinessRequestId = null;
+  let primaryFailure = null;
+  let result;
+  const failureDiagnosticPath = path.join(temp, `failed-api-sample-${String(passIndex).padStart(2, '0')}.json`);
   try {
     // Recheck the verified workspace config immediately before each child so
     // every baseline/candidate pass uses the same cold-isolate policy.
@@ -142,7 +146,8 @@ async function measure(revision, passIndex, commit, source) {
     const reportPath = path.join(passOutput, `pass-${String(passIndex).padStart(2, '0')}-${revision}.json`);
     runNode(['scripts/performance-database.mjs', '--api-workspace', workspace, '--cli', cli], {
       capture: true, env: { EXPECTED_PROJECT_REF: 'local', PERFORMANCE_SOURCE_COMMIT: commit,
-        PERFORMANCE_REPORT_PATH: reportPath, PERFORMANCE_FUNCTION_POLICY: PERFORMANCE_API_FUNCTION_POLICY }
+        PERFORMANCE_REPORT_PATH: reportPath, PERFORMANCE_FUNCTION_POLICY: PERFORMANCE_API_FUNCTION_POLICY,
+        PERFORMANCE_API_FAILURE_DIAGNOSTIC_PATH: failureDiagnosticPath }
     });
     let report = JSON.parse(readFileSync(reportPath, 'utf8'));
     await stopServer();
@@ -150,20 +155,67 @@ async function measure(revision, passIndex, commit, source) {
     report = attachAppApiSampleLogCorrelation(report, functionLog);
     report = attachFunctionLifecycleDiagnostics(report, functionLog, readinessRequestId);
     writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
-    return report;
+    result = report;
   } catch (error) {
-    if (!ready) console.error('PERFORMANCE_FUNCTION_SERVER_DIAGNOSTICS ' + JSON.stringify({
-      pass: passIndex, revision, ...getFunctionServerFailureDiagnostics({
-        logPath, exitCode: server?.exitCode, signalCode: server?.signalCode, spawnError: startupError,
-      }),
-    }));
-    throw error;
+    primaryFailure = error;
+    // Capture process state before our cleanup sends SIGTERM.
+    const failedServer = { exitCode: server?.exitCode, signalCode: server?.signalCode };
+    try { await stopServer(); } catch { /* Preserve the benchmark failure as primary. */ }
+    try {
+      const logEvidence = readFunctionServerCorrelationLog(logPath);
+      const failure = readApiFailureDiagnosticFile(failureDiagnosticPath);
+      const diagnostic = {
+        pass: passIndex,
+        revision,
+        phase: ready ? 'benchmark' : 'startup',
+        functionServer: getFunctionServerFailureDiagnostics({
+          logPath, exitCode: failedServer?.exitCode, signalCode: failedServer?.signalCode, spawnError: startupError,
+        }),
+        ...(failure ? {
+          failedRequest: {
+            scenario: failure.scenario,
+            sample: failure.sample,
+            status: failure.responseStatus,
+            responseEchoMatched: failure.responseEchoMatched,
+            applicationErrorCode: failure.applicationErrorCode,
+            responseBytes: failure.responseBytes,
+            responseMs: failure.responseMs,
+            headersMs: failure.headersMs,
+            bodyReadMs: failure.bodyReadMs,
+            appServerDurationMs: failure.appServerDurationMs,
+          },
+          ...correlateApiFailureWithFunctionLog(failure, logEvidence),
+        } : {
+          functionLog: {
+            logBytesRead: logEvidence.bytesRead,
+            logTotalBytes: logEvidence.totalBytes,
+            logTruncated: logEvidence.truncated,
+            logUnavailable: logEvidence.unavailable,
+          },
+        }),
+      };
+      const diagnosticPath = path.join(passOutput,
+        `failure-${String(passIndex).padStart(2, '0')}-${revision}.json`);
+      try { writeFileSync(diagnosticPath, `${JSON.stringify(diagnostic, null, 2)}\n`, { flag: 'wx', mode: 0o600 }); }
+      catch { /* The primary failure remains visible even if artifact storage fails. */ }
+      console.error('PERFORMANCE_FUNCTION_SERVER_DIAGNOSTICS ' + JSON.stringify(diagnostic));
+    } catch { /* Diagnostics are best-effort and never replace the measured failure. */ }
   } finally {
-    try { await stopServer(); }
-    finally {
-      clearPerformanceApiSources({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup });
+    let cleanupFailure = null;
+    try { await stopServer(); } catch (error) { cleanupFailure ||= error; }
+    try { clearPerformanceApiSources({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup }); }
+    catch (error) { cleanupFailure ||= error; }
+    if (cleanupFailure) {
+      if (!primaryFailure) primaryFailure = cleanupFailure;
+      else {
+        const code = typeof cleanupFailure.code === 'string' && /^[A-Z0-9_]{1,80}$/.test(cleanupFailure.code)
+          ? cleanupFailure.code : 'UNKNOWN';
+        console.error('PERFORMANCE_API_CLEANUP_DIAGNOSTICS ' + JSON.stringify({ code }));
+      }
     }
   }
+  if (primaryFailure) throw primaryFailure;
+  return result;
 }
 
 try {

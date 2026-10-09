@@ -33,6 +33,15 @@ Other sites retain their existing importer policy; photo preservation continues.
 The migration initializes pending shields for existing, fully cleared holds with
 recorded release approval, so those approvals stay protected during the change.
 
+Fenced imports also carry `x-gnc-master-tuple-policy: raw-priority-hold-v1`.
+SQL requires this exact policy before an equal source tuple can release a pending
+shield. Older deployed importers may still complete their other work, but their
+historically masked hold values cannot acknowledge an app edit. The additive
+rollout repair re-arms approved, fully cleared holds that may have been falsely
+acknowledged during the database-before-Apps-Script interval. It changes shield
+metadata and the comparison marker; it leaves live priority and hold values intact.
+A subsequent raw, matching tuple acknowledges those records normally.
+
 ## Atomic submission
 
 A successful submission commits both the allowed live field edits and the

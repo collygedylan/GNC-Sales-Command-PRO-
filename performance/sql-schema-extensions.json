@@ -2,5 +2,9 @@
   {
     "path": "supabase/migrations/20261009053029_reclass_smart_priority_hold_shield_v6.sql",
     "gitBlob": "b183fc1d573c7234af13fe157ede80c8c6b00b3a"
+  },
+  {
+    "path": "supabase/migrations/20261009053030_smart_shield_raw_import_acknowledgment.sql",
+    "gitBlob": "4583b108c0224db8e186c182d41fb4ef57575267"
   }
 ]
