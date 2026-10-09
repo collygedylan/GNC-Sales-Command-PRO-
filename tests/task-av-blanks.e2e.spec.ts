@@ -396,8 +396,11 @@ test('ordinary compact AV cards stay within the row budget', {"tag":["@task-av-b
         // Six metrics now use two 3-column rows, and AV Spec/Note, Bloom and
         // hold details remain visible. Keep a bound that catches lost wrapping
         // or overlapping content without enforcing the obsolete four-chip height.
+        const heightBudget = width <= 900 ? (hasPhoto ? 460 : 380) : (hasPhoto ? 440 : 390);
+        // Browser layout exposes fractional CSS pixels; retain the authored
+        // card budget while allowing at most one pixel of rounding variance.
         expect(compact.height, `${width}px ${hasPhoto ? 'photo' : 'empty'} ${source || 'standard'} card height`)
-          .toBeLessThanOrEqual(width <= 900 ? (hasPhoto ? 460 : 380) : (hasPhoto ? 440 : 390));
+          .toBeLessThanOrEqual(heightBudget + 1);
         expect(compact.thumbnail.width).toBeCloseTo(width <= 900 ? 64 : 88, 0);
         // Compact AV matches Drive's 64×62 mobile media frame.
         expect(compact.thumbnail.height).toBeCloseTo(width <= 900 ? 62 : 88, 0);
