@@ -18143,6 +18143,16 @@ export type Database = {
         }
         Returns: Json
       }
+      request_queue_remove_v1: {
+        Args: {
+          p_actor_id: string
+          p_expected_row_version: number
+          p_expected_updated_at: string
+          p_idempotency_key: string
+          p_uid: string
+        }
+        Returns: Json
+      }
       requeue_request_delivery: {
         Args: { delivery_event_id: string }
         Returns: Json

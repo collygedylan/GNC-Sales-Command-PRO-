@@ -6,5 +6,9 @@
   {
     "path": "supabase/migrations/20261009053030_smart_shield_raw_import_acknowledgment.sql",
     "gitBlob": "4583b108c0224db8e186c182d41fb4ef57575267"
+  },
+  {
+    "path": "supabase/migrations/20261009170000_request_queue_remove_v1.sql",
+    "gitBlob": "85faff0494bd8805d450de280bb9319c30630446"
   }
 ]

@@ -76,7 +76,9 @@ function runtime() {
 }
 function quantityRuntime() {
   const ctx = vm.createContext({
-    escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+    escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
+    getCardLocationOnHandValue: () => null,
+    formatLocPhotoMatchQtyValue: () => 'Not verified'
   });
   vm.runInContext([
     source('firstNonEmptyValue'),
@@ -561,7 +563,8 @@ test('HL normal Drive quantity cards preserve unknown verified values while reta
   assert.match(unknown, /app-card-qty-label">Open Stock<\/span>.*?app-card-qty-value[^>]*>Unknown<\/span>/);
   const zero = ctx.buildInventoryQuantityChipsHtml({ ptravailable: '0', ptronhand: '0', ptrreviewed: '0', s_lts: '0' }, { layout: 'row', compact: true, preserveUnknown: true });
   assert.match(zero, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>0<\/span>/);
-  assert.doesNotMatch(zero, /Available<\/span>.*?Unknown/);
+  assert.match(zero, /data-inventory-card-metric="available"[\s\S]*?app-card-qty-value[^>]*>0<\/span>/);
+  assert.match(zero, /data-inventory-card-metric="loc-on-hand"[\s\S]*?app-card-qty-value[^>]*>Unknown<\/span>/);
 });
 
 test('HL dirty inputs remain protected after blur until explicitly saved or reset', () => {

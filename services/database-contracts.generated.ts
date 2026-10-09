@@ -89750,6 +89750,54 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "request_queue_remove_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_row_version": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_updated_at": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_idempotency_key": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_uid": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "requeue_request_delivery": {
       "oneOf": [
         {
@@ -99530,6 +99578,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "request_history_command_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "request_queue_remove_v1": {
       "oneOf": [
         "json"
       ]

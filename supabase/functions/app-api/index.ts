@@ -760,6 +760,48 @@ async function handleDatasetRead(
   }
 }
 
+function isRequestRemovalTimestamp(value: string): boolean {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!parts || !Number.isFinite(Date.parse(value))) return false;
+  const year = Number(parts[1]), month = Number(parts[2]), day = Number(parts[3]);
+  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return year >= 1000 && month >= 1 && month <= 12 && day >= 1 && day <= days
+    && Number(parts[4]) < 24 && Number(parts[5]) < 60 && Number(parts[6]) < 60
+    && (!parts[7] || (Number(parts[8]) < 16 && Number(parts[9]) < 60));
+}
+
+async function handleRequestQueueRemove(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, payload: Record<string, unknown>) {
+  if (!session) return errorResponse("Sign in before removing requests.", 401);
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" }); }
+  const actorId = typeof actor.id === "string" ? actor.id : "";
+  if (!actorId) return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" });
+  const uid = typeof payload.uid === "string" ? payload.uid.trim() : "";
+  const key = typeof payload.idempotencyKey === "string" ? payload.idempotencyKey.toLowerCase() : "";
+  const version = payload.expectedRowVersion;
+  const updatedAt = typeof payload.expectedUpdatedAt === "string" ? payload.expectedUpdatedAt : "";
+  if (Object.keys(payload).some(key => !["action", "uid", "idempotencyKey", "expectedRowVersion", "expectedUpdatedAt"].includes(key))
+    || !uid || uid.length > 240 || typeof version !== "number" || !Number.isSafeInteger(version) || version < 1
+    || !isRequestRemovalTimestamp(updatedAt)
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+    return errorResponse("Refresh the request before removing it.", 400, { code: "REQUEST_REMOVE_COMMAND_INVALID" });
+  }
+  const { data, error } = await supabase.rpc("request_queue_remove_v1", {
+    p_actor_id: actorId, p_uid: uid, p_expected_row_version: version,
+    p_expected_updated_at: updatedAt, p_idempotency_key: key,
+  });
+  if (error) return databaseFailureResponse("The request was not removed. Refresh Que and retry.", error, "REQUEST_REMOVE_FAILED");
+  const result = data && typeof data === "object" && !Array.isArray(data) ? jsonObject(data) : {};
+  if (result.uid !== uid || result.state !== "removed" || result.idempotencyKey !== key || typeof result.replayed !== "boolean") {
+    return errorResponse("The removal response could not be verified. Refresh Que.", 503, { code: "REQUEST_REMOVE_RESPONSE_INVALID" });
+  }
+  return jsonResponse({ ok: true, data: {
+    uid: result.uid, state: result.state, idempotencyKey: result.idempotencyKey, replayed: result.replayed,
+  } });
+}
+
 async function handleRequestArchive(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, payload: Record<string, unknown>) {
     if (!session) return errorResponse("Sign in before archiving requests.", 401);
     let actor: Record<string, unknown>;
@@ -4667,6 +4709,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     }
   }
   if (action === "dataset_read") return await handleDatasetRead(session, payload, req);
+  if (action === "request_queue_remove") return await handleRequestQueueRemove(session, payload);
   if (action === "request_archive") return await handleRequestArchive(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);

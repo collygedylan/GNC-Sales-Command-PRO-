@@ -4,6 +4,8 @@ import globals from 'globals';
 
 export default [
   { ignores: ['node_modules/**', '.gnc-local/**', '_site/**', 'artifacts/**', 'v2/dist/**',
+    // Playwright records downloaded runtime copies; authored sources are linted separately.
+    'test-results/**', 'playwright-report/**',
     'v2/storybook-static/**', 'assets/vendor/**', '**/*.min.js', '**/*.min.mjs', '**/*.database.types.ts',
     // This externally built partner app is checked in with a pinned provenance hash; lint its editable source when available, not this sealed minified output.
     'v2/public/partner/assets/index-B5eWPKuw.js',

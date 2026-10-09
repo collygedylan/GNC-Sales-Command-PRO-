@@ -102,8 +102,9 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         expect(layout.header && layout.reclass && layout.header.right).toBeLessThanOrEqual(layout.reclass?.x ?? -1);
         expect(Math.abs((layout.reclass?.right ?? 0) - (layout.card?.right ?? 0))).toBeLessThanOrEqual(1);
         expect(layout.quantity).toEqual([
-          { label: 'On hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
+          { label: 'On Hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
           { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
+          { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
         ]);
         expect(layout.text).toContain('Synthetic long sales note');
         expect(layout.pageOverflow).toBeLessThanOrEqual(1);
@@ -117,8 +118,9 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
             value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
           })));
           expect(values).toEqual([
-            { label: 'On hand', value: '15' }, { label: 'Review', value: '2' },
+            { label: 'On Hand', value: '15' }, { label: 'Review', value: '2' },
             { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
+            { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
           ]);
         }
 
@@ -128,12 +130,15 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         const restrictedLayout = await card.evaluate((element) => ({
           overflow: element.scrollWidth - element.clientWidth,
           notes: element.querySelectorAll('.app-drive-card-notes').length,
-          evidenceDisplay: getComputedStyle(element.querySelector('.app-drive-card-evidence')!).display,
+          evidenceVisible: (() => {
+            const evidence = element.querySelector('.app-drive-card-evidence');
+            return !!evidence && getComputedStyle(evidence).display !== 'none';
+          })(),
           gridAreas: getComputedStyle(element.querySelector('.app-drive-card-grid')!).gridTemplateAreas,
         }));
         expect(restrictedLayout.overflow).toBeLessThanOrEqual(1);
         expect(restrictedLayout.notes).toBe(0);
-        expect(restrictedLayout.evidenceDisplay).toBe('none');
+        expect(restrictedLayout.evidenceVisible).toBe(false);
         expect(restrictedLayout.gridAreas).not.toContain('reclass');
 
         await renderSharedHlDriveLayoutCard(page);
