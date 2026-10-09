@@ -372,6 +372,33 @@ test('completed pending request list reuses matching rendered rows and completes
   assert.equal(f.refresh.retainedRequestList, true);
 });
 
+test('request crumb compares textContent and writes innerText only when content changes', () => {
+  const sync = extractFunction(html, 'syncRequestCrumb', 'function applyRequestRenderMarkup(');
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(sync, ctx);
+
+  let writes = 0;
+  const unchanged = {
+    textContent: 'Pending requests',
+    get innerText() { throw new Error('innerText read forces layout'); },
+    set innerText(_value) { writes++; }
+  };
+  ctx.syncRequestCrumb(unchanged, 'Pending requests');
+  assert.equal(writes, 0);
+
+  const changed = {
+    textContent: 'Old label',
+    get innerText() { throw new Error('innerText read forces layout'); },
+    set innerText(value) { writes++; this.written = value; }
+  };
+  ctx.syncRequestCrumb(changed, 'Updated label');
+  assert.equal(writes, 1);
+  assert.equal(changed.written, 'Updated label');
+  ctx.syncRequestCrumb(null, 'Ignored');
+  assert.equal(writes, 1);
+});
+
 test('changed, incomplete, non-pending, and Drive lists still use the staging renderer', () => {
   const cases = [
     { signature: 'changed' },

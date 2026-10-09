@@ -16,12 +16,16 @@ current PR commit, checked by `check-performance-baseline-review.mjs`.
 
 ## Frontend standard
 
-- Define React lazy components at module scope. Load route code on render; put
+- Define React lazy components at module scope. Load route code on render or
+  when the user selects that route, sharing the same import promise; put
   loading/error states inside the existing content area. A failed chunk offers
   a reload because browsers cache failed module imports. Key error boundaries by
   route so an unrelated route remains usable. Mount the loading row as ordinary
   content, then reveal the lazy child in a React transition inside that boundary.
   This avoids the minimum display time of a newly committed Suspense fallback.
+  Starting the selected route's import in its navigation handler overlaps the
+  download with the shell update. Do not import routes during setup or load
+  unrelated routes speculatively. Import failure still reaches the lazy boundary.
   The departed route still unmounts immediately, and superseded loads cannot
   remount it. Follow React's [revealed-content transition guidance](https://react.dev/reference/react/Suspense#preventing-already-revealed-content-from-hiding).
 - State ownership is a behavior contract: Que filters/rows/selection remain in

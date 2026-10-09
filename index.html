@@ -113375,7 +113375,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function syncRequestCrumb(crumb, crumbText = '') {
             if (!crumb) return;
             const nextText = String(crumbText || '');
-            if (crumb.innerText !== nextText) crumb.innerText = nextText;
+            if (crumb.textContent !== nextText) crumb.innerText = nextText;
         }
 
         function applyRequestRenderMarkup(container, crumb, crumbText, html, renderKey = '') {

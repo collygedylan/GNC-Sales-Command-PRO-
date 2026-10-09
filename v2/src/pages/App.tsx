@@ -55,10 +55,13 @@ import type { AvOptionRow } from '../types';
 import { PartnerWorkspace } from '../components/PartnerWorkspace';
 import { CompanyDirectory } from '../components/CompanyDirectory';
 import { DeferredView } from '../components/DeferredView';
+import { createDeferredModule } from '../utils/deferredModule';
 import { defaultRequestColumnKeys, requestGridColumns, type RequestColumnKey, type RequestDisplayMode as DisplayMode, type RequestTabId as TabId } from './requestQueueConfig';
 
-const LazyRequestQueue = lazy(() => import('./RequestQueue'));
-const LazyDriveInventory = lazy(() => import('../components/DriveInventory').then(module => ({ default: module.DriveInventory })));
+const requestQueueModule = createDeferredModule(() => import('./RequestQueue'));
+const driveInventoryModule = createDeferredModule(() => import('../components/DriveInventory').then(module => ({ default: module.DriveInventory })));
+const LazyRequestQueue = lazy(requestQueueModule.load);
+const LazyDriveInventory = lazy(driveInventoryModule.load);
 
 type ViewId = 'home' | 'request' | 'drive' | 'tasks' | 'docks' | 'comm' | 'bloom' | 'partner-av' | 'inventory' | 'managers' | 'sales' | 'building' | 'qc' | 'office' | 'production' | 'reports';
 type UploadState = 'queued' | 'uploading' | 'retrying' | 'uploaded' | 'failed';
@@ -309,6 +312,10 @@ export function App() {
   };
 
   const openView = (next: ViewId) => {
+    // The user has selected the route: overlap its download with the shell
+    // update instead of waiting for the lazy boundary's layout transition.
+    if (next === 'request') requestQueueModule.preload();
+    if (next === 'drive') driveInventoryModule.preload();
     if (window.location.hash !== `#${next}`) window.location.hash = next;
     setView(next);
     setDetailRow(null);
