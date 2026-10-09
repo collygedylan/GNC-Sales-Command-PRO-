@@ -376,8 +376,10 @@ test('an ordinary list render retires a superseded staged refresh before its can
         Set, String, Number, productionLiveSyncActiveRender: refresh, productionLiveSyncRenderPending: true,
         productionLiveSyncRendering: true, productionLiveSyncRenderGeneration: 1, productionLiveSyncCoordinator: null,
         document: { createElement: () => staged },
-        renderMarkupChunkedByKey: (_key, target, _crumb, _rows, _text, _render, options) => {
+        chunkRenderTokensByKey: {},
+        renderMarkupChunkedByKey: (key, target, _crumb, _rows, _text, _render, options) => {
             assert.equal(target, staged); completion = options.onComplete;
+            context.chunkRenderTokensByKey[key] = Number(context.chunkRenderTokensByKey[key] || 0) + 1;
         },
         scheduleTypingAwareUiRender: (_key, callback) => { commit = callback; },
         cancelScheduledUiRenderByPrefix: () => { cancellations++; },

@@ -10,6 +10,7 @@ describe('on-demand route modules', () => {
     const unrelatedImporter = vi.fn(async () => ({ default: 'other' }));
     createDeferredModule(unrelatedImporter);
     expect(importer).not.toHaveBeenCalled();
+    expect(selected.hasCommitted()).toBe(false);
     selected.preload();
     expect(importer).toHaveBeenCalledOnce();
     expect(selected.load()).toBe(promise);
@@ -18,6 +19,9 @@ describe('on-demand route modules', () => {
     expect(unrelatedImporter).not.toHaveBeenCalled();
     resolve({ default: 'Drive' });
     expect(await selected.load()).toEqual({ default: 'Drive' });
+    expect(selected.hasCommitted()).toBe(false);
+    selected.markCommitted();
+    expect(selected.hasCommitted()).toBe(true);
   });
 
   it('loads normally for direct entry and preserves rejection for the lazy boundary', async () => {
@@ -27,6 +31,7 @@ describe('on-demand route modules', () => {
     route.preload();
     await expect(route.load()).rejects.toBe(error);
     expect(importer).toHaveBeenCalledOnce();
+    expect(route.hasCommitted()).toBe(false);
 
     const direct = createDeferredModule(async () => ({ default: 'Que' }));
     expect(await direct.load()).toEqual({ default: 'Que' });

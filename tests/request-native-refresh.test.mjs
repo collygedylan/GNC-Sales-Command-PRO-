@@ -45,6 +45,89 @@ function trackedClassList(initial = []) {
   };
 }
 
+function pendingRequestReuseFixture() {
+  const rows = [
+    { id: 'req-1', UNIQUE_ID: 'req-1', LOCATIONCODE: 'A1', label: 'First' },
+    { id: 'req-2', UNIQUE_ID: 'req-2', LOCATIONCODE: 'A2', label: 'Second' }
+  ];
+  const cardNodes = [{ uid: 'req-1' }, { uid: 'req-2' }];
+  const footer = { outerHTML: '<div class="browse-page-footer">Page 1 of 1</div>', textContent: 'Page 1 of 1' };
+  const container = {
+    dataset: {},
+    signature: '',
+    classList: { contains: () => false },
+    querySelectorAll: selector => selector === '[data-request-uid]' ? cardNodes : [],
+    querySelector: selector => selector === '.browse-page-footer' ? footer : null
+  };
+  const context = {
+    key: 'verified-request-context',
+    view: 'request',
+    visible: true,
+    online: true,
+    scope: 'profile:test-user',
+    dataPermissionVersion: 'permission-1',
+    surfaces: ['request:pending'],
+    adapters: [{ id: 'core:requests', sourceKeys: ['ph_active_request'] }]
+  };
+  const ctx = {
+    ACTIVE_REQUEST_TABLE: 'ph_active_request',
+    activeReqTab: 'pending',
+    selectedReqStatus: 'Pending',
+    normalizeRequestTabValue: value => String(value || ''),
+    currentUser: 'test-user',
+    currentRole: 'admin',
+    currentUserDivision: '10',
+    requestsInventory: rows,
+    rows,
+    selectedItems: new Set(),
+    isMultiSelectMode: false,
+    chunkRenderActivityByKey: Object.create(null),
+    completedPendingRequestRender: null,
+    requestBrowseFooterMarkup: new WeakMap(),
+    productionLiveSyncVerifiedView: context.key,
+    document: {
+      activeElement: { matches: () => false },
+      getElementById: id => id === 'request-content' ? container : null
+    },
+    canUseProductionLiveSync: () => true,
+    getProductionLiveSyncContext: () => context,
+    productionVerifiedViewKey: () => context.key,
+    captureRequestViewState: () => ({ tab: ctx.activeReqTab, status: ctx.selectedReqStatus, page: ctx.pageIndex || 0 }),
+    buildSelectionStateKey: values => [...values].sort().join('|'),
+    getCurrentVisibleViewId: () => 'request',
+    hasProductionLiveSyncDraft: () => false,
+    getScopedRequestItems: values => values,
+    reconcileRequestDrillState: values => ({ changed: false, items: values }),
+    isRequestPendingVisible: () => true,
+    isRegularRequestQueueItem: () => true,
+    buildRequestChunkRenderKey: (_mode, _crumb, items) => items.map(item => `${item.id}:${item.label}`).join('|'),
+    getClientBrowsePage: (_view, key, items) => ({
+      key, rows: ctx.visibleRows || items, pageIndex: ctx.pageIndex || 0
+    }),
+    renderClientBrowsePageFooter: (_view, _key, _total, page) => `<div class="browse-page-footer">Page ${Number(page.pageIndex) + 1} of 1</div>`,
+    normalizeRenderSignature: value => value,
+    getContainerRenderSignature: element => element.signature,
+    getContainerUiState: () => 'content',
+    getContainerChunkRenderKey: element => String(element.dataset.activeChunkRenderKey || ''),
+    currentContainer: container
+  };
+  vm.createContext(ctx);
+  vm.runInContext([
+    extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot('),
+    extractFunction(html, 'getRequestPendingReuseContextSnapshot', 'function rememberCompletedPendingRequestRender('),
+    extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome()'),
+    extractFunction(html, 'canReuseCompletedPendingRequestRender', 'function cancelProductionRefresh(')
+  ].join('\n'), ctx);
+  const plan = ctx.buildPendingRequestRenderPlan(rows);
+  ctx.plan = plan;
+  container.signature = plan.renderSignature;
+  footer.outerHTML = plan.footerMarkup;
+  ctx.requestBrowseFooterMarkup.set(footer, plan.footerMarkup);
+  const snapshot = ctx.getRequestPendingReuseContextSnapshot();
+  assert.equal(ctx.rememberCompletedPendingRequestRender(container, plan, snapshot), true);
+  return { ctx, context, container, rows, plan, cardNodes, footer };
+}
+
 test('home dashboard mode avoids viewport reads away from Home and preserves Home fit scheduling', () => {
   const offHomeClasses = trackedClassList(['hidden']);
   const offHomeBody = { classList: trackedClassList() };
@@ -443,6 +526,7 @@ test('legacy request wake retains its subscription, refresh, periodic sync, and 
 function productionListFixture({ key = 'request-main', tab = 'pending', signature = 'same', rowCount = 2 } = {}) {
   const calls = { crumb: [], complete: 0, staged: [], created: 0, classes: [], capture: 0, restore: 0, replaced: 0 };
   const container = {
+    dataset: {},
     querySelectorAll: selector => ({ length: selector === '[data-request-uid]' ? rowCount : 0 }),
     classList: { add: value => calls.classes.push(value) },
     replaceChildren: () => { calls.replaced++; },
@@ -453,11 +537,24 @@ function productionListFixture({ key = 'request-main', tab = 'pending', signatur
     productionLiveSyncActiveRender: refresh,
     activeReqTab: tab,
     document: { createElement: () => { calls.created++; return { childNodes: [], querySelectorAll: () => ({ length: 0 }) }; } },
+    chunkRenderTokensByKey: Object.create(null),
+    getContainerChunkRenderKey: element => String(element?.dataset?.activeChunkRenderKey || ''),
+    clearContainerChunkRenderState(element, key, token) {
+      if (element.dataset.activeChunkRenderKey !== key
+        || Number(element.dataset.activeChunkRenderToken) !== Number(token)) return;
+      delete element.dataset.activeChunkRenderKey;
+      delete element.dataset.activeChunkRenderToken;
+    },
     normalizeRenderSignature: value => String(value).trim(),
     getContainerRenderSignature: () => signature,
     setContainerRenderSignature: () => {},
     syncRequestCrumb: (...args) => calls.crumb.push(args),
-    renderMarkupChunkedByKey: (...args) => { calls.staged.push(args); return 'staged'; },
+    renderMarkupChunkedByKey: (...args) => {
+      calls.staged.push(args);
+      const key = String(args[0] || '');
+      ctx.chunkRenderTokensByKey[key] = Number(ctx.chunkRenderTokensByKey[key] || 0) + 1;
+      return 'staged';
+    },
     scheduleTypingAwareUiRender: (_key, callback) => callback(),
     isProductionRefreshCurrent: () => true,
     captureProductionRefreshAnchor: () => { calls.capture++; return { view: 'request' }; },
@@ -466,8 +563,9 @@ function productionListFixture({ key = 'request-main', tab = 'pending', signatur
     calls
   };
   vm.createContext(ctx);
+  const helper = extractFunction(html, 'clearSupersededContainerChunkState', 'function stageProductionRefreshList(');
   const source = extractFunction(html, 'stageProductionRefreshList', 'function cancelProductionRefresh(');
-  vm.runInContext(source, ctx);
+  vm.runInContext(`${helper}\n${source}`, ctx);
   return { ctx, calls, container, refresh, key };
 }
 
@@ -484,6 +582,50 @@ test('completed pending request list reuses matching rendered rows and completes
   assert.equal(f.calls.crumb.length, 1);
   assert.equal(f.refresh.pending, 0);
   assert.equal(f.refresh.retainedRequestList, true);
+});
+
+test('staged commit retires only the superseded original-container chunk marker', () => {
+  const helper = extractFunction(html, 'clearSupersededContainerChunkState', 'function stageProductionRefreshList(');
+  const ctx = {
+    chunkRenderTokensByKey: { 'request-main': 8 },
+    getContainerChunkRenderKey: container => String(container.dataset.activeChunkRenderKey || ''),
+    clearContainerChunkRenderState(container, key, token) {
+      if (container.dataset.activeChunkRenderKey !== key
+        || Number(container.dataset.activeChunkRenderToken) !== Number(token)) return;
+      delete container.dataset.activeChunkRenderKey;
+      delete container.dataset.activeChunkRenderToken;
+    }
+  };
+  vm.createContext(ctx);
+  vm.runInContext(helper, ctx);
+
+  const superseded = { dataset: { activeChunkRenderKey: 'request-main', activeChunkRenderToken: '7' } };
+  assert.equal(ctx.clearSupersededContainerChunkState(superseded, 'request-main', {
+    key: 'request-main', token: 7
+  }, 8), true, 'a canceled old callback may leave its dataset marker after the staged token supersedes it');
+  assert.equal(superseded.dataset.activeChunkRenderKey, undefined);
+  assert.equal(superseded.dataset.activeChunkRenderToken, undefined);
+
+  const newerGlobalToken = { dataset: { activeChunkRenderKey: 'request-main', activeChunkRenderToken: '7' } };
+  ctx.chunkRenderTokensByKey['request-main'] = 9;
+  assert.equal(ctx.clearSupersededContainerChunkState(newerGlobalToken, 'request-main', {
+    key: 'request-main', token: 7
+  }, 8), false, 'a later chunk generation is never retired by this staged commit');
+  assert.equal(newerGlobalToken.dataset.activeChunkRenderToken, '7');
+
+  const replacedContainerState = { dataset: { activeChunkRenderKey: 'request-main', activeChunkRenderToken: '8' } };
+  ctx.chunkRenderTokensByKey['request-main'] = 8;
+  assert.equal(ctx.clearSupersededContainerChunkState(replacedContainerState, 'request-main', {
+    key: 'request-main', token: 7
+  }, 8), false, 'a different container token is preserved');
+  assert.equal(replacedContainerState.dataset.activeChunkRenderToken, '8');
+
+  const stage = extractFunction(html, 'stageProductionRefreshList', 'function cancelProductionRefresh(');
+  const currentGuard = stage.indexOf('if (!isProductionRefreshCurrent(refresh) || !container.isConnected) return;');
+  const retireMarker = stage.indexOf('clearSupersededContainerChunkState(container, key, supersededChunkState, stagedChunkToken)');
+  const commitRows = stage.indexOf('container.replaceChildren(...staged.childNodes)');
+  assert.ok(currentGuard >= 0 && retireMarker > currentGuard && commitRows > retireMarker,
+    'only the current staged commit retires its captured prior marker before replacing the original list');
 });
 
 test('request crumb compares textContent and writes innerText only when content changes', () => {
@@ -664,6 +806,7 @@ function productionRefreshSchedulerFixture({ view = 'request', viewState = 'load
     captureProductionRefreshAnchor: () => { calls.capture++; return { view }; },
     restoreProductionRefreshAnchor: () => { calls.restore++; },
     isProductionRefreshCurrent: () => true,
+    canReuseCompletedPendingRequestRender: () => false,
     bumpLatestViewRenderToken: () => 1,
     markViewDirty: () => {},
     renderViewContent: () => { calls.render++; },
@@ -728,7 +871,7 @@ test('Pending Request refresh keeps commit anchoring and skips outer anchoring f
   assert.match(stage, /const anchor = captureProductionRefreshAnchor\(refresh\.view\)/);
   assert.match(stage, /restoreProductionRefreshAnchor\(anchor\)/);
   const renderRequest = extractFunction(html, 'renderRequest', 'function createRequestSwipeState(');
-  assert.match(renderRequest, /if\s*\(pendingItems\.length === 0\)/);
+  assert.match(renderRequest, /if\s*\(plan\.empty\)/);
   assert.match(renderRequest, /applyRequestRenderMarkup\(container, crumb, crumbText, `<div[^`]*No pending requests\./,
     'empty Pending Request results use the synchronous markup fallback, which relies on native scroll clamping');
 
@@ -738,6 +881,103 @@ test('Pending Request refresh keeps commit anchoring and skips outer anchoring f
   cancelled.scheduled[0][1]();
   assert.equal(cancelled.calls.capture, 0, 'a navigation-cancelled refresh performs no anchor scan');
   assert.equal(cancelled.calls.render, 0);
+});
+
+test('native verified Pending refresh reuses only the exact completed body contract', () => {
+  const fixture = pendingRequestReuseFixture();
+  const { ctx, context, rows, container, cardNodes, footer } = fixture;
+  assert.equal(ctx.canReuseCompletedPendingRequestRender(context.key), true);
+
+  const rejects = mutation => {
+    const next = pendingRequestReuseFixture();
+    mutation(next);
+    assert.equal(next.ctx.canReuseCompletedPendingRequestRender(next.context.key), false);
+  };
+  rejects(({ rows: changed }) => { changed[0].label = 'A changed visible field'; });
+  rejects(({ context: changed }) => { changed.scope = 'profile:other-user'; });
+  rejects(({ context: changed }) => { changed.dataPermissionVersion = 'permission-2'; });
+  rejects(({ context: changed }) => { changed.visible = false; });
+  rejects(({ context: changed }) => { changed.online = false; });
+  rejects(({ context: changed }) => { changed.surfaces = ['request:bunch-notes']; });
+  rejects(({ context: changed }) => { changed.adapters = []; });
+  rejects(({ context: changed }) => { changed.adapters = [{ id: 'core:requests', sourceKeys: ['ph_other_table'] }]; });
+  rejects(({ context: changed }) => { changed.key = 'a different adapter/view key'; });
+  rejects(({ ctx: changed }) => { changed.activeReqTab = 'completed'; });
+  rejects(({ ctx: changed }) => { changed.selectedReqStatus = 'Complete'; });
+  rejects(({ ctx: changed }) => { changed.currentUser = 'other-user'; });
+  rejects(({ ctx: changed }) => { changed.pageIndex = 1; });
+  rejects(({ ctx: changed }) => { changed.selectedItems.add('req-1'); });
+  rejects(({ ctx: changed }) => { changed.isMultiSelectMode = true; });
+  rejects(({ ctx: changed }) => { changed.document.activeElement.matches = () => true; });
+  rejects(({ container: changed }) => { changed.dataset.activeChunkRenderKey = 'request-main'; });
+  rejects(({ container: changed }) => { changed.signature = 'stale-container-signature'; });
+  rejects(({ cardNodes: changed }) => { changed[0] = { uid: 'replacement-node' }; });
+  const decorated = pendingRequestReuseFixture();
+  decorated.footer.outerHTML = `${decorated.footer.outerHTML.replace('class="browse-page-footer"', 'class="browse-page-footer ui-action"')}`;
+  assert.equal(decorated.ctx.canReuseCompletedPendingRequestRender(decorated.context.key), true,
+    'class-only framework decoration does not invalidate an authored footer');
+  rejects(({ footer: changed }) => { changed.textContent = 'Different visible footer text'; });
+  rejects(({ container: changed, footer: original, ctx: changedCtx, plan }) => {
+    const replacement = { outerHTML: original.outerHTML, textContent: original.textContent };
+    changedCtx.requestBrowseFooterMarkup.set(replacement, plan.footerMarkup);
+    changed.querySelector = selector => selector === '.browse-page-footer' ? replacement : null;
+  });
+  rejects(({ footer: changed, ctx: changedCtx, plan }) => {
+    changedCtx.requestBrowseFooterMarkup.set(changed, `${plan.footerMarkup} `);
+  });
+  fixture.rows[0].label = 'still matching';
+  assert.equal(ctx.canReuseCompletedPendingRequestRender(context.key), false,
+    'once the source rows change, the completed plan can no longer authorize DOM reuse');
+  assert.ok(rows.length && container && cardNodes.length && footer);
+});
+
+test('Pending reuse is completed-render-only, keeps native scope out of shared legacy planning, and preserves chrome', () => {
+  const plan = extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot(');
+  assert.doesNotMatch(plan, /getProductionLiveSyncContext|canUseProductionLiveSync/,
+    'the shared Pending plan remains usable by legacy rendering without requiring native sync');
+  const remember = extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome()');
+  assert.match(remember, /options|contextSnapshot/);
+  assert.match(remember, /cardNodes/);
+  assert.match(remember, /getContainerRenderSignature/);
+
+  const scheduler = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
+  const reuseAt = scheduler.indexOf('canReuseCompletedPendingRequestRender(contextKey)');
+  const rendererAt = scheduler.indexOf('renderViewContent(view, false, true)');
+  assert.ok(reuseAt >= 0 && rendererAt > reuseAt, 'the strict reuse gate runs before the full view renderer');
+  assert.match(scheduler, /syncRequestRenderChrome\(\)/);
+  assert.match(scheduler, /scheduleRequestRenderSideData\(\)/);
+  assert.match(scheduler, /state\.dirty = false/);
+  assert.match(scheduler, /finishProductionRefresh\(refresh\)/,
+    'the verified refresh still completes and updates its freshness status');
+
+  const labels = extractFunction(html, 'updateRequestTabButtonLabels', 'function getAuthorizedRequestCategories(');
+  assert.match(labels, /syncRequestChromeMarkup\(element, nextHtml, requestTabLabelMarkupByNode\)/);
+  const toolbar = extractFunction(html, 'renderRequestCategoryToolbar', 'let requestArchiveListState');
+  assert.match(toolbar, /syncRequestChromeMarkup\(toolbar, nextHtml, requestCategoryToolbarMarkupByNode\)/);
+});
+
+test('Request chrome markup cache preserves decorated child nodes until authored markup changes', () => {
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(extractFunction(html, 'syncRequestChromeMarkup', 'const requestTabLabelMarkupByNode'), ctx);
+  const markupByNode = new WeakMap();
+  const originalMarkup = '<span><span>Request</span><span class="ui-pill">4</span></span>';
+  const root = { decorated: true };
+  let innerHTML = originalMarkup;
+  let writes = 0;
+  const element = {
+    get firstElementChild() { return root; },
+    get innerHTML() { return innerHTML; },
+    set innerHTML(value) { writes++; innerHTML = value; }
+  };
+  markupByNode.set(element, { markup: '<span><span>Request</span><span>4</span></span>', root });
+  assert.equal(ctx.syncRequestChromeMarkup(element, '<span><span>Request</span><span>4</span></span>', markupByNode), false);
+  assert.equal(writes, 0, 'decorated inner markup does not force a parent replacement');
+  assert.equal(element.firstElementChild, root);
+
+  assert.equal(ctx.syncRequestChromeMarkup(element, '<span><span>Request</span><span>5</span></span>', markupByNode), true);
+  assert.equal(writes, 1, 'a changed count still refreshes the tab label');
+  assert.equal(innerHTML, '<span><span>Request</span><span>5</span></span>');
 });
 
 test('anchor restoration avoids forced layout on the fallback and preserves offsets when a row remains', () => {

@@ -26,6 +26,10 @@ current PR commit, checked by `check-performance-baseline-review.mjs`.
   Starting the selected route's import in its navigation handler overlaps the
   download with the shell update. Do not import routes during setup or load
   unrelated routes speculatively. Import failure still reaches the lazy boundary.
+  Record a warm boundary only after its content commits successfully. Revisits
+  can then mount directly without replaying the loading transition; downloading
+  a chunk alone must not mark its boundary warm. Keep the route's state reset
+  and request cancellation behavior unchanged.
   The departed route still unmounts immediately, and superseded loads cannot
   remount it. Follow React's [revealed-content transition guidance](https://react.dev/reference/react/Suspense#preventing-already-revealed-content-from-hiding).
 - State ownership is a behavior contract: Que filters/rows/selection remain in
@@ -162,6 +166,15 @@ render signature and row count match the verified snapshot retains its cards;
 changed or incomplete lists still stage normally. Page-footer markup is tracked
 by node identity so decoration does not cause an otherwise unchanged footer to
 be replaced. Legacy and Bunch Notes refresh paths retain their behavior.
+Once Pending chunking, decoration and footer creation have completed, an
+unchanged verified refresh can reuse that completed body without scheduling the
+body renderer again. Bind reuse to the current identity, permissions, view state,
+selection, complete row signature and page/footer contract. Keep badges, category
+counts, header controls and verification status synchronized. Loading, changed,
+partial, stale-context or selected-row cases take the existing rendering path.
+A staged replacement clears only the original container chunk marker captured
+before staging, after its current-refresh check succeeds. Never clear a newer
+container token when retiring superseded rendering work.
 
 The beta lazy boundary schedules its existing transition in a layout effect so
 chunk discovery does not wait for a passive effect. This schedules work before

@@ -35980,6 +35980,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             renderProductionDataFreshness(productionLiveSyncCoordinator.getStatus());
         }
 
+        function clearSupersededContainerChunkState(container, key, supersededState, stagedToken) {
+            const safeKey = String(key || '').trim();
+            const priorKey = String(supersededState && supersededState.key || '').trim();
+            const priorToken = Number(supersededState && supersededState.token) || 0;
+            const currentStagedToken = Number(stagedToken) || 0;
+            if (!container || !container.dataset || !safeKey || priorKey !== safeKey || !priorToken
+                || currentStagedToken <= priorToken
+                || Number(chunkRenderTokensByKey[safeKey] || 0) !== currentStagedToken
+                || getContainerChunkRenderKey(container) !== priorKey
+                || Number(container.dataset.activeChunkRenderToken || 0) !== priorToken) return false;
+            clearContainerChunkRenderState(container, priorKey, priorToken);
+            return getContainerChunkRenderKey(container) === '';
+        }
+
         function stageProductionRefreshList(key, container, crumb, rows, crumbText, renderRow, options) {
             const refresh = productionLiveSyncActiveRender;
             // A completed Pending preview already has the same row contract as
@@ -35998,7 +36012,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             refresh.pending++;
             (refresh.containers ||= new Set()).add(container);
             container.classList.add('performance-windowed-list');
-            return renderMarkupChunkedByKey(key, staged, null, rows, crumbText, renderRow, {
+            const supersededChunkState = {
+                key: getContainerChunkRenderKey(container),
+                token: Number(container.dataset && container.dataset.activeChunkRenderToken || 0)
+            };
+            let stagedChunkToken = 0;
+            const didStage = renderMarkupChunkedByKey(key, staged, null, rows, crumbText, renderRow, {
                 ...options, _backgroundStage: true, onCompleteAfterInteractive: false, onCompleteDelayMs: 0,
                 onComplete: () => scheduleTypingAwareUiRender(`production-live-refresh:commit:${key}`, () => {
                     if (!isProductionRefreshCurrent(refresh) || !container.isConnected) return;
@@ -36008,6 +36027,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         showViewErrorState(refresh.view, 'The updated list could not be completed. Please retry.', true);
                         return;
                     }
+                    clearSupersededContainerChunkState(container, key, supersededChunkState, stagedChunkToken);
                     container.replaceChildren(...staged.childNodes);
                     setContainerRenderSignature(container, getContainerRenderSignature(staged));
                     if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
@@ -36017,6 +36037,143 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     finishProductionRefresh(refresh);
                 }, 0, 120, { deferUntilIdle: true, ignoreChunkDuringInteraction: true })
             });
+            stagedChunkToken = Number(chunkRenderTokensByKey[key] || 0);
+            return didStage;
+        }
+
+        let completedPendingRequestRender = null;
+
+        function buildPendingRequestRenderPlan(items) {
+            const crumbText = 'All Request Que';
+            const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
+            if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
+            pendingItems.sort((a, b) => String(a.LOCATIONCODE || '').localeCompare(String(b.LOCATIONCODE || ''), undefined, { numeric: true }));
+            const renderKey = buildRequestChunkRenderKey('request:pending', crumbText, pendingItems);
+            const browsePage = getClientBrowsePage('request', renderKey, pendingItems);
+            return {
+                empty: false,
+                crumbText,
+                items: pendingItems,
+                rows: browsePage.rows,
+                pageIndex: Number(browsePage.pageIndex),
+                renderKey,
+                renderSignature: `${renderKey}:page:${Number(browsePage.pageIndex)}`,
+                footerMarkup: renderClientBrowsePageFooter('request', browsePage.key, pendingItems.length, browsePage)
+            };
+        }
+
+        function getRequestPendingReuseContextSnapshot(context = null) {
+            if (!canUseProductionLiveSync() || normalizeRequestTabValue(activeReqTab) !== 'pending') return null;
+            context = context || getProductionLiveSyncContext();
+            const adapters = Array.isArray(context.adapters) ? context.adapters : [];
+            const ownsRequests = adapters.some((adapter) => adapter.id === 'core:requests'
+                && Array.isArray(adapter.sourceKeys) && adapter.sourceKeys.includes(ACTIVE_REQUEST_TABLE));
+            const surfaces = Array.isArray(context.surfaces) ? context.surfaces : [];
+            if (!ownsRequests || surfaces.includes('request:bunch-notes') || !surfaces.includes('request:pending')
+                || !context.visible || !context.online || !context.scope || !context.dataPermissionVersion) return null;
+            return {
+                contextKey: productionVerifiedViewKey(context),
+                scope: context.scope,
+                dataPermissionVersion: context.dataPermissionVersion,
+                viewState: JSON.stringify(captureRequestViewState()),
+                selectionKey: buildSelectionStateKey(selectedItems),
+                identityKey: `${currentUser}|${currentRole}|${currentUserDivision}`
+            };
+        }
+
+        function rememberCompletedPendingRequestRender(container, plan, contextSnapshot) {
+            if (!contextSnapshot) {
+                completedPendingRequestRender = null;
+                return false;
+            }
+            const currentContext = getProductionLiveSyncContext();
+            const currentSnapshot = getRequestPendingReuseContextSnapshot(currentContext);
+            if (!container || !plan || plan.empty || !contextSnapshot || !currentSnapshot
+                || JSON.stringify(contextSnapshot) !== JSON.stringify(currentSnapshot)
+                || getContainerRenderSignature(container) !== normalizeRenderSignature(plan.renderSignature)
+                || container.querySelectorAll('[data-request-uid]').length !== plan.rows.length
+                || getContainerChunkRenderKey(container)
+                || Number(chunkRenderActivityByKey['request-main'] || 0)) {
+                completedPendingRequestRender = null;
+                return false;
+            }
+            const footer = container.querySelector('.browse-page-footer');
+            const expectsFooter = !!plan.footerMarkup;
+            if (expectsFooter !== !!footer
+                || (footer && requestBrowseFooterMarkup.get(footer) !== plan.footerMarkup)) {
+                completedPendingRequestRender = null;
+                return false;
+            }
+            const cardNodes = Array.from(container.querySelectorAll('[data-request-uid]'));
+            completedPendingRequestRender = {
+                container,
+                cardNodes,
+                ...contextSnapshot,
+                renderSignature: plan.renderSignature,
+                footerMarkup: plan.footerMarkup,
+                footerNode: footer,
+                footerTextContent: footer ? footer.textContent : '',
+                totalRows: plan.items.length,
+                renderedRows: plan.rows.length,
+                pageIndex: plan.pageIndex
+            };
+            return true;
+        }
+
+        function syncRequestRenderChrome() {
+            updateFooterRequestBadge();
+            updateFooterChatBadge();
+            syncRequestTabButtons();
+            syncRequestHeaderSearchChrome();
+        }
+
+        function scheduleRequestRenderSideData() {
+            runAfterShellInteractive(() => {
+                if (!isViewVisible('request')) return;
+                refreshActiveRequestQueueSideData('request-render-side-data', {
+                    allowWhileInteractive: true,
+                    minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
+                }).catch(() => {});
+                queueRequestVisibleRenderCatchup('request-render-catchup');
+            }, isTouchConstrainedDevice() ? 320 : 90);
+        }
+
+        function canReuseCompletedPendingRequestRender(contextKey) {
+            const contract = completedPendingRequestRender;
+            if (!contract) return false;
+            const context = getProductionLiveSyncContext();
+            const contextSnapshot = getRequestPendingReuseContextSnapshot(context);
+            if (!contextSnapshot || contextSnapshot.contextKey !== contextKey) return false;
+            const container = document.getElementById('request-content');
+            if (!container || normalizeRequestTabValue(activeReqTab) !== 'pending' || selectedReqStatus !== 'Pending'
+                || getCurrentVisibleViewId() !== 'request' || productionLiveSyncVerifiedView !== contextKey
+                || productionVerifiedViewKey(context) !== contextKey || hasProductionLiveSyncDraft()
+                || selectedItems.size || isMultiSelectMode
+                || document.activeElement?.matches?.('input,select,textarea,[contenteditable="true"]')
+                || container.classList.contains('bn-root') || getContainerUiState(container) !== 'content'
+                || getContainerChunkRenderKey(container) || Number(chunkRenderActivityByKey['request-main'] || 0)) return false;
+            const scopedItems = getScopedRequestItems(requestsInventory);
+            const reconciled = reconcileRequestDrillState(scopedItems);
+            if (!reconciled || reconciled.changed) return false;
+            const plan = buildPendingRequestRenderPlan(reconciled.items);
+            if (!plan || plan.empty || contract.container !== container || contract.contextKey !== contextKey || contract.scope !== context.scope
+                || contract.dataPermissionVersion !== context.dataPermissionVersion
+                || contract.identityKey !== `${currentUser}|${currentRole}|${currentUserDivision}`
+                || contract.viewState !== JSON.stringify(captureRequestViewState())
+                || contract.selectionKey !== buildSelectionStateKey(selectedItems)
+                || contract.renderSignature !== plan.renderSignature
+                || contract.footerMarkup !== plan.footerMarkup
+                || contract.totalRows !== plan.items.length || contract.renderedRows !== plan.rows.length
+                || contract.pageIndex !== plan.pageIndex
+                || getContainerRenderSignature(container) !== normalizeRenderSignature(plan.renderSignature)
+                || container.querySelectorAll('[data-request-uid]').length !== plan.rows.length) return false;
+            const cardNodes = Array.from(container.querySelectorAll('[data-request-uid]'));
+            if (contract.cardNodes.length !== cardNodes.length || contract.cardNodes.some((node, index) => node !== cardNodes[index])) return false;
+            const footer = container.querySelector('.browse-page-footer');
+            if (!!plan.footerMarkup !== !!footer || footer !== contract.footerNode
+                || (footer && requestBrowseFooterMarkup.get(footer) !== plan.footerMarkup)
+                || (footer && footer.textContent !== contract.footerTextContent)) return false;
+            return true;
         }
 
         function cancelProductionRefresh() {
@@ -36081,7 +36238,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     token: Number(latestViewRenderTokensByView[view]) || bumpLatestViewRenderToken(view), pending: 0 };
                 productionLiveSyncActiveRender = refresh;
                 productionLiveSyncRendering = true;
-                try { markViewDirty(view); renderViewContent(view, false, true); }
+                try {
+                    if (view === 'request' && activeReqTab === 'pending' && canReuseCompletedPendingRequestRender(contextKey)) {
+                        document.getElementById('request-content')?.classList.remove('bn-root');
+                        syncRequestRenderChrome();
+                        if (activeReqTab === 'pending') {
+                            scheduleRequestRenderSideData();
+                            const state = ensureViewRenderState(view);
+                            state.initialized = true;
+                            state.dirty = false;
+                            scheduleIosPhoneTaskStyleModuleFlowCleanup(view, `render:${view}`, { resetScroll: false });
+                        } else {
+                            markViewDirty(view);
+                            renderViewContent(view, false, true);
+                        }
+                    } else {
+                        markViewDirty(view);
+                        renderViewContent(view, false, true);
+                    }
+                }
                 finally {
                     productionLiveSyncRendering = false;
                     if (anchor && isProductionRefreshCurrent(refresh) && !refresh.retainedRequestList) restoreProductionRefreshAnchor(anchor);
@@ -39078,6 +39253,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return String(numeric);
         }
 
+        function syncRequestChromeMarkup(element, nextHtml, markupByNode) {
+            if (!element || !markupByNode) return false;
+            const normalizedHtml = String(nextHtml || '');
+            const root = element.firstElementChild || null;
+            const previous = markupByNode.get(element);
+            if (previous && previous.markup === normalizedHtml && previous.root === root) return false;
+            const changed = element.innerHTML !== normalizedHtml;
+            if (changed) element.innerHTML = normalizedHtml;
+            markupByNode.set(element, { markup: normalizedHtml, root: element.firstElementChild || null });
+            return changed;
+        }
+
+        const requestTabLabelMarkupByNode = new WeakMap();
         function updateRequestTabButtonLabels(counts = getRequestTabQueueCounts()) {
             Object.keys(REQUEST_TAB_LABELS).forEach((tab) => {
                 const element = document.getElementById(`tab-req-${tab}`);
@@ -39088,7 +39276,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     ? 'border-red-200 bg-red-500 text-white'
                     : 'border-emerald-100 bg-white text-emerald-700';
                 const countHtml = `<span class="ml-1 inline-flex min-w-[1.35rem] items-center justify-center rounded-full border ${countToneClass} px-1.5 py-0.5 text-[9px] font-black leading-none">${escapeHtml(formatRequestTabCount(count))}</span>`;
-                element.innerHTML = `<span class="inline-flex items-center justify-center gap-1">${escapeHtml(label)}${countHtml}</span>`;
+                const nextHtml = `<span class="inline-flex items-center justify-center gap-1">${escapeHtml(label)}${countHtml}</span>`;
+                syncRequestChromeMarkup(element, nextHtml, requestTabLabelMarkupByNode);
             });
         }
 
@@ -39107,11 +39296,13 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return categories.length ? categories : [];
         }
 
+        const requestCategoryToolbarMarkupByNode = new WeakMap();
         function renderRequestCategoryToolbar() {
             const toolbar = document.getElementById('request-filter-toolbar');
             if (!toolbar) return false;
             if (requestSalesRepsManagerMode && activeReqTab === 'reps') {
-                toolbar.innerHTML = `<div class="request-category-options"><button data-secondary-back="true" aria-hidden="true" type="button" class="request-category-chip is-active" onclick="return closeManagerSalesRepsModule()"><i class="ph-bold ph-arrow-left"></i><span>Sales / Request History</span></button></div>`;
+                const nextHtml = `<div class="request-category-options"><button data-secondary-back="true" aria-hidden="true" type="button" class="request-category-chip is-active" onclick="return closeManagerSalesRepsModule()"><i class="ph-bold ph-arrow-left"></i><span>Sales / Request History</span></button></div>`;
+                syncRequestChromeMarkup(toolbar, nextHtml, requestCategoryToolbarMarkupByNode);
                 toolbar.dataset.toolbarSingleRow = 'true';
                 return true;
             }
@@ -39125,7 +39316,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const undoHtml = activeReqTab === 'pending' && requestArchiveUndo.uid && requestArchiveUndo.expiresAt > Date.now()
                 ? `<button type="button" class="request-archive-undo" onclick="return undoRequestArchive('${escapeHtml(requestArchiveUndo.uid)}')" aria-label="Undo archive">Undo archive</button>`
                 : '';
-            toolbar.innerHTML = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}${undoHtml}</div>`;
+            const nextHtml = `<div class="request-category-options" role="group" aria-label="Queue category">${categoryButtonsHtml}${undoHtml}</div>`;
+            syncRequestChromeMarkup(toolbar, nextHtml, requestCategoryToolbarMarkupByNode);
             toolbar.dataset.toolbarSingleRow = 'true';
             return true;
         }
@@ -114266,13 +114458,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         function renderRequest() {
-            updateFooterRequestBadge();
-            updateFooterChatBadge();
-            syncRequestTabButtons();
-            syncRequestHeaderSearchChrome();
+            syncRequestRenderChrome();
             const container = document.getElementById('request-content');
             const crumb = document.getElementById('request-crumb');
             if (activeReqTab === 'bunch-notes') { BunchNote.render(); return; }
+            if (activeReqTab !== 'pending') completedPendingRequestRender = null;
             document.getElementById('request-content')?.classList.remove('bn-root');
             if (activeReqTab === 'eval-work') {
                 const container = document.getElementById('request-content');
@@ -114297,14 +114487,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return;
             }
             if (ensureViewDataForRender('request')) return;
-            runAfterShellInteractive(() => {
-                if (!isViewVisible('request')) return;
-                refreshActiveRequestQueueSideData('request-render-side-data', {
-                    allowWhileInteractive: true,
-                    minIntervalMs: REQUEST_QUEUE_SIDE_REFRESH_MIN_INTERVAL_MS
-                }).catch(() => {});
-                queueRequestVisibleRenderCatchup('request-render-catchup');
-            }, isTouchConstrainedDevice() ? 320 : 90);
+            scheduleRequestRenderSideData();
             bumpChunkRenderTokenByKey('request-main');
 
             const baseRequestItems = getScopedRequestItems(requestsInventory);
@@ -114488,26 +114671,21 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
 
             if (activeReqTab === 'pending') {
-                const crumbText = `All Request Que${requestFilterSuffix}`;
-                let pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
-
-                if (pendingItems.length === 0) {
+                completedPendingRequestRender = null;
+                const plan = buildPendingRequestRenderPlan(items);
+                if (plan.empty) {
+                    const crumbText = `All Request Que${requestFilterSuffix}`;
                     applyRequestRenderMarkup(container, crumb, crumbText, `<div class="p-8 text-center text-gray-400">No pending requests.</div>`, 'request:pending:empty');
                     return;
                 }
-
-                pendingItems.sort((a,b) => String(a.LOCATIONCODE||'').localeCompare(String(b.LOCATIONCODE||''), undefined, {numeric: true}));
-                const renderKey = [
-                    buildRequestChunkRenderKey('request:pending', crumbText, pendingItems)
-                ].join('::');
-                const browsePage = getClientBrowsePage('request', renderKey, pendingItems);
-                const pageFooter = renderClientBrowsePageFooter('request', browsePage.key, pendingItems.length, browsePage);
-                renderMarkupChunkedByKey('request-main', container, crumb, browsePage.rows, crumbText, (item) => generateCard(item, 'request', 'status-purple'), getRequestChunkRenderOptions({
-                    renderSignature: `${renderKey}:page:${browsePage.pageIndex}`,
+                const contextSnapshot = plan && !plan.empty ? getRequestPendingReuseContextSnapshot() : null;
+                renderMarkupChunkedByKey('request-main', container, crumb, plan.rows, plan.crumbText, (item) => generateCard(item, 'request', 'status-purple'), getRequestChunkRenderOptions({
+                    renderSignature: plan.renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">No pending requests.</div>`,
                     onComplete: () => {
                         decorateRequestRows();
-                        syncRequestBrowseFooter(container, pageFooter);
+                        syncRequestBrowseFooter(container, plan.footerMarkup);
+                        rememberCompletedPendingRequestRender(container, plan, contextSnapshot);
                     }
                 }));
                 return;

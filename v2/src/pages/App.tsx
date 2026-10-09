@@ -449,7 +449,7 @@ export function App() {
         ) : view === 'bloom' || view === 'partner-av' ? (
           <PartnerWorkspace key={view} view={view === 'partner-av' ? 'av' : 'orders'} />
         ) : view === 'request' ? (
-          <DeferredView key="request" label="Que">
+          <DeferredView key="request" label="Que" loaded={requestQueueModule.hasCommitted()} onContentReady={requestQueueModule.markCommitted}>
             <LazyRequestQueue
               rows={filteredRows}
               allRows={rows}
@@ -464,7 +464,7 @@ export function App() {
             />
           </DeferredView>
         ) : view === 'drive' ? (
-          <DeferredView key="drive" label="Drive"><LazyDriveInventory /></DeferredView>
+          <DeferredView key="drive" label="Drive" loaded={driveInventoryModule.hasCommitted()} onContentReady={driveInventoryModule.markCommitted}><LazyDriveInventory /></DeferredView>
         ) : view === 'tasks' ? (
           <TasksWorkspace onOpen={row => { setModuleDetail({ view: 'tasks', row }); scrollerRef.current?.scrollTo({ top: 0 }); }} />
         ) : view === 'comm' ? (
