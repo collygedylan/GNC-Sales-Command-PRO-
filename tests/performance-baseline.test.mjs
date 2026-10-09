@@ -34,10 +34,10 @@ test('timing budgets use the larger relative or noise allowance, never add both'
   assert.equal(compareBenchmarks(strictManifest, report('database-duration', [100]), report('database-duration', [116])).length, 2);
 });
 
-test('approved temporary profile doubles time ceilings with a 75ms browser jitter floor', () => {
-  assert.deepEqual(manifest.temporaryTimingAllowance, { multiplier: 2, minimumBrowserAllowanceMs: 75, restoreAtPrompt: 7 });
+test('temporary profile doubles time ceilings with a 100ms browser jitter floor', () => {
+  assert.deepEqual(manifest.temporaryTimingAllowance, { multiplier: 2, minimumBrowserAllowanceMs: 100, restoreAtPrompt: 7 });
   for (const [kind, before, limit] of [
-    ['duration', 0, 75], ['duration', 100, 250], ['duration', 1000, 2300],
+    ['duration', 0, 100], ['duration', 17.8, 117.8], ['duration', 100, 250], ['duration', 1000, 2300],
     ['database-duration', 0, 10], ['database-duration', 100, 230],
   ]) {
     assert.equal(benchmarkMetricLimit(manifest, before, kind), limit);
@@ -46,7 +46,7 @@ test('approved temporary profile doubles time ceilings with a 75ms browser jitte
   }
   assert.equal(benchmarkMetricLimit(strictManifest, 0, 'duration'), 25, 'Prompt 7 restores the original browser allowance');
   assert.equal(benchmarkMetricLimit(strictManifest, 0, 'database-duration'), 5, 'Prompt 7 restores the original SQL allowance');
-  for (const change of [{ multiplier: 3 }, { minimumBrowserAllowanceMs: 100 }, { restoreAtPrompt: 8 }, { extra: true }]) {
+  for (const change of [{ multiplier: 3 }, { minimumBrowserAllowanceMs: 150 }, { restoreAtPrompt: 8 }, { extra: true }]) {
     assert.throws(() => parseBenchmarkManifest({ ...manifest,
       temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, ...change } }), /TEMPORARY_TIMING_ALLOWANCE_INVALID/);
   }

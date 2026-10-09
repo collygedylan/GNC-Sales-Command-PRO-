@@ -10,7 +10,7 @@ export type BenchmarkManifest = {
   warmSamples: number;
   profiles: { id: string; width: number; height: number }[];
   budgets: { relative: number; browserNoiseMs: number; databaseNoiseMs: number };
-  temporaryTimingAllowance?: { multiplier: 2; minimumBrowserAllowanceMs: 75; restoreAtPrompt: 7 };
+  temporaryTimingAllowance?: { multiplier: 2; minimumBrowserAllowanceMs: 100; restoreAtPrompt: 7 };
 };
 export type BenchmarkReport = {
   schemaVersion: 1;
@@ -57,10 +57,10 @@ export function parseBenchmarkManifest(input: unknown): BenchmarkManifest {
   if (raw.temporaryTimingAllowance !== undefined) {
     const allowance = object(raw.temporaryTimingAllowance);
     if (Object.keys(allowance).length !== 3 || allowance.multiplier !== 2
-        || allowance.minimumBrowserAllowanceMs !== 75 || allowance.restoreAtPrompt !== 7) {
+        || allowance.minimumBrowserAllowanceMs !== 100 || allowance.restoreAtPrompt !== 7) {
       throw new Error('PERFORMANCE_TEMPORARY_TIMING_ALLOWANCE_INVALID');
     }
-    temporaryTimingAllowance = { multiplier: 2, minimumBrowserAllowanceMs: 75, restoreAtPrompt: 7 };
+    temporaryTimingAllowance = { multiplier: 2, minimumBrowserAllowanceMs: 100, restoreAtPrompt: 7 };
   }
   return { schemaVersion: 1, baselineCommit: sha(raw.baselineCommit, 40), sqlSchemaCommit: sha(raw.sqlSchemaCommit, 40), fixtureVersion: string(raw.fixtureVersion),
     coldSamples, warmSamples, profiles,

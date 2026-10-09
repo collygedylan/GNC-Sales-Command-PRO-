@@ -15,6 +15,7 @@ import { jsonObject, jsonValue } from '../services/database-contract-runtime.ts'
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { createApiSampleDiagnostics } from './performance-api-sample-diagnostics.mjs';
 import { parseAppServerTimingDuration } from './performance-function-sample-correlation.mjs';
+import { createApiFailureDiagnostic, writeApiFailureDiagnosticFile } from './performance-api-failure-diagnostics.mjs';
 import { assertPerformanceFunctionPolicy, PERFORMANCE_API_FUNCTION_POLICY } from './performance-function-policy.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 
@@ -727,7 +728,7 @@ async function expectedTotals(db, prefix, since, size) {
   return totals;
 }
 
-async function callAppApi(apiUrl, identity, payload, apiDiagnostics) {
+async function callAppApi(apiUrl, identity, payload, apiDiagnostics, scenarioId, sampleIndex) {
   const endpoint = new URL('/functions/v1/app-api', apiUrl);
   const requestId = `perf-api-${randomBytes(16).toString('hex')}`;
   const requestEluStart = apiDiagnostics.snapshotEventLoopUtilization();
@@ -748,6 +749,27 @@ async function callAppApi(apiUrl, identity, payload, apiDiagnostics) {
   if (!response.ok) {
     let responseBody = null;
     try { responseBody = JSON.parse(bodyText); } catch { /* Error responses may not be JSON. */ }
+    const responseRequestId = response.headers.get('x-request-id');
+    const failurePath = process.env.PERFORMANCE_API_FAILURE_DIAGNOSTIC_PATH;
+    if (failurePath) {
+      try {
+        const failureDiagnostic = createApiFailureDiagnostic({
+          scenario: scenarioId,
+          sample: sampleIndex,
+          requestId,
+          responseStatus: response.status,
+          responseEchoMatched: responseRequestId === requestId,
+          applicationErrorCode: sanitizedApplicationErrorCode(responseBody),
+          responseBytes: Buffer.byteLength(bodyText),
+          responseMs: elapsed,
+          headersMs: headersAt - started,
+          bodyReadMs: bodyCompleteAt - bodyReadStartedAt,
+          appServerDurationMs: parseAppServerTimingDuration(response.headers.get('server-timing')),
+        });
+        writeApiFailureDiagnosticFile(failurePath, failureDiagnostic);
+      }
+      catch { /* Failure diagnostics must never replace the measured API error. */ }
+    }
     throw errorCode(`PERFORMANCE_AUTHENTICATED_API_FAILED:${response.status}:${sanitizedApplicationErrorCode(responseBody)}`);
   }
   const decodeEluStart = apiDiagnostics.snapshotEventLoopUtilization();
@@ -963,7 +985,7 @@ async function runBenchmark({ mode, workspaceRoot, root = repoRoot, cli = packag
         const expectedPageDigest = await expectedApiPageDigest(db, scenario);
         const samples = [];
         for (let index = 0; index < manifest.coldSamples + manifest.warmSamples; index += 1) {
-          const response = await callAppApi(apiUrl, identity, request, apiDiagnostics);
+          const response = await callAppApi(apiUrl, identity, request, apiDiagnostics, scenario.id, index);
           const validationEluStart = apiDiagnostics.snapshotEventLoopUtilization();
           const validationStartedAt = performance.now();
           assertApiResponse(scenario, response, expectedPageDigest);

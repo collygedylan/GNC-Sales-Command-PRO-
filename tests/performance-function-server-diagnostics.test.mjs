@@ -53,6 +53,24 @@ test('classifies runtime bootstrap failures using a fixed safe label', t => {
   assert.equal(safeJson(diagnostics).includes(secret), false);
 });
 
+test('classifies worker resource limits with fixed labels and redacts log contents', async t => {
+  const cases = [
+    ['cpu_hard_limit', 'Edge runtime exceeded CPU hard limit'],
+    ['cpu_soft_limit', 'CPU soft limit was exceeded'],
+    ['memory_limit', 'memory limit exceeded'],
+    ['wall_clock_limit', 'wall-clock limit reached'],
+  ];
+  for (const [classification, message] of cases) {
+    await t.test(classification, subtest => {
+      const secret = 'synthetic-worker-detail-secret';
+      const logPath = fixture(subtest, `${message}: ${secret}`);
+      const diagnostics = getFunctionServerFailureDiagnostics({ logPath, exitCode: 1 });
+      assert.equal(diagnostics.classification, classification);
+      assert.equal(safeJson(diagnostics).includes(secret), false);
+    });
+  }
+});
+
 test('unknown startup output is not echoed and only allowlisted process metadata is returned', t => {
   const secret = 'service-role-key=synthetic-sensitive-value';
   const logPath = fixture(t, `unclassified startup output ${secret}`);

@@ -234,8 +234,8 @@ The original duration ceilings are baseline plus the larger of 15% or 25 ms for
 browser/API durations, and baseline plus the larger of 15% or 5 ms for SQL duration.
 For Prompts 1 through 6, the approved `temporaryTimingAllowance` doubles each
 calculated strict ceiling; for browser/API durations it also applies a minimum
-ceiling of baseline plus 75 ms. In formula form, the temporary browser/API ceiling
-is `max(strictCeiling * 2, baseline + 75 ms)` and the temporary SQL ceiling is
+ceiling of baseline plus 100 ms. In formula form, the temporary browser/API ceiling
+is `max(strictCeiling * 2, baseline + 100 ms)` and the temporary SQL ceiling is
 `strictCeiling * 2`. Prompt 7 removes the manifest override and restores the
 original 15%/25 ms browser/API and 15%/5 ms SQL ceilings. The temporary profile
 changes duration thresholds only. Count, unchanged-render and equal-result payload

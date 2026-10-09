@@ -6,6 +6,10 @@ const classifications = Object.freeze([
   ['registry_rate_limited', /\b(?:toomanyrequests|too many requests|rate exceeded|rate limit exceeded|429\s+too many requests)\b/i],
   ['module_download_failed', /\b(?:failed|unable|error|could not)\b.{0,100}\b(?:download|pull|fetch)\b|\b(?:download|pull|fetch)\b.{0,100}\b(?:failed|unable|error)\b/i],
   ['runtime_bootstrap_failed', /\b(?:bootstrap failed|failed to bootstrap|failed to initialize|failed to start edge runtime|runtime startup failed)\b/i],
+  ['cpu_hard_limit', /\bcpu\b.{0,100}\bhard\b.{0,60}\blimit\b|\bhard\b.{0,60}\bcpu\b.{0,100}\blimit\b/i],
+  ['cpu_soft_limit', /\bcpu\b.{0,100}\bsoft\b.{0,60}\blimit\b|\bsoft\b.{0,60}\bcpu\b.{0,100}\blimit\b/i],
+  ['memory_limit', /\b(?:memory|mem)\b.{0,100}\blimit\b|\b(?:out of memory|oom killed|memory limit exceeded)\b/i],
+  ['wall_clock_limit', /\bwall[ -]?clock\b.{0,100}\blimit\b|\bwall[ -]?clock limit exceeded\b/i],
   ['function_runtime_failed', /\b(?:edge runtime|functions serve|function server)\b.{0,100}\b(?:failed|error|exited|unavailable)\b/i],
 ]);
 

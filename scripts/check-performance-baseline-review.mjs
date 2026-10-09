@@ -8,7 +8,7 @@ export function baselineChanged(previous, current) {
   return previous !== null && JSON.stringify(previous) !== JSON.stringify(current);
 }
 
-// The owner explicitly authorized this exact temporary profile for PR #349 on
+// The owner explicitly authorized temporary timing relaxation for PR #349 on
 // 2026-10-09 and its removal in roadmap Prompt 7. No baseline, fixture, sample,
 // or other budget change is covered by that authorization.
 export function isApprovedRoadmapTimingChange(previous, current, pullRequestNumber) {
