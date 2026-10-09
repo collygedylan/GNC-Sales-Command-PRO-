@@ -8812,7 +8812,7 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
 
 #drive-content .app-drive-compact-card .app-drive-card-quantity-band { margin: 0 !important; }
 #drive-content .app-drive-compact-card .app-drive-card-quantity-band :is(.app-card-qty-row, .app-card-qty-grid) {
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 1.2fr) minmax(0, 1.25fr) minmax(0, 1.8fr) minmax(0, 1.5fr) !important;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 1.2fr) minmax(0, 1.25fr) minmax(0, 1.8fr) minmax(0, 1.5fr) !important;
   gap: clamp(2px, .7vw, 6px) !important;
   padding: 6px 0;
   border-top: 1px solid var(--ops-border, #d8e1db);
@@ -9629,7 +9629,7 @@ body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-hold-data strong {
 /* Drive alone uses six unwrapped metrics. Size text against its card container. */
 body.ops-precision-pilot .app-drive-compact-card.app-inventory-card-overhaul .app-card-qty-row {
   container-type: inline-size;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 1.2fr) minmax(0, 1.25fr) minmax(0, 1.8fr) minmax(0, 1.5fr) !important;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 1.2fr) minmax(0, 1.25fr) minmax(0, 1.8fr) minmax(0, 1.5fr) !important;
   gap: clamp(2px, .7vw, 6px) !important;
 }
 body.ops-precision-pilot .app-drive-compact-card.app-inventory-card-overhaul .app-card-qty-label {
