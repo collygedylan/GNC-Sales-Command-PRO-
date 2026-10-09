@@ -2463,7 +2463,7 @@ test('Desktop Reclass row actions preserve combined requests and disclose author
   await expect(old.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveValue('');
 });
 
-test('Phone Reclass V5 supports all nine direct actions without row checkboxes or horizontal overflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+test('Phone Reclass V6 controls support all nine direct actions without row checkboxes or horizontal overflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
@@ -2596,17 +2596,18 @@ test('Phone Reclass V5 supports all nine direct actions without row checkboxes o
     await expect(second.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveCount(0);
     await second.locator('[data-reclass-v3-action="priority_change"]').click();
     await secondPriority.fill('1');
-    await second.locator('[data-reclass-v3-action="move_up"]').click();
-    await second.getByLabel('Move Up quantity 1', { exact: true }).fill('150');
-    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
+    await second.locator('[data-reclass-v3-action="move_down"]').click();
+    await second.getByLabel('Move Down quantity 1', { exact: true }).fill('150');
+    await second.locator('[data-reclass-v3-proposal-action="move_down"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
     await second.locator('[data-reclass-v3-action="sheared"]').click();
     await second.getByLabel('Sheared quantity', { exact: true }).fill('100');
     await expect(second.locator('[data-sheared-request-preview="true"]')).toHaveText('100-->#');
     await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(4);
     await expect(second).toHaveAttribute('data-reclass-row-edit-count', '4');
     await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('4 Actions');
-    await expect(origin).toHaveAttribute('data-reclass-scope-actions', 'hold');
-    await expect(second).toContainText('Inquiry-wide request: On Hold will be applied to all eligible rows');
+    await expect(origin).toHaveAttribute('data-reclass-scope-actions', '');
+    await expect(second).toContainText('On Hold requested for this row.');
+    await expect(second).toContainText('Eligible manager fanout is determined by the server.');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
@@ -2616,15 +2617,15 @@ test('Phone Reclass V5 supports all nine direct actions without row checkboxes o
     await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
     await expect(holdReason).toHaveValue('sheared');
     await expect(secondPriority).toHaveValue('1');
-    await expect(second.getByLabel('Move Up quantity 1', { exact: true })).toHaveValue('150');
+    await expect(second.getByLabel('Move Down quantity 1', { exact: true })).toHaveValue('150');
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
-    expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up', 'sheared']);
-    expect(draft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared' }]);
+    expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_down', 'sheared']);
+    expect(draft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared', sourceUid: 'row-1' }]);
     expect(draft.rowOverlays).toHaveLength(41);
     expect(draft.rowOverlays[1].proposals).toEqual([
       { action: 'priority_change', priority: '1' },
-      { action: 'move_up', splits: [{ quantity: 150, destinationSeason: 'F1' }], applyHold: false, holdReason: '' },
+      { action: 'move_down', splits: [{ quantity: 150, destinationSeason: 'F1' }], applyHold: false, holdReason: '' },
       { action: 'sheared', quantity: 100 },
     ]);
     expect(draft.rowOverlays[40].proposals).toEqual([]);
@@ -2677,6 +2678,24 @@ test('Phone Reclass V5 supports all nine direct actions without row checkboxes o
     expect(layout.minInputFont).toBeGreaterThanOrEqual(16);
     expect(layout.minActionHeight).toBeGreaterThanOrEqual(44);
     expect(layout.clippedInput).toBe(false);
+
+    await second.locator('[data-reclass-v3-action="move_up"]').click();
+    await second.getByLabel('Move Up quantity 1', { exact: true }).fill('1');
+    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
+    await expect(second.locator('[data-reclass-v3-action="move_up"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeDisabled();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(holdReason).toHaveCount(0);
+    await expect(second).toHaveAttribute('data-reclass-scope-actions', '');
+    const moveUpDraft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
+    expect(moveUpDraft.requestActions).toEqual(['priority_change', 'move_up', 'move_down', 'sheared']);
+    expect(moveUpDraft.holdStopProposals).toEqual([]);
+    await second.locator('.argos-reclass-row-toggle').click();
+    await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
+    await second.locator('.argos-reclass-row-toggle').click();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeDisabled();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(second.locator('[data-reclass-v3-proposal-field="reason"]')).toHaveCount(0);
   }
 });
 
