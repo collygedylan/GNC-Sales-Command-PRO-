@@ -1,9 +1,9 @@
 MASTER DEVELOPMENT ROADMAP: Sequential Autonomous Execution
 
-You are authorized and explicitly commanded to execute the following SEVEN major feature prompts autonomously. You must work continuously until all seven phases are fully built, validated, pushed, and deployed to production.
+You are authorized and explicitly commanded to execute the following SEVEN major feature prompts and the Prompt 2.5 hotfix autonomously. You must work continuously until all phases are fully built, validated, pushed, and deployed to production.
 
 STRICT SEQUENTIAL RULES:
-1. You must execute these exact seven prompts ONE AT A TIME, strictly in the order listed below. Do not combine them.
+1. Execute prompts ONE AT A TIME in this order: 1, 2, 2.5, 3, 4, 5, 6, 7. Do not combine them. Finish and verify Prompt 2 before creating the separate Prompt 2.5 hotfix branch from current `origin/main`.
 2. For each prompt, you must branch from the latest `origin/main`, implement the feature, write the regression tests, pass the strict SQL database gate (`node scripts/database-check.mjs --all`), and open the PR.
 3. You MUST WAIT for the current PR to merge successfully and verify the cloud deployment is live.
 4. You must UPDATE THE VERSION in the app for each deployment.
@@ -63,6 +63,18 @@ FEATURE UPDATE: Redesign inventory row cards to be compact, professional, and e-
 
 4. Que Tab Logic Update
 - When a request is removed from the request view in the Que tab, DO NOT send it to "Archived". It must be permanently removed/deleted from the Que view entirely.
+
+---
+
+### PROMPT 2.5: URGENT HOTFIXES — Login, UTF-8, and Hold Removal
+CRITICAL HOTFIX: Complete and verify this separate release after Prompt 2 and before Prompt 3.
+
+1. Reproduce and repair the fatal **App could not load** error after successful login. Trace authentication, startup reads, schema contracts and priority caching; preserve access controls and surface recoverable failures clearly.
+2. Trace `commonname` text through ingestion, Supabase Edge responses, app rendering, PDF generation and Apps Script email payloads. Preserve UTF-8 characters such as registered trademark and trademark symbols without double encoding or corrupting valid Unicode.
+3. A hold-removal database update must target only `holdstopcode`, `holdstopreason`, and Priority when the existing removal workflow requires it. Preserve all other inventory data, especially photos, photo freshness metadata, specifications, and measurements.
+4. For users authorized to make live updates, selecting **YES** in the **Take off hold?** modal must use Prompt 1's exact dual-action workflow: immediately clear the live hold and queue the Item Inquiry for keyers. Retain existing permissions, revision checks, idempotency, Smart Shield behavior, and delivery.
+5. Add specific regressions for all four defects: successful login and initial data loading; Unicode names in views, PDFs and email subjects; photo/spec preservation during hold removal; and both live update and queued inquiry from the modal. Exercise failed, stale, repeated and cancelled commands without partial success.
+6. Bump the release version, run focused checks and the full disposable SQL gate, push the isolated hotfix and immediately create its PR. Wait for cloud validation, merge, deployment, and live verification before starting Prompt 3.
 
 ---
 

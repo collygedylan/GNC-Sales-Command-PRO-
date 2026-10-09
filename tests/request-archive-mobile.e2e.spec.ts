@@ -42,7 +42,8 @@ async function prepareArchiveRow(page: Page, uid: string, requestResult: 'succes
     view.appendChild(container);
     const item = {
       UNIQUE_ID: uid, COMMONNAME: 'Test Hosta', CONTSIZE: '#3', LOCATIONCODE: 'A.01', LOTCODE: '27.F1',
-      REQ_ARCHIVED: false, REQ_STATUS: 'Pending', REQUEST_HISTORY: false,
+      REQ_ARCHIVED: false, REQ_STATUS: 'Pending', REQUEST_HISTORY: false, ROW_VERSION: 1,
+      UPDATED_AT: '2026-10-09T12:00:00.000Z',
     };
     (window as any).__archiveItem = item;
     (window as any).__archiveRow = null;
@@ -56,7 +57,9 @@ async function prepareArchiveRow(page: Page, uid: string, requestResult: 'succes
   await appEval(page, `
       window.__archiveConfirm = true;
       window.__archiveCalls = [];
+      window.__removeCalls = [];
       window.__archiveConfirmCalls = 0;
+      window.__removeConfirmCalls = 0;
       window.__archiveToasts = [];
       currentUser = 'dylan_collyge';
       currentUserDisplay = 'Dylan Collyge';
@@ -69,6 +72,18 @@ async function prepareArchiveRow(page: Page, uid: string, requestResult: 'succes
       canCurrentUserArchiveRequestRows = () => true;
       confirmArchiveRequestRow = async () => { window.__archiveConfirmCalls++; return window.__archiveConfirm !== false; };
       showAppConfirm = async () => window.__archiveConfirm !== false;
+      const originalPostAppFunctionJson = postAppFunctionJson;
+      postAppFunctionJson = async (_url, command, options) => {
+        if (!command || command.action !== 'request_queue_remove') return originalPostAppFunctionJson(_url, command, options);
+        window.__removeCalls.push(command);
+        return ${requestResult === 'forbidden'
+          ? "{ ok: false, error: { status: 403, code: '42501', message: 'Removal is not allowed.' } }"
+          : "{ ok: true, data: { uid: command.uid, state: 'removed', idempotencyKey: command.idempotencyKey, replayed: false } }"};
+      };
+      const originalShowAppConfirm = showAppConfirm;
+      showAppConfirm = async (...args) => { window.__removeConfirmCalls++; return originalShowAppConfirm(...args); };
+      requestQueueRemovedByScope.clear();
+      requestQueueRemovalInFlight.clear();
       syncRequestArchive = async (requestUid, operation) => {
         window.__archiveCalls.push({ requestUid, operation });
         return ${requestResult === 'forbidden'
@@ -76,7 +91,9 @@ async function prepareArchiveRow(page: Page, uid: string, requestResult: 'succes
           : "{ ok: true, data: { state: operation === 'restore' ? 'restored' : 'archived' } }"};
       };
       refreshRequestViewAfterArchive = () => {
-        if (window.__archiveItem.REQ_ARCHIVED) window.__archiveRow.remove();
+        const removed = requestQueueRemovedByScope.get(getSupabaseReadIdentityScope());
+        if (removed && removed.has(window.__archiveItem.UNIQUE_ID)) window.__archiveRow.remove();
+        else if (window.__archiveItem.REQ_ARCHIVED) window.__archiveRow.remove();
         else if (!window.__archiveRow.isConnected) document.getElementById('request-content').appendChild(window.__archiveRow);
       };
       persistCurrentCache = () => {};
@@ -93,6 +110,8 @@ async function prepareArchiveRow(page: Page, uid: string, requestResult: 'succes
       swipeEnhanced: row.dataset.swipeEnhanced === 'true',
       touchAction: getComputedStyle(row).touchAction,
       actionHeight: actionBox?.height ?? 0,
+      actionLabel: action?.innerText.trim() ?? '',
+      actionAriaLabel: action?.getAttribute('aria-label') ?? '',
       noHorizontalOverflow: document.documentElement.scrollWidth <= innerWidth,
       lookup: (window as any).__requestArchiveTestEval(`({ids: requestsInventory.map(getItemUniqueId), found: !!findRequestInventoryRowByUniqueId('${uid}')})`),
     };
@@ -124,44 +143,44 @@ async function swipe(page: Page, uid: string, direction: 'left' | 'right') {
   return debug;
 }
 
-test('Request archive swipe is reversible, confirmed, responsive, and preserves vertical scrolling', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
+test('Request swipe removes from Que after confirmation, is responsive, and preserves vertical scrolling', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   for (const width of [320, 390, 430]) {
-    await page.setViewportSize({ width, height: 844 });
-    await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');
     for (const direction of ['left', 'right'] as const) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
+      await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');
       const uid = `archive-${width}-${direction}`;
       const layout = await prepareArchiveRow(page, uid);
       expect(layout.swipeEnhanced).toBe(true);
       expect(layout.lookup.found, JSON.stringify(layout.lookup)).toBe(true);
       expect(layout.actionHeight).toBeGreaterThanOrEqual(44);
+      expect(layout.actionLabel.toLowerCase()).toContain('remove');
+      expect(layout.actionAriaLabel).toBe('Remove request row from Que');
       expect(layout.noHorizontalOverflow).toBe(true);
       const debug = await swipe(page, uid, direction);
       expect(debug.afterMove.rowPresent, JSON.stringify(debug)).toBe(true);
       expect(debug.afterMove.transform, JSON.stringify(debug)).not.toBe('');
       const outcome = await appEval(page, `(() => {
         const row = requestsInventory.find(entry => entry.UNIQUE_ID === '${uid}');
-        return { archived: row.REQ_ARCHIVED, calls: window.__archiveCalls.length, confirmCalls: window.__archiveConfirmCalls, removed: !document.querySelector('[data-request-uid="${uid}"]') };
+        return { archived: row && row.REQ_ARCHIVED, archiveCalls: window.__archiveCalls.length, removeCalls: window.__removeCalls.length, confirmCalls: window.__removeConfirmCalls, removed: !document.querySelector('[data-request-uid="${uid}"]') };
       })()`);
-      await appEval(page, `(async () => { await undoRequestArchive('${uid}'); return true; })()`);
-      const restored = await appEval(page, `(() => {
-        const row = requestsInventory.find(entry => entry.UNIQUE_ID === '${uid}');
-        return { restored: row.REQ_ARCHIVED === false, restoredRowVisible: !!document.querySelector('[data-request-uid="${uid}"]'), calls: window.__archiveCalls.map(call => call.operation) };
-      })()`);
-      expect({ ...outcome, ...restored }).toMatchObject({ archived: true, calls: ['archive','restore'], removed: true, restored: true, restoredRowVisible: true, confirmCalls: 1 });
+      expect(outcome, JSON.stringify(outcome)).toMatchObject({ archived: undefined, archiveCalls: 0, removeCalls: 1, removed: true, confirmCalls: 1 });
+      expect(await appEval(page, `window.__removeCalls[0]`)).toMatchObject({
+        action: 'request_queue_remove', uid, expectedRowVersion: 1, expectedUpdatedAt: '2026-10-09T12:00:00.000Z',
+      });
     }
   }
 });
 
-test('Request archive confirmation cancellation and terminal permission failure restore the row', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
+test('Legacy archive cancellation and terminal permission failure restore the row', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');
   await prepareArchiveRow(page, 'archive-cancel');
   await appEval(page, 'window.__archiveConfirm = false');
   await swipe(page, 'archive-cancel', 'left');
-  expect(await appEval(page, `({ calls: window.__archiveCalls.length, archived: requestsInventory[0].REQ_ARCHIVED, visible: !!document.querySelector('[data-request-uid="archive-cancel"]') })`))
-    .toEqual({ calls: 0, archived: false, visible: true });
+  expect(await appEval(page, `({ calls: window.__removeCalls.length, confirmCalls: window.__removeConfirmCalls, archived: requestsInventory[0].REQ_ARCHIVED, visible: !!document.querySelector('[data-request-uid="archive-cancel"]') })`))
+    .toEqual({ calls: 0, confirmCalls: 1, archived: false, visible: true });
 
   await prepareArchiveRow(page, 'archive-denied', 'forbidden');
   await appEval(page, `(async () => { await archiveRequestRow('archive-denied'); return true; })()`);
@@ -169,7 +188,7 @@ test('Request archive confirmation cancellation and terminal permission failure 
     .toEqual({ calls: 1, archived: false, visible: true });
 });
 
-test('Vertical Request gestures remain scroll gestures and do not archive', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
+test('Vertical Request gestures remain scroll gestures and do not remove rows', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');
@@ -183,11 +202,11 @@ test('Vertical Request gestures remain scroll gestures and do not archive', {"ta
       const dispatch = (type,x,y,ending=false) => { const t=touch(x,y); const e=new Event(type,{bubbles:true,cancelable:true}); Object.defineProperties(e,{touches:{value:ending?[]:[t]},changedTouches:{value:[t]}}); row.dispatchEvent(e); };
       dispatch('touchstart',150,120); dispatch('touchmove',152,180); dispatch('touchend',152,180,true);
     })()`);
-  expect(await appEval(page, `({ calls: window.__archiveCalls.length, archived: requestsInventory[0].REQ_ARCHIVED, visible: !!document.querySelector('[data-request-uid="archive-vertical"]') })`))
-    .toEqual({ calls: 0, archived: false, visible: true });
+  expect(await appEval(page, `({ calls: window.__removeCalls.length, confirms: window.__removeConfirmCalls, archived: requestsInventory[0].REQ_ARCHIVED, visible: !!document.querySelector('[data-request-uid="archive-vertical"]') })`))
+    .toEqual({ calls: 0, confirms: 0, archived: false, visible: true });
 });
 
-test('Cancelled touch and pointer swipes never archive or prompt', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
+test('Cancelled touch and pointer swipes never remove or prompt', {"tag":["@local-e2e","@release-functional","@request-archive"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=request-archive-005', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).decorateRequestRows === 'function');
@@ -212,7 +231,7 @@ test('Cancelled touch and pointer swipes never archive or prompt', {"tag":["@loc
         }
       }
     }, { uid, kind });
-    expect(await appEval(page, `({ calls: window.__archiveCalls.length, archived: requestsInventory[0].REQ_ARCHIVED, visible: !!document.querySelector('[data-request-uid="${uid}"]'), confirms: window.__archiveConfirmCalls })`))
+    expect(await appEval(page, `({ calls: window.__removeCalls.length, archived: requestsInventory[0].REQ_ARCHIVED, visible: !!document.querySelector('[data-request-uid="${uid}"]'), confirms: window.__removeConfirmCalls })`))
       .toEqual({ calls: 0, archived: false, visible: true, confirms: 0 });
   }
 });

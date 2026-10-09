@@ -31,13 +31,14 @@ export const reclassSplitMoveMigrationName = '20261006145333_reclass_split_move_
 export const reclassShearedMigrationName = '20261008190038_reclass_sheared_action_v5.sql';
 export const reclassSmartShieldMigrationName = '20261009053029_reclass_smart_priority_hold_shield_v6.sql';
 export const smartShieldRawImportMigrationName = '20261009053030_smart_shield_raw_import_acknowledgment.sql';
+export const requestQueueRemoveMigrationName = '20261009170000_request_queue_remove_v1.sql';
 export const reclassEvalSubmitGuardsMigrationName = '20261006150745_reclass_split_move_eval_submit_guards.sql';
 export const inventoryRowAssignmentFutureSnapshotsMigrationName = '20261006210000_inventory_row_assignment_future_snapshots.sql';
 export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_inventory_row_assignment_live_consumers.sql';
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -199,6 +200,14 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === requestQueueRemoveMigrationName) return `select
+    to_regclass('private.ph_request_queue_removal_commands') is not null
+    and position('REQUEST_REMOVE_STALE_REVISION' in pg_get_functiondef('public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)'::regprocedure)) > 0
+    and position('delete from public.ph_active_request' in pg_get_functiondef('public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)'::regprocedure)) > 0
+    and not has_function_privilege('anon','public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)','execute')
+    and not has_function_privilege('authenticated','public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)','execute')
+    and has_function_privilege('service_role','public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)','execute')
+    and not has_table_privilege('service_role','private.ph_request_queue_removal_commands','select') as ok`;
   if (name === sqlLintRuntimeContextMigrationName) return `select
     exists(select 1 from pg_proc where oid=to_regprocedure('private.transfer_remaining_handover_assignments_v1(text,integer)')
       and prosecdef and array_to_string(proconfig,',') like '%search_path=%'

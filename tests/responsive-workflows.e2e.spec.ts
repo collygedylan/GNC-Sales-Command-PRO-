@@ -102,8 +102,9 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         expect(layout.header && layout.reclass && layout.header.right).toBeLessThanOrEqual(layout.reclass?.x ?? -1);
         expect(Math.abs((layout.reclass?.right ?? 0) - (layout.card?.right ?? 0))).toBeLessThanOrEqual(1);
         expect(layout.quantity).toEqual([
-          { label: 'On hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
+          { label: 'On Hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
           { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
+          { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
         ]);
         expect(layout.text).toContain('Synthetic long sales note');
         expect(layout.pageOverflow).toBeLessThanOrEqual(1);
@@ -117,8 +118,9 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
             value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
           })));
           expect(values).toEqual([
-            { label: 'On hand', value: '15' }, { label: 'Review', value: '2' },
+            { label: 'On Hand', value: '15' }, { label: 'Review', value: '2' },
             { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
+            { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
           ]);
         }
 

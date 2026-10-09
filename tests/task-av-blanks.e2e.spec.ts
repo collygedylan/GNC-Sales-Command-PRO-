@@ -143,6 +143,7 @@ test('AV loads through app-api with raw reads blocked and shows release GNC.001'
 });
 
 test('AV cards keep readable priority, stock and actions across themes and widths', {"tag":["@task-av-blanks"]}, async ({ page, baseURL }, testInfo) => {
+  test.setTimeout(120_000);
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_priority_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
   // Exercise the compiled renderer with cached rows. The fixture blocks production writes.
@@ -192,17 +193,17 @@ test('AV cards keep readable priority, stock and actions across themes and width
           const row = { UNIQUE_ID: 'av-priority-1', DOM_ID: 'av-priority-1', ITEMCODE: 'SYNTH.001',
             COMMONNAME: 'Priority Fixture Plant with a very long botanical description and cultivar name that must wrap',
             CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', SEASON: 'F1',
-            PTRONHAND: 120, S_LTS: 80, LISTPRICE: '24.50', AV_NOTE: 'Keep near shade',
+            PTRONHAND: 120, S_LTS: 80, LISTPRICE: '24.50', SOURCE: 'PH', AV_NOTE: 'Keep near shade',
             SPEC: 'Well branched', HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Quality review', ...fields };
           document.getElementById('av-priority-fixture')!.innerHTML = (window as any).generateCard(row, sourceView);
         }, entry);
         const card = page.locator('#av-priority-fixture .app-av-catalog-card');
         const priority = card.locator('.app-av-priority-badge');
-        await expect(priority).toHaveText(`Priority ${entry.expected}`);
-        await expect(card.locator('.app-av-catalog-title-row .app-av-priority-badge')).toHaveCount(1);
+        await expect(priority).toHaveText(`PRI ${entry.expected}`);
+        await expect(card.locator('.app-av-catalog-meta .app-av-priority-badge')).toHaveCount(1);
         await expect(priority.locator('b')).toHaveCount(0);
         await expect(card.locator('.app-av-catalog-heading')).toContainText('Priority Fixture Plant');
-        for (const label of ['Open stock', 'Location on hand', 'List price']) {
+        for (const label of ['Open Stock', 'Loc On Hand', 'List price']) {
           await expect(card.getByText(label, { exact: true })).toBeVisible();
         }
         await expect(card.getByText('Season OH', { exact: true })).toHaveCount(entry.fields.SOURCE === 'HL' ? 1 : 0);
@@ -215,6 +216,10 @@ test('AV cards keep readable priority, stock and actions across themes and width
         const geometry = await card.evaluate((el, theme) => {
           const rect = el.getBoundingClientRect();
           const frame = el.querySelector('.app-av-catalog-frame')!;
+          const reclassRail = el.querySelector('.app-av-catalog-reclass .app-card-bottom-btn--argos-reclass');
+          const sourceChip = el.querySelector<HTMLElement>('.app-av-catalog-reclass [data-inventory-card-field="source"]');
+          const railBounds = reclassRail?.getBoundingClientRect();
+          const sourceBounds = sourceChip?.getBoundingClientRect();
           const areas = ['header', 'media', 'details', 'actions'];
           const controls = [...el.querySelectorAll<HTMLElement>('.app-av-primary-action, .app-av-secondary-action')]
             .filter(control => !control.hasAttribute('disabled'));
@@ -242,14 +247,17 @@ test('AV cards keep readable priority, stock and actions across themes and width
             frameFits: frame.scrollWidth <= frame.clientWidth + 1,
             themeSurface: theme === 'dark' ? luminance(background(el)) < .2 : luminance(background(el)) > .7,
             namedAreas: areas.every(area => getComputedStyle(frame).gridTemplateAreas.includes(area)),
+            reclassCount: el.querySelectorAll('.app-av-catalog-actions .app-av-catalog-reclass .app-card-bottom-btn--argos-reclass').length,
+            sourceText: sourceChip?.textContent?.trim() || '',
+            sourceBelowReclass: !!(railBounds && sourceBounds && sourceBounds.top > railBounds.top),
             readable: font('.app-av-catalog-title') >= (innerWidth <= 900 ? 18 : 20)
               && font('.app-av-priority-badge') >= 13
-              && font('.app-av-catalog-stock-label') >= 13
+              && font('.app-card-qty-label') >= 13
               && font('.app-av-catalog-price-label') >= 13
               && font('.app-av-catalog-code') >= 13
               && font('.app-av-catalog-note-text') >= 13
               && font('.app-av-primary-action') >= 14,
-            contrast: ['.app-av-catalog-title', '.app-av-priority-badge', '.app-av-catalog-stock-label',
+            contrast: ['.app-av-catalog-title', '.app-av-priority-badge', '.app-card-qty-label',
               '.app-av-catalog-code', '.app-av-catalog-note-text'].every(selector => contrast(text(selector)) >= 4.5),
             targets: controls.every(control => {
               const bounds = control.getBoundingClientRect();
@@ -258,7 +266,9 @@ test('AV cards keep readable priority, stock and actions across themes and width
           };
         }, theme);
         expect(geometry, `${width}px ${theme} ${entry.sourceView} priority ${entry.expected}`).toEqual({
-          cardFits: true, frameFits: true, themeSurface: true, namedAreas: true, readable: true, contrast: true, targets: true
+          cardFits: true, frameFits: true, themeSurface: true, namedAreas: true, reclassCount: 1,
+          sourceText: String(entry.fields.SOURCE || 'PH'), sourceBelowReclass: true,
+          readable: true, contrast: true, targets: true
         });
         if (entry === cases[0] && ((width === 1280 && theme === 'light') || (width === 390 && theme === 'dark'))) {
           await card.screenshot({ path: testInfo.outputPath(`av-card-${width}-${theme}.png`) });
@@ -367,6 +377,8 @@ test('ordinary compact AV cards stay within the row budget', {"tag":["@task-av-b
         await expect(card.getByText('AV Note', { exact: true })).toHaveCount(0);
         await expect(card.locator('.app-av-photo-slide img')).toHaveCount(hasPhoto ? 1 : 0);
         await expect(card.getByText('Season OH', { exact: true })).toHaveCount(source === 'HL' ? 1 : 0);
+        await expect(card.locator('.app-av-catalog-actions .app-card-bottom-btn--argos-reclass')).toHaveCount(1);
+        await expect(card.locator('.app-av-catalog-info .app-av-secondary-action')).toHaveCount(hasPhoto ? 1 : 0);
         const compact = await card.evaluate((el, width) => {
           const thumbnail = el.querySelector<HTMLElement>('.app-av-catalog-photo-wrap')!;
           const bounds = thumbnail.getBoundingClientRect();
@@ -381,16 +393,19 @@ test('ordinary compact AV cards stay within the row budget', {"tag":["@task-av-b
             phoneDetailsFullWidth: width > 900 || Math.abs(details.getBoundingClientRect().width - frame.getBoundingClientRect().width) <= 2
           };
         }, width);
-        expect(compact.height, `${width}px ${hasPhoto ? 'photo' : 'empty'} ${source || 'standard'} card height`).toBeLessThanOrEqual(width <= 900 ? 300 : 220);
+        // Six metrics now use two 3-column rows, and AV Spec/Note, Bloom and
+        // hold details remain visible. Keep a bound that catches lost wrapping
+        // or overlapping content without enforcing the obsolete four-chip height.
+        expect(compact.height, `${width}px ${hasPhoto ? 'photo' : 'empty'} ${source || 'standard'} card height`)
+          .toBeLessThanOrEqual(width <= 900 ? (hasPhoto ? 460 : 380) : (hasPhoto ? 440 : 390));
         expect(compact.thumbnail.width).toBeCloseTo(width <= 900 ? 64 : 88, 0);
         expect(compact.thumbnail.height).toBeCloseTo(width <= 900 ? 64 : 88, 0);
         expect(compact.besideHeader).toBe(true);
         expect(compact.phoneDetailsFullWidth).toBe(true);
         if (hasPhoto && width <= 900) {
-          const actions = await card.locator('.app-av-catalog-actions > button').evaluateAll(buttons =>
-            buttons.map(button => button.getBoundingClientRect().top));
-          expect(actions).toHaveLength(2);
-          expect(Math.abs(actions[0] - actions[1]), 'phone photo actions share one row').toBeLessThanOrEqual(1);
+          const rail = await card.locator('.app-av-catalog-actions .app-card-bottom-btn--argos-reclass').boundingBox();
+          const viewPhotos = await card.locator('.app-av-catalog-info .app-av-secondary-action').boundingBox();
+          expect(rail && viewPhotos && viewPhotos.y).toBeGreaterThan(rail!.y);
         }
         await testInfo.attach(`card-${width}-${hasPhoto ? 'photo' : 'empty'}-${source || 'standard'}`, { body: JSON.stringify(compact), contentType: 'application/json' });
         if (!source && (width === 1280 || width === 390)) await card.screenshot({ path: testInfo.outputPath(`compact-${width}-${hasPhoto ? 'photo' : 'empty'}.png`) });
@@ -480,10 +495,11 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
     'Photo pick instruction retained in full', 'Photo hold reason retained in full']) {
     await expect(card).toContainText(text);
   }
+  await expect(card.locator('.app-av-catalog-photo-evidence .app-inline-thumb-date')).toBeVisible();
   const photoText = await card.evaluate(el => {
     const date = el.querySelector('.app-av-catalog-photo-evidence .app-inline-thumb-date')!;
     const viewPhotos = el.querySelector('.app-av-secondary-action')!;
-    const locationMatch = el.querySelector('.app-av-catalog-photo-match')!;
+    const metricRow = el.querySelector('.app-av-catalog-highlight')!;
     const surfaceProbe = document.createElement('span');
     surfaceProbe.style.backgroundColor = 'var(--av-surface)';
     el.append(surfaceProbe);
@@ -492,7 +508,7 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
     return {
       dateReadable: parseFloat(getComputedStyle(date).fontSize) >= 13,
       viewPhotosReadable: parseFloat(getComputedStyle(viewPhotos).fontSize) >= 14,
-      dateFollowsLocationMatch: Boolean(locationMatch.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING),
+      dateFollowsLocationMatch: Boolean(metricRow.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING),
       dateSurfaceMatchesCard: getComputedStyle(date).backgroundColor === cardSurface
     };
   });
@@ -551,7 +567,7 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
     return signature;
   });
   expect(changed).not.toBe(setup.first);
-  await expect(card.locator('.app-av-priority-badge')).toHaveText('Priority 2');
+  await expect(card.locator('.app-av-priority-badge')).toHaveText('PRI 2');
   await activate(card.locator('.app-av-primary-action'));
   expect(await page.evaluate(() => window.eval('selectedItems.has("av-photo-1")'))).toBe(true);
   await page.evaluate(() => {

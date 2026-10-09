@@ -201,9 +201,11 @@ test('iOS Request rendering uses the swipe surface instead of disabling it', () 
   assert.doesNotMatch(decorateCode, /request-swipe-disabled/);
   assert.match(decorateCode, /touchend', handleRequestSwipeTouchEnd, \{ passive: false \}/);
   assert.match(decorateCode, /pointerup', handleRequestSwipeEnd, \{ passive: false \}/);
+  assert.match(decorateCode, /request-swipe-remove-content[\s\S]*<span>Remove<\/span>/);
+  assert.match(decorateCode, /Remove request row from Que/);
 });
 
-test('Request swipe archives in either direction after confirmation and retains an accessible 44px action', () => {
+test('Request swipe removes from Que in either direction after confirmation and retains an accessible 44px action', () => {
   assert.match(html, /body\.ios-device\.viewport-phone\.current-view-request #view-request \.request-swipe-row\{[\s\S]*overflow:hidden !important/);
   assert.match(html, /body\.ios-device\.viewport-phone\.current-view-request #view-request \.request-swipe-row\.swipe-open \.request-swipe-surface\{[\s\S]*translateX\(-88px\)/);
   assert.match(html, /body\.ios-device\.viewport-phone\.current-view-request #view-request \.request-swipe-action\{[\s\S]*display:flex !important[\s\S]*width:88px !important[\s\S]*min-height:44px !important/);
@@ -211,7 +213,7 @@ test('Request swipe archives in either direction after confirmation and retains 
   assert.match(swipeEnd, /Math\.abs\(actualSwipeDelta\) >= Math\.abs\(REQUEST_SWIPE_OPEN_THRESHOLD\)/);
   assert.match(swipeEnd, /cancelledGesture = \/cancel\/i\.test/);
   assert.match(swipeEnd, /!cancelledGesture/);
-  assert.match(swipeEnd, /setTimeout\(\(\) => archiveRequestRow\(requestUid\), 0\)/);
+  assert.match(swipeEnd, /setTimeout\(\(\) => removeRequestQueueRow\(requestUid\), 0\)/);
   const archiveFlow = html.slice(html.indexOf('async function archiveRequestRow'), html.indexOf('async function confirmRequestArchiveRestore'));
   assert.match(archiveFlow, /await confirmArchiveRequestRow\(item\)/);
   assert.match(archiveFlow, /actionIdentityScope !== getSupabaseReadIdentityScope\(\)/);

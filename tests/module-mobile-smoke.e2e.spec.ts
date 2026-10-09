@@ -62,8 +62,9 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
         expect(metrics.header && metrics.action && metrics.header.right).toBeLessThanOrEqual(metrics.action?.x ?? -1);
         expect(Math.abs((metrics.action?.right ?? 0) - (metrics.grid?.right ?? 0))).toBeLessThanOrEqual(1);
         expect(metrics.quantity).toEqual([
-          { label: 'On hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
+          { label: 'On Hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
           { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
+          { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
         ]);
         expect(metrics.docOverflow).toBeLessThanOrEqual(1);
         expect(metrics.cardOverflow).toBeLessThanOrEqual(1);
@@ -88,8 +89,9 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
             value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
           })));
           expect(values).toEqual([
-            { label: 'On hand', value: '15' }, { label: 'Review', value: '2' },
+            { label: 'On Hand', value: '15' }, { label: 'Review', value: '2' },
             { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
+            { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
           ]);
         }
 
