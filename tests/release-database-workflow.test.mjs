@@ -200,9 +200,17 @@ test('canonical schema contracts run as an isolated database-check gate', () => 
   assert.ok(job, 'schema contracts have their own disposable runner');
   assert.equal(job['timeout-minutes'], 35);
   assert.deepEqual(job.steps.map(step => step.uses).filter(Boolean), [
-    'actions/checkout@v4', './.github/actions/setup-node-dependencies',
+    'actions/checkout@v4', './.github/actions/setup-node-dependencies', 'actions/upload-artifact@v4',
   ]);
   assert.ok(job.steps.some(step => step.run === 'node scripts/database-check.mjs --all'));
+  const replay = job.steps.find(step => step.run === 'node scripts/database-check.mjs --all');
+  assert.equal(replay.env.PERFORMANCE_API_BENCHMARK, 'true', 'the canonical replay opts into the authenticated API pair before reset');
+  assert.ok(!databaseJob.steps.some(step => step.run === 'node scripts/run-performance-api.mjs "$SUPABASE_CI_ROOT"'),
+    'the historical fixture must not run inventory benchmarks against its partial schema');
+  const evidence = job.steps.find(step => step.uses === 'actions/upload-artifact@v4');
+  assert.equal(evidence.if, 'always()');
+  assert.equal(evidence.with.path, 'artifacts/performance');
+  assert.match(evidence.with.name, /^performance-database-sql-/);
   assert.doesNotMatch(JSON.stringify(job), /--linked|--db-url|db push|functions deploy|PRODUCTION_/);
 });
 

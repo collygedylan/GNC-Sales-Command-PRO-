@@ -6,7 +6,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { createDatabaseWorkspace, isolateCanonicalCronJob, splitPlatformDefaultPrivileges } from '../scripts/database-workspace.mjs';
 import { assertUniqueSandboxTestBasenames, createSandboxDatabaseWorkspace, validateSandboxMigrationEnvelope } from '../scripts/sandbox-database-workspace.mjs';
-import { withDisposableSupabase } from '../scripts/database-workspace-runner.mjs';
+import { localSupabaseExcludeServices, withDisposableSupabase } from '../scripts/database-workspace-runner.mjs';
 import { runDatabaseCheck, selectStagedHistoricalSql, stagedDatabaseFiles } from '../scripts/database-check.mjs';
 import { prepareHistoricalDatabaseFixture, readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
@@ -192,6 +192,57 @@ test('disposable database checks fail when stack cleanup fails without hiding th
   assert.equal(disposed, false);
 });
 
+test('benchmark HTTP service profile enables only Auth, gateway and REST and verifies a local API URL', () => {
+  for (const profile of ['database', 'benchmark-http']) {
+    const commands = [];
+    withDisposableSupabase({
+      root, workspace: { root: 'C:/tmp/gnc-http-profile', dispose() {} }, cli: 'supabase', serviceProfile: profile,
+      execute: (args, options) => {
+        commands.push(args.slice(3));
+        if (args.includes('status')) {
+          assert.equal(options.capture, true, 'local keys are captured, never printed');
+          return 'API_URL="http://127.0.0.1:54321"\r\nANON_KEY="fixture-only"\r\n';
+        }
+        return '';
+      },
+      action: () => commands.push(['checks']),
+    });
+    const excluded = commands[0][2].split(',');
+    if (profile === 'database') {
+      assert.equal(excluded.join(','), localSupabaseExcludeServices);
+      assert.equal(commands.some(args => args[0] === 'status'), false);
+    } else {
+      assert.deepEqual(localSupabaseExcludeServices.split(',').filter(service => !excluded.includes(service)),
+        ['gotrue', 'kong', 'postgrest']);
+      assert.ok(excluded.includes('edge-runtime'), 'functions serve starts runtime after the measured sources are staged');
+      assert.ok(commands.findIndex(args => args[0] === 'status') < commands.findIndex(args => args[0] === 'checks'));
+    }
+    assert.deepEqual(commands.at(-1), ['stop', '--no-backup']);
+  }
+});
+
+test('HTTP setup fails clearly and cleans up when the API URL is missing or not local', () => {
+  for (const status of ['', 'API_URL="undefined"', 'API_URL="https://remote.example"', 'API_URL="http://remote.example"']) {
+    let stopped = false, disposed = false, checksRan = false;
+    assert.throws(() => withDisposableSupabase({
+      root, workspace: { root: 'C:/tmp/gnc-http-invalid', dispose() { disposed = true; } }, cli: 'supabase',
+      serviceProfile: 'benchmark-http', execute: args => {
+        if (args.includes('stop')) stopped = true;
+        return args.includes('status') ? `${status}\nSERVICE_ROLE_KEY="must-not-be-printed"` : '';
+      }, action: () => { checksRan = true; },
+    }), error => {
+      assert.match(error.message, /DATABASE_BENCHMARK_HTTP_SERVICES_UNAVAILABLE/);
+      assert.equal(error.message.includes('must-not-be-printed'), false);
+      return true;
+    });
+    assert.equal(checksRan, false);
+    assert.equal(stopped, true);
+    assert.equal(disposed, true);
+  }
+  assert.throws(() => withDisposableSupabase({ serviceProfile: 'unknown', execute() { assert.fail('must not start'); } }),
+    /DATABASE_SERVICE_PROFILE_INVALID/);
+});
+
 test('disposable runner applies the owner ACL sidecar after start and each successful reset', t => {
   const workspaceRoot = mkdtempSync(path.join(os.tmpdir(), 'gnc-db-workspace-acl-'));
   t.after(() => rmSync(workspaceRoot, { recursive: true, force: true }));
@@ -259,6 +310,8 @@ test('database-check uses the shared fail-closed runner for both disposable work
   const check = (executeNodeMock) => runDatabaseCheck({
     root, mode: 'all', execute: () => '', executeNode: executeNodeMock, preflight: () => {},
     runLintWithTempContext: ({ action }) => action(),
+    runPerformance: ({ workspaceRoot }) => { assert.equal(workspaceRoot, productionWorkspace.root); return { fixture: true }; },
+    savePerformance: report => { assert.deepEqual(report, { fixture: true }); },
     runRollback: options => { rollbackRuns.push(options.files); return { files: options.files }; },
     resolveCli: () => 'supabase-fixture',
     createProductionWorkspace: () => productionWorkspace,
@@ -279,6 +332,69 @@ test('database-check uses the shared fail-closed runner for both disposable work
   const sandboxLint = sandboxCommands.findIndex(command => command.startsWith('db lint'));
   assert.ok(sandboxLint >= 0 && sandboxCommands.indexOf('test db') > sandboxLint,
     'sandbox pgTAP runs after strict sandbox SQL lint');
+});
+
+test('API performance pair is explicit CI-only and runs on canonical schema before reset', () => {
+  const runCheck = (environment) => {
+    const events = [];
+    const starts = [];
+    const productionWorkspace = { root: 'C:/tmp/gnc-performance-canonical', migrationCount: 4, dispose() {} };
+    const sandboxWorkspace = { root: 'C:/tmp/gnc-performance-sandbox', migrationCount: 1, testCount: 1, lintSchemas: ['public'], dispose() {} };
+    let apiRuns = 0;
+    runDatabaseCheck({
+      root, mode: 'all', environment, execute: () => '', preflight: () => {}, resolveCli: () => 'supabase-fixture',
+      createProductionWorkspace: () => productionWorkspace,
+      createSandboxWorkspace: () => sandboxWorkspace,
+      runLintWithTempContext: ({ action }) => action(),
+      runPerformance: ({ workspaceRoot }) => {
+        assert.equal(workspaceRoot, productionWorkspace.root);
+        events.push('sql-performance');
+        return { fixture: true };
+      },
+      savePerformance: () => events.push('sql-report'),
+      runApiPerformance: ({ workspaceRoot }) => {
+        assert.equal(workspaceRoot, productionWorkspace.root);
+        apiRuns += 1;
+        events.push('api-performance');
+      },
+      runRollback: () => {},
+      executeNode: (args, options = {}) => {
+        const workspaceRoot = args[2];
+        const command = args.slice(3).join(' ');
+        if (args[3] === 'start') starts.push({ workspaceRoot, excluded: args[5].split(',') });
+        events.push(command.startsWith('db reset') ? 'canonical-reset' : `cli:${workspaceRoot}:${command}`);
+        if (args[3] === 'status') return 'API_URL="http://127.0.0.1:54321"\n';
+        if (args.includes('gen')) {
+          const typePath = workspaceRoot === sandboxWorkspace.root
+            ? 'v2/src/services/sandbox.database.types.ts' : 'supabase/functions/_shared/database.types.ts';
+          return readFileSync(path.join(root, typePath), 'utf8');
+        }
+        return options.capture ? '' : '';
+      },
+    });
+    return { events, apiRuns, starts };
+  };
+
+  const optedIn = runCheck({ GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' });
+  assert.equal(optedIn.apiRuns, 1);
+  assert.ok(optedIn.events.indexOf('sql-performance') < optedIn.events.indexOf('api-performance'));
+  assert.ok(optedIn.events.indexOf('sql-report') < optedIn.events.indexOf('api-performance'));
+  assert.ok(optedIn.events.indexOf('api-performance') < optedIn.events.indexOf('canonical-reset'));
+  const canonical = optedIn.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-canonical');
+  const sandbox = optedIn.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-sandbox');
+  for (const service of ['gotrue', 'kong', 'postgrest']) {
+    assert.equal(canonical.excluded.includes(service), false, `canonical benchmark needs ${service}`);
+    assert.equal(sandbox.excluded.includes(service), true, `sandbox does not need ${service}`);
+  }
+
+  const localDefault = runCheck({});
+  assert.equal(localDefault.apiRuns, 0, 'ordinary local --all checks do not start the authenticated API benchmark');
+  assert.ok(localDefault.starts.every(start => start.excluded.join(',') === localSupabaseExcludeServices));
+  assert.throws(() => runDatabaseCheck({ mode: 'all', environment: { PERFORMANCE_API_BENCHMARK: 'true' },
+    preflight: () => {}, createProductionWorkspace: () => { throw new Error('must fail before workspace creation'); } }),
+  /PERFORMANCE_API_BENCHMARK_CI_ONLY/);
+  assert.throws(() => runDatabaseCheck({ mode: 'staged', environment: { GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' },
+    execute: () => 'supabase/config.toml', preflight: () => {} }), /PERFORMANCE_API_BENCHMARK_REQUIRES_ALL_MODE/);
 });
 
 test('staged database-check executes changed rollback and discovered SQL fixtures in disposable workspaces', () => {

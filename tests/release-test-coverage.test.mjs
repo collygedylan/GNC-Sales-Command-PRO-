@@ -243,7 +243,7 @@ test('command-center browser checks consume the downloaded compiled assets witho
   assert.throws(() => load({}, false), /Compiled command-center browser assets are missing/);
 });
 
-test('functional, timing and database lanes cover the original browser files without overlap', () => {
+test('functional, timing and database lanes cover original and newly tagged browser files without overlap', () => {
   const load = configLoader();
   const base = load('playwright.config.ts');
   const functional = load('playwright.release-functional.config.ts');
@@ -256,8 +256,11 @@ test('functional, timing and database lanes cover the original browser files wit
   assert.ok(selected(database).length > 0);
   const databaseOriginalFiles = selected(database).filter(file => selected(base).includes(file));
   const union = [...functionalFiles, ...timingFiles, ...databaseOriginalFiles];
-  assert.equal(union.length, new Set(union).size, 'Every original file belongs to exactly one lane');
-  assert.deepEqual([...union].sort(), selected(base));
+  assert.equal(union.length, new Set(union).size, 'Every discovered file belongs to exactly one lane');
+  // Compiled-only tests can join a release lane without joining the source-only
+  // local server. New conventionally named/tagged specs need no filename edit.
+  const discoveredReleaseFiles = selected({ ...base, grep: /@local-e2e|@release-functional|@release-timing/ });
+  assert.deepEqual([...union].sort(), discoveredReleaseFiles);
   assert.ok(functionalFiles.length > 0);
   assert.equal(String(functional.testMatch), String(base.testMatch));
 });

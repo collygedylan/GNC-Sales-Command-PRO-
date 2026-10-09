@@ -61,13 +61,112 @@ async function waitForVerifiedDrive(page: Page) {
       verified: productionLiveSyncVerifiedView === productionVerifiedViewKey(),
       skeletons: document.querySelectorAll('#drive-content .skeleton').length,
       visibleCards: Array.from(document.querySelectorAll('#drive-content [role="button"]')).filter(node => node.getClientRects().length).length,
-      statistics: getProductionLiveSyncCoordinator().getStatistics()
+      statistics: getProductionLiveSyncCoordinator().getStatistics(),
+      drivePreparationDiagnostics: window.__drivePreparationDiagnostics || [],
+      drivePreparationInvalidations: window.__drivePreparationInvalidations || []
     })`));
     throw new Error(`${String(error)}\nDrive verification diagnostic: ${state}`);
   });
   const rows = page.locator('#drive-content').getByRole('button', { name: /^Open / });
   await expect(rows.first()).toBeVisible();
   return rows.count();
+}
+
+async function installDrivePreparationDiagnostics(page: Page) {
+  const installed = await page.evaluate(() => window.eval(`(() => {
+    const events = window.__drivePreparationDiagnostics = [];
+    const invalidations = window.__drivePreparationInvalidations = [];
+    const pendingMetadata = new WeakMap();
+    const check = pending => {
+      const baseline = pendingMetadata.get(pending) || {};
+      return pending && ({
+      pendingIdentity: driveCommonNamePreparation === pending,
+      visible: !document.hidden && getCurrentVisibleViewId() === 'drive',
+      nameTab: activeDriveTab === 'name',
+      selectionMatches: getDriveDrillSelectionStateKey() === pending.selection,
+      searchMatches: String(document.getElementById('drive-search')?.value || '') === pending.search,
+      filterMatches: driveVisibleItemsStateCacheKey === pending.filterKey,
+      baseFilterMatches: driveBaseFilterCacheKey === baseline.baseFilterKey,
+      baseContextMatches: getDriveBaseFilterContextKey() === baseline.baseContextKey,
+      syncTimestampMatches: String(lastSyncTime || '') === baseline.lastSyncTime,
+      masterLoadTimeMatches: String(getDatasetState('master').lastLoadedAt || '') === baseline.masterLastLoadedAt,
+      inventoryLengthMatches: fullInventory.length === baseline.inventoryLength,
+      visibleKeyWasEmptyAtStart: baseline.visibleKeyEmptyAtStart,
+      userRoleMatches: String(currentUser || '') === pending.user && String(currentRole || '') === pending.role,
+      chunkTokenCurrent: isChunkRenderCurrentForContainer(pending.container, 'drive:name:list', pending.token),
+      nativeProofCurrent: !pending.native || (canUseProductionLiveSync() && productionVerifiedViewKey() === pending.proof),
+      readGenerationCurrent: !pending.native || productionLiveSyncReadGeneration === pending.generation
+      });
+    };
+    const originalCheck = isDriveCommonNamePreparationCurrent;
+    const originalInvalidate = invalidateDriveResolvedCardState;
+    const originalRenderNames = renderDriveCompleteCommonNames;
+    const originalCancel = cancelDriveCommonNamePreparation;
+    const wrappedCheck = function(pending) {
+      const result = originalCheck.call(this, pending);
+      if (pending && !result && events.length < 16) {
+        window.__drivePreparationLastInvalidation = {
+          kind: 'predicate-false', at: Math.round(performance.now()),
+          generation: productionLiveSyncReadGeneration, pendingGeneration: Number(pending?.generation), checks: check(pending)
+        };
+        events.push(window.__drivePreparationLastInvalidation);
+      } else if (result) window.__drivePreparationLastInvalidation = null;
+      return result;
+    };
+    isDriveCommonNamePreparationCurrent = wrappedCheck;
+    invalidateDriveResolvedCardState = function(...args) {
+      const pending = driveCommonNamePreparation;
+      if (pending && invalidations.length < 16) {
+        const baseline = pendingMetadata.get(pending) || {};
+        const masterState = getDatasetState('master');
+        invalidations.push({
+          at: Math.round(performance.now()),
+          visibleKeyEmptyBefore: !driveVisibleItemsStateCacheKey,
+          pendingKeyEmpty: !pending.filterKey,
+          visibleKeyMatchesBefore: driveVisibleItemsStateCacheKey === pending.filterKey,
+          hasSearch: !!pending.search,
+          lastSyncTimeChanged: String(lastSyncTime || '') !== String(baseline.lastSyncTime || ''),
+          masterLoadTimeChanged: String(masterState.lastLoadedAt || '') !== String(baseline.masterLastLoadedAt || ''),
+          inventoryLengthChanged: fullInventory.length !== baseline.inventoryLength,
+          stack: String(new Error().stack || '').split('\\n').slice(1, 7).map(line => line.trim())
+        });
+      }
+      return originalInvalidate.apply(this, args);
+    };
+    renderDriveCompleteCommonNames = function(...args) {
+      const result = originalRenderNames.apply(this, args);
+      const pending = driveCommonNamePreparation;
+      if (pending && !pendingMetadata.has(pending)) {
+        const masterState = getDatasetState('master');
+        pendingMetadata.set(pending, {
+          baseFilterKey: String(driveBaseFilterCacheKey || ''),
+          baseContextKey: String(getDriveBaseFilterContextKey() || ''),
+          lastSyncTime: String(lastSyncTime || ''),
+          masterLastLoadedAt: String(masterState.lastLoadedAt || ''),
+          inventoryLength: fullInventory.length,
+          visibleKeyEmptyAtStart: !pending.filterKey
+        });
+      }
+      return result;
+    };
+    const wrappedCancel = function(...args) {
+      const pending = driveCommonNamePreparation;
+      if (pending && events.length < 16) {
+        events.push({
+          kind: 'cancel', at: Math.round(performance.now()),
+          generation: productionLiveSyncReadGeneration,
+          pendingGeneration: Number(pending?.generation),
+          checks: pending ? check(pending) : null,
+          invalidations: invalidations.slice(),
+          precededByInvalidation: window.__drivePreparationLastInvalidation?.kind === 'predicate-false'
+        });
+      }
+      return originalCancel.apply(this, args);
+    };
+    cancelDriveCommonNamePreparation = wrappedCancel;
+    return isDriveCommonNamePreparationCurrent === wrappedCheck && cancelDriveCommonNamePreparation === wrappedCancel;
+  })()`));
+  expect(installed, 'Drive preparation diagnostics install before the retry scenario').toBe(true);
 }
 
 async function visitView(page: Page, totals: Totals, phase: VisitPhase, view: 'Drive' | 'Tasks'): Promise<Visit> {
@@ -518,6 +617,7 @@ test('Drive season denial stays recoverable and makes no automatic retry before 
       await expect(page.locator('#login-button')).toBeEnabled();
     },
   });
+  await installDrivePreparationDiagnostics(page);
   await page.locator('#home-tile-drive').click();
   await expect(page.locator('#drive-content')).toContainText('Drive inventory unavailable');
   const attempts = settingReads;

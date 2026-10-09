@@ -9,6 +9,8 @@ export type AuraIntent = {
   mode: AuraQueryMode; operation: string; question: string; filters: Record<string, unknown>;
   module: string; title: string; replyPrefix: string; capability?: string; clarification?: string;
 };
+// Control characters are intentionally replaced before parsing user text.
+// eslint-disable-next-line no-control-regex
 const clean = (value: unknown) => String(value ?? '').normalize('NFKC').replace(/[\x00-\x1f\x7f]/g, ' ').replace(/\s+/g, ' ').trim();
 const record = (value: unknown): Record<string, any> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 const chicago = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
@@ -25,7 +27,7 @@ function chicagoMidnight(day: Date) {
 /** End is exclusive; converting each midnight independently preserves DST days. */
 export function auraDateRange(text: string, now = new Date()) {
   const p = parts(now); let from = new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day)));
-  let days = 1; let phrase = '';
+  let days = 1; let phrase;
   const exact = text.match(/\b(?:on|since|from|date)\s+(\d{4}-\d{2}-\d{2})\b/i);
   if (exact) { phrase = exact[0]; from = new Date(`${exact[1]}T00:00:00Z`); if (!Number.isFinite(from.getTime()) || from.toISOString().slice(0, 10) !== exact[1]) return null; }
   else {
@@ -50,7 +52,7 @@ function commonNameEntity(question: string) {
   const cue = /\bcommon[\s-]*name\b\s*(?::|=|\bis\b)?\s*/i.exec(question);
   if (!cue) return null;
   const tail = question.slice(cue.index + cue[0].length);
-  let value = '', consumed = 0;
+  let value, consumed;
   if (/^["“'‘]/.test(tail)) {
     const quoted = /^["“]/.test(tail)
       ? tail.match(/^["“]([^\r\n]+?)["”](?=\s|[?.!,;]|$)/)

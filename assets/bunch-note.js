@@ -1,3 +1,4 @@
+/* global currentUser, nativeAuthSessionActive, nativeAuthProfile, showToast, APP_SHELL_BUILD, postAppFunctionJson, APP_API_FUNCTION_URL, getCurrentVisibleViewId, getMainAreaScrollTop, setMainAreaScrollTop, postGoogleScriptJsonPayload, nativeAuthAccessToken, REQUEST_EMAIL_SCRIPT_TIMEOUT_MS, activeReqTab, showAppConfirm, switchView, setReqTab */
 (function (root) {
  'use strict';
  const groups = {

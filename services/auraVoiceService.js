@@ -456,7 +456,6 @@ export function createAuraVoiceSession({
             tapToTalk: tapMode,
             processLocally: false,
             phase: "preview",
-            handsFree: handsFreeMode,
             confidence: finalConfidence,
             lowConfidence: finalConfidence != null && finalConfidence < minimumConfidence,
           });

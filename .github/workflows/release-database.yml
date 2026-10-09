@@ -16,9 +16,21 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - name: Replay canonical schema and verify database contracts
+        env:
+          # Starts local Auth, REST and gateway services for the canonical API pair.
+          # Ordinary SQL and sandbox checks keep the database-only service profile.
+          PERFORMANCE_API_BENCHMARK: 'true'
         run: node scripts/database-check.mjs --all
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-database-sql-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/performance
+          if-no-files-found: ignore
   suspend-tag-approval:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -41,6 +53,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - id: dependencies
         uses: ./.github/actions/setup-node-dependencies
       - uses: supabase/setup-cli@v1

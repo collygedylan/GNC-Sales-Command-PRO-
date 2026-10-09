@@ -163,7 +163,8 @@ test('Suspend Tag filters compose in one pass and retain cached content during r
   assert.match(html, /request-suspend-tag-clear-filters/);
   assert.match(html, /return `<div class="request-view-filters" role="group" aria-label="Suspend filters">/);
   const suspendToolbar = html.slice(html.indexOf('function renderRequestCategoryToolbar'), html.indexOf('let requestDeliveryRecoveryOpen'));
-  assert.match(suspendToolbar, /toolbar\.innerHTML = `<div class="request-category-options"[\s\S]*\$\{categoryButtonsHtml\}/);
+  assert.match(suspendToolbar, /const nextHtml = `<div class="request-category-options"[\s\S]*\$\{categoryButtonsHtml\}/);
+  assert.match(suspendToolbar, /syncRequestChromeMarkup\(toolbar, nextHtml, requestCategoryToolbarMarkupByNode\)/);
   assert.doesNotMatch(suspendToolbar, /extraControlsHtml/);
   assert.match(html, /function getRequestDylanViewerFilter\(\)[\s\S]*\['pending', 'reps'\]\.includes\(activeReqTab\)/);
   assert.match(html, /counts\['suspend-tag'\] = getSuspendTagRequestItems\(baseItems\)\.filter\(row => \['pending','denied'\]\.includes\(getSuspendTagStatus\(row\)\)\)\.length/);

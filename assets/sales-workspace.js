@@ -1,3 +1,4 @@
+/* global currentUser, postAppFunctionJson, APP_API_FUNCTION_URL, getMainAreaScrollTop, ensureNativeBackGuard, getCurrentVisibleViewId, setMainAreaScrollTop, switchView, optimizePhotoBlobForUpload, showToast, openPhotoModal, renderSalesCreditPhotoStrip */
 (function (root) {
  'use strict';
  const views = ['request-history', 'sales-credit', 'credit-request'];
