@@ -41,6 +41,16 @@ function liveEdit(overrides = {}) {
 
 const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
 
+test('Reclass notices disclose live field edits and inquiry-only quantity instructions', () => {
+  const noticeText = 'Priority and Hold / Stop edits also update live inventory after confirmation. Quantity, season, and sheared instructions remain requests for keyers.';
+  const initialNotice = html.match(/id="argos-inventory-transaction-notice"[^>]*>(.*?)<\/div>/s)?.[1];
+  const refreshedNotice = html.match(/notice\.innerHTML = '(<span class="font-black">Send Item Inquiry<\/span>.*?)';/s)?.[1];
+  assert.ok(initialNotice?.includes(noticeText));
+  assert.equal(refreshedNotice, initialNotice, 'editor updates retain the initial submission disclosure');
+  assert.doesNotMatch(html, /Live inventory quantities and status remain unchanged/);
+  assert.doesNotMatch(html, /Hold\/Stop actions automatically mark the configured current-season scope/);
+});
+
 function loadConfirmedApplyFixture(currentRow, revision = '9') {
   const start = html.indexOf('const confirmedArgosReclassLiveEditRevisions = new Map();');
   const end = html.indexOf('function openArgosInventoryRequestFromTransactionModal(', start);

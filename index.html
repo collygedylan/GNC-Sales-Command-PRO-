@@ -47691,7 +47691,7 @@ let avTopControlsRenderToken = 0;
                         <button type="button" class="argos-tx-close active:scale-95" onclick="return closeArgosInventoryTransactionModal()" aria-label="Close inventory transaction"><i class="ph-bold ph-x text-xl"></i></button>
                     </div>
                     <div class="argos-tx-body">
-                        <div id="argos-inventory-transaction-notice" class="argos-tx-notice"><span class="font-black">Email Only</span> - Sending creates a printable inquiry and a Requested history entry containing your instructions. Live inventory quantities and status remain unchanged.</div>
+                        <div id="argos-inventory-transaction-notice" class="argos-tx-notice"><span class="font-black">Send Item Inquiry</span> - Sending queues the PDF and creates a Requested history entry containing your instructions. Priority and Hold / Stop edits also update live inventory after confirmation. Quantity, season, and sheared instructions remain requests for keyers.</div>
                         <div class="argos-tx-tabs" aria-label="Inventory transaction type">
                             <span class="argos-transaction-tab active" data-argos-transaction-tab="reclass"><i class="ph ph-arrows-clockwise"></i>Reclass</span>
                         </div>
@@ -48996,13 +48996,13 @@ let avTopControlsRenderToken = 0;
                 if (globalActionField) globalActionField.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V3_ENABLED);
                 if (globalQuickActions) globalQuickActions.classList.toggle('hidden', RECLASS_ACTION_WORKFLOW_V3_ENABLED);
                 if (notice) {
-                    notice.innerHTML = '<span class="font-black">Email Only</span> - Sending creates a printable inquiry and a Requested history entry containing your instructions. Live inventory quantities and status remain unchanged.';
+                    notice.innerHTML = '<span class="font-black">Send Item Inquiry</span> - Sending queues the PDF and creates a Requested history entry containing your instructions. Priority and Hold / Stop edits also update live inventory after confirmation. Quantity, season, and sheared instructions remain requests for keyers.';
                     notice.classList.add('bg-emerald-50', 'text-emerald-800');
                 }
                 if (note) {
                     note.hidden = false;
                     note.textContent = RECLASS_ACTION_WORKFLOW_V3_ENABLED
-                        ? 'Open a Location/Lot row and tap every Reclass action needed. Hold/Stop actions automatically mark the configured current-season scope.'
+                        ? 'Open a Location/Lot row and tap every Reclass action needed. Hold / Stop starts from that row; the server determines any authorized matching-row scope.'
                         : requestAction && requestAction !== 'none'
                         ? `${getArgosInventoryTransactionRequestLabel(requestAction)} uses the row controls below. Hold/Stop Code and Reason remain visible on every row. No inventory data will be changed.`
                         : 'Choose one of the eight email-only actions, then review the Hold/Stop values and select rows below.';

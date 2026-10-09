@@ -2397,11 +2397,9 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
 
 test('Desktop Reclass row actions preserve combined requests and disclose authorized Hold / Stop propagation scope', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
-  await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
+  const fixture = await installHlOrderFixture(page, 'http://127.0.0.1:43116', { username: 'dylan_collyge', role: 'ADMIN' });
   page.on('dialog', dialog => dialog.accept());
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/?e2e=reclass-action-views', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => typeof (window as any).openArgosInventoryTransactionModal === 'function');
   await page.evaluate(() => {
     const rows = [
       ['old', 'F1', '26', 'H', '10'], ['current', 'F1', '2027', 'S', '0'],
@@ -2419,12 +2417,18 @@ test('Desktop Reclass row actions preserve combined requests and disclose author
   const current = modal.locator('[data-reclass-row-card="current"]');
   const future = modal.locator('[data-reclass-row-card="future"]');
   await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
+  await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Priority and Hold / Stop edits also update live inventory after confirmation.');
+  await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Quantity, season, and sheared instructions remain requests for keyers.');
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
   await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('The selected row receives the Hold / Stop request');
   await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Eligible managers may also update matching rows in F1 with sales year 27 or earlier; the server determines that scope.');
   await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(9);
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toBeDisabled();
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toContainText('Requires positive original OH');
+  await expect(current.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+  await expect(old.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+  await expect(future.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
+  await expect(modal.locator('[data-reclass-row-card="other"] [data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
   await old.locator('[data-reclass-v3-action="priority_change"]').click();
   await old.locator('[data-reclass-v3-proposal-field="priority"]').fill('');
   await old.locator('[data-reclass-v3-action="recount"]').click();
@@ -2461,6 +2465,7 @@ test('Desktop Reclass row actions preserve combined requests and disclose author
   await page.evaluate(() => localStorage.removeItem('gnc_current_season_settings_v1'));
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
   await expect(old.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveValue('');
+  expect(fixture.blockedMutations).toEqual([]);
 });
 
 test('Phone Reclass V6 controls support all nine direct actions without row checkboxes or horizontal overflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
@@ -2516,8 +2521,8 @@ test('Phone Reclass V6 controls support all nine direct actions without row chec
             pulltagnote2: '',
             locationptn1: index === 0 ? longNote : '',
             locationptn2: '',
-            holdstopcode: index === 0 ? 'H' : (index === 2 ? 'S' : ''),
-            holdstopreason: index === 0 ? longNote : (index === 2 ? 'Current stop' : ''),
+            holdstopcode: index === 0 ? 'H' : (index === 1 ? 'HS' : (index === 2 ? 'S' : '')),
+            holdstopreason: index === 0 ? longNote : (index === 1 ? 'Current hold and stop' : (index === 2 ? 'Current stop' : '')),
           },
         })),
       };
@@ -2586,6 +2591,14 @@ test('Phone Reclass V6 controls support all nine direct actions without row chec
     await expect(second.locator('[data-reclass-v3-action="stop_ship"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="take_off_hold"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+    const currentCodeRow = modal.locator('[data-reclass-row-card="row-2"]');
+    await currentCodeRow.locator('.argos-reclass-row-toggle').click();
+    await expect(currentCodeRow.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+    await currentCodeRow.locator('.argos-reclass-row-toggle').click();
+    const futureBlankRow = modal.locator('[data-reclass-row-card="row-40"]');
+    await futureBlankRow.locator('.argos-reclass-row-toggle').click();
+    await expect(futureBlankRow.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
+    await futureBlankRow.locator('.argos-reclass-row-toggle').click();
 
     await second.locator('[data-reclass-v3-action="hold"]').click();
     const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]');
