@@ -2395,7 +2395,7 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
   await expect(modal).toBeHidden();
 });
 
-test('Desktop Reclass row actions preserve combined requests and disclose inquiry-wide Hold / Stop scope', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+test('Desktop Reclass row actions preserve combined requests and disclose authorized Hold / Stop propagation scope', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
   page.on('dialog', dialog => dialog.accept());
@@ -2420,8 +2420,8 @@ test('Desktop Reclass row actions preserve combined requests and disclose inquir
   const future = modal.locator('[data-reclass-row-card="future"]');
   await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
-  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Choosing it from one row does not limit it to that row');
-  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('On Hold: 3');
+  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('The selected row receives the Hold / Stop request');
+  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Eligible managers may also update matching rows in F1 with sales year 27 or earlier; the server determines that scope.');
   await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(9);
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toBeDisabled();
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toContainText('Requires positive original OH');
@@ -2440,6 +2440,7 @@ test('Desktop Reclass row actions preserve combined requests and disclose inquir
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.holdStopProposals).toHaveLength(1);
     expect(draft.holdStopProposals[0].action).toBe(action);
+    expect(draft.holdStopProposals[0].sourceUid).toBe('old');
     expect(draft.requestActions).toEqual(expect.arrayContaining(['priority_change', 'recount', action]));
     expect(draft.rowOverlays.find((row: any) => row.unique_id === 'old')?.proposals).toEqual(expect.arrayContaining([{ action: 'priority_change', priority: '' }]));
     // Deselect explicitly so the following choice needs no replacement confirmation.

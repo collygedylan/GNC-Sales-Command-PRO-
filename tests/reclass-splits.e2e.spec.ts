@@ -174,7 +174,10 @@ test('V6 confirms priority and Hold locally only after the server returns the li
   expect(state.master).toEqual(['1', 'H', 'quality review']);
   expect(state.av).toEqual(['1', 'H', 'quality review']);
   expect(state.evidence).toEqual(['', '', null, null, null, null, null, null]);
-  await expect(page.locator('#drive-content')).toContainText('quality review');
+  await page.locator('#drive-content [aria-label="Open Synthetic Drive Card"]').click();
+  await page.locator('#drive-content [aria-label="Open #3"]').click();
+  await page.locator('#drive-content [aria-label="Open season F1"]').click();
+  await expect(page.locator('#drive-content .app-drive-compact-card')).toContainText('quality review');
   const queued = await page.evaluate(() => JSON.parse(localStorage.getItem('gnc_reclass_delivery_jobs_v1') || '[]'));
   expect(queued).toHaveLength(1);
   expect(queued[0].payload.workflowPolicyVersion).toBe('reclass-action-workflow-v6-smart-shield-20261009');
