@@ -160,6 +160,20 @@ execution order accompany the aggregate report. This removes shared-browser
 process state and reduces time-order bias; it does not establish that either
 caused a prior failure or eliminate runner noise.
 
+Benchmark artifacts also retain bounded diagnostic histories of long tasks and,
+where supported, long animation frames with script attribution. Route windows
+use the observer's existing start/end timestamps; separate scroll diagnostics
+retain all 16 frame gaps and their existing clock boundaries. Only selected
+primitive attribution fields are recorded, with source URLs stripped to paths.
+Unsupported frame attribution is explicit. Dropped diagnostic entries are
+counted and never removed from the original metric accumulation. See the
+[Long Animation Frames API](https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Long_animation_frame_timing).
+Health sampling diagnostics include bounded invocation decisions, including
+unsampled calls, so repeated events can be distinguished from changes in sampling
+position. They preserve the handler, random draw sequence, request accounting,
+timers and budgets. These records explain failures; they do not exclude slow
+samples, reset baselines, or establish that a coincident task caused a stall.
+
 A shared callback that coalesced all live refresh reasons was tested and then
 reverted after the unchanged retry reproduced request-read, DOM-removal and
 timing regressions. That experiment is not part of the retained optimization;

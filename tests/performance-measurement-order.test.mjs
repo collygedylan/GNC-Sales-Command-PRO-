@@ -20,7 +20,7 @@ function measurementFixture({ settlementError } = {}) {
     if (evaluations === 2) { events.push('read-observers'); return { longTaskMs: 75, domRemovals: 3 }; }
     assert.equal(evaluations, 3);
     events.push('scroll');
-    return 16;
+    return { scrollFrameP95: 16, diagnostics: { startTime: 930, endTime: 1186, frameGaps: Array(16).fill(16) } };
   } };
   const control = {};
   const context = vm.createContext({
@@ -63,6 +63,11 @@ test('route measurement retains first-visible latency and counts queued reads be
   assert.equal(result.bytes + result.writeBytes + result.otherBytes, 38, 'traffic classification partitions every response byte');
   assert.equal(result.longTaskMs, 75);
   assert.equal(result.domRemovals, 3);
+  assert.equal(result.scrollFrameP95, 16);
+  assert.equal(result.renderingDiagnostics.sampleStart, 123);
+  assert.deepEqual(result.renderingDiagnostics.scroll.frameGaps, Array(16).fill(16));
+  assert.equal(result.renderingDiagnostics.scroll.startTime, 930);
+  assert.equal(result.renderingDiagnostics.scroll.endTime, 1186);
   assert.equal(result.boundaryEndIndex, 2);
   assert.deepEqual(fixture.events, ['poll-window', 'raf', 'freeze-0', 'reset-observers', 'first-visible', 'raf',
     'settle-queued-work', 'freeze-2', 'read-observers', 'scroll', 'drain-bodies']);
