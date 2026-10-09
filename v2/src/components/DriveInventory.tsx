@@ -1,10 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronRight, Image as ImageIcon, Loader2, RefreshCw, Search } from 'lucide-react';
 import { fetchInventoryPage } from '../services/api';
+import { DRIVE_INVENTORY_PAGE_SIZE, type DriveInventoryPrefetch } from '../services/driveInventoryPrefetch';
 import { loadRuntimeConfig } from '../services/runtime';
 import type { InventoryRow, PageResult } from '../types';
 
-const PAGE_SIZE = 100;
+const PAGE_SIZE = DRIVE_INVENTORY_PAGE_SIZE;
 const MAX_PAGES = 10;
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -171,7 +172,7 @@ function mergeRows(existing: InventoryRow[], incoming: InventoryRow[]) {
   return [...merged.values()];
 }
 
-function DriveInventoryView({ onOpen }: { onOpen?: (row: InventoryRow) => void }) {
+function DriveInventoryView({ onOpen, initialPage }: { onOpen?: (row: InventoryRow) => void; initialPage?: DriveInventoryPrefetch | null }) {
   const [search, setSearch] = useState('');
   const [settledSearch, setSettledSearch] = useState('');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
@@ -183,6 +184,8 @@ function DriveInventoryView({ onOpen }: { onOpen?: (row: InventoryRow) => void }
   const [trustedStorageHost, setTrustedStorageHost] = useState('');
   const pagingController = useRef<AbortController | null>(null);
   const generation = useRef(0);
+  const consumedInitialPage = useRef<DriveInventoryPrefetch | null>(null);
+  const activeInitialPage = useRef<DriveInventoryPrefetch | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setSettledSearch(search.trim()), SEARCH_DEBOUNCE_MS);
@@ -190,6 +193,14 @@ function DriveInventoryView({ onOpen }: { onOpen?: (row: InventoryRow) => void }
   }, [search]);
 
   useEffect(() => {
+    const candidatePrefetch = initialPage && consumedInitialPage.current !== initialPage ? initialPage : null;
+    const prefetchedPage = settledSearch === '' && refreshKey === 0 ? candidatePrefetch : null;
+    if (prefetchedPage) activeInitialPage.current = prefetchedPage;
+    else if (candidatePrefetch && activeInitialPage.current === candidatePrefetch) {
+      consumedInitialPage.current = candidatePrefetch;
+      activeInitialPage.current = null;
+    }
+    const releasePrefetch = prefetchedPage?.retain();
     pagingController.current?.abort();
     pagingController.current = null;
     const controller = new AbortController();
@@ -197,9 +208,13 @@ function DriveInventoryView({ onOpen }: { onOpen?: (row: InventoryRow) => void }
     setLoading(true);
     setLoadingMore(false);
     setError('');
-    fetchInventoryPage({ page: 0, pageSize: PAGE_SIZE, search: settledSearch, signal: controller.signal })
+    (prefetchedPage?.promise ?? fetchInventoryPage({ page: 0, pageSize: PAGE_SIZE, search: settledSearch, signal: controller.signal }))
       .then(result => {
         if (controller.signal.aborted || generation.current !== currentGeneration) return;
+        if (prefetchedPage && activeInitialPage.current === prefetchedPage) {
+          consumedInitialPage.current = prefetchedPage;
+          activeInitialPage.current = null;
+        }
         const cachedRows = result.source === 'cache' ? filterCachedRows(result.rows, settledSearch) : result.rows;
         setSnapshot({
           rows: cachedRows,
@@ -211,13 +226,20 @@ function DriveInventoryView({ onOpen }: { onOpen?: (row: InventoryRow) => void }
       })
       .catch(reason => {
         if (controller.signal.aborted || generation.current !== currentGeneration || isAbort(reason)) return;
+        if (prefetchedPage && activeInitialPage.current === prefetchedPage) {
+          consumedInitialPage.current = prefetchedPage;
+          activeInitialPage.current = null;
+        }
         setError(reason instanceof Error ? reason.message : 'Inventory could not be loaded. Retry when the connection is available.');
       })
       .finally(() => {
         if (generation.current === currentGeneration) setLoading(false);
       });
-    return () => controller.abort();
-  }, [settledSearch, refreshKey]);
+    return () => {
+      controller.abort();
+      releasePrefetch?.();
+    };
+  }, [settledSearch, refreshKey, initialPage]);
 
   useEffect(() => () => pagingController.current?.abort(), []);
 

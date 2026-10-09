@@ -60,12 +60,14 @@ describe('deferred view boundary', () => {
 
   it('offers a retry action after a route chunk fails', async () => {
     const retry = vi.fn();
+    const loadError = vi.fn();
     const ready = vi.fn();
     const FailedContent = lazy(async () => { throw new Error('chunk unavailable'); });
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-    render(<DeferredView label="Drive" onRetry={retry} onContentReady={ready}><FailedContent /></DeferredView>);
+    render(<DeferredView label="Drive" onRetry={retry} onLoadError={loadError} onContentReady={ready}><FailedContent /></DeferredView>);
     expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(loadError).toHaveBeenCalledOnce();
     expect(ready).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Reload app to retry' }));
     expect(retry).toHaveBeenCalledOnce();

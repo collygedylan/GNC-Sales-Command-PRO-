@@ -36152,8 +36152,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || document.activeElement?.matches?.('input,select,textarea,[contenteditable="true"]')
                 || container.classList.contains('bn-root') || getContainerUiState(container) !== 'content'
                 || getContainerChunkRenderKey(container) || Number(chunkRenderActivityByKey['request-main'] || 0)) return false;
-            const scopedItems = getScopedRequestItems(requestsInventory);
-            const reconciled = reconcileRequestDrillState(scopedItems);
+            const reconciled = reconcileRequestDrillState(requestsInventory);
             if (!reconciled || reconciled.changed) return false;
             const plan = buildPendingRequestRenderPlan(reconciled.items);
             if (!plan || plan.empty || contract.container !== container || contract.contextKey !== contextKey || contract.scope !== context.scope
@@ -80141,6 +80140,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             lastGuardedViewSwitchKey = switchGuardKey;
             lastGuardedViewSwitchAt = switchNow;
+            const rememberCurrentView = !fromHistory && currentViewId !== nextViewId && currentViewId && currentViewId !== 'detail';
+            // Capture after scroll repair, before teardown/body writes invalidate
+            // layout and can change the outgoing view's scroll anchoring.
+            const historyScroll = rememberCurrentView
+                ? (currentViewId === 'managers' && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
+                    ? getManagerAssignedColumnState().scroll : getMainAreaScrollTop())
+                : null;
             if (currentViewId === 'managers' && nextViewId !== 'managers') destroyManagerAssignedItemsView();
             if (currentViewId === 'communication' && nextViewId !== 'communication') unmountAlphaCommandCenter('communications');
             if (currentViewId === 'managers' && nextViewId !== 'managers' && activeHomeTab === MANAGER_HR_COMMAND_VIEW) unmountAlphaCommandCenter('hr');
@@ -80165,10 +80171,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 selectedProductivityUser = '';
                 markViewDirty(currentViewId);
             }
-            if (!fromHistory && currentViewId !== nextViewId && currentViewId && currentViewId !== 'detail') {
-                // Body/header layout can change scroll anchoring before the history push.
-                const historyScroll = currentViewId === 'managers' && activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW
-                    ? getManagerAssignedColumnState().scroll : getMainAreaScrollTop();
+            if (rememberCurrentView) {
                 pushViewHistoryEntry(currentViewId, historyScroll);
             }
             lastViewSwitchAt = Date.now();

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { Profiler, useState } from 'react';
+import { Profiler, StrictMode, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DriveInventory, aggregateDriveRows, safeInventoryPhotoUrl } from './DriveInventory';
 import { fetchInventoryPage } from '../services/api';
@@ -26,6 +26,27 @@ function inventoryRow(overrides: Partial<InventoryRow> = {}): InventoryRow {
     ptravailable: 12,
     ptronhand: 15,
     ...overrides
+  };
+}
+
+function selectedPagePrefetch(promise: Promise<PageResult<InventoryRow>>, abort = vi.fn()) {
+  let retained = 0;
+  let version = 0;
+  return {
+    promise,
+    abort,
+    retain() {
+      retained += 1;
+      version += 1;
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        retained -= 1;
+        const current = ++version;
+        queueMicrotask(() => { if (!retained && version === current) abort(); });
+      };
+    }
   };
 }
 
@@ -152,6 +173,55 @@ describe('Drive Mode sandbox inventory', () => {
     const signal = fetchPage.mock.calls[0][0]?.signal;
     view.unmount();
     expect(signal?.aborted).toBe(true);
+  });
+
+  it('consumes a route-selected first page once and returns to the normal refresh path', async () => {
+    let resolvePage!: (result: PageResult<InventoryRow>) => void;
+    const abort = vi.fn();
+    const promise = new Promise<PageResult<InventoryRow>>(resolve => { resolvePage = resolve; });
+    const initialPage = selectedPagePrefetch(promise, abort);
+    fetchPage.mockResolvedValue(page([inventoryRow({ commonname: 'Refreshed Pear' })]));
+
+    render(<StrictMode><DriveInventory initialPage={initialPage} /></StrictMode>);
+    expect(fetchPage).not.toHaveBeenCalled();
+    resolvePage(page([inventoryRow()]));
+    expect(await screen.findByRole('article')).toBeTruthy();
+    expect(screen.getByText('Precision Pear')).toBeTruthy();
+
+    const refresh = screen.getByRole('button', { name: 'Refresh inventory' });
+    await waitFor(() => expect(refresh.hasAttribute('disabled')).toBe(false));
+    fireEvent.click(refresh);
+    expect(await screen.findByText('Refreshed Pear')).toBeTruthy();
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(fetchPage.mock.calls[0][0]).toMatchObject({ page: 0, pageSize: 100, search: '' });
+    expect(abort).toHaveBeenCalledOnce();
+  });
+
+  it('aborts an unconsumed route-selected first page when Drive unmounts', async () => {
+    const abort = vi.fn();
+    const initialPage = selectedPagePrefetch(new Promise<PageResult<InventoryRow>>(() => {}), abort);
+    const view = render(<DriveInventory initialPage={initialPage} />);
+    view.unmount();
+    await Promise.resolve();
+    expect(abort).toHaveBeenCalledOnce();
+    expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it('does not reuse an aborted route prefetch after a search is cleared', async () => {
+    const abort = vi.fn();
+    const initialPage = selectedPagePrefetch(new Promise<PageResult<InventoryRow>>(() => {}), abort);
+    fetchPage.mockResolvedValue(page([inventoryRow()]));
+    render(<DriveInventory initialPage={initialPage} />);
+    const search = screen.getByRole('textbox', { name: 'Search inventory' });
+
+    fireEvent.change(search, { target: { value: 'pear' } });
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(1), { timeout: 2_000 });
+    expect(fetchPage.mock.calls[0][0]).toMatchObject({ search: 'pear' });
+    expect(abort).toHaveBeenCalledOnce();
+
+    fireEvent.change(search, { target: { value: '' } });
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2), { timeout: 2_000 });
+    expect(fetchPage.mock.calls[1][0]).toMatchObject({ search: '' });
   });
 
   it('keeps Drive rendering isolated from unrelated shell state changes', async () => {

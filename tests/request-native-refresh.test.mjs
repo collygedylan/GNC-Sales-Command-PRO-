@@ -6,6 +6,40 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 
+test('navigation captures outgoing scroll after repair and before layout writes', () => {
+  const start = html.indexOf('function switchView(viewId, options = {})');
+  const switchSource = html.slice(start, html.indexOf('lastViewSwitchAt = Date.now();', start));
+  const capture = switchSource.indexOf('const rememberCurrentView =');
+  const teardown = switchSource.indexOf("if (currentViewId === 'managers' && nextViewId !== 'managers') destroyManagerAssignedItemsView();");
+  assert.ok(capture > switchSource.indexOf('lastGuardedViewSwitchAt = switchNow;'));
+  assert.ok(capture > switchSource.indexOf('repairAppShellScrollState('));
+  assert.ok(capture > switchSource.indexOf("clearIosPhoneRequestFlowState('request-switch-start'"));
+  assert.ok(capture < teardown && capture < switchSource.indexOf('syncCurrentViewBodyClass(nextViewId)'));
+  assert.match(switchSource.slice(teardown), /if \(rememberCurrentView\)\s*\{\s*pushViewHistoryEntry\(currentViewId, historyScroll\)/);
+  assert.doesNotMatch(switchSource.slice(teardown), /getMainAreaScrollTop\(\)/);
+
+  const captureSource = switchSource.slice(capture, teardown);
+  for (const [currentViewId, nextViewId, fromHistory, activeHomeTab, expected, mainReads, managerReads] of [
+    ['drive', 'request', false, '', 123, 1, 0],
+    ['managers', 'reports', false, 'assigned-items', 456, 0, 1],
+    ['managers', 'reports', false, 'dashboard', 123, 1, 0],
+    ['request', 'request', false, '', null, 0, 0],
+    ['detail', 'request', false, '', null, 0, 0],
+    ['drive', 'request', true, '', null, 0, 0]
+  ]) {
+    let mainCount = 0, managerCount = 0;
+    const context = { currentViewId, nextViewId, fromHistory, activeHomeTab,
+      MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW: 'assigned-items',
+      getMainAreaScrollTop: () => { mainCount++; return 123; },
+      getManagerAssignedColumnState: () => { managerCount++; return { scroll: 456 }; }
+    };
+    vm.createContext(context);
+    assert.equal(vm.runInContext(`${captureSource}\nhistoryScroll`, context), expected);
+    assert.equal(mainCount, mainReads);
+    assert.equal(managerCount, managerReads);
+  }
+});
+
 function extractFunction(source, name, stopAt) {
   const asyncStart = source.indexOf(`async function ${name}(`);
   const start = asyncStart >= 0 ? asyncStart : source.indexOf(`function ${name}(`);

@@ -26,6 +26,11 @@ current PR commit, checked by `check-performance-baseline-review.mjs`.
   Starting the selected route's import in its navigation handler overlaps the
   download with the shell update. Do not import routes during setup or load
   unrelated routes speculatively. Import failure still reaches the lazy boundary.
+  A selected Drive entry may overlap its first authorized page read with the
+  component download. Share that one cancelable promise with the mounted view;
+  route departure, account change, chunk failure and superseding filters must
+  abort it. Do not fetch before route selection or let a retired promise serve a
+  later visit. Development effect replay must not duplicate the read.
   Record a warm boundary only after its content commits successfully. Revisits
   can then mount directly without replaying the loading transition; downloading
   a chunk alone must not mark its boundary warm. Keep the route's state reset
@@ -175,6 +180,10 @@ partial, stale-context or selected-row cases take the existing rendering path.
 A staged replacement clears only the original container chunk marker captured
 before staging, after its current-refresh check succeeds. Never clear a newer
 container token when retiring superseded rendering work.
+Read outgoing navigation scroll after existing scroll repair and before view
+teardown or body-class changes, keeping the same history and manager-column
+rules. Skip mobile disclosure scans on desktop until mobile controls actually
+need restoration; resizing across the breakpoint must preserve control order.
 
 The beta lazy boundary schedules its existing transition in a layout effect so
 chunk discovery does not wait for a passive effect. This schedules work before

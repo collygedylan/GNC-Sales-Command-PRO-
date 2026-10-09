@@ -56,6 +56,7 @@ import { PartnerWorkspace } from '../components/PartnerWorkspace';
 import { CompanyDirectory } from '../components/CompanyDirectory';
 import { DeferredView } from '../components/DeferredView';
 import { createDeferredModule } from '../utils/deferredModule';
+import { createDriveInventoryPrefetch, type DriveInventoryPrefetch } from '../services/driveInventoryPrefetch';
 import { defaultRequestColumnKeys, requestGridColumns, type RequestColumnKey, type RequestDisplayMode as DisplayMode, type RequestTabId as TabId } from './requestQueueConfig';
 
 const requestQueueModule = createDeferredModule(() => import('./RequestQueue'));
@@ -198,6 +199,7 @@ export function App() {
   const [rows, setRows] = useState<RequestRow[]>([]);
   const [detailRow, setDetailRow] = useState<RequestRow | null>(null);
   const [moduleDetail, setModuleDetail] = useState<{ view: ViewId; row: ModulePreviewRow } | null>(null);
+  const [driveInitialPage, setDriveInitialPage] = useState<DriveInventoryPrefetch | null>(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -213,10 +215,23 @@ export function App() {
   const navRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLElement | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
+  const driveInitialPageRef = useRef<DriveInventoryPrefetch | null>(null);
+  const cancelDriveInitialPage = useCallback(() => {
+    driveInitialPageRef.current?.abort();
+    driveInitialPageRef.current = null;
+    setDriveInitialPage(null);
+  }, []);
+
+  useEffect(() => () => {
+    driveInitialPageRef.current?.abort();
+    driveInitialPageRef.current = null;
+  }, []);
 
   useEffect(() => {
     const onHashChange = () => {
-      setView(viewFromHash(window.location.hash));
+      const nextView = viewFromHash(window.location.hash);
+      if (nextView !== 'drive') cancelDriveInitialPage();
+      setView(nextView);
       setDetailRow(null);
       setModuleDetail(null);
       setSearch('');
@@ -225,7 +240,15 @@ export function App() {
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
-  }, []);
+  }, [cancelDriveInitialPage]);
+
+  useEffect(() => {
+    cancelDriveInitialPage();
+  }, [session?.username, session?.token, cancelDriveInitialPage]);
+
+  useEffect(() => {
+    if (view !== 'drive' || detailRow || moduleDetail) cancelDriveInitialPage();
+  }, [view, detailRow, moduleDetail, cancelDriveInitialPage]);
 
   useEffect(() => {
     const node = scrollerRef.current;
@@ -315,7 +338,18 @@ export function App() {
     // The user has selected the route: overlap its download with the shell
     // update instead of waiting for the lazy boundary's layout transition.
     if (next === 'request') requestQueueModule.preload();
-    if (next === 'drive') driveInventoryModule.preload();
+    if (next === 'drive') {
+      driveInventoryModule.preload();
+      const enteringDrive = view !== 'drive' || Boolean(detailRow || moduleDetail);
+      if (enteringDrive) {
+        cancelDriveInitialPage();
+        const prefetch = createDriveInventoryPrefetch();
+        driveInitialPageRef.current = prefetch;
+        setDriveInitialPage(prefetch);
+      }
+    } else {
+      cancelDriveInitialPage();
+    }
     if (window.location.hash !== `#${next}`) window.location.hash = next;
     setView(next);
     setDetailRow(null);
@@ -464,7 +498,7 @@ export function App() {
             />
           </DeferredView>
         ) : view === 'drive' ? (
-          <DeferredView key="drive" label="Drive" loaded={driveInventoryModule.hasCommitted()} onContentReady={driveInventoryModule.markCommitted}><LazyDriveInventory /></DeferredView>
+          <DeferredView key="drive" label="Drive" loaded={driveInventoryModule.hasCommitted()} onContentReady={driveInventoryModule.markCommitted} onLoadError={cancelDriveInitialPage}><LazyDriveInventory initialPage={driveInitialPage} /></DeferredView>
         ) : view === 'tasks' ? (
           <TasksWorkspace onOpen={row => { setModuleDetail({ view: 'tasks', row }); scrollerRef.current?.scrollTo({ top: 0 }); }} />
         ) : view === 'comm' ? (

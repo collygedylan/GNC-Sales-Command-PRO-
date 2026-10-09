@@ -1,7 +1,7 @@
 import { Component, startTransition, Suspense, useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
-type BoundaryProps = { label: string; children: ReactNode; onRetry?: () => void; loaded?: boolean; onContentReady?: () => void };
+type BoundaryProps = { label: string; children: ReactNode; onRetry?: () => void; onLoadError?: () => void; loaded?: boolean; onContentReady?: () => void };
 type BoundaryState = { failed: boolean };
 
 class DeferredErrorBoundary extends Component<BoundaryProps, BoundaryState> {
@@ -9,6 +9,10 @@ class DeferredErrorBoundary extends Component<BoundaryProps, BoundaryState> {
 
   static getDerivedStateFromError(): BoundaryState {
     return { failed: true };
+  }
+
+  componentDidCatch() {
+    this.props.onLoadError?.();
   }
 
   render() {
@@ -33,7 +37,7 @@ function DeferredContentCommit({ children, onContentReady }: Pick<BoundaryProps,
   return children;
 }
 
-export function DeferredView({ label, children, onRetry, loaded = false, onContentReady }: BoundaryProps) {
+export function DeferredView({ label, children, onRetry, onLoadError, loaded = false, onContentReady }: BoundaryProps) {
   const [renderContent, setRenderContent] = useState(() => loaded);
   useLayoutEffect(() => {
     if (loaded) return;
@@ -43,7 +47,7 @@ export function DeferredView({ label, children, onRetry, loaded = false, onConte
   }, [loaded]);
   const loading = <DeferredViewFallback label={label} />;
   return (
-    <DeferredErrorBoundary label={label} onRetry={onRetry}>
+    <DeferredErrorBoundary label={label} onRetry={onRetry} onLoadError={onLoadError}>
       <Suspense fallback={loading}>
         {renderContent ? <DeferredContentCommit onContentReady={onContentReady}>{children}</DeferredContentCommit> : loading}
       </Suspense>
