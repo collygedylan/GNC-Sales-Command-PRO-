@@ -8774,6 +8774,7 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
 #drive-content .app-drive-compact-card .app-drive-card-details .ui-pill { gap: 4px; }
 #drive-content .app-drive-compact-card .app-drive-card-title-row { display: block; margin-top: 3px; }
 #drive-content .app-drive-compact-card .app-drive-card-title { font-size: 20px !important; font-weight: 750 !important; line-height: 1.25 !important; letter-spacing: normal !important; }
+#drive-content .app-drive-compact-card .app-drive-card-title-size { margin-left: 6px; color: var(--ops-text-muted, #526259); font-size: 13px; font-weight: 500; white-space: nowrap; }
 #drive-content .app-drive-compact-card .app-drive-card-itemcode { font-size: 13px !important; font-weight: 500; line-height: 1.3; letter-spacing: normal; }
 #drive-content .app-drive-compact-card .app-drive-card-meta { max-width: none; padding: 0; margin-top: 3px; font-size: 13px !important; font-weight: 500; line-height: 1.4; text-align: left; }
 
@@ -8811,7 +8812,7 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
 
 #drive-content .app-drive-compact-card .app-drive-card-quantity-band { margin: 0 !important; }
 #drive-content .app-drive-compact-card .app-drive-card-quantity-band :is(.app-card-qty-row, .app-card-qty-grid) {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   gap: 6px !important;
   padding: 6px 0;
   border-top: 1px solid var(--ops-border, #d8e1db);
@@ -8838,6 +8839,13 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
 #drive-content .app-drive-compact-card .app-card-qty-label { font-size: 13px; line-height: 1.3; font-weight: 400; color: var(--ops-text-muted, #526259); }
 #drive-content .app-drive-compact-card .app-card-qty-separator { display: none; }
 #drive-content .app-drive-compact-card .app-card-qty-value { color: var(--ops-text, #17251d) !important; font-size: 24px; line-height: 1.15; font-weight: 750; font-variant-numeric: tabular-nums; }
+#drive-content .app-drive-compact-card .app-card-qty-chip > :is(.app-card-qty-label, .app-card-qty-value) {
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
 #drive-content .app-drive-compact-card .app-card-qty-row > :not(.app-card-qty-chip) { grid-column: 1 / -1; justify-content: flex-start; gap: 4px; min-height: 0; padding: 3px 6px; font-size: 12px; line-height: 1.3; letter-spacing: normal; }
 #drive-content .app-drive-compact-card [data-loc-photo-match-value] { color: var(--ops-text, #17251d) !important; }
 
@@ -9331,4 +9339,288 @@ body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .request-desired-ce
 }
 body.ops-precision-pilot[data-ops-theme="dark"] #view-detail .request-desired-cell--row-note-data :is(.request-desired-label, .request-desired-value) {
   color: var(--ops-danger) !important;
+}
+
+/* Keep the shared inventory metrics readable in the compact Drive and AV cards. */
+body.ops-precision-pilot .app-inventory-card-overhaul:is(.app-drive-compact-card, .app-av-catalog-card) .app-card-qty-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px 0;
+}
+body.ops-precision-pilot .app-inventory-card-overhaul:is(.app-drive-compact-card, .app-av-catalog-card) .app-card-qty-chip {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  text-align: left !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+body.ops-precision-pilot .app-inventory-card-overhaul:is(.app-drive-compact-card, .app-av-catalog-card) .app-card-qty-label {
+  color: var(--ops-text-muted, #526259) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  line-height: 1.3 !important;
+}
+body.ops-precision-pilot .app-inventory-card-overhaul:is(.app-drive-compact-card, .app-av-catalog-card) .app-card-qty-value {
+  color: var(--ops-text, #17251d) !important;
+  font-size: 22px !important;
+  font-weight: 750 !important;
+  line-height: 1.15 !important;
+  font-variant-numeric: tabular-nums;
+}
+body.ops-precision-pilot .app-inventory-card-hold-data {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 5px 10px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid var(--ops-border, #d8e1db);
+  border-radius: 8px;
+  background: var(--ops-surface-muted, #f4f7f5);
+  color: var(--ops-text, #17251d);
+}
+body.ops-precision-pilot .app-inventory-card-hold-data > span {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+body.ops-precision-pilot .app-inventory-card-hold-data b {
+  color: var(--ops-text-muted, #526259);
+  font-size: 11px !important;
+  font-weight: 600;
+  line-height: 1.2;
+}
+body.ops-precision-pilot .app-inventory-card-hold-data strong {
+  color: var(--ops-text, #17251d);
+  font-size: 13px !important;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-highlight {
+  display: block !important;
+  padding: 6px 0;
+  border-top: 1px solid var(--av-border);
+  border-bottom: 1px solid var(--av-border);
+}
+body.ops-precision-pilot .app-av-catalog-card .app-card-qty-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 6px 0;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-card-qty-value { font-size: 22px; }
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-frame {
+  grid-template-columns: 88px minmax(0, 1fr) auto;
+  grid-template-areas: "media header actions" "media details details";
+  gap: 8px 12px;
+  align-items: start;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-title {
+  font-size: 20px !important;
+  font-weight: 750 !important;
+  line-height: 1.25 !important;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-title-row {
+  justify-content: flex-start !important;
+  align-items: baseline !important;
+  flex-wrap: wrap;
+  gap: 4px 8px !important;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-title-row .app-av-catalog-title {
+  flex: 1 1 auto !important;
+  min-width: 0;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-title .app-av-catalog-size {
+  display: inline;
+  margin: 0 0 0 6px !important;
+  color: var(--ops-text-muted, #526259) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  white-space: nowrap;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-meta { align-items: center; }
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-meta .app-av-priority-badge {
+  display: inline !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--ops-text-muted, #526259) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: inherit !important;
+  white-space: nowrap;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-size,
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-code,
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-meta {
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-actions {
+  display: flex !important;
+  flex-direction: column;
+  align-self: start;
+  justify-self: end;
+  justify-content: flex-start;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 120px;
+  min-width: 0;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-info > .app-av-secondary-action {
+  align-self: flex-start;
+  width: max-content;
+  max-width: 100%;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-price {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 3px;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-price-value {
+  display: inline;
+  font-size: 14px !important;
+  line-height: 1.3 !important;
+  font-weight: 600 !important;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-price-label {
+  display: inline;
+  font-size: 13px;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-reclass {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-reclass .app-card-bottom-btn {
+  width: auto;
+  min-width: 44px;
+  min-height: 40px !important;
+  padding: 6px 10px !important;
+  border: 1px solid var(--av-border) !important;
+  border-radius: 8px !important;
+  color: var(--av-text) !important;
+  background: var(--av-muted) !important;
+  box-shadow: none !important;
+  font-size: 13px !important;
+  line-height: 1.3 !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-drive-card-source-chip {
+  max-width: 100%;
+  min-height: 0;
+  border-color: var(--av-border);
+  padding: 3px 6px;
+  color: var(--av-secondary);
+  background: var(--av-muted);
+  font-size: 12px;
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+}
+@media (max-width: 900px) {
+  body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-frame {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    grid-template-areas: "media header actions" "details details details";
+    gap: 8px;
+  }
+  body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-title { font-size: 18px !important; }
+  body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-actions { max-width: 88px; }
+  body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-reclass .app-card-bottom-btn {
+    min-width: 68px;
+    min-height: 44px !important;
+    padding: 4px 6px !important;
+  }
+  body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-photo-wrap,
+  body.ops-precision-pilot .app-av-catalog-card .app-av-photo-carousel,
+  body.ops-precision-pilot .app-av-catalog-card .app-av-hero-empty { height: 62px; }
+}
+body.ops-precision-pilot .app-av-catalog-card .app-card-qty-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 2px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+  text-transform: none;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-card-qty-label {
+  color: var(--av-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.3;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-card-qty-separator { display: none; }
+body.ops-precision-pilot .app-av-catalog-card .app-card-qty-value {
+  color: var(--av-text) !important;
+  font-size: 22px;
+  font-weight: 750;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-season-oh {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  color: var(--av-secondary);
+  font-size: 13px;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-season-oh strong {
+  color: var(--av-text);
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-price {
+  margin-top: 4px;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-bloom-row .app-av-primary-action {
+  width: 100%;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-hold-data {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--av-hold-bg) !important;
+  color: var(--av-hold-text) !important;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-hold-data > span {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-hold-data b {
+  font-size: 11px;
+  font-weight: 700;
+}
+body.ops-precision-pilot .app-av-catalog-card .app-av-catalog-hold-data strong {
+  overflow-wrap: anywhere;
+  font-weight: 500;
 }
