@@ -29,6 +29,10 @@ test('Eval submit checks captured identity and work instance before posting and 
   const close = extract('function closeEvalWorkDetail(', 'function retryEvalWorkLoad(');
   assert.ok(open.includes('evalWorkSubmitToken = null'));
   assert.ok(close.includes('evalWorkSubmitToken = null'));
+  assert.ok(open.includes('evalWorkDetailGeneration += 1'));
+  assert.ok(close.includes('evalWorkDetailGeneration += 1'));
+  assert.ok(open.includes('evalWorkAutomaticCompletionPromise = null'));
+  assert.ok(close.includes('evalWorkAutomaticCompletionPromise = null'));
 });
 
 test('Eval collection errors still show validation feedback for the captured session', async () => {
@@ -40,6 +44,7 @@ test('Eval collection errors still show validation feedback for the captured ses
     evalWorkSubmitInFlight: false,
     evalWorkAutoSubmitting: false,
     evalWorkSubmitToken: null,
+    evalWorkDetailGeneration: 1,
     currentIdentity: 'session-1',
     getEvalWorkById: id => id === work.id ? work : null,
     getArgosReclassLiveEditIdentityKey: () => context.currentIdentity,
@@ -66,6 +71,7 @@ function createPendingSubmitHarness() {
     evalWorkSubmitInFlight: false,
     evalWorkAutoSubmitting: false,
     evalWorkSubmitToken: null,
+    evalWorkDetailGeneration: 1,
     identity: 'session-1',
     getEvalWorkById: id => id === work.id ? work : null,
     getArgosReclassLiveEditIdentityKey: () => context.identity,
@@ -156,6 +162,171 @@ test('a stale Eval API failure neither toasts nor resets a newer same-work submi
   assert.equal(context.evalWorkSubmitInFlight, false);
 });
 
+test('automatic completion from a reopened same-work detail cannot submit or clear its queued completion', async () => {
+  const complete = extract('async function completeEvalWorkAfterFinalRowDecision(', 'function queueEvalWorkAutomaticCompletion(');
+  const queue = extract('function queueEvalWorkAutomaticCompletion(', 'function setEvalWorkInquiryRowResolution(');
+  const work = { id: 'work-1', version: 1 };
+  let resolveDraftSync;
+  const draftSync = new Promise(resolve => { resolveDraftSync = resolve; });
+  const submits = [];
+  const context = {
+    activeEvalWorkDetailId: 'work-1',
+    evalWorkDetailGeneration: 1,
+    evalWorkAutoSubmitToken: null,
+    evalWorkAutoSubmitting: false,
+    evalWorkSubmitInFlight: false,
+    evalWorkAutomaticCompletionPromise: null,
+    evalWorkServerDraftSyncPromise: draftSync,
+    getArgosReclassLiveEditIdentityKey: () => 'session-1',
+    getEvalWorkById: id => id === work.id ? work : null,
+    getEvalWorkInquiryResolutionProgress: () => ({ total: 1, remaining: 0 }),
+    getEvalWorkPicturesSpecsProgress: () => ({ total: 1, remaining: 0 }),
+    clearEvalWorkServerDraftTimer: () => {},
+    submitEvalWork: () => new Promise(resolve => submits.push(resolve)),
+    showToast: () => assert.fail('stale automatic completion must not show a toast'),
+  };
+  vm.createContext(context);
+  vm.runInContext(`${complete}; ${queue}; this.queueCompletion = queueEvalWorkAutomaticCompletion;`, context);
+
+  const oldCompletion = context.queueCompletion();
+  await Promise.resolve();
+  const oldPromise = context.evalWorkAutomaticCompletionPromise;
+  assert.ok(oldPromise);
+
+  // Match openEvalWorkDetail's ownership reset while reopening the same work ID/object.
+  context.evalWorkDetailGeneration += 1;
+  context.evalWorkAutoSubmitToken = null;
+  context.evalWorkAutoSubmitting = false;
+  context.evalWorkAutomaticCompletionPromise = null;
+  const newCompletion = context.queueCompletion();
+  const newPromise = context.evalWorkAutomaticCompletionPromise;
+  assert.notEqual(newPromise, oldPromise);
+
+  resolveDraftSync(true);
+  await oldCompletion;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(submits.length, 1, 'only the new detail submits after the shared draft sync settles');
+  assert.equal(context.evalWorkAutomaticCompletionPromise, newPromise, 'the old finally does not clear the new queued completion');
+  assert.equal(context.evalWorkAutoSubmitting, true);
+
+  submits[0](false);
+  await newCompletion;
+  assert.equal(context.evalWorkAutomaticCompletionPromise, null);
+  assert.equal(context.evalWorkAutoSubmitting, false);
+  assert.equal(context.evalWorkAutoSubmitToken, null);
+});
+
+test('a stale automatic-completion draft-sync failure cannot toast or alter a reopened detail', async () => {
+  const complete = extract('async function completeEvalWorkAfterFinalRowDecision(', 'function queueEvalWorkAutomaticCompletion(');
+  const queue = extract('function queueEvalWorkAutomaticCompletion(', 'function setEvalWorkInquiryRowResolution(');
+  const work = { id: 'work-1', version: 1 };
+  let rejectDraftSync;
+  const draftSync = new Promise((_, reject) => { rejectDraftSync = reject; });
+  const toasts = [];
+  const context = {
+    activeEvalWorkDetailId: 'work-1',
+    evalWorkDetailGeneration: 1,
+    evalWorkAutoSubmitToken: null,
+    evalWorkAutoSubmitting: false,
+    evalWorkSubmitInFlight: false,
+    evalWorkAutomaticCompletionPromise: null,
+    evalWorkServerDraftSyncPromise: draftSync,
+    getArgosReclassLiveEditIdentityKey: () => 'session-1',
+    getEvalWorkById: id => id === work.id ? work : null,
+    getEvalWorkInquiryResolutionProgress: () => ({ total: 1, remaining: 0 }),
+    getEvalWorkPicturesSpecsProgress: () => ({ total: 1, remaining: 0 }),
+    clearEvalWorkServerDraftTimer: () => {},
+    submitEvalWork: () => assert.fail('stale completion must not submit'),
+    showToast: (...args) => toasts.push(args),
+  };
+  vm.createContext(context);
+  vm.runInContext(`${complete}; ${queue}; this.queueCompletion = queueEvalWorkAutomaticCompletion;`, context);
+
+  const oldCompletion = context.queueCompletion();
+  await Promise.resolve();
+  context.evalWorkDetailGeneration += 1;
+  context.evalWorkAutoSubmitToken = null;
+  context.evalWorkAutoSubmitting = false;
+  context.evalWorkAutomaticCompletionPromise = null;
+  rejectDraftSync(new Error('old draft sync failed'));
+  await oldCompletion;
+
+  assert.deepEqual(toasts, []);
+  assert.equal(context.evalWorkAutoSubmitting, false);
+  assert.equal(context.evalWorkAutoSubmitToken, null);
+  assert.equal(context.evalWorkAutomaticCompletionPromise, null);
+});
+
+test('automatic completion rechecks row and Pictures & Specs readiness after draft sync', async () => {
+  const complete = extract('async function completeEvalWorkAfterFinalRowDecision(', 'function queueEvalWorkAutomaticCompletion(');
+  const queue = extract('function queueEvalWorkAutomaticCompletion(', 'function setEvalWorkInquiryRowResolution(');
+  const work = { id: 'work-1', version: 1 };
+  let resolveDraftSync;
+  const draftSync = new Promise(resolve => { resolveDraftSync = resolve; });
+  let progressReads = 0;
+  const toasts = [];
+  let submits = 0;
+  const context = {
+    activeEvalWorkDetailId: 'work-1',
+    evalWorkDetailGeneration: 1,
+    evalWorkAutoSubmitToken: null,
+    evalWorkAutoSubmitting: false,
+    evalWorkSubmitInFlight: false,
+    evalWorkAutomaticCompletionPromise: null,
+    evalWorkServerDraftSyncPromise: draftSync,
+    getArgosReclassLiveEditIdentityKey: () => 'session-1',
+    getEvalWorkById: id => id === work.id ? work : null,
+    getEvalWorkInquiryResolutionProgress: () => ({ total: 1, remaining: 0 }),
+    getEvalWorkPicturesSpecsProgress: () => ({ total: 1, remaining: ++progressReads === 1 ? 0 : 1 }),
+    clearEvalWorkServerDraftTimer: () => {},
+    submitEvalWork: () => { submits += 1; return Promise.resolve(true); },
+    showToast: (...args) => toasts.push(args),
+  };
+  vm.createContext(context);
+  vm.runInContext(`${complete}; ${queue}; this.queueCompletion = queueEvalWorkAutomaticCompletion;`, context);
+
+  const pending = context.queueCompletion();
+  await Promise.resolve();
+  resolveDraftSync(true);
+  await pending;
+
+  assert.equal(submits, 0);
+  assert.equal(toasts.length, 1);
+  assert.match(toasts[0][1], /Pictures & Specs row/);
+  assert.equal(context.evalWorkAutoSubmitting, false);
+  assert.equal(context.evalWorkAutoSubmitToken, null);
+});
+
+test('automatic completion returns before readiness checks when no Eval Work is active', async () => {
+  const complete = extract('async function completeEvalWorkAfterFinalRowDecision(', 'function queueEvalWorkAutomaticCompletion(');
+  const queue = extract('function queueEvalWorkAutomaticCompletion(', 'function setEvalWorkInquiryRowResolution(');
+  let readinessChecks = 0;
+  const context = {
+    activeEvalWorkDetailId: '',
+    evalWorkDetailGeneration: 1,
+    evalWorkAutoSubmitToken: null,
+    evalWorkAutoSubmitting: false,
+    evalWorkSubmitInFlight: false,
+    evalWorkAutomaticCompletionPromise: null,
+    getArgosReclassLiveEditIdentityKey: () => 'session-1',
+    getEvalWorkById: () => null,
+    getEvalWorkInquiryResolutionProgress: () => { readinessChecks += 1; throw new Error('must not read progress without a work item'); },
+    getEvalWorkPicturesSpecsProgress: () => { readinessChecks += 1; throw new Error('must not read evidence without a work item'); },
+    clearEvalWorkServerDraftTimer: () => {},
+    submitEvalWork: () => assert.fail('no work item must not submit'),
+    showToast: () => assert.fail('no work item must not show a toast'),
+  };
+  vm.createContext(context);
+  vm.runInContext(`${complete}; ${queue}; this.queueCompletion = queueEvalWorkAutomaticCompletion;`, context);
+
+  await context.queueCompletion();
+
+  assert.equal(readinessChecks, 0);
+  assert.equal(context.evalWorkAutoSubmitting, false);
+  assert.equal(context.evalWorkAutoSubmitToken, null);
+  assert.equal(context.evalWorkAutomaticCompletionPromise, null);
+});
+
 test('an older same-work Eval submit cannot clear the token or in-flight guard of a reopened detail', async () => {
   const submit = extract('async function submitEvalWork(', 'async function reassignEvalWork(');
   const work = { id: 'work-1', version: 1, itemcode: 'A1' };
@@ -166,6 +337,7 @@ test('an older same-work Eval submit cannot clear the token or in-flight guard o
     evalWorkSubmitInFlight: false,
     evalWorkAutoSubmitting: false,
     evalWorkSubmitToken: null,
+    evalWorkDetailGeneration: 1,
     getEvalWorkById: id => id === work.id ? work : null,
     getArgosReclassLiveEditIdentityKey: () => 'session-1',
     collectEvalWorkInquiryPayload: () => ({ workflowPolicyVersion: 'v5' }),

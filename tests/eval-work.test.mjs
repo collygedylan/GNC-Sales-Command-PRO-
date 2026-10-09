@@ -199,7 +199,7 @@ test('Item Inquiry requires every Eval Work row to be Mark Done or No Action', (
   assert.match(html, /function validateEvalWorkInquiryRowResolutions\(work = null, inquiry = null\)/);
   assert.match(html, /Every Item Inquiry row must be Mark Done or No Action before sending/);
   assert.match(html, /validateEvalWorkInquiryRowResolutions\(work, inquiry\)/);
-  assert.match(html, /function completeEvalWorkAfterFinalRowDecision\(\)/);
+  assert.match(html, /function completeEvalWorkAfterFinalRowDecision\(completionContext = null\)/);
   assert.match(html, /function queueEvalWorkAutomaticCompletion\(\)/);
   assert.match(html, /progress\.remaining === 0[\s\S]*queueEvalWorkAutomaticCompletion/);
   assert.match(html, /submitEvalWork\(null, \{ automatic: true \}\)/);

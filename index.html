@@ -37797,6 +37797,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let evalWorkAutoSubmitting = false;
         let evalWorkSubmitInFlight = false;
         let evalWorkSubmitToken = null;
+        let evalWorkDetailGeneration = 0;
+        let evalWorkAutoSubmitToken = null;
         let evalWorkAutomaticCompletionPromise = null;
         let evalWorkStatusFilter = 'active';
         let evalWorkAssigneeFilter = 'all';
@@ -38733,6 +38735,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function openEvalWorkDetail(workId = '', encodedOriginUid = '') {
             clearEvalWorkServerDraftTimer();
+            evalWorkDetailGeneration += 1;
+            evalWorkAutoSubmitToken = null;
+            evalWorkAutomaticCompletionPromise = null;
             activeEvalWorkDetailId = String(workId || '').trim();
             try { evalWorkActiveOriginUid = decodeURIComponent(String(encodedOriginUid || '')); } catch (error) { evalWorkActiveOriginUid = ''; }
             evalWorkDetailView = 'pictures-specs';
@@ -38746,6 +38751,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function closeEvalWorkDetail() {
             clearEvalWorkServerDraftTimer();
+            evalWorkDetailGeneration += 1;
+            evalWorkAutoSubmitToken = null;
+            evalWorkAutomaticCompletionPromise = null;
             activeEvalWorkDetailId = '';
             evalWorkActiveOriginUid = '';
             evalWorkDetailView = 'pictures-specs';
@@ -38886,6 +38894,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!work || evalWorkSubmitInFlight) return false;
             const submitToken = {};
             evalWorkSubmitToken = submitToken;
+            const submitDetailGeneration = evalWorkDetailGeneration;
             const submitWorkId = String(work.id || '').trim();
             const submitDetailId = String(activeEvalWorkDetailId || '').trim();
             const submitIdentityKey = getArgosReclassLiveEditIdentityKey();
@@ -38898,6 +38907,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const submitContextIsCurrent = () => !!submitIdentityKey
                 && submitIdentityIsCurrent()
                 && evalWorkSubmitToken === submitToken
+                && evalWorkDetailGeneration === submitDetailGeneration
                 && activeEvalWorkDetailId === submitDetailId
                 && getEvalWorkById(submitWorkId) === work;
             try {
@@ -48025,39 +48035,74 @@ let avTopControlsRenderToken = 0;
             };
         }
 
-        async function completeEvalWorkAfterFinalRowDecision() {
-            if (evalWorkAutoSubmitting || evalWorkSubmitInFlight) return false;
-            const workId = String(activeEvalWorkDetailId || '');
-            const work = getEvalWorkById(workId);
-            const progress = getEvalWorkInquiryResolutionProgress(work);
-            if (!work || !progress.total || progress.remaining) return false;
-            const picturesProgress = getEvalWorkPicturesSpecsProgress(work);
-            if (!picturesProgress.total || picturesProgress.remaining) {
-                showToast('Pictures & Specs Remaining', `Mark Done on ${picturesProgress.remaining} Pictures & Specs row${picturesProgress.remaining === 1 ? '' : 's'} before the Item Inquiry PDF is sent.`, true);
+        async function completeEvalWorkAfterFinalRowDecision(completionContext = null) {
+            const context = completionContext && typeof completionContext === 'object' ? completionContext : {
+                generation: evalWorkDetailGeneration,
+                identityKey: getArgosReclassLiveEditIdentityKey(),
+                workId: String(activeEvalWorkDetailId || ''),
+                work: getEvalWorkById(activeEvalWorkDetailId),
+                token: evalWorkAutoSubmitToken || (evalWorkAutoSubmitToken = {})
+            };
+            const isCurrent = () => evalWorkAutoSubmitToken === context.token
+                && evalWorkDetailGeneration === context.generation
+                && context.identityKey === getArgosReclassLiveEditIdentityKey()
+                && activeEvalWorkDetailId === context.workId
+                && getEvalWorkById(context.workId) === context.work;
+            if (!context.work || !isCurrent() || evalWorkAutoSubmitting || evalWorkSubmitInFlight) return false;
+            const getReadiness = () => {
+                const progress = getEvalWorkInquiryResolutionProgress(context.work);
+                const pictures = getEvalWorkPicturesSpecsProgress(context.work);
+                return { progress, pictures };
+            };
+            let readiness = getReadiness();
+            if (!readiness.progress.total || readiness.progress.remaining) return false;
+            if (!readiness.pictures.total || readiness.pictures.remaining) {
+                showToast('Pictures & Specs Remaining', `Mark Done on ${readiness.pictures.remaining} Pictures & Specs row${readiness.pictures.remaining === 1 ? '' : 's'} before the Item Inquiry PDF is sent.`, true);
                 return false;
             }
             evalWorkAutoSubmitting = true;
             clearEvalWorkServerDraftTimer();
             try {
-                if (evalWorkServerDraftSyncPromise) await evalWorkServerDraftSyncPromise;
-                if (activeEvalWorkDetailId !== workId) {
-                    evalWorkAutoSubmitting = false;
+                const draftSync = evalWorkServerDraftSyncPromise;
+                if (draftSync) await draftSync;
+                if (!isCurrent()) return false;
+                readiness = getReadiness();
+                if (!readiness.progress.total || readiness.progress.remaining) return false;
+                if (!readiness.pictures.total || readiness.pictures.remaining) {
+                    showToast('Pictures & Specs Remaining', `Mark Done on ${readiness.pictures.remaining} Pictures & Specs row${readiness.pictures.remaining === 1 ? '' : 's'} before the Item Inquiry PDF is sent.`, true);
                     return false;
                 }
                 return await submitEvalWork(null, { automatic: true });
             } catch (error) {
-                evalWorkAutoSubmitting = false;
-                showToast('Send Failed', String(error && error.message ? error.message : 'The completed Item Inquiry could not be sent.'), true);
+                if (isCurrent()) showToast('Send Failed', String(error && error.message ? error.message : 'The completed Item Inquiry could not be sent.'), true);
                 return false;
+            } finally {
+                if (evalWorkAutoSubmitToken === context.token) {
+                    evalWorkAutoSubmitting = false;
+                    evalWorkAutoSubmitToken = null;
+                }
             }
         }
 
         function queueEvalWorkAutomaticCompletion() {
             if (evalWorkAutomaticCompletionPromise) return evalWorkAutomaticCompletionPromise;
-            evalWorkAutomaticCompletionPromise = Promise.resolve()
-                .then(() => completeEvalWorkAfterFinalRowDecision())
-                .finally(() => { evalWorkAutomaticCompletionPromise = null; });
-            return evalWorkAutomaticCompletionPromise;
+            const context = {
+                generation: evalWorkDetailGeneration,
+                identityKey: getArgosReclassLiveEditIdentityKey(),
+                workId: String(activeEvalWorkDetailId || ''),
+                work: getEvalWorkById(activeEvalWorkDetailId),
+                token: {}
+            };
+            evalWorkAutoSubmitToken = context.token;
+            const completion = Promise.resolve().then(() => completeEvalWorkAfterFinalRowDecision(context));
+            const ownedCompletion = completion.finally(() => {
+                if (evalWorkAutomaticCompletionPromise === ownedCompletion) {
+                    evalWorkAutomaticCompletionPromise = null;
+                    if (evalWorkAutoSubmitToken === context.token && !evalWorkAutoSubmitting) evalWorkAutoSubmitToken = null;
+                }
+            });
+            evalWorkAutomaticCompletionPromise = ownedCompletion;
+            return ownedCompletion;
         }
 
         function setEvalWorkInquiryRowResolution(button = null, resolution = '') {
