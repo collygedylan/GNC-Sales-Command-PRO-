@@ -1,7 +1,7 @@
 -- @test-runtime: canonical
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(76);
+select plan(86);
 
 select has_function('private','guard_ph_master_inventory_priority_hold_v1',array[]::text[],'master legacy-field shield trigger function exists');
 select ok(not has_table_privilege('authenticated','app_sync_private.ph_master_inventory_app_edits','select'),'app-edit shield state is private');
@@ -10,16 +10,17 @@ select ok(not has_table_privilege('service_role','app_sync_private.ph_master_inv
 insert into public.ph_master_inventory(
   unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
   priority,source,season,saleyear,desigitem,desigcust,desigloc,warehousei,av_note,
-  assignedto,app_tab_assignment,spec,photo_link
+  assignedto,app_tab_assignment,spec,photo_link,hold_release_approved_at
 ) values
-  ('smart-shield-main','SMART-SHIELD-MAIN','Synthetic shield plant','#3','A.01.001','27.F1','10','9','1','PH','F1','27','D1','C1','L1','10','preserve this evidence',null,null,null,null),
-  ('smart-shield-alias-canonical','SMART-SHIELD-ALIAS','Synthetic alias plant','#3','B.01.001','27.F1','20','19','1','PH','F1','27','D2','C2','L2','10','alias AV note','Dylan','av','alias spec','https://example.invalid/alias.jpg'),
-  ('smart-shield-exact-a','SMART-SHIELD-EXACT','Synthetic exact plant','#3','C.01.001','27.F1','30','29','1','PH','F1','27','D3','C3','L3','10',null,null,null,null,null),
-  ('smart-shield-exact-b','SMART-SHIELD-EXACT','Synthetic exact plant','#3','C.01.001','27.F1','30','29','1','PH','F1','27','D3','C3','L3','10',null,null,null,null,null),
-  ('smart-v6-source','SMART-V6','Synthetic V6 source','#3','D.01.001','27.F1','10','9','3','PH','F1','27','D4','C4','L4','10',null,null,null,null,null),
-  ('smart-v6-prior','SMART-V6','Synthetic prior-season sibling','#3','D.02.001','26.F1','10','9','2','PH','F1','26','D5','C5','L5','10',null,null,null,null,null),
-  ('smart-v6-future','SMART-V6','Synthetic future sibling','#3','D.03.001','28.F1','10','9','2','PH','F1','28','D6','C6','L6','10',null,null,null,null,null),
-  ('smart-v6-other-season','SMART-V6','Synthetic other-season row','#3','D.04.001','27.F2','10','9','2','PH','F2','27','D7','C7','L7','10',null,null,null,null,null);
+  ('smart-shield-main','SMART-SHIELD-MAIN','Synthetic shield plant','#3','A.01.001','27.F1','10','9','1','PH','F1','27','D1','C1','L1','10','preserve this evidence',null,null,null,null,null),
+  ('smart-shield-alias-canonical','SMART-SHIELD-ALIAS','Synthetic alias plant','#3','B.01.001','27.F1','20','19','1','PH','F1','27','D2','C2','L2','10','alias AV note','Dylan','av','alias spec','https://example.invalid/alias.jpg',null),
+  ('smart-shield-exact-a','SMART-SHIELD-EXACT','Synthetic exact plant','#3','C.01.001','27.F1','30','29','1','PH','F1','27','D3','C3','L3','10',null,null,null,null,null,null),
+  ('smart-shield-exact-b','SMART-SHIELD-EXACT','Synthetic exact plant','#3','C.01.001','27.F1','30','29','1','PH','F1','27','D3','C3','L3','10',null,null,null,null,null,null),
+  ('smart-v6-source','SMART-V6','Synthetic V6 source','#3','D.01.001','27.F1','10','9','3','PH','F1','27','D4','C4','L4','10',null,null,null,null,null,null),
+  ('smart-v6-prior','SMART-V6','Synthetic prior-season sibling','#3','D.02.001','26.F1','10','9','2','PH','F1','26','D5','C5','L5','10',null,null,null,null,null,null),
+  ('smart-v6-future','SMART-V6','Synthetic future sibling','#3','D.03.001','28.F1','10','9','2','PH','F1','28','D6','C6','L6','10',null,null,null,null,null,null),
+  ('smart-v6-other-season','SMART-V6','Synthetic other-season row','#3','D.04.001','27.F2','10','9','2','PH','F2','27','D7','C7','L7','10',null,null,null,null,null,null),
+  ('smart-shield-approved-cutover','SMART-SHIELD-APPROVED','Approved clear hold row','#3','E.01.001','27.F1','10','9','6','PH','F1','27','D8','C8','L8','10',null,null,null,null,null,'2026-10-08T12:00:00Z');
 
 insert into app_sync_private.ph_master_inventory_source_baselines(
   canonical_unique_id,lineage_key,priority,holdstopcode,holdstopreason
@@ -53,7 +54,7 @@ select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_
   'a changed-UID candidate has a real app edit before its import fence begins');
 
 select public.begin_dataset_import_v1(array['ph_master_inventory'],'9b000000-0000-4000-8000-000000000001');
-select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001"}',true);
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
 update public.ph_master_inventory set
   priority='1',holdstopcode=null,holdstopreason=null,concat='stale-legacy-hash',av_note=null
 where unique_id='smart-shield-main';
@@ -66,14 +67,70 @@ select is((select av_note from public.ph_master_inventory where unique_id='smart
 select ok((select concat like 'smart-shield-pending:%' from public.ph_master_inventory where unique_id='smart-shield-main'),
   'a stale import cannot make a false hash acknowledgement');
 
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001"}',true);
+update public.ph_master_inventory set priority='4',holdstopcode='H',holdstopreason='App-managed hold',concat='old-suppressed-ack'
+where unique_id='smart-shield-main';
+select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-main'),
+  'an old importer exact-looking tuple cannot acknowledge a pending shield');
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001","x-gnc-master-tuple-policy":"unknown-v9"}',true);
+update public.ph_master_inventory set priority='4',holdstopcode='H',holdstopreason='App-managed hold',concat='unknown-policy-ack'
+where unique_id='smart-shield-main';
+select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-main'),
+  'an unknown importer policy cannot acknowledge a pending shield');
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
 update public.ph_master_inventory set priority='4',holdstopcode='H',holdstopreason='App-managed hold',concat='acknowledged'
 where unique_id='smart-shield-main';
 select ok(not (select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-main'),
-  'the exact app tuple acknowledges and releases the shield');
+  'the exact app tuple under the raw policy acknowledges and releases the shield');
 update public.ph_master_inventory set priority='5',holdstopcode='S',holdstopreason='Next source hold'
 where unique_id='smart-shield-main';
 select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from public.ph_master_inventory where unique_id='smart-shield-main'),
   '["5","S","Next source hold"]'::jsonb,'a later legacy update is accepted after exact acknowledgement');
+
+insert into app_sync_private.ph_master_inventory_source_baselines(
+  canonical_unique_id,lineage_key,priority,holdstopcode,holdstopreason
+)
+select m.unique_id,private.ph_master_inventory_lineage_key_v1(to_jsonb(m)),m.priority,m.holdstopcode,m.holdstopreason
+from public.ph_master_inventory m where m.unique_id='smart-shield-approved-cutover'
+on conflict (canonical_unique_id) do nothing;
+insert into app_sync_private.ph_master_inventory_app_edits(
+  canonical_unique_id,lineage_key,legacy_priority,legacy_holdstopcode,legacy_holdstopreason,pending_legacy_sync
+)
+select m.unique_id,private.ph_master_inventory_lineage_key_v1(to_jsonb(m)),m.priority,m.holdstopcode,m.holdstopreason,true
+from public.ph_master_inventory m where m.unique_id='smart-shield-approved-cutover'
+on conflict (canonical_unique_id) do update set pending_legacy_sync=true;
+update app_sync_private.ph_master_inventory_app_edits set pending_legacy_sync=false
+where canonical_unique_id='smart-shield-approved-cutover';
+update public.ph_master_inventory set concat='old-import-hash'
+where unique_id='smart-shield-approved-cutover';
+select set_config('request.headers','{}',true);
+select private.rearm_approved_hold_clear_shields_v1();
+select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-approved-cutover'),
+  'the cutover reseed restores an approved clear row whose shield was falsely acknowledged');
+select ok((select concat like 'smart-shield-pending:%' from public.ph_master_inventory where unique_id='smart-shield-approved-cutover'),
+  'the reseed invalidates the old hash so the next import rechecks the raw tuple');
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001"}',true);
+update public.ph_master_inventory set priority='6',holdstopcode=null,holdstopreason=null,concat='old-suppressed-null'
+where unique_id='smart-shield-approved-cutover';
+select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-approved-cutover'),
+  'a legacy approved-release import that suppresses H to null cannot falsely acknowledge the shield');
+select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from public.ph_master_inventory where unique_id='smart-shield-approved-cutover'),
+  '["6",null,null]'::jsonb,'the old suppressed tuple leaves the approved live values unchanged');
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
+update public.ph_master_inventory set priority='6',holdstopcode='H',holdstopreason='Unreleased raw hold',concat='raw-conflict'
+where unique_id='smart-shield-approved-cutover';
+select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-approved-cutover'),
+  'a raw policy conflict cannot acknowledge the approved clear hold shield');
+select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from public.ph_master_inventory where unique_id='smart-shield-approved-cutover'),
+  '["6",null,null]'::jsonb,'a raw conflicting hold remains blocked');
+update public.ph_master_inventory set priority='6',holdstopcode=null,holdstopreason=null,concat='raw-null-ack'
+where unique_id='smart-shield-approved-cutover';
+select ok(not (select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-approved-cutover'),
+  'the exact raw null tuple acknowledges the approved clear hold shield');
+update public.ph_master_inventory set priority='6',holdstopcode='H',holdstopreason='Later legacy hold'
+where unique_id='smart-shield-approved-cutover';
+select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from public.ph_master_inventory where unique_id='smart-shield-approved-cutover'),
+  '["6","H","Later legacy hold"]'::jsonb,'a later raw hold is accepted after authentic null acknowledgment');
 
 insert into public.ph_master_inventory(
   unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
@@ -151,7 +208,7 @@ select public.finish_dataset_import_v1('9b000000-0000-4000-8000-000000000001');
 
 select public.begin_dataset_import_v1(array['ph_cav_import','ph_master_inventory'],
   '9b000000-0000-4000-8000-000000000002',array['ph_cav_import']);
-select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000002"}',true);
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000002","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
 create temp table shield_revision_before_aux as
 select revision from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id='smart-shield-main';
 update public.ph_master_inventory set priority='8',holdstopcode='S',holdstopreason='Auxiliary attempt'
@@ -164,7 +221,7 @@ select is((select revision from app_sync_private.ph_master_inventory_app_edits w
 select public.finish_dataset_import_v1('9b000000-0000-4000-8000-000000000002');
 
 select public.begin_dataset_import_v1(array['ph_cav_import'],'9b000000-0000-4000-8000-000000000004');
-select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000004"}',true);
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000004","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
 select throws_ok($$update public.ph_master_inventory set priority='8',holdstopcode='H',holdstopreason='Mis-scoped write'
   where unique_id='smart-shield-main'$$,
   '55000','MASTER_PRIORITY_HOLD_IMPORT_FENCE_LOST','a valid fence without the master source fails closed');
@@ -173,7 +230,7 @@ select is((select jsonb_build_array(priority,holdstopcode,holdstopreason) from p
 select public.finish_dataset_import_v1('9b000000-0000-4000-8000-000000000004');
 
 select public.begin_dataset_import_v1(array['ph_master_inventory'],'9b000000-0000-4000-8000-000000000003');
-select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000003"}',true);
+select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000003","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
 delete from public.ph_master_inventory where unique_id='smart-shield-alias-canonical';
 select is((select count(*)::integer from public.ph_master_inventory where unique_id='smart-shield-alias-canonical'),0,
   'a later canonical snapshot may delete the absent row');

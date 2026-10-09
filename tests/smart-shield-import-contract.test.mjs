@@ -29,13 +29,16 @@ test('daily source upserts and retries carry the validated import identity used 
     const rows = [{ unique_id: 'fixture-row', priority: '2', holdstopcode: 'H', holdstopreason: 'Legacy reason' }];
     const request = context.buildSupabaseUpsertRequest_(table, rows);
     assert.equal(request.headers['x-gnc-import-run-id'], runId);
+    assert.equal(request.headers['x-gnc-master-tuple-policy'], 'raw-priority-hold-v1');
     assert.deepEqual(JSON.parse(request.payload), rows, 'the database receives original legacy values to compare and acknowledge');
     const retry = context.buildSupabaseUpsertRequest_(table, rows.slice(0, 1));
     assert.equal(retry.headers['x-gnc-import-run-id'], runId);
+    assert.equal(retry.headers['x-gnc-master-tuple-policy'], 'raw-priority-hold-v1');
   }
   vm.runInContext('datasetImportFenceContext_ = null;', context);
   assert.equal(Object.hasOwn(context.getSupabaseHeaders_(), 'x-gnc-import-run-id'), false,
     'ordinary app writes do not impersonate import acknowledgments');
+  assert.equal(Object.hasOwn(context.getSupabaseHeaders_(), 'x-gnc-master-tuple-policy'), false);
 });
 
 test('daily snapshot pruning preserves the import identity needed for priority alias protection', () => {
@@ -49,6 +52,7 @@ test('daily snapshot pruning preserves the import identity needed for priority a
   assert.equal(requests.length, 1);
   assert.equal(requests[0].method, 'delete');
   assert.equal(requests[0].headers['x-gnc-import-run-id'], runId);
+  assert.equal(requests[0].headers['x-gnc-master-tuple-policy'], 'raw-priority-hold-v1');
   assert.match(requests[0].url, /ph_master_inventory\?unique_id=in\./);
 });
 

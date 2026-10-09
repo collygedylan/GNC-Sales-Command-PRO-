@@ -881,6 +881,9 @@ function getSupabaseHeaders_(extraHeaders) {
   const headers = getSupabaseHeadersForKey_(SUPABASE_KEY, extraHeaders);
   if (datasetImportFenceContext_ && datasetImportFenceContext_.runId) {
     headers['x-gnc-import-run-id'] = datasetImportFenceContext_.runId;
+    // SQL may acknowledge an app edit only after this importer presents the
+    // original PH legacy tuple, without the historical approved-hold masking.
+    headers['x-gnc-master-tuple-policy'] = 'raw-priority-hold-v1';
   }
   return headers;
 }
