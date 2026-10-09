@@ -162,6 +162,7 @@ describe('Drive Mode sandbox inventory', () => {
       await waitFor(() => expect(more.hasAttribute('disabled')).toBe(false));
       fireEvent.click(more);
       await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(expectedCalls));
+      expect(await screen.findByText(`Plant ${expectedCalls - 1}`)).toBeTruthy();
     }
     expect(screen.queryByRole('button', { name: 'Load 100 more rows' })).toBeNull();
     expect(screen.getByText(/narrow the search/i)).toBeTruthy();
