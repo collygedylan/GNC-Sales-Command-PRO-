@@ -482,11 +482,12 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 173);
+  assert.equal(manifest.length, 174);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
-  assert.deepEqual(manifest.slice(-2).map(entry => entry.source), [
+  assert.deepEqual(manifest.slice(-3).map(entry => entry.source), [
     'supabase/migrations/20261007211325_sql_function_correctness_repairs.sql',
     'supabase/migrations/20261007211340_sql_lint_runtime_context.sql',
+    'supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql',
   ]);
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(existsSync(path.join(root, entry.source)), entry.source);

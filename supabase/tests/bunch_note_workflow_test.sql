@@ -115,7 +115,7 @@ end $$;
 do $$
 declare d uuid:='98000000-0000-0000-0000-000000000001'; w uuid:='98000000-0000-0000-0000-000000000002'; other uuid:='98000000-0000-0000-0000-000000000003';
  ta bunch_note_private.options; move bunch_note_private.options; shift bunch_note_private.options; custom jsonb; draft jsonb; p jsonb; body jsonb; j jsonb; result jsonb; history jsonb;
- jobid uuid; eid uuid; first_id uuid; correction_id uuid; command uuid; previewid uuid; rev bigint; snapshot jsonb; inventory_before jsonb;
+ jobid uuid; eid uuid; first_id uuid; correction_id uuid; command uuid; previewid uuid; rev bigint; snapshot jsonb; inventory_before jsonb; auto_preview_id uuid;
 begin
  select jsonb_agg(to_jsonb(m) order by unique_id) into inventory_before from public.ph_master_inventory m;
  select * into ta from bunch_note_private.options where kind='ta' limit 1;
@@ -188,6 +188,25 @@ begin
  exception when others then if sqlerrm not in ('BUNCH_NOTE_NOT_FOUND','BUNCH_NOTE_COMMAND_CONFLICT') then raise;end if;end;
  perform pg_temp.bn_do(other,jobid,'complete');
  select revision into rev from bunch_note_private.jobs where id=jobid;
+ select id into auto_preview_id from bunch_note_private.previews where job_id=jobid and job_revision=rev and report_kind='completed_work' and published;
+ perform pg_temp.bn_check(auto_preview_id is not null and (select count(*)=1 from public.ph_request_delivery_outbox event
+  where event.event_key='bunch-note-auto-completion:'||jobid::text||':'||rev::text and event.payload->>'preview_id'=auto_preview_id::text),
+  'legacy whole-job completion also queues one revision-keyed automatic work report');
+ perform pg_temp.bn_check((select report->>'work_revision'=rev::text from bunch_note_private.previews preview
+   cross join lateral jsonb_array_elements(preview.reports) report where preview.id=auto_preview_id),
+   'automatic completion report records the returned completed revision');
+ perform pg_temp.bn_check((public.bunch_note_delivery_lookup_v1((select event_id from bunch_note_private.previews where id=auto_preview_id))->>'preview_id')=auto_preview_id::text,
+  'delivery lookup identifies the automatic preview for PDF freezing');
+ p:=pg_temp.bn_do(d,jobid,'work_preview',jsonb_build_object('recipient_ids',jsonb_build_array(other)))->'preview';
+ previewid:=(p->>'id')::uuid;
+ perform public.bunch_note_freeze_pdfs_v1(previewid,jsonb_build_array(jsonb_build_object('job_id',jobid,'filename','same-revision.pdf','base64',encode(convert_to('%PDF-1.4'||repeat('s',200),'UTF8'),'base64'))));
+ result:=public.bunch_note_command_v1(d,'work_publish',jsonb_build_object('preview_id',previewid,'send_email',true),gen_random_uuid(),rev);
+ perform pg_temp.bn_check((result->>'already_published')::boolean and (result->>'preview_id')::uuid=auto_preview_id
+   and (result->>'event_id')::uuid=(select event_id from bunch_note_private.previews where id=auto_preview_id),
+   'manual publication of the automatic revision reuses its one immutable preview and event');
+ perform pg_temp.bn_check((select count(*)=1 from public.ph_request_delivery_outbox event
+   where event.event_key='bunch-note-auto-completion:'||jobid::text||':'||rev::text),
+   'same-revision manual publication does not enqueue a duplicate email');
  perform pg_temp.bn_reject(other,'actual',jsonb_build_object('job_id',jobid,'replaces_id',correction_id),rev,'BUNCH_NOTE_OWNER_ONLY');
  perform pg_temp.bn_reject(other,'work_preview',jsonb_build_object('job_id',jobid),rev,'BUNCH_NOTE_AUTHOR_ONLY');
  p:=pg_temp.bn_do(d,jobid,'work_preview',jsonb_build_object('recipient_ids',jsonb_build_array(other)))->'preview';
@@ -204,7 +223,7 @@ begin
  perform pg_temp.bn_reject(w,'work_pdf',jsonb_build_object('job_id',jobid,'preview_id',previewid),null,'BUNCH_NOTE_NOT_FOUND');
  snapshot:=public.bunch_note_command_v1(other,'work_pdf',jsonb_build_object('job_id',jobid,'preview_id',previewid));
  perform pg_temp.bn_check(snapshot->'pdf'->>'filename'='work2.pdf','authorized owner downloads saved work report');
- perform pg_temp.bn_check(jsonb_array_length(public.bunch_note_command_v1(d,'get',jsonb_build_object('job_id',jobid))->'work_reports')=1,'work report versions separate from instruction revisions');
+ perform pg_temp.bn_check(jsonb_array_length(public.bunch_note_command_v1(d,'get',jsonb_build_object('job_id',jobid))->'work_reports')=2,'automatic and later corrected work reports are revisioned separately from instruction revisions');
  perform pg_temp.bn_check((select jsonb_agg(to_jsonb(m) order by unique_id)=inventory_before from public.ph_master_inventory m),'recording, amendments and reports never write inventory');
  perform pg_temp.bn_check(not has_table_privilege('authenticated','bunch_note_private.actuals','select') and not has_table_privilege('service_role','bunch_note_private.actuals','update'),'actual history cannot be directly read or rewritten');
 end $$;

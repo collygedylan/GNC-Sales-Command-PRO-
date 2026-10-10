@@ -75,11 +75,13 @@ be overwritten or accepted as this release. Exhausted or invalid evidence still
 blocks Pages publication. Retry the failed cloud handoff through GitHub Actions;
 never publish the frontend around its backend verification gate.
 
-The October 10 autonomous recovery retains the already-active temporary timing
-profile in `performance/baseline.json`: doubled timing ceilings and a 100 ms
-browser allowance floor. The stored 25 ms value is the strict restoration base,
-not the active CI limit. Prompt 7 removes the temporary profile. Payload sizes,
-render counts, duplicate reads, correctness and authorization checks stay active.
+The October 10 owner instruction explicitly authorizes temporary timing
+relaxation for the three-phase execution. PR 357 records it as doubled timing
+ceilings and the exact increase from a 100 ms to 200 ms browser allowance floor;
+that records owner authorization, not a GitHub review. The stored 25 ms value is
+the strict restoration base, not the active CI limit. Prompt 7 removes the
+temporary profile. Payload sizes, render counts, duplicate reads, correctness
+and authorization checks stay active.
 
 Run `npm run check:local` after preparing the release version and before sealing the commit. `prepare --dispatch` requires its passing source and compiled-artifact fingerprints, so failed or stale local evidence stops dispatch. The local check's one fresh build and selected regressions replace separate repeated foundation/feature runs; all candidate and hosted gates below remain required. Details: [local-validation.md](local-validation.md).
 

@@ -10,7 +10,7 @@ export default [
     // This externally built partner app is checked in with a pinned provenance hash; lint its editable source when available, not this sealed minified output.
     'v2/public/partner/assets/index-B5eWPKuw.js',
     '**/database.types.ts', '**/*contracts.generated.ts', 'legacy_fallback/**', 'supabase/archive_migrations/**',
-    'assets/alpha-command-center.js', 'assets/production-schedule.js', 'assets/assigned-items-table.js', 'assets/bunch-note-structured.js'] },
+    'assets/alpha-command-center.js', 'assets/production-schedule.js', 'assets/assigned-items-table.js', 'assets/bunch-note-structured.js', 'assets/bunch-note-chunks/**', 'assets/field-counting.js', 'assets/field-counting-chunks/**'] },
   { files: ['**/*.{js,mjs,cjs,jsx}'], languageOptions: { ecmaVersion: 'latest',
     parserOptions: { ecmaFeatures: { jsx: true } },
     globals: { ...globals.browser, ...globals.node, ...globals.serviceworker } },

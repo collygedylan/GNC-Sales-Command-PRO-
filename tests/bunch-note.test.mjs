@@ -204,10 +204,10 @@ test('completed-work PDF separates planned/actual types and excludes superseded 
  for(const expected of ['Completed work 8','TA: 4','MOVE: 3','Planned 4','Actual 4','NEW.LOC','Correction; current','Replaced; excluded from totals','Worker added','REVIEW:','&lt;review>','LOC Review Unknown'])assert.ok(html.includes(expected),expected);
  assert.ok(!html.includes('TA: 13'));
 });
-function deliveryRuntime({prior='pending',loseAck=false,recovered=false}={}) {
- const calls=[];const saved={event_id:'e',event_key:'key',event_type:'bunch_note_submission',delivery_status:prior,recipients:[{email:'dylan@example.test'},{email:'worker@example.test'}],pdfs:[{base64:'pdf',filename:'BN-1.pdf'}],reports:[{block:'C.12',purposes:'Rain day',note_number:'BN-1',instruction_revision:1,location:'C.12.1'}]};
- const ctx=vm.createContext({escapeEmailHtml_:String,LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},Utilities:{computeDigest:()=>[1,2],DigestAlgorithm:{SHA_256:1},Charset:{UTF_8:1},base64Decode:v=>v,newBlob:(bytes,mime,name)=>({bytes,mime,name})},MimeType:{PDF:'application/pdf'},normalizeEmailAddress_:v=>String(v).trim().toLowerCase(),resolveRequestRecipientEmail_:()=> 'dylan@example.test',isLikelyEmailAddress_:v=>v.includes('@'),getRequestDeliveryReceipt_:()=>recovered?{gmailMessageId:'saved'}:null,findSentRequestDeliveryByMessageId_:()=>null,isGmailAdvancedServiceAvailable_:()=>true,resolveAutomatedEmailSenderAddress_:()=> 'from@example.test',saveRequestDeliveryReceipt_(){},requestDeliveryRest_:(path,method,query,body)=>{calls.push({path,body});return path.includes('lookup')?saved:{allow_send:true};},sendGmailApiMessage_:payload=>{calls.push({send:payload});if(loseAck)throw new Error('response lost');return {ok:true,gmailMessageId:'gmail-1'};}});
- vm.runInContext(gas.slice(gas.indexOf('function bunchNoteDeliveryRecord_'),gas.indexOf('function handleSignedRequestDeliveryEvent_')),ctx);
+function deliveryRuntime({prior='pending',loseAck=false,recovered=false,automaticPdf=false,renderFail=false}={}) {
+ const calls=[];const saved={event_id:'e',event_key:'key',event_type:'bunch_note_submission',delivery_status:prior,preview_id:'preview-1',recipients:[{email:'dylan@example.test'},{email:'worker@example.test'}],pdfs:automaticPdf?null:[{base64:'pdf',filename:'BN-1.pdf'}],reports:[{job_id:'job-1',block:'C.12',purposes:'Rain day',note_number:'BN-1',instruction_revision:1,work_revision:4,report_kind:automaticPdf?'completed_work':'instructions',location:'C.12.1'}]};
+ const ctx=vm.createContext({escapeEmailHtml_:String,buildBunchNotePdfHtml_:()=>'<html>fixture</html>',LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},HtmlService:{createHtmlOutput:html=>({getBlob:()=>({getAs:()=>({getBytes:()=>{if(renderFail)throw new Error('untrusted renderer detail');return [37,80,68,70,45,49,46,52,10,...Array(200).fill(97)];}})})})},Utilities:{computeDigest:()=>[1,2],DigestAlgorithm:{SHA_256:1},Charset:{UTF_8:1},base64Decode:v=>v,base64Encode:()=> 'JVBERi0xLjQK'+ 'YQ=='.repeat(40),newBlob:(bytes,mime,name)=>({bytes,mime,name})},MimeType:{PDF:'application/pdf'},normalizeEmailAddress_:v=>String(v).trim().toLowerCase(),resolveRequestRecipientEmail_:()=> 'dylan@example.test',isLikelyEmailAddress_:v=>v.includes('@'),getRequestDeliveryReceipt_:()=>recovered?{gmailMessageId:'saved'}:null,findSentRequestDeliveryByMessageId_:()=>null,isGmailAdvancedServiceAvailable_:()=>true,resolveAutomatedEmailSenderAddress_:()=> 'from@example.test',saveRequestDeliveryReceipt_(){},requestDeliveryRest_:(path,method,query,body)=>{calls.push({path,body});if(path.includes('lookup'))return saved;if(path.includes('freeze_pdfs'))return {pdfs:body.p_pdfs};return {allow_send:true};},sendGmailApiMessage_:payload=>{calls.push({send:payload});if(loseAck)throw new Error('response lost');return {ok:true,gmailMessageId:'gmail-1'};}});
+ vm.runInContext(gas.slice(gas.indexOf('function freezeBunchNoteReportPdfs_'),gas.indexOf('function handleSignedRequestDeliveryEvent_')),ctx);
  return {calls,send:()=>ctx.handleSignedBunchNoteDelivery_({eventId:'e',eventKey:'key',eventType:'bunch_note_submission',messageIdHeader:'<gnc-0102@request-delivery.agdatasolutions.local>',leaseToken:'lease'})};
 }
 test('delivery uses frozen PDFs and exact recipients, records intent before sending',()=>{
@@ -216,6 +216,23 @@ test('delivery uses frozen PDFs and exact recipients, records intent before send
  assert.equal(sent.subject,'BUNCH NOTES — C.12 — Rain day');assert.equal(sent.attachments.length,1);
  assert.ok(d.calls.findIndex(c=>c.body?.p_status==='sending')<d.calls.findIndex(c=>c.send));
  assert.ok(d.calls.some(c=>c.body?.p_status==='sent'));
+});
+test('automatic completion renders and freezes its report PDF before recording send intent',()=>{
+ const d=deliveryRuntime({automaticPdf:true}),result=d.send();assert.equal(result.ok,true,JSON.stringify(result));
+ const freezeIndex=d.calls.findIndex(c=>c.path?.includes('freeze_pdfs'));
+ const sendingIndex=d.calls.findIndex(c=>c.body?.p_status==='sending');
+ const sendIndex=d.calls.findIndex(c=>c.send);
+ assert.ok(freezeIndex>=0&&freezeIndex<sendingIndex&&sendingIndex<sendIndex);
+ assert.equal(d.calls[freezeIndex].body.p_preview_id,'preview-1');
+ assert.equal(d.calls[freezeIndex].body.p_pdfs[0].job_id,'job-1');
+ assert.equal(d.calls[freezeIndex].body.p_pdfs[0].filename,'BN-1_WORK_R4.pdf');
+ assert.equal(d.calls[sendIndex].send.attachments[0].name,'BN-1_WORK_R4.pdf');
+ assert.deepEqual(plain(d.calls[sendIndex].send.toArray),['dylan@example.test','worker@example.test']);
+});
+test('automatic PDF renderer failures are retryable before a send intent exists',()=>{
+ const d=deliveryRuntime({automaticPdf:true,renderFail:true}),result=d.send();
+ assert.deepEqual(plain(result),{ok:false,code:'BUNCH_NOTE_PDF_RENDER_UNAVAILABLE',deliveryUncertain:false,retryable:true,message:'The saved work and PDFs are retained.'});
+ assert.ok(!d.calls.some(c=>c.body?.p_status==='sending'||c.send));
 });
 test('uncertain delivery never blind-resends and receipt recovery does not send',()=>{
  const lost=deliveryRuntime({loseAck:true});assert.equal(lost.send().deliveryUncertain,true);assert.ok(lost.calls.some(c=>c.body?.p_status==='unknown'));

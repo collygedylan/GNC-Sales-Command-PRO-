@@ -104,9 +104,9 @@ test('paired API samples retain the strict restoration policy and use the tempor
   assert.match(compareBenchmarks(strictManifest, rejectedReports.baseline, rejectedReports.candidate).join('\n'), /p95.*exceeds/);
   assert.deepEqual(compareBenchmarks(manifest, rejectedReports.baseline, rejectedReports.candidate), []);
   const fixedMetrics = value => [{ id: 'api.lookup.10k.admin.first.response_ms', kind: 'duration', samples: Array(15).fill(value) }];
-  const atLimit = aggregate(passes({ options: { baseline: { metrics: fixedMetrics(100) }, candidate: { metrics: fixedMetrics(250) } } }));
+  const atLimit = aggregate(passes({ options: { baseline: { metrics: fixedMetrics(100) }, candidate: { metrics: fixedMetrics(300) } } }));
   assert.deepEqual(compareBenchmarks(manifest, atLimit.baseline, atLimit.candidate), []);
-  const overLimit = aggregate(passes({ options: { baseline: { metrics: fixedMetrics(100) }, candidate: { metrics: fixedMetrics(251) } } }));
+  const overLimit = aggregate(passes({ options: { baseline: { metrics: fixedMetrics(100) }, candidate: { metrics: fixedMetrics(301) } } }));
   assert.match(compareBenchmarks(manifest, overLimit.baseline, overLimit.candidate).join('\n'), /p95.*exceeds/);
   assert.equal(manifest.budgets.relative, 0.15);
   assert.equal(manifest.budgets.browserNoiseMs, 25);

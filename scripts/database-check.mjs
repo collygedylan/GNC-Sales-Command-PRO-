@@ -6,7 +6,7 @@ import { createSandboxDatabaseWorkspace } from './sandbox-database-workspace.mjs
 import { discoverTests } from './test-discovery.mjs';
 import { doctor } from './tooling-doctor.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
-import { generatedDatabaseTypesPath, sandboxDatabaseTypesPath } from './database-types.mjs';
+import { generatedDatabaseTypesPath, sandboxDatabaseTypesPath, runLocalTypesCommand } from './database-types.mjs';
 import { generateContracts } from './generate-database-contracts.mjs';
 import { withDisposableSupabase } from './database-workspace-runner.mjs';
 import { prepareHistoricalDatabaseFixture, readHistoricalMigrationManifest } from './historical-database-fixture.mjs';
@@ -103,7 +103,7 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     strictLint(workspace, runCli);
     runCli(['test', 'db']);
 
-    const actual = runCli(['gen', 'types', '--local', '--schema', 'public', '--lang', 'typescript'], { capture: true });
+    const actual = runLocalTypesCommand(runCli, ['gen', 'types', '--local', '--schema', 'public', '--lang', 'typescript']);
     if (!actual.includes('export type Database =')) throw new Error('DATABASE_TYPES_GENERATION_EMPTY');
     const expected = readFileSync(path.join(root, generatedDatabaseTypesPath), 'utf8');
     if (expected !== actual && expected !== `${actual}\n`) throw new Error('DATABASE_TYPES_OUT_OF_DATE: run npm run types:db:generate and review the schema diff');
@@ -137,7 +137,7 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     runCli(['db', 'lint', '--local', '--schema', sandboxWorkspace.lintSchemas.join(','), '--fail-on', 'error']);
     if (sandboxWorkspace.testCount < 1) throw new Error('SANDBOX_PGTAP_TESTS_REQUIRED');
     runCli(['test', 'db']);
-    const actual = runCli(['gen', 'types', '--local', '--schema', 'public', '--lang', 'typescript'], { capture: true });
+    const actual = runLocalTypesCommand(runCli, ['gen', 'types', '--local', '--schema', 'public', '--lang', 'typescript']);
     if (!actual.includes('export type Database =')) throw new Error('SANDBOX_DATABASE_TYPES_GENERATION_EMPTY');
     const expected = readFileSync(path.join(root, sandboxDatabaseTypesPath), 'utf8');
     if (expected !== actual && expected !== `${actual}\n`) throw new Error('SANDBOX_DATABASE_TYPES_OUT_OF_DATE: run npm run types:db:generate and review the schema diff');

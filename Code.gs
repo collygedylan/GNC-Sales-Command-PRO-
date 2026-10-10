@@ -19500,23 +19500,27 @@ function buildBunchNotePdfHtml_(report) {
   return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px;margin:0 0 10px}p{margin:6px 0}h2{font-size:15px;margin:12px 0 6px;break-after:avoid;page-break-after:avoid}tr.item{break-after:avoid;page-break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}.crew{display:inline-block;color:#fff;padding:5px;font-size:12px;overflow-wrap:anywhere}.house{break-after:avoid;page-break-after:avoid}.house th{font-size:15px;background:#dce8df}.routing{font-size:12px;font-weight:bold}</style></head><body><h1>'+e(report.purposes || 'Bunch Notes')+'</h1><h2>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h2><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Direction:</b> '+e(report.direction || 'Not specified')+' <b>Target houses:</b> '+e(report.target_houses || 'Not specified')+'<br><b>Purposes:</b> '+e(report.purposes)+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+rich(report.instructions || report.general_instructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+rich(report.prerequisites || '—')+'</p><h2>Crew task instructions'+(work?' — planned versus actual':'')+'</h2><table><colgroup><col style="width:13%"><col style="width:23%"><col style="width:12%"><col style="width:38%"><col style="width:14%"></colgroup><thead><tr><th>Crew / action</th><th>Item / source</th><th>Quantity</th><th>Instructions / routing</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Sales Year / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table>'+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
 }
 
+function freezeBunchNoteReportPdfs_(previewId, reports) {
+  let total = 0;
+  const pdfs = (Array.isArray(reports) ? reports : []).map(function(report) {
+    const filename = report.note_number + (report.report_kind === 'completed_work' ? '_WORK_R' + report.work_revision : '_R' + report.instruction_revision) + '.pdf';
+    let bytes;
+    try { bytes = HtmlService.createHtmlOutput(buildBunchNotePdfHtml_(report)).getBlob().getAs(MimeType.PDF).getBytes(); }
+    catch (ignored) { throw new Error('BUNCH_NOTE_PDF_RENDER_UNAVAILABLE'); }
+    total += bytes.length;
+    if (total > 15000000) throw new Error('BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS');
+    return {job_id:report.job_id,filename:filename,base64:Utilities.base64Encode(bytes)};
+  });
+  if (!pdfs.length) throw new Error('BUNCH_NOTE_PDF_REPORT_REQUIRED');
+  return requestDeliveryRest_('rpc/bunch_note_freeze_pdfs_v1','POST','',{p_preview_id:previewId,p_pdfs:pdfs}).pdfs;
+}
+
 function handleBunchNotePreview_(payload) {
   try {
     if (Object.keys(payload).some(function(key) { return ['type','nativeAuthAccessToken','previewId'].indexOf(key) === -1; })) throw new Error('BUNCH_NOTE_PREVIEW_INVALID');
     const actor = verifyHlTagsSender_({accessToken: payload.nativeAuthAccessToken});
     const preview = requestDeliveryRest_('rpc/bunch_note_command_v1', 'POST', '', {p_actor_id:actor.id,p_operation:'preview_read',p_payload:{preview_id:payload.previewId}});
-    let pdfs = preview.pdfs;
-    if (!pdfs) {
-      let total = 0;
-      pdfs = preview.reports.map(function(report) {
-        const filename = report.note_number + (report.report_kind === 'completed_work' ? '_WORK_R' + report.work_revision : '_R' + report.instruction_revision) + '.pdf';
-        const bytes = HtmlService.createHtmlOutput(buildBunchNotePdfHtml_(report)).getBlob().getAs(MimeType.PDF).getBytes();
-        total += bytes.length;
-        if (total > 15000000) throw new Error('BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS');
-        return {job_id:report.job_id,filename:filename,base64:Utilities.base64Encode(bytes)};
-      });
-      pdfs = requestDeliveryRest_('rpc/bunch_note_freeze_pdfs_v1','POST','',{p_preview_id:preview.id,p_pdfs:pdfs}).pdfs;
-    }
+    const pdfs = preview.pdfs || freezeBunchNoteReportPdfs_(preview.id, preview.reports);
     return {ok:true,pdfs:pdfs,recipients:preview.recipients};
   } catch (error) {
     return {ok:false,code:'BUNCH_NOTE_PREVIEW_FAILED',message:String(error.message || 'PDF preview failed. No work was published.')};
@@ -19552,7 +19556,8 @@ function handleSignedBunchNoteDelivery_(delivery) {
     }
     if (delivery.reconciliationOnly === true || ['sending','sent','unknown'].indexOf(saved.delivery_status) !== -1) { started=true; throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN'); }
     if (!isGmailAdvancedServiceAvailable_()) throw new Error('BUNCH_NOTE_GMAIL_UNAVAILABLE');
-    const attachments = saved.pdfs.map(function(pdf) { return Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename); });
+    const pdfs = saved.pdfs || freezeBunchNoteReportPdfs_(saved.preview_id, saved.reports);
+    const attachments = pdfs.map(function(pdf) { return Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename); });
     const block = saved.reports[0].block;
     const purposes = Array.from(new Set(saved.reports.map(function(r) { return r.purposes; }))).join('; ');
     const completedWork = saved.reports[0].report_kind === 'completed_work';
@@ -19569,8 +19574,122 @@ function handleSignedBunchNoteDelivery_(delivery) {
   } catch (error) {
     if (started) { try { bunchNoteDeliveryRecord_(delivery,'unknown',{message_id_header:delivery.messageIdHeader}); } catch (ignored) {} }
     const code = started ? 'BUNCH_NOTE_DELIVERY_UNKNOWN' : String(error.message || 'BUNCH_NOTE_DELIVERY_FAILED');
-    return {ok:false,code:code,deliveryUncertain:started,retryable:!started && /BUSY|UNAVAILABLE/.test(code),message:started?'Delivery needs reconciliation. Do not send another copy.':'The saved work and PDFs are retained.'};
+    const retryableBeforeSend = !started && /BUSY|UNAVAILABLE|BUNCH_NOTE_PDF_REPORT_REQUIRED|BUNCH_NOTE_PDF_RENDER_UNAVAILABLE/.test(code);
+    return {ok:false,code:code,deliveryUncertain:started,retryable:retryableBeforeSend,message:started?'Delivery needs reconciliation. Do not send another copy.':'The saved work and PDFs are retained.'};
   } finally { if(lock) { try { lock.releaseLock(); } catch(ignored) {} } }
+}
+
+function buildFieldCountCompletionPdfHtml_(report) {
+  const e = escapeEmailHtml_;
+  const value = function(input) { return input === null || typeof input === 'undefined' || String(input).trim() === '' ? '—' : String(input); };
+  const rows = (Array.isArray(report.rows) ? report.rows : []).map(function(row, index) {
+    return {row:row,index:index};
+  }).sort(function(a,b) {
+    const left=Number(a.row.rowOrder)||a.index+1, right=Number(b.row.rowOrder)||b.index+1;
+    return left-right || a.index-b.index;
+  }).map(function(entry) {
+    const row=entry.row;
+    return '<tr><td class="ordinal">'+e(value(row.rowOrder || entry.index+1))+'</td>'
+      +'<td><b>'+e(value(row.itemcode))+'</b><br>'+e(value(row.commonname))+'<br><small>'+e(value(row.sourceUid))+'</small></td>'
+      +'<td>'+e(value(row.contsize))+'</td><td>'+e(value(row.lotcode))+'<br>'+e(value(row.season))+'</td>'
+      +'<td class="number">'+e(value(row.onHand))+'</td><td class="number counted">'+e(value(row.countedQty))+'</td>'
+      +'<td>'+e(value(row.direction))+'</td><td class="note">'+e(value(row.note))+'</td></tr>';
+  }).join('');
+  const type=report.countType==='bunch'?'Bunch':'Spread';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>'
+    +'@page{size:letter landscape;margin:12mm 10mm 14mm;@bottom-left{content:"GNC PARK HILL | FIELD COUNT";font:8px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8px Arial}}'
+    +'body{font:9pt Arial,sans-serif;color:#18372b}h1{font-size:18pt;margin:0 0 5mm}.meta{border:1px solid #8b9d90;background:#edf3ee;padding:3mm;margin-bottom:4mm;line-height:1.45}'
+    +'table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}'
+    +'th,td{border:1px solid #87988b;padding:2mm;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#dce8df;font-size:8pt}tbody tr:nth-child(even){background:#f6f8f6}'
+    +'.ordinal,.number{text-align:center;white-space:nowrap}.counted{font-weight:bold}.note{white-space:pre-wrap}'
+    +'</style></head><body><h1>Field Count Completion</h1><div class="meta"><b>Type:</b> '+e(type)
+    +' &nbsp; <b>Block:</b> '+e(value(report.block))+' &nbsp; <b>Location:</b> '+e(value(report.location))
+    +'<br><b>Completed:</b> '+e(value(report.completedAt))+' &nbsp; <b>By:</b> '+e(value(report.actor))
+    +' &nbsp; <b>Direction:</b> '+e(value(report.rows && report.rows[0] && report.rows[0].direction))
+    +' &nbsp; <b>Rows:</b> '+e(String(Array.isArray(report.rows)?report.rows.length:0))+'</div>'
+    +'<table><colgroup><col style="width:5%"><col style="width:24%"><col style="width:9%"><col style="width:15%"><col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:17%"></colgroup>'
+    +'<thead><tr><th>#</th><th>Item / source</th><th>Container</th><th>Lot / season</th><th>On hand</th><th>Counted</th><th>Direction</th><th>Note</th></tr></thead><tbody>'
+    +(rows||'<tr><td colspan="8">No rows were saved in this report.</td></tr>')+'</tbody></table></body></html>';
+}
+
+function fieldCountDeliveryRecord_(delivery, status, result) {
+  return requestDeliveryRest_('rpc/field_count_delivery_record_v1','POST','',{
+    p_event_id:delivery.eventId,p_lease_token:delivery.leaseToken,p_status:status,p_result:result||{}
+  });
+}
+
+function fieldCountReceipt_(result, messageIdHeader, recipients) {
+  return {gmail_message_id:String(result.gmailMessageId||result.gmail_message_id||''),
+    thread_id:String(result.threadId||result.thread_id||''),message_id:String(result.messageId||result.message_id||messageIdHeader),
+    message_id_header:messageIdHeader,recipients:Array.isArray(result.recipients)?result.recipients:recipients,mode:'field_count_gmail_api'};
+}
+
+function isFieldCountPreSendTransient_(error) {
+  const status=Number(error&&error.status);
+  if(Number.isInteger(status)&&(status===408||status===425||status===429||(status>=500&&status<=599)))return true;
+  const message=String(error&&error.message||error||'');
+  return /\b(?:timed?\s*out|timeout|temporarily unavailable|address unavailable|DNS error|connection reset|connection refused|service invoked too many times in a short time)\b/i.test(message);
+}
+
+function handleSignedFieldCountDelivery_(delivery) {
+  let lock,sendStarted=false;
+  try {
+    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if(!uuid.test(String(delivery.eventId||''))||!uuid.test(String(delivery.leaseToken||'')))throw new Error('FIELD_COUNT_DELIVERY_INVALID');
+    lock=LockService.getScriptLock();if(!lock.tryLock(10000))throw new Error('FIELD_COUNT_DELIVERY_BUSY');
+    const saved=requestDeliveryRest_('rpc/field_count_delivery_lookup_v1','POST','',{p_event_id:delivery.eventId});
+    if(!saved||saved.event_id!==delivery.eventId||saved.event_type!=='field_count_completion'||saved.event_key!==delivery.eventKey
+      ||!saved.report||!uuid.test(String(saved.report.id||''))||saved.event_key!=='field-count:'+saved.report.id)throw new Error('FIELD_COUNT_DELIVERY_INVALID');
+    const digest=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(saved.event_key),Utilities.Charset.UTF_8);
+    const expectedId='<gnc-'+digest.map(function(byte){return ('0'+(byte&255).toString(16)).slice(-2);}).join('').slice(0,40)+'@request-delivery.agdatasolutions.local>';
+    if(delivery.messageIdHeader!==expectedId)throw new Error('FIELD_COUNT_DELIVERY_INVALID');
+    const recipients=Array.from(new Set((Array.isArray(saved.recipients)?saved.recipients:[]).map(function(entry){
+      return normalizeEmailAddress_(typeof entry==='string'?entry:entry&&entry.email);
+    }).filter(Boolean)));
+    if(!recipients.length||recipients.some(function(email){return !isLikelyEmailAddress_(email);}))throw new Error('FIELD_COUNT_RECIPIENT_INVALID');
+    const receipt=saved.receipt&&saved.receipt.gmail_message_id?saved.receipt:getRequestDeliveryReceipt_(expectedId)||findSentRequestDeliveryByMessageId_(expectedId);
+    if(receipt){
+      const recovered=fieldCountReceipt_(receipt,expectedId,recipients);
+      fieldCountDeliveryRecord_(delivery,'sent',recovered);
+      return {ok:true,gmailMessageId:recovered.gmail_message_id,threadId:recovered.thread_id,messageId:expectedId,messageIdHeader:expectedId,recipients:recipients,recovered:true};
+    }
+    if(delivery.reconciliationOnly===true||['sending','sent','unknown'].indexOf(saved.delivery_status)!==-1){sendStarted=true;throw new Error('FIELD_COUNT_DELIVERY_UNKNOWN');}
+    if(!isGmailAdvancedServiceAvailable_())throw new Error('FIELD_COUNT_GMAIL_UNAVAILABLE');
+    let pdf=saved.pdf;
+    if(!pdf){
+      let bytes;
+      try{bytes=HtmlService.createHtmlOutput(buildFieldCountCompletionPdfHtml_(saved.report)).getBlob().getAs(MimeType.PDF).getBytes();}
+      catch(ignored){throw new Error('FIELD_COUNT_PDF_RENDER_UNAVAILABLE');}
+      if(bytes.length>15000000)throw new Error('FIELD_COUNT_PDF_TOO_LARGE');
+      const name='Field_Count_'+saved.report.id+'.pdf';
+      pdf=requestDeliveryRest_('rpc/field_count_freeze_pdf_v1','POST','',{p_event_id:delivery.eventId,p_pdf:{filename:name,base64:Utilities.base64Encode(bytes)}}).pdf;
+    }
+    if(!pdf||pdf.filename!=='Field_Count_'+saved.report.id+'.pdf'||!pdf.base64)throw new Error('FIELD_COUNT_PDF_INVALID');
+    const attachment=Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename);
+    const report=saved.report;
+    const subject=('Field Count — '+(report.countType==='bunch'?'Bunch':'Spread')+' — '+report.block+' / '+report.location).replace(/[\r\n]+/g,' ');
+    const text='Field Count Completion\nType: '+(report.countType==='bunch'?'Bunch':'Spread')+'\nBlock: '+report.block+'\nLocation: '+report.location
+      +'\nCompleted: '+report.completedAt+'\nBy: '+report.actor+'\nRows: '+(Array.isArray(report.rows)?report.rows.length:0)+'\n\nThe saved count report is attached.';
+    const intent=fieldCountDeliveryRecord_(delivery,'sending',{message_id_header:expectedId,recipients:recipients});
+    if(!intent||intent.allow_send!==true){sendStarted=true;throw new Error('FIELD_COUNT_DELIVERY_UNKNOWN');}
+    sendStarted=true;
+    const result=sendGmailApiMessage_({toList:recipients.join(','),toArray:recipients,subject:subject,textBody:text,
+      htmlBody:'<pre>'+escapeEmailHtml_(text)+'</pre>',attachments:[attachment],fromName:'GNC Park Hill Field Counts',
+      fromAddress:resolveAutomatedEmailSenderAddress_(),messageIdHeader:expectedId});
+    if(!result||!result.ok||!result.gmailMessageId)throw new Error('FIELD_COUNT_DELIVERY_UNKNOWN');
+    try{saveRequestDeliveryReceipt_(expectedId,result);}catch(ignored){}
+    const durable=fieldCountReceipt_(result,expectedId,recipients);
+    fieldCountDeliveryRecord_(delivery,'sent',durable);
+    return Object.assign({},result,{ok:true,recipients:result.recipients||recipients,messageIdHeader:expectedId,mode:'field_count_gmail_api'});
+  }catch(error){
+    if(sendStarted){try{fieldCountDeliveryRecord_(delivery,'unknown',{message_id_header:delivery.messageIdHeader});}catch(ignored){}}
+    const transientBeforeSend=!sendStarted&&isFieldCountPreSendTransient_(error);
+    const code=sendStarted?'FIELD_COUNT_DELIVERY_UNKNOWN':transientBeforeSend?'FIELD_COUNT_TRANSPORT_UNAVAILABLE':String(error.message||'FIELD_COUNT_DELIVERY_FAILED');
+    const permanent=['FIELD_COUNT_DELIVERY_INVALID','FIELD_COUNT_RECIPIENT_INVALID','FIELD_COUNT_PDF_INVALID','FIELD_COUNT_PDF_TOO_LARGE'].indexOf(code)!==-1;
+    const retryable=!sendStarted&&!permanent&&(transientBeforeSend||/BUSY|UNAVAILABLE|RENDER/.test(code));
+    return {ok:false,code:code,deliveryUncertain:sendStarted,retryable:retryable,
+      message:sendStarted?'Delivery needs reconciliation. Do not send another copy.':'The saved count report is retained.'};
+  }finally{if(lock){try{lock.releaseLock();}catch(ignored){}}}
 }
 
 function buildSuspendTagApprovalEmail_(delivery) {
@@ -19651,6 +19770,7 @@ function handleSignedRequestDeliveryEvent_(payload) {
   if (eventType === 'suspend_tag_approval_requested' || eventType === 'suspend_tag_approval_decided') return handleSignedSuspendTagDelivery_(delivery);
   if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
   if (eventType === 'bunch_note_submission') return handleSignedBunchNoteDelivery_(delivery);
+  if (eventType === 'field_count_completion') return handleSignedFieldCountDelivery_(delivery);
   if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);
   if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
     return handleSignedReclassInquiryDelivery_(delivery);
@@ -19774,12 +19894,12 @@ function processRequestDeliveryOutbox_(limit) {
     events = requestDeliveryRest_(
       'ph_request_delivery_outbox',
       'GET',
-      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
+      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission,field_count_completion)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
       null
     );
     events.forEach(function(eventRow) {
       // The leased Edge worker exclusively owns HL email delivery and reconciliation.
-      if (['hl_order_submission', 'hl_order_cancellation', 'bunch_note_submission'].indexOf(String(eventRow.event_type || '')) !== -1) return;
+      if (['hl_order_submission', 'hl_order_cancellation', 'bunch_note_submission', 'field_count_completion'].indexOf(String(eventRow.event_type || '')) !== -1) return;
       const eventId = String(eventRow.event_id || '');
       const claimedRows = requestDeliveryRest_(
         'ph_request_delivery_outbox',

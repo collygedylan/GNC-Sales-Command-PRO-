@@ -98,4 +98,31 @@ export function mountStructuredBunchNote(host, props) {
   return { update, destroy: () => root.unmount() };
 }
 
-export { mountBunchNoteCards } from './CardBoard.jsx';
+// Keep this legacy export compatible without pulling the card board into the
+// structured view's initial chunk. The current entry point imports each view
+// independently; older callers can still mount/update/destroy a board here.
+export function mountBunchNoteCards(host, props) {
+  let latest = props;
+  let mounted = null;
+  let destroyed = false;
+  void import('./CardBoard.jsx').then(module => {
+    if (destroyed || !host.isConnected) return;
+    mounted = module.mountBunchNoteCards(host, latest);
+  }).catch(error => {
+    if (!destroyed) {
+      console.error('Bunch Notes card board failed to load', error);
+      host.textContent = 'The card board could not load. Reopen Bunch Notes to retry.';
+    }
+  });
+  return {
+    update(next) {
+      latest = next;
+      mounted?.update(next);
+    },
+    destroy() {
+      destroyed = true;
+      mounted?.destroy();
+      mounted = null;
+    }
+  };
+}

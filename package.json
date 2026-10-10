@@ -1,7 +1,7 @@
 {
   "name": "gnc-field-app",
   "private": true,
-  "version": "2026.10.10.001",
+  "version": "2026.10.10.002",
   "type": "module",
   "overrides": {
     "fast-uri": "3.1.6",
@@ -26,7 +26,7 @@
     "build:live:vendor": "node scripts/vendor-live-assets.mjs && esbuild scripts/live-supabase-entry.ts --bundle --format=iife --platform=browser --target=es2020 --minify --outfile=assets/vendor/supabase-browser-2.112.3.min.js",
     "build:live:schedule": "node scripts/build-production-schedule.mjs",
     "build:live:command-center": "node scripts/build-alpha-command-center.mjs",
-    "build:live:assets": "npm run build:live:css && npm run build:live:vendor && npm run build:live:schedule && npm run build:live:command-center && npm run build:live:bunch-note && npm run build:live:assigned-items",
+    "build:live:assets": "npm run build:live:css && npm run build:live:vendor && npm run build:live:schedule && npm run build:live:command-center && npm run build:live:bunch-note && npm run build:live:assigned-items && npm run build:live:field-counting",
     "build:live:shell": "node scripts/build-live-shell.mjs",
     "build:live": "npm run build:live:assets && npm run build:live:shell",
     "build:v2": "tsc --noEmit -p tsconfig.json && vite build --config vite.v2.config.ts",
@@ -61,7 +61,8 @@
     "build:live:assigned-items": "node scripts/build-assigned-items.mjs",
     "check:tooling": "node scripts/check-tooling-ci.mjs",
     "test:node": "node scripts/run-release-unit-checks.mjs",
-    "test:node-browser": "node scripts/run-discovered-tests.mjs node-browser"
+    "test:node-browser": "node scripts/run-discovered-tests.mjs node-browser",
+    "build:live:field-counting": "node scripts/build-field-counting.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "5.8.0",
@@ -84,6 +85,7 @@
     "react-dom": "19.2.8",
     "react-hook-form": "7.85.0",
     "react-router-dom": "7.18.2",
+    "swr": "2.5.1",
     "web-vitals": "6.1.0",
     "workbox-window": "7.4.1",
     "zod": "4.4.3"
