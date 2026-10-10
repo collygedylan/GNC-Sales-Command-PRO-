@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createReleaseTestServer } from '../scripts/serve-release-tests.mjs';
 // @test-group: @sw-isolation
 
 
@@ -6,76 +7,124 @@ import { expect, test } from '@playwright/test';
 const localOrigin = 'http://127.0.0.1:43126';
 const partnerUrl = `${localOrigin}/v2/#bloom`;
 
-test('an installed worker bootstraps the compiled shell from its exact cached runtime while offline', {"tag":["@sw-isolation"]}, async ({ context, page, request }) => {
+test('an installed worker bootstraps the compiled shell from its exact cached runtime while offline', {"tag":["@sw-isolation"]}, async ({ page, request }) => {
   const compiledShellResponse = await request.get(`${localOrigin}/_site/index.html`);
   expect(compiledShellResponse.ok()).toBe(true);
   const compiledShell = await compiledShellResponse.text();
   expect(compiledShell).toContain('login-runtime-status');
   const runtimePathMatch = compiledShell.match(/runtime\.src\s*=\s*'([^']*live-app-runtime-[^']+)'/);
   expect(runtimePathMatch, 'compiled bootstrap must select a versioned runtime URL').toBeTruthy();
-  const runtimeUrl = new URL(runtimePathMatch![1], `${localOrigin}/`);
-  expect(runtimeUrl.searchParams.get('v')).toMatch(/^V\d{4}\./);
-
-  await page.goto(`${localOrigin}/`);
-  await expect(page.getByRole('heading', { name: 'Local test fixture only' })).toBeVisible();
-  await page.evaluate(async () => {
-    const registration = await navigator.serviceWorker.register('/sw.js?offline-bootstrap-test=1', {
-      scope: '/', updateViaCache: 'none',
-    });
-    if (registration.scope !== `${location.origin}/`) throw new Error('Unexpected root worker scope');
-    await navigator.serviceWorker.ready;
-  });
-  await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
-
+  expect(new URL(runtimePathMatch![1], `${localOrigin}/`).searchParams.get('v')).toMatch(/^V\d{4}\./);
   const workerSource = await (await request.get(`${localOrigin}/sw.js`)).text();
   const buildMatch = workerSource.match(/const APP_SHELL_BUILD = '([^']+)'/);
   expect(buildMatch).toBeTruthy();
-  expect(runtimeUrl.searchParams.get('v')).toBe(buildMatch![1]);
-  const cacheName = await page.evaluate(async () => {
-    const keys = await caches.keys();
-    return keys.find(key => key.startsWith('ag-data-v4.3-rebuild-')) || '';
-  });
-  expect(cacheName).not.toBe('');
-  const cachedRuntime = await page.evaluate(async ({ cacheName, href }) => {
-    const response = await (await caches.open(cacheName)).match(href);
-    return response ? { status: response.status, contentType: response.headers.get('content-type'), bytes: (await response.clone().arrayBuffer()).byteLength } : null;
-  }, { cacheName, href: runtimeUrl.href });
-  expect(cachedRuntime).not.toBeNull();
-  expect(cachedRuntime!.status).toBe(200);
-  expect(cachedRuntime!.contentType).toContain('javascript');
-  expect(cachedRuntime!.bytes).toBeGreaterThan(100_000);
-  const runtimeResponses: Array<{ fromServiceWorker: boolean; status: number }> = [];
-  page.on('response', response => {
-    if (response.url().includes('live-app-runtime-')) {
-      runtimeResponses.push({ fromServiceWorker: response.fromServiceWorker(), status: response.status() });
-    }
-  });
-  await page.addInitScript(() => {
-    // Load the actual sealed shell through the fixture server's /_site alias,
-    // but resolve its runtime URL at the root worker's scope.
-    const addRootBase = () => {
-      if (!document.head || document.querySelector('base')) return;
-      const base = document.createElement('base');
-      base.href = `${location.origin}/`;
-      document.head.prepend(base);
-    };
-    if (document.head) addRootBase();
-    else document.addEventListener('DOMContentLoaded', addRootBase, { once: true });
-  });
-  await page.goto(`${localOrigin}/_site/index.html`, { waitUntil: 'domcontentloaded' });
-  await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
-  await context.setOffline(true);
+  expect(new URL(runtimePathMatch![1], `${localOrigin}/`).searchParams.get('v')).toBe(buildMatch![1]);
 
-  await expect.poll(() => page.evaluate(() => (window as any).__gncAppRuntimeExecuted === true), { timeout: 30_000 }).toBe(true);
-  await expect(page.locator('#login-button')).toBeEnabled();
-  await expect(page.locator('#login-runtime-reload')).toBeHidden();
-  expect(await page.locator('#login-runtime-status').textContent()).not.toBe('App could not load');
-  expect(runtimeResponses).toEqual([{ fromServiceWorker: true, status: 200 }]);
-  await test.info().attach('offline-runtime-bootstrap-proof', {
-    contentType: 'application/json',
-    body: Buffer.from(JSON.stringify({ build: buildMatch![1], runtimePath: runtimeUrl.pathname, runtimeQuery: runtimeUrl.search,
-      cachedBytes: cachedRuntime!.bytes, runtimeResponses, runtimeExecuted: true, loginEnabled: true }, null, 2)),
+  const offlineServer = await createReleaseTestServer({
+    siteDir: process.env.GNC_LOCAL_SITE_DIR,
+    rootFixture: '<!doctype html><title>Local test fixture only</title><h1>Local test fixture only</h1>',
   });
+  await new Promise<void>((resolve, reject) => {
+    offlineServer.once('error', reject);
+    offlineServer.listen(0, '127.0.0.1', resolve);
+  });
+  const address = offlineServer.address();
+  if (!address || typeof address === 'string') throw new Error('Offline fixture server did not bind a TCP port');
+  const origin = `http://127.0.0.1:${address.port}`;
+  const runtimeUrl = new URL(runtimePathMatch![1], `${origin}/`);
+  const shellUrl = `${origin}/index.html?shellv=${encodeURIComponent(buildMatch![1])}`;
+  let offlineServerClosed = false;
+  try {
+    await page.goto(`${origin}/`);
+    await expect(page.getByRole('heading', { name: 'Local test fixture only' })).toBeVisible();
+    await page.evaluate(async (build) => {
+      // Use the exact versioned worker URL the compiled shell registers.
+      const registration = await navigator.serviceWorker.register(`/sw.js?v=${encodeURIComponent(build)}`, {
+        scope: '/', updateViaCache: 'none',
+      });
+      if (registration.scope !== `${location.origin}/`) throw new Error('Unexpected root worker scope');
+      await navigator.serviceWorker.ready;
+    }, buildMatch![1]);
+    await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+    const cacheName = await page.evaluate(async () => {
+      const keys = await caches.keys();
+      return keys.find(key => key.startsWith('ag-data-v4.3-rebuild-')) || '';
+    });
+    expect(cacheName).not.toBe('');
+    const cachedRuntime = await page.evaluate(async ({ cacheName, href }) => {
+      const response = await (await caches.open(cacheName)).match(href);
+      return response ? { status: response.status, contentType: response.headers.get('content-type'), bytes: (await response.clone().arrayBuffer()).byteLength } : null;
+    }, { cacheName, href: runtimeUrl.href });
+    expect(cachedRuntime).not.toBeNull();
+    expect(cachedRuntime!.status).toBe(200);
+    expect(cachedRuntime!.contentType).toContain('javascript');
+    expect(cachedRuntime!.bytes).toBeGreaterThan(100_000);
+    const cachedShell = await page.evaluate(async ({ cacheName, shellUrl, compiledShell }) => {
+      const cache = await caches.open(cacheName);
+      const html = new Response(compiledShell, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+      await cache.put(shellUrl, html.clone());
+      await cache.put(`${location.origin}/index.html`, html.clone());
+      const response = await cache.match(shellUrl);
+      return response ? { status: response.status, text: await response.text() } : null;
+    }, { cacheName, shellUrl, compiledShell });
+    expect(cachedShell?.status).toBe(200);
+    expect(cachedShell?.text).toBe(compiledShell);
+    let runtimeRequestCount = 0;
+    let runtimeRequestAfterOriginShutdown = false;
+    const runtimeRequestFailures: Array<{ path: string; error: string }> = [];
+    const runtimeResponses: Array<{ fromServiceWorker: boolean; status: number }> = [];
+    page.on('request', request => {
+      if (request.url().includes('live-app-runtime-')) {
+        runtimeRequestCount += 1;
+        runtimeRequestAfterOriginShutdown = offlineServerClosed;
+      }
+    });
+    page.on('response', response => {
+      if (response.url().includes('live-app-runtime-')) {
+        runtimeResponses.push({ fromServiceWorker: response.fromServiceWorker(), status: response.status() });
+      }
+    });
+    page.on('requestfailed', request => {
+      if (request.url().includes('live-app-runtime-')) {
+        runtimeRequestFailures.push({ path: new URL(request.url()).pathname, error: request.failure()?.errorText || 'unknown' });
+      }
+    });
+    // Simulate a real origin outage rather than Playwright's network-offline
+    // toggle, which prevents WebKit from dispatching cached subresources to its
+    // service worker. The origin is closed before the production shell starts.
+    offlineServer.closeAllConnections();
+    await new Promise<void>(resolve => offlineServer.close(() => resolve()));
+    offlineServerClosed = true;
+    const networkUnavailable = await page.evaluate(async () => {
+      try { await fetch('/__offline_probe__', { cache: 'no-store' }); return false; }
+      catch { return true; }
+    });
+    expect(networkUnavailable).toBe(true);
+    await page.goto(shellUrl, { waitUntil: 'domcontentloaded' });
+    await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+
+    await expect.poll(() => page.evaluate(() => (window as any).__gncAppRuntimeExecuted === true), {
+      timeout: 30_000,
+      message: `Runtime bootstrap did not execute; requests=${runtimeRequestCount}, responses=${JSON.stringify(runtimeResponses)}, failures=${JSON.stringify(runtimeRequestFailures)}`,
+    }).toBe(true);
+    await expect(page.locator('#login-button')).toBeEnabled();
+    await expect(page.locator('#login-runtime-reload')).toBeHidden();
+    expect(await page.locator('#login-runtime-status').textContent()).not.toBe('App could not load');
+    expect(runtimeRequestCount).toBe(1);
+    expect(runtimeRequestAfterOriginShutdown).toBe(true);
+    expect(runtimeRequestFailures).toEqual([]);
+    expect(runtimeResponses).toEqual([{ fromServiceWorker: true, status: 200 }]);
+    await test.info().attach('offline-runtime-bootstrap-proof', {
+      contentType: 'application/json',
+      body: Buffer.from(JSON.stringify({ build: buildMatch![1], runtimePath: runtimeUrl.pathname, runtimeQuery: runtimeUrl.search,
+        cachedBytes: cachedRuntime!.bytes, runtimeRequestCount, runtimeRequestAfterOriginShutdown, networkUnavailable, runtimeResponses, runtimeExecuted: true, loginEnabled: true }, null, 2)),
+    });
+  } finally {
+    if (!offlineServerClosed) {
+      offlineServer.closeAllConnections();
+      await new Promise<void>(resolve => offlineServer.close(() => resolve()));
+    }
+  }
 });
 
 test('root worker activation preserves the open AgMetric partner workspace, its caches, and native sign-in', {"tag":["@sw-isolation"]}, async ({ context, page, request, browserName }) => {
