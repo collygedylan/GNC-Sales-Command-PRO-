@@ -30,5 +30,9 @@
   {
     "path": "supabase/migrations/20261010152556_customer_rep_mapping_finalize_timeout_55s.sql",
     "gitBlob": "001361077b2e3ab13158786e03d21c2228c75f8e"
+  },
+  {
+    "path": "supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql",
+    "gitBlob": "91713ec84fbe72c3daf6085c8ad7178aa4194bbf"
   }
 ]

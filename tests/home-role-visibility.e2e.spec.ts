@@ -305,17 +305,21 @@ test('HL Order Home tile requires the active Dylan native profile and disappears
     nativeAuthProfile = { id: 'synthetic-dylan-hl', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false };
     applyRolePermissions(); renderHome();
   `));
-  await app.assertTiles([...adminViews, 'hl-order'], false);
+  const activeDylanViews = [...adminViews, 'historical-requests', 'hl-order'];
+  await app.assertTiles(activeDylanViews, false);
   await expect(page.locator('#home-tile-hl-order')).toBeVisible();
+  await expect(page.locator('#home-tile-historical-requests')).toBeVisible();
   await page.evaluate(() => window.eval(`
     nativeAuthProfile.disabled_at = '2026-09-09T00:00:00Z';
     applyRolePermissions(); renderHome();
   `));
   await app.assertTiles(adminViews, false);
   await expect(page.locator('#home-tile-hl-order')).toBeHidden();
+  await expect(page.locator('#home-tile-historical-requests')).toBeHidden();
   await page.evaluate(() => window.eval('nativeAuthProfile.disabled_at = null'));
   await app.seed('home_admin_fixture', 'ADMIN');
   await app.assertTiles(adminViews, false);
   await expect(page.locator('#home-tile-hl-order')).toBeHidden();
+  await expect(page.locator('#home-tile-historical-requests')).toBeHidden();
   app.assertClean();
 });
