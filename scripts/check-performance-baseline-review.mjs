@@ -8,9 +8,11 @@ export function baselineChanged(previous, current) {
   return previous !== null && JSON.stringify(previous) !== JSON.stringify(current);
 }
 
-// The owner explicitly authorized temporary timing relaxation for PR #349 on
-// 2026-10-09 and its removal in roadmap Prompt 7. No baseline, fixture, sample,
-// or other budget change is covered by that authorization.
+// The Oct 9 owner instruction allowed PR #349 to add the initial profile only.
+// On Oct 10, the owner authorized temporary timing relaxation for the three-phase
+// execution; PR #357 records that instruction as the exact 100-to-200 ms browser
+// floor change. Prompt 7 removes the temporary profile. No baseline, fixture,
+// sample, or other budget change is covered by these exceptions.
 export function isApprovedRoadmapTimingChange(previous, current, pullRequestNumber) {
   if (!previous) return false;
   const before = parseBenchmarkManifest(previous), after = parseBenchmarkManifest(current);
@@ -20,7 +22,12 @@ export function isApprovedRoadmapTimingChange(previous, current, pullRequestNumb
     return copy;
   };
   if (JSON.stringify(withoutAllowance(previous)) !== JSON.stringify(withoutAllowance(current))) return false;
-  return (!before.temporaryTimingAllowance && !!after.temporaryTimingAllowance && pullRequestNumber === 349)
+  const allowanceKey = allowance => JSON.stringify(allowance);
+  const initialProfile = { multiplier: 2, minimumBrowserAllowanceMs: 100, restoreAtPrompt: 7 };
+  const currentProfile = { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7 };
+  return (!before.temporaryTimingAllowance && allowanceKey(after.temporaryTimingAllowance) === allowanceKey(initialProfile) && pullRequestNumber === 349)
+    || (allowanceKey(before.temporaryTimingAllowance) === allowanceKey(initialProfile)
+      && allowanceKey(after.temporaryTimingAllowance) === allowanceKey(currentProfile) && pullRequestNumber === 357)
     || (!!before.temporaryTimingAllowance && !after.temporaryTimingAllowance);
 }
 

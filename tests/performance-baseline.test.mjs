@@ -34,10 +34,10 @@ test('timing budgets use the larger relative or noise allowance, never add both'
   assert.equal(compareBenchmarks(strictManifest, report('database-duration', [100]), report('database-duration', [116])).length, 2);
 });
 
-test('temporary profile doubles time ceilings with a 100ms browser jitter floor', () => {
-  assert.deepEqual(manifest.temporaryTimingAllowance, { multiplier: 2, minimumBrowserAllowanceMs: 100, restoreAtPrompt: 7 });
+test('temporary profile doubles time ceilings with the approved 200ms browser jitter floor', () => {
+  assert.deepEqual(manifest.temporaryTimingAllowance, { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7 });
   for (const [kind, before, limit] of [
-    ['duration', 0, 100], ['duration', 17.8, 117.8], ['duration', 100, 250], ['duration', 1000, 2300],
+    ['duration', 0, 200], ['duration', 17.8, 217.8], ['duration', 56, 256], ['duration', 100, 300], ['duration', 1000, 2300],
     ['database-duration', 0, 10], ['database-duration', 100, 230],
   ]) {
     assert.equal(benchmarkMetricLimit(manifest, before, kind), limit);
@@ -46,6 +46,9 @@ test('temporary profile doubles time ceilings with a 100ms browser jitter floor'
   }
   assert.equal(benchmarkMetricLimit(strictManifest, 0, 'duration'), 25, 'Prompt 7 restores the original browser allowance');
   assert.equal(benchmarkMetricLimit(strictManifest, 0, 'database-duration'), 5, 'Prompt 7 restores the original SQL allowance');
+  const previousProfile = parseBenchmarkManifest({ ...manifest,
+    temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, minimumBrowserAllowanceMs: 100 } });
+  assert.equal(benchmarkMetricLimit(previousProfile, 56, 'duration'), 162, 'the prior profile remains readable for review');
   for (const change of [{ multiplier: 3 }, { minimumBrowserAllowanceMs: 150 }, { restoreAtPrompt: 8 }, { extra: true }]) {
     assert.throws(() => parseBenchmarkManifest({ ...manifest,
       temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, ...change } }), /TEMPORARY_TIMING_ALLOWANCE_INVALID/);

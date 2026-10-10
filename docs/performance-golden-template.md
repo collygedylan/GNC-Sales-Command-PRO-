@@ -12,13 +12,16 @@ and an explanation of comparability. Never update a baseline automatically after
 a failure. The candidate release gate requires the performance lane alongside
 the existing SQL, Edge, browser, CSS and Lighthouse lanes.
 
-PR 349 has a narrow, owner-approved temporary exception: add only the
-`temporaryTimingAllowance` profile documented below, then remove it for Prompt 7.
-This exception does not authorize changes to the baseline commit, fixtures,
-sample counts, collected samples, strict count/payload/render assertions, or any
-other budget. Other manifest changes still require an approval from a human
-collaborator on the current PR commit, checked by
-`check-performance-baseline-review.mjs`.
+The October 9 owner instruction allowed PR 349 to add only the initial
+`temporaryTimingAllowance` profile with a 100 ms browser floor. On October 10,
+the owner explicitly authorized temporary timing relaxation for the three-phase
+execution. PR 357 records that authorization as the exact change from a 100 ms
+to a 200 ms browser floor; this is owner authorization, not a claim of GitHub
+review. Neither exception authorizes changes to the baseline commit, fixtures,
+sample counts, collected samples, strict count/payload/render assertions, or
+other budgets. The review guard allows only those exact transitions and Prompt 7
+removal; other manifest changes require a human collaborator approval on the
+current PR commit.
 
 Additive application migrations are pinned separately in
 `performance/sql-schema-extensions.json` by repository path and Git blob hash.
@@ -234,8 +237,8 @@ The original duration ceilings are baseline plus the larger of 15% or 25 ms for
 browser/API durations, and baseline plus the larger of 15% or 5 ms for SQL duration.
 For Prompts 1 through 6, the approved `temporaryTimingAllowance` doubles each
 calculated strict ceiling; for browser/API durations it also applies a minimum
-ceiling of baseline plus 100 ms. In formula form, the temporary browser/API ceiling
-is `max(strictCeiling * 2, baseline + 100 ms)` and the temporary SQL ceiling is
+ceiling of baseline plus 200 ms. In formula form, the temporary browser/API ceiling
+is `max(strictCeiling * 2, baseline + 200 ms)` and the temporary SQL ceiling is
 `strictCeiling * 2`. Prompt 7 removes the manifest override and restores the
 original 15%/25 ms browser/API and 15%/5 ms SQL ceilings. The temporary profile
 changes duration thresholds only. Count, unchanged-render and equal-result payload
