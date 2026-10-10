@@ -15,6 +15,7 @@ function loadWorkflowPolicySelector() {
     RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
     RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION: 'reclass-action-workflow-v5-sheared-20261008',
     RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'reclass-action-workflow-v6-smart-shield-20261009',
+    RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION: 'reclass-action-workflow-v7-editable-fields-20261009',
     RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
   };
   vm.createContext(context);
@@ -22,13 +23,21 @@ function loadWorkflowPolicySelector() {
   return context.selectPolicy;
 }
 
-test('Reclass policy selects V6 for live priority/hold, V5 for shear, and V4 otherwise', () => {
+test('Reclass policy defaults to V7 and preserves explicit legacy V4/V5 selection', () => {
   const selectPolicy = loadWorkflowPolicySelector();
-  assert.equal(selectPolicy({ requestActions: [], rowOverlays: [] }), 'reclass-action-workflow-v4-split-moves-20261006');
-  assert.equal(selectPolicy({ requestActions: ['priority_change'], rowOverlays: [{ proposals: [{ action: 'priority_change' }] }] }), 'reclass-action-workflow-v6-smart-shield-20261009');
-  assert.equal(selectPolicy({ requestActions: ['move_down'], rowOverlays: [{ proposals: [{ action: 'move_down' }] }] }), 'reclass-action-workflow-v4-split-moves-20261006');
-  assert.equal(selectPolicy({ requestActions: ['sheared'], rowOverlays: [{ proposals: [{ action: 'Sheared' }] }] }), 'reclass-action-workflow-v5-sheared-20261008');
-  assert.equal(selectPolicy({ requestActions: [], holdStopProposals: [{ action: 'hold', reason: 'safety' }], rowOverlays: [] }), 'reclass-action-workflow-v6-smart-shield-20261009');
+  const empty = { requestActions: [], rowOverlays: [] };
+  const priority = { requestActions: ['priority_change'], rowOverlays: [{ proposals: [{ action: 'priority_change' }] }] };
+  const move = { requestActions: ['move_down'], rowOverlays: [{ proposals: [{ action: 'move_down' }] }] };
+  const sheared = { requestActions: ['sheared'], rowOverlays: [{ proposals: [{ action: 'Sheared' }] }] };
+  const hold = { requestActions: [], holdStopProposals: [{ action: 'hold', reason: 'safety' }], rowOverlays: [] };
+  for (const draft of [empty, priority, move, sheared, hold]) {
+    assert.equal(selectPolicy(draft), 'reclass-action-workflow-v7-editable-fields-20261009');
+  }
+  assert.equal(selectPolicy(empty, { allowLiveEdits: false }), 'reclass-action-workflow-v4-split-moves-20261006');
+  assert.equal(selectPolicy(move, { allowLiveEdits: false }), 'reclass-action-workflow-v4-split-moves-20261006');
+  assert.equal(selectPolicy(sheared, { allowLiveEdits: false }), 'reclass-action-workflow-v5-sheared-20261008');
+  assert.equal(selectPolicy(priority, { allowLiveEdits: false }), 'reclass-action-workflow-v4-split-moves-20261006');
+  assert.equal(selectPolicy(hold, { allowLiveEdits: false }), 'reclass-action-workflow-v4-split-moves-20261006');
   assert.match(html, /workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3\(\{ rowOverlays, holdStopProposals \}, \{ allowLiveEdits: true \}\)/);
   assert.match(html, /workflowPolicyVersion: getArgosReclassActionWorkflowPolicyVersionV3\(draft, \{ allowLiveEdits: true \}\)/);
 });
@@ -81,6 +90,7 @@ function loadDraftCollector(rowMap = {}) {
       holdReason: allowHold && proposal.applyHold === true ? proposal.holdReason : '',
     }),
     getArgosReclassTemporaryOverlay: () => null,
+    collectArgosReclassInventoryFieldEdits: () => [],
     getItemInquiryItemCode: (source) => source.ITEMCODE,
     getEvalWorkInquiryRowResolution: () => '',
     window: { GncDatabase: { reclassShearedProposal: value => value } },
@@ -154,7 +164,8 @@ test('V5 sheared action uses the typed proposal and preserves the expected origi
   assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].expected)), {
     itemcode: 'A100', lotcode: '27.F1', locationcode: 'A.01.001', ptronhand: '10', desigitem: 'Original designation',
   });
-  assert.equal(loadWorkflowPolicySelector()(draft), 'reclass-action-workflow-v5-sheared-20261008');
+  assert.equal(loadWorkflowPolicySelector()(draft), 'reclass-action-workflow-v7-editable-fields-20261009');
+  assert.equal(loadWorkflowPolicySelector()(draft, { allowLiveEdits: false }), 'reclass-action-workflow-v5-sheared-20261008');
   assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].proposals)), [{ action: 'sheared', quantity: 4 }]);
   assert.equal(JSON.stringify(draft).includes('desigitem'), true);
   assert.match(html, /window\.GncDatabase\.reclassShearedProposal\(\{ action: 'sheared', quantity \}\)/);
@@ -165,7 +176,8 @@ test('V5 sheared action uses the typed proposal and preserves the expected origi
 
 test('V6 live proposals freeze the original priority and hold values in each row snapshot', () => {
   const priorityDraft = loadDraftCollector({ priority_change: { action: 'priority_change', priority: '2' } })();
-  assert.equal(loadWorkflowPolicySelector()(priorityDraft), 'reclass-action-workflow-v6-smart-shield-20261009');
+  assert.equal(loadWorkflowPolicySelector()(priorityDraft), 'reclass-action-workflow-v7-editable-fields-20261009');
+  assert.equal(loadWorkflowPolicySelector()(priorityDraft, { allowLiveEdits: false }), 'reclass-action-workflow-v4-split-moves-20261006');
   assert.deepEqual(JSON.parse(JSON.stringify(priorityDraft.rowOverlays[0].expected)), {
     itemcode: 'A100', lotcode: '27.F1', locationcode: 'A.01.001', ptronhand: '10',
     priority: '3', holdstopcode: 'H', holdstopreason: 'legacy hold',
@@ -248,7 +260,7 @@ test('Move Down can retain a hold draft when Move Up is absent', () => {
   ]);
 });
 
-test('a future source hold stays a V6 selected-row proposal without client fanout settings', () => {
+test('a future source hold stays a V7 selected-row proposal without client fanout settings', () => {
   const draft = loadDraftCollector({ __hold: { action: 'hold', reason: 'future stock', sourceUid: 'row-1' } })();
   assert.deepEqual(JSON.parse(JSON.stringify(draft.requestActions)), ['hold']);
   assert.deepEqual(JSON.parse(JSON.stringify(draft.holdStopProposals)), [{ action: 'hold', reason: 'future stock', sourceUid: 'row-1' }]);

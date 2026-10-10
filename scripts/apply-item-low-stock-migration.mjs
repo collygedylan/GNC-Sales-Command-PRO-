@@ -32,13 +32,14 @@ export const reclassShearedMigrationName = '20261008190038_reclass_sheared_actio
 export const reclassSmartShieldMigrationName = '20261009053029_reclass_smart_priority_hold_shield_v6.sql';
 export const smartShieldRawImportMigrationName = '20261009053030_smart_shield_raw_import_acknowledgment.sql';
 export const requestQueueRemoveMigrationName = '20261009170000_request_queue_remove_v1.sql';
+export const prompt25HotfixMigrationName = '20261009202507_prompt25_editable_field_shield_and_hold_clear.sql';
 export const reclassEvalSubmitGuardsMigrationName = '20261006150745_reclass_split_move_eval_submit_guards.sql';
 export const inventoryRowAssignmentFutureSnapshotsMigrationName = '20261006210000_inventory_row_assignment_future_snapshots.sql';
 export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_inventory_row_assignment_live_consumers.sql';
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -200,6 +201,14 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === prompt25HotfixMigrationName) return `select
+    to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)') is not null
+    and to_regprocedure('private.ph_holdstop_strict_reduction_v1(text,text)') is not null
+    and to_regclass('app_sync_private.ph_master_inventory_item6_edits_v7') is not null
+    and exists(select 1 from pg_trigger where tgname='aab_ph_master_inventory_item6_guard_v7' and not tgisinternal)
+    and has_function_privilege('service_role','public.enqueue_drive_reclass_inquiry_v7(jsonb)','execute')
+    and not has_function_privilege('authenticated','public.enqueue_drive_reclass_inquiry_v7(jsonb)','execute')
+    and not has_function_privilege('anon','public.enqueue_drive_reclass_inquiry_v7(jsonb)','execute') as installed`;
   if (name === requestQueueRemoveMigrationName) return `select
     to_regclass('private.ph_request_queue_removal_commands') is not null
     and position('REQUEST_REMOVE_STALE_REVISION' in pg_get_functiondef('public.request_queue_remove_v1(uuid,text,bigint,timestamptz,uuid)'::regprocedure)) > 0
@@ -304,8 +313,16 @@ export function migrationContractQuery(name) {
     and not has_function_privilege('anon','public.submit_manager_season_priority_v2(uuid,text,integer,text,text)','execute')
     and position('v6FrozenRows' in pg_get_functiondef('public.enqueue_drive_reclass_inquiry_v6(jsonb)'::regprocedure))>0
     and position('liveEdits' in pg_get_functiondef('public.submit_manager_season_priority_v2(uuid,text,integer,text,text)'::regprocedure))>0
-    and position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0
-    and position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0
+    and ((to_regprocedure('private.submit_eval_work_v1_v6_impl(uuid,text,integer,jsonb,jsonb,text)') is null
+      and position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0)
+      or (position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef(to_regprocedure('private.submit_eval_work_v1_v6_impl(uuid,text,integer,jsonb,jsonb,text)')))>0
+        and position('submit_eval_work_v1_v6_impl' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0
+        and not has_function_privilege('service_role',to_regprocedure('private.submit_eval_work_v1_v6_impl(uuid,text,integer,jsonb,jsonb,text)'),'execute')))
+    and ((to_regprocedure('private.submit_eval_work_v2_v6_impl(uuid,text,integer,jsonb,jsonb,text)') is null
+      and position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0)
+      or (position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef(to_regprocedure('private.submit_eval_work_v2_v6_impl(uuid,text,integer,jsonb,jsonb,text)')))>0
+        and position('submit_eval_work_v2_v6_impl' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure))>0
+        and not has_function_privilege('service_role',to_regprocedure('private.submit_eval_work_v2_v6_impl(uuid,text,integer,jsonb,jsonb,text)'),'execute')))
     and not has_table_privilege('service_role','app_sync_private.ph_master_inventory_app_edits','select') as installed`;
   if (name === reclassEvalSubmitGuardsMigrationName) return "select to_regprocedure('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)') is not null and to_regprocedure('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)') is not null and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_eval_work' and column_name='submission_request_fingerprint') and has_function_privilege('service_role','public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)','execute') and has_function_privilege('service_role','public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)','execute') and not has_function_privilege('service_role','public.submit_eval_work_legacy_v1(uuid,text,integer,jsonb,jsonb,text)','execute') and not has_function_privilege('service_role','public.submit_eval_work_legacy_v2(uuid,text,integer,jsonb,jsonb,text)','execute') as installed";
   if (name === bunchNoteCardsMigrationName) return "select to_regclass('bunch_note_private.bunch_note_work_cards') is not null and to_regprocedure('bunch_note_private.normalize_work_cards(jsonb,jsonb)') is not null and (select relrowsecurity from pg_class where oid='bunch_note_private.bunch_note_work_cards'::regclass) and not has_table_privilege('authenticated','bunch_note_private.bunch_note_work_cards','select') and not has_table_privilege('anon','bunch_note_private.bunch_note_work_cards','update') and exists(select 1 from pg_trigger where tgname='bunch_note_batch_v5_cards' and not tgisinternal) and exists(select 1 from pg_trigger where tgname='bunch_note_job_work_cards' and not tgisinternal) as installed";

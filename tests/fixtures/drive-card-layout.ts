@@ -1,4 +1,4 @@
-import { installHlOrderFixture } from './hl-order-state.mjs';
+import { hlMaster, installHlOrderFixture } from './hl-order-state.mjs';
 import type { Page } from '@playwright/test';
 
 export type DriveLayoutOptions = {
@@ -35,11 +35,14 @@ export async function settleDriveLayoutShell(page: Page, projectName: string) {
     && window.eval('hasAppliedInitialHomeView === true'));
 }
 
-export async function renderDriveLayoutCard(page: Page, options: DriveLayoutOptions) {
+export async function renderDriveLayoutCard(page: Page, options: DriveLayoutOptions, fixtureControl?: { master: Record<string, unknown>[] }) {
   const photoDate = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const row = {
     UNIQUE_ID: `drive-layout-synthetic-1-${options.photo ? 'photo' : 'no-photo'}`,
-    DOM_ID: `drive-layout-synthetic-1-${options.photo ? 'photo' : 'no-photo'}`,
+    // The HL REST fixture assigns deterministic array-index DOM ids. Keeping
+    // this stable across the local card and hydrated row lets real click
+    // handlers resolve the same synthetic item after a refresh.
+    DOM_ID: 'fi_0',
     ITEMCODE: `LAYOUT.001-${options.photo ? 'PHOTO' : 'NO-PHOTO'}`,
     COMMONNAME: options.longContent ? 'Synthetic Long Drive Card Name for Natural Wrapping' : 'Synthetic Drive Card',
     CONTSIZE: '#3', GENUSNAME: 'Rosa', LOCATIONCODE: 'A.01.001', LOTCODE: '27.F1', PRIORITY: '2',
@@ -55,25 +58,50 @@ export async function renderDriveLayoutCard(page: Page, options: DriveLayoutOpti
       PHOTO_NAME: `${photoDate}-compact.webp`, DATE_COMPLETED: `${photoDate}T12:00:00Z`,
     } : {}),
   };
+  if (fixtureControl && Array.isArray(fixtureControl.master)) {
+    const masterRow = hlMaster(row.UNIQUE_ID, {
+      itemcode: row.ITEMCODE, commonname: row.COMMONNAME, contsize: row.CONTSIZE, genusname: row.GENUSNAME,
+      locationcode: row.LOCATIONCODE, lotcode: row.LOTCODE, priority: row.PRIORITY,
+      ptronhand: row.PTRONHAND == null ? null : String(row.PTRONHAND),
+      ptrreviewed: row.PTRREVIEWED == null ? null : String(row.PTRREVIEWED),
+      ptravailable: row.PTRAVAILABLE == null ? null : String(row.PTRAVAILABLE),
+      s_lts: row.S_LTS == null ? null : String(row.S_LTS),
+      season: 'F1', saleyear: '27', warehouseid: '10', warehousei: '10',
+      holdstopcode: row.HOLDSTOPCODE, holdstopreason: row.HOLDSTOPREASON,
+      sales_note: row.SALES_NOTE || null,
+      photo_link: row.PHOTO_LINK || null, photo_name: row.PHOTO_NAME || null,
+      date_completed: row.DATE_COMPLETED || null,
+    });
+    fixtureControl.master.splice(0, fixtureControl.master.length, masterRow);
+  }
   const script = `(async () => {
     const row = ${JSON.stringify(row)};
     document.body.classList.add('ops-precision-pilot');
     document.body.dataset.opsTheme = ${JSON.stringify(options.theme === 'dark' ? 'dark' : 'light')};
     document.documentElement.classList.toggle('outdoor-mode', ${JSON.stringify(options.theme === 'outdoor')});
     document.body.classList.toggle('outdoor-mode', ${JSON.stringify(options.theme === 'outdoor')});
-    // Replace rather than merge the in-memory fixture so the photo/no-photo
-    // variants cannot inherit stale fields from a previous render iteration.
-    fullInventory = [row];
     selectedItems.clear();
-    rebuildMasterInventoryIndexes();
-    const source = fullInventory[0];
-    source.DOM_ID = source.DOM_ID || source.UNIQUE_ID;
     // Keep the navigation shell on Drive while mounting exactly one synthetic
     // generated card, independent of the async common-name drill renderer.
     if (!window.__driveLayoutOriginalRenderDrive) window.__driveLayoutOriginalRenderDrive = renderDrive;
     renderDrive = () => {};
     switchView('drive');
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // A detail read started by the navigation shell can replace fullInventory
+    // while the two animation frames settle. Reinstall the synthetic fixture
+    // after that async boundary so the rendered card and real DOM-id lookup
+    // resolve against the same row and indexes.
+    fullInventory = [row];
+    rebuildMasterInventoryIndexes();
+    // The mounted synthetic row is the entire fixture scope; mark row coverage
+    // complete so Loc On Hand is a deterministic one-row total, while keeping
+    // field coverage at browse because this fixture does not model full details.
+    const masterState = getDatasetState('master');
+    masterState.initialLoaded = true;
+    masterState.rowCompleteness = 'complete';
+    masterState.fieldCoverage = 'browse';
+    const source = fullInventory[0];
+    source.DOM_ID = source.DOM_ID || source.UNIQUE_ID;
     const host = document.getElementById('drive-content');
     const identity = { currentUser, currentUserDisplay, currentRole, safeRole };
     if (${JSON.stringify(options.rep === true)}) {

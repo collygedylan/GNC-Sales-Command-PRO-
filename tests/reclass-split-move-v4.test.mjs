@@ -61,7 +61,7 @@ test('disposable SQL contract verifies the requested audit preserves V4 and retr
 test('inquiry notice discloses the Requested audit and distinguishes live edits from keyer instructions', () => {
   const html = read('index.html');
   assert.equal(html.split('Requested history entry containing your instructions').length - 1, 2);
-  assert.equal(html.split('Priority and Hold / Stop edits also update live inventory after confirmation.').length - 1, 2);
+  assert.equal(html.split('Editable inventory fields update live inventory after confirmation and remain protected until the legacy import matches.').length - 1, 2);
   assert.equal(html.split('Quantity, season, and sheared instructions remain requests for keyers.').length - 1, 2);
   assert.doesNotMatch(html, /No inventory, History, audit, cache, or live-event data is changed/);
 });

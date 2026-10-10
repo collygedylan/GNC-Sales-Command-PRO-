@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -35,7 +35,7 @@ test('handover release requires an armed minute job or an already completed Auth
 });
 
 test('approved SQL repair contracts verify every repaired body and retain restricted execution', () => {
-  assert.deepEqual(releaseDatabaseMigrations.slice(-6), [sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations.slice(-7), [sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName]);
   const functions = migrationContractQuery(sqlFunctionCorrectnessRepairsMigrationName);
   for (const marker of ['inventory_rows.available', 'v_before_state_hash', 'AURA_BUNCH_CREATION_DATE_UNAVAILABLE',
     "card.row_ids @> (action->''row_ids'')", 'outbox.event_id']) assert.ok(functions.includes(marker), marker);
@@ -49,7 +49,7 @@ test('approved SQL repair contracts verify every repaired body and retain restri
   }
 });
 test('Smart Shield V6 migration is release-registered with semantic and ACL probes', () => {
-  assert.equal(releaseDatabaseMigrations.at(-3), reclassSmartShieldMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-4), reclassSmartShieldMigrationName);
   const v5 = migrationContractQuery(reclassShearedMigrationName);
   assert.match(v5, /private\.submit_eval_work_v1_v5_impl/);
   assert.match(v5, /private\.submit_eval_work_v2_v5_impl/);
@@ -69,7 +69,7 @@ test('Smart Shield V6 migration is release-registered with semantic and ACL prob
 });
 
 test('raw importer acknowledgment follows V6 and probes the live trigger and restricted policy', () => {
-  assert.equal(releaseDatabaseMigrations.at(-2), smartShieldRawImportMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-3), smartShieldRawImportMigrationName);
   const query = migrationContractQuery(smartShieldRawImportMigrationName);
   for (const marker of ['x-gnc-master-tuple-policy', 'raw-priority-hold-v1', 'raw_master_tuple',
     "tgrelid='public.ph_master_inventory'::regclass", "tgenabled='O'",
@@ -190,7 +190,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName]);
   assert.match(migrationContractQuery(reclassShearedMigrationName),/enqueue_drive_reclass_inquiry_v5/);
   assert.match(migrationContractQuery(reclassShearedMigrationName),/quantity_text/);
   assert.match(migrationContractQuery(auraCommonNamePriorityMigrationName),/common_score/);
@@ -546,7 +546,7 @@ test('queue removal deployment consumes the probe alias and rolls back a failed 
 });
 
 test('queue removal migration is ordered after raw importer and has the guarded service-only contract', () => {
-  assert.equal(releaseDatabaseMigrations.at(-1), requestQueueRemoveMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-2), requestQueueRemoveMigrationName);
   assert.equal(releaseDatabaseMigrations.indexOf(requestQueueRemoveMigrationName), releaseDatabaseMigrations.indexOf(smartShieldRawImportMigrationName) + 1);
   const query = migrationContractQuery(requestQueueRemoveMigrationName);
   for (const marker of ['ph_request_queue_removal_commands', 'REQUEST_REMOVE_STALE_REVISION',
@@ -562,4 +562,28 @@ test('queue removal migration is ordered after raw importer and has the guarded 
   assert.match(migration, /enable row level security/i);
   assert.match(migration, /revoke all on private\.ph_request_queue_removal_commands from public, anon, authenticated, service_role/i);
   assert.match(migration, /grant execute on function public\.request_queue_remove_v1[\s\S]*to service_role/i);
+});
+
+
+test('Prompt 2.5 migration follows Queue removal and restricts the V7 mutation endpoint', () => {
+  assert.equal(releaseDatabaseMigrations.at(-1), prompt25HotfixMigrationName);
+  const contract = migrationContractQuery(prompt25HotfixMigrationName);
+  assert.match(contract, /enqueue_drive_reclass_inquiry_v7/);
+  assert.match(contract, /not has_function_privilege\('authenticated'/);
+  assert.match(contract, /not has_function_privilege\('anon'/);
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${prompt25HotfixMigrationName}`,import.meta.url),'utf8');
+  assert.match(source,/^begin;/i);
+  assert.match(source,/commit;\s*$/i);
+  assert.equal((source.match(/^begin;\s*$/gmi) || []).length, 1, 'release migration has one atomic transaction');
+  assert.equal((source.match(/^commit;\s*$/gmi) || []).length, 1, 'no partial migration can commit');
+});
+
+test('Smart Shield release probe follows the preserved private V6 Eval wrapper after V7 installation', () => {
+  const query = migrationContractQuery(reclassSmartShieldMigrationName);
+  for (const version of [1, 2]) {
+    assert.ok(query.includes(`private.submit_eval_work_v${version}_v6_impl(uuid,text,integer,jsonb,jsonb,text)`));
+    assert.ok(query.includes(`position('submit_eval_work_v${version}_v6_impl' in pg_get_functiondef('public.submit_eval_work_v${version}`));
+    assert.ok(query.includes(`not has_function_privilege('service_role',to_regprocedure('private.submit_eval_work_v${version}_v6_impl`));
+  }
+  assert.ok(query.includes("position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef(to_regprocedure('private.submit_eval_work_"));
 });

@@ -27,6 +27,7 @@ async function fixture(page: Page, baseURL: string, project: string,
   // The backend fixture must return the same row as the mounted Drive card.
   // Background inventory hydration can replace manually mounted rows.
   const control = await installHlOrderFixture(page, baseURL, { role: 'ADMIN', username: 'dylan_collyge',
+    appPermissions: [{permissionKey:'module.po-management.view',kind:'module',moduleKey:'po-management',allowed:true},{permissionKey:'drive.reclass.submit',kind:'action',moduleKey:'drive',allowed:true}],
     master: [hlMaster('drive-layout-synthetic-1-no-photo', { itemcode: 'LAYOUT.001-NO-PHOTO',
       commonname: 'Synthetic Drive Card', contsize: '#3', locationcode: 'A.01.001', lotcode,
       season: scope.season, saleyear: scope.salesYear,
@@ -48,7 +49,7 @@ async function fixture(page: Page, baseURL: string, project: string,
     if (body.operation === 'create') {
       calls.push(structuredClone(body));
       if (rejectNext) { rejectNext = false; return reply({ ok: false, error: 'Synthetic queue failure; your draft is retained.' }); }
-      if (createReply) return reply(createReply(body) as Record<string, unknown>);
+      if (createReply) return reply(await createReply(body));
       return reply({ ok: true, status: 'queued', jobId: 'synthetic-reclass', queuedAt: new Date().toISOString() });
     }
     if (body.operation === 'status') return reply({ ok: true, status: deliveryStatus, jobId: 'synthetic-reclass' });
@@ -90,6 +91,30 @@ async function populate(page: Page, action: 'move_up' | 'move_down' = 'move_up')
   }
   return { row, move };
 }
+
+test('closing a pending inquiry and reopening enables the new draft without stale completion changing it', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!, info.project.name);
+  await f.open(); await populate(page);
+  let finish!: (result: unknown) => void;
+  f.setCreateReply(() => new Promise(resolve => { finish = resolve; }));
+  await page.locator('#argos-inventory-transaction-apply').click();
+  await expect.poll(() => f.calls.length).toBe(1);
+  await expect(page.locator('#argos-inventory-transaction-apply')).toBeDisabled();
+  await page.locator('#argos-inventory-transaction-modal').getByRole('button', { name: 'Cancel', exact: true }).click();
+  await f.open(); const { move } = await populate(page, 'move_down');
+  await expect(page.locator('#argos-inventory-transaction-apply')).toBeEnabled();
+  finish({ ok: true, status: 'queued', jobId: 'first-inquiry' });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('gnc_reclass_delivery_jobs_v1') || '[]').length)).toBe(1);
+  await expect(page.locator('#argos-inventory-transaction-modal')).toBeVisible();
+  await expect(move.getByLabel('Move Down quantity 1', { exact: true })).toHaveValue('15');
+  await expect(page.locator('#argos-inventory-transaction-apply')).toBeEnabled();
+  f.setCreateReply(() => ({ ok: true, status: 'queued', jobId: 'second-inquiry' }));
+  await page.locator('#argos-inventory-transaction-apply').click();
+  await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
+  expect(f.calls).toHaveLength(2);
+  expect(f.calls[0].idempotencyToken).not.toBe(f.calls[1].idempotencyToken);
+  expect(f.control.blockedMutations).toEqual([]);
+});
 
 async function populatePriorityAndHold(page: Page) {
   const row = page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"]');
@@ -138,7 +163,7 @@ test('Move Down hold requires a reason and failed submissions retain all destina
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
   expect(f.calls).toHaveLength(2);
   expect(f.calls[1].idempotencyToken).toBe(f.calls[0].idempotencyToken);
-  expect(f.calls[1].workflowPolicyVersion).toBe('reclass-action-workflow-v4-split-moves-20261006');
+  expect(f.calls[1].workflowPolicyVersion).toBe('reclass-action-workflow-v7-editable-fields-20261009');
   expect(f.calls[1].transaction.holdStopProposals).toEqual([]);
   expect(f.calls[1].rowOverlays[0].proposals).toEqual([{ action: 'move_down', splits: [
     { quantity: 15, destinationSeason: 'X' }, { quantity: 5, destinationSeason: 'S1' }, { quantity: 5, destinationSeason: 'U1' },
@@ -154,6 +179,7 @@ test('V6 confirms priority and Hold locally only after the server returns the li
   f.setCreateReply(() => {
     Object.assign(f.control.master[0], { priority: '1', holdstopcode: 'H', holdstopreason: 'quality review',
       av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:01:00Z', last_updated: '2026-10-09T12:01:00Z' });
+    f.control.datasetRevision = 501;
     return confirmedLiveEditResponse();
   });
   await restoreDriveLayoutRenderer(page);
@@ -162,7 +188,7 @@ test('V6 confirms priority and Hold locally only after the server returns the li
   await expect(page.locator('#toast-notification')).toContainText('Live edits are confirmed');
   expect(f.calls).toHaveLength(1);
   const sent = f.calls[0];
-  expect(sent.workflowPolicyVersion).toBe('reclass-action-workflow-v6-smart-shield-20261009');
+  expect(sent.workflowPolicyVersion).toBe('reclass-action-workflow-v7-editable-fields-20261009');
   expect(sent.transaction.requestActions).toEqual(expect.arrayContaining(['priority_change', 'hold']));
   expect(sent.transaction.holdStopProposals).toEqual([{ action: 'hold', reason: 'quality review', sourceUid: 'drive-layout-synthetic-1-no-photo' }]);
   expect(sent.rowOverlays[0].expected).toMatchObject({ priority: '2', holdstopcode: '', holdstopreason: '' });
@@ -186,7 +212,7 @@ test('V6 confirms priority and Hold locally only after the server returns the li
   await expect(page.locator('#drive-content .app-drive-compact-card')).toContainText('quality review');
   const queued = await page.evaluate(() => JSON.parse(localStorage.getItem('gnc_reclass_delivery_jobs_v1') || '[]'));
   expect(queued).toHaveLength(1);
-  expect(queued[0].payload.workflowPolicyVersion).toBe('reclass-action-workflow-v6-smart-shield-20261009');
+  expect(queued[0].payload.workflowPolicyVersion).toBe('reclass-action-workflow-v7-editable-fields-20261009');
   expect(f.control.blockedMutations).toEqual([]);
 });
 
@@ -200,6 +226,8 @@ for (const scope of [{ season: 'S1', salesYear: '27' }, { season: 'F1', salesYea
     await row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Quality Review');
     f.setCreateReply(() => {
       const reply = confirmedLiveEditResponse('2');
+      Object.assign(f.control.master[0], {holdstopcode:'H',holdstopreason:'quality review',last_updated:reply.liveEdits[0].last_updated});
+      f.control.datasetRevision = 501;
       Object.assign(reply.liveEdits[0].evidence, { lotcode: `${scope.salesYear}.${scope.season}` });
       return reply;
     });
@@ -207,7 +235,7 @@ for (const scope of [{ season: 'S1', salesYear: '27' }, { season: 'F1', salesYea
     await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
     await expect(page.locator('#toast-notification')).toContainText('Live edits are confirmed');
     expect(f.calls).toHaveLength(1);
-    expect(f.calls[0].workflowPolicyVersion).toBe('reclass-action-workflow-v6-smart-shield-20261009');
+    expect(f.calls[0].workflowPolicyVersion).toBe('reclass-action-workflow-v7-editable-fields-20261009');
     expect(f.calls[0].transaction.holdStopProposals).toEqual([
       { action: 'hold', reason: 'quality review', sourceUid: 'drive-layout-synthetic-1-no-photo' },
     ]);
@@ -257,7 +285,7 @@ test('Move Up plus Priority submits V6 movement inquiry without any Hold proposa
   await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
   expect(f.calls).toHaveLength(1);
-  expect(f.calls[0].workflowPolicyVersion).toBe('reclass-action-workflow-v6-smart-shield-20261009');
+  expect(f.calls[0].workflowPolicyVersion).toBe('reclass-action-workflow-v7-editable-fields-20261009');
   expect(f.calls[0].transaction.requestActions).toEqual(expect.arrayContaining(['priority_change', 'move_up']));
   expect(f.calls[0].transaction.holdStopProposals).toEqual([]);
   expect(f.calls[0].rowOverlays[0].proposals).toEqual(expect.arrayContaining([
@@ -308,5 +336,73 @@ test('refresh and Review and Resend restore every Move Down split and hold instr
   await expect(restored.getByLabel('Place moved quantities On Hold', { exact: true })).toBeChecked();
   await expect(restored.getByLabel('Move Down Hold reason', { exact: true })).toHaveValue('keep for review');
   expect(await page.evaluate(() => window.eval('argosInventoryTransactionState.idempotencyToken'))).not.toBe(token);
+  expect(f.control.blockedMutations).toEqual([]);
+});
+
+
+test('V7 field-only inquiry enables submission, preserves the draft on failure and reconciles confirmed values', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!, info.project.name);
+  const row = await f.open();
+  if (!await row.locator('[data-reclass-location-details]').evaluate(element => element.hasAttribute('open'))) await row.locator('[data-reclass-location-details] > summary').click();
+  const note = row.locator('[data-reclass-temporary-field="locationnote"]');
+  await note.fill('New location instructions');
+  await row.locator('[data-reclass-temporary-field="salesnote"]').fill('New sales instructions');
+  await row.locator('[data-reclass-temporary-field="suspend"]').selectOption('yes');
+  await expect(page.locator('#argos-inventory-transaction-apply')).toBeEnabled();
+  f.failNext();
+  await page.locator('#argos-inventory-transaction-apply').click();
+  await expect(page.locator('#toast-notification')).toContainText('Synthetic queue failure');
+  await expect(note).toHaveValue('New location instructions');
+  expect(f.calls[0].transaction.requestActions).toEqual(['inventory_fields']);
+  expect(f.calls[0].rowOverlays[0].proposals).toEqual([]);
+  expect(f.calls[0].rowOverlays[0].fieldEdits).toEqual([
+    {field:'locationnote',expected:'',value:'New location instructions'},
+    {field:'salesnote',expected:'',value:'New sales instructions'},
+    {field:'suspend',expected:'',decision:'yes'},
+  ]);
+  f.setCreateReply(() => {
+    const receipt = confirmedPriorityResponse('2');
+    Object.assign(f.control.master[0], {locationnote:'New location instructions',salesnote:'New sales instructions',suspend:'DC',prisetby:'DC',priupdated:'2026-10-09',locationnotedate:'2026-10-09',last_updated:receipt.liveEdits[0].last_updated});
+    f.control.datasetRevision = 502;
+    const before = Object.fromEntries(['locationnote','locationptn1','desigitem','desigcust','desigloc','pullerresponsibility','oversellpercentage','salesnote','suspend'].map(field => [field,null]));
+    return { ...receipt, workflowPolicyVersion:'reclass-action-workflow-v7-editable-fields-20261009',
+      inventoryFields:[{unique_id:receipt.liveEdits[0].unique_id,before,
+        after:{...before,locationnote:'New location instructions',salesnote:'New sales instructions',suspend:'DC'},
+        changedFields:['locationnote','salesnote','suspend'],
+        stamps:{prisetby:'DC',priupdated:'2026-10-09',locationnotedate:'2026-10-09',evaldate:'2026-10-09'}}] };
+  });
+  await page.locator('#argos-inventory-transaction-apply').click();
+  await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
+  expect(f.calls[1].idempotencyToken).toBe(f.calls[0].idempotencyToken);
+  expect(await page.evaluate(() => window.eval(`(() => {const row=fullInventory.find(row=>row.UNIQUE_ID==='drive-layout-synthetic-1-no-photo');return {note:row.LOCATIONNOTE,sales:row.SALESNOTE,sus:row.SUSPEND,onHand:Number(row.PTRONHAND)};})()`)))
+    .toEqual({note:'New location instructions',sales:'New sales instructions',sus:'DC',onHand:25});
+  expect(f.control.blockedMutations).toEqual([]);
+});
+
+test('Take off hold YES queues the inquiry and retains confirmed photos and specs', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!, info.project.name);
+  const photo = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/2026-10-09/keep.webp';
+  await page.evaluate(photo => window.eval(`(() => {
+    Object.assign(fullInventory[0], {HOLDSTOPCODE:'H',HOLDSTOPREASON:'test hold',PHOTO_LINK:${JSON.stringify(photo)},PHOTO_NAME:'2026-10-09-keep.webp',SAVED_PHOTO_LINK:${JSON.stringify(photo)},SPEC:'keep specs',CALIPER:'2',MATCH:'100',AV_NOTE:'keep note'});
+    rebuildMasterInventoryIndexes();
+    if (!canSubmitLiveHoldRemoval(fullInventory[0])) throw new Error('Fixture must be authorized for live Hold removal');
+    void sendDriveRowToHoldRelease(fullInventory[0].UNIQUE_ID);
+  })()`), photo);
+  await expect(page.locator('#hold-release-modal')).toBeVisible();
+  f.setCreateReply(() => {
+    const response = confirmedPriorityResponse('2');
+    Object.assign(response.liveEdits[0].evidence, {photo_link:photo,photo_name:'2026-10-09-keep.webp',spec:'keep specs',caliper:'2',match:'100',av_note:'keep note',av_rule_last_clear_reason:null,av_rule_last_cleared_at:null});
+    Object.assign(response.liveEdits[0], {av_rule_last_clear_reason:null,av_rule_last_cleared_at:null});
+    Object.assign(f.control.master[0], response.liveEdits[0].evidence, {holdstopcode:null,holdstopreason:null});
+    f.control.datasetRevision = 502;
+    return {...response,workflowPolicyVersion:'reclass-action-workflow-v7-editable-fields-20261009',inventoryFields:[]};
+  });
+  await page.locator('#hold-release-yes-btn').click();
+  await expect.poll(() => f.calls.length).toBe(1);
+  await expect(page.locator('#toast-notification')).toContainText('Hold removed');
+  expect(f.calls[0].transaction.requestActions).toEqual(['take_off_hold']);
+  expect(f.calls[0].rowOverlays[0].proposals).toEqual([]);
+  expect(await page.evaluate(() => window.eval(`(() => {const row=fullInventory.find(row=>row.UNIQUE_ID==='drive-layout-synthetic-1-no-photo');return {hold:row.HOLDSTOPCODE,photo:row.PHOTO_LINK,spec:row.SPEC,onHand:Number(row.PTRONHAND)};})()`)))
+    .toEqual({hold:'',photo,spec:'keep specs',onHand:25});
   expect(f.control.blockedMutations).toEqual([]);
 });

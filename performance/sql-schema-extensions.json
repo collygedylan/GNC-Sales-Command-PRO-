@@ -10,5 +10,9 @@
   {
     "path": "supabase/migrations/20261009170000_request_queue_remove_v1.sql",
     "gitBlob": "85faff0494bd8805d450de280bb9319c30630446"
+  },
+  {
+    "path": "supabase/migrations/20261009202507_prompt25_editable_field_shield_and_hold_clear.sql",
+    "gitBlob": "2786346e7c8130789664f86430974ededb471e2c"
   }
 ]

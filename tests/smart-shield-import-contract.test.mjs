@@ -97,3 +97,52 @@ test('PH importer preserves raw legacy holds for SQL acknowledgment even after a
   context.applyMasterImportAppFieldRules_(otherSite, released, 'tx_master_inventory');
   assert.equal(otherSite.holdstopcode, null, 'non-PH importer behavior is unchanged');
 });
+
+test('master CSV source presence survives payload normalization as a per-chunk editable-field mask', () => {
+  const context = importer();
+  const headers = ['ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE', 'LOTCODE', 'SOURCE',
+    'LOCATIONNOTE', 'LOCATIONPTN1', 'DESIGITEM', 'DESIGCUST', 'DESIGLOC', 'PULLERRESPONSIBILITY',
+    'OVERSELLPERCENTAGE', 'SALESNOTE', 'SUSPEND'];
+  const data = [headers, ['00001', 'Café plant', '#3', 'A.1.001', 'lot-1', 'PH', 'Note', 'PTN', 'DI', 'DC', 'DL', 'puller', '12', 'Sales', 'AB']];
+  const built = context.buildMasterPayload(data, 'ph_master_inventory', [], '2026-10-09T12:00:00Z', 'item6.csv');
+  const payloadRow = built.upserts[0];
+  assert.equal(Object.keys(payloadRow).includes('__gncMasterItem6RawFields'), false, 'presence is non-enumerable and never enters the database row');
+  assert.deepEqual(plain(context.getMasterItem6RawFieldMask_(payloadRow)), [
+    'locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc',
+    'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend',
+  ]);
+  const request = context.buildSupabaseUpsertRequests_('ph_master_inventory', [payloadRow])[0];
+  assert.deepEqual(JSON.parse(request.headers['x-gnc-master-item6-fields']), plain(context.getMasterItem6RawFieldMask_(payloadRow)));
+  assert.equal(JSON.stringify(JSON.parse(request.payload)).includes('__gncMasterItem6RawFields'), false);
+
+  const partial = {};
+  context.setMasterItem6RawFieldMask_(partial, ['locationnote', 'salesnote', 'suspend']);
+  const intersection = context.buildSupabaseUpsertRequests_('ph_master_inventory', [payloadRow, partial])[0];
+  assert.deepEqual(JSON.parse(intersection.headers['x-gnc-master-item6-fields']), ['locationnote', 'salesnote', 'suspend']);
+  const pruned = context.removeSupabaseColumnsFromPayload_([payloadRow], ['salesnote']);
+  assert.deepEqual(plain(context.getMasterItem6RawFieldMask_(pruned[0])), [
+    'locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc', 'pullerresponsibility', 'oversellpercentage', 'suspend',
+  ], 'a missing-column retry cannot acknowledge the removed source field');
+  assert.equal(Object.hasOwn(context.buildSupabaseUpsertRequests_('ph_soc_master', [payloadRow])[0].headers, 'x-gnc-master-item6-fields'), false);
+});
+
+test('master timeout split retries retain the original chunk presence mask', () => {
+  const context = importer();
+  const rows = Array.from({ length: 101 }, (_, index) => {
+    const row = { unique_id: `split-${index}` };
+    context.setMasterItem6RawFieldMask_(row, ['locationnote', 'suspend']);
+    return row;
+  });
+  const request = context.buildSupabaseUpsertRequests_('ph_master_inventory', rows)[0];
+  const retryRequests = [];
+  context.console = { warn() {}, error() {}, log() {} };
+  context.UrlFetchApp = { fetch(url, options) {
+    retryRequests.push(options);
+    return { getResponseCode: () => 204, getContentText: () => '' };
+  } };
+  const initialResponse = { getResponseCode: () => 500, getContentText: () => JSON.stringify({ code: '57014' }) };
+  const failures = context.executeSupabaseUpsertRequestWithRecovery_('ph_master_inventory', request, initialResponse, 1, 0);
+  assert.deepEqual(plain(failures), []);
+  assert.equal(retryRequests.length, 2);
+  retryRequests.forEach((retry) => assert.deepEqual(JSON.parse(retry.headers['x-gnc-master-item6-fields']), ['locationnote', 'suspend']));
+});

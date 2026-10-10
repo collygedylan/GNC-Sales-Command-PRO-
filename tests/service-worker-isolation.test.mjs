@@ -103,6 +103,26 @@ function request(path, extra = {}) {
   return { url: absolute(path), method: 'GET', mode: 'cors', destination: '', referrer: `${origin}/index.html`, ...extra };
 }
 
+test('fresh install precaches the exact versioned runtime requested by the compiled shell', async () => {
+  const h = harness();
+  const build = h.evaluate('APP_SHELL_BUILD');
+  const runtime = `/assets/live-app-runtime-v2026082010.min.js?v=${encodeURIComponent(build)}`;
+  const shellBuilder = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
+  assert.match(shellBuilder, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE\}'/);
+  h.setFetch(async input => new Response(absolute(input).includes('live-app-runtime-') ? 'CURRENT RUNTIME' : 'CURRENT SHELL'));
+  await h.dispatch('install');
+  const cache = await h.caches.open(h.evaluate('CACHE_NAME'));
+  assert.equal(await (await cache.match(runtime)).text(), 'CURRENT RUNTIME');
+  assert.equal(await cache.match('/assets/live-app-runtime-v2026082010.min.js'), undefined);
+  h.setFetch(async () => { throw new Error('offline'); });
+  const offline = await h.dispatch('fetch', { request: request(runtime, { destination: 'script' }) });
+  assert.equal(await offline.response.text(), 'CURRENT RUNTIME');
+  await assert.rejects(h.dispatch('fetch', { request: request('/assets/live-app-runtime-v2026082010.min.js?v=OLD', { destination: 'script' }) }), /offline/,
+    'an old version URL must never receive another release runtime');
+  const navigation = await h.dispatch('fetch', { request: request('/index.html?shellv=OLD', { mode: 'navigate' }) });
+  assert.equal(await navigation.response.text(), 'CURRENT SHELL', 'offline navigation upgrades shell and runtime together');
+});
+
 test('all split AURA modules bypass shared service-worker storage', async () => {
   const h = harness();
   for (const file of ['components/common/auraVoiceWidget', 'services/auraVoiceService', 'services/auraConversation', 'utils/auraIntentParser', 'utils/auraLingo']) {

@@ -2,6 +2,7 @@ import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
 import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
 import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
 import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
+import { RECLASS_EDITABLE_FIELDS_POLICY, validateReclassEditableFieldProposals } from "../../../services/reclassEditableFields.ts";
 import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
 import { readAvPage } from "../_shared/av-read.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
@@ -1235,6 +1236,9 @@ function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
     ? payload.transaction as Record<string, unknown>
     : {};
   const rowOverlays = Array.isArray(payload.rowOverlays) ? payload.rowOverlays : [];
+  const editableFields = payload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY;
+  const sourceContext = jsonObject(payload.sourceContext ?? {});
+  const sourceMode = String(sourceContext.sourceMode || "drive");
   return {
     workflowPolicyVersion: String(payload.workflowPolicyVersion || "").trim(),
     idempotencyToken: String(payload.idempotencyToken || payload.idempotency_token || "").trim(),
@@ -1247,13 +1251,23 @@ function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
     },
     transaction,
     rowOverlays,
+    ...(editableFields ? {
+      sourceContext: { sourceMode, ...(sourceMode === "eval-report-2" ? {
+        reportId: String(sourceContext.reportId || "").trim().toLowerCase(),
+        itemcode: String(sourceContext.itemcode || "").trim(),
+      } : {}) },
+      recipientEmails: sourceMode === "item-inquiry" && Array.isArray(payload.recipientEmails) ? payload.recipientEmails : [],
+    } : {}),
     clientVersion: String(payload.clientVersion || "").trim().slice(0, 80),
   };
 }
 
 function driveReclassErrorResponse(message: string) {
   const raw = String(message || "").trim().toUpperCase();
-  if (/V6_INVENTORY_REFRESH_REQUIRED|V6_INVENTORY_REVISION_MISSING/.test(raw)) {
+  if (/V7_.*(?:CONFLICT|STALE|ROW_MISSING|SOURCE_MISSING|SOURCE_CHANGED)/.test(raw)) {
+    return errorResponse("Inventory changed. Refresh and review the edited fields before sending again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
+  if (/V[67]_INVENTORY_REFRESH_REQUIRED|V[67]_INVENTORY_REVISION_MISSING/.test(raw)) {
     return errorResponse("Inventory is refreshing. Wait for the import to finish, then review and retry this inquiry.", 503, { code: "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED" });
   }
   if (/V6_.*(?:SETTINGS|SEASON_SETTING).*(?:UNAVAILABLE|INVALID|MISSING)/.test(raw)) {
@@ -1277,7 +1291,7 @@ function driveReclassErrorResponse(message: string) {
   if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
     return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
   }
-  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|V5_|V6_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
+  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|V5_|V6_|V7_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
   return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
@@ -1383,6 +1397,10 @@ export async function handleDriveReclassAction(
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, requests: [] });
     }
     if (operation === "create") {
+      if (payload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY && payload.sourceContext != null
+        && (typeof payload.sourceContext !== "object" || Array.isArray(payload.sourceContext))) {
+        return driveReclassErrorResponse("DRIVE_RECLASS_V7_SOURCE_CONTEXT_INVALID");
+      }
       const manualTransaction = payload.transaction && typeof payload.transaction === "object" && !Array.isArray(payload.transaction)
         ? payload.transaction as Record<string, unknown>
         : {};
@@ -1398,9 +1416,12 @@ export async function handleDriveReclassAction(
       try {
         validateReclassShearedProposals(protectedPayload);
         validateReclassSmartShieldProposals(protectedPayload);
+        validateReclassEditableFieldProposals(protectedPayload);
       }
       catch (error) { return driveReclassErrorResponse(error instanceof Error ? error.message : "DRIVE_RECLASS_V5_PAYLOAD_INVALID"); }
-      const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_SMART_SHIELD_POLICY
+      const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY
+        ? "enqueue_drive_reclass_inquiry_v7"
+        : protectedPayload.workflowPolicyVersion === RECLASS_SMART_SHIELD_POLICY
         ? "enqueue_drive_reclass_inquiry_v6"
         : protectedPayload.workflowPolicyVersion === RECLASS_SHEARED_POLICY
           ? "enqueue_drive_reclass_inquiry_v5"

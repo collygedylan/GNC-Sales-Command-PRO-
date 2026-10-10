@@ -21,7 +21,8 @@ for (const name of names) assert.ok(declarations.some(node => node.id.name === n
 const code = declarations.map(node => source.slice(node.start, node.end)).join('\n');
 
 function setup(rows) {
-  const state = { fullLoaded: true, fieldCoverage: 'full', initialLoaded: true };
+  const state = { fullLoaded: true, fieldCoverage: 'full', initialLoaded: true, rowCompleteness: 'complete',
+    liveVerifiedScope: 'actor-a', liveVerifiedPermission: 'permissions-1', liveVerifiedRevision: '12' };
   const indexInvalidations = { count: 0 };
   const context = vm.createContext({
     Map, Set, Number, String, Array, Object, JSON, Math,
@@ -35,12 +36,13 @@ function setup(rows) {
     getDatasetState: () => state,
     isMasterInitialLoadPartialForCurrentScope: () => false,
     canUseProductionLiveSync: () => true,
-    getProductionLiveSyncContext: () => ({ adapters: [{ id: 'core:master' }] }),
+    getProductionLiveSyncContext: () => ({ scope: 'actor-a', dataPermissionVersion: 'permissions-1', adapters: [{ id: 'core:master' }] }),
     hasCurrentProductionLiveSyncProof: () => true,
     window: { GncDatabase: { driveEvidenceRevision: () => 0 } },
     findItemByUniqueId: uid => rows.find(row => row.UNIQUE_ID === uid) || null,
     findRequestRowByUniqueId: () => null,
     isRowScopedDesignationSyncKey: () => false,
+    repairDisplayFieldsOnRow() {},
     normalizeFlyerShadowFields() {},
     normalizeRowPhotoFields() {},
     syncSharedFlyerPhotoFields() {},
@@ -62,8 +64,8 @@ const rows = () => [
 test('location On Hand sums exact item code and normalized location across lots and sizes', () => {
   const fixture = setup(rows());
   const { context } = fixture;
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5000');
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[1]), '5000');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5,000');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[1]), '5,000');
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[2]), '900', 'leading-zero item codes remain distinct');
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[3]), '600', 'other locations remain isolated');
 });
@@ -74,7 +76,7 @@ test('comma quantities parse, while a blank or invalid member makes the scope Un
   context.fullInventory[0].PTRONHAND = '1,250.5';
   context.fullInventory[1].PTRONHAND = '3,749.5';
   context.rebuildMasterInventoryIndexes();
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5000');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5,000');
   for (const invalid of ['', 'not-a-number']) {
     context.fullInventory[1].PTRONHAND = invalid;
     context.rebuildMasterInventoryIndexes();
@@ -82,27 +84,43 @@ test('comma quantities parse, while a blank or invalid member makes the scope Un
   }
 });
 
-test('location total requires complete field coverage and current native master proof', () => {
+test('location total uses complete browse rows and their own authorized master receipt', () => {
   const fixture = setup(rows());
   const { context, state } = fixture;
   const target = context.fullInventory[0];
-  state.fullLoaded = false;
+  state.rowCompleteness = 'partial';
   assert.equal(context.getCardLocationOnHandValue(target), null, 'an initial-only read is not a full inventory total');
-  state.fullLoaded = true;
+  state.rowCompleteness = 'complete';
+  state.fullLoaded = false;
   state.fieldCoverage = 'browse';
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'browse field coverage is not enough');
-  state.fieldCoverage = 'full';
+  assert.equal(context.getCardLocationOnHandValue(target), '5,000', 'complete browse projection has every quantity needed');
   context.nativeAuthSessionActive = true;
   context.nativeAuthProfile = { id: 'fixture-profile' };
-  context.getProductionLiveSyncContext = () => ({ adapters: [{ id: 'core:requests' }] });
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'proof without core:master is insufficient');
-  context.getProductionLiveSyncContext = () => ({ adapters: [{ id: 'core:master' }] });
   context.hasCurrentProductionLiveSyncProof = () => false;
-  assert.equal(context.getCardLocationOnHandValue(target), null, 'stale native proof is insufficient');
-  context.hasCurrentProductionLiveSyncProof = () => true;
-  assert.equal(context.getCardLocationOnHandValue(target), '5000');
+  assert.equal(context.getCardLocationOnHandValue(target), '5,000', 'unrelated side adapters do not hide a verified master aggregate');
+  state.liveVerifiedScope = 'another-actor';
+  assert.equal(context.getCardLocationOnHandValue(target), null, 'another account receipt cannot be reused');
+  state.liveVerifiedScope = 'actor-a';
+  state.liveVerifiedPermission = 'old-permissions';
+  assert.equal(context.getCardLocationOnHandValue(target), null, 'changed permissions require another master receipt');
+  state.liveVerifiedPermission = 'permissions-1';
+  state.liveVerifiedRevision = '';
+  assert.equal(context.getCardLocationOnHandValue(target), null, 'missing master receipt is insufficient');
+  state.liveVerifiedRevision = '12';
   context.canUseProductionLiveSync = () => false;
   assert.equal(context.getCardLocationOnHandValue(target), null, 'unauthorized native context is not trusted');
+});
+
+test('D.29.000 totals 1,232 across F1, S1, U2 and Y, independently of selected season', () => {
+  const inventory = [['F1', 41], ['S1', 491], ['U2', 210], ['Y', 490]].map(([season, quantity], index) => ({
+    UNIQUE_ID: `loc-${index}`, ITEMCODE: '000124', LOCATIONCODE: 'D.29.000', LOTCODE: `27.${season}`,
+    SEASON: season, PTRONHAND: quantity, SOURCE: 'MASTER',
+  }));
+  const { context, state } = setup(inventory.concat(rows()));
+  state.fullLoaded = false;
+  state.fieldCoverage = 'browse';
+  for (const row of inventory) assert.equal(context.getCardLocationOnHandValue(row), '1,232');
+  assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '124', LOCATIONCODE: 'D.29.000' }), null);
 });
 
 test('rebuilding the real master indexes reflects confirmed quantity changes', () => {
@@ -110,7 +128,7 @@ test('rebuilding the real master indexes reflects confirmed quantity changes', (
   const { context } = fixture;
   context.fullInventory[1].PTRONHAND = '5,000';
   context.rebuildMasterInventoryIndexes();
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '6250');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '6,250');
   context.fullInventory[0].PTRONHAND = null;
   context.rebuildMasterInventoryIndexes();
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
@@ -124,13 +142,13 @@ test('cross-tab master row snapshot rebuilds the location index only when its ag
   const snapshot = data => ({ uniqueId: target.UNIQUE_ID, masterUniqueId: target.UNIQUE_ID, sourceTable: 'ph_master_inventory', data });
 
   assert.equal(context.applyRowSyncSnapshot(snapshot({ PTRONHAND: '5,000' })), true);
-  assert.equal(context.getCardLocationOnHandValue(target), '6250');
+  assert.equal(context.getCardLocationOnHandValue(target), '6,250');
   assert.equal(indexInvalidations.count, beforeRebuilds + 1, 'quantity changes refresh the aggregate index');
 
   const afterQuantityRebuilds = indexInvalidations.count;
   assert.equal(context.applyRowSyncSnapshot(snapshot({ LOCATIONCODE: 'B.01.001' })), true);
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '1250', 'moving the row changes the old location total');
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[3]), '5600', 'moving the row changes the new location total');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '1,250', 'moving the row changes the old location total');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[3]), '5,600', 'moving the row changes the new location total');
   assert.equal(indexInvalidations.count, afterQuantityRebuilds + 1, 'item/location key changes refresh the aggregate index');
 
   const afterKeyRebuilds = indexInvalidations.count;

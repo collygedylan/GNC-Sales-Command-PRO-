@@ -42,7 +42,7 @@ function liveEdit(overrides = {}) {
 const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
 
 test('Reclass notices disclose live field edits and inquiry-only quantity instructions', () => {
-  const noticeText = 'Priority and Hold / Stop edits also update live inventory after confirmation. Quantity, season, and sheared instructions remain requests for keyers.';
+  const noticeText = 'Editable inventory fields update live inventory after confirmation and remain protected until the legacy import matches. Quantity, season, and sheared instructions remain requests for keyers.';
   const initialNotice = html.match(/id="argos-inventory-transaction-notice"[^>]*>(.*?)<\/div>/s)?.[1];
   const refreshedNotice = html.match(/notice\.innerHTML = '(<span class="font-black">Send Item Inquiry<\/span>.*?)';/s)?.[1];
   assert.ok(initialNotice?.includes(noticeText));
@@ -104,8 +104,8 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     console,
   };
   vm.createContext(context);
-  vm.runInContext(`${html.slice(returnedRowStart, returnedRowEnd)}; ${html.slice(start, end)}; this.apply = applyConfirmedArgosReclassLiveEdits; this.identityKey = getArgosReclassLiveEditIdentityKey();`, context);
-  return { apply: context.apply, appliedRows, avOpenInventory, dirtyViews, fullInventory, identityKey: context.identityKey, masterState };
+  vm.runInContext(`${html.slice(returnedRowStart, returnedRowEnd)}; ${html.slice(start, end)}; this.apply = applyConfirmedArgosReclassLiveEdits; this.acceptRead = isConfirmedInventoryReadRevisionCurrent; this.identityKey = getArgosReclassLiveEditIdentityKey();`, context);
+  return { apply: context.apply, acceptRead: context.acceptRead, appliedRows, avOpenInventory, dirtyViews, fullInventory, identityKey: context.identityKey, masterState };
 }
 
 const valid = {
@@ -165,9 +165,11 @@ test('confirmed response reconciles live fields and authoritative AV evidence cl
   assert.equal(fixture.appliedRows[0].AV_RULE_LAST_CLEARED_AT, '2026-10-09T12:01:00.000Z');
   for (const key of ['PHOTO_LINK', 'photo_link', 'SAVED_PHOTO_LINK', 'PHOTO_NAME', 'photo_name', 'SAVED_PHOTO_NAME',
     'SPEC', 'spec', 'CALIPER', 'caliper', 'MATCH', 'match', 'MATCHPCT', 'MATCH_PCT', 'AV_NOTE', 'av_note', 'PIC_NOTE', 'pic_note', 'PICKNOTE',
-    'SALES_NOTE', 'SALESNOTE', 'sales_note', 'salesnote']) {
+    'SALES_NOTE', 'sales_note']) {
     assert.ok(fixture.appliedRows[0][key] == null || fixture.appliedRows[0][key] === '', `${key} is cleared`);
   }
+  assert.equal(fixture.appliedRows[0].SALESNOTE, 'old sales', 'physical salesnote is independent of AV evidence');
+  assert.equal(fixture.appliedRows[0].salesnote, 'old sales');
   assert.equal(fixture.avOpenInventory[0].PHOTO_LINK, '');
   assert.equal(fixture.avOpenInventory[0].SPEC, null);
   assert.equal(fixture.avOpenInventory[0].AV_NOTE, null);
@@ -348,4 +350,34 @@ test('confirmed reconciliation rejects a stale response within the same millisec
   assert.equal(fixture.apply(response, fixture.identityKey).stale, true);
   assert.equal(fixture.appliedRows.length, 0);
   assert.equal(current.PRIORITY, '3');
+});
+
+
+test('background reads cannot replace confirmed inventory with an older dataset revision', () => {
+  const fixture = loadConfirmedApplyFixture({UNIQUE_ID:'row-1',PRIORITY:'3',LAST_UPDATED:'2026-10-09T12:00:00Z'});
+  assert.equal(fixture.acceptRead('9'), true);
+  fixture.apply({inventoryRevision:'10',liveEdits:[liveEdit({unique_id:'row-1',priority:'2'})]}, fixture.identityKey);
+  assert.equal(fixture.acceptRead('9'), false);
+  assert.equal(fixture.acceptRead(''), false);
+  assert.equal(fixture.acceptRead('10'), true);
+  assert.equal(fixture.acceptRead('11'), true);
+});
+
+test('V7 confirmed fields reconcile independently of AV evidence and preserve physical quantities', () => {
+  const fixture = loadConfirmedApplyFixture({UNIQUE_ID:'row-1',PRIORITY:'2',PTRONHAND:'41',SALESNOTE:'Old office note',LAST_UPDATED:'2026-10-09T12:00:00Z'});
+  const before = Object.fromEntries(['locationnote','locationptn1','desigitem','desigcust','desigloc','pullerresponsibility','oversellpercentage','salesnote','suspend'].map(field=>[field,null]));
+  const receipt = {workflowPolicyVersion:'reclass-action-workflow-v7-editable-fields-20261009',inventoryRevision:'10',
+    liveEdits:[liveEdit({unique_id:'row-1',priority:'2',evidence:{photo_link:'keep.webp',spec:'keep specs',sales_note:'AV comments'}})],
+    inventoryFields:[{unique_id:'row-1',before,after:{...before,salesnote:'Office instructions',suspend:'DC'},changedFields:['salesnote','suspend'],
+      stamps:{prisetby:'DC',priupdated:'2026-10-09',locationnotedate:null,evaldate:'2026-10-09'}}]};
+  const result=fixture.apply(receipt,fixture.identityKey);
+  assert.equal(result.applied,1); assert.equal(result.stale,false);
+  assert.equal(fixture.appliedRows[0].PTRONHAND,'41');
+  assert.equal(fixture.appliedRows[0].PHOTO_LINK,'keep.webp');
+  assert.equal(fixture.appliedRows[0].SPEC,'keep specs');
+  assert.equal(fixture.appliedRows[0].SALESNOTE,'Office instructions');
+  assert.equal(fixture.appliedRows[0].SALES_NOTE,'AV comments');
+  assert.equal(fixture.appliedRows[0].SUSPEND,'DC');
+  assert.equal(fixture.appliedRows[0].PRISETBY,'DC');
+  assert.throws(()=>confirmedReclassLiveEditsFromResult({...receipt,workflowPolicyVersion:'legacy'}),/POLICY_INVALID/);
 });

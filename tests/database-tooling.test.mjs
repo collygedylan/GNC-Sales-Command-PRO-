@@ -74,6 +74,7 @@ test('database workspace replays the production baseline and active chain withou
       '20261006145333_reclass_split_move_inquiries_v4.sql',
       '20261008190038_reclass_sheared_action_v5.sql',
       '20261009053029_reclass_smart_priority_hold_shield_v6.sql',
+      '20261009202507_prompt25_editable_field_shield_and_hold_clear.sql',
     ]);
     for (const migration of activePermissionReferences) assert.match(migration.sql, /'drive\.reclass\.submit'/);
     assert.equal(readdirSync(path.join(root, 'supabase', 'migrations')).includes(workspaceNames[prerequisiteIndex]), false,

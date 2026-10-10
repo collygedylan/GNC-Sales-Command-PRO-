@@ -13,13 +13,15 @@ type Evidence = { screen: string; theme: string; view: string; text: string; con
 
 test('Drive compact cards fit phone widths in every theme and keep row actions usable', {"tag":["@module-mobile"]}, async ({ page, baseURL }, testInfo) => {
   const fixtureControl = await installDriveCardLayoutFixture(page, baseURL!);
+  const renderCard = (options: Parameters<typeof renderDriveLayoutCard>[1]) => renderDriveLayoutCard(page, options, fixtureControl);
   await settleDriveLayoutShell(page, testInfo.project.name);
   for (const theme of themes) {
     for (const width of [320, 360, 390]) {
       await test.step(`${theme} at ${width}px`, async () => {
         await page.setViewportSize({ width, height: 844 });
-        await renderDriveLayoutCard(page, { theme, photo: true, longContent: true });
+        await renderCard({ theme, photo: true, longContent: true });
         const card = page.locator('#drive-content .app-drive-compact-card').first();
+        await expect(page.locator('#drive-content .app-drive-compact-card')).toHaveCount(1);
         await expect(card).toBeVisible();
         await expect.poll(() => card.locator('.app-drive-card-photo img').evaluate((image: HTMLImageElement) => image.naturalWidth))
           .toBeGreaterThan(0);
@@ -48,14 +50,21 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
               label: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
               value: chip.querySelector('.app-card-qty-value')?.textContent?.trim() || '',
             })),
+            quantityChipTops: [...element.querySelectorAll('.app-card-qty-chip')].map((chip) => chip.getBoundingClientRect().top),
             quantityTextBounds: [...element.querySelectorAll('.app-card-qty-chip')].map((chip) => {
               const chipRect = chip.getBoundingClientRect();
               return [...chip.querySelectorAll('.app-card-qty-label, .app-card-qty-value')].map((node) => {
                 const textRect = node.getBoundingClientRect();
                 return {
+                  metric: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
                   text: node.textContent?.trim() || '',
                   chipLeft: chipRect.left, chipRight: chipRect.right,
                   textLeft: textRect.left, textRight: textRect.right,
+                  textHeight: textRect.height,
+                  lineHeight: Number.parseFloat(getComputedStyle(node).lineHeight),
+                  isValue: node.classList.contains('app-card-qty-value'),
+                  fontSize: getComputedStyle(node).fontSize,
+                  whiteSpace: getComputedStyle(node).whiteSpace,
                   scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
                 };
               });
@@ -76,13 +85,15 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
         expect(metrics.quantity).toEqual([
           { label: 'On Hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
           { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
-          { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
+          { label: 'Loc Photo Match', value: 'N/A' }, { label: 'Loc On Hand', value: 'Unknown' },
         ]);
+        expect(Math.max(...metrics.quantityChipTops) - Math.min(...metrics.quantityChipTops)).toBeLessThanOrEqual(1);
         for (const chip of metrics.quantityTextBounds) {
           for (const text of chip) {
             expect(text.textLeft, `${text.text} must stay inside its quantity column`).toBeGreaterThanOrEqual(text.chipLeft - 1);
             expect(text.textRight, `${text.text} must stay inside its quantity column`).toBeLessThanOrEqual(text.chipRight + 1);
-            expect(text.scrollWidth - text.clientWidth, `${text.text} must wrap rather than collide with the next column`).toBeLessThanOrEqual(1);
+            expect(text.scrollWidth - text.clientWidth, `${text.metric} ${text.text} must fit its quantity column without clipping (${text.fontSize}, ${text.whiteSpace}, ${text.clientWidth}/${text.scrollWidth})`).toBeLessThanOrEqual(1);
+            if (text.isValue) expect(text.textHeight, `${text.text} must remain on one line`).toBeLessThanOrEqual(text.lineHeight + 1);
           }
         }
         expect(metrics.docOverflow).toBeLessThanOrEqual(1);
@@ -92,17 +103,17 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
 
         if (theme === 'light' && width === 390) {
           const longHeight = metrics.card.height;
-          await renderDriveLayoutCard(page, { theme, photo: true, longContent: false });
+          await renderCard({ theme, photo: true, longContent: false });
           const shortHeight = await card.evaluate((element) => element.getBoundingClientRect().height);
           expect(longHeight).toBeGreaterThan(shortHeight);
-          await renderDriveLayoutCard(page, { theme, photo: true, longContent: true });
+          await renderCard({ theme, photo: true, longContent: true });
           await card.screenshot({ path: '.gnc-local/drive-compact-390-light.png' });
           await card.locator('.app-drive-card-photo .app-inline-thumb-column').click();
           const photoModal = page.locator('#photo-modal');
           await expect(photoModal).toBeVisible();
           await expect(photoModal.locator('#photo-modal-caption')).toContainText('Synthetic Long Drive Card Name');
           await photoModal.getByRole('button', { name: 'Close photo viewer' }).click();
-          await renderDriveLayoutCard(page, { theme, photo: true, knownQuantities: true });
+          await renderCard({ theme, photo: true, knownQuantities: true });
           const values = await card.locator('.app-card-qty-chip').evaluateAll((chips) => chips.map((chip) => ({
             label: chip.querySelector('.app-card-qty-label')?.textContent?.trim(),
             value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
@@ -110,13 +121,13 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
           expect(values).toEqual([
             { label: 'On Hand', value: '15' }, { label: 'Review', value: '2' },
             { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
-            { label: 'Loc Photo Match', value: 'Not verified' }, { label: 'Loc On Hand', value: 'Unknown' },
+            { label: 'Loc Photo Match', value: 'N/A' }, { label: 'Loc On Hand', value: '15' },
           ]);
         }
 
         // A second real render without photo keeps the designed empty-media
         // placeholder and does not invent an image.
-        await renderDriveLayoutCard(page, { theme, photo: false, longContent: true });
+        await renderCard({ theme, photo: false, longContent: true });
         const noPhoto = page.locator('#drive-content .app-drive-compact-card').first();
         await expect(noPhoto.locator('.app-drive-card-photo .app-inline-thumb-box--empty')).toBeVisible();
         await expect(noPhoto.locator('.app-drive-card-photo img')).toHaveCount(0);
@@ -139,13 +150,13 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
   // Verify the actual selection and row-opening handlers still work after the
   // compact markup is mounted. Neither interaction submits a business write.
   await page.setViewportSize({ width: 390, height: 844 });
-  await renderDriveLayoutCard(page, { theme: 'light', photo: true, longContent: true });
+  await renderCard({ theme: 'light', photo: true, longContent: true });
   const card = page.locator('#drive-content .app-drive-compact-card').first();
   const cart = card.locator('.app-card-bottom-rail [data-cart-dom-id]');
   await expect(cart).toBeVisible();
   await cart.click();
   await expect(cart).toHaveAttribute('aria-pressed', 'true');
-  expect(await page.evaluate(() => window.eval(`selectedItems.has('drive-layout-synthetic-1-photo')`))).toBe(true);
+  expect(await page.evaluate(() => window.eval(`selectedItems.has('fi_0')`))).toBe(true);
   const reclass = card.locator('.app-drive-card-reclass .app-card-bottom-btn');
   await expect(reclass).toHaveCount(1);
   await reclass.click();
@@ -157,7 +168,7 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
   await expect.poll(() => page.evaluate(() => window.eval(`({ view: document.body.dataset.currentView, uid: activeItem && activeItem.UNIQUE_ID })`)))
     .toEqual({ view: 'detail', uid: 'drive-layout-synthetic-1-photo' });
   // REP quick-request access is available for known available quantity rows.
-  await renderDriveLayoutCard(page, { theme: 'light', photo: true, knownQuantities: true, rep: true });
+  await renderCard({ theme: 'light', photo: true, knownQuantities: true, rep: true });
   const repCard = page.locator('#drive-content .app-drive-compact-card').first();
   await expect(repCard).toBeVisible();
   await expect(repCard.locator('.app-drive-card-reclass')).toHaveCount(0);
@@ -165,7 +176,7 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
   await expect(repCart).toBeVisible();
   await repCart.click();
   await expect(repCart).toHaveAttribute('aria-pressed', 'true');
-  expect(await page.evaluate(() => window.eval(`selectedItems.has('drive-layout-synthetic-1-photo')`))).toBe(true);
+  expect(await page.evaluate(() => window.eval(`selectedItems.has('fi_0')`))).toBe(true);
   await expect(repCard.locator('input.card-checkbox')).toHaveCount(0);
   await restoreDriveLayoutRenderer(page);
   expect(fixtureControl.blockedMutations).toEqual([]);
