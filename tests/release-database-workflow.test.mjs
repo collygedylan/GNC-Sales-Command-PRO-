@@ -198,7 +198,7 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
 test('canonical schema contracts run as an isolated database-check gate', () => {
   const job = workflowConfig.jobs['schema-contracts'];
   assert.ok(job, 'schema contracts have their own disposable runner');
-  assert.equal(job['timeout-minutes'], 35);
+  assert.equal(job['timeout-minutes'], 45);
   assert.deepEqual(job.steps.map(step => step.uses).filter(Boolean), [
     'actions/checkout@v4', './.github/actions/setup-node-dependencies', 'actions/upload-artifact@v4',
   ]);

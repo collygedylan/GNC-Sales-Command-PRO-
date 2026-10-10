@@ -13,7 +13,9 @@ concurrency:
 jobs:
   schema-contracts:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # The six serial API benchmark passes can take 31 minutes before typegen;
+    # retain time for a bounded registry fallback and the final sandbox checks.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:

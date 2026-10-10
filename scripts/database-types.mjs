@@ -10,6 +10,24 @@ import { withDisposableSupabase } from './database-workspace-runner.mjs';
 
 export const generatedDatabaseTypesPath = 'supabase/functions/_shared/database.types.ts';
 
+const isPgMetaEcrRateLimit = error => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /public\.ecr\.aws\/supabase\/postgres-meta(?::|\s)/i.test(message)
+    && /(?:toomanyrequests|rate exceeded|too many requests)/i.test(message);
+};
+
+/** Retry only the CLI's known ECR throttling failure, using its supported GHCR override. */
+export function runLocalTypesCommand(runCli, args) {
+  const options = { capture: true };
+  try {
+    return runCli(args, options);
+  } catch (error) {
+    if (!isPgMetaEcrRateLimit(error)) throw error;
+    console.warn('[database-types] ECR rate limited postgres-meta; retrying type generation once through GHCR.');
+    return runCli(args, { ...options, env: { SUPABASE_INTERNAL_IMAGE_REGISTRY: 'ghcr.io' } });
+  }
+}
+
 export { sandboxDatabaseTypesPath };
 
 function firstDifference(left, right) {
@@ -23,7 +41,7 @@ function firstDifference(left, right) {
 function generateTypesFromWorkspace({ root, workspace, cli, execute, schemas = ['public'] }) {
   return withDisposableSupabase({ root, workspace, cli, execute, action: runCli => {
     runCli(['db', 'reset', '--local', '--no-seed']);
-    const output = runCli(['gen', 'types', '--local', '--schema', schemas.join(','), '--lang', 'typescript'], { capture: true });
+    const output = runLocalTypesCommand(runCli, ['gen', 'types', '--local', '--schema', schemas.join(','), '--lang', 'typescript']);
     if (!output.includes('export type Database =')) throw new Error('DATABASE_TYPES_GENERATION_EMPTY');
     return output;
   }});
