@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.10.003';
+const APP_SHELL_BUILD = 'V2026.10.10.004';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -74,7 +74,11 @@ const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/field-counting-chunks/FieldCountingView-ELHJCGSC.js",
   "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
   "./assets/field-counting.css",
-  "./assets/field-counting.js"
+  "./assets/field-counting.js",
+  "./assets/historical-requests-chunks/HistoricalRequestsView-LA7YG2JO.js",
+  "./assets/historical-requests-chunks/chunk-CSZKSOK2.js",
+  "./assets/historical-requests.css",
+  "./assets/historical-requests.js"
 ];
 const ASSETS_TO_CACHE = [
   ...DEFERRED_VIEW_ASSETS,

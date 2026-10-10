@@ -69,6 +69,7 @@
         docks: data(['soc', 'master', 'customerRepMap'], ['dockWorkflow']),
         'hl-order': data(['soc', 'master']),
         'bunch-note': data([], ['bunchNotes']),
+        'historical-requests': data([], []), // Narrow authenticated RPC; never materialize all requests in the shell.
         'request-history': data([], ['salesWorkspace']),
         'sales-credit': data([], ['salesWorkspace']),
         'credit-request': data([], ['salesWorkspace']),
