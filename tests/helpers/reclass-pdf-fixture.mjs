@@ -55,7 +55,7 @@ export function reclassPdfFixture(count = 35, { v7 = false } = {}) {
   const result = context.buildReclassInquiryActionRowsV3_(transaction, rows, overlays, null, { policyVersion });
   assert.equal(result.ok, true);
   let reportRows = result.rows;
-  const reportPayload = { workflowPolicyVersion: policyVersion, transaction, actor: { display: 'Synthetic reviewer' } };
+  const reportPayload = { workflowPolicyVersion: policyVersion, transaction, actor: { display: 'Synthetic reviewer' }, isSyntheticPilot: true };
   if (v7) {
     const fields = ['locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc',
       'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'];
@@ -84,8 +84,17 @@ export function reclassPdfFixture(count = 35, { v7 = false } = {}) {
         locationnotedate: changedFields.includes('locationnote') ? '10/8/2026 9:00 AM' : null,
         evaldate: '10/8/2026',
       };
+      row.v7ReportStamps = stamps;
+      if (changedFields.includes('locationnote')) {
+        row.values.locationnotedate = stamps.locationnotedate;
+        row.changedFields.push('locationnotedate');
+      }
       reportStamps.push({ unique_id: row.unique_id, stamps });
-      if (changedFields.length) inventoryFields.push({ unique_id: row.unique_id, before, after, changedFields, stamps });
+      if (changedFields.length) {
+        const edit = { unique_id: row.unique_id, before, after, changedFields, stamps };
+        inventoryFields.push(edit);
+        row.v7InventoryFields = edit;
+      }
       return row;
     });
     reportPayload.workflowPolicyVersion = 'reclass-action-workflow-v7-editable-fields-20261009';
@@ -94,6 +103,7 @@ export function reclassPdfFixture(count = 35, { v7 = false } = {}) {
   }
   const model = context.buildReclassInquiryReportModel_(rows[0], rows, reportRows,
     reportPayload, new Date('2026-10-08T14:00:00Z'));
+  model.isSyntheticPilot = true;
   return { html: context.buildReclassInquiryCompactReportHtml_(model, true), arrows };
 }
 

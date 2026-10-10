@@ -53,41 +53,50 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     }
   });
 
-  test(`Reclass V7 ${name} prints confirmed editable fields, stamps, and stacked movement rows`, async t => {
+  test(`Reclass V7 ${name} prints editable fields in each main row and keeps stacked movement rows`, async t => {
     const browser = await engine.launch();
     t.after(() => browser.close());
     const page = await browser.newPage({ viewport: { width: 1100, height: 850 } });
     const { html, arrows } = reclassPdfV7Fixture();
     await page.setContent(html);
     const report = await page.locator('body').innerText();
-    const headings = ['Loc Note', 'Loc PTN1', 'Desig Item', 'Desig Customer', 'Desig Location', 'Pull', 'OS%', 'Sales Note', 'SUS'];
+    const expectedHeadings = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
+      'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS'];
+    const headings = await page.locator('.location-table thead .column-heading-row th').allTextContents();
+    assert.deepEqual(headings, expectedHeadings, 'each editable field is its own main-table column with Lot first');
     headings.forEach(label => assert.ok(report.includes(label), `V7 report includes ${label}`));
     for (const forbidden of ['Plant Grp', 'Plant Group', 'PGC', 'Brand Label', 'Int Inv Note']) {
       assert.ok(!report.includes(forbidden), `V7 report omits ${forbidden}`);
     }
-    assert.match(report, /Pri By: SR/);
-    assert.match(report, /Eval Date: 10\/8\/2026/);
-    assert.match(report, /Pri Update: 10\/8\/2026 9:00 AM/);
-    assert.match(report, /Note Date: 10\/8\/2026 9:00 AM/);
+    assert.ok(report.includes('Submitted:') && report.includes('By: Synthetic reviewer'));
+    assert.ok(!report.includes('Request:') && !report.includes('Edited:'));
+    assert.ok(!report.includes('Confirmed Inventory Fields'));
+    assert.match(html, /<thead><tr class="page-title-row"><th class="page-title-cell" colspan="\d+"><div class="page-header">TEST PILOT - SYNTHETIC DATA ONLY \| GNC PH Reclass Item Inquiry<\/div><\/th><\/tr><tr class="column-heading-row">/);
+    assert.doesNotMatch(html, /@top-center/);
+    assert.equal(await page.locator('.page-header').count(), 1, 'the document flow contains one title; pagination repeats it through the table header');
     assert.match(html, /<s>SYN<\/s>/, 'cleared SUS value is shown as struck through');
-    assert.match(html, /Yes — SR/, 'blank SUS Yes is rendered with server initials');
+    assert.match(html, /Yes - SR/, 'blank SUS Yes is rendered with server initials');
+    assert.match(report, /By SR \| Eval 10\/8\/2026 \| Updated 10\/8\/2026/, 'server stamps appear as compact row annotations');
     assert.match(html, /class="edited-cell" data-edited="true"/, 'confirmed edits remain highlighted');
 
-    const geometry = await page.locator('.v7-inventory-row').evaluateAll(sections => sections.map(section => {
-      const box = section.getBoundingClientRect();
-      const cells = [...section.querySelectorAll('th,td')].map(cell => {
+    const geometry = await page.locator('.location-table tbody tr[data-location-row="true"]').evaluateAll(rows => rows.map(row => {
+      const box = row.getBoundingClientRect();
+      const cells = [...row.querySelectorAll('td')].map(cell => {
         const rect = cell.getBoundingClientRect();
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
-          width: cell.clientWidth, scroll: cell.scrollWidth };
+          width: cell.clientWidth, scroll: cell.scrollWidth, text: cell.innerText };
       });
       return { top: box.top, bottom: box.bottom, cells };
     }));
-    assert.equal(geometry.length, arrows.length, 'one supplemental field section is rendered per submitted row');
-    geometry.forEach(section => section.cells.forEach(cell => {
-      assert.ok(cell.left >= 0 && cell.right <= 1101, 'field table stays within the page width');
-      assert.ok(cell.bottom <= section.bottom + 1, 'field cell remains inside its location section');
-      assert.ok(cell.scroll <= cell.width + 1, 'long editable values wrap instead of clipping');
-    }));
+    assert.equal(geometry.length, arrows.length, 'each submitted item remains one main table row');
+    geometry.forEach(row => {
+      assert.equal(row.cells.length, expectedHeadings.length, 'each row contains every displayed main-table column');
+      row.cells.forEach(cell => {
+        assert.ok(cell.left >= 0 && cell.right <= 1101, 'main table stays within the page width');
+        assert.ok(cell.bottom <= row.bottom + 1, 'field cell remains inside its location row');
+        assert.ok(cell.scroll <= cell.width + 1, 'long editable values wrap instead of clipping');
+      });
+    });
 
     const arrowRows = await page.locator('.movement-cell').evaluateAll(elements => elements.map(element =>
       [...element.querySelectorAll('.proposal-box-movement')].map(line => line.textContent)));
@@ -101,8 +110,12 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     assert.ok(pdf.numPages > 1, 'V7 fixture exercises natural page breaks');
     const pagesByArrow = new Map();
     let allPdfText = '';
+    const pageDimensions = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const content = await (await pdf.getPage(pageNumber)).getTextContent();
+      const pdfPage = await pdf.getPage(pageNumber);
+      const content = await pdfPage.getTextContent();
+      const [x1, y1, x2, y2] = pdfPage.view;
+      pageDimensions.push({ width: x2 - x1, height: y2 - y1 });
       for (const item of content.items) {
         if (!('str' in item)) continue;
         allPdfText += `${item.str}\n`;
@@ -112,15 +125,31 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
         }
       }
     }
+    pageDimensions.forEach(dimensions => assert.ok(dimensions.width > dimensions.height, 'printed pages are landscape'));
+    const pageTexts = await Promise.all(Array.from({ length: pdf.numPages }, async (_, index) => {
+      const content = await (await pdf.getPage(index + 1)).getTextContent();
+      return content.items.filter(item => 'str' in item).map(item => item.str).join(' ');
+    }));
+    pageTexts.forEach((text, index) => assert.ok(text.includes('TEST PILOT - SYNTHETIC DATA ONLY | GNC PH Reclass Item Inquiry'),
+      `yellow title header repeats on PDF page ${index + 1}`));
+    for (let index = 1; index <= pdf.numPages; index += 1) {
+      const pageContent = await (await pdf.getPage(index)).getTextContent();
+      const headers = pageContent.items.filter(item => 'str' in item && item.str.includes('TEST PILOT - SYNTHETIC DATA ONLY'));
+      assert.equal(headers.length, 1, `page ${index} repeats the yellow title exactly once`);
+      assert.ok(headers[0].transform[5] > pageDimensions[index - 1].height - 60, 'yellow header is at the top page margin');
+    }
     assert.equal(pagesByArrow.size, arrows.length * 3);
     for (const row of arrows) assert.equal(new Set(row.map(text => pagesByArrow.get(text))).size, 1,
       'each location keeps all movement instructions together in the PDF');
+    const normalizedPdfText = allPdfText.replace(/\s+/g, ' ');
     for (const value of ['Confirmed location note 0', 'Confirmed PTN1 0', 'Confirmed customer 0',
-      'Confirmed designation location 0', 'Confirmed puller 0', '18%', 'Confirmed sales note 0', 'Yes — SR', 'SYN']) {
-      assert.ok(allPdfText.includes(value), `PDF contains confirmed value ${value}`);
+      'Confirmed designation location 0', 'Confirmed puller 0', '18%', 'Confirmed sales note 0', 'Yes - SR', 'SYN']) {
+      assert.ok(normalizedPdfText.includes(value), `PDF contains confirmed value ${value}`);
     }
+    assert.ok(!normalizedPdfText.includes('Confirmed Inventory Fields'));
+    assert.ok(normalizedPdfText.includes('By SR') && normalizedPdfText.includes('Eval 10/8/2026') && normalizedPdfText.includes('Updated 10/8/2026'));
     for (const forbidden of ['Plant Grp', 'Plant Group', 'PGC', 'Brand Label', 'Int Inv Note']) {
-      assert.ok(!allPdfText.includes(forbidden), `PDF omits ${forbidden}`);
+      assert.ok(!normalizedPdfText.includes(forbidden), `PDF omits ${forbidden}`);
     }
   });
 }

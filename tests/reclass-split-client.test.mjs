@@ -47,19 +47,19 @@ function fixture() {
   return { ctx, entry, rowMap, move };
 }
 
-test('collector preserves ordered repeated splits, exact OH, and Move Down hold scope', () => {
+test('collector preserves ordered repeated splits and exact OH without a hidden move hold', () => {
   const { ctx, entry, move } = fixture();
   const draft = move([{ quantity: '15', destinationSeason: 'X' }, { quantity: '5', destinationSeason: 'S1' }, { quantity: '5', destinationSeason: 'X' }]);
   draft.action = 'move_down';
   const rowMap = ctx.getArgosReclassRowProposalMap();
   delete rowMap.move_up;
   rowMap.move_down = draft;
-  draft.applyHold = true; draft.holdReason = ' Quality REVIEW ';
+  draft.applyHold = false; draft.holdReason = '';
   const before = plain(entry);
   const result = ctx.collectArgosReclassV3Draft();
   assert.deepEqual(plain(result.rowOverlays[0].proposals), [{ action: 'move_down', splits: [
     { quantity: 15, destinationSeason: 'X' }, { quantity: 5, destinationSeason: 'S1' }, { quantity: 5, destinationSeason: 'X' },
-  ], applyHold: true, holdReason: 'quality review' }]);
+  ], applyHold: false, holdReason: '' }]);
   assert.deepEqual(plain(result.holdStopProposals), []);
   assert.deepEqual(plain(entry), before);
   assert.equal(ctx.getArgosReclassMoveBalance(entry).remaining, 0);
@@ -76,7 +76,7 @@ test('both move actions count toward one OH cap and failed collection retains ed
   assert.equal(ctx.collectArgosReclassV3Draft().rowOverlays[0].proposals.length, 2);
 });
 
-test('invalid split rows and missing hold reason block submission without discarding input', () => {
+test('invalid split rows and retired saved hold controls block submission without discarding input', () => {
   for (const split of [{ quantity: '', destinationSeason: 'X' }, { quantity: 0, destinationSeason: 'X' },
     { quantity: -1, destinationSeason: 'X' }, { quantity: 1.5, destinationSeason: 'X' },
     { quantity: 2, destinationSeason: '' }, { quantity: 2, destinationSeason: 'F1' }, { quantity: 2, destinationSeason: 'Q1' }]) {
@@ -86,9 +86,9 @@ test('invalid split rows and missing hold reason block submission without discar
   const { ctx, move } = fixture(); const proposal = move(); proposal.action = 'move_down';
   const rowMap = ctx.getArgosReclassRowProposalMap(); delete rowMap.move_up; rowMap.move_down = proposal;
   proposal.applyHold = true;
-  assert.throws(() => ctx.collectArgosReclassV3Draft(), /Hold reason/);
+  assert.throws(() => ctx.collectArgosReclassV3Draft(), /retired Hold option/);
   proposal.holdReason = 'x'.repeat(1001);
-  assert.throws(() => ctx.collectArgosReclassV3Draft(), /Hold reason/);
+  assert.throws(() => ctx.collectArgosReclassV3Draft(), /retired Hold option/);
   proposal.applyHold = false;
   assert.equal(ctx.collectArgosReclassV3Draft().rowOverlays[0].proposals[0].holdReason, '');
   assert.equal(proposal.holdReason.length, 1001, 'unchecked reason remains available in the editable draft');
@@ -118,15 +118,18 @@ test('add/remove split edits invalidate a completed resolution and submission id
   assert.equal(rowMap.move_up.splits.length, 1, 'last row remains editable');
 });
 
-test('move renderer escapes drafts and shows accessible per-split controls and scoped hold', () => {
+test('move renderer retains accessible split controls and directs holds to the main action grid', () => {
   const { ctx, entry, move } = fixture(); const proposal = move(); proposal.action = 'move_down';
   const rowMap = ctx.getArgosReclassRowProposalMap(); delete rowMap.move_up; rowMap.move_down = proposal;
   proposal.applyHold = true; proposal.holdReason = '<script>bad</script>';
   const output = ctx.buildArgosReclassV3ProposalHtml(entry, 'move_down');
-  assert.match(output, /Place moved quantities On Hold/);
+  assert.doesNotMatch(output, /Place moved quantities On Hold|type="checkbox"|data-reclass-v3-proposal-field="applyHold"/);
+  assert.match(output, /retired Hold option/);
   assert.match(output, /Move Down quantity 3/); assert.match(output, /Move Down destination 3/);
   assert.match(output, /Requested \(Up \+ Down\): 25/); assert.match(output, /Remaining: 0/);
-  assert.match(output, /&lt;script&gt;bad&lt;\/script&gt;/); assert.doesNotMatch(output, /<script>/);
+  assert.doesNotMatch(output, /<script>|bad/);
+  proposal.applyHold = false;
+  assert.match(ctx.buildArgosReclassV3ProposalHtml(entry, 'move_down'), /Use On Hold or Off Hold in the action grid/);
   assert.doesNotMatch(output, /<option value="F1"/);
 });
 
