@@ -6573,6 +6573,8 @@ export type Database = {
           mailings: string | null
           majoracct: string | null
           majorcommtype: string | null
+          mapping_revision: number
+          mapping_updated_by: string | null
           ncfreightzone: string | null
           ncloadinst: string | null
           ncpriceschedule: string | null
@@ -6594,6 +6596,7 @@ export type Database = {
           principalcontactname: string | null
           principalcontactphone: string | null
           qacode: string | null
+          raw_data: Json
           requirepo: string | null
           row_hash: string | null
           salesrepid: string | null
@@ -6699,6 +6702,8 @@ export type Database = {
           mailings?: string | null
           majoracct?: string | null
           majorcommtype?: string | null
+          mapping_revision?: number
+          mapping_updated_by?: string | null
           ncfreightzone?: string | null
           ncloadinst?: string | null
           ncpriceschedule?: string | null
@@ -6720,6 +6725,7 @@ export type Database = {
           principalcontactname?: string | null
           principalcontactphone?: string | null
           qacode?: string | null
+          raw_data?: Json
           requirepo?: string | null
           row_hash?: string | null
           salesrepid?: string | null
@@ -6825,6 +6831,8 @@ export type Database = {
           mailings?: string | null
           majoracct?: string | null
           majorcommtype?: string | null
+          mapping_revision?: number
+          mapping_updated_by?: string | null
           ncfreightzone?: string | null
           ncloadinst?: string | null
           ncpriceschedule?: string | null
@@ -6846,6 +6854,7 @@ export type Database = {
           principalcontactname?: string | null
           principalcontactphone?: string | null
           qacode?: string | null
+          raw_data?: Json
           requirepo?: string | null
           row_hash?: string | null
           salesrepid?: string | null
@@ -16510,6 +16519,16 @@ export type Database = {
         Args: { p_actor_id: string; p_reference?: string }
         Returns: Json
       }
+      begin_customer_rep_mapping_import_v1: {
+        Args: {
+          p_expected_rows: number
+          p_run_id: string
+          p_source_file_id: string
+          p_source_hash: string
+          p_source_modified_at: string
+        }
+        Returns: Json
+      }
       begin_dataset_import_v1: {
         Args: {
           p_canonical_keys?: string[]
@@ -17231,6 +17250,10 @@ export type Database = {
         Args: { p_payload: Json }
         Returns: Json
       }
+      customer_rep_mapping_manage_v1: {
+        Args: { p_actor_id: string; p_operation: string; p_payload?: Json }
+        Returns: Json
+      }
       digest:
         | { Args: { input: string; type: string }; Returns: string }
         | { Args: { input: string; type: string }; Returns: string }
@@ -17294,6 +17317,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      finalize_customer_rep_mapping_import_v1: {
+        Args: { p_run_id: string }
+        Returns: Json
       }
       finalize_eval_item_low_stock_file_v1: {
         Args: {
@@ -18653,6 +18680,10 @@ export type Database = {
       }
       set_itemcode_default_owners_v1: {
         Args: { p_changes: Json; p_request_id: string }
+        Returns: Json
+      }
+      stage_customer_rep_mapping_rows_v1: {
+        Args: { p_rows: Json; p_run_id: string }
         Returns: Json
       }
       stage_eval_item_low_stock_rows_v1: {

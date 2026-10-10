@@ -23,12 +23,18 @@ on conflict(id) do update set username=excluded.username,display_name=excluded.d
 insert into public.profiles(id,username,display_name,role,must_change_password)
 values('9f8b0000-0000-4000-8000-000000000092','queue_remove_denied','Queue Remove Denied','USER',false)
 on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,role=excluded.role,must_change_password=false,disabled_at=null,locked_until=null;
-insert into public.ph_active_request(unique_id,commonname,contsize,request_folder,req_status,req_archived,updated_at,row_version)
-values('queue-remove-target','Queue Remove Plant','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',7),
-      ('queue-remove-sibling','Queue Remove Sibling','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',2),
-      ('queue-remove-completed','Already Complete','#3','queue-remove-done-folder','Completed',false,'2026-10-09T12:00:00Z',3),
-      ('queue-remove-archived','Already Archived','#3','queue-remove-archived-folder','Pending',true,'2026-10-09T12:00:00Z',4),
-      ('queue-remove-legacy','Legacy Pending','#3','queue-remove-legacy-folder','Pending',false,'2026-10-09T12:00:00Z',5);
+-- Seed a current mapped party; queue-removal assertions still exercise the
+-- original rows and snapshots, with the same production submission constraint.
+insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,
+  consigneeid,consigneename,salesrepid,salesrepname,customerstatus,consigneestatus)
+values('queue-remove-mapping','QRC','Queue Customer','QRK','Queue Consignee','QRR','Queue Rep','A','A');
+insert into public.ph_active_request(unique_id,commonname,contsize,request_folder,req_status,req_archived,updated_at,row_version,
+  customeridentityid,customername,consigneeidentityid,consigneename,requested_by)
+values('queue-remove-target','Queue Remove Plant','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',7,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
+      ('queue-remove-sibling','Queue Remove Sibling','#3','queue-remove-folder','Pending',false,'2026-10-09T12:00:00Z',2,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
+      ('queue-remove-completed','Already Complete','#3','queue-remove-done-folder','Completed',false,'2026-10-09T12:00:00Z',3,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
+      ('queue-remove-archived','Already Archived','#3','queue-remove-archived-folder','Pending',true,'2026-10-09T12:00:00Z',4,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
+      ('queue-remove-legacy','Legacy Pending','#3','queue-remove-legacy-folder','Pending',false,'2026-10-09T12:00:00Z',5,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep');
 
 insert into public.ph_request_history(unique_id,snapshot,last_event,delivery_state)
 values('queue-remove-target','{"keep":"historical snapshot"}'::jsonb,'created','delivered')
@@ -39,9 +45,10 @@ delete from public.ph_request_history where unique_id='queue-remove-legacy';
 -- A real created-membership event keeps a completed sibling in the same
 -- folder. Removing the final pending row should reconcile completion against
 -- the retained member list, never the deleted UID.
-insert into public.ph_active_request(unique_id,commonname,contsize,request_folder,req_status,req_archived,updated_at,row_version,date_completed)
-values('queue-remove-final-pending','Queue Remove Final Pending','#3','queue-remove-final-folder','Pending',false,'2026-10-09T13:00:00Z',11,null),
-      ('queue-remove-final-complete','Queue Remove Final Complete','#3','queue-remove-final-folder','Completed',false,'2026-10-09T13:01:00Z',12,'2026-10-08');
+insert into public.ph_active_request(unique_id,commonname,contsize,request_folder,req_status,req_archived,updated_at,row_version,date_completed,
+  customeridentityid,customername,consigneeidentityid,consigneename,requested_by)
+values('queue-remove-final-pending','Queue Remove Final Pending','#3','queue-remove-final-folder','Pending',false,'2026-10-09T13:00:00Z',11,null,'QRC','Queue Customer','QRK','Queue Consignee','Queue Rep'),
+      ('queue-remove-final-complete','Queue Remove Final Complete','#3','queue-remove-final-folder','Completed',false,'2026-10-09T13:01:00Z',12,'2026-10-08','QRC','Queue Customer','QRK','Queue Consignee','Queue Rep');
 insert into public.ph_request_history(unique_id,snapshot,last_event,delivery_state)
 values('queue-remove-final-pending','{"preserve":"pending history"}'::jsonb,'created','delivered'),
       ('queue-remove-final-complete','{"preserve":"completed history"}'::jsonb,'created','delivered')

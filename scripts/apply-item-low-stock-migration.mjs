@@ -33,13 +33,14 @@ export const reclassSmartShieldMigrationName = '20261009053029_reclass_smart_pri
 export const smartShieldRawImportMigrationName = '20261009053030_smart_shield_raw_import_acknowledgment.sql';
 export const requestQueueRemoveMigrationName = '20261009170000_request_queue_remove_v1.sql';
 export const prompt25HotfixMigrationName = '20261009202507_prompt25_editable_field_shield_and_hold_clear.sql';
+export const customerRepMappingMigrationName = '20261010024830_customer_rep_mapping_management.sql';
 export const reclassEvalSubmitGuardsMigrationName = '20261006150745_reclass_split_move_eval_submit_guards.sql';
 export const inventoryRowAssignmentFutureSnapshotsMigrationName = '20261006210000_inventory_row_assignment_future_snapshots.sql';
 export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_inventory_row_assignment_live_consumers.sql';
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -201,6 +202,20 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === customerRepMappingMigrationName) return `select
+    to_regprocedure('public.customer_rep_mapping_manage_v1(uuid,text,jsonb)') is not null
+    and to_regprocedure('public.finalize_customer_rep_mapping_import_v1(uuid)') is not null
+    and exists(select 1 from pg_trigger where tgrelid='public.ph_active_request'::regclass and tgname='require_active_customer_mapping_for_request_v1' and tgenabled='O' and not tgisinternal)
+    and exists(select 1 from pg_trigger where tgrelid='public.ph_active_request'::regclass and tgname='require_active_customer_mapping_for_request_update_v1' and tgenabled='O' and not tgisinternal)
+    and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_customer_consignee_sales_reps' and column_name='raw_data' and data_type='jsonb')
+    and has_function_privilege('service_role','public.customer_rep_mapping_manage_v1(uuid,text,jsonb)','execute')
+    and not has_function_privilege('authenticated','public.customer_rep_mapping_manage_v1(uuid,text,jsonb)','execute')
+    and not has_function_privilege('anon','public.customer_rep_mapping_manage_v1(uuid,text,jsonb)','execute')
+    and has_function_privilege('service_role','public.finalize_customer_rep_mapping_import_v1(uuid)','execute')
+    and not has_function_privilege('authenticated','public.finalize_customer_rep_mapping_import_v1(uuid)','execute')
+    and not has_function_privilege('anon','public.finalize_customer_rep_mapping_import_v1(uuid)','execute')
+    and not has_column_privilege('authenticated','public.ph_customer_consignee_sales_reps','raw_data','select')
+    and not has_column_privilege('anon','public.ph_customer_consignee_sales_reps','raw_data','select') as installed`;
   if (name === prompt25HotfixMigrationName) return `select
     to_regprocedure('public.enqueue_drive_reclass_inquiry_v7(jsonb)') is not null
     and to_regprocedure('private.ph_holdstop_strict_reduction_v1(text,text)') is not null
