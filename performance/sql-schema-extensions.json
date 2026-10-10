@@ -18,5 +18,13 @@
   {
     "path": "supabase/migrations/20261010024830_customer_rep_mapping_management.sql",
     "gitBlob": "5a508f96f386419036a772cdd8db027802d44f95"
+  },
+  {
+    "path": "supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql",
+    "gitBlob": "74b781db0f324d65432ec24bab3b69bdb1b889f2"
+  },
+  {
+    "path": "supabase/migrations/20261010080140_field_counting_commands_and_reports.sql",
+    "gitBlob": "a8f6702517f642a84bcf30d345cf006a8650c396"
   }
 ]

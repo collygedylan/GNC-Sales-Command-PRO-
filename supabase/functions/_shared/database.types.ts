@@ -17318,6 +17318,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      field_count_command_v1: {
+        Args: {
+          p_actor_id: string
+          p_command_id?: string
+          p_operation: string
+          p_payload: Json
+        }
+        Returns: Json
+      }
+      field_count_delivery_lookup_v1: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
+      field_count_delivery_record_v1: {
+        Args: {
+          p_event_id: string
+          p_lease_token: string
+          p_result: Json
+          p_status: string
+        }
+        Returns: Json
+      }
+      field_count_freeze_pdf_v1: {
+        Args: { p_event_id: string; p_pdf: Json }
+        Returns: Json
+      }
       finalize_customer_rep_mapping_import_v1: {
         Args: { p_run_id: string }
         Returns: Json

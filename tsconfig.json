@@ -2,7 +2,11 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": ["DOM", "DOM.Iterable", "ES2020"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2020"
+    ],
     "allowJs": false,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -17,5 +21,14 @@
     "allowImportingTsExtensions": true,
     "jsx": "react-jsx"
   },
-  "include": ["v2/src", "vite.v2.config.ts", "scripts/live-supabase-entry.ts", "services/*.ts"]
+  "include": [
+    "v2/src",
+    "vite.v2.config.ts",
+    "scripts/live-supabase-entry.ts",
+    "services/*.ts",
+    "components/field-counting",
+    "components/bunch-notes/BunchNoteEntry.tsx",
+    "components/bunch-notes/view-contracts.ts",
+    "components/bunch-notes/legacy-views.d.ts"
+  ]
 }

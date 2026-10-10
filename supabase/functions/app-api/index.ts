@@ -1278,6 +1278,43 @@ async function resolveActiveSessionProfile(
   return profile as Record<string, unknown>;
 }
 
+export async function handleFieldCountAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Sign in to use Field Count.", 401, { code: "FIELD_COUNT_UNAUTHORIZED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "FIELD_COUNT_FORBIDDEN" });
+  let actor: Record<string, unknown>;
+  try {
+    actor = await resolveActiveSessionProfile(session);
+  } catch {
+    return errorResponse("An active account profile is required.", 403, { code: "FIELD_COUNT_FORBIDDEN" });
+  }
+  try {
+    const allowed = new Set(["action", "operation", "payload", "commandId"]);
+    if (Object.keys(payload).some(key => !allowed.has(key)) || !["read", "save", "complete"].includes(String(payload.operation))) {
+      return errorResponse("FIELD_COUNT_PAYLOAD_INVALID", 400);
+    }
+    const input = jsonObject(payload.payload);
+    if (input.countType !== "bunch" && input.countType !== "spread") return errorResponse("FIELD_COUNT_TYPE_INVALID", 400);
+    const table = input.countType === "bunch" ? "ph_bunch_counts" : "ph_spread_counts";
+    if (!hasTableReadAccess(String(actor.role), table, String(actor.username))
+      || !hasTableWriteAccess(String(actor.role), table, "POST", null, String(actor.username))) {
+      return errorResponse("FIELD_COUNT_FORBIDDEN", 403, { code: "FIELD_COUNT_FORBIDDEN" });
+    }
+    const { data, error } = await supabase.rpc("field_count_command_v1", {
+      p_actor_id: String(actor.id), p_operation: String(payload.operation), p_payload: input,
+      ...(typeof payload.commandId === "string" ? { p_command_id: payload.commandId } : {}),
+    });
+    if (error) throw error;
+    return jsonResponse({ ok: true, data });
+  } catch (error) {
+    const failure = error as { message?: string; code?: string };
+    const message = /^FIELD_COUNT_[A-Z_]+$/.test(failure.message || "") ? failure.message! : "FIELD_COUNT_UNAVAILABLE";
+    return errorResponse(message, failure.code === "42501" ? 403 : /CONFLICT|CHANGED/.test(message) ? 409 : 400, { code: message });
+  }
+}
+
 export async function handleRequestRecipientDirectory(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -4917,6 +4954,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const code = String(source.message || "BUNCH_NOTE_FAILED");
       return errorResponse(code, source.code === "42501" ? 403 : /CONFLICT|CHANGED|CLAIMED/.test(code) ? 409 : 400, { code });
     }
+  }
+  if (action === "field_count") {
+    return await handleFieldCountAction(session, payload);
   }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);

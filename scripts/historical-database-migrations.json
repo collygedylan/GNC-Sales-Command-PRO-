@@ -690,5 +690,9 @@
   {
     "source": "supabase/migrations/20261007211340_sql_lint_runtime_context.sql",
     "destination": "20261007211340_sql_lint_runtime_context.sql"
+  },
+  {
+    "source": "supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql",
+    "destination": "20261010080018_bunch_note_auto_completion_delivery.sql"
   }
 ]

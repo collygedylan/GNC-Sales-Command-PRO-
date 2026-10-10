@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/assets/field-counting.css"><style>body{margin:0;font-family:system-ui;background:#f1f5f9}html[data-theme=dark] body{background:#0f172a}</style></head><body><button id="open" type="button">Open field counting</button><div id="root"></div><script type="module">
+const rows=[{sourceUid:'F-1',block:'D',location:'D.01.000',itemcode:'00021',commonname:'A long Maple ® name for mobile field counting',contsize:'#3',lotcode:'LOT-1',season:'F1',onHand:'41'},{sourceUid:'F-2',block:'D',location:'D.01.000',itemcode:'00021',commonname:'Maple ™',contsize:'#3',lotcode:'LOT-2',season:'S1',onHand:'491'}];
+window.countRequests=[];const observations=new Map();let revision=1;let mount;
+const transport=async body=>{
+ window.countRequests.push(structuredClone(body));const p=body.payload;
+ if(body.operation==='read'){
+  const options=!p.block?[{value:'D',label:'D',rowCount:2}]:!p.location?[{value:'D.01.000',label:'D.01.000',rowCount:2}]:[];
+  return {ok:true,data:{datasetRevision:String(revision),masterRevision:'1',rows:p.location?rows:[],counts:p.location?[...observations.values()]:[],options,page:0,total:p.location?2:1,complete:true}};
+ }
+ revision++;for(const row of p.entries)observations.set(row.sourceUid,{sourceUid:row.sourceUid,countedQty:row.countedQty,direction:p.direction,rowOrder:row.rowOrder,note:row.note,updatedAt:new Date().toISOString(),actor:'Field Manager'});
+ return {ok:true,data:{revision:String(revision),savedSourceUids:p.entries.map(row=>row.sourceUid),...(body.operation==='complete'?{reportId:body.commandId,deliveryStatus:'queued'}:{})}};
+};
+document.getElementById('open').onclick=async()=>{
+ const module=await import('/assets/field-counting.js');document.getElementById('open').hidden=true;
+ mount=module.mountFieldCounting(document.getElementById('root'),module.createFieldCountingBridge({scopeKey:'fixture-manager',countType:'bunch',revisionKey:'1',transport}),()=>{mount.destroy();document.getElementById('open').hidden=false;});
+};
+</script></body></html>

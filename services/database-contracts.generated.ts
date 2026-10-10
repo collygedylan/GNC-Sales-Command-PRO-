@@ -86676,6 +86676,127 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "field_count_command_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "field_count_delivery_lookup_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_event_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "field_count_delivery_record_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_event_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_lease_token": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_result": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_status": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "field_count_freeze_pdf_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_event_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_pdf": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "finalize_customer_rep_mapping_import_v1": {
       "oneOf": [
         {
@@ -97077,6 +97198,26 @@ export const contracts: RuntimeContracts<Database> = {
             "null"
           ]
         }
+      ]
+    },
+    "field_count_command_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "field_count_delivery_lookup_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "field_count_delivery_record_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "field_count_freeze_pdf_v1": {
+      "oneOf": [
+        "json"
       ]
     },
     "finalize_customer_rep_mapping_import_v1": {

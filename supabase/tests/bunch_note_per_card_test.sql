@@ -60,7 +60,10 @@ declare
  card_b uuid:='aa000000-0000-4000-8000-000000000002';
  setup_card uuid:='aa000000-0000-4000-8000-000000000003';
  ta bunch_note_private.options; body jsonb; draft jsonb; preview jsonb; reports jsonb; result jsonb; replay jsonb; job_a uuid; job_setup uuid;
- command_id uuid; job_revision bigint; card_revision bigint; actual_id uuid; inventory_before jsonb; inventory_after jsonb;
+ command_id uuid; completion_command uuid; completion_payload jsonb; completion_result jsonb; replay_result jsonb;
+ job_revision bigint; card_revision bigint; actual_id uuid; inventory_before jsonb; inventory_after jsonb;
+ automatic_preview bunch_note_private.previews; automatic_event public.ph_request_delivery_outbox;
+ manual_preview jsonb; publish_result jsonb;
 begin
  select jsonb_agg(to_jsonb(m) order by unique_id) into inventory_before from public.ph_master_inventory m;
  select * into ta from bunch_note_private.options where kind='ta' order by label limit 1;
@@ -156,8 +159,43 @@ begin
  perform pg_temp.bn_card_call(w2,'actual',jsonb_build_object('job_id',job_a,'card_id',card_b,'action_id','card-action-b','source_id','BN-CARD-B','quantity','2','explanation','Verified physical count'),1,gen_random_uuid());
  perform pg_temp.bn_card_call(w2,'progress',jsonb_build_object('job_id',job_a,'card_id',card_b,'action_id','card-action-b','status','done','reason','Verified physical count'),2,gen_random_uuid());
  select revision into card_revision from bunch_note_private.bunch_note_work_cards where card_id=card_b and bunch_note_id=(select id from bunch_note_private.bunch_notes where job_id=job_a);
- perform pg_temp.bn_card_call(w2,'complete_card',jsonb_build_object('job_id',job_a,'card_id',card_b),card_revision,gen_random_uuid());
+ completion_payload:=jsonb_build_object('job_id',job_a,'card_id',card_b);
+ completion_command:=gen_random_uuid();
+ completion_result:=public.bunch_note_card_command_v1(w2,'complete_card',completion_payload,completion_command,card_revision);
  perform pg_temp.bn_card_check((select status='complete' from bunch_note_private.jobs where id=job_a),'job completes only after every active card is complete');
+ select * into automatic_preview from bunch_note_private.previews where job_id=job_a and report_kind='completed_work' and published;
+ select * into automatic_event from public.ph_request_delivery_outbox where event_id=automatic_preview.event_id;
+ perform pg_temp.bn_card_check(automatic_preview.id is not null and automatic_preview.pdfs is null
+  and automatic_preview.job_revision=(select revision from bunch_note_private.jobs where id=job_a)
+  and automatic_preview.recipients @> '[{"username":"dylan_collyge"}]'::jsonb,
+  'last card completion freezes one report revision and saved recipients including mandatory Dylan');
+ perform pg_temp.bn_card_check(automatic_event.event_type='bunch_note_submission' and automatic_event.status='pending'
+  and automatic_event.event_key='bunch-note-auto-completion:'||job_a::text||':'||automatic_preview.job_revision::text
+  and automatic_event.payload->>'automatic_completion'='true',
+  'last card completion atomically queues the deterministic automatic delivery event');
+ perform pg_temp.bn_card_check(jsonb_array_length(automatic_preview.reports)=1
+  and automatic_preview.reports->0->>'report_kind'='completed_work'
+  and jsonb_array_length(automatic_preview.reports->0->'source')=2
+  and jsonb_array_length(automatic_preview.reports->0->'actuals')=3,
+  'automatic report freezes all source rows and recorded work from the completion transaction');
+ replay_result:=public.bunch_note_card_command_v1(w2,'complete_card',completion_payload,completion_command,card_revision);
+ perform pg_temp.bn_card_check(replay_result=completion_result
+  and (select count(*)=1 from bunch_note_private.previews where job_id=job_a and report_kind='completed_work' and published)
+  and (select count(*)=1 from public.ph_request_delivery_outbox where event_key=automatic_event.event_key),
+  'completion command retry returns its original result without duplicating the report or email');
+ perform public.bunch_note_freeze_pdfs_v1(automatic_preview.id,jsonb_build_array(jsonb_build_object(
+  'job_id',job_a,'filename','automatic-work.pdf','base64',encode(convert_to('%PDF-1.4'||repeat('a',200),'UTF8'),'base64'))));
+ perform pg_temp.bn_card_check((select pdfs->0->>'filename'='automatic-work.pdf' from bunch_note_private.previews where id=automatic_preview.id),
+  'service delivery can freeze a PDF onto the published automatic report');
+ select revision into job_revision from bunch_note_private.jobs where id=job_a;
+ manual_preview:=public.bunch_note_command_v1(d,'work_preview',jsonb_build_object('job_id',job_a,'recipient_ids',jsonb_build_array(w1)),gen_random_uuid(),job_revision)->'preview';
+ perform public.bunch_note_freeze_pdfs_v1((manual_preview->>'id')::uuid,jsonb_build_array(jsonb_build_object(
+  'job_id',job_a,'filename','manual-work.pdf','base64',encode(convert_to('%PDF-1.4'||repeat('m',200),'UTF8'),'base64'))));
+ publish_result:=public.bunch_note_command_v1(d,'work_publish',jsonb_build_object('preview_id',manual_preview->'id','send_email',true),gen_random_uuid(),job_revision);
+ perform pg_temp.bn_card_check(publish_result->>'already_published'='true'
+  and publish_result->>'preview_id'=automatic_preview.id::text and publish_result->>'event_id'=automatic_event.event_id::text
+  and (select count(*)=1 from public.ph_request_delivery_outbox where event_key=automatic_event.event_key),
+  'manual author publish safely reuses the automatic event at the same revision');
  perform pg_temp.bn_card_call(d,'actual',jsonb_build_object('job_id',job_a,'card_id',card_a,'action_id','card-action-a','source_id','BN-CARD-A','replaces_id',actual_id,'quantity','2','explanation','Supervisor verified correction'),8,gen_random_uuid());
  perform pg_temp.bn_card_check((select count(*)=4 and exists(select 1 from bunch_note_private.actuals original where original.id=actual_id)
   and exists(select 1 from bunch_note_private.actuals correction where correction.job_id=job_a and correction.replaces_id=actual_id)
