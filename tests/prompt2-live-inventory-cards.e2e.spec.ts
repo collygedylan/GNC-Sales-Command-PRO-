@@ -376,12 +376,23 @@ test('Queued Request cards use the compact inventory layout and preserve request
         label: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
         top: chip.getBoundingClientRect().top,
         overflow: chip.scrollWidth - chip.clientWidth,
+        width: chip.clientWidth,
+        scrollWidth: chip.scrollWidth,
+        flexDirection: getComputedStyle(chip).flexDirection,
+        paddingInline: getComputedStyle(chip).paddingInline,
+        children: Array.from(chip.children).map((child) => ({
+          text: child.textContent?.trim(),
+          width: child.clientWidth,
+          scrollWidth: child.scrollWidth,
+          display: getComputedStyle(child).display,
+        })),
       })));
       expect(metrics.map((entry) => entry.label)).toEqual([
         'On Hand', 'Review', 'Available', 'Open Stock', 'Loc Photo Match', 'Loc On Hand',
       ]);
       expect(Math.max(...metrics.map((entry) => entry.top)) - Math.min(...metrics.map((entry) => entry.top))).toBeLessThanOrEqual(1);
-      expect(metrics.every((entry) => entry.overflow <= 1)).toBe(true);
+      expect(metrics.every((entry) => entry.overflow <= 1), JSON.stringify(metrics)).toBe(true);
+      expect(metrics.every((entry) => entry.children[1]?.display === 'none'), JSON.stringify(metrics)).toBe(true);
       await expect(card.locator('[data-inventory-card-metric="loc-photo-match"] .app-card-qty-value')).toHaveText('N/A');
 
       const meta = await card.locator('.app-request-card-meta').innerText();

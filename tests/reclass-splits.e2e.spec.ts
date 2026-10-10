@@ -161,7 +161,12 @@ test('Move Down uses the main On Hold action and failed submissions retain all d
   await expect(page.locator('#toast-notification')).toContainText('Hold/Stop Reason');
   expect(f.calls).toHaveLength(0);
   await page.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Quality Review');
-  f.setCreateReply(() => confirmedLiveEditResponse('2'));
+  f.setCreateReply(() => {
+    Object.assign(f.control.master[0], { priority: '2', holdstopcode: 'H', holdstopreason: 'quality review',
+      av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:01:00Z', last_updated: '2026-10-09T12:01:00Z' });
+    f.control.datasetRevision = 501;
+    return confirmedLiveEditResponse('2');
+  });
   f.failNext(); await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#toast-notification')).toContainText('Synthetic queue failure');
   await expect(move.getByLabel('Move Down quantity 1', { exact: true })).toHaveValue('15');
