@@ -64,6 +64,23 @@ After deployment, exact-live release and commit verification runs before four pa
 
 ## Local candidate preflight
 
+### Apps Script propagation recovery
+
+The `.004` release exposed a stale second deployment read after the new version
+and its exact source had already been verified. Recovery evidence now records
+both deployment reads. A read below the pinned target retries the same immutable
+version, commit and full source within the existing 13-attempt/90-second bound.
+A read above the target fails immediately; an actual newer deployment must not
+be overwritten or accepted as this release. Exhausted or invalid evidence still
+blocks Pages publication. Retry the failed cloud handoff through GitHub Actions;
+never publish the frontend around its backend verification gate.
+
+The October 10 autonomous recovery retains the already-active temporary timing
+profile in `performance/baseline.json`: doubled timing ceilings and a 100 ms
+browser allowance floor. The stored 25 ms value is the strict restoration base,
+not the active CI limit. Prompt 7 removes the temporary profile. Payload sizes,
+render counts, duplicate reads, correctness and authorization checks stay active.
+
 Run `npm run check:local` after preparing the release version and before sealing the commit. `prepare --dispatch` requires its passing source and compiled-artifact fingerprints, so failed or stale local evidence stops dispatch. The local check's one fresh build and selected regressions replace separate repeated foundation/feature runs; all candidate and hosted gates below remain required. Details: [local-validation.md](local-validation.md).
 
 Use `scripts/release-candidate.mjs` from the candidate checkout before an authorized release. It does not fetch, commit, merge, push, deploy, or save an approval file. `prepare` and `check` are read-only. Start from a committed release branch that includes current `origin/main`:
