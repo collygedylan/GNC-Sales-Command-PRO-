@@ -127,3 +127,10 @@ test('database changes flag local database validation and discovery returns dire
   assert.ok(result.sql.every(file => file.startsWith('supabase/tests/') && file.endsWith('_test.sql')
     && !/rollback|canary/i.test(file)));
 });
+
+test('edits to discovered canonical HTTP drivers require local database validation', () => {
+  const driver = 'supabase/ci/customer_rep_mapping_http.mjs';
+  const result = selectAffectedTests([driver]);
+  assert.ok(result.files.includes(driver));
+  assert.equal(result.requiresLocalDb, true);
+});

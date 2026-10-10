@@ -43,3 +43,55 @@ test('Request choices keep the rep/customer/consignee relationship and reject ty
   expect(result.qtyCalls).toHaveLength(0);
   expect(result.toasts[0][0]).toBe('Select Mapped Consignee');
 });
+
+test('Request customer cache picks up a published mapping revision without reloading the page', {tag:['@local-e2e','@release-functional']},async({page})=>{
+  await page.setContent('<input id="cust-search-input" value="">');
+  await page.addScriptTag({content:requestMappingSetup+'\n'+requestMappingFunctions()});
+  const publication=await page.evaluate((oldRow)=>{
+    const w=window as any;
+    w.customerRepMapRows=[oldRow];
+    w.tempSelectedReqRep='Molly Dixon';
+    const before=w.getRequestModalCustomerOptionsForRep('Molly Dixon');
+
+    const published=[];
+    for(let customerIndex=0;customerIndex<119;customerIndex++){
+      const customerId=String(100+customerIndex).padStart(6,'0');
+      const customerName=customerIndex<2?'Shared Customer':`Customer ${String(customerIndex).padStart(3,'0')}`;
+      const relationshipCount=customerIndex<30?2:1;
+      for(let relationshipIndex=0;relationshipIndex<relationshipCount;relationshipIndex++){
+        const relationNumber=published.length;
+        published.push({
+          unique_id:`published-${relationNumber}`,
+          customeridentityid:customerId,
+          consigneeid:String(500+relationNumber).padStart(6,'0'),
+          customername:customerName,
+          consigneename:`Location ${customerIndex+1}${relationshipIndex?'B':'A'}`,
+          salesrepid:'0003',salesrepname:'Molly Dixon',customerstatus:'A',consigneestatus:'A'
+        });
+      }
+    }
+    w.customerRepMapRows=published;
+    w.mappingRevision='published-revision-2';
+    const options=w.getRequestModalCustomerOptionsForRep('Dixon, Molly');
+    const groups=w.buildRequestCustomerPickerGroups(options);
+    const shared=groups.find((group:any)=>group.customeridentityid==='000100');
+    return {
+      beforeCount:before.length,
+      relationshipCount:options.length,
+      customerCount:groups.length,
+      distinctCustomerIds:new Set(options.map((option:any)=>option.customeridentityid)).size,
+      firstCustomerConsigneeCount:shared?.consignees.length||0,
+      leadingZeroIds:options.every((option:any)=>/^0{2,}/.test(option.customeridentityid)&&/^0{2,}/.test(option.consigneeidentityid)),
+      samePage:document.querySelector('#cust-search-input')!==null
+    };
+  },mappingFixtureRow);
+  expect(publication).toEqual({
+    beforeCount:0,
+    relationshipCount:149,
+    customerCount:119,
+    distinctCustomerIds:119,
+    firstCustomerConsigneeCount:2,
+    leadingZeroIds:true,
+    samePage:true
+  });
+});

@@ -26,5 +26,9 @@
   {
     "path": "supabase/migrations/20261010080140_field_counting_commands_and_reports.sql",
     "gitBlob": "a8f6702517f642a84bcf30d345cf006a8650c396"
+  },
+  {
+    "path": "supabase/migrations/20261010152556_customer_rep_mapping_finalize_timeout_55s.sql",
+    "gitBlob": "001361077b2e3ab13158786e03d21c2228c75f8e"
   }
 ]

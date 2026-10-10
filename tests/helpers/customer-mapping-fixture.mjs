@@ -6,9 +6,11 @@ export function mappingBrowserBundle() {
 }
 export function requestMappingFunctions() {
   const html = fs.readFileSync('index.html','utf8');
-  const names = ['getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue',
+  const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','getRequestRepMatchTokens','doesRequestRepMatchValue',
+    'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName',
+    'getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
-    'isActiveRequestCustomerMapping','buildRequestModalCustomerOptionsCache','getRequestModalCustomerOptionsForRep',
+    'isActiveRequestCustomerMapping','getRequestModalCustomerOptionsCacheSignature','buildRequestModalCustomerOptionsCache','getRequestModalCustomerOptionsForRep',
     'isCurrentRequestCustomerContext','buildRequestCustomerPickerGroups','processCustStep',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
   return names.map(name => {
@@ -25,16 +27,16 @@ export const mappingFixtureRow = {
 };
 export const requestMappingSetup = `
 var firstNonEmptyValue=(...values)=>values.find(value=>value!==undefined&&value!==null&&String(value).trim()!=='')||'';
-var normalizeRepMatchToken=value=>String(value||'').toLowerCase().trim();
-var resolveCanonicalRequestRepName=value=>String(value||'').trim();
-var doesRequestRepMatchValue=(a,b)=>normalizeRepMatchToken(a)===normalizeRepMatchToken(b);
 var buildRequestCustomerValue=(a,b)=>a+' | '+b;
 var getRequestCustomerConsigneeLabel=buildRequestCustomerValue;
 var parseRequestCustomerFolderParts=(label,option)=>({customerName:option?.customerName||String(label).split(' | ')[0],consigneeName:option?.consigneeName||String(label).split(' | ')[1]||''});
 var getRequestConsigneeFolderLabel=value=>value||'No consignee';
-var normalizeRequestCustomerFolderKey=normalizeRepMatchToken;
+var normalizeRequestCustomerFolderKey=value=>normalizeRepMatchToken(value);
 var requestModalCustomerOptionsCacheKey='',requestModalCustomerOptionsByRepCache=new Map(),requestModalCustomerGroupCacheKey='',requestModalCustomerGroupCache=[];
-var mappingRevision='1',getRequestModalCustomerOptionsCacheSignature=()=>mappingRevision;
+var mappingRevision='1',resolvedViewStateEpoch=0;
+var getDatasetLoadSignature=key=>String(key)==='customerRepMap'?'customerRepMap:'+mappingRevision:String(key)+':1';
+var REQUEST_MODAL_REP_OPTIONS=['Rep One','Rep Two','Molly Dixon'].map(label=>{const token=normalizeRepMatchToken(label);return {label,token,collapsedToken:token.replace(/\\s+/g,'')};});
+var requestModalRepUserOptions=[],requestMappedRepSource=null,requestMappedRepRevision='',requestMappedRepOptions=[];
 var isRequestModalCustomerMapReady=()=>true;
 var tempSelectedReqRep='Rep One',tempRequestCustomerSelectedContext=null,tempRequestCustomerSelectedFinalLabel='';
 var customerRepMapRows=[],reservesInventory=[],toasts=[],qtyCalls=[];

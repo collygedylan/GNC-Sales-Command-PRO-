@@ -112,6 +112,7 @@ export function selectAffectedTests(changedFiles, { root, map } = {}) {
     || file.startsWith('supabase/migrations/')
     || file.startsWith('supabase/tests/')
     || file.startsWith('supabase/ci/') && /(?:pglite|concurrency)/.test(file))
+    || files.some(file => groups['canonical-http'].includes(file))
     || playwrightTags.includes('@database');
   return {
     files, modules: modules.map(module => module.id), unknown, deleted,
