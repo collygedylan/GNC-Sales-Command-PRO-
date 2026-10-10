@@ -48,7 +48,7 @@ test('recovery evidence rejects a mismatched commit and a deployment version rac
   await assert.rejects(createAppsScriptRecoveryEvidence({
     script: client({ before: 17, after: 18 }), scriptId: 'script-1',
     deploymentId: 'deployment-1', expectedCommit: commit
-  }), /DEPLOYMENT_CHANGED_DURING_VERIFICATION/);
+  }), /DEPLOYMENT_ADVANCED/);
 });
 
 test('sync workflow retains only the sanitized recovery evidence artifact', () => {
@@ -115,8 +115,45 @@ test('pinned verification fails immediately for newer deployment or a concurrent
   for (const versions of [[18], [17, 18]]) {
     const script = sequencedClient({ versions });
     await assert.rejects(createAppsScriptRecoveryEvidence({ ...pinned, script,
-      sleep: async () => assert.fail('must not retry a deployment race') }), /DEPLOYMENT_ADVANCED|DEPLOYMENT_CHANGED_DURING_VERIFICATION/);
+      sleep: async () => assert.fail('must not retry a deployment that advanced') }), /DEPLOYMENT_ADVANCED/);
   }
+});
+
+test('pinned verification retries an after-read version below the target and then converges', async () => {
+  const script = sequencedClient({ versions: [17, 16, 17, 17] });
+  const observations = [], waits = [];
+  const evidence = await createAppsScriptRecoveryEvidence({ ...pinned, script,
+    sleep: async ms => waits.push(ms), onObservation: value => observations.push(value) });
+  assert.equal(evidence.versionNumber, 17);
+  assert.deepEqual(waits, [5000]);
+  assert.deepEqual(observations.map(({ code, observedVersionBefore, observedVersionAfter }) => [code, observedVersionBefore, observedVersionAfter]), [
+    ['APPS_SCRIPT_RECOVERY_EVIDENCE_VERSION_NOT_VISIBLE', 17, 16],
+  ]);
+  assert.deepEqual(script.calls.filter(c => c.operation === 'content').map(c => c.args.versionNumber), [17, 17]);
+  assert.ok(script.calls.every(c => c.options.retry === false));
+});
+
+test('persistent after-read stale versions exhaust only the configured pinned attempts', async () => {
+  const script = sequencedClient({ versions: [17, 16, 17, 16, 17, 16] });
+  const observations = [], waits = [];
+  await assert.rejects(createAppsScriptRecoveryEvidence({ ...pinned, script,
+    sleep: async ms => waits.push(ms), onObservation: value => observations.push(value) }), /VERSION_NOT_VISIBLE/);
+  assert.equal(script.calls.filter(c => c.operation === 'content').length, 3);
+  assert.equal(waits.length, 2);
+  assert.equal(observations.length, 3);
+  assert.ok(observations.every(o => o.observedVersionBefore === 17 && o.observedVersionAfter === 16));
+});
+
+test('a second-read version above the pin fails immediately and logs both observations', async () => {
+  const script = sequencedClient({ versions: [17, 18] });
+  const observations = [], waits = [];
+  await assert.rejects(createAppsScriptRecoveryEvidence({ ...pinned, script,
+    sleep: async ms => waits.push(ms), onObservation: value => observations.push(value) }), /DEPLOYMENT_ADVANCED/);
+  assert.deepEqual(waits, []);
+  assert.equal(script.calls.filter(c => c.operation === 'content').length, 1);
+  assert.deepEqual(observations.map(({ observedVersionBefore, observedVersionAfter, code }) => [observedVersionBefore, observedVersionAfter, code]), [
+    [17, 18, 'APPS_SCRIPT_RECOVERY_EVIDENCE_DEPLOYMENT_ADVANCED'],
+  ]);
 });
 
 test('retry configuration must retain pinned identities and a bounded deadline', async () => {
