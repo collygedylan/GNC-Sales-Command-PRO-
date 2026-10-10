@@ -80,10 +80,18 @@ export async function renderDriveLayoutCard(page: Page, options: DriveLayoutOpti
     document.body.dataset.opsTheme = ${JSON.stringify(options.theme === 'dark' ? 'dark' : 'light')};
     document.documentElement.classList.toggle('outdoor-mode', ${JSON.stringify(options.theme === 'outdoor')});
     document.body.classList.toggle('outdoor-mode', ${JSON.stringify(options.theme === 'outdoor')});
-    // Replace rather than merge the in-memory fixture so the photo/no-photo
-    // variants cannot inherit stale fields from a previous render iteration.
-    fullInventory = [row];
     selectedItems.clear();
+    // Keep the navigation shell on Drive while mounting exactly one synthetic
+    // generated card, independent of the async common-name drill renderer.
+    if (!window.__driveLayoutOriginalRenderDrive) window.__driveLayoutOriginalRenderDrive = renderDrive;
+    renderDrive = () => {};
+    switchView('drive');
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // A detail read started by the navigation shell can replace fullInventory
+    // while the two animation frames settle. Reinstall the synthetic fixture
+    // after that async boundary so the rendered card and real DOM-id lookup
+    // resolve against the same row and indexes.
+    fullInventory = [row];
     rebuildMasterInventoryIndexes();
     // The mounted synthetic row is the entire fixture scope; mark row coverage
     // complete so Loc On Hand is a deterministic one-row total, while keeping
@@ -94,12 +102,6 @@ export async function renderDriveLayoutCard(page: Page, options: DriveLayoutOpti
     masterState.fieldCoverage = 'browse';
     const source = fullInventory[0];
     source.DOM_ID = source.DOM_ID || source.UNIQUE_ID;
-    // Keep the navigation shell on Drive while mounting exactly one synthetic
-    // generated card, independent of the async common-name drill renderer.
-    if (!window.__driveLayoutOriginalRenderDrive) window.__driveLayoutOriginalRenderDrive = renderDrive;
-    renderDrive = () => {};
-    switchView('drive');
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const host = document.getElementById('drive-content');
     const identity = { currentUser, currentUserDisplay, currentRole, safeRole };
     if (${JSON.stringify(options.rep === true)}) {
