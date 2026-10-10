@@ -14432,65 +14432,38 @@ function buildProtectedInventoryFieldReportRowsV7_(transaction, frozenRows, over
     const stamps = entry.stamps;
     row.values.prisetby = stamps.prisetby == null ? '' : stamps.prisetby;
     row.values.priupdated = stamps.priupdated == null ? '' : stamps.priupdated;
-    if (entry.changedFields.indexOf('locationnote') !== -1) row.values.locationnotedate = stamps.locationnotedate == null ? '' : stamps.locationnotedate;
+    if (entry.changedFields.indexOf('locationnote') !== -1) {
+      row.values.locationnotedate = stamps.locationnotedate == null ? '' : stamps.locationnotedate;
+      if (row.changedFields.indexOf('locationnotedate') === -1) row.changedFields.push('locationnotedate');
+    }
   });
   return rows;
 }
 
-function buildReclassInquiryInventoryFieldSectionV7_(rows, reportStamps, inventoryFields) {
-  const labels = {
-    locationnote: 'Loc Note',
-    locationptn1: 'Loc PTN1',
-    desigitem: 'Desig Item',
-    desigcust: 'Desig Customer',
-    desigloc: 'Desig Location',
-    pullerresponsibility: 'Pull',
-    oversellpercentage: 'OS%',
-    salesnote: 'Sales Note',
-    suspend: 'SUS'
-  };
-  const safeRows = Array.isArray(rows) ? rows : [];
-  const stampRows = Array.isArray(reportStamps) ? reportStamps : [];
-  const fieldsByUid = new Map((Array.isArray(inventoryFields) ? inventoryFields : []).map(function(entry) {
-    return [normalizeInventoryTransactionText_(entry && entry.unique_id), entry];
-  }));
-  const stampsByUid = new Map(stampRows.map(function(entry) {
-    return [normalizeInventoryTransactionText_(entry && entry.unique_id), entry && entry.stamps || {}];
-  }));
-  const sections = [];
-  safeRows.forEach(function(row) {
-    const uid = normalizeInventoryTransactionText_(row && row.unique_id);
-    const stamps = stampsByUid.get(uid);
-    if (!stamps) return;
-    const values = row && row.values && typeof row.values === 'object' ? row.values : {};
-    const entry = fieldsByUid.get(uid);
-    const before = entry && entry.before || values;
-    const after = entry && entry.after || values;
-    const changed = new Set(entry && Array.isArray(entry.changedFields) ? entry.changedFields : []);
-    const fieldRows = RECLASS_INQUIRY_V7_EDITABLE_FIELDS_.map(function(field) {
-      const oldValue = String(before[field] == null ? '' : before[field]);
-      const newValue = String(after[field] == null ? '' : after[field]);
-      const isChanged = changed.has(field);
-      let oldHtml = oldValue ? escapeEmailHtml_(oldValue) : '&nbsp;';
-      let newHtml = newValue ? escapeEmailHtml_(newValue) : '[blank]';
-      if (field === 'suspend' && isChanged && oldValue && !newValue) oldHtml = '<s>' + escapeEmailHtml_(oldValue) + '</s>';
-      if (field === 'suspend' && isChanged && !oldValue && newValue) newHtml = 'Yes — ' + escapeEmailHtml_(newValue);
-      if (isChanged) newHtml = buildReclassInquiryProposalBoxHtml_(newHtml);
-      return '<tr' + (isChanged ? ' class="edited-cell" data-edited="true"' : '') + '><th>' + escapeEmailHtml_(labels[field]) + '</th><td>' + oldHtml + '</td><td' + (isChanged ? ' class="edited-cell" data-edited="true"' : '') + '>' + newHtml + '</td></tr>';
-    }).join('');
-    const changedNote = changed.has('locationnote');
-    const stampValues = entry && entry.stamps || stamps;
-    const stampLine = [
-      'Pri By: ' + String(stampValues.prisetby || ''),
-      'Eval Date: ' + String(stampValues.evaldate || ''),
-      'Pri Update: ' + String(stampValues.priupdated || ''),
-      changedNote && stampValues.locationnotedate ? 'Note Date: ' + String(stampValues.locationnotedate) : ''
-    ].filter(Boolean).map(escapeEmailHtml_).join(' &nbsp; | &nbsp; ');
-    const heading = String(values.locationcode || '') + ' / Lot ' + String(values.lotcode || '');
-    sections.push('<section class="v7-inventory-row"><h3>' + escapeEmailHtml_(heading) + '</h3><table class="v7-inventory-fields"><thead><tr><th>Field</th><th>Before</th><th>Confirmed</th></tr></thead><tbody>'
-      + fieldRows + '<tr class="v7-inventory-stamps"><td colspan="3">' + stampLine + '</td></tr></tbody></table></section>');
-  });
-  return sections.length ? '<div class="section-title">Confirmed Inventory Fields</div>' + sections.join('') : '';
+function buildReclassInquiryInventoryFieldHtml_(row, key) {
+  const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+  const fieldEdit = row && row.v7InventoryFields && typeof row.v7InventoryFields === 'object' ? row.v7InventoryFields : null;
+  const before = fieldEdit && fieldEdit.before && typeof fieldEdit.before === 'object' ? fieldEdit.before : {};
+  const after = fieldEdit && fieldEdit.after && typeof fieldEdit.after === 'object' ? fieldEdit.after : {};
+  const changed = new Set(fieldEdit && Array.isArray(fieldEdit.changedFields) ? fieldEdit.changedFields : []);
+  const rowChanges = new Set(Array.isArray(row && row.changedFields) ? row.changedFields : []);
+  const current = String(Object.prototype.hasOwnProperty.call(values, key) ? (values[key] == null ? '' : values[key]) : '');
+  const prior = String(Object.prototype.hasOwnProperty.call(before, key) ? (before[key] == null ? '' : before[key]) : '');
+  const confirmed = String(Object.prototype.hasOwnProperty.call(after, key) ? (after[key] == null ? '' : after[key]) : current);
+  const isEdited = changed.has(key) || (!fieldEdit && rowChanges.has(key));
+  if (isEdited && fieldEdit) {
+    let display = confirmed ? escapeEmailHtml_(confirmed) : '[blank]';
+    if (key === 'suspend' && prior && !confirmed) {
+      display = '<s>' + escapeEmailHtml_(prior) + '</s> &rarr; [blank]';
+    } else if (key === 'suspend' && !prior && confirmed) {
+      display = 'Yes - ' + escapeEmailHtml_(confirmed);
+    } else if (prior && prior !== confirmed) {
+      display = '<s>' + escapeEmailHtml_(prior) + '</s> &rarr; ' + display;
+    }
+    return '<span class="inventory-field-value edited-cell" data-edited="true">' + display + '</span>';
+  }
+  return '<span class="inventory-field-value' + (isEdited ? ' edited-cell' : '') + '"' + (isEdited ? ' data-edited="true"' : '') + '>'
+    + (current ? escapeEmailHtml_(current) : '&nbsp;') + '</span>';
 }
 
 function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, payload, now) {
@@ -14508,6 +14481,25 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     normalizedRow.temporaryChanges = Array.isArray(row && row.temporaryChanges)
       ? row.temporaryChanges.map(function(change) { return Object.assign({}, change || {}); }) : [];
     return normalizedRow;
+  });
+  const sourceRowsByUid = new Map((Array.isArray(authoritativeRows) ? authoritativeRows : []).map(function(row) {
+    return [normalizeInventoryTransactionText_(getInventoryTransactionRowUid_(row)), row];
+  }));
+  const compactInventoryDetails = [
+    ['desigitem', ['desigitem', 'DESIGITEM', 'DesigItem']],
+    ['desigcust', ['desigcust', 'DESIGCUST', 'DesigCust']],
+    ['desigloc', ['desigloc', 'DESIGLOC', 'DesigLoc']],
+    ['pullerresponsibility', ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER']],
+    ['oversellpercentage', ['oversellpercentage', 'OVERSELLPERCENTAGE', 'oversell', 'OVERSELL']],
+    ['salesnote', ['salesnote', 'SALESNOTE']],
+    ['suspend', ['suspend', 'SUSPEND']]
+  ];
+  normalizedReportRows.forEach(function(row) {
+    const source = sourceRowsByUid.get(normalizeInventoryTransactionText_(row.unique_id));
+    compactInventoryDetails.forEach(function(field) {
+      if (Object.prototype.hasOwnProperty.call(row.values, field[0])) return;
+      row.values[field[0]] = getReclassInquiryExactValue_(source, field[1], '');
+    });
   });
   const sourceUid = getInventoryTransactionRowUid_(sourceRow);
   const originReportRow = normalizedReportRows.find(function(row) {
@@ -14799,9 +14791,18 @@ function formatReclassInquiryScopeNote_(scope) {
 function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const safeModel = model || {};
   const esc = escapeEmailHtml_;
-  const editSummary = safeModel.editSummary || {};
-  const actionLabel = String(firstNonEmptyRequestValue_(safeModel.requestActionLabel, getReclassInquiryActionLabel_(safeModel.requestAction), 'Reclass Item Inquiry'));
-  const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions);
+  const pageHeaderText = (safeModel.isSyntheticPilot ? 'TEST PILOT - SYNTHETIC DATA ONLY | ' : '') + 'GNC PH Reclass Item Inquiry';
+  const holdColumns = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
+    .some(function(field) { return field.key === 'holdstopcode'; });
+  const compactWidths = holdColumns
+    ? { lotcode: '.50in', locationcode: '.60in', source: '.35in', priority: '.45in', ptronhand: '.50in', ptrreviewed: '.40in', locationnotedate: '.85in', locationptn1: '.65in', holdstopcode: '.35in', holdstopreason: '.70in', desigitem: '.50in', desigcust: '.50in', desigloc: '.50in', pullerresponsibility: '.45in', oversellpercentage: '.35in', salesnote: '.75in', suspend: '.32in' }
+    : { lotcode: '.55in', locationcode: '.65in', source: '.40in', priority: '.55in', ptronhand: '.70in', ptrreviewed: '.55in', locationnotedate: '.85in', locationptn1: '.85in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.50in', oversellpercentage: '.35in', salesnote: '.95in', suspend: '.35in' };
+  const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
+    .map(function(field) { return Object.assign({}, field, { width: compactWidths[field.key] || '' }); });
+  [
+    ['desigitem', 'Desig Item'], ['desigcust', 'Desig Cust'], ['desigloc', 'Desig Loc'],
+    ['pullerresponsibility', 'Pull'], ['oversellpercentage', 'OS%'], ['salesnote', 'Sales Note'], ['suspend', 'SUS']
+  ].forEach(function(field) { compactFields.push({ key: field[0], label: field[1], width: compactWidths[field[0]] || '' }); });
   const identityChangedFields = Array.isArray(safeModel.identityChangedFields) ? safeModel.identityChangedFields : [];
   const scopeNote = String(safeModel.liveEditSummary && safeModel.liveEditSummary.scopeNote || '')
     || formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
@@ -14830,7 +14831,10 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const sortedRows = sortReclassInquiryCompactRows_(safeModel.rows);
   const rowBody = sortedRows.map(function(row) {
     const changedFields = Array.isArray(row && row.changedFields) ? row.changedFields : [];
-    return '<tr>' + compactFields.map(function(field) {
+    return '<tr data-location-row="true">' + compactFields.map(function(field) {
+      if (['desigitem', 'desigcust', 'desigloc', 'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'].indexOf(field.key) !== -1) {
+        return '<td>' + buildReclassInquiryInventoryFieldHtml_(row, field.key) + '</td>';
+      }
       const edited = changedFields.indexOf(field.key) !== -1;
       const sourceValues = field.source === 'actionValues' ? row && row.actionValues : row && row.values;
       let rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
@@ -14862,7 +14866,16 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
         }
         return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
       }
-      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + '</td>';
+      let stampHtml = '';
+      if (field.key === 'priority' && row && row.v7ReportStamps) {
+        const stamps = row.v7ReportStamps;
+        const stampParts = [];
+        if (stamps.prisetby) stampParts.push('By ' + String(stamps.prisetby));
+        if (stamps.evaldate) stampParts.push('Eval ' + String(stamps.evaldate));
+        if (stamps.priupdated) stampParts.push('Updated ' + String(stamps.priupdated));
+        if (stampParts.length) stampHtml = '<small class="row-stamps">' + esc(stampParts.join(' | ')) + '</small>';
+      }
+      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + stampHtml + '</td>';
     }).join('') + '</tr>';
   }).join('');
   const compactFieldKeys = new Set(compactFields.map(function(field) { return field.key; }));
@@ -14886,12 +14899,6 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
     ? '<div class="section-title">Temporary Report Edits</div><table class="temporary-table"><thead><tr><th>Location</th><th>Lotcode</th><th>Field</th><th>Requested Value</th></tr></thead><tbody>' + supplementalTemporaryRows.map(function(change) {
         return '<tr><td>' + esc(change.locationcode) + '</td><td>' + esc(change.lotcode) + '</td><td>' + esc(change.label) + '</td><td class="edited-cell" data-edited="true">' + buildReclassInquiryProposalBoxHtml_(change.value) + '</td></tr>';
       }).join('') + '</tbody></table>'
-    : '';
-  const v7InventoryFieldsHtml = safeModel.isV7
-    ? buildReclassInquiryInventoryFieldSectionV7_(safeModel.rows, safeModel.v7ReportStamps, safeModel.v7InventoryFields)
-    : '';
-  const pilotBanner = safeModel.isSyntheticPilot
-    ? '<div class="pilot-banner">TEST PILOT - SYNTHETIC DATA ONLY</div>'
     : '';
   const liveEditSummary = safeModel.liveEditSummary && typeof safeModel.liveEditSummary === 'object' ? safeModel.liveEditSummary : null;
   const hasConfirmedV7Changes = Number(safeModel.v7ChangedFieldCount) > 0 || !!(liveEditSummary && Number(liveEditSummary.rowCount) > 0);
@@ -14922,9 +14929,10 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       }).join('')
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}.v7-inventory-row{margin:0 0 6px;break-inside:avoid;page-break-inside:avoid}.v7-inventory-row h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.v7-inventory-fields th:first-child{width:16%}.v7-inventory-fields th:nth-child(2),.v7-inventory-fields th:nth-child(3){width:42%}.v7-inventory-stamps td{font-size:6.5pt;font-weight:700}' +
-    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span>' + esc(proposalLegend) + '</span></div>' +
-    '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + v7InventoryFieldsHtml + supplementalTemporaryHtml + '</body></html>';
+    '@page{size:Letter landscape;margin:.16in .34in .34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:7pt;line-height:1.15}.page-title-cell{padding:0;border:0}.page-header{padding:3px 8px;border:2px solid #000;background:#fff176;color:#000;font:800 10pt Arial,Helvetica,sans-serif;text-align:center}.report-summary-cell{padding:3px 0;border:0}.report-summary-row{break-inside:auto;page-break-inside:auto}.meta{margin:0 0 5px;font-size:8pt}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:7pt}.row-stamps{display:block;margin-top:2px;font-size:5.5pt;line-height:1.1;overflow-wrap:anywhere}.inventory-field-value{overflow-wrap:anywhere;word-break:break-word}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:6.5pt;text-align:left}td{font-size:6.5pt;white-space:pre-line}.edited-cell{background:#fff176!important}.inventory-field-value s{color:#333}' +
+    '</style></head><body><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr class="page-title-row"><th class="page-title-cell" colspan="' + compactFields.length + '"><div class="page-header">' + esc(pageHeaderText) + '</div></th></tr><tr class="column-heading-row">' + rowHead + '</tr></thead><tbody>' +
+    '<tr class="report-summary-row"><td class="report-summary-cell" colspan="' + compactFields.length + '"><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + '</div><div class="proposal-legend"><span>' + esc(proposalLegend) + '</span></div><div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div></td></tr>' +
+    rowBody + (supplementalTemporaryHtml ? '<tr class="supplemental-temporary-row"><td colspan="' + compactFields.length + '">' + supplementalTemporaryHtml + '</td></tr>' : '') + '</tbody></table></body></html>';
 }
 
 function getReclassInquiryCompactPilotRows_() {

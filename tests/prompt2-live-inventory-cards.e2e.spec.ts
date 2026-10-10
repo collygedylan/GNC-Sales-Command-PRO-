@@ -290,3 +290,157 @@ test('Drive keeps all six metrics on one row and sums every season at the exact 
   expect(fixture.blockedMutations).toEqual([]);
   expect(fixture.errors).toEqual([]);
 });
+
+test('Queued Request cards use the compact inventory layout and preserve request selection', { tag: ['@local-e2e', '@release-functional'] }, async ({ page, baseURL }, testInfo) => {
+  const fixture = await installDriveCardLayoutFixture(page, baseURL!);
+  await settleDriveLayoutShell(page, testInfo.project.name);
+  await installRows(page, 'full');
+
+  await page.evaluate(async () => window.eval(`(async () => {
+    const master = window.__prompt2SyntheticRows[0];
+    const row = {
+      ...master,
+      UNIQUE_ID: 'prompt2-request-card-a',
+      DOM_ID: 'prompt2-request-card-a',
+      REQUESTED_BY: 'Alyssa Beitz',
+      SALESREPNAME: 'Stale Master Rep',
+      CUSTOMERNAME: 'Request Customer with a deliberately long name that must wrap within the compact card metadata chip',
+      REQ_CUSTOMER: 'Request Customer with a deliberately long name that must wrap within the compact card metadata chip',
+      CONSIGNEENAME: 'Request Consignee with another deliberately long name that must wrap within the compact card metadata chip',
+      REQUEST_FOLDER: 'Synthetic Request Folder',
+      REQ_QTY: '12',
+      REQ_CALIPER: '3/8 inch',
+      CALIPER: '',
+      caliper: '',
+      DESIRED_CALIPER: '',
+      desired_caliper: '',
+      REQ_STATUS: 'Pending',
+      // Keep this synthetic request newer than the linked master completion
+      // timestamp so normal completion reconciliation cannot complete it.
+      CREATED_AT: new Date().toISOString(),
+      REQ_RESERVE: 'NO',
+      DATE_COMPLETED: '',
+      date_completed: '',
+      REQUEST_HISTORY: false,
+      MATCH: '',
+      INITIAL_PTR: ''
+    };
+    await initializeRequestCapabilities({ force: true });
+    nativeAuthSessionActive = false;
+    nativeAuthProfile = null;
+    nativeAuthReadRequired = false;
+    activeReqTab = 'pending';
+    requestViewLevel = 0;
+    datasetLoadState.requests.initialLoaded = true;
+    datasetLoadState.requests.fullLoaded = true;
+    requestViewLiveSyncSignature = 'prompt2-queued-request-fixture';
+    requestsInventory = [row];
+    rebuildRequestInventoryIndexes();
+    invalidateRequestViewResolvedCaches();
+    switchView('request', { force: true });
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // A completion that began while the view changed must not replace this
+    // canonical synthetic row; card selection resolves through this dataset.
+    requestsInventory = [row];
+    rebuildRequestInventoryIndexes();
+    invalidateRequestViewResolvedCaches();
+    const requestHost = document.getElementById('request-content');
+    if (!requestHost) throw new Error('Request content host is missing');
+    // Render the real Request card component into the real visible Request
+    // host. Keep unrelated asynchronous empty reads from replacing this
+    // synthetic layout fixture after navigation has completed.
+    renderRequest = () => {};
+    requestHost.innerHTML = generateCard(row, 'request', 'status-green');
+    if (!requestHost.querySelector('.app-request-compact-card')) throw new Error('Synthetic Request card markup is missing');
+    window.__prompt2RequestRow = row;
+    return true;
+  })()`));
+
+  for (const width of [360, 768]) {
+    await page.setViewportSize({ width, height: 900 });
+    for (const theme of ['light', 'dark'] as const) {
+      await page.evaluate(({ theme }) => window.eval(`(() => {
+        const row = window.__prompt2RequestRow;
+        selectedItems.clear();
+        document.body.classList.add('ops-precision-pilot');
+        document.body.dataset.opsTheme = ${JSON.stringify(theme)};
+        requestsInventory = [row];
+        rebuildRequestInventoryIndexes();
+        renderRequest();
+        return true;
+      })()`), { theme });
+
+      const card = page.locator('#request-content .app-request-compact-card');
+      await expect(card).toHaveCount(1);
+      const metrics = await card.locator('.app-card-qty-chip').evaluateAll((chips) => chips.map((chip) => ({
+        label: chip.querySelector('.app-card-qty-label')?.textContent?.trim() || '',
+        top: chip.getBoundingClientRect().top,
+        overflow: chip.scrollWidth - chip.clientWidth,
+        width: chip.clientWidth,
+        scrollWidth: chip.scrollWidth,
+        flexDirection: getComputedStyle(chip).flexDirection,
+        paddingInline: getComputedStyle(chip).paddingInline,
+        children: Array.from(chip.children).map((child) => ({
+          text: child.textContent?.trim(),
+          width: child.clientWidth,
+          scrollWidth: child.scrollWidth,
+          display: getComputedStyle(child).display,
+        })),
+      })));
+      expect(metrics.map((entry) => entry.label)).toEqual([
+        'On Hand', 'Review', 'Available', 'Open Stock', 'Loc Photo Match', 'Loc On Hand',
+      ]);
+      expect(Math.max(...metrics.map((entry) => entry.top)) - Math.min(...metrics.map((entry) => entry.top))).toBeLessThanOrEqual(1);
+      expect(metrics.every((entry) => entry.overflow <= 1), JSON.stringify(metrics)).toBe(true);
+      expect(metrics.every((entry) => entry.children[1]?.display === 'none'), JSON.stringify(metrics)).toBe(true);
+      await expect(card.locator('[data-inventory-card-metric="loc-photo-match"] .app-card-qty-value')).toHaveText('N/A');
+
+      const meta = await card.locator('.app-request-card-meta').innerText();
+      expect(meta).toContain('Request Customer with a deliberately long name');
+      expect(meta).toContain('Request Consignee with another deliberately long name');
+      expect(meta).toContain('Alyssa Beitz');
+      expect(meta).not.toContain('Stale Master Rep');
+      expect(meta).toContain('12');
+      expect(meta).toContain('3/8 inch');
+      const metadataOverflow = await card.locator('.app-request-card-meta-chip').evaluateAll((chips) => chips.map((chip) => chip.scrollWidth - chip.clientWidth));
+      expect(metadataOverflow.every((overflow) => overflow <= 1)).toBe(true);
+      await expect(card).toHaveAttribute('data-request-uid', 'prompt2-request-card-a');
+      await expect(card).toHaveAttribute('role', 'button');
+      await expect(card.locator('.app-request-card-status-row')).toContainText('Pending');
+      await expect(card).toContainText('Request Customer');
+
+      const selection = await page.evaluate(() => window.eval(`(() => {
+        const row = window.__prompt2RequestRow;
+        requestsInventory = [row];
+        rebuildRequestInventoryIndexes();
+        const checkbox = document.querySelector('#request-content .app-request-compact-card .card-checkbox');
+        if (!(checkbox instanceof HTMLInputElement)) throw new Error('Request card selection control is missing');
+        if (!String(checkbox.getAttribute('onclick') || '').includes('toggleGlobalItem')) throw new Error('Request checkbox is not wired to the selection handler');
+        checkbox.checked = true;
+        checkbox.onclick.call(checkbox, { stopPropagation() {} });
+        const domId = String(row && row.DOM_ID || '').trim();
+        return { domId, selected: !!domId && selectedItems.has(domId) };
+      })()`));
+      expect(selection).toMatchObject({ domId: 'prompt2-request-card-a', selected: true });
+      await card.screenshot({ path: testInfo.outputPath(`prompt2-request-card-${width}-${theme}.png`) });
+    }
+  }
+
+  await page.evaluate(() => window.eval(`(() => {
+    const row = window.__prompt2RequestRow;
+    row.REQ_CALIPER = '';
+    row.CALIPER = '';
+    row.caliper = '';
+    row.DESIRED_CALIPER = '';
+    row.desired_caliper = '';
+    requestsInventory = [row];
+    rebuildRequestInventoryIndexes();
+    document.getElementById('request-content').innerHTML = generateCard(row, 'request', 'status-green');
+    return true;
+  })()`));
+  await expect(page.locator('#request-content .app-request-card-meta-chip')).toHaveCount(4);
+  await expect(page.locator('#request-content .app-request-card-meta')).not.toContainText('Caliper');
+
+  expect(fixture.blockedMutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});

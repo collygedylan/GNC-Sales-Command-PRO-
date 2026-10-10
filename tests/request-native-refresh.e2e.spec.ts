@@ -186,8 +186,12 @@ test('native Request navigation and refresh preserve unchanged verified cards', 
   const changedState = await page.evaluate(({ uid, expectedQty }) => window.eval(`({
       renderCalls: window.__requestRenderCalls,
       changedCardReplaced: !window.__requestChangedCard.isConnected,
-      quantityVisible: !!document.querySelector('#request-content [data-request-uid="${CSS.escape(uid)}"]')
-        && document.querySelector('#request-content [data-request-uid="${CSS.escape(uid)}"]')?.textContent.includes('QTY: ${expectedQty}'),
+      quantityVisible: (() => {
+        const card = document.querySelector('#request-content [data-request-uid="${CSS.escape(uid)}"]');
+        const quantityChip = Array.from(card?.querySelectorAll('.app-request-card-meta-chip') || [])
+          .find(chip => chip.firstElementChild?.textContent?.trim() === 'Request Qty');
+        return quantityChip?.querySelector('strong')?.textContent?.trim() === '${expectedQty}';
+      })(),
       verified: productionLiveSyncVerifiedView === productionVerifiedViewKey(),
       uid: ${JSON.stringify(uid)}
     })`), { uid: changedUid, expectedQty });

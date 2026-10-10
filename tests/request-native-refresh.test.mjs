@@ -284,11 +284,37 @@ function renderSignatureFixture(overrides = {}) {
   ctx.getInventoryCardDesigCustValue = item => displayValue(item, ['DESIGCUST', 'desigcust', 'DESIG_CUST', 'desig_cust', 'DesigCust', 'DESIGNCUST', 'designcust', 'CUSTOMERDESIG', 'customerdesig']);
   ctx.getInventoryCardDesigItemValue = item => displayValue(item, ['DESIGITEM', 'desigitem', 'DESIG_ITEM', 'desig_item', 'DesigItem', 'DESIGNITEM', 'designitem', 'ITEMDESIG', 'itemdesig']);
   ctx.getInventoryCardDesigLocValue = item => displayValue(item, ['DESIGLOC', 'desigloc', 'DESIG_LOC', 'desig_loc', 'DesigLoc', 'DESIGNLOC', 'designloc', 'DESIG_LOCATION', 'desig_location']);
+  ctx.getRequestAssignedRep = item => String(item.REQUESTED_BY || item.SALESREPNAME || item.SALESREP || item.SALESREPID || 'Unknown Rep').trim() || 'Unknown Rep';
+  ctx.normalizeCardQuantityValue = value => String(value == null ? '' : value).trim() || '0';
+  ctx.formatLocPhotoMatchQtyValue = item => item.LOC_MATCH_QTY == null ? 'Not verified' : String(item.LOC_MATCH_QTY);
+  ctx.getCardLocationOnHandValue = item => item.LOC_ON_HAND_TOTAL ?? null;
   Object.assign(ctx, overrides);
   vm.createContext(ctx);
   const fn = extractFunction(html, 'buildRequestItemRenderSignature', 'function buildRequestChunkRenderKey(');
   vm.runInContext(fn, ctx);
   return ctx.buildRequestItemRenderSignature;
+}
+
+function liveRequestSignatureFixture() {
+  const firstNonEmptyValue = (...values) => values.find(value => value != null && String(value).trim() !== '') ?? '';
+  const ctx = {
+    firstNonEmptyValue,
+    normalizeRequestStatus: value => String(value || '').trim().toLowerCase(),
+    getRequestAssignedRep: item => String(item.REQUESTED_BY || item.SALESREPNAME || item.SALESREP || item.SALESREPID || 'Unknown Rep').trim() || 'Unknown Rep',
+    getRequestDesiredSpecValue: () => '',
+    getRequestDesiredCaliperValue: () => '',
+    getRequestEditableCommentsValue: () => '',
+    getRequestRowNoteValue: () => '',
+    getMoveRequestRowBatchId: () => '',
+    getMoveRequestRowStage: () => '',
+    getRequestDeliveryStatus: () => '',
+    formatLocPhotoMatchQtyValue: item => item.LOC_MATCH_QTY == null ? 'Not verified' : String(item.LOC_MATCH_QTY),
+    normalizeCardQuantityValue: value => String(value == null ? '' : value).trim() || '0',
+    getCardLocationOnHandValue: item => item.LOC_ON_HAND_TOTAL ?? null
+  };
+  vm.createContext(ctx);
+  vm.runInContext(extractFunction(html, 'buildRequestLiveSyncSignature', 'function normalizeRequestIdList('), ctx);
+  return ctx.buildRequestLiveSyncSignature;
 }
 
 test('request signatures resolve owned photos once and skip dates only for empty links', () => {
@@ -410,6 +436,8 @@ test('request card signature tracks normalized visible inventory chips and desig
     UNIQUE_ID: 'request-1', DOM_ID: 'dom-1', COMMONNAME: 'Rose', CONTSIZE: '1 gal',
     LOCATIONCODE: 'C.06.001', LOTCODE: 'LOT-1', REQUEST_SOURCE: 'Drive',
     REQUESTED_BY: 'Rep', REQ_CUSTOMER: 'Customer', REQ_QTY: '2', REQ_STATUS: 'Pending',
+    CUSTOMERNAME: 'Customer Display', CONSIGNEENAME: 'Garden Center', SALESREPNAME: 'Rep Display',
+    REQ_CALIPER: '0.75 in', LOC_MATCH_QTY: 6, LOC_ON_HAND_TOTAL: 18,
     REQ_RESERVE: 'NO', PRIORITY: 'High', PTRONHAND: '12.0', PTRREVIEWED: 8,
     PTRAVAILABLE: 4, S_LTS: 2, DESIGCUST: 'Garden', DESIGITEM: 'Rose #1',
     DESIGLOC: 'North', FIELDTAGCOLOR: 'Blue'
@@ -433,12 +461,45 @@ test('request card signature tracks normalized visible inventory chips and desig
     { DESIGCUST: 'Landscape' },
     { DESIGITEM: 'Rose #2' },
     { DESIGLOC: 'South' },
-    { FIELDTAGCOLOR: 'Red' }
+    { FIELDTAGCOLOR: 'Red' },
+    { CUSTOMERNAME: 'Another Customer' },
+    { CONSIGNEENAME: 'Another Consignee' },
+    { REQ_CALIPER: '1.00 in' },
+    { LOC_MATCH_QTY: 7 },
+    { LOC_ON_HAND_TOTAL: 19 }
   ];
   for (const change of displayedChanges) {
     assert.notEqual(signature({ ...row, ...change }), original,
       `${Object.keys(change)[0]} changes a value rendered on the request card`);
   }
+  const repFallbackRow = { ...row, REQUESTED_BY: '' };
+  assert.notEqual(signature({ ...repFallbackRow, SALESREPNAME: 'Another Rep' }), signature(repFallbackRow),
+    'the canonical assigned-rep fallback changes the rendered card when REQUESTED_BY is absent');
+});
+
+test('request live-sync signature tracks the customer and location details displayed on cards', () => {
+  const signature = liveRequestSignatureFixture();
+  const row = {
+    UNIQUE_ID: 'request-live-1', REQ_STATUS: 'Pending', REQ_CUSTOMER: 'Customer',
+    CUSTOMERNAME: 'Customer Display', CONSIGNEENAME: 'Garden Center', SALESREPNAME: 'Rep Display',
+    REQ_CALIPER: '0.75 in', LOC_MATCH_QTY: 6, LOC_ON_HAND_TOTAL: 18
+  };
+  const original = signature([row]);
+  assert.equal(signature([{ ...row }]), original, 'an unchanged row copy retains its signature');
+
+  for (const change of [
+    { CUSTOMERNAME: 'Another Customer' },
+    { CONSIGNEENAME: 'Another Consignee' },
+    { REQ_CALIPER: '1.00 in' },
+    { LOC_MATCH_QTY: 7 },
+    { LOC_ON_HAND_TOTAL: 19 }
+  ]) {
+    assert.notEqual(signature([{ ...row, ...change }]), original,
+      `${Object.keys(change)[0]} changes a value displayed on the Request card`);
+  }
+  const repFallbackRow = { ...row, REQUESTED_BY: '' };
+  assert.notEqual(signature([{ ...repFallbackRow, SALESREPNAME: 'Another Rep' }]), signature([repFallbackRow]),
+    'the canonical assigned-rep fallback invalidates the live signature when REQUESTED_BY is absent');
 });
 
 test('native request refresh helper accepts only an authorized foreground request-source adapter', () => {

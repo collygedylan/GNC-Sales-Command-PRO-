@@ -128,6 +128,8 @@ async function populatePriorityAndHold(page: Page) {
 function confirmedLiveEditResponse(priority = '1') {
   return {
     ok: true, status: 'queued', jobId: 'synthetic-reclass-live', queuedAt: '2026-10-09T12:01:00Z',
+    workflowPolicyVersion: 'reclass-action-workflow-v7-editable-fields-20261009',
+    inventoryFields: [],
     inventoryRevision: '501',
     liveEdits: [{ unique_id: 'drive-layout-synthetic-1-no-photo', priority, holdstopcode: 'H', holdstopreason: 'quality review',
       av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:01:00Z', last_updated: '2026-10-09T12:01:00Z',
@@ -138,6 +140,8 @@ function confirmedLiveEditResponse(priority = '1') {
 function confirmedPriorityResponse(priority = '1') {
   return {
     ok: true, status: 'queued', jobId: 'synthetic-reclass-live', queuedAt: '2026-10-09T12:01:00Z',
+    workflowPolicyVersion: 'reclass-action-workflow-v7-editable-fields-20261009',
+    inventoryFields: [],
     inventoryRevision: '502',
     liveEdits: [{ unique_id: 'drive-layout-synthetic-1-no-photo', priority, holdstopcode: null, holdstopreason: null,
       av_rule_last_clear_reason: 'priority_changed', av_rule_last_cleared_at: '2026-10-09T12:01:00Z', last_updated: '2026-10-09T12:01:00Z',
@@ -145,31 +149,40 @@ function confirmedPriorityResponse(priority = '1') {
   };
 }
 
-test('Move Down hold requires a reason and failed submissions retain all destinations', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
+test('Move Down uses the main On Hold action and failed submissions retain all destinations', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name); await f.open();
-  const { move } = await populate(page, 'move_down');
+  const { row, move } = await populate(page, 'move_down');
+  await expect(row.locator('[data-reclass-v3-action="hold"]')).toBeVisible();
+  await expect(row.locator('[data-reclass-v3-action="take_off_hold"]')).toBeVisible();
+  await expect(move.getByRole('checkbox')).toHaveCount(0);
   await expect(move.locator('[data-reclass-move-balance]')).toContainText('Remaining: 0');
-  await move.getByLabel('Place moved quantities On Hold', { exact: true }).check();
+  await page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"] [data-reclass-v3-action="hold"]').click();
   await page.locator('#argos-inventory-transaction-apply').click();
-  await expect(page.locator('#toast-notification')).toContainText('Hold reason');
+  await expect(page.locator('#toast-notification')).toContainText('Hold/Stop Reason');
   expect(f.calls).toHaveLength(0);
-  await move.getByLabel('Move Down Hold reason', { exact: true }).fill('Quality Review');
+  await page.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Quality Review');
+  f.setCreateReply(() => {
+    Object.assign(f.control.master[0], { priority: '2', holdstopcode: 'H', holdstopreason: 'quality review',
+      av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:01:00Z', last_updated: '2026-10-09T12:01:00Z' });
+    f.control.datasetRevision = 501;
+    return confirmedLiveEditResponse('2');
+  });
   f.failNext(); await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#toast-notification')).toContainText('Synthetic queue failure');
   await expect(move.getByLabel('Move Down quantity 1', { exact: true })).toHaveValue('15');
   await expect(move.getByLabel('Move Down destination 3', { exact: true })).toHaveValue('U1');
-  await expect(move.getByLabel('Move Down Hold reason', { exact: true })).toHaveValue('Quality Review');
+  await expect(page.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]')).toHaveValue('quality review');
   await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
   expect(f.calls).toHaveLength(2);
   expect(f.calls[1].idempotencyToken).toBe(f.calls[0].idempotencyToken);
   expect(f.calls[1].workflowPolicyVersion).toBe('reclass-action-workflow-v7-editable-fields-20261009');
-  expect(f.calls[1].transaction.holdStopProposals).toEqual([]);
+  expect(f.calls[1].transaction.holdStopProposals).toEqual([expect.objectContaining({ action: 'hold', reason: 'quality review', sourceUid: 'drive-layout-synthetic-1-no-photo' })]);
   expect(f.calls[1].rowOverlays[0].proposals).toEqual([{ action: 'move_down', splits: [
     { quantity: 15, destinationSeason: 'X' }, { quantity: 5, destinationSeason: 'S1' }, { quantity: 5, destinationSeason: 'U1' },
-  ], applyHold: true, holdReason: 'quality review' }]);
+  ], applyHold: false, holdReason: '' }]);
   expect(await page.evaluate(() => window.eval(`({oh:Number(fullInventory[0].PTRONHAND),season:fullInventory[0].SEASON,hold:fullInventory[0].HOLDSTOPCODE})`)))
-    .toEqual({ oh: 25, season: 'F1', hold: '' });
+    .toEqual({ oh: 25, season: 'F1', hold: 'H' });
   expect(f.control.blockedMutations).toEqual([]);
 });
 
@@ -319,9 +332,14 @@ test('both directions share the OH cap and split controls fit mobile widths', {"
 
 test('refresh and Review and Resend restore every Move Down split and hold instruction', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name); await f.open();
-  const { move } = await populate(page, 'move_down');
-  await move.getByLabel('Place moved quantities On Hold', { exact: true }).check();
-  await move.getByLabel('Move Down Hold reason', { exact: true }).fill('Keep for review');
+  await populate(page, 'move_down');
+  await page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"] [data-reclass-v3-action="hold"]').click();
+  await page.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Keep for review');
+  f.setCreateReply(() => {
+    const receipt = confirmedLiveEditResponse('2');
+    receipt.liveEdits[0].holdstopreason = 'keep for review';
+    return receipt;
+  });
   f.conflict(); await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
   await expect(page.getByRole('button', { name: 'Review and Resend', exact: true })).toBeVisible();
@@ -333,8 +351,9 @@ test('refresh and Review and Resend restore every Move Down split and hold instr
   const restored = row.locator('[data-reclass-move-action="move_down"]');
   await expect(restored.getByLabel('Move Down quantity 3', { exact: true })).toHaveValue('5');
   await expect(restored.getByLabel('Move Down destination 3', { exact: true })).toHaveValue('U1');
-  await expect(restored.getByLabel('Place moved quantities On Hold', { exact: true })).toBeChecked();
-  await expect(restored.getByLabel('Move Down Hold reason', { exact: true })).toHaveValue('keep for review');
+  await expect(restored.getByRole('checkbox')).toHaveCount(0);
+  await expect(row.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]')).toHaveValue('keep for review');
   expect(await page.evaluate(() => window.eval('argosInventoryTransactionState.idempotencyToken'))).not.toBe(token);
   expect(f.control.blockedMutations).toEqual([]);
 });

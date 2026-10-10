@@ -100,7 +100,7 @@ function loadServerModel() {
   const utf8End = code.indexOf('\nfunction ', utf8Start + 1);
   vm.runInContext(`${code.slice(utf8Start, utf8End)};`, context);
   vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = RECLASS_ACTION_WORKFLOW_V5_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_; this.RECLASS_INQUIRY_V7_EDITABLE_FIELDS_ = RECLASS_INQUIRY_V7_EDITABLE_FIELDS_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_; this.RECLASS_INQUIRY_ACTION_ORDER_V5_ = RECLASS_INQUIRY_ACTION_ORDER_V5_;`, context);
-  vm.runInContext('this.getProtectedLiveEditDelivery_ = getProtectedLiveEditDelivery_; this.buildProtectedLiveEditReportRows_ = buildProtectedLiveEditReportRows_; this.buildProtectedLiveEditSummary_ = buildProtectedLiveEditSummary_; this.getProtectedInventoryFieldDeliveryV7_ = getProtectedInventoryFieldDeliveryV7_; this.buildProtectedInventoryFieldReportRowsV7_ = buildProtectedInventoryFieldReportRowsV7_; this.buildReclassInquiryInventoryFieldSectionV7_ = buildReclassInquiryInventoryFieldSectionV7_; this.deliverReclassInquiryPayload_ = deliverReclassInquiryPayload_; this.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_;', context);
+  vm.runInContext('this.getProtectedLiveEditDelivery_ = getProtectedLiveEditDelivery_; this.buildProtectedLiveEditReportRows_ = buildProtectedLiveEditReportRows_; this.buildProtectedLiveEditSummary_ = buildProtectedLiveEditSummary_; this.getProtectedInventoryFieldDeliveryV7_ = getProtectedInventoryFieldDeliveryV7_; this.buildProtectedInventoryFieldReportRowsV7_ = buildProtectedInventoryFieldReportRowsV7_; this.buildReclassInquiryInventoryFieldHtml_ = buildReclassInquiryInventoryFieldHtml_; this.deliverReclassInquiryPayload_ = deliverReclassInquiryPayload_; this.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_;', context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
@@ -245,7 +245,8 @@ test('cleared and added Priority values are retained as changed fields and highl
   const output = server.buildReclassInquiryReportHtml_(model, true);
   assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>\[blank\]<\/strong>/);
   assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>7<\/strong>/);
-  assert.match(output, /Edited:<\/strong> 2 field\(s\) across 2 row\(s\)/);
+  assert.match(output, /<div class="meta"><strong>Submitted:<\/strong>[^<]*&nbsp; <strong>By:<\/strong> Tester<\/div>/);
+  assert.doesNotMatch(output, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
 });
 
 test('Reclass identity validation uses the defined production comparison helper', () => {
@@ -346,7 +347,9 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
       changedFields: index === 0 ? ['holdstopcode', 'holdstopreason'] : [],
     }));
     const output = server.buildReclassInquiryReportHtml_({ ...baseModel, rows }, true);
-    assert.match(output, /@page\{size:Letter landscape/);
+    assert.match(output, /@page\{size:Letter landscape;margin:[^}]+\}/);
+    assert.doesNotMatch(output, /@top-center/);
+    assert.match(output, /<thead><tr class="page-title-row"><th class="page-title-cell" colspan="\d+"><div class="page-header">GNC PH Reclass Item Inquiry<\/div><\/th><\/tr><tr class="column-heading-row">/);
     assert.match(output, /thead\{display:table-header-group\}/);
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
@@ -365,7 +368,7 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.match(output, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
     assert.match(output, /<th>Rev<\/th>/);
     assert.doesNotMatch(output, /<th>Hold\/Stop Code<\/th>/);
-    assert.equal((output.match(/<tr>/g) || []).length, rowCount + 1, `${rowCount}-row report should include every detail row plus one table header`);
+    assert.equal((output.match(/<tr data-location-row="true">/g) || []).length, rowCount, `${rowCount}-row report should include every detail row`);
   }
 });
 
@@ -396,32 +399,39 @@ test('Reclass workflow V3 row actions are live while V2 remains available for co
 test('action-specific compact PDFs use exact columns, natural ordering, preserved OH, and yellow proposals', () => {
   const server = loadServerModel();
   const actions = ['priority_change', 'recount', 'move_up', 'move_down', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'];
-  const fixedHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'Loc Note Date', 'Loc PTN1', 'Loc Note'];
-  const holdHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'Loc Note Date', 'Loc PTN1', 'Loc Note'];
+  const commonHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev'];
+  const detailHeaders = ['Loc Note Date', 'Loc PTN1', 'Loc Note', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS'];
+  const fixedHeaders = [...commonHeaders, ...detailHeaders];
+  const holdHeaders = [...commonHeaders, 'H/S', 'H/S Reason', ...detailHeaders];
   const outputs = {};
   for (const action of actions) {
     const model = server.buildReclassInquiryCompactPilotModel_(action, new Date('2026-08-22T14:15:00Z'));
     const output = server.buildReclassInquiryCompactReportHtml_(model, true);
     outputs[action] = output;
-    const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
+    const headerHtml = output.match(/<tr class="column-heading-row">([\s\S]*?)<\/tr>/)?.[1] || '';
     const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
     const expectedHeaders = ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(action) ? holdHeaders : fixedHeaders;
     assert.deepEqual(headers, expectedHeaders, `${action} should keep the action-specific compact columns`);
     assert.ok(output.indexOf('A.01.000') < output.indexOf('D.12.000'));
     assert.ok(output.indexOf('D.12.000') < output.indexOf('D.17.000'));
     assert.ok(output.indexOf('D.17.000') < output.indexOf('F.14.000'));
-    assert.match(output, /TEST PILOT - SYNTHETIC DATA ONLY/);
+    assert.match(output, /<tr class="page-title-row"><th class="page-title-cell" colspan="\d+"><div class="page-header">TEST PILOT - SYNTHETIC DATA ONLY \| GNC PH Reclass Item Inquiry<\/div><\/th><\/tr>/);
+    assert.doesNotMatch(output, /@top-center/);
+    assert.match(output, /background:#fff176/);
+    assert.doesNotMatch(output, /#fee2e2|redline/i);
     assert.match(output, /thead\{display:table-header-group\}/);
     assert.match(output, /@page\{size:Letter landscape/);
-    assert.equal((output.match(/<tr>/g) || []).length, 5, `${action} should include all four current rows plus the header`);
+    assert.match(output, /background:#fff176/);
+    assert.equal((output.match(/<tr data-location-row="true">/g) || []).length, 4, `${action} should include all four current rows`);
   }
-  for (const removed of ['PTRREVIEWED', 'Avail', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2']) {
+  for (const removed of ['PTRREVIEWED', 'Avail', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2']) {
     for (const output of Object.values(outputs)) assert.doesNotMatch(output, new RegExp(`<th>${removed}<\\/th>`), `${removed} must not be an action pilot column`);
   }
   for (const action of ['priority_change', 'recount', 'move_up', 'move_down']) {
     assert.doesNotMatch(outputs[action], /<th>H\/S<\/th>|<th>H\/S Reason<\/th>/);
   }
-  assert.match(outputs.priority_change, /Request:<\/strong> Priority Change/);
+  assert.match(outputs.priority_change, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
+  assert.doesNotMatch(outputs.priority_change, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
   assert.match(outputs.priority_change, /proposal-box[\s\S]*?\[blank\]/);
   assert.match(outputs.priority_change, /proposal-box[\s\S]*?<strong>1<\/strong>/);
   assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?proposal-box[\s\S]*?20--&gt;F1/);
@@ -513,13 +523,15 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   const reportTransaction = { ...transaction, holdStopProposals: result.holdStopProposals, requestActions: result.requestActions, scope: result.scope };
   const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, { transaction: reportTransaction, actor: { display: 'Tester' } }, new Date('2026-08-26T14:00:00Z'));
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
+  const headerHtml = output.match(/<tr class="column-heading-row">([\s\S]*?)<\/tr>/)?.[1] || '';
   const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
   assert.deepEqual(headers, [
     'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
+    'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS',
   ]);
   assert.match(output, /proposal-box[\s\S]*?<strong>1<\/strong>/);
   assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?proposal-box[\s\S]*?150--&gt;F1/);
+  assert.match(output, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
   assert.doesNotMatch(output, /PROPOSED/i);
   assert.equal(model.identity.holdstopcode, 'H');
   assert.equal(model.identity.holdstopreason, 'sheared');
@@ -528,7 +540,7 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   assert.match(output, /S1 \| sales year &lt;= 27 \| 1 row/);
   assert.doesNotMatch(output, /Hold\/Stop Proposals|<th>Actions<\/th>/);
   assert.ok(output.indexOf('A.01.000') < output.indexOf('C.16.000'));
-  assert.equal((output.match(/<tr>/g) || []).length, rows.length + 1);
+  assert.equal((output.match(/<tr data-location-row="true">/g) || []).length, rows.length);
 });
 
 test('workflow V4 validates split moves, preserves repeated destination order, and renders request-only hold instructions', () => {
@@ -668,11 +680,11 @@ test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is
   assert.match(output, /<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>leaf quality<\/strong>/);
   assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th>/);
   for (const location of ['B.01.000', 'C.01.000', 'D.01.000']) {
-    const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
+    const rowHtml = output.match(new RegExp(`<tr data-location-row="true">(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
     assert.match(rowHtml, /proposal-box[\s\S]*?<strong>H<\/strong>[\s\S]*?proposal-box[\s\S]*?<strong>leaf quality<\/strong>/, `${location} should show the requested row values`);
   }
   for (const location of ['A.01.000', 'E.01.000', 'F.01.000']) {
-    const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
+    const rowHtml = output.match(new RegExp(`<tr data-location-row="true">(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
     assert.doesNotMatch(rowHtml, /proposal-box/, `${location} should remain unchanged`);
   }
 });
@@ -1303,7 +1315,21 @@ test('V6 confirmed Hold clear prints blank values and source-only scope without 
   assert.doesNotMatch(output, /Report only; no inventory was changed/);
 });
 
-test('V7 Reclass PDF prints frozen editable fields, server stamps, and preserves the compact movement table', () => {
+test('Reclass PDF keeps master Sales Note distinct from app-owned evidence notes', () => {
+  const server = loadServerModel();
+  for (const [fields, expected] of [
+    [{ salesnote: 'Master sales instructions', sales_note: 'Capture evidence' }, 'Master sales instructions'],
+    [{ salesnote: null, sales_note: 'Capture evidence' }, ''],
+    [{ sales_note: 'Capture evidence', SALES_NOTE: 'Uppercase capture evidence' }, ''],
+  ]) {
+    const row = { unique_id: 'sales-note-origin', itemcode: 'A1', commonname: 'Example', ...fields };
+    const report = server.buildReclassInquiryReportModel_(row, [row], [{ unique_id: row.unique_id, values: {}, changedFields: [] }],
+      { actor: { display: 'Tester' }, transaction: { requestAction: 'move_down' } }, new Date('2026-10-10T06:00:00Z'));
+    assert.equal(report.rows[0].values.salesnote, expected);
+  }
+});
+
+test('V7 Reclass PDF prints frozen editable fields in the main row and preserves the compact movement table', () => {
   const server = loadServerModel();
   const row = {
     unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1',
@@ -1365,26 +1391,25 @@ test('V7 Reclass PDF prints frozen editable fields, server stamps, and preserves
   assert.equal(reportRows[0].values.salesnote, 'Sales new');
   assert.equal(reportRows[0].values.priority, '2');
   assert.match(model.requestActionLabel, /Inventory Fields Updated/);
-  for (const label of ['Loc Note', 'Loc PTN1', 'Desig Item', 'Desig Customer', 'Desig Location', 'Pull', 'OS%', 'Sales Note', 'SUS']) {
+  for (const label of ['Loc Note', 'Loc PTN1', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS']) {
     assert.match(output, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
-  assert.match(output, /Old note/);
   assert.match(output, /New note/);
-  assert.match(output, /Yes — AB/);
-  assert.match(output, /Pri By: AB/);
-  assert.match(output, /Eval Date: 10\/9\/2026/);
-  assert.match(output, /Note Date: 10\/9\/2026/);
-  assert.match(output, /Confirmed editable inventory fields and priority \/ Hold \/ Stop values were applied/);
+  assert.match(output, /Yes - AB/);
+  assert.match(output, /<td class="edited-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
+  assert.match(output, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
   assert.match(output, /2--&gt;S1/);
-  assert.match(output, /v7-inventory-fields/);
+  assert.match(output, /By AB \| Eval 10\/9\/2026 \| Updated 10\/9\/2026/);
+  assert.match(output, /<div class="meta"><strong>Submitted:<\/strong>[^<]+&nbsp; <strong>By:<\/strong> Tester<\/div>/);
+  assert.doesNotMatch(output, /Confirmed Inventory Fields|v7-inventory-fields|<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
+  assert.doesNotMatch(output, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
   assert.doesNotMatch(output, /PGC|Plant Grp|PLANT GRP|Brand Label|Int Inv Note/);
   const clearBefore = Object.fromEntries(fields.map((field) => [field, field === 'suspend' ? 'H' : '']));
   const clearAfter = { ...clearBefore, suspend: null };
-  const clearHtml = server.buildReclassInquiryInventoryFieldSectionV7_([{
-    unique_id: 'clear-row', values: { locationcode: 'B.2', lotcode: '27.F1' },
-  }], [{ unique_id: 'clear-row', stamps }], [{
-    unique_id: 'clear-row', before: clearBefore, after: clearAfter, changedFields: ['suspend'], stamps,
-  }]);
+  const clearHtml = server.buildReclassInquiryInventoryFieldHtml_({
+    unique_id: 'clear-row', values: { suspend: '' }, changedFields: ['suspend'],
+    v7InventoryFields: { before: clearBefore, after: clearAfter, changedFields: ['suspend'], stamps },
+  }, 'suspend');
   assert.match(clearHtml, /<s>H<\/s>/);
   assert.match(clearHtml, /\[blank\]/);
 });
@@ -1517,7 +1542,7 @@ test('Eval V7 completion consumes protected editable-field snapshots and report 
   assert.equal(model.rows.find((entry) => entry.unique_id === 'origin').values.locationnote, 'Confirmed');
   assert.match(model.requestActionLabel, /Inventory Fields Updated/);
   assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /Confirmed/);
-  assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /Note Date: 10\/9\/2026/);
+  assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /<td class="edited-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
 });
 
 test('Item Inquiry repairs mojibake common names for display without mutating source inventory', () => {
