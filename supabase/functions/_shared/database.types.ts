@@ -17577,6 +17577,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      historical_requests_read_v1: { Args: { p_query?: Json }; Returns: Json }
       hl_order_can_read_outbox_v1: { Args: never; Returns: boolean }
       hl_order_command: {
         Args: {

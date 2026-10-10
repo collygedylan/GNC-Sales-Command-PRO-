@@ -62,7 +62,7 @@ function dialogElement() {
 }
 
 function harness(options = {}) {
-  const calls = [], toasts = [], timers = [], refreshes = [], auraDisposals = [];
+  const calls = [], toasts = [], timers = [], refreshes = [], auraDisposals = [], historyDisposals = [];
   let dialog = options.noDialog ? null : dialogElement();
   let authCallback;
   const databaseBridge = { fetchRpc: async (url, name, request, timeout, label) => {
@@ -85,6 +85,7 @@ function harness(options = {}) {
   const mutation = () => { throw new Error('Pending review must not mutate inventory or use legacy order actions'); };
   const ctx = vm.createContext({
     SUPABASE_URL: 'https://kzrnyjsosryejjejliii.supabase.co',
+    destroyHistoricalRequestsIsland: () => historyDisposals.push('dispose'),
     invalidateNativeAuthRecovery() {}, disposeAuraWidget: () => auraDisposals.push('dispose'), productionDisplayGroups: new Set(), Date: FixedDate, Intl, atob: (value) => Buffer.from(value, 'base64').toString('binary'),
     currentUser: 'dylan_collyge', currentRole: 'Admin', nativeAuthProfile: profile(),
     nativeAuthSessionActive: true, nativeAuthAccessToken: token(),
@@ -115,7 +116,7 @@ function harness(options = {}) {
     globalThis.pendingState = () => bloomscapesPendingState;
   `, ctx);
   ctx.installNativeRoleRefreshWatchers();
-  return { ctx, calls, toasts, refreshes, auraDisposals,
+  return { ctx, calls, toasts, refreshes, auraDisposals, historyDisposals,
     get dialog() { return dialog; },
     auth: (event, session) => authCallback(event, session),
     flushTimers: async () => { for (const callback of timers.splice(0)) await callback(); },
@@ -288,6 +289,7 @@ test('role-scoped cache reset invokes real pending cleanup without deleting unre
   h.ctx.pendingState().error = 'private failure';
   h.ctx.clearRoleScopedClientCaches();
   assertCleared(h);
+  assert.deepEqual(h.historyDisposals, ['dispose']);
   assert.equal(h.ctx.localStorage.getItem('unrelated'), 'keep');
   assert.equal(h.ctx.localStorage.getItem('gnc_request_capabilities_v2:dylan_collyge'), null);
 });

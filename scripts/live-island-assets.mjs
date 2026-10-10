@@ -3,9 +3,9 @@ import path from 'node:path';
 
 // Only public code/CSS from these production islands may enter the root cache.
 // Account-scoped SWR data is memory-only and is never copied or precached here.
-const islands = ['bunch-note', 'field-counting'];
+const islands = ['bunch-note', 'field-counting', 'historical-requests'];
 export async function prepareLiveIslandAssets({ root, site }) {
-  const assets = ['bunch-note-structured.js', 'bunch-note.css', 'bunch-note-cards.css', 'field-counting.js', 'field-counting.css'];
+  const assets = ['bunch-note-structured.js', 'bunch-note.css', 'bunch-note-cards.css', 'field-counting.js', 'field-counting.css', 'historical-requests.js', 'historical-requests.css'];
   for (const island of islands) {
     const directory = `${island}-chunks`;
     const entries = await readdir(path.join(root, 'assets', directory), { withFileTypes: true });

@@ -37,13 +37,14 @@ export const customerRepMappingMigrationName = '20261010024830_customer_rep_mapp
 export const bunchAutoCompletionMigrationName = '20261010080018_bunch_note_auto_completion_delivery.sql';
 export const fieldCountingMigrationName = '20261010080140_field_counting_commands_and_reports.sql';
 export const customerRepMappingFinalizeTimeoutMigrationName = '20261010152556_customer_rep_mapping_finalize_timeout_55s.sql';
+export const historicalRequestsMigrationName = '20261010165013_historical_requests_financial_dashboard.sql';
 export const reclassEvalSubmitGuardsMigrationName = '20261006150745_reclass_split_move_eval_submit_guards.sql';
 export const inventoryRowAssignmentFutureSnapshotsMigrationName = '20261006210000_inventory_row_assignment_future_snapshots.sql';
 export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_inventory_row_assignment_live_consumers.sql';
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -205,6 +206,20 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === historicalRequestsMigrationName) return `select
+    to_regprocedure('public.historical_requests_read_v1(jsonb)') is not null
+    and exists(select 1 from pg_proc p where p.oid='public.historical_requests_read_v1(jsonb)'::regprocedure
+      and p.prosecdef and p.proconfig @> array['search_path=""','statement_timeout=10s'])
+    and has_function_privilege('authenticated','public.historical_requests_read_v1(jsonb)','execute')
+    and not has_function_privilege('anon','public.historical_requests_read_v1(jsonb)','execute')
+    and not has_function_privilege('service_role','public.historical_requests_read_v1(jsonb)','execute')
+    and position('private.navigation_module_allowed_v1(actor_id,''historical-requests'')' in pg_get_functiondef('public.historical_requests_read_v1(jsonb)'::regprocedure))>0
+    and to_regprocedure('private.historical_requests_number_v1(text)') is not null
+    and exists(select 1 from private.navigation_view_catalog where view_key='historical-requests' and parent_key='sales' and selectable)
+    and position('if p_view=''historical-requests'' then' in pg_get_functiondef('private.navigation_module_allowed_v1(uuid,text)'::regprocedure))>0
+    and position('if found and not override_value then return false' in pg_get_functiondef('private.navigation_module_allowed_v1(uuid,text)'::regprocedure))>0
+    and position('p.username=''dylan_collyge''' in pg_get_functiondef('private.navigation_module_allowed_v1(uuid,text)'::regprocedure))>0
+    and position('(''REP'',''SALESREP'',''ADMIN'',''ADMINISTRATOR'')' in pg_get_functiondef('private.navigation_module_allowed_v1(uuid,text)'::regprocedure))>0 as installed`;
   if (name === customerRepMappingFinalizeTimeoutMigrationName) return `select
     exists(select 1 from pg_proc p where p.oid='public.finalize_customer_rep_mapping_import_v1(uuid)'::regprocedure
       and coalesce(p.proconfig,'{}'::text[]) @> array['statement_timeout=55s'])

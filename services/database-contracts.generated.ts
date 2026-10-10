@@ -87779,6 +87779,23 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "historical_requests_read_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_query": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "hl_order_can_read_outbox_v1": {
       "oneOf": [
         {
@@ -97864,6 +97881,11 @@ export const contracts: RuntimeContracts<Database> = {
     "heartbeat_request_delivery_worker": {
       "oneOf": [
         "null"
+      ]
+    },
+    "historical_requests_read_v1": {
+      "oneOf": [
+        "json"
       ]
     },
     "hl_order_can_read_outbox_v1": {
