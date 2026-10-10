@@ -13,6 +13,13 @@ select ok(not has_function_privilege('authenticated','public.begin_customer_rep_
   and has_function_privilege('service_role','public.begin_customer_rep_mapping_import_v1(uuid,text,timestamptz,text,integer)','execute'),'only trusted importer can start publications');
 select ok(not has_function_privilege('authenticated','public.customer_rep_mapping_manage_v1(uuid,text,jsonb)','execute')
   and has_function_privilege('service_role','public.customer_rep_mapping_manage_v1(uuid,text,jsonb)','execute'),'management RPC is restricted to authenticated app-api actor checks');
+select ok((select coalesce(p.proconfig,'{}'::text[]) @> array['statement_timeout=55s']
+  from pg_proc p where p.oid='public.finalize_customer_rep_mapping_import_v1(uuid)'::regprocedure),
+  'mapping finalizer has a function-local bounded statement timeout');
+select ok(not has_function_privilege('authenticated','public.finalize_customer_rep_mapping_import_v1(uuid)','execute')
+  and not has_function_privilege('anon','public.finalize_customer_rep_mapping_import_v1(uuid)','execute')
+  and has_function_privilege('service_role','public.finalize_customer_rep_mapping_import_v1(uuid)','execute'),
+  'bounded finalizer keeps its service-only execution boundary');
 
 insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
  ('a9f00000-0000-4000-8000-000000000001','map-admin@example.invalid','{}','{}'),

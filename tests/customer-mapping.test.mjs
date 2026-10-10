@@ -22,6 +22,25 @@ test('Request options require active mapped identities; reserve and custom fallb
   assert.equal(c.getRequestModalCustomerOptionsForRep('Unknown Rep').length,0);
   c.processCustStep(); assert.equal(c.qtyCalls.length,0); assert.equal(c.toasts.length,1);
 });
+test('Request matching uses production normalization for rep aliases, statuses, duplicate names, and leading-zero IDs',()=>{
+  const c=requestFixture();
+  const mollyRows=[
+    {...row,unique_id:'molly-1',customeridentityid:'000041',consigneeid:'000071',salesrepid:'0003',salesrepname:'Molly Dixon',customername:'Shared Customer',consigneename:'North'},
+    {...row,unique_id:'molly-2',customeridentityid:'000042',consigneeid:'000072',salesrepid:'0003',salesrepname:'Molly Dixon',customername:'Shared Customer',consigneename:'South'},
+    {...row,unique_id:'molly-inactive-customer',customeridentityid:'000043',consigneeid:'000073',salesrepid:'0003',salesrepname:'Molly Dixon',customerstatus:'I'},
+    {...row,unique_id:'molly-inactive-consignee',customeridentityid:'000044',consigneeid:'000074',salesrepid:'0003',salesrepname:'Molly Dixon',consigneestatus:'I'},
+    {...row,unique_id:'unrelated-rep',customeridentityid:'000045',consigneeid:'000075',salesrepid:'0004',salesrepname:'Morgan Smith'}
+  ];
+  c.customerRepMapRows=mollyRows;
+  for (const rep of ['Molly Dixon','Dixon, Molly','molly_dixon','  MOLLY   DIXON  ']) {
+    const options=c.getRequestModalCustomerOptionsForRep(rep);
+    assert.deepEqual(Array.from(options,option=>[option.customeridentityid,option.consigneeidentityid]),[['000041','000071'],['000042','000072']],rep);
+    const groups=c.buildRequestCustomerPickerGroups(options);
+    assert.equal(groups.length,2,'same customer label with distinct IDs stays distinct');
+  }
+  assert.equal(c.getRequestModalCustomerOptionsForRep('Morgan Smith').length,1);
+  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,2,'the existing tolerant name match remains available');
+});
 test('Request membership rechecks both IDs, names and the current map revision',()=>{
   const c=requestFixture(); const context={customeridentityid:row.customeridentityid,consigneeidentityid:row.consigneeid,customername:row.customername,consigneename:row.consigneename};
   assert.equal(c.isCurrentRequestCustomerContext(context),true);

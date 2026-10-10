@@ -145,6 +145,16 @@ test('canonical schema validation includes only its self-contained schema-contra
   }
 });
 
+test('canonical HTTP drivers are discovered from runtime annotations instead of a filename list', t => {
+  const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), 'gnc-canonical-http-discovery-'));
+  t.after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
+  mkdirSync(path.join(fixtureRoot, 'supabase', 'ci'), { recursive: true });
+  writeFileSync(path.join(fixtureRoot, 'supabase', 'ci', 'mapped-request-http.mjs'),
+    '// @test-runtime: canonical-http\nprocess.exit(0);\n');
+  writeFileSync(path.join(fixtureRoot, 'supabase', 'ci', 'helper.mjs'), 'export const helper = true;\n');
+  assert.deepEqual(discoverTests({ root: fixtureRoot, group: 'canonical-http' }), ['supabase/ci/mapped-request-http.mjs']);
+});
+
 test('sandbox workspace layers discovered migrations and tests after the schema-only capture', () => {
   const sourceMigrations = readdirSync(path.join(root, 'supabase/sandbox/migrations')).filter(name => name.endsWith('.sql')).sort();
   const sourceTests = discoverTests({ root, group: 'sandbox-pgtap' });
@@ -320,6 +330,7 @@ test('database-check uses the shared fail-closed runner for both disposable work
   };
   const check = (executeNodeMock) => runDatabaseCheck({
     root, mode: 'all', execute: () => '', executeNode: executeNodeMock, preflight: () => {},
+    discoverCanonicalHttpTests: () => [],
     runLintWithTempContext: ({ action }) => action(),
     runPerformance: ({ workspaceRoot }) => { assert.equal(workspaceRoot, productionWorkspace.root); return { fixture: true }; },
     savePerformance: report => { assert.deepEqual(report, { fixture: true }); },
@@ -346,14 +357,25 @@ test('database-check uses the shared fail-closed runner for both disposable work
 });
 
 test('API performance pair is explicit CI-only and runs on canonical schema before reset', () => {
-  const runCheck = (environment) => {
+  const runCheck = (environment, canonicalHttpTests = ['supabase/ci/mapping-canonical-http.mjs']) => {
     const events = [];
     const starts = [];
     const productionWorkspace = { root: 'C:/tmp/gnc-performance-canonical', migrationCount: 4, dispose() {} };
     const sandboxWorkspace = { root: 'C:/tmp/gnc-performance-sandbox', migrationCount: 1, testCount: 1, lintSchemas: ['public'], dispose() {} };
-    let apiRuns = 0;
+    let apiRuns = 0, httpRuns = 0;
     runDatabaseCheck({
       root, mode: 'all', environment, execute: () => '', preflight: () => {}, resolveCli: () => 'supabase-fixture',
+      discoverCanonicalHttpTests: () => canonicalHttpTests,
+      runHttpTests: ({ root: runRoot, workspaceRoot, tests, executeNode }) => {
+        assert.equal(runRoot, root);
+        assert.equal(workspaceRoot, productionWorkspace.root);
+        assert.deepEqual(tests, canonicalHttpTests);
+        for (const file of tests) {
+          httpRuns += 1;
+          events.push(`canonical-http:${file}`);
+          executeNode([file, workspaceRoot], { root: runRoot });
+        }
+      },
       createProductionWorkspace: () => productionWorkspace,
       createSandboxWorkspace: () => sandboxWorkspace,
       runLintWithTempContext: ({ action }) => action(),
@@ -383,14 +405,16 @@ test('API performance pair is explicit CI-only and runs on canonical schema befo
         return options.capture ? '' : '';
       },
     });
-    return { events, apiRuns, starts };
+    return { events, apiRuns, httpRuns, starts };
   };
 
   const optedIn = runCheck({ GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' });
   assert.equal(optedIn.apiRuns, 1);
+  assert.equal(optedIn.httpRuns, 1, 'all-mode also runs discovered canonical HTTP drivers');
   assert.ok(optedIn.events.indexOf('sql-performance') < optedIn.events.indexOf('api-performance'));
   assert.ok(optedIn.events.indexOf('sql-report') < optedIn.events.indexOf('api-performance'));
-  assert.ok(optedIn.events.indexOf('api-performance') < optedIn.events.indexOf('canonical-reset'));
+  assert.ok(optedIn.events.indexOf('api-performance') < optedIn.events.findIndex(event => event.startsWith('canonical-http:')));
+  assert.ok(optedIn.events.findIndex(event => event.startsWith('canonical-http:')) < optedIn.events.indexOf('canonical-reset'));
   const canonical = optedIn.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-canonical');
   const sandbox = optedIn.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-sandbox');
   for (const service of ['gotrue', 'kong', 'postgrest']) {
@@ -400,12 +424,70 @@ test('API performance pair is explicit CI-only and runs on canonical schema befo
 
   const localDefault = runCheck({});
   assert.equal(localDefault.apiRuns, 0, 'ordinary local --all checks do not start the authenticated API benchmark');
-  assert.ok(localDefault.starts.every(start => start.excluded.join(',') === localSupabaseExcludeServices));
+  assert.equal(localDefault.httpRuns, 1, 'local --all still runs canonical HTTP correctness drivers');
+  const localCanonical = localDefault.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-canonical');
+  assert.equal(localCanonical.excluded.includes('gotrue'), false, 'canonical HTTP drivers need local Auth');
+  assert.equal(localCanonical.excluded.includes('kong'), false, 'canonical HTTP drivers need the local gateway');
+  assert.equal(localCanonical.excluded.includes('postgrest'), false, 'canonical HTTP drivers need local REST');
+  const localSandbox = localDefault.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-sandbox');
+  assert.equal(localSandbox.excluded.join(','), localSupabaseExcludeServices, 'sandbox still excludes unused HTTP services');
+  const noHttpDrivers = runCheck({}, []);
+  assert.equal(noHttpDrivers.httpRuns, 0);
+  const noHttpCanonical = noHttpDrivers.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-canonical');
+  assert.equal(noHttpCanonical.excluded.join(','), localSupabaseExcludeServices,
+    'without discovered HTTP drivers, ordinary local --all keeps the database-only profile');
   assert.throws(() => runDatabaseCheck({ mode: 'all', environment: { PERFORMANCE_API_BENCHMARK: 'true' },
     preflight: () => {}, createProductionWorkspace: () => { throw new Error('must fail before workspace creation'); } }),
   /PERFORMANCE_API_BENCHMARK_CI_ONLY/);
   assert.throws(() => runDatabaseCheck({ mode: 'staged', environment: { GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' },
     execute: () => 'supabase/config.toml', preflight: () => {} }), /PERFORMANCE_API_BENCHMARK_REQUIRES_ALL_MODE/);
+});
+
+test('staged database gates run discovered canonical HTTP drivers before reset with the HTTP service profile', () => {
+  const events = [];
+  const productionWorkspace = { root: 'C:/tmp/gnc-staged-http-canonical', migrationCount: 3, dispose() {} };
+  const sandboxWorkspace = { root: 'C:/tmp/gnc-staged-http-sandbox', migrationCount: 1, testCount: 1, lintSchemas: ['public'], dispose() {} };
+  const driver = 'supabase/ci/mapping-canonical-http.mjs';
+  runDatabaseCheck({
+    root, mode: 'staged', environment: {},
+    execute: (_command, args) => args.includes('--name-only') ? 'supabase/tests/canonical_schema_contract_test.sql\0' : '',
+    preflight: () => {}, resolveCli: () => 'supabase-fixture',
+    discoverCanonicalHttpTests: () => [driver],
+    createProductionWorkspace: () => productionWorkspace,
+    createSandboxWorkspace: () => sandboxWorkspace,
+    runLintWithTempContext: ({ action }) => action(),
+    runHttpTests: ({ tests, workspaceRoot, executeNode }) => {
+      assert.deepEqual(tests, [driver]);
+      assert.equal(workspaceRoot, productionWorkspace.root);
+      events.push('canonical-http');
+      executeNode([driver, workspaceRoot], { root });
+    },
+    executeNode: (args, options = {}) => {
+      if (args.length === 2 && args[0] === driver) {
+        assert.equal(args[1], productionWorkspace.root);
+        events.push('driver-child');
+        return '';
+      }
+      const workspaceRoot = args[2];
+      const cliArgs = args.slice(3);
+      if (cliArgs[0] === 'start') {
+        if (workspaceRoot === productionWorkspace.root) {
+          assert.equal(cliArgs[2].includes('gotrue'), false);
+          assert.equal(cliArgs[2].includes('kong'), false);
+          assert.equal(cliArgs[2].includes('postgrest'), false);
+          events.push('start-http-profile');
+        } else assert.equal(cliArgs[2], localSupabaseExcludeServices, 'sandbox stays database-only');
+      }
+      if (cliArgs[0] === 'status') return 'API_URL="http://127.0.0.1:54321"\n';
+      if (cliArgs[0] === 'db' && cliArgs[1] === 'reset') events.push('reset');
+      if (cliArgs.includes('gen')) return readFileSync(path.join(root, workspaceRoot === sandboxWorkspace.root
+        ? 'v2/src/services/sandbox.database.types.ts' : 'supabase/functions/_shared/database.types.ts'), 'utf8');
+      return options.capture ? '' : '';
+    },
+  });
+  assert.ok(events.indexOf('start-http-profile') < events.indexOf('canonical-http'));
+  assert.ok(events.indexOf('canonical-http') < events.indexOf('driver-child'));
+  assert.ok(events.indexOf('driver-child') < events.indexOf('reset'));
 });
 
 test('staged database-check executes changed rollback and discovered SQL fixtures in disposable workspaces', () => {
@@ -420,6 +502,7 @@ test('staged database-check executes changed rollback and discovered SQL fixture
   let dedicatedGroups;
   const result = runDatabaseCheck({
     root, mode: 'staged', execute: () => staged.join('\0'), preflight: () => {}, resolveCli: () => 'supabase-fixture',
+    discoverCanonicalHttpTests: () => [],
     createProductionWorkspace: () => productionWorkspace,
     createSandboxWorkspace: options => { assert.equal(options.includeTests, true); return sandboxWorkspace; },
     createHistoricalWorkspace: options => { historicalInput = options; return historicalWorkspace; },
