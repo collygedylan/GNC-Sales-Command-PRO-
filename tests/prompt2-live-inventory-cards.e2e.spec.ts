@@ -4,7 +4,7 @@ import { installDriveCardLayoutFixture, settleDriveLayoutShell } from './fixture
 
 // Live-renderer regression with synthetic in-memory rows. App reads use the
 // existing fixture and no business mutation or email is accepted.
-const makeRows = (today: string) => [
+const makeRows = (photoDate: string) => [
   {
     UNIQUE_ID: 'prompt2-card-a', DOM_ID: 'prompt2-card-a', ITEMCODE: 'P2-SHARED',
     COMMONNAME: 'Synthetic Prompt Two Plant', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001',
@@ -12,8 +12,8 @@ const makeRows = (today: string) => [
     S_LTS: 4, FIELDTAGCOLOR: 'Cerise', SOURCE: 'Synthetic Master', MATCH: '100', INITIAL_PTR: 1,
     LISTPRICE: 12.5, SPEC: 'Synthetic specimen', AV_NOTE: 'Synthetic AV note',
     HOLDSTOPCODE: 'H', HOLDSTOPREASON: 'Synthetic hold reason', HOLDSTOPBEGINDATE: '2026-10-08',
-    PHOTO_LINK: `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${today}/prompt2.webp`,
-    PHOTO_NAME: `${today}-prompt2.webp`, DATE_COMPLETED: `${today}T12:00:00Z`,
+    PHOTO_LINK: `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/prompt2.webp`,
+    PHOTO_NAME: `${photoDate}-prompt2.webp`, DATE_COMPLETED: `${photoDate}T12:00:00Z`,
   },
   {
     UNIQUE_ID: 'prompt2-card-b', DOM_ID: 'prompt2-card-b', ITEMCODE: 'p2-shared',
@@ -36,7 +36,10 @@ const makeRows = (today: string) => [
 ];
 
 async function installRows(page: Page, completeness: 'partial' | 'full') {
-  const today = new Date().toISOString().slice(0, 10);
+  // Photo URLs encode their capture day; the production parser treats a date
+  // without a time as noon UTC. Use yesterday so this fixture remains current
+  // even when CI starts shortly after midnight UTC.
+  const photoDate = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   await page.evaluate(({ fixtureRows, completeness }) => window.eval(`(() => {
     if (!window.__prompt2DriveFixtureMounted) {
       if (!window.__prompt2OriginalRenderDrive) window.__prompt2OriginalRenderDrive = renderDrive;
@@ -58,7 +61,7 @@ async function installRows(page: Page, completeness: 'partial' | 'full') {
     datasetLoadState.master.fieldCoverage = ${JSON.stringify(completeness === 'full' ? 'full' : 'browse')};
     rebuildMasterInventoryIndexes();
     return true;
-  })()`), { fixtureRows: makeRows(today), completeness });
+  })()`), { fixtureRows: makeRows(photoDate), completeness });
 }
 
 async function renderCard(page: Page, sourceView: 'drive' | 'av-photo', theme: 'light' | 'dark') {
