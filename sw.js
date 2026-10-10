@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.10.001';
+const APP_SHELL_BUILD = 'V2026.10.10.002';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -64,7 +64,20 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
   "./assets/branding/ag-data-solutions-splash-v2026081709.png"
 ]);
 // END GENERATED BRANDING ASSETS
+const DEFERRED_VIEW_ASSETS = /* release-generated */ [
+  "./assets/bunch-note-cards.css",
+  "./assets/bunch-note-chunks/CardBoard-V4THN57E.js",
+  "./assets/bunch-note-chunks/StructuredBunchNote-M5ZHXRZK.js",
+  "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
+  "./assets/bunch-note-structured.js",
+  "./assets/bunch-note.css",
+  "./assets/field-counting-chunks/FieldCountingView-ELHJCGSC.js",
+  "./assets/field-counting-chunks/chunk-4U4VUOO3.js",
+  "./assets/field-counting.css",
+  "./assets/field-counting.js"
+];
 const ASSETS_TO_CACHE = [
+  ...DEFERRED_VIEW_ASSETS,
   APP_SHELL_URL,
   './manifest.json',
   './assets/theme-tokens.css?v=' + encodeURIComponent(APP_SHELL_BUILD),
