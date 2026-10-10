@@ -295,7 +295,7 @@ test('REP Home parity rejects wrong module identity and missing cards without re
   app.assertClean();
 });
 
-test('native-only Home tiles require the active Dylan profile and disappear on disable or account change', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
+test('HL Order Home tile requires the active Dylan native profile and disappears on disable or account change', {"tag":["@home-role"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.seed('dylan_collyge', 'ADMIN');
   await app.assertTiles(adminViews, false);
