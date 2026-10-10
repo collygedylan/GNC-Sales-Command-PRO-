@@ -1101,8 +1101,9 @@ const FOLDERS = {
   SOC_PROCESSED: '13hwbF-5wUDruKnjFujjtsyuyrPFgsqpo',
   RESERVES_DROP: '1Xiyp6WQGAF-4Tm-KwSwi9RsBqulFcSAG',
   RESERVES_PROCESSED: '1u4Vk5L92zmcXXT2qNWzImWTud73Bpole',
-  CUSTOMER_REP_DROP: '1Fgsu1Xnpt_SW9CneVh1gPOdTu338p5W8',
-  CUSTOMER_REP_PROCESSED: '1_62SsOENs5DSEU6JIyGi3ZsC3Z8IDGUd',
+  CUSTOMER_REP_SOURCE_PARENT: '1S4OTJVC8rpVNfuuEv2A0lHq-xFdjydBI',
+  CUSTOMER_REP_PENDING: '13zlcdCp_nc_j2GGKxkB5Nrko4G-MWaYl',
+  CUSTOMER_REP_PROCESSED: '1lXgfgChixjodh_zDvofmMnXUBPiO4epV',
   CAV_DROP: '1K-y4thhw_iu2UEEZGRc39LzlpUZtcOBZ',
   CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5',
   WAREHOUSE_ASSIGNED_ITEMS_SOURCE: WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID,
@@ -1198,7 +1199,7 @@ function runDriveAroundOnly() {
 }
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
-function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
+function runCustomerRepMapOnly() { return processCustomerRepMapSnapshot_(); }
 function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE); }
 function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
   const safeRevision = String(importRevision || new Date().toISOString()).trim();
@@ -1608,7 +1609,7 @@ const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
   drive_history: { label: 'Drive Around History', run: runDriveAroundHistoryOnly },
   soc: { label: 'SOC', run: runSOCOnly, continueOnSourceValidationFailure: true },
   reserves: { label: 'Reserves', run: runReservesOnly, continueOnSourceValidationFailure: true },
-  customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
+  customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly, continueOnSourceValidationFailure: true },
   warehouse_assigned_items: { label: 'Warehouse Assigned Items', run: runWarehouseAssignedItemsOnly },
   cav: { label: 'CAV', run: runCavOnly },
   disease: { label: 'Disease Lab Assets (Retired)', run: runRetiredDiseaseManualSyncStage_ },
@@ -1810,7 +1811,8 @@ function normalizeManualSyncFailedFileEntries_(stageResult) {
 const IMPORT_SOURCE_VALIDATION_ERROR_CODES_ = Object.freeze([
   'IMPORT_SOURCE_EMPTY',
   'IMPORT_SOURCE_NO_HEADER',
-  'IMPORT_SOURCE_NO_VALID_IDENTITIES'
+  'IMPORT_SOURCE_NO_VALID_IDENTITIES',
+  'IMPORT_SOURCE_DUPLICATE_IDENTITIES'
 ]);
 const IMPORT_SOURCE_REJECTION_MARKERS_KEY_ = 'IMPORT_SOURCE_REJECTION_MARKERS_V1';
 const IMPORT_SOURCE_REJECTION_MARKERS_MAX_ = 48;
@@ -2215,6 +2217,15 @@ function runQueuedManualSyncStage_(options) {
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
       const stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
+      if (stageResult.continuationPending === true) {
+        const progressRows = Math.max(0, Number(stageResult.stagedRows) || 0);
+        const totalRows = Math.max(0, Number(stageResult.totalRows) || 0);
+        status.updatedAt = new Date().toISOString();
+        status.message = `Staged ${progressRows} of ${totalRows} ${stageDef.label} rows. Queueing bounded continuation...`;
+        saveManualSyncStatus_(status);
+        scheduleManualSyncStageTrigger_();
+        break;
+      }
       const filesProcessed = Number(stageResult.filesProcessed || 0);
       const tempFilesRemoved = Number(stageResult.tempFilesRemoved || 0);
       const failedFiles = Number(stageResult.failedFiles || 0);
@@ -3857,6 +3868,110 @@ function isCustomerRepMapHeaderRow_(row) {
   return knownHeaderCount >= 5 && hasCustomer && hasConsignee && hasSalesRep;
 }
 
+function isCustomerRepMapCompleteHeaderRow_(row) {
+  if (!isCustomerRepMapHeaderRow_(row)) return false;
+  const headers = row.map(normalizeCustomerRepMapColumnKey_);
+  return ['customeridentityid', 'customername', 'consigneeid', 'consigneename', 'salesrepid', 'salesrepname', 'customerstatus', 'consigneestatus']
+    .every(function(key) { return headers.indexOf(key) !== -1; });
+}
+
+function getCustomerRepMapIdentityKey_(row) {
+  const customerId = String(row && row.customeridentityid || '').trim();
+  const consigneeId = String(row && row.consigneeid || '').trim();
+  const salesRepId = String(row && row.salesrepid || '').trim();
+  if (!customerId || !consigneeId) return '';
+  // Empty sales-rep IDs are valid source rows. Include the empty value in the
+  // tuple so a blank-assignment row cannot collide with a named rep mapping.
+  return [customerId, consigneeId, salesRepId].join('|');
+}
+
+function buildCustomerRepMapSnapshot_(rawData, syncStartTime, fileName) {
+  if (!Array.isArray(rawData) || !rawData.length || !isCustomerRepMapCompleteHeaderRow_(rawData[0])) {
+    throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', 'Customer Rep Map source is missing required identity/status headers.');
+  }
+  if (rawData.length < 2) throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', 'Customer Rep Map source has no data rows.');
+  const rawHeaders = rawData[0].map(function(header) { return String(header == null ? '' : header); });
+  const normalizedHeaders = rawHeaders.map(normalizeCustomerRepMapColumnKey_);
+  const headerCounts = new Map();
+  normalizedHeaders.forEach(function(header) {
+    if (!header) return;
+    headerCounts.set(header, (headerCounts.get(header) || 0) + 1);
+  });
+  const duplicateHeaders = Array.from(headerCounts.entries()).filter(function(entry) { return entry[1] > 1; }).map(function(entry) { return entry[0]; });
+  if (duplicateHeaders.length) {
+    throw createImportSourceValidationError_('IMPORT_SOURCE_DUPLICATE_IDENTITIES', 'Customer Rep Map source contains duplicate normalized columns.');
+  }
+  const headerIndex = new Map();
+  normalizedHeaders.forEach(function(header, index) { if (header) headerIndex.set(header, index); });
+  const sourceHeaderRowIndex = Math.max(0, Number(rawData.__sourceHeaderRowIndex) || 0);
+  const rows = [];
+  const seenIdentity = new Set();
+  const seenIds = new Set();
+  let nonemptyRows = 0;
+  for (let index = 1; index < rawData.length; index++) {
+    const sourceRow = Array.isArray(rawData[index]) ? rawData[index] : [];
+    if (sourceRow.slice(rawHeaders.length).some(function(value) { return value != null && String(value).trim() !== ''; })) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', `Customer Rep Map row ${sourceHeaderRowIndex + index + 1} contains values without source headers.`);
+    }
+    const rawValues = rawHeaders.map(function(_, column) {
+      const value = sourceRow[column];
+      return value == null ? '' : String(value);
+    });
+    if (!rawValues.some(function(value) { return String(value).trim() !== ''; })) continue;
+    nonemptyRows++;
+    const get = function(key) {
+      const column = headerIndex.has(key) ? headerIndex.get(key) : -1;
+      return column < 0 ? '' : String(rawValues[column] == null ? '' : rawValues[column]).trim();
+    };
+    const identity = { customeridentityid: get('customeridentityid'), consigneeid: get('consigneeid'), salesrepid: get('salesrepid') };
+    const identityKey = getCustomerRepMapIdentityKey_(identity);
+    if (!identityKey) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_NO_VALID_IDENTITIES', `Customer Rep Map row ${index + 1} is missing customer or consignee identity.`);
+    }
+    if (seenIdentity.has(identityKey)) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_DUPLICATE_IDENTITIES', `Customer Rep Map contains duplicate identity tuple at source row ${index + 1}.`);
+    }
+    seenIdentity.add(identityKey);
+    const identityParts = [
+      identity.customeridentityid, get('customername'), identity.consigneeid, get('consigneename'),
+      identity.salesrepid, get('salesrepname'), get('territorycode')
+    ];
+    const identitySource = identityParts.join('|');
+    const identityDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, identitySource, Utilities.Charset.UTF_8);
+    const uniqueId = 'cust_rep_' + Utilities.base64EncodeWebSafe(identityDigest).replace(/=+$/g, '').slice(0, 48);
+    if (seenIds.has(uniqueId)) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_DUPLICATE_IDENTITIES', `Customer Rep Map generated duplicate identity at source row ${index + 1}.`);
+    }
+    seenIds.add(uniqueId);
+    const values = {};
+    normalizedHeaders.forEach(function(key, column) {
+      if (!key) return;
+      // Preserve raw source text including leading zeroes and Unicode. Unknown
+      // source columns remain available in raw_data instead of being discarded.
+      values[rawHeaders[column]] = rawValues[column];
+    });
+    const obj = {
+      unique_id: uniqueId,
+      filename: fileName,
+      source_file_name: fileName,
+      source_row_number: sourceHeaderRowIndex + index + 1,
+      raw_data: values,
+      imported_at: syncStartTime,
+      updated_at: syncStartTime
+    };
+    normalizedHeaders.forEach(function(key, column) {
+      if (!CUSTOMER_REP_MAP_COLUMN_SET.has(key)) return;
+      const value = String(rawValues[column] == null ? '' : rawValues[column]).trim();
+      obj[key] = value === '' || value.toUpperCase() === 'NULL' ? null : value;
+    });
+    obj.row_hash = buildRowSyncHash_(obj, ['imported_at', 'updated_at']);
+    rows.push(obj);
+  }
+  if (!nonemptyRows) throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', 'Customer Rep Map source has no data rows.');
+  if (!rows.length) throw createImportSourceValidationError_('IMPORT_SOURCE_NO_VALID_IDENTITIES', 'Customer Rep Map source has no valid identity rows.');
+  return { rows: rows, sourceRowCount: nonemptyRows, headerCount: rawHeaders.length };
+}
+
 function getCustomerRepMapSelectColumns_() {
   return ['unique_id', 'row_hash'];
 }
@@ -5133,6 +5248,325 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
     return processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options);
   });
 }
+
+const CUSTOMER_REP_MAP_STAGE_CHUNK_SIZE_ = 300;
+// Keep each Apps Script invocation bounded so the manual-sync trigger can
+// resume a large source before the platform execution ceiling.
+const CUSTOMER_REP_MAP_STAGE_BUDGET_MS_ = 180000;
+const CUSTOMER_REP_MAP_CONTINUATION_KEY_ = 'CUSTOMER_REP_MAP_CONTINUATION_V1';
+
+function readCustomerRepMapContinuation_() {
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(CUSTOMER_REP_MAP_CONTINUATION_KEY_);
+  if (!raw) return null;
+  let state;
+  try { state = JSON.parse(raw); } catch (ignored) { throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_INVALID'); }
+  if (!state || typeof state !== 'object' || Array.isArray(state)
+      || !String(state.fileId || '').trim()
+      || !Number.isFinite(Date.parse(String(state.modifiedAt || '')))
+      || !/^[a-f0-9]{64}$/.test(String(state.sourceHash || ''))
+      || !/^[a-zA-Z0-9-]{8,64}$/.test(String(state.runId || ''))
+      || String(state.fileName || '').length > 180) {
+    throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_INVALID');
+  }
+  return {
+    properties: properties,
+    fileId: String(state.fileId),
+    modifiedAt: new Date(state.modifiedAt).toISOString(),
+    sourceHash: String(state.sourceHash),
+    runId: String(state.runId),
+    fileName: String(state.fileName || ''),
+    published: state.published === true
+  };
+}
+
+function saveCustomerRepMapContinuation_(state) {
+  const safe = state || {};
+  const value = {
+    fileId: String(safe.fileId || ''),
+    modifiedAt: String(safe.modifiedAt || ''),
+    sourceHash: String(safe.sourceHash || ''),
+    runId: String(safe.runId || ''),
+    fileName: String(safe.fileName || '').slice(0, 180),
+    published: safe.published === true
+  };
+  if (!value.fileId || !Number.isFinite(Date.parse(value.modifiedAt)) || !/^[a-f0-9]{64}$/.test(value.sourceHash)
+      || !/^[a-zA-Z0-9-]{8,64}$/.test(value.runId)) throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_INVALID');
+  try { PropertiesService.getScriptProperties().setProperty(CUSTOMER_REP_MAP_CONTINUATION_KEY_, JSON.stringify(value)); }
+  catch (ignored) { throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_UNAVAILABLE'); }
+  return value;
+}
+
+function clearCustomerRepMapContinuation_() {
+  try { PropertiesService.getScriptProperties().deleteProperty(CUSTOMER_REP_MAP_CONTINUATION_KEY_); }
+  catch (ignored) { throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_UNAVAILABLE'); }
+}
+
+function customerRepMapContinuationFailureResult_(fileName, errorCode) {
+  const name = String(fileName || 'Customer Rep Map source');
+  const code = /^[A-Z][A-Z0-9_]{1,63}$/.test(String(errorCode || '')) ? String(errorCode) : 'CUSTOMER_REP_MAP_CONTINUATION_FAILED';
+  return {
+    tableName: CUSTOMER_REP_MAP_TABLE,
+    filesProcessed: 0,
+    tempFilesRemoved: 0,
+    failedFiles: 1,
+    failedFileNames: [name],
+    failedFileErrors: [{ name: name, errorCode: code, error: code }],
+    skippedFiles: 0,
+    skippedFileNames: [],
+    skippedFileErrors: [],
+    totalRows: 0,
+    stagedRows: 0,
+    published: false
+  };
+}
+
+function customerRepMapSourceHash_(rows) {
+  const source = JSON.stringify((Array.isArray(rows) ? rows : []).map(function(row) { return row.raw_data || {}; }));
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, source, Utilities.Charset.UTF_8);
+  return digest.map(function(value) { return ('0' + (Number(value) & 255).toString(16)).slice(-2); }).join('');
+}
+
+function stageCustomerRepMapRows_(runId, rows, stagedRows, startedAt, budgetMs) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  let offset = Math.max(0, Number(stagedRows) || 0);
+  const started = Number(startedAt) || Date.now();
+  const budget = Math.max(1000, Number(budgetMs) || CUSTOMER_REP_MAP_STAGE_BUDGET_MS_);
+  if (offset > safeRows.length || Math.floor(offset) !== offset) throw new Error('CUSTOMER_REP_MAP_STAGE_CURSOR_INVALID');
+  while (offset < safeRows.length) {
+    // Always make forward progress with one chunk; subsequent chunks stop
+    // before the per-invocation budget and resume from the server cursor.
+    if (offset > Number(stagedRows || 0) && Date.now() - started >= budget) break;
+    const chunkEnd = Math.min(safeRows.length, offset + CUSTOMER_REP_MAP_STAGE_CHUNK_SIZE_);
+    const chunk = safeRows.slice(offset, chunkEnd).map(function(sourceRow) {
+      const row = {};
+      Object.keys(sourceRow || {}).forEach(function(key) { if (key !== 'raw_data') row[key] = sourceRow[key]; });
+      return {
+        unique_id: String(sourceRow && sourceRow.unique_id || ''),
+        source_row_number: Number(sourceRow && sourceRow.source_row_number) || 0,
+        raw_data: sourceRow && sourceRow.raw_data && typeof sourceRow.raw_data === 'object' ? sourceRow.raw_data : {},
+        row: row
+      };
+    });
+    const response = callSupabaseRpc_('stage_customer_rep_mapping_rows_v1', {
+      p_run_id: runId,
+      p_rows: chunk
+    });
+    const nextStagedRows = Number(response && response.stagedRows);
+    if (!response || response.ok !== true || String(response.runId || '') !== String(runId)
+        || !Number.isInteger(nextStagedRows) || nextStagedRows !== chunkEnd) {
+      throw new Error('CUSTOMER_REP_MAP_STAGE_INCOMPLETE');
+    }
+    offset = nextStagedRows;
+  }
+  return { stagedRows: offset, complete: offset === safeRows.length };
+}
+
+function isCustomerRepMapAlreadyPublished_(response, source) {
+  return !!(response && response.ok === true && response.alreadyPublished === true
+    && Number(response.rowCount) === Number(source.rowCount)
+    && isCustomerRepMapRevision_(response.revision));
+}
+
+function isCustomerRepMapRevision_(value) {
+  return /^[1-9]\d*$/.test(String(value == null ? '' : value).trim());
+}
+
+function customerRepMapSkippedResult_(fileName, errorCode, olderFiles) {
+  const safeCode = String(errorCode || 'CUSTOMER_REP_IMPORT_STALE_SOURCE');
+  const older = Array.isArray(olderFiles) ? olderFiles : [];
+  const skippedNames = [String(fileName || '')].concat(older.map(function(entry) { return String(entry.file.getName() || ''); }));
+  const skippedErrors = [{ name: String(fileName || ''), errorCode: safeCode }].concat(older.map(function(entry) {
+    return { name: String(entry.file.getName() || ''), errorCode: 'CUSTOMER_REP_IMPORT_OLDER_PENDING' };
+  }));
+  return {
+    tableName: CUSTOMER_REP_MAP_TABLE,
+    filesProcessed: 0,
+    tempFilesRemoved: 0,
+    skippedFiles: skippedNames.length,
+    skippedFileNames: skippedNames,
+    skippedFileErrors: skippedErrors,
+    failedFiles: 0,
+    failedFileNames: [],
+    failedFileErrors: [],
+    totalRows: 0,
+    stagedRows: 0,
+    published: false
+  };
+}
+
+function processCustomerRepMapSnapshot_() {
+  return withDatasetImportProcessorLock_(processCustomerRepMapSnapshotLocked_);
+}
+
+function processCustomerRepMapSnapshotLocked_() {
+  const stageStartedAt = Date.now();
+  let continuation = readCustomerRepMapContinuation_();
+  const processedFolder = getDriveFolderByIdWithRetry_(FOLDERS.CUSTOMER_REP_PROCESSED, 'Customer Rep Map processed folder');
+  const sourceFolders = [
+    { id: FOLDERS.CUSTOMER_REP_SOURCE_PARENT, label: 'Customer Rep Map source parent' },
+    { id: FOLDERS.CUSTOMER_REP_PENDING, label: 'Customer Rep Map pending folder' }
+  ];
+  const pendingFiles = [];
+  const seenFileIds = new Set();
+  sourceFolders.forEach(function(sourceFolder) {
+    const folder = getDriveFolderByIdWithRetry_(sourceFolder.id, sourceFolder.label);
+    const files = listDriveFilesWithRetry_(folder, sourceFolder.label);
+    while (files.hasNext()) {
+      const file = files.next();
+      const fileId = String(file.getId() || '').trim();
+      if (!fileId || seenFileIds.has(fileId)) continue;
+      seenFileIds.add(fileId);
+      pendingFiles.push({ file: file, folderId: sourceFolder.id });
+    }
+  });
+  const markerState = pruneImportSourceRejectionMarkers_(CUSTOMER_REP_MAP_TABLE, pendingFiles.map(function(entry) { return entry.file; }));
+  if (!pendingFiles.length) {
+    if (continuation) {
+      clearCustomerRepMapContinuation_();
+      if (!continuation.published) return customerRepMapContinuationFailureResult_(continuation.fileName, 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_MISSING');
+    }
+    return { tableName: CUSTOMER_REP_MAP_TABLE, filesProcessed: 0, tempFilesRemoved: 0,
+      failedFiles: 0, failedFileNames: [], failedFileErrors: [], totalRows: 0, stagedRows: 0, published: false };
+  }
+  pendingFiles.sort(function(a, b) {
+    const timeDiff = b.file.getLastUpdated().getTime() - a.file.getLastUpdated().getTime();
+    return timeDiff || String(a.file.getName() || '').localeCompare(String(b.file.getName() || ''));
+  });
+  let sourceEntry = pendingFiles[0];
+  if (continuation) {
+    const pinnedEntry = pendingFiles.find(function(entry) { return String(entry.file.getId() || '') === continuation.fileId; });
+    if (!pinnedEntry) {
+      if (continuation.published) {
+        clearCustomerRepMapContinuation_();
+        continuation = null;
+      } else {
+        clearCustomerRepMapContinuation_();
+        return customerRepMapContinuationFailureResult_(continuation.fileName, 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_MISSING');
+      }
+    } else if (pinnedEntry.file.getLastUpdated().toISOString() !== continuation.modifiedAt) {
+      clearCustomerRepMapContinuation_();
+      return customerRepMapContinuationFailureResult_(pinnedEntry.file.getName(), 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_CHANGED');
+    } else {
+      sourceEntry = pinnedEntry;
+    }
+  }
+  const sourceFile = sourceEntry.file;
+  const olderFiles = pendingFiles.filter(function(entry) { return entry !== sourceEntry; });
+  const fileName = String(sourceFile.getName() || 'customer-rep-map');
+  const sourceFileId = String(sourceFile.getId() || '').trim();
+  const sourceModifiedAt = sourceFile.getLastUpdated().toISOString();
+  const priorRejection = getImportSourceRejectionMarker_(markerState, CUSTOMER_REP_MAP_TABLE, sourceFile);
+  if (priorRejection) return customerRepMapSkippedResult_(fileName, priorRejection.errorCode, olderFiles);
+  let published = false;
+  let sourceRows = 0;
+  const failedFiles = [];
+  try {
+    if (!sourceFileId) throw new Error('CUSTOMER_REP_MAP_SOURCE_FILE_ID_MISSING');
+    // Use the Drive source revision time so an exact retry produces identical
+    // row metadata across continuation invocations.
+    const syncStartTime = sourceModifiedAt;
+    const rawData = extractDataFromFile(sourceFile, sourceEntry.folderId, {
+      headerMatcher: isCustomerRepMapCompleteHeaderRow_,
+      displayValues: true,
+      preserveHeaderRowIndex: true
+    });
+    const snapshot = buildCustomerRepMapSnapshot_(rawData, syncStartTime, fileName);
+    sourceRows = snapshot.rows.length;
+    const sourceHash = customerRepMapSourceHash_(snapshot.rows);
+    if (continuation && continuation.sourceHash !== sourceHash) {
+      clearCustomerRepMapContinuation_();
+      return customerRepMapContinuationFailureResult_(fileName, 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_CHANGED');
+    }
+    const requestedRunId = continuation ? continuation.runId : Utilities.getUuid();
+    const source = { fileId: sourceFileId, modifiedAt: sourceModifiedAt, sourceHash: sourceHash, rowCount: sourceRows };
+    const begun = callSupabaseRpc_('begin_customer_rep_mapping_import_v1', {
+      p_run_id: requestedRunId,
+      p_source_file_id: source.fileId,
+      p_source_modified_at: source.modifiedAt,
+      p_source_hash: source.sourceHash,
+      p_expected_rows: source.rowCount
+    });
+    if (isCustomerRepMapAlreadyPublished_(begun, source)) {
+      moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, `Customer Rep Map published replay ${fileName}`);
+      if (continuation) clearCustomerRepMapContinuation_();
+    } else {
+      if (!begun || begun.ok !== true || !String(begun.runId || '').trim() || begun.status !== 'active') {
+        if (begun && begun.ok !== true && String(begun.errorCode || '') === 'CUSTOMER_REP_IMPORT_STALE_SOURCE') {
+          if (continuation) clearCustomerRepMapContinuation_();
+          return customerRepMapSkippedResult_(fileName, 'CUSTOMER_REP_IMPORT_STALE_SOURCE', olderFiles);
+        }
+        throw new Error(String(begun && begun.errorCode || 'CUSTOMER_REP_MAP_IMPORT_BEGIN_FAILED'));
+      }
+      const runId = String(begun.runId);
+      if (continuation && continuation.runId !== runId) throw new Error('CUSTOMER_REP_MAP_CONTINUATION_RUN_MISMATCH');
+      if (!continuation) continuation = saveCustomerRepMapContinuation_({
+        fileId: sourceFileId, modifiedAt: sourceModifiedAt, sourceHash: sourceHash, runId: runId, fileName: fileName
+      });
+      const rawCursor = begun.stagedRows == null ? begun.rowCount : begun.stagedRows;
+      const stagedCursor = Number(rawCursor);
+      if (!Number.isInteger(stagedCursor) || stagedCursor < 0 || stagedCursor > source.rowCount) {
+        throw new Error('CUSTOMER_REP_MAP_STAGE_CURSOR_INVALID');
+      }
+      const staging = stageCustomerRepMapRows_(runId, snapshot.rows, stagedCursor, stageStartedAt);
+      if (!staging.complete) {
+        return {
+          tableName: CUSTOMER_REP_MAP_TABLE,
+          filesProcessed: 0,
+          tempFilesRemoved: 0,
+          skippedFiles: olderFiles.length,
+          skippedFileNames: olderFiles.map(function(entry) { return String(entry.file.getName() || ''); }),
+          skippedFileErrors: olderFiles.map(function(entry) { return { name: String(entry.file.getName() || ''), errorCode: 'CUSTOMER_REP_IMPORT_OLDER_PENDING' }; }),
+          failedFiles: 0,
+          failedFileNames: [],
+          failedFileErrors: [],
+          totalRows: sourceRows,
+          stagedRows: staging.stagedRows,
+          continuationPending: true,
+          published: false
+        };
+      }
+      const finalized = callSupabaseRpc_('finalize_customer_rep_mapping_import_v1', { p_run_id: runId });
+      if (!finalized || finalized.ok !== true || String(finalized.runId || '') !== runId
+          || Number(finalized.rowCount) !== source.rowCount || !isCustomerRepMapRevision_(finalized.revision)) {
+        throw new Error(String(finalized && finalized.errorCode || 'CUSTOMER_REP_MAP_PUBLICATION_UNCONFIRMED'));
+      }
+      published = true;
+      saveCustomerRepMapContinuation_({
+        fileId: sourceFileId, modifiedAt: sourceModifiedAt, sourceHash: sourceHash, runId: runId, fileName: fileName, published: true
+      });
+      moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, `Customer Rep Map published ${fileName}`);
+      clearCustomerRepMapContinuation_();
+    }
+  } catch (error) {
+    const failure = createImportFileFailureEntry_(sourceFile, error);
+    if (isImportSourceValidationErrorCode_(failure.errorCode)) {
+      try { recordImportSourceRejection_(markerState, CUSTOMER_REP_MAP_TABLE, sourceFile, failure.errorCode); }
+      catch (trackerError) { failure.error = String(trackerError && trackerError.message || 'Could not retain rejected source.'); failure.errorCode = getSafeImportFailureCode_(trackerError); }
+    }
+    failedFiles.unshift(failure);
+  }
+  if (published) {
+    emitTableSyncLiveEvent_(CUSTOMER_REP_MAP_TABLE, { filesProcessed: 1, totalRows: sourceRows, sourceFileId: sourceFileId });
+  }
+  return {
+    tableName: CUSTOMER_REP_MAP_TABLE,
+    filesProcessed: published ? 1 : 0,
+    tempFilesRemoved: 0,
+    skippedFiles: olderFiles.length,
+    skippedFileNames: olderFiles.map(function(entry) { return String(entry.file.getName() || ''); }),
+    skippedFileErrors: olderFiles.map(function(entry) {
+      return { name: String(entry.file.getName() || ''), errorCode: 'CUSTOMER_REP_IMPORT_OLDER_PENDING' };
+    }),
+    failedFiles: failedFiles.length,
+    failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles,
+    totalRows: sourceRows,
+    stagedRows: sourceRows,
+    published: published
+  };
+}
+
 function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
   const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
@@ -6409,7 +6843,10 @@ function extractDataFromFile(file, folderId, options) {
       if (!sheets || !sheets.length) {
         throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No sheets found in ${originalFileName}.`);
       }
-      allValues = sheets[0].getDataRange().getValues();
+      const dataRange = sheets[0].getDataRange();
+      allValues = options && options.displayValues === true && typeof dataRange.getDisplayValues === 'function'
+        ? dataRange.getDisplayValues()
+        : dataRange.getValues();
     }
 
     if (!Array.isArray(allValues) || !allValues.length) {
@@ -6443,6 +6880,9 @@ function extractDataFromFile(file, folderId, options) {
     }
 
     allValues.splice(0, headerRowIdx);
+    if (options && options.preserveHeaderRowIndex === true) {
+      Object.defineProperty(allValues, '__sourceHeaderRowIndex', { configurable: true, enumerable: false, value: headerRowIdx });
+    }
     return allValues;
   } catch (err) {
     const errorMessage = err && err.message ? err.message : String(err);

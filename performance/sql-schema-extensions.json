@@ -14,5 +14,9 @@
   {
     "path": "supabase/migrations/20261009202507_prompt25_editable_field_shield_and_hold_clear.sql",
     "gitBlob": "2786346e7c8130789664f86430974ededb471e2c"
+  },
+  {
+    "path": "supabase/migrations/20261010024830_customer_rep_mapping_management.sql",
+    "gitBlob": "5a508f96f386419036a772cdd8db027802d44f95"
   }
 ]

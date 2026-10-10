@@ -229,7 +229,10 @@ test('legacy app-api database proxy cannot read ph_master_inventory around the o
   const start = edgeSource.indexOf('async function handleDb(');
   const end = edgeSource.indexOf('const INVENTORY_MASTER_INITIAL_FIELDS', start);
   assert.ok(start >= 0 && end > start, 'legacy database proxy should exist');
-  const transpiled = ts.transpileModule(`${edgeSource.slice(start, end)}\nthis.legacyDbTest = handleDb;`, {
+  const guardStart = edgeSource.indexOf('const INTERNAL_MOVE_REQUEST_INSERT_FIELDS = new Set(');
+  const guardEnd = edgeSource.indexOf('async function restRequest(', guardStart);
+  assert.ok(guardStart >= 0 && guardEnd > guardStart, 'request write guards should exist');
+  const transpiled = ts.transpileModule(`${edgeSource.slice(guardStart, guardEnd)}\n${edgeSource.slice(start, end)}\nthis.legacyDbTest = handleDb;`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
   }).outputText;
   const context = vm.createContext({

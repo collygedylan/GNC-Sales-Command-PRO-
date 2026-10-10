@@ -24980,6 +24980,17 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "mapping_revision": {
+            "schema": "number"
+          },
+          "mapping_updated_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "ncfreightzone": {
             "schema": {
               "oneOf": [
@@ -25147,6 +25158,9 @@ export const contracts: RuntimeContracts<Database> = {
                 "null"
               ]
             }
+          },
+          "raw_data": {
+            "schema": "json"
           },
           "requirepo": {
             "schema": {
@@ -26025,6 +26039,19 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "mapping_revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "mapping_updated_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "ncfreightzone": {
             "schema": {
               "oneOf": [
@@ -26212,6 +26239,10 @@ export const contracts: RuntimeContracts<Database> = {
                 "null"
               ]
             },
+            "optional": true
+          },
+          "raw_data": {
+            "schema": "json",
             "optional": true
           },
           "requirepo": {
@@ -27129,6 +27160,19 @@ export const contracts: RuntimeContracts<Database> = {
             },
             "optional": true
           },
+          "mapping_revision": {
+            "schema": "number",
+            "optional": true
+          },
+          "mapping_updated_by": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
           "ncfreightzone": {
             "schema": {
               "oneOf": [
@@ -27316,6 +27360,10 @@ export const contracts: RuntimeContracts<Database> = {
                 "null"
               ]
             },
+            "optional": true
+          },
+          "raw_data": {
+            "schema": "json",
             "optional": true
           },
           "requirepo": {
@@ -85507,6 +85555,54 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "begin_customer_rep_mapping_import_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_expected_rows": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_run_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_file_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_hash": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_modified_at": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "begin_dataset_import_v1": {
       "oneOf": [
         {
@@ -86375,6 +86471,39 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "customer_rep_mapping_manage_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "digest": {
       "oneOf": [
         {
@@ -86536,6 +86665,22 @@ export const contracts: RuntimeContracts<Database> = {
               }
             },
             "p_lease_token": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "finalize_customer_rep_mapping_import_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_run_id": {
               "schema": {
                 "oneOf": [
                   "string",
@@ -91031,6 +91176,30 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "stage_customer_rep_mapping_rows_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_rows": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_run_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "stage_eval_item_low_stock_rows_v1": {
       "oneOf": [
         {
@@ -92022,6 +92191,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "aura_resolve_season_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "begin_customer_rep_mapping_import_v1": {
       "oneOf": [
         "json"
       ]
@@ -96576,6 +96750,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "customer_rep_mapping_manage_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "digest": {
       "oneOf": [
         {
@@ -96898,6 +97077,11 @@ export const contracts: RuntimeContracts<Database> = {
             "null"
           ]
         }
+      ]
+    },
+    "finalize_customer_rep_mapping_import_v1": {
+      "oneOf": [
+        "json"
       ]
     },
     "finalize_eval_item_low_stock_file_v1": {
@@ -101859,6 +102043,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "set_itemcode_default_owners_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "stage_customer_rep_mapping_rows_v1": {
       "oneOf": [
         "json"
       ]

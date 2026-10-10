@@ -28,6 +28,7 @@ import { recordHandledError, withObservedRequest } from "../_shared/observabilit
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
 import { auraInventoryV2Rpc } from "../_shared/aura-inventory.ts";
 import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail, isPhotoHistoryUsernameAllowed } from "../_shared/photo-history.ts";
+import { isCustomerRepMappingEditorRole, validateCustomerRepMappingRequest } from "../_shared/customer-rep-mapping.ts";
 import {
   PHOTO_LEGACY_MAX_BYTES,
   PHOTO_V2_DISPLAY_MAX_BYTES,
@@ -419,6 +420,128 @@ function withSelect(query = "", selectValue = "*") {
   const params = new URLSearchParams(String(query || ""));
   params.set("select", selectValue);
   return params.toString();
+}
+
+const INTERNAL_MOVE_REQUEST_INSERT_FIELDS = new Set([
+  "unique_id", "master_id", "commonname", "contsize", "locationcode", "lotcode", "itemcode", "ptravailable",
+  "priority", "requested_by", "request_folder", "req_customer", "req_qty", "desired_spec", "desired_caliper",
+  "req_reserve", "req_comments", "req_archived", "req_status", "app_tab_assignment", "assignedto", "move_batch_id",
+  "move_approval_stage", "move_status", "move_group_key", "move_from_locationcode", "move_to_locationcode",
+  "move_planned_qty", "move_actual_qty", "move_destination_needs_row", "move_dylan_approved_at", "move_jd_approved_at",
+  "move_completed_at", "move_completed_by", "created_at", "updated_at",
+]);
+const INTERNAL_EVAL_REQUEST_INSERT_FIELDS = new Set([
+  "unique_id", "master_id", "commonname", "contsize", "locationcode", "lotcode", "itemcode", "ptravailable",
+  "season_supply", "priority", "qualitycode", "field_tag_color", "requested_by", "request_folder", "req_customer",
+  "req_qty", "desired_spec", "desired_caliper", "request_note", "est_ship", "req_reserve", "req_match", "req_spec",
+  "req_caliper", "req_pic_note", "req_comments", "av_note", "req_photo_link", "req_photo_name", "req_archived",
+  "date_completed", "req_status",
+]);
+
+function classifyInternalCustomerRequestInsert(body: unknown): "move" | "eval" | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const row = body as Record<string, unknown>;
+  const keys = Object.keys(row).map(key => key.trim().toLowerCase());
+  if (new Set(keys).size !== keys.length || keys.includes("request_source")
+    || keys.some(key => ["customeridentityid", "customername", "consigneeidentityid", "consigneename", "request_selected_rep_username", "request_selected_rep_display"].includes(key))) return null;
+  const move = keys.every(key => INTERNAL_MOVE_REQUEST_INSERT_FIELDS.has(key))
+    && /^move_req_[a-z0-9_]{1,120}$/i.test(String(row.unique_id || ""))
+    && String(row.req_customer || "").trim() === "Location Move"
+    && /^(?:Manual )?Location Move\b/.test(String(row.request_folder || "").trim())
+    && String(row.app_tab_assignment || "").trim().toLowerCase() === "moves"
+    && !!String(row.move_batch_id || "").trim()
+    && ["dylan", "jd"].includes(String(row.move_approval_stage || "").trim().toLowerCase())
+    && String(row.move_status || "").trim().toLowerCase() === `pending_${String(row.move_approval_stage || "").trim().toLowerCase()}`
+    && String(row.req_status || "").trim().toLowerCase() === "pending"
+    && row.req_archived === false;
+  if (move) return "move";
+  const evalTask = keys.every(key => INTERNAL_EVAL_REQUEST_INSERT_FIELDS.has(key))
+    && /^eval-[a-z0-9._-]{1,180}$/i.test(String(row.unique_id || ""))
+    && String(row.req_customer || "").trim().startsWith("EVAL Task")
+    && String(row.request_folder || "").trim().startsWith("EVAL-")
+    && String(row.req_status || "").trim().toLowerCase() === "pending";
+  return evalTask ? "eval" : null;
+}
+
+function stampInternalCustomerRequestSource(body: unknown) {
+  if (!body || typeof body !== "object" || Array.isArray(body) || !classifyInternalCustomerRequestInsert(body)) return null;
+  return { ...(body as Record<string, unknown>), request_source: "internal" };
+}
+
+function protectCustomerRequestDbWrite(table: string, method: string, body: unknown) {
+  if (table !== "ph_active_request") return null;
+  if (method === "POST") {
+    // Move approvals and Eval assignments are legacy internal workflows. Keep
+    // their narrow row contracts working; handleDb rechecks the active actor
+    // and the corresponding permission before using the service-role proxy.
+    if (classifyInternalCustomerRequestInsert(body)) return null;
+    return errorResponse("Create requests through the authorized request batch operation.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+  }
+  if (method === "PATCH" && Array.isArray(body)) {
+    return errorResponse("Bulk request updates require the protected request workflow.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+  }
+  if (method === "PATCH" && body && typeof body === "object" && !Array.isArray(body)) {
+    const protectedFields = new Set([
+      "request_source", "customeridentityid", "customername", "consigneeidentityid", "consigneename",
+      "requested_by", "request_selected_rep_username", "request_selected_rep_display",
+    ]);
+    const bodyFields = Object.keys(body as Record<string, unknown>).map((key) => key.trim().toLowerCase());
+    if (bodyFields.some((key) => protectedFields.has(key))) {
+      return errorResponse("Customer identity and selected-representative fields require the protected request workflow.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+    }
+  }
+  return null;
+}
+
+async function authorizeInternalCustomerRequestInsert(
+  session: Awaited<ReturnType<typeof readAppSessionFromRequest>>,
+  body: unknown,
+) {
+  const kind = classifyInternalCustomerRequestInsert(body);
+  if (!kind || !body || typeof body !== "object" || Array.isArray(body)) {
+    return errorResponse("Create requests through the authorized request batch operation.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+  }
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
+  const username = normalizeUsername(String(actor.username || ""));
+  const access = getRoleAccessState(String(actor.role || ""));
+  if (!username || (!access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username))) {
+    return errorResponse("This request workflow is not available to this account.", 403, { code: "INTERNAL_REQUEST_FORBIDDEN" });
+  }
+  if (kind === "eval" && !EVAL_WORK_MANAGER_USERS.has(username)) {
+    return errorResponse("Eval assignments are available only to authorized managers.", 403, { code: "EVAL_WORK_ASSIGNMENT_FORBIDDEN" });
+  }
+  const row = body as Record<string, unknown>;
+  const masterId = String(row.master_id || "").trim();
+  if (!masterId || masterId.length > 200) {
+    return errorResponse("A valid inventory source row is required.", 400, { code: "INTERNAL_REQUEST_SOURCE_INVALID" });
+  }
+  const { data: master, error } = await supabase.from("ph_master_inventory")
+    .select("unique_id,itemcode,locationcode,lotcode,commonname,contsize")
+    .eq("unique_id", masterId).maybeSingle();
+  if (error) return databaseFailureResponse("The inventory source row could not be verified.", error, "INTERNAL_REQUEST_SOURCE_UNAVAILABLE");
+  if (!master) return errorResponse("The inventory source row is no longer available.", 409, { code: "INTERNAL_REQUEST_SOURCE_CHANGED" });
+  if (kind === "move") {
+    // The master UID plus item/location/lot are the stable source identity.
+    // Common name and container size are display fields and may legitimately
+    // differ in formatting between an older cached card and the current row.
+    const exactSource = ["itemcode", "locationcode", "lotcode"]
+      .every(key => String(row[key] ?? "").trim() === String(master[key as keyof typeof master] ?? "").trim());
+    const from = String(row.move_from_locationcode || "").trim();
+    const to = String(row.move_to_locationcode || "").trim();
+    const qty = String(row.move_planned_qty ?? "").trim();
+    const requester = String(row.requested_by || "").trim();
+    const displayName = String(actor.display_name || "").trim();
+    if (!exactSource || from !== String(master.locationcode || "").trim() || !to || to.toLowerCase() === from.toLowerCase()
+      || !/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(qty) || !Number.isFinite(Number(qty))
+      || (normalizeUsername(requester) !== username && requester.toLowerCase() !== displayName.toLowerCase())) {
+      return errorResponse("The move request no longer matches its source row or signed-in requester.", 409, { code: "INTERNAL_MOVE_REQUEST_INVALID" });
+    }
+  } else if (!EVAL_WORK_ASSIGNABLE_USERS.has(normalizeUsername(String(row.requested_by || "")))) {
+    return errorResponse("Choose an authorized Eval assignee.", 400, { code: "EVAL_WORK_ASSIGNMENT_INVALID" });
+  }
+  return null;
 }
 
 async function restRequest(table: string, method = "GET", query = "", body: unknown = null) {
@@ -1225,6 +1348,57 @@ async function handleManagerSeasonSettings(
       return errorResponse("Another manager changed the season. Reload the current setting and review your update.", 409, { code: "AURA_MANAGER_SETTINGS_CONFLICT" });
     }
     return errorResponse("Current season settings are unavailable. Reload and try again; no update has been confirmed.", 503, { code: "AURA_SEASON_SETTINGS_UNAVAILABLE" });
+  }
+}
+
+async function handleCustomerRepMappingAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Sign in to manage customer mappings.", 401, { code: "CUSTOMER_REP_MAPPING_UNAUTHORIZED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account profile is required.", 403, { code: "CUSTOMER_REP_MAPPING_PROFILE_INACTIVE" }); }
+  let request: ReturnType<typeof validateCustomerRepMappingRequest>;
+  try { request = validateCustomerRepMappingRequest(payload); }
+  catch (error) {
+    const code = String(error instanceof Error ? error.message : "CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    return errorResponse("The customer mapping request is invalid.", 400, { code });
+  }
+  if (request.operation === "options" && !hasTableReadAccess(String(actor.role || ""), "ph_customer_consignee_sales_reps", String(actor.username || ""))) {
+    return errorResponse("Forbidden", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
+  }
+  if (request.operation !== "options" && !isCustomerRepMappingEditorRole(actor.role)) {
+    return errorResponse("Customer mapping management is available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
+  }
+  try {
+    const { data, error } = await supabase.rpc("customer_rep_mapping_manage_v1", {
+      p_actor_id: String(actor.id || ""),
+      p_operation: request.operation,
+      p_payload: jsonValue(request.payload),
+    });
+    if (error) {
+      const failure = String(error.message || "");
+      if (/CUSTOMER_REP_MAPPING_(?:CONFLICT|DUPLICATE)/.test(failure)) {
+        return errorResponse("This mapping changed or conflicts with another row. Reload and review it before saving.", 409, { code: "CUSTOMER_REP_MAPPING_CONFLICT" });
+      }
+      if (/CUSTOMER_REP_MAPPING_NOT_FOUND/.test(failure)) {
+        return errorResponse("The customer mapping no longer exists. Reload the list.", 404, { code: "CUSTOMER_REP_MAPPING_NOT_FOUND" });
+      }
+      if (/CUSTOMER_REP_MAPPING_(?:FORBIDDEN|PROFILE_INACTIVE)/.test(failure)) {
+        return errorResponse("Customer mappings are available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
+      }
+      if (/CUSTOMER_REP_MAPPING_(?:PAYLOAD|FILTER|VALUE|REVISION|IDENTITY_MISSING|REP_UNVERIFIED|OPERATION)/.test(failure)) {
+        return errorResponse("The customer mapping could not be saved. Review the active customer, consignee, and sales representative.", 400, { code: failure.match(/CUSTOMER_REP_MAPPING_[A-Z_]+/)?.[0] || "CUSTOMER_REP_MAPPING_INVALID" });
+      }
+      throw error;
+    }
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("CUSTOMER_REP_MAPPING_RESPONSE_INVALID");
+    return jsonResponse(data);
+  } catch (error) {
+    recordHandledError("app-api", "customer-rep-map", error, 503);
+    return errorResponse("Customer mappings are temporarily unavailable. Retry after refreshing the list.", 503, { code: "CUSTOMER_REP_MAPPING_UNAVAILABLE" });
   }
 }
 
@@ -3209,13 +3383,53 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   let query = String(payload.query || "").trim();
 
   if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) return errorResponse("Unsupported method.", 400);
+  const customerRequestWriteError = protectCustomerRequestDbWrite(table, method, body);
+  if (customerRequestWriteError) return customerRequestWriteError;
   if (table === "ph_master_inventory" && method === "GET") {
     return errorResponse("Use the role-checked inventory_read operations.", 410, { code: "INVENTORY_READ_API_REQUIRED" });
+  }
+  if (table === "ph_customer_consignee_sales_reps" && method === "GET") {
+    // The source JSON is returned only by the Admin/Manager detail RPC. The
+    // generic compatibility read uses service credentials, so pin its column
+    // projection even when a legacy caller asks for `*` or raw_data.
+    const safeMappingColumns = new Set([
+      "unique_id", "customeridentityid", "customername", "customerstatus", "consigneeid", "consigneename",
+      "consigneestatus", "salesrepid", "salesrepname", "territorycode", "territorydesc", "updated_at",
+      "mapping_revision", "mapping_updated_by",
+    ]);
+    const mappingParams = new URLSearchParams(query);
+    const allowedMappingQueryKeys = new Set([...safeMappingColumns, "select", "order", "limit", "offset"]);
+    if (query.length > 2000 || [...mappingParams.keys()].some((key) => !allowedMappingQueryKeys.has(key))) {
+      return errorResponse("Unsupported customer mapping query.", 400, { code: "CUSTOMER_REP_MAPPING_QUERY_INVALID" });
+    }
+    const invalidOrder = mappingParams.getAll("order").some((orderValue) => orderValue.split(",").some((part) => {
+      const [column, direction, nulls] = part.trim().split(".");
+      return !column || !safeMappingColumns.has(column)
+        || ![undefined, "asc", "desc"].includes(direction)
+        || ![undefined, "nullsfirst", "nullslast"].includes(nulls);
+    }));
+    if (invalidOrder) {
+      return errorResponse("Unsupported customer mapping sort.", 400, { code: "CUSTOMER_REP_MAPPING_QUERY_INVALID" });
+    }
+    for (const key of ["limit", "offset"]) {
+      const values = mappingParams.getAll(key);
+      if (values.some((value) => !/^\d{1,6}$/.test(value) || Number(value) > 1_000_000)) {
+        return errorResponse("Unsupported customer mapping page.", 400, { code: "CUSTOMER_REP_MAPPING_QUERY_INVALID" });
+      }
+    }
+    query = withSelect(query,
+      "unique_id,customeridentityid,customername,customerstatus,consigneeid,consigneename,consigneestatus,salesrepid,salesrepname,territorycode,territorydesc,updated_at,mapping_revision,mapping_updated_by");
   }
   if (method === "GET") {
     if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
   } else if (!hasTableWriteAccess(session.role, table, method, body, session.username)) {
     return errorResponse("Forbidden", 403);
+  }
+  if (table === "ph_active_request" && method === "POST") {
+    const internalRequestError = await authorizeInternalCustomerRequestInsert(session, body);
+    if (internalRequestError) return internalRequestError;
+    body = stampInternalCustomerRequestSource(body);
+    if (!body) return errorResponse("Create requests through the authorized request batch operation.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
   }
 
   if (table === "ph_app_users" && method === "GET") {
@@ -4639,6 +4853,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
 
   if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
   if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
+  if (action === "customer-rep-map") return await handleCustomerRepMappingAction(session, payload);
 
   if (action === "request_history" || action === "sales_credit") {
     return await handleSalesWorkflow({ session, payload, supabase, resolveActiveSessionProfile, headers: corsHeaders });

@@ -12,7 +12,7 @@ test('Request rep selection always renders customer choices or a recoverable err
   const result = await page.evaluate(() => window.eval(`(() => {
     document.body.classList.add('ops-precision-pilot');
     customerRepMapRows = [
-      { SALESREPNAME: 'Kevin Effinger', CUSTOMERNAME: 'Test Garden Center', CONSIGNEENAME: 'Main Dock' }
+      { SALESREPID: '01', CUSTOMERIDENTITYID: '00012', CONSIGNEEID: '00007', CUSTOMERSTATUS: 'A', CONSIGNEESTATUS: 'A', SALESREPNAME: 'Kevin Effinger', CUSTOMERNAME: 'Test Garden Center', CONSIGNEENAME: 'Main Dock' }
     ];
     requestsInventory = [];
     requestModalCustomerOptionsLoading = false;

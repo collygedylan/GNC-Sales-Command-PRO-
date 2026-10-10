@@ -138,6 +138,31 @@ test('a partial Drive result is checkpointed and SOC/Reserves resume on the next
   assert.equal(harness.events.some(event => event.table === 'manual_sync'), false);
 });
 
+test('a bounded Customer Rep Map continuation retains the same manual-sync stage until publication completes', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['customer_rep_map', 'soc']);
+  vm.runInContext("MANUAL_SYNC_STAGE_DEFINITIONS.customer_rep_map.run = () => __runStage('customer_rep_map')", harness.context);
+  harness.setStageRunner(stage => stage === 'customer_rep_map'
+    ? { continuationPending: true, stagedRows: 300, totalRows: 301 }
+    : { filesProcessed: 1, failedFiles: 0 });
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  const waiting = harness.status();
+  assert.equal(waiting.active, true);
+  assert.equal(waiting.stageIndex, 0);
+  assert.equal(waiting.currentStage, 'customer_rep_map');
+  assert.match(waiting.message, /Staged 300 of 301 Customer Rep Map rows/);
+  assert.equal(waiting.stageResults.length, 0, 'a partial stage is not recorded as completed');
+  assert.equal(harness.triggers.filter(trigger => trigger.handler === 'runQueuedManualSyncStage_').length, 1);
+
+  harness.setStageRunner(stage => ({ filesProcessed: 1, failedFiles: 0 }));
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  const complete = harness.status();
+  assert.equal(complete.active, false);
+  assert.equal(complete.currentStage, 'complete');
+  assert.deepEqual(complete.completedStages, ['customer_rep_map', 'soc']);
+  assert.deepEqual(complete.stageResults.map(result => result.key), ['customer_rep_map', 'soc']);
+});
+
 test('a Drive stage with successful files and a classified rejected file is partial', () => {
   const harness = createHarness();
   harness.setRunningStatus();
