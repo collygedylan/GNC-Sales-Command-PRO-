@@ -1,8 +1,20 @@
+// @test-group: inventory
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import {
+  INVENTORY_MASTER_BROWSE_FIELDS as MASTER_BROWSE_FIELDS,
+  INVENTORY_MASTER_FULL_FIELDS as MASTER_FULL_FIELDS,
+  INVENTORY_MASTER_INITIAL_BASE_FIELDS as MASTER_INITIAL_BASE_FIELDS,
+  INVENTORY_MASTER_INITIAL_FIELDS as MASTER_INITIAL_FIELDS,
+  INVENTORY_NCR_QUEUE_FIELDS,
+  INVENTORY_NOT_ON_INVENTORY_FIELDS,
+  INVENTORY_PO_DETAIL_FIELDS,
+  inventoryProjectionMatcher,
+  projectInventoryRows,
+} from '../supabase/functions/_shared/inventory-projections.ts';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const edgeSource = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
@@ -114,6 +126,19 @@ function appApiHarness({ moduleAllowed = true } = {}) {
   }).outputText;
   const queries = [];
   const context = vm.createContext({
+    jsonValue: value => value,
+    jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
+    projectInventoryRows,
+    MASTER_BROWSE_FIELDS,
+    MASTER_FULL_FIELDS,
+    MASTER_INITIAL_BASE_FIELDS,
+    MASTER_INITIAL_FIELDS,
+    INVENTORY_NCR_QUEUE_FIELDS,
+    INVENTORY_NOT_ON_INVENTORY_FIELDS,
+    INVENTORY_PO_DETAIL_FIELDS,
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
     hasTableReadAccess: (role, _table, username) => ['admin', 'qc supervisor', 'rep'].includes(String(role || '').toLowerCase())
@@ -143,9 +168,25 @@ function appApiHarness({ moduleAllowed = true } = {}) {
       }
     }
   });
-  vm.runInContext(transpiled, context);
-  return { handler: context.inventoryReadTest, queries };
+  vm.runInContext(`${transpiled}\nthis.inventoryProjectionTest = projectInventoryRows;`, context);
+  return { handler: context.inventoryReadTest, queries, context };
 }
+
+test('inventory row projection validates rows and copies only selected fields in source order', () => {
+  const { context } = appApiHarness();
+  const project = context.inventoryProjectionTest;
+  const source = { unique_id: 'row-1', itemcode: null, unexpected: { nested: true } };
+  const projected = project([source], 'unique_id,itemcode');
+  assert.deepEqual(JSON.parse(JSON.stringify(projected)), [{ unique_id: 'row-1', itemcode: null }]);
+  assert.deepEqual(Object.keys(projected[0]), ['unique_id', 'itemcode']);
+  assert.deepEqual(source, { unique_id: 'row-1', itemcode: null, unexpected: { nested: true } });
+  assert.equal(inventoryProjectionMatcher(MASTER_BROWSE_FIELDS), inventoryProjectionMatcher(MASTER_BROWSE_FIELDS));
+  assert.notEqual(inventoryProjectionMatcher('unique_id,itemcode'), inventoryProjectionMatcher('unique_id,itemcode'));
+  assert.deepEqual(JSON.parse(JSON.stringify(project([source], '*'))), [source]);
+  assert.deepEqual(project(null, 'unique_id'), []);
+  assert.throws(() => project([null], 'unique_id'), /Expected a JSON object/);
+  assert.throws(() => project([{ unique_id: 'row-2', unexpected: () => 'not JSON' }], 'unique_id'), /Expected a finite JSON value/);
+});
 
 test('browse inventory preserves filters and readouts with explicit field coverage and bounded pages', async () => {
   const { handler, queries } = appApiHarness();
@@ -188,7 +229,10 @@ test('legacy app-api database proxy cannot read ph_master_inventory around the o
   const start = edgeSource.indexOf('async function handleDb(');
   const end = edgeSource.indexOf('const INVENTORY_MASTER_INITIAL_FIELDS', start);
   assert.ok(start >= 0 && end > start, 'legacy database proxy should exist');
-  const transpiled = ts.transpileModule(`${edgeSource.slice(start, end)}\nthis.legacyDbTest = handleDb;`, {
+  const guardStart = edgeSource.indexOf('const INTERNAL_MOVE_REQUEST_INSERT_FIELDS = new Set(');
+  const guardEnd = edgeSource.indexOf('async function restRequest(', guardStart);
+  assert.ok(guardStart >= 0 && guardEnd > guardStart, 'request write guards should exist');
+  const transpiled = ts.transpileModule(`${edgeSource.slice(guardStart, guardEnd)}\n${edgeSource.slice(start, end)}\nthis.legacyDbTest = handleDb;`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
   }).outputText;
   const context = vm.createContext({
@@ -236,6 +280,7 @@ test('inventory_read applies fixed projections, capped pagination, module access
   });
   assert.equal(allowedAssignment.status, 200);
   assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'app_tab_assignment' && value === 'ncr_approval_new_crop_dylan'));
+  assert.ok(queries.at(-1).calls.some(([method, fields]) => method === 'select' && fields.includes('unique_id') && fields.includes('locationcode') && !fields.includes('*')));
 
   const recount = await handler({ actor: { username: 'dylan_collyge', role: 'staff' } }, { operation: 'recount_queue' });
   assert.equal(recount.status, 200);

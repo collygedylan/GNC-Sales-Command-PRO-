@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.01.011';
+const APP_SHELL_BUILD = 'V2026.10.10.005';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -18,7 +18,55 @@ const IMAGE_CACHE_MAX_ENTRIES = 500;
 const IMAGE_CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const IMAGE_CACHE_MAX_BYTES = 100 * 1024 * 1024;
 const OPAQUE_IMAGE_ESTIMATED_BYTES = 2 * 1024 * 1024;
+// BEGIN GENERATED BRANDING ASSETS
+// Derived from assets/branding/catalog.json by scripts/branding-assets.mjs.
+const BRANDING_LEGACY_ALIASES = Object.freeze({
+  "./ag-data-solutions-icon-v20260708023-32.png": "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./ag-data-solutions-icon-v2026080923-32.png": "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./ag-data-solutions-icon-v2026080925-32.png": "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./ag-data-solutions-icon-v20260708023-180.png": "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./ag-data-solutions-icon-v2026080923-180.png": "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./ag-data-solutions-icon-v2026080925-180.png": "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./ag-data-solutions-icon-v20260708023-192.png": "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./ag-data-solutions-icon-v2026080923-192.png": "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./ag-data-solutions-icon-v2026080925-192.png": "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./ag-data-solutions-icon-v20260708023-512.png": "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./ag-data-solutions-icon-v2026080923-512.png": "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./ag-data-solutions-icon-v2026080925-512.png": "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./ag-data-solutions-logo-v2026080923.png": "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./ag-data-solutions-logo-v2026080925.png": "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./ag-data-solutions-logo.png": "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./ag-data-solutions-logo-v2026090503-224.webp": "./assets/branding/ag-data-solutions-logo-v2026090503-224.webp",
+  "./ag-data-solutions-logo-v2026090503-448.webp": "./assets/branding/ag-data-solutions-logo-v2026090503-448.webp",
+  "./ag-data-solutions-splash-v202607141237.png": "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./ag-data-solutions-splash-v2026080923.png": "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./ag-data-solutions-splash-v2026080925.png": "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./ag-data-solutions-splash-v2026081615.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081701.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081702.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081703.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081704.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081705.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081706.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081707.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081708.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png",
+  "./ag-data-solutions-splash-v2026081709.png": "./assets/branding/ag-data-solutions-splash-v2026081709.png"
+});
+const BRANDING_CANONICAL_ASSETS = Object.freeze([
+  "./assets/branding/ag-data-solutions-icon-v2026080925-32.png",
+  "./assets/branding/ag-data-solutions-icon-v2026080925-180.png",
+  "./assets/branding/ag-data-solutions-icon-v2026080925-192.png",
+  "./assets/branding/ag-data-solutions-icon-v2026080925-512.png",
+  "./assets/branding/ag-data-solutions-logo-v2026080925.png",
+  "./assets/branding/ag-data-solutions-logo-v2026090503-224.webp",
+  "./assets/branding/ag-data-solutions-logo-v2026090503-448.webp",
+  "./assets/branding/ag-data-solutions-splash-v2026080925.png",
+  "./assets/branding/ag-data-solutions-splash-v2026081709.png"
+]);
+// END GENERATED BRANDING ASSETS
+const DEFERRED_VIEW_ASSETS = /* release-generated */ [];
 const ASSETS_TO_CACHE = [
+  ...DEFERRED_VIEW_ASSETS,
   APP_SHELL_URL,
   './manifest.json',
   './assets/theme-tokens.css?v=' + encodeURIComponent(APP_SHELL_BUILD),
@@ -35,7 +83,7 @@ const ASSETS_TO_CACHE = [
   './assets/live-sync-coordinator.js',
   './assets/inventory-list-contract.js',
   './assets/live-tailwind-v2026082010.min.css',
-  './assets/live-app-runtime-v2026082010.min.js',
+  './assets/live-app-runtime-v2026082010.min.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
   './assets/live-app-styles-base-v2026090503.css',
   './assets/live-app-styles-authority-v2026090503.css',
   './assets/image-optimize-worker-v2026090401.js',
@@ -51,14 +99,7 @@ const ASSETS_TO_CACHE = [
   './assets/vendor/phosphor/fill/Phosphor-Fill.woff2',
   './assets/vendor/phosphor/light/style.css',
   './assets/vendor/phosphor/light/Phosphor-Light.woff2',
-  './ag-data-solutions-logo-v2026080925.png',
-  './ag-data-solutions-logo-v2026090503-224.webp',
-  './ag-data-solutions-logo-v2026090503-448.webp',
-  './ag-data-solutions-splash-v2026081709.png',
-  './ag-data-solutions-icon-v2026080925-32.png',
-  './ag-data-solutions-icon-v2026080925-180.png',
-  './ag-data-solutions-icon-v2026080925-192.png',
-  './ag-data-solutions-icon-v2026080925-512.png'
+  ...BRANDING_CANONICAL_ASSETS
 ];
 const RUNTIME_CACHE_EXTENSION_REGEX = /\.(?:css|js|mjs|json|png|jpg|jpeg|webp|svg|ico|woff2?)$/i;
 const CONTENT_VERSION_REGEX = /(?:[._-](?:v?20\d{6,}|[a-f0-9]{8,})[._-]|\/assets\/vendor\/)/i;
@@ -190,6 +231,40 @@ function getAbsoluteAssetUrl(asset = '') {
   }
 }
 
+function getBrandingCanonicalUrl(requestOrUrl = null) {
+  const requestUrl = getRequestUrl(requestOrUrl);
+  const scopeUrl = getRequestUrl(self.registration.scope);
+  if (!requestUrl || !scopeUrl || requestUrl.origin !== scopeUrl.origin
+    || requestUrl.search || requestUrl.hash || !requestUrl.pathname.startsWith(scopeUrl.pathname)) return null;
+  const relativePath = './' + requestUrl.pathname.slice(scopeUrl.pathname.length);
+  const canonicalPath = BRANDING_LEGACY_ALIASES[relativePath];
+  if (typeof canonicalPath !== 'string' || !canonicalPath.startsWith('./assets/branding/')) return null;
+  try {
+    const canonicalUrl = new URL(canonicalPath, scopeUrl);
+    if (canonicalUrl.origin !== scopeUrl.origin
+      || !canonicalUrl.pathname.startsWith(new URL('./assets/branding/', scopeUrl).pathname)) return null;
+    return canonicalUrl;
+  } catch (error) {
+    return null;
+  }
+}
+
+async function handleBrandingAliasRequest(canonicalUrl) {
+  const cache = await caches.open(CACHE_NAME).catch(() => null);
+  const cached = cache ? await cache.match(canonicalUrl.href).catch(() => null) : null;
+  if (cached) return cached;
+  try {
+    const response = await fetch(canonicalUrl.href, { cache: 'no-store', credentials: 'same-origin' });
+    if (cache && response && response.status === 200
+      && (!response.url || new URL(response.url).href === canonicalUrl.href)) {
+      await cache.put(canonicalUrl.href, response.clone()).catch(() => {});
+    }
+    return response || Response.error();
+  } catch (error) {
+    return Response.error();
+  }
+}
+
 function isPrecachedRuntimeAssetUrl(url = null) {
   if (!url) return false;
   const href = typeof url === 'string' ? url : url.href;
@@ -211,9 +286,10 @@ function shouldBypassServiceWorkerCache(request) {
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return true;
   if (isIndependentAppRequest(request)) return true;
-  // AURA is loaded only after a verified Dylan session. Never persist its modules
+  // AURA is loaded only after a verified authorized session. Never persist its modules
   // in the shared origin's service-worker cache on devices with multiple users.
-  if (/\/(?:services\/(?:auraVoiceService|auraConversation)|utils\/(?:auraIntentParser|auraLingo)|components\/common\/auraVoiceWidget)\.js$/i.test(requestUrl.pathname)) return true;
+  if (/\/(?:services\/(?:auraVoiceService|auraConversation)|utils\/(?:auraIntentParser|auraLingo)|components\/common\/(?:auraVoiceWidget|auraQueryPanel))\.js$/i.test(requestUrl.pathname)) return true;
+  if (/\/assets\/aura-voice\.js$/i.test(requestUrl.pathname)) return true;
   if (/\/assets\/alpha-command-center\.(?:js|css)$/i.test(requestUrl.pathname)) return true;
   if (requestUrl.origin !== self.location.origin && PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;
   if (PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;
@@ -391,6 +467,7 @@ self.addEventListener('message', (event) => {
   const data = event && event.data ? event.data : {};
   if (!data || typeof data !== 'object') return;
   if (!event.source || !isProductionShellUrl(event.source.url)) return;
+  if (data.type === 'GNC_TAKE_SUSPEND_ACTION') { consumeSuspendNotificationAction(event); return; }
   if (data.type === 'SKIP_WAITING') {
     event.waitUntil(self.skipWaiting());
   } else if (data.type === 'GNC_GET_SHELL_VERSION') {
@@ -484,6 +561,11 @@ function handleProductionFetch(event) {
     );
     return;
   }
+  const brandingCanonicalUrl = getBrandingCanonicalUrl(event.request);
+  if (brandingCanonicalUrl) {
+    event.respondWith(handleBrandingAliasRequest(brandingCanonicalUrl));
+    return;
+  }
   if (isRuntimeImageRequest(event.request)) {
     event.respondWith(handleRuntimeImageRequest(event));
     return;
@@ -554,14 +636,19 @@ self.addEventListener('push', (event) => {
     try { data = event.data.json(); } catch (error) { data = { title: 'Ag Data Message', body: event.data.text() }; }
   }
   const title = data.title || 'Ag Data Message';
-  const iconUrl = new URL(data.icon || './ag-data-solutions-icon-v2026080925-192.png', self.registration.scope).href;
+  const requestedIcon = data.icon ? new URL(data.icon, self.registration.scope) : null;
+  const iconUrl = (requestedIcon
+    ? (getBrandingCanonicalUrl(requestedIcon) || requestedIcon)
+    : new URL('./assets/branding/ag-data-solutions-icon-v2026080925-192.png', self.registration.scope)).href;
   const requestedTarget = getRequestUrl(data.url || APP_SHELL_URL);
   const targetUrl = isProductionShellUrl(requestedTarget) ? requestedTarget.href : getAbsoluteAssetUrl(APP_SHELL_URL);
   const options = {
     body: data.body || 'You have a new message.',
     icon: iconUrl,
     badge: iconUrl,
-    data: { url: targetUrl, viewId: data.viewId || 'request', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
+    data: { url: targetUrl, viewId: data.viewId || 'request', approvalId: data.approvalId || '', taskView: data.taskView || '', folderName: data.folderName || '', conversationId: data.conversationId || '', messageId: data.messageId || '', channelId: data.channelId || '', callId: data.callId || '', calendarEventId: data.calendarEventId || '' },
+    actions: data.viewId === 'suspend-tag-approval' && /^[0-9a-f-]{36}$/i.test(data.approvalId || '')
+      ? [{ action: 'approve', title: 'Approve' }, { action: 'deny', title: 'Deny' }] : [],
     vibrate: [200, 100, 200],
     silent: false,
     requireInteraction: true,
@@ -580,17 +667,22 @@ self.addEventListener('notificationclick', (event) => {
   const targetView = payload.viewId || 'request';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clientList) => {
+      if (targetView === 'suspend-tag-approval' && /^[0-9a-f-]{36}$/i.test(payload.approvalId || '') && ['approve','deny'].includes(event.action)) {
+        const cache = await caches.open('gnc-suspend-notification-actions');
+        await cache.put(new URL('./__suspend_action/' + payload.approvalId, self.registration.scope).href,
+          new Response(JSON.stringify({ decision: event.action, expiresAt: Date.now() + 10 * 60 * 1000 })));
+      }
       for (const client of clientList) {
         if (isProductionShellUrl(client.url) && 'focus' in client) {
           await client.focus();
-          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
+          try { client.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
           return client;
         }
       }
       if (clients.openWindow) {
         const opened = await clients.openWindow(targetUrl);
         if (opened) {
-          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
+          try { opened.postMessage({ type: 'GNC_OPEN_VIEW', viewId: targetView, approvalId: payload.approvalId || '', taskView: payload.taskView || '', folderName: payload.folderName || '', conversationId: payload.conversationId || '', messageId: payload.messageId || '', channelId: payload.channelId || '', callId: payload.callId || '', calendarEventId: payload.calendarEventId || '' }); } catch (error) {}
         }
         return opened;
       }
@@ -598,6 +690,28 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// A URL can open a review, but only a real notificationclick creates an action.
+// Consume once through a same-origin app client; never store auth credentials.
+function consumeSuspendNotificationAction(event) {
+  if (event.data?.type !== 'GNC_TAKE_SUSPEND_ACTION' || !event.ports?.[0]) return;
+  event.waitUntil((async () => {
+    let decision = '';
+    const client = event.source?.id ? await clients.get(event.source.id) : null;
+    const id = String(event.data.approvalId || '');
+    if (client && isProductionShellUrl(client.url) && /^[0-9a-f-]{36}$/i.test(id)) {
+      const cache = await caches.open('gnc-suspend-notification-actions');
+      const key = new URL('./__suspend_action/' + id, self.registration.scope).href;
+      const response = await cache.match(key);
+      if (response) {
+        await cache.delete(key);
+        const saved = await response.json();
+        if (saved.expiresAt > Date.now() && ['approve','deny'].includes(saved.decision)) decision = saved.decision;
+      }
+    }
+    event.ports[0].postMessage({ decision });
+  })());
+}
 
 self.addEventListener('pushsubscriptionchange', (event) => {
   event.waitUntil(

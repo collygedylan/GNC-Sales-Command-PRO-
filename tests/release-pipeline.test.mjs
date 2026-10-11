@@ -14,6 +14,51 @@ const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
+test('superseded validation cancels only the matching workflow and PR or branch', () => {
+  const names = ['release-validation', 'release-database', 'bloomscapes-pending-tests',
+    'live-dataset-revisions', 'suspend-tag-tests', 'codex-mobile-path-policy'];
+  const workflows = [performance, ...names.map(name => {
+    const workflow = yaml.load(read(`.github/workflows/${name}.yml`));
+    assert.equal(workflow.concurrency.group,
+      name + '-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}');
+    return workflow;
+  })];
+  const group = (workflow, { pr = 42, ref = 'refs/pull/42/merge', caller = performance.name, sha = 'old' } = {}) =>
+    workflow.concurrency.group.replace(/\$\{\{(.*?)\}\}/g, (_, expression) => String(vm.runInNewContext(expression,
+      { github: { workflow: caller, ref, sha, event: { pull_request: { number: pr } } } })));
+  assert.equal(performance.concurrency.group, 'performance-${{ github.event.pull_request.number || github.ref }}');
+  assert.equal(new Set(workflows.map(workflow => group(workflow))).size, workflows.length,
+    'Caller and reusable children must never cancel one another');
+  for (const workflow of workflows) {
+    assert.equal(workflow.concurrency['cancel-in-progress'], true, workflow.name);
+    assert.equal(group(workflow), group(workflow, { sha: 'new' }), 'New commits supersede the same group');
+    assert.notEqual(group(workflow), group(workflow, { pr: 43 }), 'Other PRs remain independent');
+    assert.notEqual(group(workflow, { pr: null, ref: 'refs/heads/main' }),
+      group(workflow, { pr: null, ref: 'refs/heads/other' }), 'Manual branches remain independent');
+  }
+  for (const workflow of workflows.slice(1, 3)) {
+    assert.notEqual(group(workflow), group(workflow, { caller: pages.name }), 'Publication callers have a distinct namespace');
+  }
+  for (const name of ['pages-static', 'publish-candidate', 'apps-script-sync', 'codex-ops',
+    'apps-script-lifecycle-canary', 'test-sandbox-setup', 'production-auth-health', 'photo-archive', 'weather-hold-learning']) {
+    assert.equal(yaml.load(read(`.github/workflows/${name}.yml`)).concurrency['cancel-in-progress'], false, name);
+  }
+});
+
+test('CI commands defer retries to their configs and retain exhausted-failure gates', () => {
+  const manifest = JSON.parse(read('package.json'));
+  assert.doesNotMatch(manifest.scripts['test:foundation'], /--retries/);
+  for (const name of ['release-validation', 'release-database', 'pages-static']) {
+    const source = read(`.github/workflows/${name}.yml`);
+    assert.doesNotMatch(source, /--retries[= ]0|--fail-on-flaky-tests/);
+  }
+  for (const name of ['foundation', 'functional', 'compiled', 'timing']) {
+    const job = validation.jobs[name];
+    assert.equal(job.strategy['fail-fast'], true);
+    assert.ok(job.steps.some(step => /--max-failures=1/.test(step.run || '')), name);
+  }
+});
+
 test('all safety lanes must succeed before the sealed release can deploy', () => {
   assert.equal(pages.permissions.actions, 'read');
   assert.equal(validation.jobs['release-gate'].outputs['proof-id'], '${{ steps.proof.outputs.artifact-id }}');
@@ -45,7 +90,7 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -87,25 +132,37 @@ test('Pages job guards allow validated reuse without ignoring failures or cancel
 });
 
 test('browser shards and compiled suites use isolated runners without racing performance tests', () => {
-  assert.deepEqual(validation.jobs.functional.strategy.matrix.shard, [1,2,3,4,5,6,7,8]);
-  assert.equal(validation.jobs.functional.strategy['max-parallel'], 8);
-  assert.equal(validation.jobs.functional.strategy['fail-fast'], false);
-  assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=/);
-  assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /matrix\.shard \}\}\/8/);
-  assert.deepEqual(validation.jobs.compiled.strategy.matrix.include.map(x => x.suite), ['production-requests','footer','home-1','home-2','season','season-priority','suspend','docks','av-blanks','session','assignedto','verified-cache','request-reliability','request-photo','bunch-note','sales-mobile','module-mobile','production-schedule-mobile','hl-order-1','hl-order-2','hl-order-3','hl-restock','stable-refresh']);
-  const home = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.home-role.config.ts');
-  assert.deepEqual(home.map(x => x.shard), ['1/2','2/2']);
-  const hl = validation.jobs.compiled.strategy.matrix.include.filter(x => x.config === 'playwright.hl-order.config.ts');
-  assert.deepEqual(hl.map(x => x.shard), ['1/3','2/3','3/3']);
+  assert.deepEqual(validation.jobs.functional.strategy.matrix.project, ['chromium','firefox','webkit']);
+  assert.deepEqual(validation.jobs.functional.strategy.matrix.shard, [1,2,3,4]);
+  for (const name of ['foundation','functional','compiled','timing']) {
+    assert.equal(validation.jobs[name].strategy['fail-fast'], true);
+    assert.equal(validation.jobs[name].strategy['max-parallel'], undefined);
+  }
+  assert.match(validation.jobs.functional.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--shard=.*--project=.*--max-failures=1/);
+  const entries = validation.jobs.compiled.strategy.matrix.include;
+  assert.equal(entries.filter(x => x.suite === 'command-center').length, 1);
+  const home = entries.filter(x => x.config === 'playwright.home-role.config.ts');
+  assert.equal(home.length, 8);
+  for (const project of new Set(home.map(x => x.project))) {
+    assert.deepEqual(home.filter(x => x.project === project).map(x => [x.shard,x.total]), [[1,2],[2,2]]);
+  }
+  const hl = entries.filter(x => x.config === 'playwright.hl-order.config.ts');
+  assert.deepEqual(hl.map(x => x.project), ['cache-chromium','cache-firefox','cache-webkit','cache-android','cache-iphone']);
+  assert.ok(hl.every(x => x.shard === 1 && x.total === 1));
   assert.equal(validation.jobs.compiled['timeout-minutes'], 20);
-  assert.match(validation.jobs.compiled.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*matrix.shard.*--shard=/);
-  assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-timing.config.ts --workers=1/);
-  assert.match(validation.jobs.timing.steps.map(s=>s.run||'').join('\n'), /playwright.release-android.config.ts --project=android --workers=1/);
+  assert.match(validation.jobs.compiled.steps.find(s => s.run?.includes('playwright test')).run, /--workers=1.*--project=.*--shard=.*--max-failures=1/);
+  assert.deepEqual(validation.jobs.timing.strategy.matrix.include.map(x=>[x.project,x.config]), [
+    ['chromium','playwright.release-timing.config.ts'], ['firefox','playwright.release-timing.config.ts'],
+    ['webkit','playwright.release-timing.config.ts'], ['android','playwright.release-android.config.ts']
+  ]);
+  const preview = validation.jobs.timing.steps.filter(s => s.run === 'node scripts/check-isolated-preview.mjs');
+  assert.equal(preview.length, 1);
+  assert.equal(preview[0].if, "matrix.project == 'chromium'");
   assert.equal(validation.jobs.lighthouse['runs-on'], 'ubuntu-latest');
 });
 
 test('every build consumer verifies the original manifest, never rebuilds or reseals', () => {
-  for (const name of ['foundation','functional','compiled','timing','lighthouse']) {
+  for (const name of ['foundation','functional','compiled','timing','performance','lighthouse']) {
     const job = validation.jobs[name];
     assert.deepEqual(job.needs, ['functional','compiled'].includes(name) ? ['build','foundation'] : 'build');
     assert.equal(job.steps.filter(s => s.uses === './.github/actions/download-release').length, 1);
@@ -121,6 +178,18 @@ test('every build consumer verifies the original manifest, never rebuilds or res
   assert.equal(download.runs.steps[1].env.EXPECTED_RELEASE_COMMIT, '${{ inputs.commit || github.sha }}');
   assert.equal(download.runs.steps[1].env.GITHUB_SHA, undefined);
   assert.equal(validation.jobs.build.steps.find(s=>s.uses?.startsWith('actions/upload-artifact@')).with['include-hidden-files'], true);
+});
+
+test('performance is a required serial paired comparison with immutable baseline evidence', () => {
+  const job = validation.jobs.performance;
+  assert.equal(job.strategy, undefined, 'matched measurements share one quiet runner');
+  assert.ok(job.steps.some(step => step.run === 'node scripts/build-performance-baseline.mjs'));
+  assert.ok(job.steps.some(step => step.run === 'node scripts/run-performance-browser.mjs'));
+  assert.ok(job.steps.some(step => step.run === 'node scripts/release-artifact.mjs verify'));
+  const upload = job.steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
+  assert.equal(upload.if, 'always()');
+  assert.equal(upload.with.path, 'artifacts/performance');
+  assert.match(validation.jobs['release-gate'].steps[0].run, /'performance'/);
 });
 
 test('manual Pages recovery retains guarded validation while candidate dispatch owns automatic publication', () => {
@@ -145,8 +214,12 @@ test('live probes await exact commit and all retained suites run with writes blo
     '${{ needs.deploy.outputs.build-commit }}');
   assert.deepEqual(pages.jobs['post-deployment-canary'].needs, ['deploy','exact-live']);
   const matrix = pages.jobs['post-deployment-canary'].strategy.matrix.include;
-  assert.deepEqual(matrix.map(x=>x.suite), ['foundation','requests','session','login-photo']);
-  assert.match(matrix.find(x=>x.suite==='requests').command, /production-request-canary.spec.ts/);
+  assert.deepEqual([...new Set(matrix.map(x=>x.suite))], ['foundation','requests','session','login-photo']);
+  assert.match(matrix.find(x=>x.suite==='requests').command, /--config playwright\.production\.config\.ts/);
+  assert.deepEqual(matrix.filter(x=>x.suite==='login-photo').map(x=>x.project), ['chromium','webkit','android']);
+  assert.equal(matrix.length, 9);
+  assert.equal(pages.jobs['post-deployment-canary'].strategy['fail-fast'], true);
+  for (const row of matrix) assert.match(row.command, /--project=.*--workers=1.*--max-failures=1/);
   const liveCanary = pages.jobs['post-deployment-canary'].steps.find(step => step.name?.startsWith('Mutation-blocked live'));
   assert.equal(liveCanary.env.APP_LIFECYCLE_BASE_URL, 'https://agmetricapp.com');
   assert.equal(liveCanary.env.SESSION_RECOVERY_BASE_URL, 'https://agmetricapp.com');
@@ -190,58 +263,6 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
   assert.doesNotThrow(() => run(benchmark, false));
   benchmark.build.outputs.digest = '';
   assert.throws(() => run(benchmark, false), /RELEASE_DIGEST_MISSING/);
-});
-
-test('PR path filters select affected tests and match the artifact reuse classifier', () => {
-  const filter = performance.jobs.changes.steps.find(step => step.id === 'filter');
-  const patterns = yaml.load(filter.with.filters);
-  const picomatch = require('picomatch');
-  assert.equal(filter.with['predicate-quantifier'], 'every');
-  assert.equal(performance.jobs.changes.permissions['pull-requests'], 'read');
-  const cases = [
-    [['supabase/functions/aura-llm-router/index.ts'], { frontend: false, backend: true }],
-    [['supabase/migrations/fixture.sql'], { frontend: false, backend: true }],
-    [['deno.lock', 'deno.jsonc'], { frontend: false, backend: true }],
-    [['v2/src/App.tsx', 'styles/main.css'], { frontend: true, backend: false }],
-    [['supabase/functions/app-api/index.ts', 'index.html'], { frontend: true, backend: true }],
-    [['package-lock.json'], { frontend: true, backend: true }],
-    [['.github/workflows/release-validation.yml'], { frontend: true, backend: true }],
-    [['scripts/ci-test-scope.mjs', 'tests/release-pipeline.test.mjs'], { frontend: true, backend: true }],
-  ];
-  for (const [paths, expected] of cases) {
-    const actual = Object.fromEntries(Object.entries(patterns).map(([name, rules]) =>
-      [name, paths.some(path => rules.every(rule => picomatch(rule, { dot: true })(path)))]));
-    assert.deepEqual(actual, expected, paths.join(','));
-    assert.deepEqual(testScopeForPaths(paths), actual, 'reuse must enforce the same path categories');
-  }
-  for (const input of ['run-frontend-tests', 'run-backend-tests']) {
-    assert.equal(validation.on.workflow_call.inputs[input].default, true, 'manual and publication validation defaults to all tests');
-    assert.match(performance.jobs.validation.with[input], /github\.event_name != 'pull_request'/);
-  }
-});
-
-test('the release gate accepts only intentional skips and still requires the immutable build', () => {
-  const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
-  const frontend = ['foundation','functional','compiled','timing','lighthouse'];
-  for (const scope of [{ frontend: true, backend: false }, { frontend: false, backend: true }]) {
-    const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'success' }]));
-    results.build.outputs = { digest: 'a'.repeat(64) };
-    results['production-health'].result = 'skipped';
-    for (const name of scope.frontend ? ['database'] : frontend) results[name].result = 'skipped';
-    const execute = () => vm.runInNewContext(gate, { process: { env: {
-      RELEASE_JOB_RESULTS: JSON.stringify(results), REQUIRE_PRODUCTION_HEALTH: 'false',
-      RUN_FRONTEND_TESTS: String(scope.frontend), RUN_BACKEND_TESTS: String(scope.backend),
-    } }, console: { log() {} } });
-    assert.doesNotThrow(execute);
-    const selected = scope.frontend ? 'functional' : 'database';
-    for (const result of ['failure', 'cancelled', 'skipped']) {
-      results[selected].result = result;
-      assert.throws(execute, /RELEASE_GATE_FAILED/);
-    }
-    results[selected].result = 'success';
-    results.build.result = 'skipped';
-    assert.throws(execute, /RELEASE_GATE_FAILED_build/);
-  }
 });
 
 test('production health recovery follows actual publication and the published build commit', async () => {
@@ -321,4 +342,56 @@ test('production health recovery follows actual publication and the published bu
   assert.match(descriptorScript, /expected-commit=\$\{process\.env\.PAGES_RUN_SHA\}/);
   assert.equal(auth.jobs.probe.steps.find(step => step.name?.includes('exact live release')).env.EXPECTED_COMMIT,
     '${{ needs.published-release.outputs.expected-commit }}');
+});
+
+test('PR path filters select affected tests and match the artifact reuse classifier', () => {
+  const filter = performance.jobs.changes.steps.find(step => step.id === 'filter');
+  const patterns = yaml.load(filter.with.filters);
+  const picomatch = require('picomatch');
+  assert.equal(filter.with['predicate-quantifier'], 'every');
+  assert.equal(performance.jobs.changes.permissions['pull-requests'], 'read');
+  const cases = [
+    [['supabase/functions/aura-llm-router/index.ts'], { frontend: false, backend: true }],
+    [['supabase/migrations/fixture.sql'], { frontend: false, backend: true }],
+    [['deno.lock', 'deno.jsonc'], { frontend: false, backend: true }],
+    [['v2/src/App.tsx', 'styles/main.css'], { frontend: true, backend: false }],
+    [['supabase/functions/app-api/index.ts', 'index.html'], { frontend: true, backend: true }],
+    [['package-lock.json'], { frontend: true, backend: true }],
+    [['.github/workflows/release-validation.yml'], { frontend: true, backend: true }],
+    [['scripts/ci-test-scope.mjs', 'tests/release-pipeline.test.mjs'], { frontend: true, backend: true }],
+  ];
+  for (const [paths, expected] of cases) {
+    const actual = Object.fromEntries(Object.entries(patterns).map(([name, rules]) =>
+      [name, paths.some(path => rules.every(rule => picomatch(rule, { dot: true })(path)))]));
+    assert.deepEqual(actual, expected, paths.join(','));
+    assert.deepEqual(testScopeForPaths(paths), actual, 'reuse must enforce the same path categories');
+  }
+  for (const input of ['run-frontend-tests', 'run-backend-tests']) {
+    assert.equal(validation.on.workflow_call.inputs[input].default, true, 'manual and publication validation defaults to all tests');
+    assert.match(performance.jobs.validation.with[input], /github\.event_name != 'pull_request'/);
+  }
+});
+
+test('the release gate accepts only intentional skips and still requires the immutable build', () => {
+  const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
+  const frontend = ['foundation','functional','compiled','timing','performance','lighthouse'];
+  for (const scope of [{ frontend: true, backend: false }, { frontend: false, backend: true }]) {
+    const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'success' }]));
+    results.build.outputs = { digest: 'a'.repeat(64) };
+    results['production-health'].result = 'skipped';
+    for (const name of scope.frontend ? ['database'] : frontend) results[name].result = 'skipped';
+    const execute = () => vm.runInNewContext(gate, { process: { env: {
+      RELEASE_JOB_RESULTS: JSON.stringify(results), REQUIRE_PRODUCTION_HEALTH: 'false',
+      RUN_FRONTEND_TESTS: String(scope.frontend), RUN_BACKEND_TESTS: String(scope.backend),
+    } }, console: { log() {} } });
+    assert.doesNotThrow(execute);
+    const selected = scope.frontend ? 'functional' : 'database';
+    for (const result of ['failure', 'cancelled', 'skipped']) {
+      results[selected].result = result;
+      assert.throws(execute, /RELEASE_GATE_FAILED/);
+    }
+    results[selected].result = 'success';
+    results.build.result = 'skipped';
+    assert.throws(execute, /RELEASE_GATE_FAILED_build/);
+  }
 });

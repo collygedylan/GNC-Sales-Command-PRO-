@@ -7,7 +7,7 @@ function lineKey(line) { return JSON.stringify([line.itemcode,canonicalAuraSize(
 /** I/O-free state; LINE_VERIFIED carries a freshly checked cumulative quantity. */
 export function reduceAuraConversation(state,event) {
   if(event.commandId && state.consumedCommands.includes(event.commandId))return state;
-  let next=state;
+  let next;
   switch(event.type) {
     case 'RESET': case 'CANCEL': case 'HANDED_OFF': next=createAuraConversation(); break;
     case 'STARTED':

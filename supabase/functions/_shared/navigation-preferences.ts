@@ -1,6 +1,10 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+import { jsonValue } from "../../../services/database-contract-runtime.ts";
+
 /** Module visibility never grants a protected action or broadens row ownership. */
 export type NavigationActor = Record<string, unknown> & { id?: unknown };
-type RpcClient = { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown; error: unknown }> };
+type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 
 export async function resolveModuleAllowed(db: RpcClient, actor: NavigationActor, view: string): Promise<boolean> {
   if (!actor?.id) return false;
@@ -18,8 +22,8 @@ export async function handleNavigationPreferences(db: RpcClient, actor: Navigati
   if (Object.keys(input).some(key => !allowed.has(key))) throw new Error("NAVIGATION_PAYLOAD_INVALID");
   const { data, error } = await db.rpc("navigation_preferences_command_v1", {
     p_actor_id: String(actor.id), p_operation: String(input.operation || "get"),
-    p_payload: input.payload || {}, p_command_id: input.commandId || null,
-    p_expected_revision: input.expectedRevision ?? null,
+    p_payload: jsonValue(input.payload || {}), ...(typeof input.commandId === "string" ? { p_command_id: input.commandId } : {}),
+    ...(typeof input.expectedRevision === "number" ? { p_expected_revision: input.expectedRevision } : {}),
   });
   if (error) throw error;
   return data;

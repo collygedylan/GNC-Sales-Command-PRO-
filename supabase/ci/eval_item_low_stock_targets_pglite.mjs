@@ -28,7 +28,7 @@ async function expectSqlError(sql, message) {
   try { await db.exec(sql); }
   catch (error) {
     if (String(error.message || '').includes(message)) return;
-    throw new Error(`Expected ${message}; got ${error.message}`);
+    throw new Error(`Expected ${message}; got ${error.message}`, { cause: error });
   }
   throw new Error(`Expected SQL error ${message}`);
 }

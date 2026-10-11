@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @partner-workspace
 
-test('Home AV and Bloom open the real, separately authenticated nursery app inside the viewport', async ({ page, baseURL }) => {
+
+
+test('Home AV and Bloom open the real, separately authenticated nursery app inside the viewport', {"tag":["@partner-workspace"]}, async ({ page, baseURL }) => {
   const unexpectedRequests: string[] = [];
   const allowed = new Set([new URL(baseURL!).origin, 'https://apztnscvagayslumnalr.supabase.co']);
   page.on('request', request => {

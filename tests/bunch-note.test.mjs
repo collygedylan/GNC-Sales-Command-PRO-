@@ -1,3 +1,4 @@
+// @test-group: bunch-notes
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
@@ -28,7 +29,7 @@ test('destination sales years use only the actual year and keep mixed groups sep
  assert.equal(b.templates.find(t=>t.label==='Grade and Save / Move To').kind,'move');
 });
 
-test('top-level Back traverses item, bay and base while retaining planned destination and draft input',async()=>{
+test('top-level Back traverses action editor, location instructions and cards while retaining planned destination and draft input',async()=>{
  const row={unique_id:'source',blockalpha:'D',locationcode:'D.08.001',itemcode:'PLANT',commonname:'Plant',salesyear:'26',contsize:'#3',lotcode:'LOT',stock:0,review:null,available:0};
  const element={classList:{add(){}},innerHTML:'',childNodes:[],setAttribute(){},querySelectorAll:()=>[]};let saved,serial=0;
  const option={id:'move',category:'grading',label:'Grade and Save / Move To',kind:'move',active:true};
@@ -36,18 +37,18 @@ test('top-level Back traverses item, bay and base while retaining planned destin
   const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.08.001','D.09.001']}:body.operation==='inventory'?{rows:[row]}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.08.001','D.09.001','OTHER'],matching:[{...row,locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
   return {ok:true,data};
  }}),b=ctx.BunchNote;
- await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('Open location D.08"'));
+ await b.open();await b.chooseBlock('D');assert.ok(element.innerHTML.includes('data-bn-cards'));
  assert.ok(!element.innerHTML.includes('Open location D.08.001"'));
- b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');assert.ok(element.innerHTML.includes('Next: Items'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.openItem('D.08.001|PLANT');
+ b.openLocation('D.08.001');b.edit(0,'purposes','Grade for shipping');assert.ok(element.innerHTML.includes('Inventory action editor'));assert.ok(!element.innerHTML.includes('Open item PLANT'));await b.nextItems();assert.equal(saved.locations[0].actions.length,0);b.selectItem(0,['source'],true,false);b.openItem('D.08.001|PLANT');
  const key='item:0:D.08.001|PLANT';b.startAction(key,'move');b.startAction(key,'move');b.actionField('quantity','4');assert.ok(element.innerHTML.includes('Choose location'));
  await b.chooseActionDestination();assert.ok(element.innerHTML.includes('Locations with this item'));assert.ok(element.innerHTML.includes('All other locations'));
  b.destinationBase('D.09');b.pickDestination('D.09.001');await b.finishAction();assert.equal(saved.locations[0].actions.length,1);
  assert.equal(saved.locations[0].actions[0].destination,'D.09.001');assert.equal(saved.locations[0].actions[0].destination_mode,'matching');
  assert.equal(saved.locations[0].source_all[0].locationcode,'D.08.001');
  assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open item PLANT'));assert.ok(!element.innerHTML.includes('Choose destination'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Next: Items'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08.001"'));
- assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Open location D.08"'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('Inventory action editor'));
+ assert.equal(b.back(),true);assert.ok(element.innerHTML.includes('data-bn-cards'));
+ b.openLocation('D.08.001');assert.ok(element.innerHTML.includes('Grade for shipping'));
  assert.doesNotMatch(element.innerHTML,/>Back(?: to)?[ <]/);
 });
 test('shell repaint preserves creator navigation; explicit refresh and account reset reload metadata',async()=>{
@@ -65,7 +66,7 @@ test('shell repaint preserves creator navigation; explicit refresh and account r
  const count=commands.length;
  ctx.renderViewContent('bunch-note',false,true);
  assert.equal(commands.length,count);
- assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/Open location D.08.001/);
+ assert.equal(ctx.BunchNote.back(),true);assert.match(element.innerHTML,/data-bn-cards/);
  ctx.BunchNote.openLocation('D.08.001');assert.match(element.innerHTML,/Keep this draft/);
  ctx.renderViewContent('bunch-note',true,true);await new Promise(r=>setImmediate(r));
  assert.equal(commands.length,count+4);assert.match(element.innerHTML,/Keep this draft/);
@@ -161,7 +162,7 @@ test('refresh commits preserve active controls and cannot overwrite newer comman
 });
 test('pending actual saves lock controls, retain newer input, and preserve failed entries',async()=>{
  const controls=Array.from({length:4},()=>({disabled:false})),attributes={},requests=[];
- const element={classList:{add(){}},childNodes:[],set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:()=>controls};
+ const element={classList:{add(){}},childNodes:[],set innerHTML(value){this.html=value;controls.forEach(c=>{c.disabled=false;});},get innerHTML(){return this.html;},setAttribute(k,v){attributes[k]=v;},querySelectorAll:selector=>selector==='input,select,textarea,button'?controls:[]};
  const job={id:'work',owner_id:'dylan',status:'open',revision:1,instruction_revision:1,progress:{},body:{actions:[{id:'ta',kind:'ta',group:'inventory',scope:'location',instructions:'TA'}],source:[]},actuals:[]};
  let release,fail=false,command=0;
  const ctx=runtime({crypto:{randomUUID:()=>String(++command)},getCurrentVisibleViewId:()=> 'request',activeReqTab:'bunch-notes',document:{getElementById:()=>element},showToast(){},postAppFunctionJson:async(_url,body)=>{
@@ -203,10 +204,10 @@ test('completed-work PDF separates planned/actual types and excludes superseded 
  for(const expected of ['Completed work 8','TA: 4','MOVE: 3','Planned 4','Actual 4','NEW.LOC','Correction; current','Replaced; excluded from totals','Worker added','REVIEW:','&lt;review>','LOC Review Unknown'])assert.ok(html.includes(expected),expected);
  assert.ok(!html.includes('TA: 13'));
 });
-function deliveryRuntime({prior='pending',loseAck=false,recovered=false}={}) {
- const calls=[];const saved={event_id:'e',event_key:'key',event_type:'bunch_note_submission',delivery_status:prior,recipients:[{email:'dylan@example.test'},{email:'worker@example.test'}],pdfs:[{base64:'pdf',filename:'BN-1.pdf'}],reports:[{block:'C.12',purposes:'Rain day',note_number:'BN-1',instruction_revision:1,location:'C.12.1'}]};
- const ctx=vm.createContext({escapeEmailHtml_:String,LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},Utilities:{computeDigest:()=>[1,2],DigestAlgorithm:{SHA_256:1},Charset:{UTF_8:1},base64Decode:v=>v,newBlob:(bytes,mime,name)=>({bytes,mime,name})},MimeType:{PDF:'application/pdf'},normalizeEmailAddress_:v=>String(v).trim().toLowerCase(),resolveRequestRecipientEmail_:()=> 'dylan@example.test',isLikelyEmailAddress_:v=>v.includes('@'),getRequestDeliveryReceipt_:()=>recovered?{gmailMessageId:'saved'}:null,findSentRequestDeliveryByMessageId_:()=>null,isGmailAdvancedServiceAvailable_:()=>true,resolveAutomatedEmailSenderAddress_:()=> 'from@example.test',saveRequestDeliveryReceipt_(){},requestDeliveryRest_:(path,method,query,body)=>{calls.push({path,body});return path.includes('lookup')?saved:{allow_send:true};},sendGmailApiMessage_:payload=>{calls.push({send:payload});if(loseAck)throw new Error('response lost');return {ok:true,gmailMessageId:'gmail-1'};}});
- vm.runInContext(gas.slice(gas.indexOf('function bunchNoteDeliveryRecord_'),gas.indexOf('function handleSignedRequestDeliveryEvent_')),ctx);
+function deliveryRuntime({prior='pending',loseAck=false,recovered=false,automaticPdf=false,renderFail=false}={}) {
+ const calls=[];const saved={event_id:'e',event_key:'key',event_type:'bunch_note_submission',delivery_status:prior,preview_id:'preview-1',recipients:[{email:'dylan@example.test'},{email:'worker@example.test'}],pdfs:automaticPdf?null:[{base64:'pdf',filename:'BN-1.pdf'}],reports:[{job_id:'job-1',block:'C.12',purposes:'Rain day',note_number:'BN-1',instruction_revision:1,work_revision:4,report_kind:automaticPdf?'completed_work':'instructions',location:'C.12.1'}]};
+ const ctx=vm.createContext({escapeEmailHtml_:String,buildBunchNotePdfHtml_:()=>'<html>fixture</html>',LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock(){}})},HtmlService:{createHtmlOutput:html=>({getBlob:()=>({getAs:()=>({getBytes:()=>{if(renderFail)throw new Error('untrusted renderer detail');return [37,80,68,70,45,49,46,52,10,...Array(200).fill(97)];}})})})},Utilities:{computeDigest:()=>[1,2],DigestAlgorithm:{SHA_256:1},Charset:{UTF_8:1},base64Decode:v=>v,base64Encode:()=> 'JVBERi0xLjQK'+ 'YQ=='.repeat(40),newBlob:(bytes,mime,name)=>({bytes,mime,name})},MimeType:{PDF:'application/pdf'},normalizeEmailAddress_:v=>String(v).trim().toLowerCase(),resolveRequestRecipientEmail_:()=> 'dylan@example.test',isLikelyEmailAddress_:v=>v.includes('@'),getRequestDeliveryReceipt_:()=>recovered?{gmailMessageId:'saved'}:null,findSentRequestDeliveryByMessageId_:()=>null,isGmailAdvancedServiceAvailable_:()=>true,resolveAutomatedEmailSenderAddress_:()=> 'from@example.test',saveRequestDeliveryReceipt_(){},requestDeliveryRest_:(path,method,query,body)=>{calls.push({path,body});if(path.includes('lookup'))return saved;if(path.includes('freeze_pdfs'))return {pdfs:body.p_pdfs};return {allow_send:true};},sendGmailApiMessage_:payload=>{calls.push({send:payload});if(loseAck)throw new Error('response lost');return {ok:true,gmailMessageId:'gmail-1'};}});
+ vm.runInContext(gas.slice(gas.indexOf('function freezeBunchNoteReportPdfs_'),gas.indexOf('function handleSignedRequestDeliveryEvent_')),ctx);
  return {calls,send:()=>ctx.handleSignedBunchNoteDelivery_({eventId:'e',eventKey:'key',eventType:'bunch_note_submission',messageIdHeader:'<gnc-0102@request-delivery.agdatasolutions.local>',leaseToken:'lease'})};
 }
 test('delivery uses frozen PDFs and exact recipients, records intent before sending',()=>{
@@ -215,6 +216,23 @@ test('delivery uses frozen PDFs and exact recipients, records intent before send
  assert.equal(sent.subject,'BUNCH NOTES — C.12 — Rain day');assert.equal(sent.attachments.length,1);
  assert.ok(d.calls.findIndex(c=>c.body?.p_status==='sending')<d.calls.findIndex(c=>c.send));
  assert.ok(d.calls.some(c=>c.body?.p_status==='sent'));
+});
+test('automatic completion renders and freezes its report PDF before recording send intent',()=>{
+ const d=deliveryRuntime({automaticPdf:true}),result=d.send();assert.equal(result.ok,true,JSON.stringify(result));
+ const freezeIndex=d.calls.findIndex(c=>c.path?.includes('freeze_pdfs'));
+ const sendingIndex=d.calls.findIndex(c=>c.body?.p_status==='sending');
+ const sendIndex=d.calls.findIndex(c=>c.send);
+ assert.ok(freezeIndex>=0&&freezeIndex<sendingIndex&&sendingIndex<sendIndex);
+ assert.equal(d.calls[freezeIndex].body.p_preview_id,'preview-1');
+ assert.equal(d.calls[freezeIndex].body.p_pdfs[0].job_id,'job-1');
+ assert.equal(d.calls[freezeIndex].body.p_pdfs[0].filename,'BN-1_WORK_R4.pdf');
+ assert.equal(d.calls[sendIndex].send.attachments[0].name,'BN-1_WORK_R4.pdf');
+ assert.deepEqual(plain(d.calls[sendIndex].send.toArray),['dylan@example.test','worker@example.test']);
+});
+test('automatic PDF renderer failures are retryable before a send intent exists',()=>{
+ const d=deliveryRuntime({automaticPdf:true,renderFail:true}),result=d.send();
+ assert.deepEqual(plain(result),{ok:false,code:'BUNCH_NOTE_PDF_RENDER_UNAVAILABLE',deliveryUncertain:false,retryable:true,message:'The saved work and PDFs are retained.'});
+ assert.ok(!d.calls.some(c=>c.body?.p_status==='sending'||c.send));
 });
 test('uncertain delivery never blind-resends and receipt recovery does not send',()=>{
  const lost=deliveryRuntime({loseAck:true});assert.equal(lost.send().deliveryUncertain,true);assert.ok(lost.calls.some(c=>c.body?.p_status==='unknown'));
@@ -231,7 +249,7 @@ test('migration confines writes and enforces durable ownership/revision/command 
  assert.match(migration,/BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS/);
  assert.match(migration,/revoke all on schema bunch_note_private from public, anon, authenticated/);
  const worker=read('supabase/functions/request-delivery-worker/index.ts');
- assert.match(worker,/saved\?\.delivery_status === "sent"[\s\S]*finishEvent/);
+ assert.match(worker,/saved\.delivery_status === "sent" && savedReceipt\.gmail_message_id[\s\S]*finishEvent/);
  new vm.Script(js);new vm.Script(gas);
 });
 
@@ -258,9 +276,9 @@ test('setup and action saves retain values on failure; source changes preserve c
   const data=body.operation==='blocks'?{blocks:['D']}:body.operation==='directory'?{users:[]}:body.operation==='drafts'?{drafts:[]}:body.operation==='catalog'?{options:[option],locations:['D.09.001','OTHER']}:body.operation==='inventory'?{rows}:body.operation==='destination_lookup'?{itemcode:'PLANT',salesyear:'2026',locations:['D.09.001','OTHER'],matching:[{...rows[0],locationcode:'D.09.001'}]}:body.operation==='save'?(saved=structuredClone(body.payload.body),{draft:{id:'batch',revision:1,body:saved}}):{};
   return {ok:true,data};
  }}),b=ctx.BunchNote;
- await b.open();await b.chooseBlock('D');b.openBase('D.08');b.openLocation('D.08.001');b.edit(0,'purposes','Move stock');await b.nextItems();
- assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/value="Move stock"/);assert.match(element.innerHTML,/Next: Items/);
- fail=false;await b.nextItems();b.openItem('D.08.001|PLANT');b.startAction('item:0:D.08.001|PLANT','move');b.actionField('quantity','3');
+ await b.open();await b.chooseBlock('D');b.openLocation('D.08.001');b.edit(0,'purposes','Move stock');await b.nextItems();
+ assert.match(element.innerHTML,/Save unavailable/);assert.match(element.innerHTML,/value="Move stock"/);assert.match(element.innerHTML,/Inventory action editor/);
+ fail=false;await b.nextItems();b.selectItem(0,['a','b'],true,false);b.openItem('D.08.001|PLANT');b.startAction('item:0:D.08.001|PLANT','move');b.actionField('quantity','3');
  b.actionSource('PLANT|2026');await b.chooseActionDestination();b.destinationBase('D.09');b.pickDestination('D.09.001');
  b.actionSource('PLANT|');assert.match(element.innerHTML,/Choose location/);assert.ok(!element.innerHTML.includes('Move to: D.09.001'));assert.match(element.innerHTML,/value="PLANT\|2026"/);
  await b.chooseActionDestination();assert.match(element.innerHTML,/Same-item matching needs one known sales year/);assert.equal(lookups,1);b.pickDestination('OTHER','other');

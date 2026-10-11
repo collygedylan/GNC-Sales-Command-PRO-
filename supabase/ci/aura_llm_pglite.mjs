@@ -1,3 +1,4 @@
+// @test-group: aura
 // Isolated behavior checks. No configured production connection is read.
 import fs from 'node:fs';
 import path from 'node:path';

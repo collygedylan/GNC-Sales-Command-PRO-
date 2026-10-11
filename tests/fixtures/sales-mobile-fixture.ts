@@ -16,7 +16,10 @@ const source = (number: number, name: string) => ({
     customername: 'Acme Nursery', consigneename: 'North Farm', assigned_rep_id: hlUserId },
 });
 
-export async function installSalesMobileFixture(page: Page, baseURL: string, options: { role?: string; username?: string; hiddenViews?: string[] } = {}) {
+export async function installSalesMobileFixture(page: Page, baseURL: string, options: {
+  role?: string; username?: string; hiddenViews?: string[];
+  beforeNavigate?: (control: { navigation: { profileId: string; username: string; role: string } }) => Promise<void>;
+} = {}) {
   const sources = [source(1, 'Blue Hydrangea'), source(2, 'Red Hydrangea')];
   const history = Array.from({ length: 63 }, (_, index) => {
     const at = new Date(Date.UTC(2026, 8, 20, 12, -index)).toISOString();
@@ -235,7 +238,10 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
     ...(options.role === 'SALES' ? { rows: sources.map(row => hlSoc(row.source_id, { ...row.snapshot, salesrepname: 'Dylan Collyge' })) } : {}),
     master: [hlMaster('production-source', { blockalpha: 'D', locationcode: 'D.08.001',
       itemcode: 'PROP.001', commonname: 'Propagation Holly', ptronhand: '20', ptravailable: '15' })],
-    beforeNavigate: async () => { await page.route('**/functions/v1/app-api', handle); },
+    beforeNavigate: async () => {
+      await options.beforeNavigate?.(control);
+      await page.route('**/functions/v1/app-api', handle);
+    },
   });
   await page.waitForFunction(() => Boolean((window as any).GncNavigationPreferences?.snapshot?.views?.length));
   return control;

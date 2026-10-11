@@ -1,4 +1,5 @@
 // Execute only against the disposable PostgreSQL service created by CI.
+// @test-runtime: bloomscapes-concurrency
 // This harness deliberately commits synthetic fixtures so separate sessions can
 // race. It does not connect to Supabase or modify imported stock after seeding.
 import assert from 'node:assert/strict';

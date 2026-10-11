@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+import { discoverTests } from '../../scripts/test-discovery.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const args = process.argv.slice(2);
@@ -15,6 +16,7 @@ const require = createRequire(path.join(path.resolve(dependencyRoot), 'package.j
 const { PGlite } = require('@electric-sql/pglite');
 const db = new PGlite();
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+const lifecycleFixture = () => read(discoverTests({ group: 'sql-secondary-harness', harness: 'hl-order-lifecycle-setup' })[0]);
 function between(source, start, end) {
   const a = source.indexOf(start), b = source.indexOf(end, a + start.length);
   if (a < 0 || b < a) throw new Error('Baseline boundaries changed; inspect the actual migration before updating the harness.');
@@ -52,7 +54,7 @@ try {
   await db.exec(read('supabase/archive_migrations/20260911115037_hl_ordering_system.sql'));
   let historical;
   if (args.includes('--backfill')) {
-    const fixture = read('supabase/tests/hl_order_lifecycle_test.sql');
+    const fixture = lifecycleFixture();
     await db.exec(fixture.slice(0, fixture.indexOf('do $test$')));
     await db.exec(`
       update public.ph_soc_master set planstart='Tue Sep 15 2026 10:00:00 GMT-0500 (Central Daylight Time)' where unique_id in ('HL-A','HL-B');
@@ -93,21 +95,22 @@ try {
   await db.exec(read('supabase/archive_migrations/20260908185903_live_dataset_revisions.sql'));
   await db.exec(read('supabase/archive_migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
   await db.exec(read('supabase/archive_migrations/20260912170906_hl_restocking.sql'));
-  if (args.includes('--seasons')) {
-    await db.exec(read('supabase/archive_migrations/20260914164706_hl_state_balances_once.sql'));
-    let legacySeason;
-    if(args.includes('--season-backfill')) {
-      const fixture=read('supabase/tests/hl_order_lifecycle_test.sql');
+  // These migrations precede the draft-removal patch in production. Apply them
+  // in every harness mode because the later patch expects their schema.
+  await db.exec(read('supabase/archive_migrations/20260914164706_hl_state_balances_once.sql'));
+  let legacySeason;
+  if (args.includes('--seasons') && args.includes('--season-backfill')) {
+      const fixture=lifecycleFixture();
       await db.exec(fixture.slice(0,fixture.indexOf('do $test$')));
       await db.exec(`update public.ph_soc_master set lotcode='27.S1' where unique_id in ('HL-A','HL-B');
         select pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-A","quantity":6}]}');
         do $$ declare p jsonb;s jsonb;begin p:=pg_temp.hl_command('preview','{}')->'preview';s:=pg_temp.hl_command('submit',jsonb_build_object('preview_id',p->>'id'));perform pg_temp.hl_confirm((s->'orders'->0->>'event_id')::uuid);end $$;
         select pg_temp.hl_command('draft_save','{"rows":[{"source_id":"HL-B","quantity":4}]}');commit;`);
       legacySeason=(await db.query(`select (select jsonb_agg(to_jsonb(l)) from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
-    }
-    await db.exec(read('supabase/archive_migrations/20260915021525_hl_po_seasons_pdf.sql'));
-    await db.exec(read('supabase/archive_migrations/20260915115800_hl_po_negative_pdf_balances.sql'));
-    if(legacySeason) {
+  }
+  await db.exec(read('supabase/archive_migrations/20260915021525_hl_po_seasons_pdf.sql'));
+  await db.exec(read('supabase/archive_migrations/20260915115800_hl_po_negative_pdf_balances.sql'));
+  if(legacySeason) {
       const after=(await db.query(`select (select jsonb_agg(to_jsonb(l)-'po_lot') from hl_order_private.order_lines l) lines,(select jsonb_agg(to_jsonb(p)) from public.ph_hl_order_previews p) previews`)).rows[0];
       if(JSON.stringify(after)!==JSON.stringify(legacySeason)) throw new Error('Season migration changed historical lines or PDFs');
       const proof=(await db.query(`select bool_and(d.po_lot='27.F1' and d.source->>'lotcode'='27.S1') ok from hl_order_private.drafts d`)).rows[0];
@@ -115,11 +118,12 @@ try {
       const draft=(await db.query(`select hl_order_private.state_json()->'draft'->0 d`)).rows[0].d;
       if(draft.po_lot!=='27.F1'||draft.po_balance?.lot!=='27.F1') throw new Error('Legacy draft display used source lot instead of accounting lot');
       console.log('PASS legacy season migration: saved lines and PDFs unchanged; historical S1 source retains F1 accounting in storage and response.');
-    }
-
   }
+  // The delivery tests exercise draft removal; keep this migration after the
+  // seasonal state wrappers so the fixture matches production chronology.
+  await db.exec(read('supabase/archive_migrations/20260921123226_hl_draft_review_removal.sql'));
   const files = historical || args.includes('--season-backfill') ? [] : args.includes('--test') ? [args[args.indexOf('--test') + 1]] : [
-    'supabase/tests/hl_order_lifecycle_test.sql', 'supabase/tests/hl_order_delivery_test.sql', 'supabase/tests/hl_order_ship_dates_test.sql', 'supabase/tests/hl_order_po_receipts_test.sql', 'supabase/tests/hl_order_restock_test.sql'
+    ...discoverTests({ group: 'sql-secondary-harness', harness: 'hl-order' }),
   ];
   for (const file of files) {
     if (!file || !/^supabase\/tests\/hl_(?:order|po)_[a-z_]+\.sql$/.test(file)) throw new Error('Invalid HL SQL test path.');

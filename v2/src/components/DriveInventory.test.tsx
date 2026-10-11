@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { Profiler, StrictMode, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DriveInventory, aggregateDriveRows, safeInventoryPhotoUrl } from './DriveInventory';
 import { fetchInventoryPage } from '../services/api';
@@ -25,6 +26,27 @@ function inventoryRow(overrides: Partial<InventoryRow> = {}): InventoryRow {
     ptravailable: 12,
     ptronhand: 15,
     ...overrides
+  };
+}
+
+function selectedPagePrefetch(promise: Promise<PageResult<InventoryRow>>, abort = vi.fn()) {
+  let retained = 0;
+  let version = 0;
+  return {
+    promise,
+    abort,
+    retain() {
+      retained += 1;
+      version += 1;
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        retained -= 1;
+        const current = ++version;
+        queueMicrotask(() => { if (!retained && version === current) abort(); });
+      };
+    }
   };
 }
 
@@ -59,6 +81,20 @@ describe('Drive Mode sandbox inventory', () => {
     const [group] = aggregateDriveRows([inventoryRow({ ptravailable: undefined, ptronhand: undefined })]);
     expect(group.available).toBeNull();
     expect(group.onHand).toBeNull();
+  });
+
+  it('groups large result sets in stable item/location order without changing incomplete totals', () => {
+    const rows = Array.from({ length: 1000 }, (_, index) => inventoryRow({
+      unique_id: `uid-${index}`,
+      locationcode: `A.${String(index % 10).padStart(2, '0')}.001`,
+      ptravailable: index === 999 ? null : 1,
+      ptronhand: 2
+    }));
+    const [group] = aggregateDriveRows(rows);
+    expect(group).toMatchObject({ rowCount: 1000, available: null, onHand: 2000 });
+    expect(group.locations).toHaveLength(10);
+    expect(group.locations[0]).toMatchObject({ name: 'A.00.001', available: 100, onHand: 200 });
+    expect(group.locations[9]).toMatchObject({ name: 'A.09.001', available: null, onHand: 200 });
   });
 
   it('loads only same-origin or configured sandbox-storage photos', () => {
@@ -126,6 +162,7 @@ describe('Drive Mode sandbox inventory', () => {
       await waitFor(() => expect(more.hasAttribute('disabled')).toBe(false));
       fireEvent.click(more);
       await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(expectedCalls));
+      expect(await screen.findByText(`Plant ${expectedCalls - 1}`)).toBeTruthy();
     }
     expect(screen.queryByRole('button', { name: 'Load 100 more rows' })).toBeNull();
     expect(screen.getByText(/narrow the search/i)).toBeTruthy();
@@ -137,5 +174,78 @@ describe('Drive Mode sandbox inventory', () => {
     const signal = fetchPage.mock.calls[0][0]?.signal;
     view.unmount();
     expect(signal?.aborted).toBe(true);
+  });
+
+  it('consumes a route-selected first page once and returns to the normal refresh path', async () => {
+    let resolvePage!: (result: PageResult<InventoryRow>) => void;
+    const abort = vi.fn();
+    const promise = new Promise<PageResult<InventoryRow>>(resolve => { resolvePage = resolve; });
+    const initialPage = selectedPagePrefetch(promise, abort);
+    fetchPage.mockResolvedValue(page([inventoryRow({ commonname: 'Refreshed Pear' })]));
+
+    render(<StrictMode><DriveInventory initialPage={initialPage} /></StrictMode>);
+    expect(fetchPage).not.toHaveBeenCalled();
+    resolvePage(page([inventoryRow()]));
+    expect(await screen.findByRole('article')).toBeTruthy();
+    expect(screen.getByText('Precision Pear')).toBeTruthy();
+
+    const refresh = screen.getByRole('button', { name: 'Refresh inventory' });
+    await waitFor(() => expect(refresh.hasAttribute('disabled')).toBe(false));
+    fireEvent.click(refresh);
+    expect(await screen.findByText('Refreshed Pear')).toBeTruthy();
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+    expect(fetchPage.mock.calls[0][0]).toMatchObject({ page: 0, pageSize: 100, search: '' });
+    expect(abort).toHaveBeenCalledOnce();
+  });
+
+  it('aborts an unconsumed route-selected first page when Drive unmounts', async () => {
+    const abort = vi.fn();
+    const initialPage = selectedPagePrefetch(new Promise<PageResult<InventoryRow>>(() => {}), abort);
+    const view = render(<DriveInventory initialPage={initialPage} />);
+    view.unmount();
+    await Promise.resolve();
+    expect(abort).toHaveBeenCalledOnce();
+    expect(fetchPage).not.toHaveBeenCalled();
+  });
+
+  it('does not reuse an aborted route prefetch after a search is cleared', async () => {
+    const abort = vi.fn();
+    const initialPage = selectedPagePrefetch(new Promise<PageResult<InventoryRow>>(() => {}), abort);
+    fetchPage.mockResolvedValue(page([inventoryRow()]));
+    render(<DriveInventory initialPage={initialPage} />);
+    const search = screen.getByRole('textbox', { name: 'Search inventory' });
+
+    fireEvent.change(search, { target: { value: 'pear' } });
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(1), { timeout: 2_000 });
+    expect(fetchPage.mock.calls[0][0]).toMatchObject({ search: 'pear' });
+    expect(abort).toHaveBeenCalledOnce();
+
+    fireEvent.change(search, { target: { value: '' } });
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2), { timeout: 2_000 });
+    expect(fetchPage.mock.calls[1][0]).toMatchObject({ search: '' });
+  });
+
+  it('keeps Drive rendering isolated from unrelated shell state changes', async () => {
+    fetchPage.mockResolvedValue(page([inventoryRow()]));
+    const commits = vi.fn();
+    function ShellHarness() {
+      const [notice, setNotice] = useState(false);
+      return <>
+        <button type="button" onClick={() => setNotice(value => !value)}>Toggle shell notice</button>
+        {notice ? <output>Saved</output> : null}
+        <Profiler id="drive" onRender={commits}><DriveInventory /></Profiler>
+      </>;
+    }
+
+    render(<ShellHarness />);
+    await screen.findByRole('article');
+    await screen.findByText(/Sandbox inventory/);
+    const settledCommitCount = commits.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle shell notice' }));
+    expect(screen.getByText('Saved')).toBeTruthy();
+    const [, , actualDuration, baseDuration] = commits.mock.calls[commits.mock.calls.length - 1];
+    expect(commits.mock.calls.length).toBeGreaterThan(settledCommitCount);
+    expect(actualDuration).toBeLessThan(baseDuration * 0.1);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 });

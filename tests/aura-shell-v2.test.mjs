@@ -1,3 +1,4 @@
+// @test-group: aura
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -139,13 +140,15 @@ test('AURA reads enter the shared read boundary and retain error status metadata
   assert.match(source, /withProductionLiveSyncSignal/);
   assert.match(source, /runDedupeSupabaseRead/);
   assert.match(source, /maxAttempts: 1/);
-  assert.match(source, /AURA_LLM_ROUTER_URL/);
+  assert.match(source, /AURA_QUERY_URL/);
   const api = extract('callAuraAppApi', 'requestAuraInventory');
   assert.match(api, /error\.status = Number\(payload\?\.status/);
   assert.match(api, /error\.code = String\(payload\?\.code/);
 });
 
-test('AURA router calls use the verified native session, bounded deadline, and separate party-bind idempotency', async () => {
+test('AURA router calls use the verified native session, 35-second deadline, and request idempotency', async () => {
+  const authStart = html.indexOf('        const AURA_ROUTER_ACTIVE_ROLES =');
+  const authEnd = html.indexOf('        function disposeAuraWidget()', authStart + 1);
   const start = html.indexOf('        function awaitAuraRead(');
   const end = html.indexOf('        async function resolveAuraOrderParty(', start + 1);
   const postStart = html.indexOf('        async function postAppFunctionJson(');
@@ -155,40 +158,38 @@ test('AURA router calls use the verified native session, bounded deadline, and s
   const context = vm.createContext({
     AbortController, Date, setTimeout, clearTimeout,
     nativeAuthSessionActive: true,
-    nativeAuthProfile: { id: 'profile', username: 'dylan_collyge' },
-    currentUser: 'dylan_collyge', auraVerifiedProfileId: 'profile',
-    auraPendingRequests: new Set(), AURA_LLM_ROUTER_URL: 'https://api.example.test/functions/v1/aura-llm-router',
+    nativeAuthProfile: { id: 'profile', username: 'manager', role: 'MANAGER' },
+    currentUser: 'manager', auraVerifiedProfileId: '', auraRouterVerifiedProfileId: 'profile',
+    auraRouterCapabilities: { id: 'profile', username: 'manager', role: 'MANAGER', inventory: true, history: true, drafts: true },
+    auraPendingRequests: new Set(), AURA_QUERY_URL: 'https://api.example.test/functions/v1/aura-llm-router',
+    AURA_LLM_ROUTER_URL: 'https://api.example.test/functions/v1/aura-llm-router',
     SUPABASE_KEY: 'project-anon-key',
     getSupabaseReadIdentityScope: () => 'dylan:session',
-    isAuraWidgetAuthorized: () => true,
     getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer native-dylan' }),
     getCurrentAppSessionToken: () => 'legacy-token',
     fetchWithTimeout: async (url, init, timeoutMs, label) => {
       calls.push({ url, init, timeoutMs, label });
       const request = JSON.parse(init.body);
-      const response = request.mode === 'bind_party' ? { ok: true, partyRef: 'opaque-ref' } : { ok: true, requestId: 'turn-1' };
+      const response = { ok: true, requestId: 'turn-1' };
       return { ok: true, headers: { get: () => 'turn-1' }, text: async () => JSON.stringify(response) };
     },
     console,
   });
-  vm.runInContext(`${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraRouter = callAuraLlmRouter;`, context);
-  const bind = await context.invokeAuraRouter({ mode: 'bind_party', party: { customerIdentityId: 'cust-1', consigneeIdentityId: 'cons-1', customerName: 'Acme', consigneeName: 'North' } }, { deadlineAt: Date.now() + 15000, requestId: 'turn-1' });
-  const command = { mode: 'command', text: 'check open stock for SKU-1', source: 'typed', turnId: 'turn-1', context: { mode: 'inventory', lines: [] }, partyRef: bind.partyRef,
-    partySidecar: { customerIdentityId: 'cust-1', consigneeIdentityId: 'cons-1', customerName: 'Acme', consigneeName: 'North' } };
-  const result = await context.invokeAuraRouter(command, { deadlineAt: Date.now() + 15000, requestId: 'turn-1' });
+  vm.runInContext(`${html.slice(authStart, authEnd)}\n${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraRouter = callAuraLlmRouter;`, context);
+  const command = { mode: 'command', text: 'check open stock for SKU-1', source: 'typed', turnId: 'turn-1', context: { mode: 'inventory', lines: [] } };
+  const result = await context.invokeAuraRouter(command, { deadlineAt: Date.now() + 35000, requestId: 'turn-1' });
   assert.equal(result.ok, true);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
   for (const call of calls) {
     assert.equal(call.url, 'https://api.example.test/functions/v1/aura-llm-router');
-    assert.ok(call.timeoutMs > 0 && call.timeoutMs <= 15000);
+    assert.ok(call.timeoutMs > 0 && call.timeoutMs <= 35000);
     assert.equal(call.init.headers.Authorization, 'Bearer native-dylan');
     assert.equal(call.init.headers['x-request-id'], 'turn-1');
     assert.equal(call.init.headers['x-gnc-session'], undefined);
   }
   assert.equal(calls[0].label, 'AURA command');
-  assert.equal(calls[0].init.headers['Idempotency-Key'], 'turn-1:bind_party');
-  assert.equal(calls[1].init.headers['Idempotency-Key'], 'turn-1:command');
-  assert.deepEqual(JSON.parse(calls[1].init.body), command);
+  assert.equal(calls[0].init.headers['Idempotency-Key'], 'turn-1:command');
+  assert.deepEqual(JSON.parse(calls[0].init.body), command);
   assert.doesNotMatch(JSON.stringify({ text: command.text, context: command.context }), /Acme|North/);
   assert.equal(context.auraPendingRequests.size, 0);
 });
@@ -298,14 +299,20 @@ test('AURA forwards one verified header set, deadline, request metadata, and can
   assert.equal(context.auraPendingRequests.size, 0);
 });
 
-test('the real shell loader never imports AURA for another account or an unverified profile', async () => {
+test('the shell checks router role eligibility and native identity before importing AURA', async () => {
   const candidate = html.slice(html.indexOf('        function isAuraProfileCandidate()'), html.indexOf('        function disposeAuraWidget()'));
   const loader = html.slice(html.indexOf('        async function syncAuraWidgetForSession()'), html.indexOf('        let bloomscapesPendingState'));
-  for (const account of ['sales_rep', 'nelly_aguilar', 'dylan_collyge']) {
+  for (const { account, role, expectedSessionChecks } of [
+    { account: 'sales_rep', role: 'REP', expectedSessionChecks: 1 },
+    { account: 'nelly_aguilar', role: 'CSR', expectedSessionChecks: 1 },
+    { account: 'unapproved_user', role: 'INTERN', expectedSessionChecks: 0 },
+    { account: 'dylan_collyge', role: 'LEGACY', expectedSessionChecks: 1 },
+  ]) {
     let imports = 0, disposed = 0, verified = 0;
     const context = vm.createContext({
-      nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile', username: account },
+      nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile', username: account, role },
       currentUser: account, auraVerifiedProfileId: '', auraLoadSequence: 0, auraWidgetHandle: null,
+      getSupabaseReadIdentityScope: () => `${account}:session`,
       disposeAuraWidget: () => { disposed += 1; },
       getNativeAuthSession: async () => { verified += 1; return { user: { id: 'different-profile' } }; },
     });
@@ -313,8 +320,152 @@ test('the real shell loader never imports AURA for another account or an unverif
     await context.syncAuraWidgetForSession();
     assert.equal(imports, 0, account);
     assert.equal(disposed, 1, account);
-    assert.equal(verified, account === 'dylan_collyge' ? 1 : 0, account);
+    assert.equal(verified, expectedSessionChecks, account);
   }
+});
+
+test('new React voice conversations never fall back to the Dylan-only legacy query', () => {
+  const requestStart = html.indexOf('        async function requestAuraQuery(');
+  const requestEnd = html.indexOf('        async function openAuraQueryAction(', requestStart + 1);
+  const syncStart = html.indexOf('        async function syncAuraWidgetForSession()');
+  const syncEnd = html.indexOf('        let bloomscapesPendingState', syncStart + 1);
+  assert.ok(requestStart >= 0 && requestEnd > requestStart && syncStart >= 0 && syncEnd > syncStart);
+  const request = html.slice(requestStart, requestEnd);
+  const sync = html.slice(syncStart, syncEnd);
+  assert.match(request, /callAuraLlmRouter\(command, \{ \.\.\.request, requestId: originalTurnId \}\)/);
+  assert.match(request, /AURA_APP_CONTEXT_STALE/);
+  assert.match(sync, /capabilities\.socReserves === true \|\| capabilities\.socOpenOrders === true/);
+  assert.doesNotMatch(request, /callAuraLegacyQuery/);
+  assert.match(sync, /if \(!access\.configured \|\| !hasCapability\)[\s\S]*showToast\('AURA unavailable'/);
+  assert.match(sync, /requestAssistant: requestAuraQuery/);
+  assert.doesNotMatch(sync, /requestAssistant: callAuraLegacyQuery|useLegacy/);
+  assert.match(sync, /reactHost\.id = 'aura-react-root'/);
+  assert.match(sync, /mountAuraWidgetReact\(reactHost, options\)/);
+  assert.doesNotMatch(sync, /mountAuraWidgetReact\(document\.body/);
+  const appApi = extract('callAuraAppApi', 'requestAuraInventory');
+  const alpha = html.slice(html.indexOf('        async function mountAlphaCommandCenter('), html.indexOf('        function isAuraProfileCandidate()', html.indexOf('        async function mountAlphaCommandCenter(')));
+  assert.match(appApi, /isAuraWidgetAuthorized\(\)/, 'legacy app-api stays restricted to its original owner');
+  assert.match(alpha, /isAuraWidgetAuthorized\(\)/, 'the separate Alpha command center keeps legacy authorization');
+});
+
+test('unconfigured Gemini is an explicit unavailable state and does not call the legacy endpoint', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  let routerCalls = 0, legacyCalls = 0;
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'request-1' },
+    isAuraRouterWidgetAuthorized: () => true,
+    getSupabaseReadIdentityScope: () => 'manager:session-1',
+    auraRouterCapabilities: { configured: false },
+    APP_CURRENT_SEASON_OPTIONS: ['S1', 'F1'],
+    getCurrentAppSeasonSettings: () => ({ seasonCode: 'S1', salesYear: 27, revision: 8 }),
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'S1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: value => value,
+    callAuraLlmRouter: async () => { routerCalls += 1; return { ok: true }; },
+    callAuraLegacyQuery: async () => { legacyCalls += 1; return { ok: true }; },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command' }), error => {
+    assert.equal(error.code, 'AURA_LLM_UNAVAILABLE');
+    assert.doesNotMatch(error.message, /Gemini|Google/i);
+    assert.match(error.message, /Contact your administrator/);
+    return true;
+  });
+  assert.equal(routerCalls, 0);
+  assert.equal(legacyCalls, 0);
+  context.auraRouterCapabilities.configured = true;
+  await context.invokeRequestAuraQuery({ mode: 'command' });
+  assert.equal(routerCalls, 1);
+  assert.equal(legacyCalls, 0);
+});
+
+test('AURA commands persist a confirmed stale context and use it for the next command', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  const calls = [];
+  let settings = { seasonCode: 'S1', salesYear: 27, revision: 8 };
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'request-id' },
+    isAuraRouterWidgetAuthorized: () => true,
+    getSupabaseReadIdentityScope: () => 'manager:session-1',
+    auraRouterCapabilities: { configured: true },
+    APP_CURRENT_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'],
+    getCurrentAppSeasonSettings: () => settings,
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'F1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: value => { settings = { seasonCode: value.seasonCode, salesYear: value.salesYear, revision: value.revision }; return settings; },
+    callAuraLlmRouter: async (body, options) => {
+      calls.push({ body, options });
+      if (calls.length === 1) throw Object.assign(new Error('stale'), { code: 'AURA_APP_CONTEXT_STALE', status: 409,
+        appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
+      return { ok: true, requestId: body.turnId, reply: 'The current result', actions: [] };
+    },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  const result = await context.invokeRequestAuraQuery({ mode: 'command', text: 'check open stock', source: 'voice', turnId: 'original-turn' }, { requestId: 'original-turn' });
+  assert.equal(calls.length, 2, 'stale settings trigger at most one retry');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body.appContext)), { season: 'S1', salesyear: 27, settingRevision: 8 });
+  assert.equal(calls[0].body.source, 'voice');
+  assert.equal(calls[1].body.turnId, 'original-turn');
+  assert.equal(calls[1].options.requestId, 'original-turn', 'cancel and deduplication remain bound to the active voice turn');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[1].body.appContext)), { season: 'F1', salesyear: 28, settingRevision: 9 });
+  assert.equal(calls[1].body.source, 'voice', 'voice origin survives the stale retry');
+  assert.equal(result.requestId, 'original-turn', 'the widget and cancel path retain the original interaction ID');
+  assert.equal(result.reply, 'The current result');
+  assert.deepEqual(JSON.parse(JSON.stringify(settings)), { seasonCode: 'F1', salesYear: 28, revision: 9 });
+  await context.invokeRequestAuraQuery({ mode: 'command', text: 'check another item', source: 'voice', turnId: 'second-turn' }, { requestId: 'second-turn' });
+  assert.equal(calls.length, 3, 'the next command succeeds without another stale-context retry');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[2].body.appContext)), { season: 'F1', salesyear: 28, settingRevision: 9 });
+});
+
+test('AURA stale-context retry is suppressed after the verified identity changes', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  let identity = 'manager:session-1', calls = 0;
+  let settingsWrites = 0;
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'fresh-turn' },
+    isAuraRouterWidgetAuthorized: () => identity === 'manager:session-1',
+    getSupabaseReadIdentityScope: () => identity,
+    auraRouterCapabilities: { configured: true },
+    APP_CURRENT_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'],
+    getCurrentAppSeasonSettings: () => ({ seasonCode: 'S1', salesYear: 27, revision: 8 }),
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'F1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: () => { settingsWrites++; },
+    callAuraLlmRouter: async () => {
+      calls++;
+      identity = 'other-account:session-2';
+      throw Object.assign(new Error('stale'), { code: 'AURA_APP_CONTEXT_STALE', status: 409,
+        appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
+    },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command', text: 'check', turnId: 'original-turn' }), error => error.code === 'AURA_APP_CONTEXT_STALE');
+  assert.equal(calls, 1, 'an old account response cannot replay under the next identity');
+  assert.equal(settingsWrites, 0, 'an old-account context cannot update current local settings');
+});
+
+test('AURA cancellation during a stale-context response cannot apply settings or retry', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  const controller = new AbortController();
+  let calls = 0, settingsWrites = 0;
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'request-id' },
+    isAuraRouterWidgetAuthorized: () => true,
+    getSupabaseReadIdentityScope: () => 'manager:session-1',
+    auraRouterCapabilities: { configured: true },
+    APP_CURRENT_SEASON_OPTIONS: ['F1', 'S1'],
+    getCurrentAppSeasonSettings: () => ({ seasonCode: 'S1', salesYear: 27, revision: 8 }),
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'F1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: () => { settingsWrites++; },
+    callAuraLlmRouter: async () => {
+      calls++;
+      controller.abort();
+      throw Object.assign(new Error('stale'), { code: 'AURA_APP_CONTEXT_STALE', status: 409,
+        appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
+    },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command', text: 'check', turnId: 'original-turn' }, { signal: controller.signal }),
+    error => error.code === 'AURA_APP_CONTEXT_STALE');
+  assert.equal(calls, 1);
+  assert.equal(settingsWrites, 0, 'cancelled command settings are not applied');
 });
 
 test('release packaging ships both V2 modules and versions all relative widget imports', () => {

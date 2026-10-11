@@ -1,3 +1,6 @@
+\set ON_ERROR_STOP on
+-- @test-runtime: isolated-acceptance
+-- @test-harness: sales-mobile
 begin;
 create temporary table request_drive_reset_checks(description text);
 create function pg_temp.reset_check(ok boolean,description text) returns void language plpgsql as $$
@@ -75,4 +78,10 @@ select pg_temp.reset_check((select count(*)=(select n from reset_outbox_before) 
 select pg_temp.reset_check(not has_function_privilege('authenticated','public.repair_request_drive_evidence_v1(text[],boolean)','execute')
   and not has_function_privilege('anon','public.get_request_drive_evidence_health_snapshot_v1()','execute'),
   'service-only API permissions remain closed to browser roles');
+
+create extension if not exists pgtap with schema extensions;
+set local search_path = public,extensions,pg_temp;
+select plan(1);
+select ok((select count(*) > 0 from request_drive_reset_checks), 'request_drive_reset_test.sql: all exception assertions completed');
+select * from finish();
 rollback;

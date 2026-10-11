@@ -44,6 +44,8 @@ Functional and timing app navigation use `scripts/serve-release-tests.mjs`: `/`,
 
 The backend guard reuses `selectPagesRelease` to prove that the sealed, successful PR build has exactly the current main tree. GitHub API errors fail closed. If no reusable PR proof exists, the existing exact-main manual proof remains available for recovery. The guard rechecks current main after proof lookup, and deployment retains the configured Apps Script project/deployment ownership checks. The additive low-stock migration runs before Apps Script publication. A bounded compatibility preflight skips version creation only when the configured live deployment has the identical Code.gs blob, preserving Apps Script's finite version capacity. Otherwise, successful backend deployment, health verification, and retained recovery evidence are required. The separate `publish-pages` job runs only after this backend lane succeeds. That job has no Google or database credentials, rechecks current main, and suppresses duplicate active/successful Pages runs. Pages independently verifies its sealed proof, compatible backend, production health, and current main before publication. No repeated full suite is required when the validated PR proof remains reusable.
 
+The guard's GitHub REST reads allow at most three attempts for transient network failures, timeouts, HTTP 408/429/5xx, or malformed successful JSON responses. Each request and body read has a 12-second timeout; retries wait 200 ms and 500 ms. Authentication errors and other client errors fail immediately. Diagnostics record bounded response metadata without response bodies, tokens, or query strings. Job envelopes use 25-item pages because their nested step data can exceed GitHub's response deadline at 100 jobs. All pages remain required, with the existing 2,000-item ceiling, unique IDs, stable totals, and final current-main check. Neither transport recovery nor pagination accepts a partial proof.
+
 For an already-merged release whose backend handoff failed or predates this handler, dispatch `apps-script-sync.yml` on `main` with `gh workflow run apps-script-sync.yml --ref main`. It deploys the required backend before dispatching Pages. If backend deployment already succeeded and only Pages failed, `gh workflow run pages-static.yml --ref main` retries the normal cloud validation and publication gates. If new branch rules delay merging beyond PR validation, complete those requirements before using either recovery path; enabling auto-merge alone is not confirmation of a merge or deployment.
 
 All required lanes must succeed; a missing, cancelled, failed or unexpectedly skipped lane blocks publication. Matrix fail-fast is disabled so independent failures remain visible. No authorization, recipient, email, Request, AV Blanks, photo, data-integrity, database or performance check is waived to save time.
@@ -61,6 +63,25 @@ The deployed fingerprint retains the original build commit. A separate `pages-pu
 After deployment, exact-live release and commit verification runs before four parallel mutation-blocked live smoke suites: foundation, requests, session, and login/photo. All broader functional, compiled, database, unit, timing and Lighthouse coverage remains in full validation. Post-deployment failure remains visible in hosted health. Publishing quickly is not equivalent to completing those checks.
 
 ## Local candidate preflight
+
+### Apps Script propagation recovery
+
+The `.004` release exposed a stale second deployment read after the new version
+and its exact source had already been verified. Recovery evidence now records
+both deployment reads. A read below the pinned target retries the same immutable
+version, commit and full source within the existing 13-attempt/90-second bound.
+A read above the target fails immediately; an actual newer deployment must not
+be overwritten or accepted as this release. Exhausted or invalid evidence still
+blocks Pages publication. Retry the failed cloud handoff through GitHub Actions;
+never publish the frontend around its backend verification gate.
+
+The October 10 owner instruction explicitly authorizes temporary timing
+relaxation for the three-phase execution. PR 357 records it as doubled timing
+ceilings and the exact increase from a 100 ms to 200 ms browser allowance floor;
+that records owner authorization, not a GitHub review. The stored 25 ms value is
+the strict restoration base, not the active CI limit. Prompt 7 removes the
+temporary profile. Payload sizes, render counts, duplicate reads, correctness
+and authorization checks stay active.
 
 Run `npm run check:local` after preparing the release version and before sealing the commit. `prepare --dispatch` requires its passing source and compiled-artifact fingerprints, so failed or stale local evidence stops dispatch. The local check's one fresh build and selected regressions replace separate repeated foundation/feature runs; all candidate and hosted gates below remain required. Details: [local-validation.md](local-validation.md).
 

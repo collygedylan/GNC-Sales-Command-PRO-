@@ -1,9 +1,55 @@
 import { expect, test } from '@playwright/test';
+
 import { installDriveCardLayoutFixture, renderDriveLayoutCard, renderSharedHlDriveLayoutCard } from './fixtures/drive-card-layout';
+import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
+// @test-group: @local-e2e,@release-functional
+
 
 const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
-test('Drive inventory cards use AV-density layout at desktop and tablet widths without restyling shared HL cards', async ({ page, baseURL }) => {
+test('Drive search stays inside the selected location and preserves it when cleared', {"tag":["@local-e2e","@release-functional"]}, async ({ page, baseURL }) => {
+  test.setTimeout(90_000);
+  const fixture = await installHlOrderFixture(page, baseURL!, { role: 'ADMIN', username: 'dylan_collyge', master: [
+    hlMaster('scope-c', { itemcode: 'SCOPE.C', commonname: 'Scoped Rose', blockalpha: 'C', locationcode: 'C.06.001' }),
+    hlMaster('scope-d', { itemcode: 'SCOPE.D', commonname: 'Scoped Rose', blockalpha: 'D', locationcode: 'D.04.001' }),
+  ] });
+  await page.evaluate(() => window.eval("switchView('drive')"));
+  await page.waitForFunction(() => window.eval("getCurrentVisibleViewId() === 'drive' && fullInventory.some(row => row.ITEMCODE === 'SCOPE.C') && fullInventory.some(row => row.ITEMCODE === 'SCOPE.D')"));
+  const selectLocationTab = async () => {
+    const mobileMode = page.locator('#drive-mobile-mode');
+    if (await mobileMode.isVisible()) await mobileMode.selectOption('loc');
+    else await page.locator('#tab-drive-loc').click();
+  };
+  const chooseLocation = async (block: string, locationGroup: string, location: string) => {
+    await selectLocationTab();
+    await expect.poll(() => page.evaluate(() => window.eval('activeDriveTab'))).toBe('loc');
+    await expect(page.locator('#drive-crumb')).toContainText('Select Block Alpha');
+    await page.getByRole('button', { name: `Open ${block}`, exact: true }).click();
+    // Full bay locations appear after expanding their existing location group.
+    await page.getByRole('button', { name: `Open location ${locationGroup}`, exact: true }).click();
+    await page.getByRole('button', { name: `Open block number ${location}`, exact: true }).click();
+    await expect.poll(() => page.evaluate(() => window.eval('driveViewLevel === 2 && !!selectedDriveLoc'))).toBe(true);
+    await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc'))).toBe(location);
+  };
+  await chooseLocation('C', 'C.06', 'C.06.001');
+  await page.locator('#drive-search').fill('Scoped Rose');
+  await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
+  await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
+  await page.locator('#drive-search').fill('No matching plant');
+  await expect(page.locator('#drive-content')).toContainText('No matching inventory');
+  await page.locator('#drive-search-clear').click();
+  await expect.poll(() => page.evaluate(() => window.eval('activeDriveTab'))).toBe('loc');
+  await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc'))).toBe('C.06.001');
+  await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
+  await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
+  await chooseLocation('D', 'D.04', 'D.04.001');
+  await page.locator('#drive-search').fill('Scoped Rose');
+  await expect(page.locator('#drive-content')).toContainText('SCOPE.D');
+  await expect(page.locator('#drive-content')).not.toContainText('SCOPE.C');
+  expect(fixture.blockedMutations).toEqual([]);
+});
+
+test('Drive inventory cards use AV-density layout at desktop and tablet widths without restyling shared HL cards', {"tag":["@local-e2e","@release-functional"]}, async ({ page, baseURL }) => {
   test.setTimeout(90_000);
   const fixture = await installDriveCardLayoutFixture(page, baseURL!);
   for (const theme of ['light', 'dark', 'outdoor'] as const) {
@@ -56,8 +102,9 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         expect(layout.header && layout.reclass && layout.header.right).toBeLessThanOrEqual(layout.reclass?.x ?? -1);
         expect(Math.abs((layout.reclass?.right ?? 0) - (layout.card?.right ?? 0))).toBeLessThanOrEqual(1);
         expect(layout.quantity).toEqual([
-          { label: 'On hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
+          { label: 'On Hand', value: 'Unknown' }, { label: 'Review', value: 'Unknown' },
           { label: 'Available', value: 'Unknown' }, { label: 'Open Stock', value: 'Unknown' },
+          { label: 'Loc Photo Match', value: 'N/A' }, { label: 'Loc On Hand', value: 'Unknown' },
         ]);
         expect(layout.text).toContain('Synthetic long sales note');
         expect(layout.pageOverflow).toBeLessThanOrEqual(1);
@@ -65,14 +112,15 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         expect(layout.matchColor).toBe(layout.quantityColor);
 
         if (theme === 'light' && width === 1280) {
-          await renderDriveLayoutCard(page, { theme, photo: true, knownQuantities: true });
+          await renderDriveLayoutCard(page, { theme, photo: true, knownQuantities: true }, fixture);
           const values = await card.locator('.app-card-qty-chip').evaluateAll((chips) => chips.map((chip) => ({
             label: chip.querySelector('.app-card-qty-label')?.textContent?.trim(),
             value: chip.querySelector('.app-card-qty-value')?.textContent?.trim(),
           })));
           expect(values).toEqual([
-            { label: 'On hand', value: '15' }, { label: 'Review', value: '2' },
+            { label: 'On Hand', value: '15' }, { label: 'Review', value: '2' },
             { label: 'Available', value: '13' }, { label: 'Open Stock', value: '8' },
+            { label: 'Loc Photo Match', value: 'N/A' }, { label: 'Loc On Hand', value: '15' },
           ]);
         }
 
@@ -82,12 +130,15 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
         const restrictedLayout = await card.evaluate((element) => ({
           overflow: element.scrollWidth - element.clientWidth,
           notes: element.querySelectorAll('.app-drive-card-notes').length,
-          evidenceDisplay: getComputedStyle(element.querySelector('.app-drive-card-evidence')!).display,
+          evidenceVisible: (() => {
+            const evidence = element.querySelector('.app-drive-card-evidence');
+            return !!evidence && getComputedStyle(evidence).display !== 'none';
+          })(),
           gridAreas: getComputedStyle(element.querySelector('.app-drive-card-grid')!).gridTemplateAreas,
         }));
         expect(restrictedLayout.overflow).toBeLessThanOrEqual(1);
         expect(restrictedLayout.notes).toBe(0);
-        expect(restrictedLayout.evidenceDisplay).toBe('none');
+        expect(restrictedLayout.evidenceVisible).toBe(false);
         expect(restrictedLayout.gridAreas).not.toContain('reclass');
 
         await renderSharedHlDriveLayoutCard(page);
@@ -101,7 +152,7 @@ test('Drive inventory cards use AV-density layout at desktop and tablet widths w
   expect(fixture.errors).toEqual([]);
 });
 
-test('Request AV sheet preserves swipe intent before selecting a later option', async ({ page }) => {
+test('Request AV sheet preserves swipe intent before selecting a later option', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.31.05', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openRequestAvNoteSheet === 'function');
@@ -138,7 +189,7 @@ test('Request AV sheet preserves swipe intent before selecting a later option', 
   await expect(page.locator('#req-av-note')).toHaveValue('OPTION 39');
 });
 
-test('phone login keeps both fields and the submit action visible', async ({ page }) => {
+test('phone login keeps both fields and the submit action visible', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'load' });
 
@@ -153,7 +204,7 @@ test('phone login keeps both fields and the submit action visible', async ({ pag
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
 });
 
-test('Brandt receives admin access without any Managers entry point or direct view access', async ({ page }) => {
+test('Brandt receives admin access without any Managers entry point or direct view access', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -183,7 +234,7 @@ test('Brandt receives admin access without any Managers entry point or direct vi
   });
 });
 
-test('Eval assignment dropdown exposes the full managed roster and composite key', async ({ page }) => {
+test('Eval assignment dropdown exposes the full managed roster and Itemcode default key', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalAssigneeOptionsHtml === 'function');
   const result = await page.evaluate(() => {
@@ -193,6 +244,7 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
       values: Array.from(select.options).map((option) => option.value),
       labels: Array.from(select.options).map((option) => option.textContent),
       key: (window as any).buildManagerEvalAssignmentKey(' 001668.030.1 ', ' Buddleia '),
+      otherGenusKey: (window as any).buildManagerEvalAssignmentKey('001668.030.1', 'Rosa'),
       alias: (window as any).normalizeEvalAssignableUser('charey_robertson'),
       sheetTypoAlias: (window as any).normalizeEvalAssignableUser('Boby'),
     };
@@ -214,12 +266,13 @@ test('Eval assignment dropdown exposes the full managed roster and composite key
     'nelly_aguilar',
   ]);
   expect(result.labels).toEqual(result.values.map((value) => value || 'Unassigned'));
-  expect(result.key).toBe('001668.030.1|buddleia');
+  expect(result.key).toBe('001668.030.1');
+  expect(result.otherGenusKey).toBe(result.key);
   expect(result.alias).toBe('charley_robertson');
   expect(result.sheetTypoAlias).toBe('bobby_adair');
 });
 
-test('Dylan and Megan alone receive cached Manager Eval Reports without an inventory refetch', async ({ page }) => {
+test('Dylan and Megan alone receive cached Manager Eval Reports without an inventory refetch', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.21.01', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerEvalReportIndex === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
@@ -262,7 +315,7 @@ test('Dylan and Megan alone receive cached Manager Eval Reports without an inven
   expect(result.inventoryFetches).toBe(0);
 });
 
-test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', async ({ page }) => {
+test('Eval Reports #2 requires a complete snapshot and keeps its inquiry controls phone friendly', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -285,10 +338,12 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       { UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '2', S_LTS: 20, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.000', LAST_UPDATED: '2026-08-24T12:00:00Z' },
       { UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Beta', CONTSIZE: '#5', SEASON: 'X', SALEYEAR: 27, PRIORITY: '2', S_LTS: 300, ASSIGNEDTO: 'stale_master_user', LOCATIONCODE: 'B.01.001', LAST_UPDATED: '2026-08-24T12:00:00Z' }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'assign-a', ITEMCODE: ' a ', GENUSNAME: ' ROSA ', ASSIGNEDTO: 'dylan_collyge', UPDATED_AT: '2026-08-24T12:05:00Z' },
-      { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', UPDATED_AT: '2026-08-24T12:05:00Z' },
-      ...roster.filter((name) => name !== 'dylan_collyge' && name !== 'megan_kelly').map((name, index) => ({ UNIQUE_ID: 'roster-' + index, ITEMCODE: 'ROSTER-' + index, GENUSNAME: 'Genus ' + index, ASSIGNEDTO: name })),
-      { UNIQUE_ID: 'assign-blank', ITEMCODE: 'BLANK', GENUSNAME: 'Blank', ASSIGNEDTO: '' }
+      { master_unique_id: 'eval2-a-f1', UNIQUE_ID: 'eval2-a-f1', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-a-u1', UNIQUE_ID: 'eval2-a-u1', ITEMCODE: 'A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-b-f1', UNIQUE_ID: 'eval2-b-f1', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', default_revision: 0, revision: 1 },
+      { master_unique_id: 'eval2-b-x', UNIQUE_ID: 'eval2-b-x', ITEMCODE: 'B', GENUSNAME: 'Acer', ASSIGNEDTO: 'megan_kelly', default_revision: 0, revision: 1 },
+      ...roster.filter((name) => name !== 'dylan_collyge' && name !== 'megan_kelly').map((name, index) => ({ master_unique_id: 'roster-' + index, UNIQUE_ID: 'roster-' + index, ITEMCODE: 'ROSTER-' + index, GENUSNAME: 'Genus ' + index, ASSIGNEDTO: name, revision: 1 })),
+      { master_unique_id: 'assign-blank', UNIQUE_ID: 'assign-blank', ITEMCODE: 'BLANK', GENUSNAME: 'Blank', ASSIGNEDTO: '', revision: 1 }
     ], _fromCache: true });
     const state = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -329,11 +384,14 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
     });
     const initialAssignedToOptions = getManagerEvalReport2AssignedToOptions();
     const beforeAssignmentEdit = getManagerEvalReport2Index();
-    applyAcknowledgedEvalAssignmentResults(
-      [{ itemcode: 'A', genusname: 'Rosa' }],
-      [{ itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly' }],
-      'megan_kelly'
-    );
+    const applied = applyAcknowledgedEvalAssignmentResults([], [{
+      contractVersion: 'inventory-row-assignments-v1',
+      defaults: [{ itemcode: 'A', assignedto: 'megan_kelly', revision: 1 }],
+      assignments: [
+        { master_unique_id: 'eval2-a-f1', unique_id: 'eval2-a-f1', itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly', revision: 2 },
+        { master_unique_id: 'eval2-a-u1', unique_id: 'eval2-a-u1', itemcode: 'A', genusname: 'Rosa', assignedto: 'megan_kelly', revision: 2 }
+      ]
+    }]);
     const afterAssignmentEdit = getManagerEvalReport2Index();
     const editedRows = getManagerEvalReport2Rows('low-stock').filter((row) => row.ITEMCODE === 'A');
     const originalEnsureDatasetLoaded = ensureDatasetLoaded;
@@ -364,6 +422,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
       controlsFit: controls.length > 0 && controls.every((box) => box.left >= 0 && box.right <= 390.5 && box.width <= 390.5),
       hostOverflow: host.scrollWidth <= 391,
       immediateAssignmentRefresh: beforeAssignmentEdit !== afterAssignmentEdit && editedRows.length > 0 && editedRows.every((row) => row.ASSIGNEDTO === 'megan_kelly'),
+      acknowledgedDefaultCount: applied,
       retainsLastCompleteOnAssignmentFailure: retainedAfterFailure === afterAssignmentEdit && staleHtml.includes('last complete results remain visible')
     };
     canViewManagerEvalReports2 = originalCanViewManagerEvalReports2;
@@ -384,7 +443,7 @@ test('Eval Reports #2 requires a complete snapshot and keeps its inquiry control
   expect(result.retainsLastCompleteOnAssignmentFailure).toBe(true);
 });
 
-test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', async ({ page }) => {
+test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-direct-multiselect', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -400,14 +459,13 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
       { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'eval2-assign-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'eval2-assign-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+      { master_unique_id: 'eval2-click-a', UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+      { master_unique_id: 'eval2-click-b', UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
     ], _fromCache: true });
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
     masterState.initialLoaded = masterState.fullLoaded = true;
-    masterState.fieldCoverage = 'full';
-    masterState.rowCompleteness = 'complete';
+    masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
     assignmentState.initialLoaded = assignmentState.fullLoaded = true;
     scheduleManagersRender = () => {};
     queueScrollMainAreaToTop = () => {};
@@ -487,7 +545,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
-test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Load More action', async ({ page }) => {
+test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Load More action', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-auto-all', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReport2Records === 'function');
@@ -514,8 +572,9 @@ test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Lo
       PTRONHAND: 25,
       PTRAVAILABLE: 25
     }));
-    const assignments = rows.map((row, index) => ({
-      UNIQUE_ID: 'eval2-auto-assignment-' + String(index + 1),
+    const assignments = rows.map((row) => ({
+      master_unique_id: row.UNIQUE_ID,
+      UNIQUE_ID: row.UNIQUE_ID,
       ITEMCODE: row.ITEMCODE,
       GENUSNAME: row.GENUSNAME,
       ASSIGNEDTO: 'dylan_collyge'
@@ -576,7 +635,7 @@ test('Eval Reports #2 automatically renders every filtered ITEMCODE without a Lo
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
-test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page }) => {
+test.skip('legacy Eval Reports #2 synchronous workbook delivery', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).emailSelectedManagerEvalReport2Rows === 'function');
@@ -599,10 +658,12 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
         { UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', COMMONNAME: 'Delta', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '4', S_LTS: 10, LOCATIONCODE: 'D.01.001', LOTCODE: '27.F1', PTRONHAND: 10, PTRREVIEWED: 0, PTRAVAILABLE: 10 },
         { UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', COMMONNAME: 'Gamma', CONTSIZE: '#7', SEASON: 'X', SALEYEAR: 27, PRIORITY: '3', S_LTS: 40, LOCATIONCODE: 'C.01.001' }
       ], warehouseAssignedItemsData: [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-a-other', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', ASSIGNEDTO: 'megan_kelly' },
-        { UNIQUE_ID: 'assign-d', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
+        { master_unique_id: 'mail-a', UNIQUE_ID: 'mail-a', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-b', UNIQUE_ID: 'mail-b', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-other-user', UNIQUE_ID: 'mail-other-user', ITEMCODE: '0001.001.1', GENUSNAME: 'Rosaceae', ASSIGNEDTO: 'megan_kelly' },
+        { master_unique_id: 'mail-d1', UNIQUE_ID: 'mail-d1', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-d2', UNIQUE_ID: 'mail-d2', ITEMCODE: '0004.001.1', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'mail-c', UNIQUE_ID: 'mail-c', ITEMCODE: 'C', GENUSNAME: 'Cornus', ASSIGNEDTO: 'megan_kelly' }
       ], _fromCache: true });
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -695,7 +756,8 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
       const assignedToStayedLocked = getManagerEvalReportRowAssignedTo(getManagerEvalReport2VisibleItemGroups()[0].representativeRow);
       const host = document.createElement('div');
       host.id = 'eval2-email-test-host';
-      host.style.width = '390px';
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
       host.innerHTML = renderManagerEvalReports2Panel();
       document.body.appendChild(host);
       const recordsHost = host.querySelector('#manager-eval-report-2-records');
@@ -890,7 +952,7 @@ test.skip('legacy Eval Reports #2 synchronous workbook delivery', async ({ page 
   expect(result.controlsFit).toBe(true);
 });
 
-test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per selected ITEMCODE', async ({ page }) => {
+test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per selected ITEMCODE', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).openManagerEvalReport2BatchSetup === 'function');
@@ -938,8 +1000,9 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         { UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 15, ASSIGNEDTO: 'stale', LOCATIONCODE: 'C.03.001', BLOCKALPHA: 'C', BLOCKNUMBER: '03', LOTCODE: '27.X2', SOURCE: 'LD' },
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ], warehouseAssignedItemsData: [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
+        { master_unique_id: 'batch-a', UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-a2', UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-b', UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ], _fromCache: true });
       fullInventory = [
         { UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '1', S_LTS: 20, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.01.001', BLOCKALPHA: 'A', BLOCKNUMBER: '01', LOTCODE: '27.X', SOURCE: 'LD' },
@@ -947,8 +1010,9 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
         { UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', COMMONNAME: 'Alpha', CONTSIZE: '#3', SEASON: 'X', SALEYEAR: 27, PRIORITY: '', S_LTS: 30, ASSIGNEDTO: 'stale', LOCATIONCODE: 'A.02.001', BLOCKALPHA: 'A', BLOCKNUMBER: '02', LOTCODE: '27.X', SOURCE: 'LD' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID: 'assign-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
-        { UNIQUE_ID: 'assign-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
+        { master_unique_id: 'batch-a', UNIQUE_ID: 'batch-a', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-a2', UNIQUE_ID: 'batch-a2', ITEMCODE: 'A', GENUSNAME: 'Rosa', CONTSIZE: '#3', LOCATIONCODE: 'C.03.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' },
+        { master_unique_id: 'batch-b', UNIQUE_ID: 'batch-b', ITEMCODE: 'B', GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.02.001', SOURCE: 'LD', ASSIGNEDTO: 'dylan_collyge' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -1040,7 +1104,7 @@ test('Eval Reports #2 creates one atomic PDF-backed Eval Work assignment per sel
   });
 });
 
-test('Eval Work batch confirmation stays above the phone setup sheet and accepts the create action', async ({ page }) => {
+test('Eval Work batch confirmation stays above the phone setup sheet and accepts the create action', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval-work-confirm-layer', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).showAppConfirm === 'function'
@@ -1073,7 +1137,7 @@ test('Eval Work batch confirmation stays above the phone setup sheet and accepts
   await expect(prompt).toBeHidden();
 });
 
-test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', async ({ page }) => {
+test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=eval2-authoritative-user-filter', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyManagerEvalReport2UserFilter === 'function');
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
@@ -1093,14 +1157,13 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
         { UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', COMMONNAME:'Current Beta', CONTSIZE:'#5', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'B.01.001' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
-        { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
+        { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+        { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
       masterState.initialLoaded = masterState.fullLoaded = true;
-      masterState.fieldCoverage = 'full';
-      masterState.rowCompleteness = 'complete';
+      masterState.fieldCoverage = 'full'; masterState.rowCompleteness = 'complete';
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       invalidateManagerEvalReport2Cache();
       setManagerEvalReport2Filter('assignedto', 'dylan_collyge');
@@ -1120,8 +1183,8 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
       const localRows = getManagerEvalReport2RowsBeforeCommonName().map(row => getManagerEvalReport2ItemCode(row));
       // A later verified background snapshot, not a filter click, changes ownership.
       warehouseAssignedItemsInventory = [
-          { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
-          { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
+          { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
+          { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
         ];
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       assignmentState.lastLoadedAt = new Date().toISOString();
@@ -1149,7 +1212,7 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
   });
 });
 
-test('Eval Reports #2 manager search refreshes while the search field remains active', async ({ page }) => {
+test('Eval Reports #2 manager search refreshes while the search field remains active', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-manager-search', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -1190,18 +1253,20 @@ test('Eval Reports #2 manager search refreshes while the search field remains ac
   expect(result.regionRefreshCalls).toBeGreaterThan(0);
 });
 
-test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', async ({ page }) => {
+test('Assigned Items uses touch-friendly cards on phones and preserves the desktop grid', {"tag":["@local-e2e","@release-functional"]}, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
-  const phone = await page.evaluate(() => window.eval(`(() => {
+  const phone = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
-    const originalSave = setSingleEvalItemcodeAssignment;
+    const originalAssign = assignEvalItemcodes;
     let saved = null;
     try {
       canManageEvalItemcodeAssignments = () => true;
-      setSingleEvalItemcodeAssignment = (itemcode, genusname, assignedto) => {
-        saved = { itemcode, genusname, assignedto };
+      canViewAssignedItemsExport = () => true;
+      isManagerAssignedSnapshotCurrent = () => true;
+      assignEvalItemcodes = (itemcodes, assignedto) => {
+        saved = { itemcodes, assignedto };
         return false;
       };
       const rows = [
@@ -1212,9 +1277,12 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       window.__assignedItemsResponsiveRows = rows;
       const host = document.createElement('div');
       host.id = 'assigned-items-phone-test-host';
-      host.style.width = '390px';
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(rows));
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
       document.body.appendChild(host);
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), getManagerAssignedItemsDisplayRows(rows), rows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const mobileList = host.querySelector('[data-manager-assigned-mobile-list]');
       const controls = Array.from(mobileList.querySelectorAll('select,input')).map((element) => {
         const box = element.getBoundingClientRect();
@@ -1224,6 +1292,8 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       firstSelect.dispatchEvent(new Event('change', { bubbles: true }));
       return {
         cardCount: mobileList.querySelectorAll('[data-manager-assigned-item-card]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+        defaultOwnerCount: mobileList.querySelectorAll('select[aria-label^=\"Itemcode Default Owner \"]').length,
         mobileDisplay: getComputedStyle(mobileList).display,
         desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
         hasVisibleTable: host.querySelectorAll('table').length > 0,
@@ -1236,11 +1306,13 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
       };
     } finally {
       canManageEvalItemcodeAssignments = originalCanManage;
-      setSingleEvalItemcodeAssignment = originalSave;
+      assignEvalItemcodes = originalAssign;
     }
   })()`));
 
   expect(phone.cardCount).toBe(3);
+  expect(phone.logicalCount).toBe('3');
+  expect(phone.defaultOwnerCount).toBe(3);
   expect(phone.mobileDisplay).not.toBe('none');
   expect(phone.desktopPresent).toBe(false);
   expect(phone.hasVisibleTable).toBe(false);
@@ -1249,12 +1321,15 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(phone.hostFits).toBe(true);
   expect(phone.checkedBulkCount).toBe(0);
   expect(phone.groupSequence).toEqual(['unassigned', 'assigned']);
-  expect(phone.saved).toEqual({ itemcode: '000724.070.1', genusname: 'Acer', assignedto: '' });
+  expect(phone.saved).toEqual({ itemcodes: ['000724.070.1'], assignedto: '' });
+  await page.screenshot({ path: '.gnc-local/assigned-virtual-mobile.png' });
 
   await page.setViewportSize({ width: 1024, height: 844 });
-  const desktop = await page.evaluate(() => window.eval(`(() => {
+  const desktop = await page.evaluate(() => window.eval(`(async () => {
     const host = document.getElementById('assigned-items-phone-test-host');
-    host.innerHTML = renderManagerAssignedItemsPreviewTable(getManagerAssignedItemsDisplayRows(window.__assignedItemsResponsiveRows || []));
+    host.innerHTML = renderManagerAssignedItemsPreviewTable();
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), getManagerAssignedItemsDisplayRows(window.__assignedItemsResponsiveRows || []), window.__assignedItemsResponsiveRows?.length || 0);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const desktopTable = host?.querySelector('[data-manager-assigned-desktop-table]');
     return {
       mobilePresent: !!host?.querySelector('[data-manager-assigned-mobile-list]'),
@@ -1267,17 +1342,20 @@ test('Assigned Items uses touch-friendly cards on phones and preserves the deskt
   expect(desktop.desktopDisplay).not.toBe('none');
   expect(desktop.tableCount).toBe(1);
   expect(desktop.rowCount).toBe(3);
+  await page.screenshot({ path: '.gnc-local/assigned-virtual-desktop.png' });
 });
 
-test('Assigned Items shows and searches the complete list beyond the former 100-row cap', async ({ page }) => {
+test('Assigned Items virtualizes the full list while preserving complete search results', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerAssignedItemsPreviewTable === 'function');
 
-  const desktop = await page.evaluate(() => window.eval(`(() => {
+  const desktop = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
     try {
+      canViewAssignedItemsExport = () => true;
       canManageEvalItemcodeAssignments = () => false;
+      isManagerAssignedSnapshotCurrent = () => true;
       const rows = Array.from({ length: 125 }, (_, index) => ({
         UNIQUE_ID: 'full-' + index,
         ITEMCODE: 'SKU-' + String(index).padStart(3, '0'),
@@ -1292,10 +1370,16 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
       window.__assignedItemsFullRows = getManagerAssignedItemsDisplayRows(rows);
       const host = document.createElement('div');
       host.id = 'assigned-items-full-list-test-host';
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, rows.length);
+      host.dataset.managerAssignedScroll = 'true';
+      host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
       document.body.appendChild(host);
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), window.__assignedItemsFullRows, rows.length);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       return {
         rowCount: host.querySelectorAll('[data-manager-assigned-item-row]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+        disabledOwnerCount: host.querySelectorAll('[data-manager-assigned-item-row] select[aria-label^="Itemcode Default Owner "]:disabled').length,
         mobilePresent: !!host.querySelector('[data-manager-assigned-mobile-list]'),
         status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || '',
         oldCapMessagePresent: /first 100/i.test(host.textContent || '')
@@ -1305,30 +1389,42 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
     }
   })()`));
 
-  expect(desktop.rowCount).toBe(125);
+  expect(desktop.rowCount).toBeGreaterThan(0);
+  expect(desktop.rowCount).toBeLessThanOrEqual(35);
+  expect(desktop.logicalCount).toBe('125');
+  expect(desktop.disabledOwnerCount).toBe(desktop.rowCount);
   expect(desktop.mobilePresent).toBe(false);
   expect(desktop.status).toContain('Showing all 125 matching rows');
   expect(desktop.oldCapMessagePresent).toBe(false);
 
   await page.setViewportSize({ width: 390, height: 844 });
-  const phoneSearch = await page.evaluate(() => window.eval(`(() => {
+  const phoneSearch = await page.evaluate(() => window.eval(`(async () => {
     const originalCanManage = canManageEvalItemcodeAssignments;
     const searchInput = document.getElementById('managers-search');
     const originalSearch = searchInput ? searchInput.value : '';
     try {
+      canViewAssignedItemsExport = () => true;
       canManageEvalItemcodeAssignments = () => false;
+      isManagerAssignedSnapshotCurrent = () => true;
       const host = document.getElementById('assigned-items-full-list-test-host');
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(window.__assignedItemsFullRows, window.__assignedItemsFullRows.length);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), window.__assignedItemsFullRows, window.__assignedItemsFullRows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       const fullCardCount = host.querySelectorAll('[data-manager-assigned-item-card]').length;
+      const fullLogicalCount = host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count');
       if (!searchInput) throw new Error('Managers search input is unavailable');
       searchInput.value = 'SKU-124';
       handleManagersSearch();
       const filteredRows = getFilteredManagerAssignedItemsExportRows(window.__assignedItemsFullRows);
-      host.innerHTML = renderManagerAssignedItemsPreviewTable(filteredRows, window.__assignedItemsFullRows.length);
+      host.innerHTML = renderManagerAssignedItemsPreviewTable();
+      await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), filteredRows, window.__assignedItemsFullRows.length);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       return {
         fullCardCount,
+        fullLogicalCount,
         filteredCount: filteredRows.length,
         filteredCardCount: host.querySelectorAll('[data-manager-assigned-item-card]').length,
+        logicalCount: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
         desktopPresent: !!host.querySelector('[data-manager-assigned-desktop-table]'),
         status: host.querySelector('[data-manager-assigned-full-list-status]')?.textContent || ''
       };
@@ -1341,14 +1437,83 @@ test('Assigned Items shows and searches the complete list beyond the former 100-
     }
   })()`));
 
-  expect(phoneSearch.fullCardCount).toBe(125);
+  expect(phoneSearch.fullCardCount).toBeGreaterThan(0);
+  expect(phoneSearch.fullLogicalCount).toBe('125');
+  expect(phoneSearch.fullCardCount).toBeLessThanOrEqual(35);
   expect(phoneSearch.filteredCount).toBe(1);
   expect(phoneSearch.filteredCardCount).toBe(1);
+  expect(phoneSearch.logicalCount).toBe('1');
   expect(phoneSearch.desktopPresent).toBe(false);
   expect(phoneSearch.status).toContain('Search checks the complete 125-row list');
 });
 
-test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', async ({ page }) => {
+test('Assigned Items renders 10k and 25k records with bounded DOM and scrolls to the final row', {"tag":["@local-e2e","@release-functional"]}, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/?e2e=assigned-items-virtualization', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => typeof (window as any).mountManagerAssignedItemsView === 'function');
+  const metrics = await page.evaluate(() => window.eval(`(async () => {
+    currentUser = 'dylan_collyge'; currentUserDisplay = 'Dylan Collyge'; currentRole = 'Manager';
+    canViewAssignedItemsExport = () => true;
+    canManageEvalItemcodeAssignments = () => false;
+    isManagerAssignedSnapshotCurrent = () => true;
+    const host = document.createElement('div'); host.id = 'assigned-items-virtual-benchmark-host';
+    host.dataset.managerAssignedScroll = 'true';
+    host.style.cssText = 'position:fixed;inset:0;overflow:auto;z-index:12000;background:white;padding:8px';
+    document.body.appendChild(host);
+    const makeRows = count => Array.from({ length: count }, (_, index) => ({
+      UNIQUE_ID: 'stress-' + index,
+      ITEMCODE: 'STRESS-' + String(index).padStart(5, '0'),
+      COMMONNAME: 'Virtual Plant ' + index,
+      GENUSNAME: 'Acer', CONTSIZE: '#3', LOCATIONCODE: 'A.01.001', WAREHOUSEI: 'PH',
+      SOURCE: 'virtualization-test', ASSIGNEDTO: 'dylan_collyge', DEFAULT_ASSIGNEDTO: 'dylan_collyge'
+    }));
+    const originalDisplayRows = getManagerAssignedItemsDisplayRows;
+    window.__assignedVirtualTransforms = 0;
+    getManagerAssignedItemsDisplayRows = (...args) => { window.__assignedVirtualTransforms += 1; return originalDisplayRows(...args); };
+    const start10k = performance.now();
+    const rows10k = getManagerAssignedItemsDisplayRows(makeRows(10000));
+    host.innerHTML = renderManagerAssignedItemsPreviewTable();
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), rows10k, 10000);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const elapsed10kMs = performance.now() - start10k;
+    const dom10k = host.querySelectorAll('[data-manager-assigned-item-row]').length;
+    const domNodeCount10k = host.querySelectorAll('*').length;
+    const start25k = performance.now();
+    const rows25k = getManagerAssignedItemsDisplayRows(makeRows(25000));
+    await mountManagerAssignedItemsView(host.querySelector('#manager-assigned-items-root'), rows25k, 25000);
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const elapsed25kMs = performance.now() - start25k;
+    const dom25k = host.querySelectorAll('[data-manager-assigned-item-row]').length;
+    const domNodeCount25k = host.querySelectorAll('*').length;
+    const beforeScrollTransforms = window.__assignedVirtualTransforms;
+    const scroll = host;
+    for (let attempt = 0; attempt < 4 && !host.querySelector('[data-inventory-id="stress-24999"]'); attempt++) {
+      scroll.scrollTop = scroll.scrollHeight;
+      scroll.dispatchEvent(new Event('scroll'));
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    }
+    return {
+      elapsed10kMs, dom10k, domNodeCount10k, elapsed25kMs, dom25k, domNodeCount25k,
+      logical25k: host.querySelector('#manager-assigned-items-root')?.getAttribute('data-logical-row-count'),
+      visibleAfterScroll: host.querySelectorAll('[data-manager-assigned-item-row]').length,
+      finalRowAfterScroll: !!host.querySelector('[data-inventory-id="stress-24999"]'),
+      transformsDuringScroll: window.__assignedVirtualTransforms - beforeScrollTransforms
+    };
+  })()`));
+  await testInfo.attach('assigned-items-virtualization-metrics.json', { body: Buffer.from(JSON.stringify(metrics, null, 2)), contentType: 'application/json' });
+  expect(metrics.dom10k).toBeGreaterThan(0);
+  expect(metrics.dom10k).toBeLessThanOrEqual(35);
+  expect(metrics.dom25k).toBeGreaterThan(0);
+  expect(metrics.dom25k).toBeLessThanOrEqual(35);
+  expect(metrics.logical25k).toBe('25000');
+  expect(metrics.visibleAfterScroll).toBeGreaterThan(0);
+  expect(metrics.finalRowAfterScroll).toBe(true);
+  expect(metrics.visibleAfterScroll).toBeLessThanOrEqual(35);
+  expect(metrics.transformsDuringScroll).toBe(0);
+  await expect(page.locator('#assigned-items-virtual-benchmark-host [data-inventory-id="stress-24999"]')).toContainText('STRESS-24999');
+});
+
+test('Assigned Items single-row changes save immediately and remain stable inside assignment groups', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getManagerAssignedItemsDisplayRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
@@ -1417,7 +1582,7 @@ test('Assigned Items single-row changes save immediately and remain stable insid
   expect(result.busyAfter).toBe(false);
 });
 
-test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', async ({ page }) => {
+test('Manager Historical Report loads Common Names immediately, drills to ContSize, and sends only chosen columns', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).loadManagerHistoricalRows === 'function');
   const result = await page.evaluate(() => window.eval(`(async () => {
@@ -1511,22 +1676,23 @@ test('Manager Historical Report loads Common Names immediately, drills to ContSi
   expect(result.canOther).toBe(false);
 });
 
-test('an acknowledged assignment immediately leaves the Unassigned filter', async ({ page }) => {
+test('an acknowledged assignment immediately leaves the Unassigned filter', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyAcknowledgedEvalAssignmentResults === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
     processAndLoadData({ warehouseAssignedItemsData: [{
-      UNIQUE_ID: 'eval-test-1', ITEMCODE: '011364.070.1', GENUSNAME: 'Decumaria',
+      master_unique_id: 'eval-test-1', UNIQUE_ID: 'eval-test-1', ITEMCODE: '011364.070.1', GENUSNAME: 'Decumaria',
       ASSIGNEDTO: '', assignedto: '', COMMONNAME: 'Barbara Ann Climbing Hydrangea Espalier'
     }] });
     setManagerAssignedItemsAssigneeFilter('unassigned');
     const activeBefore = getManagerAssignedItemsActiveAssigneeKey();
     const before = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
-    const applied = applyAcknowledgedEvalAssignmentResults(
-      [{ itemcode: '011364.070.1', genusname: 'Decumaria' }],
-      [{ itemcode: '011364.070.1', genusname: 'Decumaria', assignedto: 'megan_kelly', source: 'supabase_assignment_manager' }],
-      'megan_kelly'
-    );
+    const applied = applyAcknowledgedEvalAssignmentResults([], [{
+      contractVersion: 'inventory-row-assignments-v1',
+      defaults: [{ itemcode: '011364.070.1', assignedto: 'megan_kelly', revision: 1 }],
+      assignments: [{ master_unique_id: 'eval-test-1', unique_id: 'eval-test-1',
+        itemcode: '011364.070.1', genusname: 'Decumaria', assignedto: 'megan_kelly', revision: 2 }]
+    }]);
     const activeAfter = getManagerAssignedItemsActiveAssigneeKey();
     const unassignedAfter = getFilteredManagerAssignedItemsExportRows().map((row) => row.ITEMCODE);
     setManagerAssignedItemsAssigneeFilter('megan_kelly');
@@ -1544,7 +1710,7 @@ test('an acknowledged assignment immediately leaves the Unassigned filter', asyn
   });
 });
 
-test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', async ({ page }) => {
+test('iPhone Request Queue renders all 19 rows instead of only the first adaptive chunk', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRequestChunkRenderOptions === 'function'
@@ -1590,7 +1756,7 @@ test('iPhone Request Queue renders all 19 rows instead of only the first adaptiv
   expect(result.renderedRows).toBe(19);
 });
 
-test('Queue tab changes load only the canonical datasets needed by that tab', async ({ page }) => {
+test('Queue tab changes load only the canonical datasets needed by that tab', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRequestViewLoadingConfig === 'function');
   const configs = await page.evaluate(() => {
@@ -1616,12 +1782,15 @@ test('Queue tab changes load only the canonical datasets needed by that tab', as
   expect(configs.query).not.toContain('date_completed=is.null');
   expect(configs.pending).toEqual({ required: ['requests:full'], background: [] });
   expect(configs.reps.required).toEqual(['requests:full', 'requestHistory:full', 'salesCredits:full']);
-  expect(configs.suspendTag.required).toEqual(['requests:full', 'soc:full']);
+  expect(configs.suspendTag).toEqual({
+    required: ['suspendTag:full', 'master:initial', 'customerRepMap:full'],
+    background: []
+  });
   expect(configs.recount).toEqual({ required: ['salesOffice:full'], background: ['requests:full'] });
   expect(configs.avCheck).toEqual({ required: [], background: ['requests:full'] });
 });
 
-test('Kayla receives standard Admin Request, Drive, and photo access', async ({ page }) => {
+test('Kayla receives standard Admin Request, Drive, and photo access', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const permissions = await page.evaluate(() => {
@@ -1650,7 +1819,7 @@ test('Kayla receives standard Admin Request, Drive, and photo access', async ({ 
   });
 });
 
-test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ page }) => {
+test('iOS Request cards keep a working left-swipe surface for Kayla', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).handleRequestSwipeStart === 'function');
@@ -1701,7 +1870,7 @@ test('iOS Request cards keep a working left-swipe surface for Kayla', async ({ p
   });
 });
 
-test('saved Dark theme owns the first two seconds without a white frame', async ({ page }) => {
+test('saved Dark theme owns the first two seconds without a white frame', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => localStorage.setItem('gnc_last_theme_v1', 'dark'));
@@ -1734,7 +1903,7 @@ test('saved Dark theme owns the first two seconds without a white frame', async 
   expect(visibleSamples.every((sample) => sample.theme === 'dark')).toBe(true);
 });
 
-test('Drive Common Name search keeps the grouped drill-down', async ({ page }) => {
+test('Drive Common Name search keeps the grouped drill-down', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.20.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).shouldRenderDriveUniversalDetailedSearch === 'function');
   const result = await page.evaluate(() => {
@@ -1756,7 +1925,7 @@ test('Drive Common Name search keeps the grouped drill-down', async ({ page }) =
   });
 });
 
-test('Android keyboard viewport changes retain Drive search focus, node identity, value, and caret', async ({ page }) => {
+test('Android keyboard viewport changes retain Drive search focus, node identity, value, and caret', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=drive&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
   const search = page.locator('#drive-search');
@@ -1796,7 +1965,7 @@ test('Android keyboard viewport changes retain Drive search focus, node identity
   });
 });
 
-test('Home adaptively fits all 12 launch modules without scrolling or quick-bar overlap', async ({ page }) => {
+test('Home adaptively fits all 12 launch modules without scrolling or quick-bar overlap', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const viewports = [
     { width: 320, height: 568 },
     { width: 390, height: 844 },
@@ -1882,7 +2051,7 @@ test('Home adaptively fits all 12 launch modules without scrolling or quick-bar 
   }
 });
 
-test('Home refits after resize, orientation, and 125–200 percent viewport reflow', async ({ page }) => {
+test('Home refits after resize, orientation, and 125–200 percent viewport reflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const reflowViewports = [
     { width: 1536, height: 864 },
     { width: 1097, height: 617 },
@@ -1919,7 +2088,7 @@ test('Home refits after resize, orientation, and 125–200 percent viewport refl
   }
 });
 
-test('phone Chat composer fills the shell and never overlaps quick navigation', async ({ page }) => {
+test('phone Chat composer fills the shell and never overlaps quick navigation', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=chat&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
 
@@ -1944,7 +2113,7 @@ test('phone Chat composer fills the shell and never overlaps quick navigation', 
   expect(desktopComposer!.y + desktopComposer!.height).toBeLessThanOrEqual(desktopNav!.y);
 });
 
-test('Item Inquiry preserves the compact desktop and tablet worksheet', async ({ page }) => {
+test('Item Inquiry preserves the compact desktop and tablet worksheet', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   const viewports = [
     { width: 768, height: 1024 },
@@ -2064,7 +2233,7 @@ test('Item Inquiry preserves the compact desktop and tablet worksheet', async ({
   }
 });
 
-test('Phone Item Inquiry uses one readable summary-first scroll with synchronized tabs', async ({ page }) => {
+test('Phone Item Inquiry uses one readable summary-first scroll with synchronized tabs', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const viewports = [
     { width: 390, height: 844 },
     { width: 430, height: 932 },
@@ -2157,7 +2326,7 @@ test('Phone Item Inquiry uses one readable summary-first scroll with synchronize
   }
 });
 
-test('Phone Reclass inquiry fits narrow screens and preserves optional location drafts', async ({ page }) => {
+test('Phone Reclass inquiry fits narrow screens and preserves optional location drafts', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=reclass-mobile-density', { waitUntil: 'domcontentloaded' });
@@ -2171,6 +2340,13 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
       LOCATIONPTN1: '', LOCATIONNOTE: '', SOURCE_TABLE: 'ph_master_inventory',
     }));
     (window as any).processAndLoadData({ data: rows, _fromCache: true });
+    // These synthetic rows stand in for a completed full master projection;
+    // the inquiry editor correctly defers opening while only a partial/cache
+    // projection is available.
+    const masterState = (window as any).getDatasetState('master');
+    masterState.initialLoaded = masterState.fullLoaded = true;
+    masterState.fieldCoverage = 'full';
+    masterState.rowCompleteness = 'complete';
     (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: 27 });
     (window as any).openArgosInventoryTransactionModal('mobile-density-0', 'reclass', '');
   });
@@ -2231,34 +2407,44 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
   await expect(modal).toBeHidden();
 });
 
-test('Desktop Reclass row actions preserve combined requests and disclose inquiry-wide Hold / Stop scope', async ({ page }) => {
+test('Desktop Reclass row actions preserve combined requests and disclose authorized Hold / Stop propagation scope', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
+  const fixture = await installHlOrderFixture(page, 'http://127.0.0.1:43116', { username: 'dylan_collyge', role: 'ADMIN' });
   page.on('dialog', dialog => dialog.accept());
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.goto('/?e2e=reclass-action-views', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => typeof (window as any).openArgosInventoryTransactionModal === 'function');
   await page.evaluate(() => {
     const rows = [
       ['old', 'F1', '26', 'H', '10'], ['current', 'F1', '2027', 'S', '0'],
       ['future', 'F1', '28', '', '10'], ['other', 'S1', '27', '', '10'],
       ['unknown', 'F1', 'bad27', '', '10'],
-    ].map(([id, season, year, code, oh]) => ({ UNIQUE_ID: id, ITEMCODE: 'RECLASS-VIEW', COMMONNAME: 'Reclass view fixture', CONTSIZE: '3G',
+    ].map(([id, season, year, code, oh]) => ({ UNIQUE_ID: id, ITEMCODE: 'RECLASS-VIEW', COMMONNAME: 'Reclass view fixture', CONTSIZE: '3G', DESIGITEM: 'Original item designation',
       LOTCODE: `${year}.${season}`, LOCATIONCODE: id, SEASON: season, SALEYEAR: year,
       PRIORITY: '5', HOLDSTOPCODE: code, HOLDSTOPREASON: 'existing reason', PTRONHAND: oh, PTRAVAILABLE: oh, SOURCE_TABLE: 'ph_master_inventory' }));
     (window as any).processAndLoadData({ data: rows, _fromCache: true });
+    const masterState = (window as any).getDatasetState('master');
+    masterState.initialLoaded = masterState.fullLoaded = true;
+    masterState.fieldCoverage = 'full';
+    masterState.rowCompleteness = 'complete';
     (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: 27 });
     (window as any).openArgosInventoryTransactionModal('old', 'reclass', '');
   });
   const modal = page.locator('#argos-inventory-transaction-modal');
   const old = modal.locator('[data-reclass-row-card="old"]');
   const current = modal.locator('[data-reclass-row-card="current"]');
+  const future = modal.locator('[data-reclass-row-card="future"]');
   await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
+  await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Editable inventory fields update live inventory after confirmation and remain protected until the legacy import matches.');
+  await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Quantity, season, and sheared instructions remain requests for keyers.');
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
-  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Choosing it from one row does not limit it to that row');
-  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('On Hold: 3');
-  await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(8);
+  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('The selected row receives the Hold / Stop request');
+  await expect(modal.locator('.argos-reclass-action-scope-notice')).toContainText('Eligible managers may also update matching rows in F1 with sales year 27 or earlier; the server determines that scope.');
+  await expect(old.locator('[data-reclass-v3-action]')).toHaveCount(9);
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toBeDisabled();
   await expect(current.locator('[data-reclass-v3-action="move_up"]')).toContainText('Requires positive original OH');
+  await expect(current.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+  await expect(old.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+  await expect(future.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
+  await expect(modal.locator('[data-reclass-row-card="other"] [data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
   await old.locator('[data-reclass-v3-action="priority_change"]').click();
   await old.locator('[data-reclass-v3-proposal-field="priority"]').fill('');
   await old.locator('[data-reclass-v3-action="recount"]').click();
@@ -2274,18 +2460,33 @@ test('Desktop Reclass row actions preserve combined requests and disclose inquir
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
     expect(draft.holdStopProposals).toHaveLength(1);
     expect(draft.holdStopProposals[0].action).toBe(action);
+    expect(draft.holdStopProposals[0].sourceUid).toBe('old');
     expect(draft.requestActions).toEqual(expect.arrayContaining(['priority_change', 'recount', action]));
     expect(draft.rowOverlays.find((row: any) => row.unique_id === 'old')?.proposals).toEqual(expect.arrayContaining([{ action: 'priority_change', priority: '' }]));
     // Deselect explicitly so the following choice needs no replacement confirmation.
     await old.locator(`[data-reclass-v3-action="${action}"]`).click();
   }
+  await old.locator('[data-reclass-v3-action="sheared"]').click();
+  await old.getByLabel('Sheared quantity', { exact: true }).fill('3');
+  await expect(old.locator('[data-sheared-request-preview="true"]')).toHaveText('3-->#');
+  await future.locator('[data-reclass-v3-action="sheared"]').click();
+  await future.getByLabel('Sheared quantity', { exact: true }).fill('2');
+  await expect(future.locator('[data-sheared-request-preview="true"]')).toHaveText('2-->#');
+  const shearedDraft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
+  expect(shearedDraft.requestActions).toEqual(expect.arrayContaining(['priority_change', 'recount', 'sheared']));
+  expect(shearedDraft.rowOverlays.find((row: any) => row.unique_id === 'old')?.expected).toMatchObject({ desigitem: 'Original item designation' });
+  expect(shearedDraft.rowOverlays.find((row: any) => row.unique_id === 'old')?.proposals).toEqual(expect.arrayContaining([{ action: 'sheared', quantity: 3 }]));
+  expect(shearedDraft.rowOverlays.find((row: any) => row.unique_id === 'future')?.proposals).toEqual(expect.arrayContaining([{ action: 'sheared', quantity: 2 }]));
+  await old.locator('[data-reclass-v3-action="sheared"]').click();
   await page.evaluate(() => localStorage.removeItem('gnc_current_season_settings_v1'));
   await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(5);
   await expect(old.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveValue('');
+  expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('Phone Reclass V3 supports all eight direct actions without row checkboxes or horizontal overflow', async ({ page }) => {
+test('Phone Reclass V6 controls support all nine direct actions without row checkboxes or horizontal overflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
+  await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
   for (const viewport of [{ width: 390, height: 844 }, { width: 430, height: 932 }]) {
     await page.setViewportSize(viewport);
     await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
@@ -2336,8 +2537,8 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
             pulltagnote2: '',
             locationptn1: index === 0 ? longNote : '',
             locationptn2: '',
-            holdstopcode: index === 0 ? 'H' : (index === 2 ? 'S' : ''),
-            holdstopreason: index === 0 ? longNote : (index === 2 ? 'Current stop' : ''),
+            holdstopcode: index === 0 ? 'H' : (index === 1 ? 'HS' : (index === 2 ? 'S' : '')),
+            holdstopreason: index === 0 ? longNote : (index === 1 ? 'Current hold and stop' : (index === 2 ? 'Current stop' : '')),
           },
         })),
       };
@@ -2368,6 +2569,10 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
         SOURCE_TABLE: 'ph_master_inventory',
       }));
       (window as any).processAndLoadData({ data: (window as any).__reclassResponsiveRows, _fromCache: true });
+      const masterState = (window as any).getDatasetState('master');
+      masterState.initialLoaded = masterState.fullLoaded = true;
+      masterState.fieldCoverage = 'full';
+      masterState.rowCompleteness = 'complete';
       (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: '2027' });
       (window as any).__reclassResponsiveSetup = {
         found: !!(window as any).findItemByUniqueId('row-0'),
@@ -2400,12 +2605,20 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     await expect(second.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
-    await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(8);
+    await expect(second.locator('[data-reclass-v3-action]')).toHaveCount(9);
     await expect(second.locator('[data-reclass-action-included]')).toHaveCount(0);
     await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="stop_ship"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="take_off_hold"]')).toBeEnabled();
     await expect(second.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+    const currentCodeRow = modal.locator('[data-reclass-row-card="row-2"]');
+    await currentCodeRow.locator('.argos-reclass-row-toggle').click();
+    await expect(currentCodeRow.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeEnabled();
+    await currentCodeRow.locator('.argos-reclass-row-toggle').click();
+    const futureBlankRow = modal.locator('[data-reclass-row-card="row-40"]');
+    await futureBlankRow.locator('.argos-reclass-row-toggle').click();
+    await expect(futureBlankRow.locator('[data-reclass-v3-action="off_stop_ship"]')).toBeDisabled();
+    await futureBlankRow.locator('.argos-reclass-row-toggle').click();
 
     await second.locator('[data-reclass-v3-action="hold"]').click();
     const holdReason = second.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]');
@@ -2416,14 +2629,18 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(second.locator('[data-reclass-v3-proposal-field="priority"]')).toHaveCount(0);
     await second.locator('[data-reclass-v3-action="priority_change"]').click();
     await secondPriority.fill('1');
-    await second.locator('[data-reclass-v3-action="move_up"]').click();
-    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="moveQuantity"]').fill('150');
-    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
-    await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(3);
-    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '3');
-    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('3 Actions');
-    await expect(origin).toHaveAttribute('data-reclass-scope-actions', 'hold');
-    await expect(second).toContainText('Inquiry-wide request: On Hold will be applied to all eligible rows');
+    await second.locator('[data-reclass-v3-action="move_down"]').click();
+    await second.getByLabel('Move Down quantity 1', { exact: true }).fill('150');
+    await second.locator('[data-reclass-v3-proposal-action="move_down"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
+    await second.locator('[data-reclass-v3-action="sheared"]').click();
+    await second.getByLabel('Sheared quantity', { exact: true }).fill('100');
+    await expect(second.locator('[data-sheared-request-preview="true"]')).toHaveText('100-->#');
+    await expect(second.locator('[data-reclass-v3-action][aria-pressed="true"]')).toHaveCount(4);
+    await expect(second).toHaveAttribute('data-reclass-row-edit-count', '4');
+    await expect(second.locator('[data-reclass-row-edit-count]')).toContainText('4 Actions');
+    await expect(origin).toHaveAttribute('data-reclass-scope-actions', '');
+    await expect(second).toContainText('On Hold requested for this row.');
+    await expect(second).toContainText('Eligible manager fanout is determined by the server.');
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
@@ -2433,15 +2650,16 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     await expect(modal.locator('[data-reclass-row-card]:visible')).toHaveCount(41);
     await expect(holdReason).toHaveValue('sheared');
     await expect(secondPriority).toHaveValue('1');
-    await expect(second.locator('[data-reclass-v3-proposal-field="moveQuantity"]')).toHaveValue('150');
+    await expect(second.getByLabel('Move Down quantity 1', { exact: true })).toHaveValue('150');
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'true');
     const draft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
-    expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_up']);
-    expect(draft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared' }]);
+    expect(draft.requestActions).toEqual(['hold', 'priority_change', 'move_down', 'sheared']);
+    expect(draft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared', sourceUid: 'row-1' }]);
     expect(draft.rowOverlays).toHaveLength(41);
     expect(draft.rowOverlays[1].proposals).toEqual([
       { action: 'priority_change', priority: '1' },
-      { action: 'move_up', moveQuantity: 150, destinationSeason: 'F1' },
+      { action: 'move_down', splits: [{ quantity: 150, destinationSeason: 'F1' }], applyHold: false, holdReason: '' },
+      { action: 'sheared', quantity: 100 },
     ]);
     expect(draft.rowOverlays[40].proposals).toEqual([]);
     expect(draft.scope).toEqual({ season: 'F1', salesYear: 2027 });
@@ -2450,7 +2668,7 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
       const panel = root.querySelector('.argos-tx-panel') as HTMLElement;
       const body = root.querySelector('.argos-tx-body') as HTMLElement;
       const footer = root.querySelector('.argos-tx-footer') as HTMLElement;
-      const visibleInputs = Array.from(root.querySelectorAll('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-input')) as HTMLElement[];
+      const visibleInputs = Array.from(root.querySelectorAll<HTMLElement>('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-row-input')).filter(input => input.getClientRects().length > 0);
       const visibleActions = Array.from(root.querySelectorAll('.argos-reclass-row-card[data-reclass-row-expanded="true"] .argos-reclass-action-btn')) as HTMLElement[];
       const overflowers = Array.from(root.querySelectorAll('.argos-tx-panel, .argos-tx-body, .argos-tx-form, .argos-reclass-inquiry, .argos-reclass-row-list, .argos-reclass-row-card, .argos-reclass-row-grid, .argos-reclass-action-panel, .argos-reclass-action-grid, .argos-reclass-action-proposal-grid'))
         .filter((element) => (element as HTMLElement).scrollWidth > (element as HTMLElement).clientWidth + 1)
@@ -2493,10 +2711,28 @@ test('Phone Reclass V3 supports all eight direct actions without row checkboxes 
     expect(layout.minInputFont).toBeGreaterThanOrEqual(16);
     expect(layout.minActionHeight).toBeGreaterThanOrEqual(44);
     expect(layout.clippedInput).toBe(false);
+
+    await second.locator('[data-reclass-v3-action="move_up"]').click();
+    await second.getByLabel('Move Up quantity 1', { exact: true }).fill('1');
+    await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
+    await expect(second.locator('[data-reclass-v3-action="move_up"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeDisabled();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(holdReason).toHaveCount(0);
+    await expect(second).toHaveAttribute('data-reclass-scope-actions', '');
+    const moveUpDraft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
+    expect(moveUpDraft.requestActions).toEqual(['priority_change', 'move_up', 'move_down', 'sheared']);
+    expect(moveUpDraft.holdStopProposals).toEqual([]);
+    await second.locator('.argos-reclass-row-toggle').click();
+    await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
+    await second.locator('.argos-reclass-row-toggle').click();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeDisabled();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'false');
+    await expect(second.locator('[data-reclass-v3-proposal-field="reason"]')).toHaveCount(0);
   }
 });
 
-test('Phone Drive Reclass skips the recipient picker and strips browser recipient fields', async ({ page }) => {
+test('Phone Drive Reclass skips the recipient picker and strips browser recipient fields', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
@@ -2517,7 +2753,65 @@ test('Phone Drive Reclass skips the recipient picker and strips browser recipien
   expect(payload.emailRecipients).toBeUndefined();
 });
 
-test('Phone Reclass hides intermediate delivery state and persists only the terminal result', async ({ page }) => {
+test('Request and Bloom APP recipient groups use the refreshed active-user directory', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.route('**/*', route => new URL(route.request().url()).origin === 'http://127.0.0.1:43116' ? route.continue() : route.abort());
+  await page.goto('/?e2e=request-recipient-directory', { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('load');
+  await page.waitForFunction(() => typeof (window as any).GncDatabase?.requestRecipientDirectoryFromResult === 'function');
+  await page.waitForFunction(() => typeof (window as any).openBloomCropUpdateModal === 'function');
+  await page.evaluate(() => window.eval(`
+    currentUser = 'dylan_collyge';
+    currentUserDisplay = 'Dylan Collyge';
+    // This browser case exercises directory rendering after authorization;
+    // the authorization allowlist itself is covered by the unit/API tests.
+    canUseBloomCropUpdateEmail = () => true;
+    canUseRequestEmailChainPicker = () => true;
+    getRequestRecipientDirectoryOwnerKey = () => 'profile:recipient-directory-dylan';
+    document.getElementById('view-login')?.classList.add('hidden');
+    nativeAuthProfile = { id: 'recipient-directory-dylan', username: 'dylan_collyge', disabled_at: null, locked_until: null, must_change_password: false };
+    window.__recipientDirectoryCalls = [];
+    postAppFunctionJson = async (_url, body) => {
+      window.__recipientDirectoryCalls.push(body.action);
+      if (body.action === 'request_recipient_directory') return {
+        ok: true,
+        revision: 'recipients-v1:${'a'.repeat(64)}',
+        users: [{ username: 'alyssa_beitz', displayName: 'Alyssa Beitz', role: 'CSR' }]
+      };
+      return { ok: true, users: [], rows: [] };
+    };
+    ensureAssignableAppUsers = async () => [];
+    getAssignableAppUserOptions = () => [{ username: 'legacy_only', display: 'Legacy Only', email: 'legacy_only@greenleafnursery.com' }];
+    supabaseFetch = async () => [{ username: 'legacy_only', display: 'Legacy Only', email: 'legacy_only@greenleafnursery.com' }];
+  `));
+
+  await page.evaluate(() => (window as any).eval(`openBloomCropUpdateModal([{ UNIQUE_ID: 'recipient-row', ITEMCODE: 'ROSE.001', COMMONNAME: 'Test Rose', SOURCE_TABLE: 'ph_master_inventory' }])`));
+  const bloom = page.locator('#bloom-crop-update-modal');
+  await expect(bloom).toBeVisible();
+  await bloom.getByRole('button', { name: /All App Users/ }).click();
+  const bloomDirectory = bloom.locator('input[data-bloom-crop-group="APP"]');
+  await expect(bloomDirectory).toHaveAttribute('data-rep-name', 'Alyssa Beitz');
+  await expect(bloom).not.toContainText('Legacy Only');
+  await page.waitForFunction(() => (window as any).__recipientDirectoryCalls.filter((action: string) => action === 'request_recipient_directory').length === 1);
+  await page.evaluate(() => (window as any).eval('closeBloomCropUpdateModal()'));
+
+  const requestStepOpened = await page.evaluate(() => (window as any).eval(`
+    canUseRequestEmailChainPicker = () => true;
+    getRequestRecipientDirectoryOwnerKey = () => 'profile:recipient-directory-dylan';
+    document.getElementById('request-rep-modal').classList.remove('hidden');
+    document.getElementById('step-3-qty').classList.remove('hidden');
+    showRequestEmailChainFinalStep();
+  `));
+  expect(requestStepOpened).toBe(true);
+  const requestPanel = page.locator('#request-email-chain-panel');
+  await expect(requestPanel).toBeVisible();
+  await requestPanel.getByRole('button', { name: /APP/ }).click();
+  await expect(requestPanel.locator('[data-request-email-chain-group="APP"][data-rep-name="Alyssa Beitz"]')).toBeAttached();
+  await expect(requestPanel).not.toContainText('Legacy Only');
+  await page.waitForFunction(() => (window as any).__recipientDirectoryCalls.filter((action: string) => action === 'request_recipient_directory').length === 2);
+});
+
+test('Phone Reclass hides intermediate delivery state and persists only the terminal result', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderReclassDeliveryStatusTray === 'function');
@@ -2564,7 +2858,7 @@ test('Phone Reclass hides intermediate delivery state and persists only the term
   await expect(page.locator('#reclass-delivery-status-tray button')).toHaveText('Dismiss');
 });
 
-test('Drive Grid is a readable spreadsheet and every control stays on one rail', async ({ page }) => {
+test('Drive Grid is a readable spreadsheet and every control stays on one rail', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?view=drive&display=grid&theme=dark&monitoring=0`, { waitUntil: 'domcontentloaded' });
   await expect(page.locator('.drive-grid-table')).toHaveCount(0);
@@ -2614,7 +2908,7 @@ test('Drive Grid is a readable spreadsheet and every control stays on one rail',
   await expect(page.getByText('Season Sales Notes', { exact: true })).toHaveCount(0);
 });
 
-test('Request rep selection always renders customer choices or a recoverable error state', async ({ page }) => {
+test('Request rep selection always renders customer choices or a recoverable error state', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).selectRepForRequest === 'function');
@@ -2622,7 +2916,7 @@ test('Request rep selection always renders customer choices or a recoverable err
   const result = await page.evaluate(() => window.eval(`(() => {
     document.body.classList.add('ops-precision-pilot');
     customerRepMapRows = [
-      { SALESREPNAME: 'Kevin Effinger', CUSTOMERNAME: 'Test Garden Center', CONSIGNEENAME: 'Main Dock' }
+      { SALESREPID: '01', CUSTOMERIDENTITYID: '00012', CONSIGNEEID: '00007', CUSTOMERSTATUS: 'A', CONSIGNEESTATUS: 'A', SALESREPNAME: 'Kevin Effinger', CUSTOMERNAME: 'Test Garden Center', CONSIGNEENAME: 'Main Dock' }
     ];
     requestsInventory = [];
     requestModalCustomerOptionsLoading = false;
@@ -2716,7 +3010,7 @@ test('Request rep selection always renders customer choices or a recoverable err
   expect(JSON.stringify(result.failure.diagnostic)).not.toContain('sensitive raw failure');
 });
 
-test('dark phone Request creation keeps headings, labels, and fields readable', async ({ page }) => {
+test('dark phone Request creation keeps headings, labels, and fields readable', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.evaluate(() => {
@@ -2769,7 +3063,7 @@ test('dark phone Request creation keeps headings, labels, and fields readable', 
   expect(state.overflow).toBe(0);
 });
 
-test('Request quantity and spec fields stay high-contrast and responsive on phones', async ({ page }) => {
+test('Request quantity and spec fields stay high-contrast and responsive on phones', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // Exercise responsive styles on one fully initialized app instead of
   // repeatedly tearing down Firefox's app runtime between measurements.
@@ -2845,7 +3139,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
   }
 });
 
-test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
+test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.09.04.04&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (
@@ -2951,7 +3245,7 @@ test('Request reusable evidence prompt accepts partial exact-row data without au
   expect(storedChoice).toBe('YES');
 });
 
-test('toast can be closed or swiped up without blocking the rest of the screen', async ({ page }) => {
+test('toast can be closed or swiped up without blocking the rest of the screen', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).showToast === 'function');
@@ -2991,7 +3285,7 @@ test('toast can be closed or swiped up without blocking the rest of the screen',
   await expect(toast).toHaveAttribute('data-dismiss-reason', 'swipe-up');
 });
 
-test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', async ({ page }) => {
+test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV sheet, and a persistent Mark Done tray', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   for (const viewport of [{ width: 390, height: 844 }, { width: 360, height: 640 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
@@ -3063,7 +3357,7 @@ test('phone Request detail uses natural scrolling, a photo rail, a scrollable AV
   }
 });
 
-test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', async ({ page, browserName }) => {
+test('iPhone Request fields keep native focus and draft values through viewport and realtime settling', {"tag":["@local-e2e","@release-functional"]}, async ({ page, browserName }) => {
   test.skip(browserName !== 'webkit', 'This regression reproduces the iPhone WebKit focus lifecycle.');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.09.04.04', { waitUntil: 'domcontentloaded' });
@@ -3132,7 +3426,7 @@ test('iPhone Request fields keep native focus and draft values through viewport 
   await expect(page.locator('#req-match')).toHaveAttribute('inputmode', 'decimal');
 });
 
-test('desktop Request detail is one readable single-column workflow', async ({ page }) => {
+test('desktop Request detail is one readable single-column workflow', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   for (const viewport of [{ width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
     for (const theme of ['light', 'dark']) {
       await page.setViewportSize(viewport);
@@ -3202,7 +3496,7 @@ test('desktop Request detail is one readable single-column workflow', async ({ p
   }
 });
 
-test('module filters sit below the command search with responsive breathing room', async ({ page }) => {
+test('module filters sit below the command search with responsive breathing room', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   const cases = [
     { width: 390, height: 844, minGap: 20, maxGap: 44 },
     { width: 768, height: 1024, minGap: 42, maxGap: 62 },
@@ -3233,7 +3527,7 @@ test('module filters sit below the command search with responsive breathing room
   }
 });
 
-test('light and dark navigation use explicit semantic fallback colors', async ({ page }) => {
+test('light and dark navigation use explicit semantic fallback colors', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   for (const theme of ['light', 'dark']) {
     await page.goto(`${fixtureUrl}?view=drive&theme=${theme}&monitoring=0`, { waitUntil: 'domcontentloaded' });
     await expect.poll(() => page.locator('body').getAttribute('data-ops-theme')).toBe(theme);
@@ -3291,7 +3585,7 @@ test('light and dark navigation use explicit semantic fallback colors', async ({
   }
 });
 
-test('anonymous monitoring activates for non-Dylan sessions without PII', async ({ page }) => {
+test('anonymous monitoring activates for non-Dylan sessions without PII', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto(`${fixtureUrl}?pilot=0&monitoring=1&theme=dark`, { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.locator('body').getAttribute('data-qa-ready')).toBe('true');
   expect(await page.locator('body').getAttribute('data-qa-sentry-pii')).toBe('false');
@@ -3303,7 +3597,7 @@ test('anonymous monitoring activates for non-Dylan sessions without PII', async 
   expect(payload).not.toContain('ABC-123456');
 });
 
-test('non-Dylan users receive Appearance controls with phone-safe Grid behavior', async ({ page }) => {
+test('non-Dylan users receive Appearance controls with phone-safe Grid behavior', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${fixtureUrl}?pilot=1&monitoring=0&theme=light&display=cards&reset=1`, { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.locator('body').getAttribute('data-qa-ready')).toBe('true');

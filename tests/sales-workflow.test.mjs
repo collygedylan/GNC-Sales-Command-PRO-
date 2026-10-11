@@ -1,3 +1,4 @@
+// @test-group: sales
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -50,6 +51,21 @@ test('request history uses the fresh trusted profile actor and forwards keyset p
   assert.equal(received.name, 'request_history_command_v1');
   assert.equal(received.args.p_actor_id, actorId);
   assert.equal(received.args.p_payload.cursor.id, 'r9');
+});
+
+test('successful sales RPC responses must be finite JSON before they reach the client', async () => {
+  const response = await handleSalesWorkflow({
+    session,
+    payload: { action: 'request_history', operation: 'search', payload: {} },
+    resolveActiveSessionProfile: async () => ({ id: actorId }),
+    supabase: { rpc: async () => ({ data: undefined, error: null }) },
+  });
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    error: 'SALES_WORKFLOW_RESPONSE_INVALID',
+    code: 'SALES_WORKFLOW_RESPONSE_INVALID',
+  });
 });
 
 test('exact Docks lookup forwards the source ID and trusted actor without a mutation identity', async () => {

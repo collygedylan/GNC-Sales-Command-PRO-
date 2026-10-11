@@ -7,6 +7,29 @@ const source = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const origin = 'https://agmetric-isolation.test';
 const absolute = value => new URL(typeof value === 'string' ? value : value.url, `${origin}/`).href;
 
+const suspendApprovalId = '12345678-1234-4234-8234-123456789abc';
+test('Suspend notification buttons survive closed-app startup and are consumed only once by the root app', async () => {
+  const h=harness([{id:'demo',url:`${origin}/v2/`}]);
+  const data={viewId:'suspend-tag-approval',approvalId:suspendApprovalId,url:`${origin}/?suspendApproval=${suspendApprovalId}`};
+  await h.dispatch('push',{data:{json:()=>data}});
+  assert.deepEqual(Array.from(h.calls.notifications[0].options.actions,a=>a.action),['approve','deny']);
+  await h.dispatch('notificationclick',{action:'deny',notification:{close(){},data}});
+  assert.match(h.calls.opened[0],/suspendApproval=/);
+  const consume=async client=>{let result;await h.dispatch('message',{source:client,data:{type:'GNC_TAKE_SUSPEND_ACTION',approvalId:suspendApprovalId},ports:[{postMessage:value=>result=value}]});return result?.decision || '';};
+  assert.equal(await consume(h.clients[0]),'','other app cannot consume');
+  h.clients.push({id:'root',url:`${origin}/`});
+  assert.equal(await consume(h.clients[1]),'deny');assert.equal(await consume(h.clients[1]),'');
+  assert.equal(h.calls.fetch.length,0,'notification handling never writes a business decision');
+});
+test('iPhone notification tap and emailed URL open a review without deciding; expired actions do not submit',async()=>{
+  const h=harness([{id:'root',url:`${origin}/`}]);const data={viewId:'suspend-tag-approval',approvalId:suspendApprovalId,url:`${origin}/?suspendApproval=${suspendApprovalId}&decision=approve`};
+  await h.dispatch('notificationclick',{action:'',notification:{close(){},data}});
+  let result;const consume=()=>h.dispatch('message',{source:h.clients[0],data:{type:'GNC_TAKE_SUSPEND_ACTION',approvalId:suspendApprovalId},ports:[{postMessage:value=>result=value}]});
+  await consume();assert.equal(result.decision,'');assert.equal(h.calls.fetch.length,0);
+  await (await h.caches.open('gnc-suspend-notification-actions')).put(`${origin}/__suspend_action/${suspendApprovalId}`,new Response(JSON.stringify({decision:'approve',expiresAt:Date.now()-1})));
+  await consume();assert.equal(result.decision,'');
+});
+
 function harness(clientDefinitions = []) {
   const handlers = new Map();
   const cacheStores = new Map();
@@ -80,9 +103,29 @@ function request(path, extra = {}) {
   return { url: absolute(path), method: 'GET', mode: 'cors', destination: '', referrer: `${origin}/index.html`, ...extra };
 }
 
+test('fresh install precaches the exact versioned runtime requested by the compiled shell', async () => {
+  const h = harness();
+  const build = h.evaluate('APP_SHELL_BUILD');
+  const runtime = `/assets/live-app-runtime-v2026082010.min.js?v=${encodeURIComponent(build)}`;
+  const shellBuilder = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
+  assert.match(shellBuilder, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE\}'/);
+  h.setFetch(async input => new Response(absolute(input).includes('live-app-runtime-') ? 'CURRENT RUNTIME' : 'CURRENT SHELL'));
+  await h.dispatch('install');
+  const cache = await h.caches.open(h.evaluate('CACHE_NAME'));
+  assert.equal(await (await cache.match(runtime)).text(), 'CURRENT RUNTIME');
+  assert.equal(await cache.match('/assets/live-app-runtime-v2026082010.min.js'), undefined);
+  h.setFetch(async () => { throw new Error('offline'); });
+  const offline = await h.dispatch('fetch', { request: request(runtime, { destination: 'script' }) });
+  assert.equal(await offline.response.text(), 'CURRENT RUNTIME');
+  await assert.rejects(h.dispatch('fetch', { request: request('/assets/live-app-runtime-v2026082010.min.js?v=OLD', { destination: 'script' }) }), /offline/,
+    'an old version URL must never receive another release runtime');
+  const navigation = await h.dispatch('fetch', { request: request('/index.html?shellv=OLD', { mode: 'navigate' }) });
+  assert.equal(await navigation.response.text(), 'CURRENT SHELL', 'offline navigation upgrades shell and runtime together');
+});
+
 test('all split AURA modules bypass shared service-worker storage', async () => {
   const h = harness();
-  for (const file of ['components/common/auraVoiceWidget', 'services/auraVoiceService', 'services/auraConversation', 'utils/auraIntentParser', 'utils/auraLingo']) {
+  for (const file of ['assets/aura-voice', 'components/common/auraVoiceWidget', 'components/common/auraQueryPanel', 'services/auraVoiceService', 'services/auraConversation', 'utils/auraIntentParser', 'utils/auraLingo']) {
     const path = `/${file}.js?v=V2026.10.01.007`;
     assert.equal(h.evaluate(`shouldBypassServiceWorkerCache({url:${JSON.stringify(absolute(path))}})`), true);
     const result = await h.dispatch('fetch', { request: request(path) });
@@ -130,6 +173,7 @@ test('v2 assets and requests originating from v2 bypass root caches, including P
   const h = harness([{ id: 'demo', url: `${origin}/v2/` }]);
   for (const req of [
     request('/v2/assets/index-12345678.js'), request('/v2/runtime-config.json'),
+    request('/ag-data-solutions-icon-v20260708023-192.png', { referrer: `${origin}/v2/` }),
     request('/assets/shared.png', { referrer: `${origin}/v2/`, destination: 'image' }),
     request('https://sandbox.test/functions/v1/demo', { method: 'POST', referrer: `${origin}/v2/` }),
   ]) assert.equal((await h.dispatch('fetch', { request: req, clientId: 'demo' })).intercepted, false);
@@ -183,6 +227,55 @@ test('root asset reads do not consume identically keyed responses from partner c
   const result = await h.dispatch('fetch', { request: request('/assets/ops-precision-pilot.js') });
   assert.equal(await result.response.text(), 'ROOT NETWORK');
   assert.equal(h.calls.put[1].name, h.evaluate('CACHE_NAME'));
+});
+
+test('legacy root branding URLs resolve only through the root worker canonical branding cache', async () => {
+  const h = harness();
+  const aliases = Object.entries(h.evaluate('BRANDING_LEGACY_ALIASES'));
+  const canonicalAssets = Array.from(h.evaluate('BRANDING_CANONICAL_ASSETS'));
+  assert.equal(aliases.length, 30, 'all formerly served root branding filenames have explicit aliases');
+  assert.equal(new Set(canonicalAssets).size, 9, 'only canonical branding assets are precached');
+  const cache = await h.caches.open(h.evaluate('CACHE_NAME'));
+
+  for (const [legacyPath, canonicalPath] of aliases) {
+    assert.ok(canonicalAssets.includes(canonicalPath), `${legacyPath} targets a canonical precached file`);
+    await cache.put(legacyPath, new Response('LEGACY CACHE ENTRY MUST NOT WIN'));
+    await cache.put(canonicalPath, new Response(`CANONICAL ${canonicalPath}`));
+    const result = await h.dispatch('fetch', { request: request(legacyPath, { destination: 'image' }) });
+    assert.equal(result.intercepted, true, legacyPath);
+    assert.equal(await result.response.text(), `CANONICAL ${canonicalPath}`, legacyPath);
+  }
+  assert.equal(h.calls.fetch.length, 0, 'cached aliases resolve offline without fetching obsolete paths');
+
+  const legacy = aliases[0][0];
+  await cache.delete(legacy);
+  h.setFetch(async input => {
+    assert.equal(absolute(input), absolute(`${legacy}?shellv=old`), 'query-bearing compatibility requests keep their original URL');
+    return new Response('QUERY URL NETWORK');
+  });
+  const queryResult = await h.dispatch('fetch', { request: request(`${legacy}?shellv=old`, { destination: 'image' }) });
+  assert.equal(await queryResult.response.text(), 'QUERY URL NETWORK');
+  assert.equal(h.calls.fetch.at(-1).url, absolute(`${legacy}?shellv=old`));
+
+  const before = h.calls.fetch.length;
+  const signed = await h.dispatch('fetch', { request: request(`${legacy}?token=private`, { destination: 'image' }) });
+  assert.equal(signed.intercepted, false, 'signed/private query requests retain the existing cache bypass');
+  assert.equal(h.calls.fetch.length, before);
+  assert.equal(h.evaluate(`getBrandingCanonicalUrl(${JSON.stringify('https://outside.test/' + aliases[0][0].slice(2))})`), null,
+    'legacy names on another origin are never normalized');
+});
+
+test('push notification fallback and legacy icon references use canonical branding paths', async () => {
+  const h = harness();
+  const aliases = h.evaluate('BRANDING_LEGACY_ALIASES');
+  const oldIcon = Object.keys(aliases).find(path => /icon-v20260708023-192\.png$/.test(path));
+  assert.ok(oldIcon, 'the historical icon is represented in the alias map');
+  const canonical = aliases[oldIcon];
+  await h.dispatch('push', { data: { json: () => ({ url: `${origin}/`, icon: oldIcon, title: 'Legacy icon' }) } });
+  assert.equal(h.calls.notifications.at(-1).options.icon, absolute(canonical));
+  await h.dispatch('push', { data: { json: () => ({ url: `${origin}/`, title: 'Default icon' }) } });
+  assert.equal(h.calls.notifications.at(-1).options.icon,
+    absolute('./assets/branding/ag-data-solutions-icon-v2026080925-192.png'));
 });
 
 test('all live-sync modules remain available offline in the root cache without crossing into v2', async () => {

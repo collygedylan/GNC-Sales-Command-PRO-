@@ -10,6 +10,8 @@ const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = code => { throw new Error(code); };
 
 function safeRelative(value) {
+  // Control characters are rejected because manifest paths must stay printable and portable.
+  // eslint-disable-next-line no-control-regex
   if (typeof value !== 'string' || !value || value.includes('\\') || /[\x00-\x1f\x7f:]/.test(value)
       || value.startsWith('/') || value.split('/').some(part => !part || part === '.' || part === '..')) fail('RELEASE_ARTIFACT_PATH_INVALID');
   return value;

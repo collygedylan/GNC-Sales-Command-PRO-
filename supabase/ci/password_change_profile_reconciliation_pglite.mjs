@@ -1,12 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { discoverTests } from '../../scripts/test-discovery.mjs';
 
 // Isolated PostgreSQL semantics check for the new password-reconciliation SQL.
 // PGlite is local-only here and uses the real pgcrypto extension for Auth parity.
-const require = createRequire(import.meta.url);
-const { PGlite } = require(path.resolve('.gnc-local/pglite/node_modules/@electric-sql/pglite'));
-const { pgcrypto } = require(path.resolve('.gnc-local/pglite/node_modules/@electric-sql/pglite/dist/contrib/pgcrypto.cjs'));
+const args = process.argv.slice(2);
+const dependencyRoot = args[args.indexOf('--pglite-root') + 1];
+if (!args.includes('--pglite-root') || !dependencyRoot) throw new Error('Pass --pglite-root with the installed PGlite package.');
+const require = createRequire(path.join(path.resolve(dependencyRoot), 'package.json'));
+const { PGlite } = require('@electric-sql/pglite');
+const { pgcrypto } = require(path.join(path.resolve(dependencyRoot), 'node_modules', '@electric-sql', 'pglite', 'dist', 'contrib', 'pgcrypto.cjs'));
 const db = new PGlite({ extensions: { pgcrypto } });
 const fixture = `
 create role anon; create role authenticated; create role service_role;
@@ -61,9 +65,11 @@ async function runSqlContractTests() {
           raise exception 'pgTAP planned %, executed % assertions',s.expected,s.actual;
         end if; return next 'all assertions passed'; end $$;
     `);
-    const testSql = fs.readFileSync(path.resolve('supabase/tests/password_change_profile_reconciliation_test.sql'), 'utf8')
-      .replace('create extension if not exists pgtap with schema extensions;', '');
-    await tapDb.exec(testSql);
+    for (const testFile of discoverTests({ group: 'sql-secondary-harness', harness: 'password-change-reconciliation' })) {
+      const testSql = fs.readFileSync(path.resolve(testFile), 'utf8')
+        .replace('create extension if not exists pgtap with schema extensions;', '');
+      await tapDb.exec(testSql);
+    }
   } finally {
     await tapDb.close();
   }

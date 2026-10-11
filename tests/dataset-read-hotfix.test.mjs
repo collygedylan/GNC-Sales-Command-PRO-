@@ -24,6 +24,10 @@ function harness({ readable = true, writable = true, role = 'admin', username = 
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
   const context = vm.createContext({
+    SUSPEND_TAG_EDITORS: new Set(['dylan_collyge','megan_kelly','dan_mccuistion']),
+    handleSuspendTag: async () => ({ rows: [] }),
+    suspendTagRowsFromResult: (result) => Array.isArray(result?.rows) ? result.rows : [],
+    verifySuspendTagSession: async () => 'verified-session',
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
     hasTableReadAccess: (_role, table) => readable && table !== 'ph_master_inventory',
@@ -35,6 +39,47 @@ function harness({ readable = true, writable = true, role = 'admin', username = 
     },
     errorResponse: (message, status, details = {}) => ({ status, body: { error: message, ...details } }),
     jsonResponse: (body) => ({ status: 200, body }),
+    URLSearchParams,
+    jsonValue: (value) => value,
+    jsonObject: (value) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
+    SUPABASE_URL: 'https://fixture.invalid',
+    buildRestHeaders: () => ({}),
+    readResponsePayload: async (response) => response.json(),
+    databaseBridge: {
+      fetchTable: async (_url, table, queryString, _options, _timeout, _label) => {
+        tables.push(table);
+        const query = { table, calls: [] };
+        queries.push(query);
+        const params = new URLSearchParams(queryString);
+        if (params.has('select')) query.calls.push(['select', params.get('select')]);
+        for (const [key, value] of params) {
+          if (key === 'select' || key === 'offset' || key === 'limit') continue;
+          if (key === 'order') {
+            const [field, direction] = value.split('.');
+            query.calls.push(['order', field, { ascending: direction === 'asc' }]);
+          } else if (key === 'or') query.calls.push(['or', value]);
+          else {
+            const dot = value.indexOf('.');
+            query.calls.push(['filter', key, value.slice(0, dot), value.slice(dot + 1)]);
+          }
+        }
+        if (params.has('offset') && params.has('limit')) {
+          const offset = Number(params.get('offset'));
+          query.calls.push(['range', offset, offset + Number(params.get('limit')) - 1]);
+        }
+        const status = dbError?.code === '42501' ? 403 : dbError?.code === '40001' ? 409 : dbError ? 500 : 200;
+        const body = dbError || rows;
+        return {
+          ok: status >= 200 && status < 300,
+          status,
+          headers: { get: (name) => name.toLowerCase() === 'content-range' ? `0-${Math.max(0, rows.length - 1)}/${count}` : null },
+          json: async () => body,
+        };
+      },
+    },
     supabase: {
       from(table) {
         tables.push(table);
@@ -116,12 +161,61 @@ test('default projections are explicit current columns and Request signatures ar
   for (const match of projectionBlock[1].matchAll(/^\s*([a-z_]+): ("[^"]*"),$/gm)) {
     projections.set(match[1], JSON.parse(match[2]).split(','));
   }
-  assert.equal(projections.size, 13);
+  assert.equal(projections.size, 14);
   assert.ok([...projections.values()].every((fields) => fields.length > 1 && fields.every((field) => /^[a-z][a-z0-9_]*$/.test(field))));
   assert.doesNotMatch(projectionBlock[1], /:\s*"\*"/);
   const request = source.match(/request_queue:\s*\{[\s\S]*?signatures:\s*"([^"]+)"/);
   assert.ok(request, 'Request signature projection should exist');
   assert.ok(request[1].split(',').every((field) => projections.get('ph_request_queue_live_rows').includes(field)));
+});
+
+test('suspend_tag uses a narrow fixed SOC projection and server-forced normalized eligibility before exact paging', async () => {
+  const h = harness({ rows: [{ unique_id: 'soc-1', suspend: ' suspend ', suspend_to: 'D.C', date_completed: null }], count: 31 });
+  const response = await h.context.datasetReadTest(h.session('qc supervisor', 'dan_mccuistion'), {
+    dataset: 'suspend_tag', params: { limit: 20, offset: 10, order: [{ field: 'unique_id', ascending: true }] },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(h.tables[0], 'ph_soc_master');
+  assert.equal(response.body.data.total, 31);
+  assert.equal(response.body.data.offset, 10);
+  assert.equal(response.body.data.limit, 20);
+  assert.equal(response.body.data.hasMore, true);
+  const calls = h.queries[0].calls;
+  const projection = calls.find(([method]) => method === 'select')?.[1];
+  assert.equal(projection, 'unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode');
+  assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend' && op === 'imatch'
+    && pattern === String.raw`^[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*[s\u017f]uspend[[:space:]\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]*$`), JSON.stringify(calls));
+  assert.ok(calls.some(([method, field, op, pattern]) => method === 'filter' && field === 'suspend_to' && op === 'imatch' && pattern === '^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$'));
+  assert.ok(!calls.some(([method, field]) => method === 'is' && field === 'date_completed'), 'completed rows remain in the bounded subset');
+  assert.ok(calls.some(([method, start, end]) => method === 'range' && start === 10 && end === 29));
+  assert.ok(calls.some(([method, field]) => method === 'order' && field === 'unique_id'));
+
+  const widened = await h.context.datasetReadTest(h.session(), {
+    dataset: 'suspend_tag', params: { filters: [{ field: 'suspend', op: 'eq', value: 'NO' }] },
+  });
+  assert.equal(widened.status, 400, 'client filters cannot override the fixed eligibility predicates');
+});
+
+test('suspend_tag SQL match patterns preserve ASCII and Unicode client eligibility normalization', () => {
+  const normalizeSuspend = (value) => String(value || '').trim().toUpperCase().replace(/[\s_-]+/g, ' ');
+  const normalizeSuspendTo = (value) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const trimChars = '\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff';
+  const suspendSqlMatch = new RegExp(`^[\\s${trimChars}]*[s\u017f]uspend[\\s${trimChars}]*$`, 'i');
+  const suspendToSqlMatch = /^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$/i;
+  for (const value of ['', 'SUSPEND', ' suspend ', '\u00a0SUSPEND\u00a0', '\uFEFFSUSPEND\uFEFF', '\u017FSUSPEND', 'SUS PEND', 'SUSPEND_', 'SUSPEND-DC']) {
+    assert.equal(suspendSqlMatch.test(value), normalizeSuspend(value) === 'SUSPEND', `suspend=${JSON.stringify(value)}`);
+  }
+  for (const value of ['', 'DC', 'D.C', 'D-C', 'D C!', 'XDC', 'DCX', 'D-X-C']) {
+    assert.equal(suspendToSqlMatch.test(value), normalizeSuspendTo(value) === 'dc', `suspend_to=${JSON.stringify(value)}`);
+  }
+});
+
+test('suspend_tag keeps the existing SOC access check and rejects reads before querying when denied', async () => {
+  const denied = harness({ readable: false, role: 'rep', username: 'rep_user' });
+  const response = await denied.context.datasetReadTest(denied.session(), { dataset: 'suspend_tag', params: {} });
+  assert.equal(response.status, 403);
+  assert.equal(response.body.code, 'DATASET_READ_FORBIDDEN');
+  assert.deepEqual(denied.tables, []);
 });
 
 test('Inventory edits and Shear use authorized bounded reads without changing role access', async () => {
@@ -148,7 +242,7 @@ test('dataset_read validates filter names and safely builds typed OR expressions
   const h = harness({ role: 'rep', username: 'rep_user' });
   const bad = await h.context.datasetReadTest(h.session(), { dataset: 'soc', params: { filters: [{ field: 'secret_column', op: 'eq', value: 'x' }] } });
   assert.equal(bad.status, 400);
-  assert.equal(h.queries[0].calls.some(([method]) => method === 'range'), false);
+  assert.equal(h.queries.length, 0, 'invalid filters are rejected before the database request');
 
   const result = await h.context.datasetReadTest(h.session('rep', 'rep_user'), {
     dataset: 'reserves', params: { anyOf: [
@@ -157,7 +251,7 @@ test('dataset_read validates filter names and safely builds typed OR expressions
     ] },
   });
   assert.equal(result.status, 200);
-  const orCall = h.queries[1].calls.find(([method]) => method === 'or');
+  const orCall = h.queries[0].calls.find(([method]) => method === 'or');
   assert.ok(orCall);
   assert.match(orCall[1], /salesrepname\.ilike/);
   assert.match(orCall[1], /and\(or\(/);
@@ -204,6 +298,12 @@ test('inventory source_freshness uses only the authorized minimal metadata proje
   const calls = [];
   const context = vm.createContext({
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
+    jsonValue: value => value,
+    jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
+    projectInventoryRows: (rows, fields) => Array.isArray(rows) ? rows.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => fields.split(',').includes(key)))) : [],
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge']),
     getRoleAccessState: () => ({ isRepLike: false, isRep: false, isAdmin: true, isQcSupervisor: false }),
     hasTableReadAccess: (role, table) => table === 'ph_master_inventory' && String(role).toLowerCase() === 'admin',
@@ -237,7 +337,7 @@ test('inventory source_freshness uses only the authorized minimal metadata proje
 });
 
 test('app-api dispatch exposes only the named dataset and productivity actions', () => {
-  assert.match(source, /action === "dataset_read"\) return await handleDatasetRead\(session, payload\)/);
+  assert.match(source, /action === "dataset_read"\) return await handleDatasetRead\(session, payload, req\)/);
   assert.match(source, /action === "append_productivity_history"\) return await handleAppendProductivityHistory\(session, payload\)/);
   assert.doesNotMatch(source, /dataset_read[\s\S]{0,500}payload\.query/);
 });

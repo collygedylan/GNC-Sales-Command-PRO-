@@ -1,3 +1,5 @@
+-- @test-runtime: isolated-supabase
+-- @test-harness: season-av
 -- Disposable local/CI database only. Fixtures and changes roll back.
 -- Emit TAP directly so the same behavioral test runs in pg_prove and PGlite.
 begin;

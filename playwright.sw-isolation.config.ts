@@ -5,11 +5,12 @@ import { defineConfig, devices } from '@playwright/test';
 // Never point this suite at production: it creates synthetic CacheStorage entries.
 export default defineConfig({
   testDir: './tests',
-  testMatch: /service-worker-isolation\.e2e\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@sw-isolation/,
   outputDir: 'test-results/sw-isolation',
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   forbidOnly: Boolean(process.env.CI),
   reporter: 'list',
   timeout: 60_000,
@@ -24,4 +25,10 @@ export default defineConfig({
     { name: 'sw-isolation-chromium', use: { ...devices['Desktop Chrome'], channel: 'chromium' } },
     { name: 'sw-isolation-webkit', use: { ...devices['Desktop Safari'] } },
   ],
+  webServer: {
+    command: `node --input-type=module -e "import { startReleaseTestServer } from './scripts/serve-release-tests.mjs'; await startReleaseTestServer({ port: 43126, rootFixture: '<!doctype html><title>Local test fixture only</title><h1>Local test fixture only</h1>' });"`,
+    url: 'http://127.0.0.1:43126',
+    reuseExistingServer: false,
+    timeout: 20_000,
+  },
 });

@@ -1,3 +1,5 @@
+import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
+// @test-group: module-hubs
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -128,7 +130,7 @@ test('HL PO failures retain files and expose sanitized parse reason codes', () =
   }
   assert.match(appsScriptBackend, /failedFiles\.push\(\{ name: fileName, error: errorMessage, errorCode: errorCode \}\)/);
   assert.match(appsScriptBackend, /Keeping \$\{fileName\} in source folder for correction\/retry/);
-  assert.match(appsScriptBackend, /status\.errorCode = sanitizeManualSyncErrorCode_\(failedFileErrors\[0\]/);
+  assert.match(appsScriptBackend, /status\.errorCode = sanitizeManualSyncErrorCode_\(stageResult\.errorCode \|\| stageResult\.error_code \|\| \(failedFileErrors\[0\] && failedFileErrors\[0\]\.errorCode\), 'MANUAL_SYNC_STAGE_FAILED'\)/);
   assert.match(appsScriptBackend, /failedFileErrors\.map\(function\(entry\)[\s\S]*return \{ errorCode: sanitizeManualSyncErrorCode_/);
   assert.doesNotMatch(appsScriptBackend, /status\.error = buildManualSyncStageFailureMessage_[\s\S]*failedFileErrors\[0\]\.error/);
 });
@@ -138,7 +140,8 @@ test('Queue and Drive render from the smallest canonical dataset needed for the 
   assert.match(html, /function buildActiveRequestLiveRowsQuery\(selectFields = '\*'\)[\s\S]*order=unique_id\.desc/);
   const requestLoading = html.slice(html.indexOf('function getRequestViewLoadingConfig'), html.indexOf('function getViewLoadingConfig'));
   assert.match(requestLoading, /safeTab === 'reps'[\s\S]*requestHistory[\s\S]*salesCredits/);
-  assert.match(requestLoading, /safeTab === 'suspend-tag'[\s\S]*\{ key: 'soc', mode: 'full' \}/);
+  assert.match(requestLoading, /safeTab === 'suspend-tag'[\s\S]*\{ key: 'suspendTag', mode: 'full' \}/);
+  assert.doesNotMatch(requestLoading.slice(requestLoading.indexOf("safeTab === 'suspend-tag'"), requestLoading.indexOf("safeTab === 'recount'")), /key: 'soc'|required: \[requests/);
   assert.match(requestLoading, /return \{ required: \[requests\], background: \[\], label: 'Loading verified Que\.\.\.' \}/);
   assert.doesNotMatch(requestLoading, /required: \[requests, \{ key: 'requestHistory'[\s\S]*inventoryEditRequests[\s\S]*soc/);
   const requestTabs = html.slice(html.indexOf('function setReqTab'), html.indexOf('function resolveRequestRecipientEmail'));
@@ -191,7 +194,7 @@ test('every verified session restores its user-scoped theme before the app shell
   const logoutClear = html.slice(html.indexOf('function clearPersistedLoginSession'), html.indexOf('function primeOpsPilotAppearanceForVerifiedUser'));
   assert.doesNotMatch(logoutClear, /gnc_ops_precision_preferences_v[12]/);
   assert.doesNotMatch(logoutClear, /removeAttribute\('data-ops-prepaint-theme'\)/);
-  assert.match(html, /apple-touch-startup-image" href="\.\/ag-data-solutions-splash-v2026081709\.png"/);
+  assert.match(html, /apple-touch-startup-image" href="\.\/assets\/branding\/ag-data-solutions-splash-v2026081709\.png"/);
   assert.equal(manifest.background_color, '#f4fbf7');
   assert.match(client, /DEVICE_THEME_STORAGE_KEY = 'gnc_last_theme_v1'/);
   assert.match(client, /function readRememberedDeviceTheme\(\)/);
@@ -501,14 +504,15 @@ test('Drive universal search remains available outside the Common Name drill', (
   assert.match(html, /function captureDriveStateBeforeUniversalSearch\(\)/);
   assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)/);
   assert.match(html, /function renderDriveUniversalSearchResultsOnly\(\)/);
-  assert.match(html, /filterBySearch\(drivePlantFilterState\.filteredItems, safeTerm, 'drive_universal'\)/);
+  assert.match(html, /scopeDriveSearchToLocation\(drivePlantFilterState\.filteredItems\)/);
+  assert.match(html, /filterBySearch\(scopedItems, safeTerm, 'drive_universal'\)/);
   assert.match(html, /const driveUniversalSearchResultCache=new Map\(\)/);
   assert.match(html, /while \(driveUniversalSearchResultCache\.size > 24\)/);
   assert.match(html, /renderDriveRecordResults\('drive-universal-search'/);
   assert.match(html, /if \(renderDriveUniversalSearchResultsOnly\(\)\) return;[\s\S]*renderViewContent\('drive'/);
   const searchHandler = html.slice(html.indexOf('function handleDriveSearch'), html.indexOf('function selectDriveName'));
   assert.match(searchHandler, /activeDriveTab === 'name'[\s\S]*resetDriveDrillSelectionState\(\)[\s\S]*setDriveSearchManualSelectionLock\(true\)/);
-  assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)[\s\S]*activeDriveTab = 'name';[\s\S]*resetDriveDrillSelectionState\(\);[\s\S]*driveUniversalSearchPendingScrollTop = 0/);
+  assert.match(html, /function restoreDriveStateAfterUniversalSearch\(\)[\s\S]*activeDriveTab = state\.activeDriveTab;[\s\S]*selectedDriveLoc = state\.selectedDriveLoc;[\s\S]*driveUniversalSearchPendingScrollTop = state\.scrollTop/);
   const backHandler = html.slice(html.indexOf('function goBackUniversal'), html.indexOf('function syncFabVisibility'));
   const driveBackHandler = backHandler.slice(backHandler.indexOf("if (currentView === 'drive')"), backHandler.indexOf("if (currentView === 'crop-roll')"));
   assert.match(driveBackHandler, /activeDriveTab === 'name'[\s\S]*driveViewLevel >= 2 && selectedDriveName[\s\S]*backToDriveSizes\(\)/);
@@ -822,9 +826,8 @@ test('static deployment includes the pilot assets and builds the pinned bundle',
   assert.match(serviceWorker, /ag-data-solutions-logo-v2026090503-224\.webp/);
   assert.match(serviceWorker, /ag-data-solutions-logo-v2026090503-448\.webp/);
   assert.match(html, /assets\/vendor\/supabase-browser-2\.112\.3\.min\.js/);
-  assert.match(html, /imagesrcset="\.\/ag-data-solutions-logo-v2026090503-224\.webp 224w, \.\/ag-data-solutions-logo-v2026090503-448\.webp 448w"/);
-  assert.match(releasePreparation, /'ag-data-solutions-logo-v2026090503-224\.webp'/);
-  assert.match(releasePreparation, /'ag-data-solutions-logo-v2026090503-448\.webp'/);
+  assert.match(html, /imagesrcset="\.\/assets\/branding\/ag-data-solutions-logo-v2026090503-224\.webp 224w, \.\/assets\/branding\/ag-data-solutions-logo-v2026090503-448\.webp 448w"/);
+  assert.match(releasePreparation, /prepareBrandingAssets\(\{ root, site \}\)/);
   assert.match(releasePreparation, /for \(const name of files\) await copyTree\(path\.join\(root, name\), path\.join\(site, name\)\)/);
   assert.match(performanceWorkflow, /node scripts\/prepare-release-site\.mjs/);
   assert.doesNotMatch(html, /cdn\.tailwindcss\.com|unpkg\.com\/@phosphor-icons|cdn\.jsdelivr\.net\/npm\/@supabase/);
@@ -913,14 +916,14 @@ test('first service-worker control does not reload an already-rendered login she
 
 test('Home keeps an authorization-backed registry with Sales Office and relocated modules in their hubs', () => {
   assert.match(html, /const HOME_MODULE_REGISTRY = Object\.freeze\(\[/);
-  for (const view of ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'managers', 'qc', 'office', 'sales-inventory', 'production']) {
+  for (const view of ['drive', 'hl-order', 'av', 'sales-office', 'sales', 'historical-requests', 'managers', 'qc', 'office', 'sales-inventory', 'production']) {
     assert.match(html, new RegExp(`\\{ view: '${view}'`));
   }
   const registrySource = html.slice(html.indexOf('const HOME_MODULE_REGISTRY'), html.indexOf('function ensureHomeModuleRegistry'));
   for (const nestedView of ['bunch-note', 'tasks', 'request', 'crop-roll', 'take-back', 'reserves', 'disease-pest', 'moves', 'hours', 'low-stock', 'review', 'move-up', 'advertisement', 'grower', 'pest-management', 'docks', 'communication', 'reports', 'building']) {
     assert.doesNotMatch(registrySource, new RegExp(`\\{ view: '${nestedView}'`));
   }
-  assert.equal((registrySource.match(/\{ view:/g) || []).length, 10);
+  assert.equal((registrySource.match(/\{ view:/g) || []).length, 11);
   for (const nestedHubControl of ['sales-open-bloom-orders', 'production-open-take-back', 'production-open-disease-pest', 'office-open-sales']) {
     assert.match(html, new RegExp(`id="${nestedHubControl}"`));
   }
@@ -1037,12 +1040,14 @@ test('Item Inquiry keeps the full Reclass model while adding a phone-specific re
     html.indexOf('const ITEM_INQUIRY_IDENTITY_FIELDS'),
     html.indexOf('function setDriveAltLocSeason')
   );
-  for (const field of ['PLANTGROUPCODE', 'COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY']) {
+  for (const field of ['COMMONNAME', 'CONTSIZE', 'ITEMCODE', 'GENUSNAME', 'FIELDTAGCOLOR', 'ITEMSPEC', 'PULLERRESPONSIBILITY']) {
     assert.match(renderer, new RegExp(`label: '${field}'`));
   }
-  for (const field of ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'PTRONHAND', 'PTRREVIEWED', 'PTRAVAILABLE', 'LOCATIONNOTEDATE', 'LOCATIONNOTE', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'LOCATIONPTN1', 'LOCATIONPTN2', 'HOLDSTOPCODE', 'HOLDSTOPREASON']) {
+  for (const field of ['LOTCODE', 'LOCATIONCODE', 'SOURCE', 'PRIORITY', 'DesigItem', 'DesigCust', 'DesigLoc', 'PTRONHAND', 'Rev', 'PTRAVAILABLE', 'LOCATIONNOTEDATE', 'Loc Note', 'PULLTAGNOTE1', 'PULLTAGNOTE2', 'Loc PTN1', 'LOCATIONPTN2', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'Pull', 'OS%', 'Sales Note', 'SUS']) {
     assert.match(renderer, new RegExp(`label: '${field}'`));
   }
+  assert.doesNotMatch(renderer, /key: '(?:plantgroupcode|brandlabel|inventorynote)'/,
+    'Item Inquiry omits PGC, Brand Label and Int Inv Note');
   for (const field of ['SALEYEAR', 'SEASON', 'S_LTS', 'SUPPLY', 'ON HAND', 'DEMAND']) {
     assert.match(renderer, new RegExp(`label: '${field}'`));
   }
@@ -1317,11 +1322,13 @@ test('V07 native Auth rollout is additive, bridged, and RLS-first', () => {
   assert.doesNotMatch(authAdmin, /readSupabaseOrAppSessionFromRequest/);
 });
 
-test('acknowledged Eval assignments replace stale local rows before the unassigned view rerenders', () => {
-  assert.match(html, /function applyAcknowledgedEvalAssignmentResults\(assignments = \[\], rpcResults = \[\], assignedto = ''\)/);
-  assert.match(html, /merged\.ASSIGNEDTO = acknowledged\.canonicalAssignee/);
-  assert.match(html, /const appliedCount = applyAcknowledgedEvalAssignmentResults\(assignments, rpcResults, assignee\);[\s\S]*scheduleManagersRender\(true\);[\s\S]*showToast\('Assignments Saved'/);
-  assert.match(html, /await reloadWarehouseAssignmentsAfterMutation\(\);[\s\S]*finally \{[\s\S]*applyAcknowledgedEvalAssignmentResults\(assignments, rpcResults, assignee\)/);
+test('acknowledged default commands apply canonical row ownership without overriding newer refreshes', () => {
+  assert.match(html, /function applyAcknowledgedEvalAssignmentResults\(assignments = \[\], rpcResults = \[\]\)/);
+  assert.match(html, /result\?\.contractVersion !== 'inventory-row-assignments-v1'/);
+  assert.match(html, /canonical\.has\(String\(row\.master_unique_id/);
+  assert.match(html, /applyAcknowledgedEvalAssignmentResults\(changes, \[result\]\)/);
+  assert.match(html, /await reloadWarehouseAssignmentsAfterMutation\(\)/);
+  assert.doesNotMatch(html, /finally \{\s*applyAcknowledgedEvalAssignmentResults/);
 });
 
 test('legacy Request capability checks remain compatible after Kayla becomes a standard Admin', () => {
@@ -1478,7 +1485,7 @@ test('request completion delivery is leased, idempotent, threaded, and independe
   assert.match(deliveryWorker, /stableMessageId/);
   assert.match(deliveryWorker, /REQUEST_DELIVERY_SIGNING_SECRET/);
   assert.match(deliveryWorker, /record_request_delivery_channel_result/);
-  assert.match(deliveryWorker, /request_completed" \? "ph_request_history"/);
+  assert.match(deliveryWorker, /eventType === "request_completed"\s*\? await supabase\.from\("ph_request_history"\)/);
   assert.match(deliveryWorker, /\["photo_history_share", "reclass_inquiry", "eval_work_assignment", "eval_work_completion", "shear_location_inquiry", "location_work_assignment", "location_work_completion"\]\.includes\(eventType\)/);
   assert.match(deliveryWorker, /payload: event\.payload/);
   assert.match(deliveryWorker, /failEventPermanent/);
@@ -1541,7 +1548,8 @@ test('V08 compaction preparation never copies, swaps, truncates, or drops produc
 test('hosted performance monitoring pins CLI and emits bounded anonymous function logs', () => {
   assert.match(performanceWorkflow, /version: 2\.111\.0/);
   assert.match(performanceWorkflow, /supabase(?:\s+--workdir[^\n]+)?\s+test db/);
-  assert.match(performanceWorkflow, /deno test --node-modules-dir=auto --allow-env --allow-net supabase\/functions/);
+  assert.match(performanceWorkflow, /node scripts\/test-discovery\.mjs deno-tests/);
+  assert.match(performanceWorkflow, /deno test --node-modules-dir=auto --allow-env --allow-net "\$\{tests\[@\]\}"/);
   assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
   assert.match(performanceWorkflow, /Lighthouse/);
   assert.match(performanceWorkflow, /node scripts\/prepare-release-site\.mjs/);
@@ -1681,10 +1689,10 @@ test('Eval assignment management uses the requested roster and ItemCode + GenusN
   assert.match(html, /boby: 'bobby_adair'/);
   assert.match(html, /function getEvalAssignableUserLabel\(value = ''\) \{[\s\S]*return normalized;/);
   assert.match(html, /function buildManagerEvalAssignmentKey\(itemcode = '', genusname = ''\)/);
-  assert.match(html, /genusname: entry\.genusname/);
+  assert.match(html, /p_changes: changes, p_request_id: command\.id/);
   assert.match(html, /ensureEvalAssignableUsers\(\)\.then\(\(\) => scheduleManagersRender\(true\)\)/);
   assert.doesNotMatch(html, /ensureEvalAssignableUsersReady/);
-  assert.match(html, /Assignments use the ItemCode \+ GenusName key\./);
+  assert.match(html, /Defaults use Itemcode only/);
   assert.match(completeAssignmentSheetMigration, /'source_rows', 9857/);
   assert.match(completeAssignmentSheetMigration, /'distinct_itemcode_genus_keys', 3307/);
   assert.match(completeAssignmentSheetMigration, /public\.ph_warehouse_assigned_items\.source = 'supabase_assignment_manager'/);
@@ -1801,9 +1809,9 @@ test('Managers Historical Report browses immediately with secured server filteri
   assert.match(appsScriptBackend, /source_schema_version: DRIVE_AROUND_HISTORY_SOURCE_SCHEMA_VERSION/);
   assert.match(historicalSourceColumnsMigration, /requeued_source_schema_version/);
   assert.doesNotMatch(historicalSourceColumnsMigration, /delete from public\.ph_drive_around_report_rows/i);
-  assert.match(performanceWorkflow, /20260823013134_expand_historical_report_source_columns\.sql/);
-  assert.match(performanceWorkflow, /historical_report_baseline\.sql/);
-  assert.match(performanceWorkflow, /20260821202202_manager_historical_report\.sql/);
+  assertHistoricalMigration('20260823013134_expand_historical_report_source_columns.sql');
+  assertHistoricalMigration('historical_report_baseline.sql');
+  assertHistoricalMigration('20260821202202_manager_historical_report.sql');
   assert.match(historicalCursorIndexMigration, /\(itemcode, report_date desc, unique_id desc\)/);
   assert.match(historicalCursorIndexMigration, /where report_date is not null/);
   assert.match(historicalRowsRpcRepair, /selected_itemcodes as materialized/);
@@ -1814,8 +1822,8 @@ test('Managers Historical Report browses immediately with secured server filteri
   assert.doesNotMatch(historicalRowsRpcRepair, /result_rows := result_rows \|\|/);
   assert.match(historicalRowsRpcRepair, /security invoker/);
   assert.doesNotMatch(historicalRowsRpcRepair, /security definer/);
-  assert.match(performanceWorkflow, /20260902153652_historical_report_cursor_index\.sql/);
-  assert.match(performanceWorkflow, /20260902153654_optimize_historical_report_rows_rpc\.sql/);
+  assertHistoricalMigration('20260902153652_historical_report_cursor_index.sql');
+  assertHistoricalMigration('20260902153654_optimize_historical_report_rows_rpc.sql');
   const historyRowsRpc = historicalReportMigration.slice(
     historicalReportMigration.indexOf('create or replace function public.get_historical_inventory_rows'),
     historicalReportMigration.indexOf('revoke all on function public.search_historical_inventory_common_names')

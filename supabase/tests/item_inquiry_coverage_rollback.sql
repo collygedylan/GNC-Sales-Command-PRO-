@@ -1,4 +1,37 @@
+-- @test-runtime: sql-rollback
 begin;
+-- Transaction-owned manager and backup identities for this rollback-only test.
+insert into auth.users (id, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data) values
+  ('ab000001-0000-4000-8000-000000000001', 'rollback-dylan@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000003', 'rollback-sharon@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000004', 'rollback-sunday@example.invalid', now(), '{}'::jsonb, '{}'::jsonb)
+on conflict (id) do update set email=excluded.email, email_confirmed_at=excluded.email_confirmed_at,
+  raw_app_meta_data=excluded.raw_app_meta_data, raw_user_meta_data=excluded.raw_user_meta_data;
+insert into public.profiles (id, username, display_name, role, must_change_password) values
+  ('ab000001-0000-4000-8000-000000000001', 'dylan_collyge', 'Rollback Dylan', 'ADMIN', false),
+  ('ab000001-0000-4000-8000-000000000003', 'sharon_combs', 'Rollback Sharon', 'USER', false),
+  ('ab000001-0000-4000-8000-000000000004', 'sunday_ellis', 'Rollback Sunday', 'USER', false)
+on conflict (id) do update set username=excluded.username, display_name=excluded.display_name,
+  role=excluded.role, disabled_at=null, locked_until=null, must_change_password=false;
+insert into public.ph_item_inquiry_coverage (singleton, sharon_away, revision)
+values (true, false, 1)
+on conflict (singleton) do update set sharon_away=false, revision=1, updated_by=null, updated_at=now();
+-- The catalog is intentionally empty in a fresh replay database. Seed the two
+-- permission definitions this canary grants, within the same rollback scope.
+insert into private.app_access_permissions
+  (permission_key, permission_kind, module_key, label, description, scope_options, sort_order, active)
+values
+  ('module.managers.view', 'module', 'managers', 'Managers', 'Rollback canary permission', '{}', 0, true),
+  ('managers.item_inquiry_coverage.manage', 'action', 'managers', 'Manage item inquiry coverage', 'Rollback canary permission', '{}', 0, true)
+on conflict (permission_key) do update set
+  permission_kind=excluded.permission_kind, module_key=excluded.module_key, label=excluded.label,
+  description=excluded.description, scope_options=excluded.scope_options, sort_order=excluded.sort_order,
+  active=excluded.active;
+insert into private.app_access_role_grants (policy_id, role_key, permission_key, allowed, access_scope)
+select private.resolve_app_access_policy_id_v1(false), 'ADMIN', permission_key, true, 'global'
+from (values ('module.managers.view'), ('managers.item_inquiry_coverage.manage')) as fixture(permission_key)
+on conflict (policy_id, role_key, permission_key) do update
+set allowed=excluded.allowed, access_scope=excluded.access_scope, updated_at=now();
 set local statement_timeout='20s';
 do $test$
 declare

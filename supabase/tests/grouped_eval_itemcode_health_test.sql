@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Disposable composed local/CI database only; all fixtures roll back.
 -- Direct TAP plus SQL assertions runs identically in pg_prove and PGlite.
 begin;

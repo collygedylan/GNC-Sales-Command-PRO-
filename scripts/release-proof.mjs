@@ -2,10 +2,18 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { GitHubPaginationError, listGitHubApiItems } from './github-api-pagination.mjs';
 
 const workflowPath = '.github/workflows/performance-monitor.yml';
 const fail = code => { throw new Error(`RELEASE_PROOF_${code}`); };
 const sha = value => /^[a-f0-9]{40}$/.test(value || '');
+async function listComplete(api, endpoint, field, errorCode) {
+  try { return await listGitHubApiItems({ api, endpoint, field }); }
+  catch (error) {
+    if (error instanceof GitHubPaginationError) fail(errorCode);
+    throw error;
+  }
+}
 
 // GitHub metadata, not a caller-supplied success flag, establishes provenance.
 export async function selectReleaseProof({ repository, commit, api }) {
@@ -15,9 +23,8 @@ export async function selectReleaseProof({ repository, commit, api }) {
   if (!Number.isSafeInteger(workflow.id) || workflow.id < 1 || workflow.path !== workflowPath || workflow.state !== 'active') fail('WORKFLOW_INVALID');
   const query = `${root}/actions/workflows/${workflow.id}/runs?head_sha=${commit}&event=workflow_dispatch&per_page=100`;
   const latest = async () => {
-    const page = await api(query);
-    if (!Array.isArray(page.workflow_runs) || !page.workflow_runs.length || page.total_count !== page.workflow_runs.length || page.total_count > 100) fail('RUNS_INCOMPLETE');
-    const runs = page.workflow_runs;
+    const runs = await listComplete(api, query, 'workflow_runs', 'RUNS_INCOMPLETE');
+    if (!runs.length) fail('RUNS_INCOMPLETE');
     for (const r of runs) if (!Number.isSafeInteger(r.id) || r.id < 1 || !Number.isSafeInteger(r.run_number) || r.run_number < 1 || !Number.isSafeInteger(r.run_attempt)
       || r.run_attempt < 1 || r.workflow_id !== workflow.id || r.path !== workflowPath || r.event !== 'workflow_dispatch'
       || r.head_sha !== commit || r.head_repository?.full_name?.toLowerCase() !== repository.toLowerCase()) fail('RUN_IDENTITY_INVALID');
@@ -27,17 +34,14 @@ export async function selectReleaseProof({ repository, commit, api }) {
     return r;
   };
   const run = { ...await latest() };
-  const jobsPage = await api(`${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`);
-  const jobs = jobsPage.jobs;
-  if (!Array.isArray(jobs) || jobsPage.total_count !== jobs.length || jobs.length > 100 || new Set(jobs.map(j=>j.id)).size !== jobs.length) fail('JOBS_INCOMPLETE');
+  const jobs = await listComplete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, 'jobs', 'JOBS_INCOMPLETE');
   if (jobs.some(j=>!Number.isSafeInteger(j.id) || j.id < 1 || j.run_id !== run.id || j.head_sha !== commit || j.status !== 'completed'
     || (j.conclusion !== 'success' && !(j.name === 'validation / production-health' && j.conclusion === 'skipped')))) fail('JOB_NOT_GREEN');
   const gates = jobs.filter(j=>j.name==='validation / release-gate');
   if (gates.length !== 1 || !gates[0].steps?.some(s=>s.name==='Require every safety lane for this commit' && s.status==='completed' && s.conclusion==='success')) fail('GATE_MISSING');
-  const artifacts = await api(`${root}/actions/runs/${run.id}/artifacts?per_page=100`);
-  if (!Array.isArray(artifacts.artifacts) || artifacts.total_count !== artifacts.artifacts.length || artifacts.total_count > 100) fail('ARTIFACTS_INCOMPLETE');
+  const artifacts = await listComplete(api, `${root}/actions/runs/${run.id}/artifacts?per_page=100`, 'artifacts', 'ARTIFACTS_INCOMPLETE');
   function artifact(name) {
-    const matches = artifacts.artifacts.filter(a=>a.name===name);
+    const matches = artifacts.filter(a=>a.name===name);
     if (matches.length !== 1) fail('ARTIFACT_AMBIGUOUS');
     const a = matches[0];
     if (!Number.isSafeInteger(a.id) || a.id < 1 || a.expired !== false || !(Date.parse(a.expires_at)>Date.now()) || a.workflow_run?.id !== run.id || a.workflow_run?.head_sha !== commit) fail('ARTIFACT_INVALID');

@@ -131,7 +131,7 @@ let codexOpsHealth = null;
 let boundedMaintenance = null;
 let pikesAssignmentHealth = null;
 let recentSemanticFailures = [];
-let appsScriptHealth = null;
+let appsScriptHealth;
 
 const shellResponse = await checkedFetch(`${appOrigin}/?health=${Date.now()}`, {
   headers: { 'cache-control': 'no-cache' }

@@ -68,7 +68,12 @@ test('Drive card compaction preserves quantity source, labels, and action handle
     html.indexOf("if(sourceView==='tasks')")
   );
 
-  assert.match(driveCard, /buildInventoryQuantityChipsHtml\(renderMeta\.verifiedQuantityRow \|\| item, \{ layout: 'row', compact: true, trailingChipsHtml: locPhotoMatchChipHtml, preserveUnknown: renderMeta && renderMeta\.preserveUnknownAvailability === true \}\)/);
+  assert.match(driveCard, /buildInventoryQuantityChipsHtml\(renderMeta\.verifiedQuantityRow \|\| item, \{ layout: 'row', compact: true, locationMetricItem: item, sourceView: displaySourceView, preserveUnknown: renderMeta && renderMeta\.preserveUnknownAvailability === true \}\)/);
+  assert.match(driveCard, /data-inventory-card-field="fieldtagcolor"/);
+  assert.doesNotMatch(driveCard, /LOC MATCH %/);
+  assert.match(html, /\['Loc Photo Match', \(sourceView === 'drive' \|\| sourceView === 'request'\) && locationPhotoMatch === 'Not verified' \? 'N\/A' : locationPhotoMatch\],\s*\['Loc On Hand', getCardLocationOnHandValue\(locationMetricRow\) \?\? 'Unknown'\]/);
+  assert.match(driveCard, /const driveListPriceHtml = sourceView !== 'drive' && displayListPrice !== '-'/);
+  assert.match(html, /'Loc Photo Match': 'loc-photo-match',[\s\S]*?'Loc On Hand': 'loc-on-hand'/);
   assert.match(driveCard, /class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}/);
   assert.match(driveCard, /buildArgosInventoryTransactionRailHtml\(item, 'drive'\)/);
   assert.match(driveCard, /class="app-drive-card-reclass" onclick="event\.stopPropagation\(\);"/);

@@ -1,5 +1,44 @@
+-- @test-runtime: sql-rollback
 -- Production-safe rollback canary: no inventory, work or email survives.
 begin;
+-- Transaction-owned identities and source rows for the rollback-only exercise.
+insert into auth.users (id, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data) values
+  ('ab000001-0000-4000-8000-000000000001', 'rollback-dylan@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000002', 'rollback-megan@example.invalid', now(), '{}'::jsonb, '{}'::jsonb),
+  ('ab000001-0000-4000-8000-000000000003', 'rollback-sharon@example.invalid', now(), '{}'::jsonb, '{}'::jsonb)
+on conflict (id) do update set email=excluded.email, email_confirmed_at=excluded.email_confirmed_at,
+  raw_app_meta_data=excluded.raw_app_meta_data, raw_user_meta_data=excluded.raw_user_meta_data;
+insert into public.profiles (id, username, display_name, role, must_change_password) values
+  ('ab000001-0000-4000-8000-000000000001', 'dylan_collyge', 'Rollback Dylan', 'ADMIN', false),
+  ('ab000001-0000-4000-8000-000000000002', 'megan_kelly', 'Rollback Megan', 'ADMIN', false),
+  ('ab000001-0000-4000-8000-000000000003', 'sharon_combs', 'Rollback Sharon', 'USER', false)
+on conflict (id) do update set username=excluded.username, display_name=excluded.display_name,
+  role=excluded.role, disabled_at=null, locked_until=null, must_change_password=false;
+insert into public.ph_app_settings (key, value)
+values ('current_season_salesyear', '{"seasonCode":"F1","salesYear":"27"}'::jsonb)
+on conflict (key) do update set value=excluded.value, updated_at=now();
+insert into public.ph_master_inventory
+  (unique_id, itemcode, commonname, contsize, locationcode, lotcode, source, season, saleyear,
+   ptravailable, ptronhand, priority, s_lts)
+values
+  ('rollback-eval-origin-1', 'ROLLBACK-EVAL-001', 'Rollback Fixture Plant One', '#1', 'A.01.001', 'R-1', 'fixture', 'U1', '27', '10', '10', null, '10'),
+  ('rollback-eval-origin-2', 'ROLLBACK-EVAL-002', 'Rollback Fixture Plant Two', '#1', 'A.01.002', 'R-2', 'fixture', 'U1', '27', '10', '10', null, '10');
+insert into public.ph_eval_work
+  (create_token, creator_username, creator_display, assignee_username, assignee_display,
+   assignee_email, completion_recipients, itemcode, commonname, contsize, origin_unique_id,
+   origin_snapshot, context_rows, inventory_signature, settings_signature, source_context,
+   origin_count, assignee_usernames, assignee_profiles)
+values
+  ('rollback-eval-existing-1', 'dylan_collyge', 'Rollback Dylan', 'dylan_collyge', 'Rollback Dylan',
+   'rollback-dylan@example.invalid', array['rollback-dylan@example.invalid'], 'ROLLBACK-EVAL-001',
+   'Rollback Fixture Plant One', '#1', 'rollback-eval-origin-1', '{}', '[]', 'fixture-signature',
+   'fixture-settings', '{"report":{"reportId":"u1","reportIds":["u1"],"sourceMode":"eval-report-2"}}',
+   1, array['dylan_collyge'], '[{"username":"dylan_collyge","display":"Rollback Dylan","email":"rollback-dylan@example.invalid"}]'::jsonb),
+  ('rollback-eval-existing-2', 'dylan_collyge', 'Rollback Dylan', 'dylan_collyge', 'Rollback Dylan',
+   'rollback-dylan@example.invalid', array['rollback-dylan@example.invalid'], 'ROLLBACK-EVAL-002',
+   'Rollback Fixture Plant Two', '#1', 'rollback-eval-origin-2', '{}', '[]', 'fixture-signature',
+   'fixture-settings', '{"report":{"reportId":"u1","reportIds":["u1"],"sourceMode":"eval-report-2"}}',
+   1, array['dylan_collyge'], '[{"username":"dylan_collyge","display":"Rollback Dylan","email":"rollback-dylan@example.invalid"}]'::jsonb);
 set local statement_timeout = '25s';
 select set_config('request.jwt.claim.role','service_role',true);
 do $test$

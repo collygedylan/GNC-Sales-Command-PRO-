@@ -124,9 +124,16 @@
         return `${itemCode}|${contSize}|${locationCode}`;
     }
 
-    function* buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows) {
+    function* buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows, options = {}) {
         const sourceInventory = Array.isArray(inventoryRows) ? inventoryRows.filter(Boolean) : [];
         const sourceAssignments = Array.isArray(assignmentRows) ? assignmentRows.filter(Boolean) : [];
+        // New assignment snapshots are keyed to one physical source row. In
+        // that contract, a present row with a NULL owner is authoritative and
+        // must never inherit the legacy ItemCode + Genus assignment.
+        const exactRowContract = options.assignmentContract === 'inventory-row-assignments-v1' || sourceAssignments.some((row) =>
+            Object.prototype.hasOwnProperty.call(row, 'master_unique_id')
+        );
+        const assignmentBySourceId = new Map();
         const assignmentByKey = new Map();
         const assignedNames = new Map();
         let hasUnassigned = false;
@@ -134,6 +141,19 @@
         for (let index = 0; index < sourceAssignments.length; index += 1) {
             if (index % 256 === 0) yield;
             const row = sourceAssignments[index];
+            if (exactRowContract) {
+                const sourceId = textValue(row, ['master_unique_id']);
+                if (!sourceId) continue;
+                const assignedTo = getAssignedTo(row);
+                assignmentBySourceId.set(sourceId, assignedTo);
+                if (!assignedTo) {
+                    hasUnassigned = true;
+                    continue;
+                }
+                const normalizedName = assignedTo.toLowerCase();
+                if (!assignedNames.has(normalizedName)) assignedNames.set(normalizedName, assignedTo);
+                continue;
+            }
             // The database assignment contract is ITEMCODE + GENUSNAME. Do not
             // reinterpret the row's sample CONTSIZE/LOCATIONCODE as ownership.
             const key = buildAuthoritativeAssignmentKey(row);
@@ -156,6 +176,23 @@
         for (let index = 0; index < sourceInventory.length; index += 1) {
             if (index % 256 === 0) yield;
             const row = sourceInventory[index];
+            if (exactRowContract) {
+                const sourceId = textValue(row, ['unique_id', 'UNIQUE_ID', 'master_unique_id']);
+                const matched = !!sourceId && assignmentBySourceId.has(sourceId);
+                if (matched) matchedCount += 1;
+                const assignedTo = matched ? assignmentBySourceId.get(sourceId) : '';
+                if (!assignedTo) {
+                    hasUnassigned = true;
+                    unassignedCount += 1;
+                }
+                rows.push(Object.assign({}, row, {
+                    ASSIGNEDTO: assignedTo,
+                    assignedto: assignedTo,
+                    ASSIGNEDTO_USERS: assignedTo ? [assignedTo] : [''],
+                    assignedto_users: assignedTo ? [assignedTo] : ['']
+                }));
+                continue;
+            }
             const key = buildAuthoritativeAssignmentKey(row);
             const matched = !!key && assignmentByKey.has(key);
             if (matched) matchedCount += 1;
@@ -180,21 +217,25 @@
         return {
             rows,
             assignedToOptions,
-            assignmentCount: assignmentByKey.size,
+            assignmentCount: exactRowContract ? assignmentBySourceId.size : assignmentByKey.size,
             matchedCount,
             unassignedCount
         };
     }
 
-    function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows) {
-        const steps = buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows);
+    function buildAuthoritativeAssignmentModel(inventoryRows, assignmentRows, options = {}) {
+        const steps = buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows, options);
         let next = steps.next();
         while (!next.done) next = steps.next();
         return next.value;
     }
 
-    async function buildAuthoritativeAssignmentModelAsync(inventoryRows, assignmentRows, yieldTask = () => new Promise(resolve => setTimeout(resolve, 0))) {
-        const steps = buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows);
+    async function buildAuthoritativeAssignmentModelAsync(inventoryRows, assignmentRows, yieldTask = () => new Promise(resolve => setTimeout(resolve, 0)), options = {}) {
+        if (yieldTask && typeof yieldTask !== 'function') {
+            options = yieldTask;
+            yieldTask = () => new Promise(resolve => setTimeout(resolve, 0));
+        }
+        const steps = buildAuthoritativeAssignmentSteps(inventoryRows, assignmentRows, options);
         let next = steps.next();
         while (!next.done) {
             await yieldTask();

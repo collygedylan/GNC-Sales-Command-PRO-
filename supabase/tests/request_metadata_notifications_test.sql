@@ -1,3 +1,6 @@
+\set ON_ERROR_STOP on
+-- @test-runtime: isolated-acceptance
+-- @test-harness: sales-mobile
 begin;
 create temporary table request_metadata_notification_checks(description text);
 create function pg_temp.notification_check(ok boolean,description text) returns void language plpgsql as $$
@@ -86,4 +89,10 @@ select pg_temp.notification_check((select count(*)=2 and bool_and(tgenabled='O')
   and tgname in ('ph_request_delivery_outbox_wake','ph_request_delivery_outbox_requeue_wake')),
   'reviewed restoration restores both original notification wake paths');
 select count(*) as request_metadata_notification_checks from request_metadata_notification_checks;
+
+create extension if not exists pgtap with schema extensions;
+set local search_path = public,extensions,pg_temp;
+select plan(1);
+select ok((select count(*) > 0 from request_metadata_notification_checks), 'request_metadata_notifications_test.sql: all exception assertions completed');
+select * from finish();
 rollback;

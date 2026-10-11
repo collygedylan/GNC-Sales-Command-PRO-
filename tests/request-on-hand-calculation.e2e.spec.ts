@@ -1,7 +1,10 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test } from '@playwright/test';
+// @test-group: @request-reliability,requests
 
-test('Request quantity and spec fields stay high-contrast and responsive on phones', async ({ page }) => {
+
+
+test('Request quantity and spec fields stay high-contrast and responsive on phones', {"tag":["@request-reliability"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   // Exercise responsive styles on one fully initialized app instead of
   // repeatedly tearing down Firefox's app runtime between measurements.
@@ -77,7 +80,7 @@ test('Request quantity and spec fields stay high-contrast and responsive on phon
   }
 });
 
-test('Request theme switches keep controls and actions readable on the first frame', async ({ page }) => {
+test('Request theme switches keep controls and actions readable on the first frame', {"tag":["@request-reliability"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.08.27.07', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderRequestQtyStepCurrentItem === 'function');
@@ -172,7 +175,7 @@ test('Request theme switches keep controls and actions readable on the first fra
   }
 });
 
-test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', async ({ page }) => {
+test('Request reusable evidence prompt accepts partial exact-row data without auto-completing', {"tag":["@request-reliability"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=V2026.09.04.04&post_deploy_request_canary=reuse-evidence', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => (

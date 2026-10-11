@@ -7,8 +7,9 @@ export default defineConfig({
   root: 'v2',
   base: './',
   test: {
-    // Browser and node:test suites under v2/tests have their own explicit runners.
-    include: ['src/**/*.{test,spec}.{ts,tsx}']
+    // React mounts live under v2/src; root-level TypeScript unit/mount suites
+    // use the conventional tests/**/*.test.ts(x) location.
+    include: ['src/**/*.{test,spec}.{ts,tsx}', '../tests/**/*.test.{ts,tsx}']
   },
   plugins: [
     react(),
@@ -34,7 +35,7 @@ export default defineConfig({
           },
           {
             // Private partner photos, signed storage URLs, and API responses must never enter this cache.
-            urlPattern: ({ request, url, sameOrigin }) => sameOrigin && request.destination === 'image' && !url.search && /^\/ag-data-solutions-icon-v2026080925-(192|512)\.png$/.test(url.pathname),
+            urlPattern: ({ request, url, sameOrigin }) => sameOrigin && request.destination === 'image' && !url.search && /^\/assets\/branding\/ag-data-solutions-icon-v2026080925-(192|512)\.png$/.test(url.pathname),
             handler: 'CacheFirst',
             options: {
               cacheName: 'gnc-v2-static-icons-v2',
@@ -46,6 +47,7 @@ export default defineConfig({
     })
   ],
   build: {
+    manifest: true,
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: true

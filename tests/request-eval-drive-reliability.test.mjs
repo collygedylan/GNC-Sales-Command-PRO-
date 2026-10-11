@@ -1,3 +1,4 @@
+import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -23,9 +24,9 @@ test('folder completion recovery binds the unnested request id and is service-on
   assert.match(migration, /not private\.is_service_role_request\(\)/);
   assert.match(migration, /grant execute on function public\.reconcile_request_folder_completion_window_v2[\s\S]*to service_role/);
   assert.match(migration, /missing_completion_event_count/);
-  assert.match(performanceWorkflow, /20260831210000_request_eval_drive_reliability_repair\.sql/);
-  assert.match(performanceWorkflow, /request_eval_drive_reliability_test\.sql/);
-  assert.match(performanceWorkflow, /request_eval_drive_reliability_baseline\.sql/);
+  assertHistoricalMigration('20260831210000_request_eval_drive_reliability_repair.sql');
+  assertIsolatedSqlTest('request_eval_drive_reliability_test.sql');
+  assertHistoricalMigration('request_eval_drive_reliability_baseline.sql');
   assert.match(sqlTest, /pg_advisory_xact_lock/);
   assert.doesNotMatch(migration, /delete from public\.ph_active_request|delete from public\.ph_request_history/i);
 });
@@ -37,7 +38,7 @@ test('delivery health checks the latest completion only for currently complete f
   assert.match(currentMembershipHealth, /where active\.all_complete/);
   assert.match(currentMembershipHealth, /completion_membership_mismatch_count/);
   assert.match(currentMembershipHealth, /grant execute on function public\.get_eval_request_delivery_health_snapshot_v2\(\)[\s\S]*to service_role/);
-  assert.match(performanceWorkflow, /20260902165500_current_request_membership_health\.sql/);
+  assertHistoricalMigration('20260902165500_current_request_membership_health.sql');
 });
 
 test('Eval Work accepts advisory assignment drift but retains current server filtering', () => {

@@ -267,7 +267,10 @@ function transportFixture(overrides = {}) {
         REQUEST_HISTORY_TABLE: 'ph_request_history', SALES_CREDIT_REQUESTS_TABLE: 'ph_sales_credit_requests',
         productionLiveSyncNavigation: navigation, SUPABASE_READ_TIMEOUT_MS: 1000, SUPABASE_URL: 'https://fixture.invalid',
         normalizeAppTableName: value => value, getNativeAuthRequestHeaders: async () => ({ Authorization: 'synthetic' }),
-        fetchWithTimeout: async (url, options) => { calls.push({ url, options }); return { ok: true, text: async () => '[{"id":1},{"id":2}]' }; },
+        window: { GncDatabase: { fetchTable: async (baseUrl, table, query, options) => {
+            calls.push({ url: `${baseUrl}/rest/v1/${table}?${query}`, options });
+            return new Response('[{"id":1},{"id":2}]', { headers: { 'content-type': 'application/json' } });
+        } } },
         parseSupabaseContentRangeTotal: () => 6,
         startGlobalProgress() {}, stopGlobalProgress() {}, beginInternalPerfMeasure: () => 0,
         getFullDatasetPageLimit: () => 2, getFullDatasetPageConcurrency: () => 1, yieldToUiFrame: async () => {},
@@ -373,8 +376,10 @@ test('an ordinary list render retires a superseded staged refresh before its can
         Set, String, Number, productionLiveSyncActiveRender: refresh, productionLiveSyncRenderPending: true,
         productionLiveSyncRendering: true, productionLiveSyncRenderGeneration: 1, productionLiveSyncCoordinator: null,
         document: { createElement: () => staged },
-        renderMarkupChunkedByKey: (_key, target, _crumb, _rows, _text, _render, options) => {
+        chunkRenderTokensByKey: {},
+        renderMarkupChunkedByKey: (key, target, _crumb, _rows, _text, _render, options) => {
             assert.equal(target, staged); completion = options.onComplete;
+            context.chunkRenderTokensByKey[key] = Number(context.chunkRenderTokensByKey[key] || 0) + 1;
         },
         scheduleTypingAwareUiRender: (_key, callback) => { commit = callback; },
         cancelScheduledUiRenderByPrefix: () => { cancellations++; },

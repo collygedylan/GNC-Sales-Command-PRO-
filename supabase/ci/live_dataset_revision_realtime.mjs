@@ -9,6 +9,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { performance } from 'node:perf_hooks';
 import pg from 'pg';
 import { createClient } from '@supabase/supabase-js';
+import { discoverTests } from '../../scripts/test-discovery.mjs';
 
 const sandbox = realpathSync(process.argv[2] || '');
 assert.ok(basename(sandbox).startsWith('agmetric-revisions-ci-'), 'Disposable project directory required');
@@ -102,8 +103,9 @@ try {
   await sql.query(repoFile('supabase/ci/live_dataset_revision_baseline.sql'));
   await sql.query(repoFile('supabase/archive_migrations/20260908185903_live_dataset_revisions.sql'));
   await sql.query(repoFile('supabase/archive_migrations/20260908201318_live_dataset_revision_empty_statements.sql'));
-  await sql.query(repoFile('supabase/tests/live_dataset_revisions_test.sql'));
-  await sql.query(repoFile('supabase/tests/live_dataset_revisions_empty_statements_test.sql'));
+  for (const file of discoverTests({ group: 'live-dataset-revision-sql' })) {
+    await sql.query(repoFile(file));
+  }
   assert.equal((await sql.query("select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='app_dataset_revisions'")).rowCount, 1, 'Metadata publication must be active');
   console.log('PASS isolated native PostgreSQL transaction/RLS assertions');
   const account = await actor('dylan_collyge');

@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
 
 export const CODEX_OPS_BUCKET = "codex-ops-evidence-v1";
 export const CODEX_OPS_CONTRACT = "mobile-codex-ops-v1";
@@ -36,7 +37,7 @@ export function sanitizeErrorCode(error: unknown) {
 }
 
 export function serviceClient() {
-  return createClient(
+  return createClient<Database>(
     Deno.env.get("SUPABASE_URL") || "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "",
     { auth: { persistSession: false, autoRefreshToken: false } },
@@ -44,7 +45,7 @@ export function serviceClient() {
 }
 
 export function userClient(req: Request) {
-  return createClient(
+  return createClient<Database>(
     Deno.env.get("SUPABASE_URL") || "",
     Deno.env.get("SUPABASE_ANON_KEY") || "",
     {

@@ -1,3 +1,5 @@
+import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
+// @test-group: drive
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -92,8 +94,8 @@ test('hosted health fails on retry-storm thresholds and the isolated CI includes
       < hostedProbe.indexOf("throw new Error('production_request_drive_evidence_contract_unhealthy')"),
     'retry-storm health must be evaluated before unrelated Request evidence health can fail the probe'
   );
-  assert.match(performanceWorkflow, /20260904015607_emergency_drive_evidence_retry_storm_v2\.sql/);
-  assert.match(performanceWorkflow, /drive_evidence_retry_storm_test\.sql/);
+  assertHistoricalMigration('20260904015607_emergency_drive_evidence_retry_storm_v2.sql');
+  assertIsolatedSqlTest('drive_evidence_retry_storm_test.sql');
 });
 
 test('all shell references match the package release', () => {

@@ -124,3 +124,16 @@ test('already acknowledged email finishes without another external send or a pus
   const h = harness({ event: { email_delivered_at: '2026-09-11T12:00:00Z', channel_results: { email: { status: 'sent', gmail_message_id: 'prior' } } } });
   assert.equal((await h.run()).body.delivered, 1); assert.equal(h.fetches.length, 0);
 });
+
+test('field count events use signed email-only delivery and preserve reconciliation state', async () => {
+  const event={event_type:'field_count_completion',event_key:'field-count:report-1'};
+  const h=harness({event});assert.equal((await h.run()).body.delivered,1);
+  const envelope=JSON.parse(JSON.parse(h.fetches[0].input.body).deliveryJson);
+  assert.equal(envelope.eventType,'field_count_completion');assert.deepEqual(envelope.rows,[]);
+  const unknown=harness({event,fetchError:true});await unknown.run();
+  assert.ok(unknown.calls.some(call=>call.name==='field_count_delivery_lookup_v1'));
+  const record=unknown.calls.find(call=>call.name==='field_count_delivery_record_v1');
+  assert.equal(record.args.p_status,'unknown');assert.equal(unknown.fetches.length,1);
+  const retry=harness({event:{...event,channel_results:{email:{status:'unknown'}}}});await retry.run();
+  assert.equal(JSON.parse(JSON.parse(retry.fetches[0].input.body).deliveryJson).reconciliationOnly,true);
+});

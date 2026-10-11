@@ -1,3 +1,4 @@
+// @test-group: inventory
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';

@@ -1,0 +1,21 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/assets/historical-requests.css"><style>body{margin:0;padding:16px;font-family:system-ui;background:#f1f5f9}html[data-theme="dark"] body{background:#0f172a}</style></head><body>
+<button id="open" type="button">Open Historical Requests</button><div id="root"></div>
+<script>
+const own = new URLSearchParams(location.search).get('scope') !== 'all';
+const group = (key,label,requestCount,totalValue,unpricedCount=0) => ({key,label,requestCount,totalValue,unpricedCount});
+const summary = {requestCount:10,totalValue:4375,unpricedCount:2};
+const base = (query,rows,total=rows.length) => ({scope:own?'own':'all',revision:'history-r1',generatedAt:'2026-10-10T12:00:00Z',page:query.page||0,pageSize:25,total,rows,summary});
+window.historyFixture={calls:[],async read(query,signal){this.calls.push({query,aborted:signal?.aborted||false});
+ if(query.operation==='customers') return base(query,query.page? [group('customer:002','South Nursery',8,875,1)] : [group('customer:001','North Nursery',2,3500,1),group('customer:002','South Nursery',8,875,1)],26);
+ if(query.operation==='reps') return base(query,[group('rep:molly','Molly Dixon',5,1875,1),group('rep:kim','Kim Lee',5,2500,1)],2);
+ if(query.operation==='consignees') return base(query,[group('consignee:east','East Yard',2,3500,1)],1);
+ if(query.operation==='requests') return base(query,[
+  {id:'40000000-0000-4000-8000-000000000001',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:'50000000-0000-4000-8000-000000000001',salesrepName:'Molly Dixon',itemcode:'00012',commonname:'Red Maple ®',location:'A.01',requestedAt:'2026-10-09T12:00:00Z',status:'Completed',requestQty:0,effectiveQty:25,listPrice:140,totalValue:3500,unresolvedReason:null},
+  {id:'40000000-0000-4000-8000-000000000002',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:null,salesrepName:'Unassigned',itemcode:'00123',commonname:'White Spruce',location:'B.02',requestedAt:null,status:'Pending',requestQty:null,effectiveQty:25,listPrice:null,totalValue:null,unresolvedReason:'current_list_price_unavailable_or_invalid'}
+ ],2);
+ return base(query,[],10);
+}};
+document.getElementById('open').addEventListener('click',async()=>{const module=await import('/assets/historical-requests.js');document.getElementById('open').hidden=true;
+ const bridge=module.createHistoricalRequestsBridge({scopeKey:own?'fixture-rep:own':'fixture-admin:all',revisionKey:'r1',transport:(query,signal)=>window.historyFixture.read(query,signal)});
+ module.mountHistoricalRequests(document.getElementById('root'),bridge);});
+</script></body></html>

@@ -2,37 +2,31 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { changedFilesFromGit, selectFocusedTests } from './select-focused-tests.mjs';
+import { changedFilesFromGit, selectAffectedTests } from './select-focused-tests.mjs';
+import { discoverTests } from './test-discovery.mjs';
 import { sourceDigest, siteDigest } from './local-validation-evidence.mjs';
 import { recordValidationRun } from './repair-ledger.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-export const foundationTests = [
-  'tests/release-app-lifecycle.test.mjs', 'tests/release-shell-lifecycle.test.mjs',
-  'tests/live-sync-read-boundary.test.mjs', 'tests/live-sync-coordinator.test.mjs', 'tests/release-foundation-workflow.test.mjs',
-];
+export const foundationTests = discoverTests({ root, group: 'foundation' });
 
 // Commands are data, never shell input. Reject unsupported forms instead of
 // guessing how to execute a new map entry or inheriting another build command.
-export function focusedPlan(commands) {
-  const unit = new Set(), browsers = new Map();
-  for (const command of commands) {
-    if (command === 'npm run check:foundation') continue;
-    const parts = command.split(/\s+/);
-    if (parts[0] === 'node' && parts[1] === '--test' && parts.length > 2
-        && parts.slice(2).every(file => /^tests\/[\w.-]+\.test\.mjs$/.test(file))) {
-      for (const file of parts.slice(2)) if (!foundationTests.includes(file)) unit.add(file);
-    } else if (parts.slice(0, 4).join(' ') === 'npx playwright test --config'
-        && /^playwright\.[\w-]+\.config\.ts$/.test(parts[4]) && parts.slice(5).every(arg =>
-          /^(?:tests\/[\w.-]+\.spec\.(?:ts|js)|--project=[\w-]+|--grep=[\w|.-]+)$/.test(arg))) {
-      browsers.set(command, { config: parts[4], args: parts.slice(5) });
-    } else if (command === 'npm run test:v2') {
-      browsers.set('v2-unit', { v2: true });
-    } else throw new Error('LOCAL_COMMAND_UNSUPPORTED: ' + command);
+export function focusedPlan(affected) {
+  const tags = affected.playwrightTags || [];
+  const configs = new Set();
+  if (tags.includes('@local-e2e')) configs.add('playwright.config.ts');
+  else for (const tag of tags) {
+    if (!tag.startsWith('@') || ['@production-canary', '@database', '@release-functional', '@release-timing'].includes(tag)) continue;
+    const config = `playwright.${tag.slice(1)}.config.ts`;
+    if (fs.existsSync(path.join(root, config))) configs.add(config);
   }
-  const suites = [...browsers.values()];
-  return { unit: [...unit].sort(), browsers: suites.filter(suite => !suite.args?.length
-    || !suites.some(other => other !== suite && other.config === suite.config && !other.args.length)) };
+  const browserSuites = [...configs].sort().map(config => ({ config, args: [] }));
+  return {
+    unit: [...new Set(affected.nodeUnit || [])].filter(file => !foundationTests.includes(file)).sort(),
+    vitest: [...new Set(affected.vitest || [])].sort(),
+    browsers: browserSuites,
+  };
 }
 
 export function runLocalChecks({ cwd = root, npm = process.env.npm_execpath, spawn = spawnSync, print = console.log, now = Date.now } = {}) {
@@ -66,8 +60,8 @@ export function runLocalChecks({ cwd = root, npm = process.env.npm_execpath, spa
     if (!npm) throw new Error('RUN_WITH_NPM_RUN_CHECK_LOCAL');
     const map = JSON.parse(fs.readFileSync(path.join(cwd, 'live-src/change-impact.json'), 'utf8'));
     if (map.schemaVersion !== 'gnc-change-impact-v1') throw new Error('LOCAL_MAP_SCHEMA_INVALID');
-    report.selection = selectFocusedTests(changedFilesFromGit(cwd), map);
-    const plan = focusedPlan(report.selection.commands);
+    report.selection = selectAffectedTests(changedFilesFromGit(cwd), { root: cwd, map });
+    const plan = focusedPlan(report.selection);
     report.plan = plan;
     print(`Affected modules: ${report.selection.modules.join(', ') || 'none mapped'}`);
     if (report.selection.unknown.length) print(`Coverage needs review; unmapped paths: ${report.selection.unknown.join(', ')}. Running shared fallback checks.`);
@@ -78,9 +72,9 @@ export function runLocalChecks({ cwd = root, npm = process.env.npm_execpath, spa
       baseCommit: foundation.baseCommit, foundationStages: foundation.stages, foundationBrowserEvidence: foundation.browserEvidence });
     print(`Fresh build: ${report.site}; source ${report.sourceDigest.slice(0, 12)}; artifact ${report.siteDigest.slice(0, 12)}`);
     if (plan.unit.length) run('focused-unit', ['--test', '--test-concurrency=1', ...plan.unit]);
+    if (plan.vitest.length) run('focused-vitest', [npm, 'run', 'test:v2', '--', '--run', ...plan.vitest.map(file => file.startsWith('v2/') ? file.slice(3) : `../${file}`)]);
     for (const [index, suite] of plan.browsers.entries()) {
-      if (suite.v2) run('v2-unit', [npm, 'run', 'test:v2']);
-      else run(`browser-${index}`, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.local.config.ts',
+      run(`browser-${index}`, ['node_modules/@playwright/test/cli.js', 'test', '--config', 'playwright.local.config.ts',
         '--workers=1', '--retries=0', ...suite.args], { GNC_LOCAL_SITE_DIR: report.site, GNC_LOCAL_CONFIG: suite.config,
         GNC_LOCAL_OUTPUT_DIR: path.join(output, `browser-${index}`) });
     }

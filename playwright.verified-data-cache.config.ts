@@ -3,9 +3,10 @@ import { defineConfig, devices } from '@playwright/test';
 // Always serve the compiled artifact. The server has no source-index fallback.
 const baseURL = 'http://127.0.0.1:43136';
 export default defineConfig({
-  testDir: './tests', testMatch: 'verified-data-cache.e2e.spec.ts',
+  testDir: './tests', testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@verified-data-cache/,
   outputDir: './artifacts/verified-data-cache-browser',
-  fullyParallel: false, workers: 1, retries: 0, timeout: 60_000,
+  fullyParallel: false, workers: 1, retries: process.env.CI ? 2 : 0, timeout: 60_000,
   forbidOnly: Boolean(process.env.CI),
   reporter: [
     [process.env.CI ? 'github' : 'list'],

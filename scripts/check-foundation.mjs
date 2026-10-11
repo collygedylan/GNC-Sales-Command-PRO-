@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { sourceDigest, siteDigest } from './local-validation-evidence.mjs';
+import { discoverTests } from './test-discovery.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const npm = process.env.npm_execpath;
@@ -28,8 +29,7 @@ try {
   baseCommit = String(head.stdout || '').trim();
   if (head.status !== 0 || !/^[a-f0-9]{40}$/.test(baseCommit)) throw new Error('FOUNDATION_BASE_COMMIT_UNAVAILABLE');
   run('syntax', ['scripts/check-inline-scripts.mjs']);
-  run('contracts', ['--test', 'tests/release-app-lifecycle.test.mjs', 'tests/release-shell-lifecycle.test.mjs',
-    'tests/live-sync-read-boundary.test.mjs', 'tests/live-sync-coordinator.test.mjs', 'tests/release-foundation-workflow.test.mjs']);
+  run('contracts', ['--test', ...discoverTests({ root, group: 'foundation' })]);
   run('monitoring', [npm, 'run', 'build:pilot-monitoring']);
   run('assets', [npm, 'run', 'build:live:assets']);
   run('v2', [npm, 'run', 'build:v2']);

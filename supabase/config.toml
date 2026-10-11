@@ -397,9 +397,15 @@ entrypoint = "./functions/app-api/index.ts"
 
 [functions.aura-llm-router]
 enabled = true
-# Native-session and active Dylan profile checks run inside the function.
+# Compatibility endpoint; delegates exclusively to the internal query engine.
 verify_jwt = false
 entrypoint = "./functions/aura-llm-router/index.ts"
+
+[functions.aura-query]
+enabled = true
+# Every operation verifies Supabase Auth and the exact active Dylan profile.
+verify_jwt = false
+entrypoint = "./functions/aura-query/index.ts"
 
 [functions.calendar-reminder-sweep]
 enabled = true

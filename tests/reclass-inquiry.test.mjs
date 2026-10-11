@@ -8,12 +8,12 @@ const root = process.cwd();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const code = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
 
-test('Reclass editor removes the action view and discloses inquiry-wide Hold / Stop scope', () => {
+test('Reclass editor removes the action view and discloses server-determined Hold / Stop scope', () => {
   assert.doesNotMatch(html, /id="argos-reclass-action-view"/);
   assert.doesNotMatch(html, /function applyArgosReclassActionView\(/);
   assert.match(html, /function renderArgosReclassHoldScopeNotice\(/);
-  assert.match(html, /Choosing it from one row does not limit it to that row/);
-  assert.match(html, /eligible rows by action/);
+  assert.match(html, /The selected row receives the Hold \/ Stop request/);
+  assert.match(html, /the server determines that scope/);
   assert.match(html, /data-reclass-v3-proposal-field="reason"/);
 });
 
@@ -60,6 +60,10 @@ function loadServerModel() {
     },
     Utilities: {
       formatDate: () => '8/22/2026, 9:15:00 AM',
+      newBlob: (value) => {
+        const bytes = Array.isArray(value) ? Buffer.from(value) : Buffer.from(String(value ?? ''), 'utf8');
+        return { getBytes: () => Array.from(bytes), getDataAsString: (charset) => bytes.toString(charset || 'utf8') };
+      },
     },
     PropertiesService: {
       getScriptProperties: () => ({
@@ -92,16 +96,38 @@ function loadServerModel() {
       .replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_;`, context);
+  const utf8Start = code.indexOf('function repairDisplayUtf8Mojibake_(');
+  const utf8End = code.indexOf('\nfunction ', utf8Start + 1);
+  vm.runInContext(`${code.slice(utf8Start, utf8End)};`, context);
+  vm.runInContext(`${code.slice(start, end)}; this.applyReclassInquiryOverlays_ = applyReclassInquiryOverlays_; this.applyReclassInquiryTemporaryOverlayV3_ = applyReclassInquiryTemporaryOverlayV3_; this.buildReclassInquiryActionRowsV2_ = buildReclassInquiryActionRowsV2_; this.buildReclassInquiryActionRowsV3_ = buildReclassInquiryActionRowsV3_; this.hasReclassInquiryLocationDetailProposalV3_ = hasReclassInquiryLocationDetailProposalV3_; this.hasReclassInquiryLocationDetailChangeV3_ = hasReclassInquiryLocationDetailChangeV3_; this.buildReclassInquiryReportModel_ = buildReclassInquiryReportModel_; this.buildReclassInquiryReportHtml_ = buildReclassInquiryReportHtml_; this.buildReclassInquiryReportText_ = buildReclassInquiryReportText_; this.buildReclassInquiryEmailHtml_ = buildReclassInquiryEmailHtml_; this.getReclassInquirySplitMoveEntries_ = getReclassInquirySplitMoveEntries_; this.buildReclassInquirySplitMoveText_ = buildReclassInquirySplitMoveText_; this.buildReclassInquirySplitMoveHtml_ = buildReclassInquirySplitMoveHtml_; this.getReclassInquirySplitMoveSummaries_ = getReclassInquirySplitMoveSummaries_; this.getReclassInquiryActionLabel_ = getReclassInquiryActionLabel_; this.getReclassInquiryCompactFields_ = getReclassInquiryCompactFields_; this.buildReclassInquiryCompactReportHtml_ = buildReclassInquiryCompactReportHtml_; this.getReclassInquiryCompactPilotRows_ = getReclassInquiryCompactPilotRows_; this.buildReclassInquiryCompactPilotOverlays_ = buildReclassInquiryCompactPilotOverlays_; this.buildReclassInquiryCompactPilotModel_ = buildReclassInquiryCompactPilotModel_; this.RECLASS_INQUIRY_IDENTITY_FIELDS_ = RECLASS_INQUIRY_IDENTITY_FIELDS_; this.RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = RECLASS_ACTION_WORKFLOW_V2_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = RECLASS_ACTION_WORKFLOW_V3_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = RECLASS_ACTION_WORKFLOW_V4_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = RECLASS_ACTION_WORKFLOW_V5_ENABLED_; this.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_; this.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_; this.RECLASS_INQUIRY_V7_EDITABLE_FIELDS_ = RECLASS_INQUIRY_V7_EDITABLE_FIELDS_; this.RECLASS_INQUIRY_ACTION_RULES_V2_ = RECLASS_INQUIRY_ACTION_RULES_V2_; this.RECLASS_INQUIRY_ACTION_ORDER_V3_ = RECLASS_INQUIRY_ACTION_ORDER_V3_; this.RECLASS_INQUIRY_ACTION_ORDER_V5_ = RECLASS_INQUIRY_ACTION_ORDER_V5_;`, context);
+  vm.runInContext('this.getProtectedLiveEditDelivery_ = getProtectedLiveEditDelivery_; this.buildProtectedLiveEditReportRows_ = buildProtectedLiveEditReportRows_; this.buildProtectedLiveEditSummary_ = buildProtectedLiveEditSummary_; this.getProtectedInventoryFieldDeliveryV7_ = getProtectedInventoryFieldDeliveryV7_; this.buildProtectedInventoryFieldReportRowsV7_ = buildProtectedInventoryFieldReportRowsV7_; this.buildReclassInquiryInventoryFieldHtml_ = buildReclassInquiryInventoryFieldHtml_; this.deliverReclassInquiryPayload_ = deliverReclassInquiryPayload_; this.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ = RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_;', context);
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
 }
 
-function loadClientPayloadBuilder(values = {}) {
+function loadEvalServerModel() {
+  const context = loadServerModel();
+  const start = code.indexOf('function buildEvalWorkReportModel_(');
+  const end = code.indexOf('\nfunction buildEvalWorkEmailText_', start);
+  assert.ok(start > 0 && end > start);
+  vm.runInContext(`${code.slice(start, end)}; this.buildEvalWorkReportModel_ = buildEvalWorkReportModel_;`, context);
+  context.fetchEmailApprovalMasterRow_ = () => { throw new Error('mutable source read is forbidden for V6 completion'); };
+  context.fetchReclassInquiryItemRows_ = () => { throw new Error('mutable item read is forbidden for V6 completion'); };
+  context.validateInventoryTransactionSourceIdentity_ = (row, source) => {
+    for (const field of ['unique_id', 'itemcode', 'lotcode', 'locationcode']) {
+      if (String(row?.[field] ?? '') !== String(source?.[field] ?? '')) throw new Error(`source mismatch: ${field}`);
+    }
+  };
+  return context;
+}
+
+function loadClientPayloadBuilder(values = {}, draftOverride = null) {
+  const policyStart = html.indexOf('function getArgosReclassActionWorkflowPolicyVersionV3(');
+  const policyEnd = html.indexOf('\n        }', policyStart) + '\n        }'.length;
   const start = html.indexOf('function buildArgosInventoryTransactionPayload');
   const end = html.indexOf('async function postArgosInventoryTransactionPayload', start);
-  assert.ok(start > 0 && end > start);
+  assert.ok(policyStart > 0 && policyEnd > policyStart && start > 0 && end > start);
   const context = {
     document: { addEventListener() {} },
     argosInventoryTransactionState: {
@@ -122,6 +148,14 @@ function loadClientPayloadBuilder(values = {}) {
     APP_SHELL_BUILD: 'test',
     RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION: 'reclass-action-workflow-v3-row-actions-20260826',
+    RECLASS_ACTION_WORKFLOW_V4_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
+    RECLASS_ACTION_WORKFLOW_V5_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION: 'reclass-action-workflow-v5-sheared-20261008',
+    RECLASS_ACTION_WORKFLOW_V6_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION: 'reclass-action-workflow-v6-smart-shield-20261009',
+    RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION: 'reclass-action-workflow-v7-editable-fields-20261009',
+    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
     RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION: 'reclass-action-workflow-v2-live-20260826',
     getReclassActionWorkflowV2Config: (value) => ({ hold: { kind: 'hold_on' }, recount: { kind: 'recount' }, move_up: { kind: 'move' } }[value] || null),
@@ -129,9 +163,9 @@ function loadClientPayloadBuilder(values = {}) {
     parseAppNumber: (value) => Number(String(value).replaceAll(',', '')),
     normalizeArgosInventoryTransactionRequestAction: (value) => String(value || '').trim().toLowerCase(),
     isArgosInventoryTransactionMoveSeasonRequestAction: (value) => ['move_up', 'move_down'].includes(value),
-    collectArgosReclassV3Draft: () => ({
+    collectArgosReclassV3Draft: () => draftOverride || ({
       requestActions: ['hold', 'priority_change'],
-      holdStopProposals: [{ action: 'hold', reason: 'field review' }],
+      holdStopProposals: [{ action: 'hold', reason: 'field review', sourceUid: 'u1' }],
       scope: { season: 'F1', salesYear: 2027 },
       rowOverlays: [{ unique_id: 'u1', expected: {}, proposals: [
         { action: 'priority_change', priority: '2' },
@@ -143,7 +177,7 @@ function loadClientPayloadBuilder(values = {}) {
     getCurrentRoleAccessValue: () => 'Manager',
   };
   vm.createContext(context);
-  vm.runInContext(`${html.slice(start, end)}; this.buildArgosInventoryTransactionPayload = buildArgosInventoryTransactionPayload;`, context);
+  vm.runInContext(`${html.slice(policyStart, policyEnd)}\n${html.slice(start, end)}; this.buildArgosInventoryTransactionPayload = buildArgosInventoryTransactionPayload;`, context);
   return context.buildArgosInventoryTransactionPayload;
 }
 
@@ -211,7 +245,8 @@ test('cleared and added Priority values are retained as changed fields and highl
   const output = server.buildReclassInquiryReportHtml_(model, true);
   assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>\[blank\]<\/strong>/);
   assert.match(output, /class="edited-cell" data-edited="true"><span class="proposal-box">[\s\S]*?<strong>7<\/strong>/);
-  assert.match(output, /Edited:<\/strong> 2 field\(s\) across 2 row\(s\)/);
+  assert.match(output, /<div class="meta"><strong>Submitted:<\/strong>[^<]*&nbsp; <strong>By:<\/strong> Tester<\/div>/);
+  assert.doesNotMatch(output, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
 });
 
 test('Reclass identity validation uses the defined production comparison helper', () => {
@@ -312,7 +347,9 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
       changedFields: index === 0 ? ['holdstopcode', 'holdstopreason'] : [],
     }));
     const output = server.buildReclassInquiryReportHtml_({ ...baseModel, rows }, true);
-    assert.match(output, /@page\{size:Letter landscape/);
+    assert.match(output, /@page\{size:Letter landscape;margin:[^}]+\}/);
+    assert.doesNotMatch(output, /@top-center/);
+    assert.match(output, /<thead><tr class="page-title-row"><th class="page-title-cell" colspan="\d+"><div class="page-header">GNC PH Reclass Item Inquiry<\/div><\/th><\/tr><tr class="column-heading-row">/);
     assert.match(output, /thead\{display:table-header-group\}/);
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
@@ -329,9 +366,9 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.doesNotMatch(output, /Field Notes/);
     assert.doesNotMatch(output, /Abbreviations:/);
     assert.match(output, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
-    assert.match(output, /<th>PTRREVIEWED<\/th>/);
+    assert.match(output, /<th>Rev<\/th>/);
     assert.doesNotMatch(output, /<th>Hold\/Stop Code<\/th>/);
-    assert.equal((output.match(/<tr>/g) || []).length, rowCount + 1, `${rowCount}-row report should include every detail row plus one table header`);
+    assert.equal((output.match(/<tr data-location-row="true">/g) || []).length, rowCount, `${rowCount}-row report should include every detail row`);
   }
 });
 
@@ -362,36 +399,43 @@ test('Reclass workflow V3 row actions are live while V2 remains available for co
 test('action-specific compact PDFs use exact columns, natural ordering, preserved OH, and yellow proposals', () => {
   const server = loadServerModel();
   const actions = ['priority_change', 'recount', 'move_up', 'move_down', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'];
-  const fixedHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note'];
-  const holdHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'H/S', 'H/S Reason', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note'];
+  const commonHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev'];
+  const detailHeaders = ['Loc Note Date', 'Loc PTN1', 'Loc Note', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS'];
+  const fixedHeaders = [...commonHeaders, ...detailHeaders];
+  const holdHeaders = [...commonHeaders, 'H/S', 'H/S Reason', ...detailHeaders];
   const outputs = {};
   for (const action of actions) {
     const model = server.buildReclassInquiryCompactPilotModel_(action, new Date('2026-08-22T14:15:00Z'));
     const output = server.buildReclassInquiryCompactReportHtml_(model, true);
     outputs[action] = output;
-    const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
+    const headerHtml = output.match(/<tr class="column-heading-row">([\s\S]*?)<\/tr>/)?.[1] || '';
     const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
     const expectedHeaders = ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(action) ? holdHeaders : fixedHeaders;
     assert.deepEqual(headers, expectedHeaders, `${action} should keep the action-specific compact columns`);
     assert.ok(output.indexOf('A.01.000') < output.indexOf('D.12.000'));
     assert.ok(output.indexOf('D.12.000') < output.indexOf('D.17.000'));
     assert.ok(output.indexOf('D.17.000') < output.indexOf('F.14.000'));
-    assert.match(output, /TEST PILOT - SYNTHETIC DATA ONLY/);
+    assert.match(output, /<tr class="page-title-row"><th class="page-title-cell" colspan="\d+"><div class="page-header">TEST PILOT - SYNTHETIC DATA ONLY \| GNC PH Reclass Item Inquiry<\/div><\/th><\/tr>/);
+    assert.doesNotMatch(output, /@top-center/);
+    assert.match(output, /background:#fff176/);
+    assert.doesNotMatch(output, /#fee2e2|redline/i);
     assert.match(output, /thead\{display:table-header-group\}/);
     assert.match(output, /@page\{size:Letter landscape/);
-    assert.equal((output.match(/<tr>/g) || []).length, 5, `${action} should include all four current rows plus the header`);
+    assert.match(output, /background:#fff176/);
+    assert.equal((output.match(/<tr data-location-row="true">/g) || []).length, 4, `${action} should include all four current rows`);
   }
-  for (const removed of ['Rev', 'Avail', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2']) {
+  for (const removed of ['PTRREVIEWED', 'Avail', 'Pull Tag 1', 'Pull Tag 2', 'Loc PTN 1', 'Loc PTN 2']) {
     for (const output of Object.values(outputs)) assert.doesNotMatch(output, new RegExp(`<th>${removed}<\\/th>`), `${removed} must not be an action pilot column`);
   }
   for (const action of ['priority_change', 'recount', 'move_up', 'move_down']) {
     assert.doesNotMatch(outputs[action], /<th>H\/S<\/th>|<th>H\/S Reason<\/th>/);
   }
-  assert.match(outputs.priority_change, /Request:<\/strong> Priority Change/);
+  assert.match(outputs.priority_change, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
+  assert.doesNotMatch(outputs.priority_change, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
   assert.match(outputs.priority_change, /proposal-box[\s\S]*?\[blank\]/);
   assert.match(outputs.priority_change, /proposal-box[\s\S]*?<strong>1<\/strong>/);
-  assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?proposal-box[\s\S]*?UP 20 TO F1/);
-  assert.match(outputs.move_down, /<strong class="original-oh">36<\/strong>[\s\S]*?proposal-box[\s\S]*?DOWN 15 TO U2/);
+  assert.match(outputs.move_up, /<strong class="original-oh">26<\/strong>[\s\S]*?proposal-box[\s\S]*?20--&gt;F1/);
+  assert.match(outputs.move_down, /<strong class="original-oh">36<\/strong>[\s\S]*?proposal-box[\s\S]*?15--&gt;U2/);
   assert.doesNotMatch(outputs.move_up, /<th>Move Qty<\/th>|<th>To Season<\/th>/);
   assert.match(outputs.take_off_hold, /proposal-box[\s\S]*?\[blank\]/);
   assert.match(outputs.off_stop_ship, /proposal-box[\s\S]*?\[blank\]/);
@@ -399,15 +443,15 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
   assert.doesNotMatch(outputs.recount, /class="edited-cell"/);
 });
 
-test('Reclass identity is exactly nine balanced fields and the detail table stays fixed', () => {
+test('Reclass identity excludes PGC and retains eight required fields and the detail table stays fixed', () => {
   const server = loadServerModel();
   assert.deepEqual(Array.from(server.RECLASS_INQUIRY_IDENTITY_FIELDS_, (field) => [field.key, field.label]), [
-    ['plantgroupcode', 'Plant Grp'], ['commonname', 'Common Name'], ['contsize', 'Cont.'],
+    ['commonname', 'Common Name'], ['contsize', 'Cont.'],
     ['itemcode', 'Item Code'], ['genusname', 'Genus'], ['fieldtagcolor', 'Tag Color'],
-    ['itemspec', 'Item Spec'], ['pullerresponsibility', 'Puller Resp.'], ['holdstopcode', 'HOLDSTOPCODE'],
+    ['itemspec', 'Item Spec'], ['pullerresponsibility', 'Pull'], ['holdstopcode', 'HOLDSTOPCODE'],
   ]);
   assert.deepEqual(Array.from(server.getReclassInquiryCompactFields_('', ['move_down', 'move_up']), (field) => field.label), [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
   ]);
   const htmlOutput = server.buildReclassInquiryCompactReportHtml_({ identity: {}, rows: [] }, true);
   assert.match(htmlOutput, /\.identity\{display:grid;grid-template-columns:repeat\(3,1fr\)/);
@@ -479,13 +523,15 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   const reportTransaction = { ...transaction, holdStopProposals: result.holdStopProposals, requestActions: result.requestActions, scope: result.scope };
   const model = server.buildReclassInquiryReportModel_(rows[0], rows, result.rows, { transaction: reportTransaction, actor: { display: 'Tester' } }, new Date('2026-08-26T14:00:00Z'));
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  const headerHtml = output.match(/<thead><tr>([\s\S]*?)<\/tr><\/thead>/)?.[1] || '';
+  const headerHtml = output.match(/<tr class="column-heading-row">([\s\S]*?)<\/tr>/)?.[1] || '';
   const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
   assert.deepEqual(headers, [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'PTRREVIEWED', 'H/S', 'H/S Reason', 'Loc Note Date', 'LOCATIONPTN1', 'Location Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
+    'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS',
   ]);
   assert.match(output, /proposal-box[\s\S]*?<strong>1<\/strong>/);
-  assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?proposal-box[\s\S]*?UP 150 TO F1/);
+  assert.match(output, /<strong class="original-oh">526<\/strong>[\s\S]*?proposal-box[\s\S]*?150--&gt;F1/);
+  assert.match(output, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
   assert.doesNotMatch(output, /PROPOSED/i);
   assert.equal(model.identity.holdstopcode, 'H');
   assert.equal(model.identity.holdstopreason, 'sheared');
@@ -494,7 +540,115 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   assert.match(output, /S1 \| sales year &lt;= 27 \| 1 row/);
   assert.doesNotMatch(output, /Hold\/Stop Proposals|<th>Actions<\/th>/);
   assert.ok(output.indexOf('A.01.000') < output.indexOf('C.16.000'));
-  assert.equal((output.match(/<tr>/g) || []).length, rows.length + 1);
+  assert.equal((output.match(/<tr data-location-row="true">/g) || []).length, rows.length);
+});
+
+test('workflow V4 validates split moves, preserves repeated destination order, and renders request-only hold instructions', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', source: 'LD', priority: '', ptronhand: '20', season: 'F1', holdstopcode: '', holdstopreason: '' };
+  const proposal = { action: 'move_up', splits: [
+    { quantity: 4, destinationSeason: 'S1' },
+    { quantity: 3, destinationSeason: 'S1' },
+    { quantity: 5, destinationSeason: 'U1' },
+  ], applyHold: true, holdReason: '  inspect & stage <carefully>  ' };
+  const downProposal = { action: 'move_down', splits: [{ quantity: 2, destinationSeason: 'U2' }], applyHold: false, holdReason: '' };
+  const transaction = { requestActions: ['move_up', 'move_down'], holdStopProposals: [], scope: {} };
+  const result = server.buildReclassInquiryActionRowsV3_(transaction, [row], [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '20' }, proposals: [proposal, downProposal] }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ });
+  assert.equal(result.ok, true);
+  assert.deepEqual(Array.from(result.rows[0].actionValues.moveupsplits, (split) => [split.quantity, split.destinationSeason]), [[4, 'S1'], [3, 'S1'], [5, 'U1']]);
+  assert.equal(result.rows[0].actionValues.moveupapplyhold, true);
+  assert.equal(result.rows[0].actionValues.moveupholdreason, 'inspect & stage <carefully>');
+  assert.equal(result.rows[0].values.holdstopcode, '', 'a per-move hold request must not mutate source Hold/Stop state');
+  assert.equal(result.rows[0].values.holdstopreason, '', 'a per-move hold reason stays an inquiry instruction');
+  const model = server.buildReclassInquiryReportModel_(row, [row], result.rows, { transaction, actor: { display: 'Tester' } }, new Date('2026-10-06T14:00:00Z'));
+  const pdf = server.buildReclassInquiryCompactReportHtml_(model, true);
+  const text = server.buildReclassInquiryReportText_(model);
+  const htmlBody = server.buildReclassInquiryEmailHtml_(model);
+  assert.equal((pdf.match(/class="proposal-box proposal-box-movement"/g) || []).length, 5, 'four exact split lines and the separate hold instruction are boxed');
+  assert.match(pdf, /3--&gt;S1/);
+  assert.match(pdf, /4--&gt;S1/);
+  assert.match(pdf, /5--&gt;U1/);
+  assert.match(pdf, /2--&gt;U2/);
+  assert.match(pdf, /Place on Hold requested: inspect &amp; stage &lt;carefully&gt;/);
+  assert.doesNotMatch(pdf, /(?:UP|DOWN)\s+\d+\s+TO\s+/);
+  assert.match(text, /UP 3 to S1/);
+  assert.match(text, /UP 5 to U1/);
+  assert.match(text, /DOWN 2 to U2/);
+  assert.match(text, /Place on Hold requested: inspect & stage <carefully>/);
+  assert.match(htmlBody, /UP 4 to S1/);
+  assert.match(htmlBody, /inspect &amp; stage &lt;carefully&gt;/);
+  assert.match(text, /inventory was not changed/);
+});
+
+test('workflow V4 rejects invalid split totals, seasons, counts, and hold-reason combinations', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', season: 'F1', holdstopcode: '', holdstopreason: '' };
+  const run = (proposals) => server.buildReclassInquiryActionRowsV3_({ requestActions: ['move_up'], holdStopProposals: [], scope: {} }, [row], [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' }, proposals }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ });
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 6, destinationSeason: 'S1' }, { quantity: 5, destinationSeason: 'U1' }], applyHold: false, holdReason: '' }]), /Combined Move Up and Move Down quantities cannot exceed original OH/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'F1' }], applyHold: false, holdReason: '' }]), /differ from the current season/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'Q1' }], applyHold: false, holdReason: '' }]), /configured destination season/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 0, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }]), /positive whole number/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: true, holdReason: '' }]), /requires a reason/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: false, holdReason: 'stale' }]), /must be blank unless Place on Hold is selected/);
+  assert.throws(() => run([{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: true, holdReason: 'x'.repeat(1001) }]), /1000 characters or fewer/);
+  assert.throws(() => run([{ action: 'move_up', splits: Array.from({ length: 101 }, () => ({ quantity: 1, destinationSeason: 'S1' })), applyHold: false, holdReason: '' }]), /between 1 and 100/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['move_up', 'move_down'], holdStopProposals: [], scope: {} }, [row], [{
+    unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' }, proposals: [
+      { action: 'move_up', splits: [{ quantity: 6, destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
+      { action: 'move_down', splits: [{ quantity: 5, destinationSeason: 'U1' }], applyHold: false, holdReason: '' },
+    ],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ }), /Combined Move Up and Move Down quantities cannot exceed original OH/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_({ requestActions: ['move_up'], holdStopProposals: [], scope: {} }, [row], [{
+    unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    proposals: [{ action: 'move_up', splits: [{ quantity: 1, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ }), /expected original OH/);
+});
+
+test('workflow V5 keeps shearing distinct and renders server-derived snapshot arrows', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'u1', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', desigitem: 'ORIGINAL', season: 'F1', holdstopcode: '', holdstopreason: '' };
+  const transaction = { requestActions: ['move_up', 'sheared'], holdStopProposals: [], scope: {} };
+  const overlay = [{ unique_id: 'u1', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', desigitem: 'ORIGINAL' }, proposals: [
+    { action: 'move_up', splits: [{ quantity: 2, destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
+    { action: 'sheared', quantity: 3, desigitem: '3-->#' },
+  ] }];
+  const result = server.buildReclassInquiryActionRowsV3_(transaction, [row], overlay, null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ });
+  assert.equal(result.ok, true);
+  assert.deepEqual(Array.from(result.requestActions), ['move_up', 'sheared']);
+  assert.equal(result.rows[0].values.desigitem, 'ORIGINAL', 'the live designation remains unchanged');
+  assert.equal(result.rows[0].actionValues.shearedproposeddesigitem, '3-->#');
+  const payload = { workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_, transaction, actor: { display: 'Tester' } };
+  const model = server.buildReclassInquiryReportModel_(row, [row], result.rows, payload, new Date('2026-10-08T14:00:00Z'));
+  const pdf = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(pdf, /2--&gt;S1/);
+  assert.match(pdf, /3--&gt;#/);
+  assert.equal(result.rows[0].values.desigitem, 'ORIGINAL', 'the original designation is kept separate in the report snapshot');
+  assert.doesNotMatch(pdf, /(?:UP|DOWN)\s+\d+\s+TO\s+/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(transaction, [row], [{
+    ...overlay[0], proposals: [{ action: 'sheared', quantity: 3, desigitem: 'WRONG' }],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ }), /stored Sheared designation proposal is invalid/);
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(transaction, [row], [{
+    ...overlay[0], proposals: [{ action: 'move_up', splits: [{ quantity: 8, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }, { action: 'sheared', quantity: 3, desigitem: '3-->#' }],
+  }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ }), /Combined Move and Sheared quantities cannot exceed current OH/);
+  for (const quantity of [0, -1, 1.5, '2']) {
+    assert.throws(() => server.buildReclassInquiryActionRowsV3_(transaction, [row], [{
+    ...overlay[0], proposals: [{ action: 'sheared', quantity, desigitem: String(quantity) + '-->#' }],
+    }], null, { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ }), /positive whole number/);
+  }
+  const missingOriginal = [{ ...overlay[0], expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10' }, proposals: [{ action: 'sheared', quantity: 1, desigitem: '1-->#' }] }];
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(
+    { requestActions: ['sheared'], holdStopProposals: [], scope: {} }, [row], missingOriginal, null,
+    { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ },
+  ), /require the original designation snapshot/);
+  const staleOriginal = [{ ...overlay[0], expected: { ...overlay[0].expected, desigitem: 'STALE' }, proposals: [{ action: 'sheared', quantity: 1, desigitem: '1-->#' }] }];
+  assert.equal(server.buildReclassInquiryActionRowsV3_(
+    { requestActions: ['sheared'], holdStopProposals: [], scope: {} }, [row], staleOriginal, null,
+    { policyVersion: server.RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ },
+  ).status, 'conflict');
+  assert.throws(() => server.buildReclassInquiryActionRowsV3_(
+    { requestActions: ['sheared'], holdStopProposals: [], scope: {} }, [row], overlay, null,
+    { policyVersion: server.RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ },
+  ), /unsupported action/);
 });
 
 test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is outside the affected scope', () => {
@@ -526,11 +680,11 @@ test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is
   assert.match(output, /<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>leaf quality<\/strong>/);
   assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th>/);
   for (const location of ['B.01.000', 'C.01.000', 'D.01.000']) {
-    const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
+    const rowHtml = output.match(new RegExp(`<tr data-location-row="true">(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
     assert.match(rowHtml, /proposal-box[\s\S]*?<strong>H<\/strong>[\s\S]*?proposal-box[\s\S]*?<strong>leaf quality<\/strong>/, `${location} should show the requested row values`);
   }
   for (const location of ['A.01.000', 'E.01.000', 'F.01.000']) {
-    const rowHtml = output.match(new RegExp(`<tr>(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
+    const rowHtml = output.match(new RegExp(`<tr data-location-row="true">(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
     assert.doesNotMatch(rowHtml, /proposal-box/, `${location} should remain unchanged`);
   }
 });
@@ -571,7 +725,7 @@ test('workflow V3 accepts LOCATIONPTN1 and Location Note alone and stamps the no
   }, new Date('2026-09-01T16:00:00Z'));
   assert.equal(model.requestActionLabel, 'Location Detail Update');
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  assert.match(output, /LOCATIONPTN1/);
+  assert.match(output, /Loc PTN1/);
   assert.match(output, /proposal-box[\s\S]*New PTN/);
   assert.match(output, /proposal-box[\s\S]*New location note/);
   assert.doesNotMatch(output, /PROPOSED/i);
@@ -632,7 +786,7 @@ test('both movement proposals share the original OH cell and remain boxed in gra
     editSummary: { rowCount: 1, fieldCount: 4 },
   };
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  assert.match(output, /<strong class="original-oh">800<\/strong>[\s\S]*?UP 40 TO F1[\s\S]*?DOWN 20 TO S1/);
+  assert.match(output, /<strong class="original-oh">800<\/strong>[\s\S]*?40--&gt;F1[\s\S]*?20--&gt;S1/);
   assert.equal((output.match(/proposal-box proposal-box-movement/g) || []).length, 2, 'both requested movements must be boxed');
   assert.doesNotMatch(output, /PROPOSED/i);
   assert.match(output, /box-shadow:inset 0 0 0 1px #000/);
@@ -751,7 +905,7 @@ test('every Hold/Stop action combines with priority, move and recount on the sam
   }
 });
 
-test('approved pilot sender is removed and the live Reclass handler accepts V3 before V2 compatibility', () => {
+test('approved pilot sender is removed and the live Reclass handler accepts V7 plus V2–V6 compatibility', () => {
   const handlerStart = code.indexOf('function deliverReclassInquiryPayload_');
   const handlerEnd = code.indexOf('function handleInventoryTransaction_', handlerStart);
   const handler = code.slice(handlerStart, handlerEnd);
@@ -760,6 +914,7 @@ test('approved pilot sender is removed and the live Reclass handler accepts V3 b
   assert.doesNotMatch(code, /function sendReclassInquiryCompactPilotEmails/);
   assert.doesNotMatch(doPost, /compact_pilot|sendReclassInquiryCompactPilotEmails/);
   assert.match(handler, /buildReclassInquiryActionRowsV3_/);
+  assert.match(handler, /RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_/);
   assert.match(handler, /buildReclassInquiryActionRowsV2_/);
   assert.match(handler, /buildReclassInquiryCompactReportHtml_\(model, true\)/);
   assert.match(handler, /workflowPolicyVersion/);
@@ -769,7 +924,9 @@ test('approved pilot sender is removed and the live Reclass handler accepts V3 b
   assert.match(handler, /allowEmptyActions: allowLocationDetailOnly/);
   assert.match(handler, /LOCATION_DETAIL_CHANGE_REQUIRED/);
   assert.match(handler, /fetchReclassInquiryScopeSettingsV3_/);
-  assert.match(handler, /scope: overlayResult\.scope/);
+  assert.match(handler, /scope: isV6 \|\| isV7 \? \{\} : \(overlayResult\.scope \|\| \{\}\)/);
+  assert.match(handler, /getProtectedInventoryFieldDeliveryV7_/);
+  assert.match(handler, /buildProtectedInventoryFieldReportRowsV7_/);
   assert.match(handler, /const subject = buildReclassInquiryEmailSubject_\(model\)/);
 });
 
@@ -885,14 +1042,19 @@ test('every live Reclass row shows direct actions and progressively disclosed re
   const builder = html.slice(start, end);
   assert.match(builder, /data-reclass-v3-action/);
   assert.match(builder, /toggleArgosReclassV3Action/);
-  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V3_ORDER\.map/);
+  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.map/);
   assert.match(html, /<span>Hold code<\/span>/);
   assert.match(html, /<span>Hold reason<\/span>/);
-  assert.match(html, /Inquiry-wide request:/);
-  assert.match(builder, /Location details \(optional\)/);
-  assert.match(builder, /data-reclass-temporary-field="locationptn1"/);
-  assert.match(builder, /data-reclass-temporary-field="locationnote"/);
-  assert.match(builder, /send either field by itself/);
+  assert.match(html, /function renderArgosReclassHoldScopeNotice/);
+  assert.match(html, /The selected row receives the Hold \/ Stop request/);
+  assert.match(html, /the server determines that scope/);
+  assert.match(builder, /Inventory fields \(optional\)/);
+  assert.match(builder, /renderArgosReclassInventoryFields\(safeEntry\)/);
+  const inventoryFieldsStart = html.indexOf('function renderArgosReclassInventoryFields');
+  const inventoryFieldsEnd = html.indexOf('function handleArgosReclassTemporaryFieldInput', inventoryFieldsStart);
+  const inventoryFields = html.slice(inventoryFieldsStart, inventoryFieldsEnd);
+  assert.match(inventoryFields, /data-reclass-temporary-field="\$\{field\.key\}"/);
+  assert.match(inventoryFields, /Yes retains existing data or inserts your initials when blank/);
   assert.doesNotMatch(builder, /data-reclass-action-included/);
   assert.match(html, /\.argos-reclass-action-btn\{min-height:2\.75rem;border:1px solid #cbd5e1/);
 });
@@ -913,6 +1075,7 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
     document: {querySelectorAll:()=>[input,mirror,otherAction]},
     getArgosReclassV3Proposal: () => proposal,
     getArgosReclassV3HoldProposal: () => proposal,
+    markArgosReclassProposalEdited: () => {},
     RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
     captureEvalWorkLocalDraftSoon: () => {},
   };
@@ -927,7 +1090,7 @@ test('Reclass editor lowercases Hold/Stop reasons immediately and in the outgoin
   const collectorStart = html.indexOf('function collectArgosReclassV3Draft');
   const collectorEnd = html.indexOf('function buildArgosInventoryTransactionPayload', collectorStart);
   assert.match(html.slice(collectorStart, collectorEnd), /globalHoldProposal\.reason \|\| ''\)\.trim\(\)\.toLowerCase\(\)/);
-  assert.match(html, /The code and reason appear in the PDF and apply to every eligible row/);
+  assert.match(html, /The selected row is the origin\. The server determines whether matching rows in the configured season\/year scope are also affected/);
 });
 
 test('Reclass send path contains no inventory, audit, History, cache-row, or live-event write', () => {
@@ -980,7 +1143,7 @@ test('Reclass client guards recipient selection and retains background drafts un
   const statusStart = html.indexOf('function readReclassDeliveryJobs');
   const statusEnd = html.indexOf('async function postArgosInventoryTransactionPayload', statusStart);
   const status = html.slice(statusStart, statusEnd);
-  assert.ok(submit.indexOf('argosInventoryTransactionState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
+  assert.ok(submit.indexOf('submitState.submitting = true') < submit.indexOf('applyArgosInventoryTransactionEmailRecipients'));
   assert.match(submit, /rememberQueuedReclassDelivery/);
   assert.doesNotMatch(submit, /Sending in Background/);
   assert.match(status, /RECLASS_DELIVERY_STORAGE_KEY/);
@@ -995,7 +1158,7 @@ test('Reclass client guards recipient selection and retains background drafts un
   assert.doesNotMatch(status, /Retry Queued/);
 });
 
-test('live Reclass payload uses the V3 policy and independent action proposal arrays', () => {
+test('live non-sheared Reclass payload uses V7 for Hold and Priority edits', () => {
   const buildPayload = loadClientPayloadBuilder({
     'argos-inventory-transaction-qty': '0',
     'argos-inventory-transaction-new-item': 'A1',
@@ -1007,13 +1170,30 @@ test('live Reclass payload uses the V3 policy and independent action proposal ar
   const payload = buildPayload();
   assert.equal(payload.type, 'reclass_inquiry_email');
   assert.deepEqual(Array.from(payload.transaction.requestActions), ['hold', 'priority_change']);
-  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.holdStopProposals)), [{ action: 'hold', reason: 'field review' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.holdStopProposals)), [{ action: 'hold', reason: 'field review', sourceUid: 'u1' }]);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.transaction.scope)), { season: 'F1', salesYear: 2027 });
-  assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v3-row-actions-20260826');
+  assert.equal(payload.workflowPolicyVersion, 'reclass-action-workflow-v7-editable-fields-20261009');
   assert.equal(payload.transaction.quantity, undefined);
   assert.deepEqual(JSON.parse(JSON.stringify(payload.rowOverlays[0].proposals)), [
     { action: 'priority_change', priority: '2' },
   ]);
+});
+
+test('new shear-only and location-detail-only Reclass payloads use V7', () => {
+  const shearDraft = {
+    requestActions: ['sheared'], holdStopProposals: [], scope: {},
+    rowOverlays: [{ unique_id: 'u1', expected: { desigitem: '' }, proposals: [{ action: 'sheared', quantity: 4 }] }],
+  };
+  const shearPayload = loadClientPayloadBuilder({}, shearDraft)();
+  assert.equal(shearPayload.workflowPolicyVersion, 'reclass-action-workflow-v7-editable-fields-20261009');
+
+  const locationOnlyDraft = {
+    requestActions: [], holdStopProposals: [], scope: {},
+    rowOverlays: [{ unique_id: 'u1', expected: {}, proposals: [], temporaryValues: { locationnote: 'Updated note' }, temporaryChangedFields: ['locationnote'] }],
+  };
+  const locationPayload = loadClientPayloadBuilder({}, locationOnlyDraft)();
+  assert.equal(locationPayload.workflowPolicyVersion, 'reclass-action-workflow-v7-editable-fields-20261009');
+  assert.deepEqual(JSON.parse(JSON.stringify(locationPayload.transaction.requestActions)), []);
 });
 
 test('live Reclass payload obtains its validation from the direct-action V3 draft collector', () => {
@@ -1025,6 +1205,8 @@ test('live Reclass payload obtains its validation from the direct-action V3 draf
     argosInventoryTransactionState: { snapshot: {} },
     RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
     RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION: 'reclass-action-workflow-v3-row-actions-20260826',
+    RECLASS_ACTION_WORKFLOW_V4_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION: 'reclass-action-workflow-v4-split-moves-20261006',
     RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
     collectArgosReclassV3Draft: () => { throw new Error('Choose at least one Reclass action inside a Location/Lot row.'); },
     getArgosInventoryTransactionInputValue: () => '',
@@ -1061,4 +1243,318 @@ test('Bloom Picker Order is Dylan-only and optional Productivity schema failure 
   const warning = html.slice(warningStart, warningEnd);
   assert.match(warning, /console\.warn/);
   assert.doesNotMatch(warning, /showToast/);
+});
+
+test('V6 Reclass PDF uses the frozen report rows and marks only server-confirmed hold fanout', () => {
+  const server = loadServerModel();
+  const rows = [
+    { unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1', source: 'LD', season: 'F1', saleyear: '27', ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'sibling', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '26.F1', locationcode: 'B.1', source: 'LD', season: 'F1', saleyear: '26', ptronhand: '8', ptrreviewed: '0', ptravailable: '8', priority: '', holdstopcode: '', holdstopreason: '' },
+    { unique_id: 'other-season', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.S1', locationcode: 'C.1', source: 'LD', season: 'S1', saleyear: '27', ptronhand: '7', ptrreviewed: '0', ptravailable: '7', priority: '', holdstopcode: '', holdstopreason: '' },
+  ];
+  const transaction = {
+    requestActions: ['hold', 'move_down'],
+    holdStopProposals: [{ action: 'hold', reason: 'leaf review', sourceUid: 'origin' }],
+    scope: {},
+  };
+  const overlays = rows.map((row, index) => ({
+    unique_id: row.unique_id,
+    expected: { itemcode: row.itemcode, lotcode: row.lotcode, locationcode: row.locationcode, ptronhand: row.ptronhand, priority: row.priority },
+    proposals: index === 0 ? [{ action: 'move_down', splits: [{ quantity: 2, destinationSeason: 'S1' }], applyHold: false, holdReason: '' }] : [],
+  }));
+  const delivery = server.getProtectedLiveEditDelivery_({
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_,
+    transaction,
+    rowOverlays: overlays,
+    protectedDelivery: {
+      v6FrozenRows: rows,
+      liveEdits: ['origin', 'sibling'].map((unique_id) => ({ unique_id, priority: unique_id === 'origin' ? '3' : null, holdstopcode: 'H', holdstopreason: 'leaf review', av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' })),
+      inventoryRevision: '42',
+      liveEditScope: { holdSourceUid: 'origin', holdFanoutApplied: true, holdFanoutCount: 2, holdFanoutSiblingCount: 1, holdItemcode: 'A1', holdSeason: 'F1', holdSalesYearMax: 2027 },
+    },
+  }, 'origin', transaction, overlays, []);
+  const reportRows = server.buildProtectedLiveEditReportRows_(transaction, rows, overlays, delivery, { now: new Date('2026-10-09T12:00:00Z') });
+  assert.equal(reportRows.find((row) => row.unique_id === 'origin').values.holdstopcode, 'H');
+  assert.equal(reportRows.find((row) => row.unique_id === 'sibling').values.holdstopreason, 'leaf review');
+  assert.equal(reportRows.find((row) => row.unique_id === 'other-season').values.holdstopcode, '');
+  assert.ok(reportRows.find((row) => row.unique_id === 'other-season').changedFields.length === 0);
+  const liveEditSummary = server.buildProtectedLiveEditSummary_(delivery, transaction);
+  assert.equal(liveEditSummary.scopeNote, 'Same item A1 | F1 | sales year <= 27 | 2 rows in scope');
+  const reportPayload = { workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_, transaction, liveEditSummary, actor: { display: 'Tester' } };
+  const model = server.buildReclassInquiryReportModel_(rows[0], rows, reportRows, reportPayload, new Date('2026-10-09T12:00:00Z'));
+  const htmlOutput = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(htmlOutput, /Confirmed priority \/ Hold \/ Stop values were applied to inventory/);
+  assert.match(htmlOutput, /Same item A1 \| F1 \| sales year &lt;= 27 \| 2 rows in scope/);
+  assert.doesNotMatch(htmlOutput, /Report only; no inventory was changed/);
+  assert.match(server.buildReclassInquiryReportText_(model), /Requested quantity, season, and designation moves remain inquiry proposals/);
+});
+
+test('V6 confirmed Hold clear prints blank values and source-only scope without claiming no inventory change', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1', source: 'LD', season: 'F1', saleyear: '27', ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3', holdstopcode: 'H', holdstopreason: 'leaf review' };
+  const transaction = { requestActions: ['take_off_hold'], holdStopProposals: [{ action: 'take_off_hold', reason: '', sourceUid: 'origin' }], scope: {} };
+  const overlays = [{ unique_id: 'origin', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', priority: '3' }, proposals: [] }];
+  const delivery = server.getProtectedLiveEditDelivery_({
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_, transaction, rowOverlays: overlays,
+    protectedDelivery: { v6FrozenRows: [row], liveEdits: [{ unique_id: 'origin', priority: '3', holdstopcode: null, holdstopreason: null, av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:00:00Z', last_updated: '2026-10-09T12:00:00Z' }], inventoryRevision: '43', liveEditScope: { holdSourceUid: 'origin', holdFanoutApplied: false, holdFanoutCount: 1 } },
+  }, 'origin', transaction, overlays, []);
+  const reportRows = server.buildProtectedLiveEditReportRows_(transaction, [row], overlays, delivery, { now: new Date('2026-10-09T12:00:00Z') });
+  assert.equal(reportRows[0].values.holdstopcode, '');
+  assert.equal(reportRows[0].values.holdstopreason, '');
+  const summary = server.buildProtectedLiveEditSummary_(delivery, transaction);
+  assert.equal(summary.holdCode, '');
+  assert.equal(summary.holdReason, '');
+  assert.equal(summary.scopeNote, 'Selected row only | 1 row in scope');
+  const model = server.buildReclassInquiryReportModel_(row, [row], reportRows, { workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_, transaction, liveEditSummary: summary }, new Date('2026-10-09T12:00:00Z'));
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.match(output, /Confirmed priority \/ Hold \/ Stop values were applied to inventory/);
+  assert.match(output, /Selected row only \| 1 row in scope/);
+  assert.match(output, /\[blank\]/);
+  assert.doesNotMatch(output, /Report only; no inventory was changed/);
+});
+
+test('Reclass PDF keeps master Sales Note distinct from app-owned evidence notes', () => {
+  const server = loadServerModel();
+  for (const [fields, expected] of [
+    [{ salesnote: 'Master sales instructions', sales_note: 'Capture evidence' }, 'Master sales instructions'],
+    [{ salesnote: null, sales_note: 'Capture evidence' }, ''],
+    [{ sales_note: 'Capture evidence', SALES_NOTE: 'Uppercase capture evidence' }, ''],
+  ]) {
+    const row = { unique_id: 'sales-note-origin', itemcode: 'A1', commonname: 'Example', ...fields };
+    const report = server.buildReclassInquiryReportModel_(row, [row], [{ unique_id: row.unique_id, values: {}, changedFields: [] }],
+      { actor: { display: 'Tester' }, transaction: { requestAction: 'move_down' } }, new Date('2026-10-10T06:00:00Z'));
+    assert.equal(report.rows[0].values.salesnote, expected);
+  }
+});
+
+test('V7 Reclass PDF prints frozen editable fields in the main row and preserves the compact movement table', () => {
+  const server = loadServerModel();
+  const row = {
+    unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1',
+    source: 'LD', season: 'F1', saleyear: '27', ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3',
+    holdstopcode: '', holdstopreason: '', locationnote: 'Old note', locationptn1: 'PTN old', desigitem: 'ITEM-OLD',
+    desigcust: 'Customer old', desigloc: 'Location old', pullerresponsibility: 'Puller old', oversellpercentage: '5',
+    salesnote: 'Sales old', suspend: '',
+  };
+  const fields = server.RECLASS_INQUIRY_V7_EDITABLE_FIELDS_;
+  const before = Object.fromEntries(fields.map((field) => [field, row[field]]));
+  const after = {
+    ...before, locationnote: 'New note', locationptn1: 'PTN new', desigitem: 'ITEM-NEW',
+    desigcust: 'Customer new', desigloc: 'Location new', pullerresponsibility: 'Puller new',
+    oversellpercentage: '7', salesnote: 'Sales new', suspend: 'AB',
+  };
+  const changedFields = fields.slice();
+  const transaction = { requestActions: ['inventory_fields', 'priority_change', 'move_down'], holdStopProposals: [], scope: {} };
+  const overlays = [{
+    unique_id: 'origin',
+    expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', priority: '3' },
+    proposals: [
+      { action: 'priority_change', priority: '2' },
+      { action: 'move_down', splits: [{ quantity: 2, destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
+    ],
+    fieldEdits: [],
+  }];
+  const stamps = { prisetby: 'AB', priupdated: '10/9/2026', locationnotedate: '10/9/2026', evaldate: '10/9/2026' };
+  const payload = {
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_,
+    transaction,
+    rowOverlays: overlays,
+    protectedDelivery: {
+      v7FrozenRows: [row],
+      liveEdits: [{ unique_id: 'origin', priority: '2', holdstopcode: null, holdstopreason: null,
+        av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:00:00Z', last_updated: '2026-10-09T12:00:00Z' }],
+      inventoryRevision: '46',
+      inventoryFields: [{ unique_id: 'origin', before, after, changedFields, stamps }],
+      v7Scope: { reportStamps: [{ unique_id: 'origin', stamps }] },
+    },
+  };
+  const delivery = server.getProtectedInventoryFieldDeliveryV7_(payload, 'origin', transaction, overlays, []);
+  const extraProjectedField = structuredClone(payload);
+  extraProjectedField.protectedDelivery.inventoryFields[0].after.audit_note = 'not part of the V7 projection';
+  assert.throws(() => server.getProtectedInventoryFieldDeliveryV7_(extraProjectedField, 'origin', transaction, overlays, []), /PROTECTED_INVENTORY_FIELD_RESULT_INVALID/);
+  const missingReportStamp = structuredClone(payload);
+  missingReportStamp.protectedDelivery.v7Scope.reportStamps = [];
+  assert.throws(() => server.getProtectedInventoryFieldDeliveryV7_(missingReportStamp, 'origin', transaction, overlays, []), /PROTECTED_INVENTORY_FIELD_REPORT_STAMPS_INVALID/);
+  const reportRows = server.buildProtectedInventoryFieldReportRowsV7_(transaction, delivery.rows, overlays, delivery, { now: new Date('2026-10-09T12:00:00Z') });
+  const reportPayload = {
+    ...payload,
+    v7InventoryFields: delivery.inventoryFields,
+    v7ReportStamps: delivery.reportStamps,
+    liveEditSummary: server.buildProtectedLiveEditSummary_(delivery.liveDelivery, transaction),
+    actor: { display: 'Tester' },
+  };
+  const model = server.buildReclassInquiryReportModel_(row, delivery.rows, reportRows, reportPayload, new Date('2026-10-09T12:00:00Z'));
+  const output = server.buildReclassInquiryCompactReportHtml_(model, true);
+  assert.equal(reportRows[0].values.salesnote, 'Sales new');
+  assert.equal(reportRows[0].values.priority, '2');
+  assert.match(model.requestActionLabel, /Inventory Fields Updated/);
+  for (const label of ['Loc Note', 'Loc PTN1', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS']) {
+    assert.match(output, new RegExp(label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+  assert.match(output, /New note/);
+  assert.match(output, /Yes - AB/);
+  assert.match(output, /<td class="edited-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
+  assert.match(output, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
+  assert.match(output, /2--&gt;S1/);
+  assert.match(output, /By AB \| Eval 10\/9\/2026 \| Updated 10\/9\/2026/);
+  assert.match(output, /<div class="meta"><strong>Submitted:<\/strong>[^<]+&nbsp; <strong>By:<\/strong> Tester<\/div>/);
+  assert.doesNotMatch(output, /Confirmed Inventory Fields|v7-inventory-fields|<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
+  assert.doesNotMatch(output, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
+  assert.doesNotMatch(output, /PGC|Plant Grp|PLANT GRP|Brand Label|Int Inv Note/);
+  const clearBefore = Object.fromEntries(fields.map((field) => [field, field === 'suspend' ? 'H' : '']));
+  const clearAfter = { ...clearBefore, suspend: null };
+  const clearHtml = server.buildReclassInquiryInventoryFieldHtml_({
+    unique_id: 'clear-row', values: { suspend: '' }, changedFields: ['suspend'],
+    v7InventoryFields: { before: clearBefore, after: clearAfter, changedFields: ['suspend'], stamps },
+  }, 'suspend');
+  assert.match(clearHtml, /<s>H<\/s>/);
+  assert.match(clearHtml, /\[blank\]/);
+});
+
+test('V7 queued delivery renders the protected payload and uses its frozen recipient list', () => {
+  const server = loadServerModel();
+  const row = {
+    unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1',
+    source: 'LD', season: 'F1', saleyear: '27', ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3',
+    holdstopcode: null, holdstopreason: null, locationnote: 'Before', locationptn1: null, desigitem: null, desigcust: null,
+    desigloc: null, pullerresponsibility: null, oversellpercentage: null, salesnote: null, suspend: null,
+  };
+  const fields = server.RECLASS_INQUIRY_V7_EDITABLE_FIELDS_;
+  const before = Object.fromEntries(fields.map((field) => [field, row[field]]));
+  const after = { ...before, locationnote: 'Confirmed' };
+  const stamps = { prisetby: 'AB', priupdated: '10/9/2026', locationnotedate: '10/9/2026', evaldate: '10/9/2026' };
+  const sent = [];
+  server.fetchEmailApprovalMasterRow_ = () => { throw new Error('V7 delivery must use frozen rows'); };
+  server.fetchReclassInquiryItemRows_ = () => { throw new Error('V7 delivery must use frozen rows'); };
+  server.validateInventoryTransactionSourceIdentity_ = (frozen, source) => assert.equal(frozen.unique_id, source.unique_id);
+  server.dedupeEmailAddresses_ = (values) => values;
+  server.getReclassInquiryEmailRecipients_ = () => { throw new Error('V7 delivery must use frozen recipients'); };
+  server.isGmailAdvancedServiceAvailable_ = () => true;
+  server.resolveAutomatedEmailSenderAddress_ = () => 'app@example.invalid';
+  server.sendGmailApiMessage_ = (message) => { sent.push(message); return { id: 'gmail-message' }; };
+  const transaction = { requestActions: ['inventory_fields'], holdStopProposals: [], scope: {} };
+  const payload = {
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    actor: { display: 'Tester', username: 'tester' },
+    workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_, transaction,
+    rowOverlays: [{ unique_id: 'origin', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' }, proposals: [], fieldEdits: [{ field: 'locationnote', expected: 'Before', value: 'Confirmed' }] }],
+    protectedDelivery: {
+      v7FrozenRows: [row], liveEdits: [{ unique_id: 'origin', priority: '3', holdstopcode: null, holdstopreason: null,
+        av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' }],
+      inventoryRevision: '48', inventoryFields: [{ unique_id: 'origin', before, after, changedFields: ['locationnote'], stamps }],
+      v7Scope: { reportStamps: [{ unique_id: 'origin', stamps }] },
+    },
+  };
+  const result = server.deliverReclassInquiryPayload_(payload, '<thread-1@example.invalid>', ['frozen@example.invalid']);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].toList, 'frozen@example.invalid');
+  assert.equal(sent[0].messageIdHeader, '<thread-1@example.invalid>');
+  assert.equal(result.policyVersion, server.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_);
+  assert.match(sent[0].attachments[0].htmlOutput, /Confirmed/);
+  assert.match(result.message, /Confirmed editable inventory fields/);
+});
+
+test('protected live-edit snapshots fail closed for missing, duplicate, and incomplete rows', () => {
+  const server = loadServerModel();
+  const row = { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' };
+  const transaction = { requestActions: ['priority_change'], holdStopProposals: [], scope: {} };
+  const overlays = [{ unique_id: 'origin', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' }, proposals: [{ action: 'priority_change', priority: '2' }] }];
+  const makePayload = (rows, edits = [{ unique_id: 'origin', priority: '2', holdstopcode: null, holdstopreason: null, av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' }]) => ({
+    protectedDelivery: { v6FrozenRows: rows, liveEdits: edits, inventoryRevision: '44', liveEditScope: {} },
+  });
+  assert.throws(() => server.getProtectedLiveEditDelivery_(makePayload([]), 'origin', transaction, overlays, []), /PROTECTED_LIVE_EDIT_SNAPSHOT_INVALID/);
+  assert.throws(() => server.getProtectedLiveEditDelivery_(makePayload([row, row]), 'origin', transaction, overlays, []), /PROTECTED_LIVE_EDIT_ROWS_INVALID/);
+  assert.throws(() => server.getProtectedLiveEditDelivery_(makePayload([row], [{ unique_id: 'origin', priority: '2' }]), 'origin', transaction, overlays, []), /PROTECTED_LIVE_EDIT_RESULT_INVALID/);
+});
+
+test('Eval completion PDF uses the frozen V6 rows and confirmed live edits without rereading mutable inventory', () => {
+  const server = loadEvalServerModel();
+  const row = {
+    unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3',
+    lotcode: '27.F1', locationcode: 'A.1', source: 'LD', season: 'F1', saleyear: '27',
+    ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3',
+    holdstopcode: '', holdstopreason: '', av_rule_last_clear_reason: null, av_rule_last_cleared_at: null,
+  };
+  const transaction = { requestActions: ['priority_change'], holdStopProposals: [], scope: {} };
+  const overlays = [{
+    unique_id: 'origin',
+    expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', priority: '3', holdstopcode: '', holdstopreason: '' },
+    proposals: [{ action: 'priority_change', priority: '2' }],
+  }];
+  const model = server.buildEvalWorkReportModel_({
+    contractVersion: 'eval-work-v1', deliveryKind: 'completion', evalWorkId: 'eval-1',
+    assigneeDisplay: 'Evaluator', assigneeUsername: 'evaluator',
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    inquiry: {
+      workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_,
+      source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+      transaction, rowOverlays: overlays,
+    },
+    protectedDelivery: {
+      v6FrozenRows: [row],
+      liveEdits: [{ unique_id: 'origin', priority: '2', holdstopcode: null, holdstopreason: null,
+        av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' }],
+      inventoryRevision: '45',
+      liveEditScope: { holdFanoutApplied: false, holdFanoutCount: 0 },
+    },
+  });
+
+  assert.equal(model.rows.find((entry) => entry.unique_id === 'origin').values.priority, '2');
+  assert.equal(model.liveEditSummary.inventoryRevision, '45');
+  assert.equal(model.liveEditSummary.priorityCount, 1);
+  assert.equal(model.evalWork.deliveryKind, 'completion');
+});
+
+test('Eval V7 completion consumes protected editable-field snapshots and report stamps', () => {
+  const server = loadEvalServerModel();
+  const row = {
+    unique_id: 'origin', itemcode: 'A1', commonname: 'Example', contsize: '#3', lotcode: '27.F1', locationcode: 'A.1',
+    source: 'LD', season: 'F1', saleyear: '27', ptronhand: '10', ptrreviewed: '0', ptravailable: '10', priority: '3',
+    holdstopcode: null, holdstopreason: null, locationnote: 'Before', locationptn1: null, desigitem: null, desigcust: null,
+    desigloc: null, pullerresponsibility: null, oversellpercentage: null, salesnote: null, suspend: null,
+  };
+  const fields = server.RECLASS_INQUIRY_V7_EDITABLE_FIELDS_;
+  const before = Object.fromEntries(fields.map((field) => [field, row[field]]));
+  const after = { ...before, locationnote: 'Confirmed' };
+  const stamps = { prisetby: 'AB', priupdated: '10/9/2026', locationnotedate: '10/9/2026', evaldate: '10/9/2026' };
+  const overlay = {
+    unique_id: 'origin', expected: { itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1', ptronhand: '10', priority: '3' },
+    proposals: [], fieldEdits: [{ field: 'locationnote', expected: 'Before', value: 'Confirmed' }],
+  };
+  const model = server.buildEvalWorkReportModel_({
+    contractVersion: 'eval-work-v1', deliveryKind: 'completion', evalWorkId: 'eval-v7', assigneeDisplay: 'Evaluator', assigneeUsername: 'evaluator',
+    source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+    inquiry: {
+      workflowPolicyVersion: server.RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_, source: { unique_id: 'origin', itemcode: 'A1', lotcode: '27.F1', locationcode: 'A.1' },
+      transaction: { requestActions: ['inventory_fields'], holdStopProposals: [], scope: {} }, rowOverlays: [overlay],
+    },
+    protectedDelivery: {
+      v7FrozenRows: [row],
+      liveEdits: [{ unique_id: 'origin', priority: '3', holdstopcode: null, holdstopreason: null,
+        av_rule_last_clear_reason: null, av_rule_last_cleared_at: null, last_updated: '2026-10-09T12:00:00Z' }],
+      inventoryRevision: '47', inventoryFields: [{ unique_id: 'origin', before, after, changedFields: ['locationnote'], stamps }],
+      v7Scope: { reportStamps: [{ unique_id: 'origin', stamps }] },
+    },
+  });
+  assert.equal(model.rows.find((entry) => entry.unique_id === 'origin').values.locationnote, 'Confirmed');
+  assert.match(model.requestActionLabel, /Inventory Fields Updated/);
+  assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /Confirmed/);
+  assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /<td class="edited-cell" data-edited="true"><span class="proposal-box"><strong>10\/9\/2026<\/strong><\/span><\/td>/);
+});
+
+test('Item Inquiry repairs mojibake common names for display without mutating source inventory', () => {
+  const server = loadServerModel();
+  const source = {
+    unique_id: 'unicode-row', itemcode: 'A1', commonname: 'CafÃ©植物 🌿', contsize: '#3',
+    lotcode: '27.F1', locationcode: 'A.1', source: 'LD', season: 'F1', saleyear: '27',
+  };
+  const model = server.buildReclassInquiryReportModel_(source, [source], [], {
+    transaction: { requestActions: ['priority_change'] }, actor: { display: 'Tester' },
+  }, new Date('2026-10-09T12:00:00Z'));
+  assert.equal(model.identity.commonname, 'Café植物 🌿');
+  assert.match(server.buildReclassInquiryCompactReportHtml_(model, true), /Café植物 🌿/);
+  assert.equal(source.commonname, 'CafÃ©植物 🌿', 'the repair is presentation-only and does not rewrite the imported row');
 });

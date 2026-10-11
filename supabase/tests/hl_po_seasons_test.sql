@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Disposable local/CI fixture. Exercise real command bodies; roll back all data.
 begin;
 create temporary table hl_checks(id integer generated always as identity,description text) on commit drop;

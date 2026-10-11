@@ -1,3 +1,4 @@
+// @test-group: eval
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -74,7 +75,7 @@ test('every origin has isolated evidence and exact-row photo scope', () => {
   assert.match(exactUpdate, /spec = spec_value/);
   assert.match(exactUpdate, /where unique_id = origin\.unique_id/);
   assert.doesNotMatch(exactUpdate, /priority\s*=|holdstopcode\s*=|holdstopreason\s*=|ptronhand\s*=|season\s*=/i);
-  assert.match(appApi, /p_evidence_by_origin: evidence/);
+  assert.match(appApi, /p_evidence_by_origin: jsonValue\(evidence\)/);
   assert.match(appApi, /requiredPrefix = isV2 \? `eval\/\$\{workId\}\/\$\{originUid\}\//);
   assert.match(html, /same exact-row Pictures &amp; Specs work used by Request and Drive Mode/);
   assert.match(html, /class="eval-work-detail-tabs"[\s\S]*Pictures &amp; Specs[\s\S]*Item Inquiry/);

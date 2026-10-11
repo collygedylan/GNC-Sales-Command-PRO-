@@ -4,7 +4,7 @@ const SUCCESS_SAMPLE_RATE = 0.01;
 function normalizeErrorCode(value: unknown) {
   const source = value && typeof value === "object" ? value as Record<string, unknown> : {};
   const message = String(source.message || (value instanceof Error ? value.message : ""));
-  const messageToken = message.match(/\b(?:eval_work|request|drive|pikes)_[a-z0-9_]+\b/i)?.[0] || "";
+  const messageToken = message.match(/\b(?:eval_work|request|drive|pikes|av_read)_[a-z0-9_]+\b/i)?.[0] || "";
   const candidate = value instanceof Error
     ? (messageToken || value.name)
     : (source.code || messageToken || "unknown_error");
@@ -26,6 +26,8 @@ function emitLog(level: "info" | "error", value: Record<string, unknown>) {
       error_code: value.error_code,
       sqlstate: value.sqlstate,
       timeout_stage: value.timeout_stage,
+      dataset: value.dataset,
+      denial_stage: value.denial_stage,
       truncated: true,
     });
   }
@@ -37,8 +39,15 @@ export function recordHandledError(
   action: string,
   error: unknown,
   status = 500,
-  diagnostics: { requestId?: string; durationMs?: number; sqlState?: string | null; timeoutStage?: string | null } = {},
+  diagnostics: {
+    requestId?: string; durationMs?: number; sqlState?: string | null; timeoutStage?: string | null;
+    dataset?: string | null; denialStage?: string | null;
+  } = {},
 ) {
+  const dataset = ["reserves", "notes", "hot_prices", "settings"].includes(String(diagnostics.dataset || ""))
+    ? String(diagnostics.dataset) : "";
+  const denialStage = ["authorization", "database", "validation", "upstream"].includes(String(diagnostics.denialStage || ""))
+    ? String(diagnostics.denialStage) : "";
   emitLog("error", {
     request_id: String(diagnostics.requestId || crypto.randomUUID()).slice(0, 96),
     function: String(functionName || "unknown").slice(0, 64),
@@ -50,6 +59,8 @@ export function recordHandledError(
     error_code: normalizeErrorCode(error),
     sqlstate: /^[0-9A-Z]{5}$/.test(String(diagnostics.sqlState || "")) ? diagnostics.sqlState : null,
     timeout_stage: String(diagnostics.timeoutStage || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 40) || null,
+    ...(dataset ? { dataset } : {}),
+    ...(denialStage ? { denial_stage: denialStage } : {}),
     handled: true,
   });
 }
@@ -69,7 +80,7 @@ export async function withObservedRequest(
   functionName: string,
   req: Request,
   handler: () => Promise<Response>,
-  options: { action?: string } = {},
+  options: { action?: string; serverTiming?: boolean } = {},
 ) {
   const requestId = String(req.headers.get("x-request-id") || crypto.randomUUID()).slice(0, 96);
   const startedAt = performance.now();
@@ -95,6 +106,11 @@ export async function withObservedRequest(
     }
     const headers = new Headers(response.headers);
     headers.set("x-request-id", requestId);
+    // Opt-in aggregate handler time separates API work from gateway/transport
+    // delay without exposing queries, identities, or database contents.
+    if (options.serverTiming) {
+      headers.append("Server-Timing", `app;dur=${Math.max(0, performance.now() - startedAt).toFixed(1)}`);
+    }
     return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
   } catch (error) {
     emitLog("error", {
@@ -114,6 +130,7 @@ export async function withObservedRequest(
         "Cache-Control": "private, no-store",
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Max-Age": "86400",
+        ...(options.serverTiming ? { "Server-Timing": `app;dur=${Math.max(0, performance.now() - startedAt).toFixed(1)}` } : {}),
       },
     });
   }

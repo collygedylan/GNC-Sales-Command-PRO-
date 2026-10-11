@@ -1,3 +1,4 @@
+// @test-group: playwright-setup
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { prepareCiPlaywrightApt, validateChromeSource, validateChromeDeb822Source, prepareCiUbuntuMirrors, withoutAzureUbuntuMirror } from '../scripts/prepare-ci-playwright-apt.mjs';

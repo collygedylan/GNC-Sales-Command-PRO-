@@ -6,12 +6,14 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
 } from '../scripts/apply-item-low-stock-migration.mjs';
 import { perennialPreviewSql, runPerennialAssignmentPreview, getPerennialPreviewFailure } from '../scripts/preview-perennial-assignment.mjs';
+import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
+import { discoverTests } from '../scripts/test-discovery.mjs';
 
 test('migration target is the configured Supabase project and never a browser key', () => {
   const api='https://testproject.supabase.co';
@@ -25,11 +27,106 @@ test('migration target is the configured Supabase project and never a browser ke
   assert.throws(()=>validateDatabaseTarget('postgresql://postgres:example@db.testproject.supabase.co/postgres?sslmode=disable',api),/TLS_REQUIRED/);
 });
 
+test('mapping publication is release-registered and protects raw source data and writes', () => {
+  assert.ok(releaseDatabaseMigrations.includes(customerRepMappingMigrationName));
+  assert.ok(releaseDatabaseMigrations.indexOf(customerRepMappingMigrationName) < releaseDatabaseMigrations.indexOf(bunchAutoCompletionMigrationName));
+  const query = migrationContractQuery(customerRepMappingMigrationName);
+  assert.match(query, /customer_rep_mapping_manage_v1\(uuid,text,jsonb\)/);
+  assert.match(query, /finalize_customer_rep_mapping_import_v1\(uuid\)/);
+  assert.match(query, /require_active_customer_mapping_for_request_v1/);
+  assert.match(query, /require_active_customer_mapping_for_request_update_v1/);
+  assert.match(query, /not has_column_privilege\('authenticated'.*'raw_data','select'\)/);
+  assert.match(query, /not has_function_privilege\('anon'.*finalize_customer_rep_mapping_import_v1/);
+  assert.match(query, /as installed/);
+});
+
+test('mapping finalizer timeout is function-scoped and retains trusted importer ACLs', () => {
+  assert.equal(releaseDatabaseMigrations.at(-4), customerRepMappingFinalizeTimeoutMigrationName);
+  const query = migrationContractQuery(customerRepMappingFinalizeTimeoutMigrationName);
+  assert.match(query, /statement_timeout=55s/);
+  assert.match(query, /has_function_privilege\('service_role'.*finalize_customer_rep_mapping_import_v1/);
+  assert.match(query, /not has_function_privilege\('authenticated'.*finalize_customer_rep_mapping_import_v1/);
+  assert.match(query, /not has_function_privilege\('anon'.*finalize_customer_rep_mapping_import_v1/);
+});
+
+test('historical requests reporting is registered with a protected user-bound RPC contract', () => {
+  assert.equal(releaseDatabaseMigrations.at(-3), historicalRequestsMigrationName);
+  const query = migrationContractQuery(historicalRequestsMigrationName);
+  for (const marker of ['historical_requests_read_v1(jsonb)', 'statement_timeout=10s',
+    'historical_requests_number_v1(text)', 'historical-requests',
+    "private.navigation_module_allowed_v1(actor_id,''historical-requests'')"]) {
+    assert.ok(query.includes(marker), marker);
+  }
+  assert.match(query, /has_function_privilege\('authenticated'.*historical_requests_read_v1/);
+  assert.match(query, /not has_function_privilege\('anon'.*historical_requests_read_v1/);
+  assert.match(query, /not has_function_privilege\('service_role'.*historical_requests_read_v1/);
+});
+
+test('Aura SOC reads are release-registered with authenticated actor and scope guards', () => {
+  assert.equal(releaseDatabaseMigrations.at(-1), auraVoiceSocReadsMigrationName);
+  const query = migrationContractQuery(auraVoiceSocReadsMigrationName);
+  for (const marker of ['aura_voice_context_v1()', 'aura_voice_soc_read_v1(text,jsonb,jsonb,integer)',
+    'socReserves', 'socOpenOrders', 'requestedVariants', 'expectedSettingRevision',
+    'candidateChoicesTruncated', "navigation_module_allowed_v1(p_actor_id,''reserves'')",
+    "navigation_module_allowed_v1(p_actor_id,''docks'')"]) assert.ok(query.includes(marker), marker);
+  assert.match(query, /has_function_privilege\('authenticated'.*aura_voice_soc_read_v1/);
+  assert.match(query, /not has_function_privilege\('anon'.*aura_voice_soc_read_v1/);
+  assert.match(query, /not has_function_privilege\('service_role'.*aura_voice_soc_read_v1/);
+});
+
 test('handover release requires an armed minute job or an already completed Auth ban', () => {
   const query = migrationContractQuery(scheduledHandoverMigrationName);
   assert.match(query, /completed_at is not null and auth_banned_at is not null/);
   assert.match(query, /jobname='scheduled_handover_kayla_nelly_20261002' and active and schedule='\* \* \* \* \*'/);
   assert.match(query, /command='select private\.scheduled_handover_dispatch_v1\(\);'/);
+});
+
+test('approved SQL repair contracts verify every repaired body and retain restricted execution', () => {
+  assert.deepEqual(releaseDatabaseMigrations.slice(-14), [sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName]);
+  const functions = migrationContractQuery(sqlFunctionCorrectnessRepairsMigrationName);
+  for (const marker of ['inventory_rows.available', 'v_before_state_hash', 'AURA_BUNCH_CREATION_DATE_UNAVAILABLE',
+    "card.row_ids @> (action->''row_ids'')", 'outbox.event_id']) assert.ok(functions.includes(marker), marker);
+  const handover = migrationContractQuery(sqlLintRuntimeContextMigrationName);
+  for (const marker of ['dynamic_row_key,dynamic_before_values', 'shear_entry', 'assignment_entry',
+    'app.scheduled_handover_default_owner', 'gnc-reconcile-eval-itemcodes-v2']) assert.ok(handover.includes(marker), marker);
+  for (const query of [functions, handover]) {
+    assert.match(query, /not has_function_privilege\('anon'/);
+    assert.match(query, /not has_function_privilege\('authenticated'/);
+    assert.match(query, /has_function_privilege\('service_role'/);
+  }
+});
+test('Smart Shield V6 migration is release-registered with semantic and ACL probes', () => {
+  assert.equal(releaseDatabaseMigrations.indexOf(reclassSmartShieldMigrationName), releaseDatabaseMigrations.indexOf(reclassShearedMigrationName) + 1);
+  const v5 = migrationContractQuery(reclassShearedMigrationName);
+  assert.match(v5, /private\.submit_eval_work_v1_v5_impl/);
+  assert.match(v5, /private\.submit_eval_work_v2_v5_impl/);
+  assert.match(v5, /to_regprocedure\('private\.submit_eval_work_v1_v5_impl\([^)]*\)'\) is null/);
+  assert.match(v5, /to_regprocedure\('private\.submit_eval_work_v2_v5_impl\([^)]*\)'\) is null/);
+  assert.match(v5, /pg_get_functiondef\(to_regprocedure\('private\.submit_eval_work_v1_v5_impl/);
+  assert.match(v5, /pg_get_functiondef\(to_regprocedure\('private\.submit_eval_work_v2_v5_impl/);
+  const query = migrationContractQuery(reclassSmartShieldMigrationName);
+  for (const marker of ['enqueue_drive_reclass_inquiry_v6', 'submit_manager_season_priority_v2',
+    'guard_ph_master_inventory_priority_hold_v1', 'aaa_ph_master_inventory_priority_hold_shield',
+    'ph_master_inventory_app_edits', 'ph_master_inventory_source_baselines',
+    'v6FrozenRows', 'liveEdits', 'eval_work_smart_shield_v6_to_v5']) assert.ok(query.includes(marker), marker);
+  assert.match(query, /not has_function_privilege\('anon'/);
+  assert.match(query, /not has_function_privilege\('authenticated'/);
+  assert.match(query, /has_function_privilege\('service_role'/);
+  assert.match(query, /not has_table_privilege\('service_role'.*ph_master_inventory_app_edits/);
+});
+
+test('raw importer acknowledgment follows V6 and probes the live trigger and restricted policy', () => {
+  assert.equal(releaseDatabaseMigrations.indexOf(smartShieldRawImportMigrationName), releaseDatabaseMigrations.indexOf(reclassSmartShieldMigrationName) + 1);
+  const query = migrationContractQuery(smartShieldRawImportMigrationName);
+  for (const marker of ['x-gnc-master-tuple-policy', 'raw-priority-hold-v1', 'raw_master_tuple',
+    "tgrelid='public.ph_master_inventory'::regclass", "tgenabled='O'",
+    "tgfoid='private.guard_ph_master_inventory_priority_hold_v1()'::regprocedure"]) {
+    assert.ok(query.includes(marker), marker);
+  }
+  for (const role of ['anon', 'authenticated', 'service_role']) {
+    assert.ok(query.includes(`not has_function_privilege('${role}','private.guard_ph_master_inventory_priority_hold_v1()','execute')`));
+    assert.ok(query.includes(`not has_function_privilege('${role}','private.rearm_approved_hold_clear_shields_v1()','execute')`));
+  }
 });
 test('Postgres client pins the Supabase CA and ignores URI TLS overrides while preserving connection identity', () => {
   const api='https://testproject.supabase.co';
@@ -112,8 +209,9 @@ test('Production Schedule migration applies additively after an older consolidat
 });
 
 test('release migration sources satisfy the atomic production runner contract', () => {
-  for (const name of [productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName]) {
-    const source = fs.readFileSync(new URL(`../supabase/migrations/${name}`, import.meta.url), 'utf8');
+  for (const name of releaseDatabaseMigrations) {
+    const directory = [migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName].includes(name) ? 'archive_migrations' : 'migrations';
+    const source = fs.readFileSync(new URL(`../supabase/${directory}/${name}`, import.meta.url), 'utf8');
     const body = migrationBody(source);
     assert.ok(body.trim().length > 0, `${name} contains a migration body`);
     assert.doesNotMatch(body, /^\s*(?:begin|commit)\s*;/i, `${name} has one outer transaction`);
@@ -139,7 +237,12 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName,auraVoiceRoleAccessMigrationName,auraVoiceSocReadsMigrationName]);
+  assert.match(migrationContractQuery(reclassShearedMigrationName),/enqueue_drive_reclass_inquiry_v5/);
+  assert.match(migrationContractQuery(reclassShearedMigrationName),/quantity_text/);
+  assert.match(migrationContractQuery(auraCommonNamePriorityMigrationName),/common_score/);
+  assert.match(migrationContractQuery(auraInventoryExplicitProjectionMigrationName),/m\.unique_id,m\.itemcode,m\.commonname/);
+  assert.match(migrationContractQuery(auraVoiceRoleAccessMigrationName),/aura_voice_access_v1/);
   assert.match(migrationContractQuery(perennialAssignmentMigrationName),/reconcile_eval_itemcodes\(uuid\)/);
   assert.match(migrationContractQuery(productionScheduleMigrationName),/production_schedule_start_import_v1/);
   const queries=[];const client={query:async(sql,params)=>{
@@ -168,6 +271,41 @@ test('HR migration contract verifies partitioned labor tables and the scheduled 
   assert.equal(result.status, 'applied');
   assert.ok(calls.some(({ sql }) => sql === 'select hr_schema;'));
   assert.equal(calls.find(({ sql }) => sql.startsWith('insert into supabase_migrations')).params[1], 'aura_hr_command_center_v1');
+});
+
+test('Bunch card release contracts require private RLS storage and a service-only command', async () => {
+  const storage=migrationContractQuery(bunchNoteCardsMigrationName), command=migrationContractQuery(bunchNoteCardCommandsMigrationName);
+  assert.match(storage,/relrowsecurity/);assert.match(storage,/not has_table_privilege\('authenticated'/);
+  assert.match(storage,/bunch_note_batch_v5_cards/);assert.match(command,/bunch_note_card_command_v1/);
+  assert.match(command,/not has_function_privilege\('authenticated'/);assert.match(command,/not has_function_privilege\('anon'/);
+  for(const name of [bunchNoteCardsMigrationName,bunchNoteCardCommandsMigrationName]) {
+    const contract=migrationContractQuery(name),calls=[];
+    const client={query:async(sql,params)=>{calls.push({sql,params});return {rows:sql===contract?[{installed:true}]:[]};}};
+    assert.equal((await applyItemLowStockMigration({client,source:'begin; select 1; commit;',targetMigrationName:name})).status,'applied');
+    assert.ok(calls.some(c=>c.sql===contract));
+  }
+});
+
+test('Reclass split-move V4 release contract is service-only and preserves legacy validation', async () => {
+  const contract = migrationContractQuery(reclassSplitMoveMigrationName);
+  assert.match(contract, /enqueue_drive_reclass_inquiry_v4/);
+  assert.match(contract, /not has_function_privilege\('authenticated'/);
+  assert.match(contract, /validate_eval_work_inquiry_legacy_v1/);
+  const calls = [];
+  const client = { query: async (sql) => { calls.push(sql); return { rows: sql === contract ? [{ installed: true }] : [] }; } };
+  assert.equal((await applyItemLowStockMigration({ client, source: 'begin; select v4; commit;', targetMigrationName: reclassSplitMoveMigrationName })).status, 'applied');
+  assert.ok(calls.includes(contract));
+});
+
+test('Reclass EvalWork submit guards retain service-only entry points and V4 content binding', async () => {
+  const contract = migrationContractQuery(reclassEvalSubmitGuardsMigrationName);
+  assert.match(contract,/submission_request_fingerprint/);
+  assert.match(contract,/submit_eval_work_legacy_v1/);
+  assert.match(contract,/not has_function_privilege\('service_role'/);
+  const calls=[];
+  const client={query:async(sql)=>{calls.push(sql);return {rows:sql===contract?[{installed:true}]:[]};}};
+  assert.equal((await applyItemLowStockMigration({client,source:'begin; select eval_submit_guard; commit;',targetMigrationName:reclassEvalSubmitGuardsMigrationName})).status,'applied');
+  assert.ok(calls.includes(contract));
 });
 
 test('archive-only health repair remains private and fails closed before publication', async () => {
@@ -265,7 +403,7 @@ test('perennial production preview is aggregate only and rolls back its read-onl
     if(sql==='begin read only'||sql==='rollback')return{rows:[]};
     assert.equal(sql,perennialPreviewSql);
     return{rows:[{inventory_revision:'22',inventory_state:'ready',preview_ready:true,itemcode_genus_groups:12,rose_exempt_groups:2,in_zone_policy_groups:3,
-      unresolved_groups:1,outside_groups:6,zoe_active_roster_rows:1,current_owner_changes_estimate:3,
+      unresolved_groups:1,outside_groups:6,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1,current_owner_changes_estimate:3,
       affected_assignments:[{itemcode:'A1',genus:'perennial',previousOwner:'owner1',proposedOwner:'zoe_green',ownerChange:true,
         automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]}]};
   }};
@@ -273,14 +411,14 @@ test('perennial production preview is aggregate only and rolls back its read-onl
   assert.deepEqual(calls,['begin read only',perennialPreviewSql,'rollback']);
   assert.equal(preview.counts.in_zone_policy_groups,3);
   assert.equal(preview.previewMode,'read_only_aggregate');
-  assert.equal(preview.policyActivation,'waits_for_successful_master_import');
+  assert.equal(preview.policyActivation,'requires_complete_snapshot_and_verified_backfill');
   assert.equal(preview.previewReady,true);
   assert.equal(getPerennialPreviewFailure(preview),'');
   assert.deepEqual(preview.affectedAssignments,[{itemcode:'A1',genus:'perennial',previousOwner:'owner1',proposedOwner:'zoe_green',ownerChange:true,
     automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]);
   assert.doesNotMatch(JSON.stringify(preview),/Customer Name/i);
   assert.match(perennialPreviewSql,/135_ROSES/);
-  assert.match(perennialPreviewSql,/D\\.10/);
+  assert.match(perennialPreviewSql,/private\.eval_location_zone/);
   assert.match(perennialPreviewSql,/preview_ready/);
 });
 
@@ -297,13 +435,14 @@ test('password reconciliation is additive and verified before the existing backe
   assert.equal(calls.at(-1).sql, 'commit');
   assert.equal(calls.find(call => call.sql.startsWith('insert into supabase_migrations')).params[1], 'password_change_profile_reconciliation');
   const workflow = fs.readFileSync('.github/workflows/release-database.yml', 'utf8');
-  assert.ok(workflow.includes(passwordReconciliationMigrationName));
-  assert.ok(workflow.includes('password_change_profile_reconciliation_test.sql'));
+  assert.match(workflow, /node scripts\/historical-database-fixture\.mjs/);
+  assert.ok(readHistoricalMigrationManifest().some(entry => entry.destination === passwordReconciliationMigrationName));
+  assert.ok(discoverTests({ group: 'sql-isolated-supabase' }).includes('supabase/tests/password_change_profile_reconciliation_test.sql'));
 });
 test('perennial preview withholds proposed owner details while a master import is partial',async()=>{
   const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'23',inventory_state:'importing',preview_ready:false,
     itemcode_genus_groups:7,rose_exempt_groups:0,in_zone_policy_groups:1,unresolved_groups:2,outside_groups:4,
-    zoe_active_roster_rows:1,current_owner_changes_estimate:1,affected_assignments:[{itemcode:'SHOULD_NOT_ESCAPE'}]}]})};
+    rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1,current_owner_changes_estimate:1,affected_assignments:[{itemcode:'SHOULD_NOT_ESCAPE'}]}]})};
   const preview=await runPerennialAssignmentPreview({client,repositorySha:'b'.repeat(40)});
   assert.equal(preview.previewReady,false);
   assert.deepEqual(preview.affectedAssignments,[]);
@@ -312,7 +451,7 @@ test('perennial preview withholds proposed owner details while a master import i
 test('perennial preview blocks activation when Zoe is inactive for qualifying keys',async()=>{
   const client={query:async sql=>({rows:sql==='begin read only'||sql==='rollback'?[]:[{inventory_revision:'24',inventory_state:'ready',preview_ready:true,
     itemcode_genus_groups:7,rose_exempt_groups:1,in_zone_policy_groups:2,unresolved_groups:1,outside_groups:3,
-    zoe_active_roster_rows:0,current_owner_changes_estimate:2,
+    rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:0,current_owner_changes_estimate:2,
     affected_assignments:[{itemcode:'SECRET-FREE-SYNTHETIC',genus:'perennial',previousOwner:'fixture',proposedOwner:'zoe_green',ownerChange:true,
       automaticAssignment:true,reason:'enforce_perennial_zone_owner'}]}]})};
   const preview=await runPerennialAssignmentPreview({client,repositorySha:'c'.repeat(40)});
@@ -321,9 +460,9 @@ test('perennial preview blocks activation when Zoe is inactive for qualifying ke
   assert.equal(preview.affectedAssignments.length,1,'the failure artifact retains the preview impact for diagnosis');
 });
 test('pre-activation gate requires a valid ready preview and an active Zoe only when policy keys exist',()=>{
-  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:0,zoe_active_roster_rows:0}}),'');
-  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:1,zoe_active_roster_rows:1}}),'');
-  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:'bad',zoe_active_roster_rows:1}}),'PERENNIAL_PREVIEW_RESULT_INVALID');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:0,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:0}}),'');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:1,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1}}),'');
+  assert.equal(getPerennialPreviewFailure({previewReady:true,inventoryState:'ready',counts:{in_zone_policy_groups:'bad',rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0,zoe_active_roster_rows:1}}),'PERENNIAL_PREVIEW_RESULT_INVALID');
 });
 test('SQL errors roll back without committing the migration history', async()=>{
   const calls=[]; const client={query:async(sql)=>{calls.push(sql);if(sql==='select broken;')throw Error('failure');return{rows:[]};}};
@@ -413,4 +552,86 @@ test('cloud rollout verifies the existing release proof before schema and import
   }
   assert.match(workflow,/SUPABASE_DB_URL: \$\{\{ secrets\.SUPABASE_DB_URL \}\}/);
   assert.match(workflow,/SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
+});
+
+
+test('hybrid activation blocks conflicting saved owners and inactive rose owner', () => {
+  const counts = {in_zone_policy_groups:1,zoe_active_roster_rows:1,rose_override_rows:1,mitch_active_roster_rows:1,conflicting_defaults:0};
+  const preview = {previewReady:true,inventoryState:'ready',counts};
+  assert.equal(getPerennialPreviewFailure(preview),'');
+  assert.equal(getPerennialPreviewFailure({...preview,counts:{...counts,conflicting_defaults:1}}),'PERENNIAL_PREVIEW_DEFAULT_CONFLICT');
+  assert.equal(getPerennialPreviewFailure({...preview,counts:{...counts,mitch_active_roster_rows:0}}),'PERENNIAL_PREVIEW_MITCH_INACTIVE');
+  assert.match(perennialPreviewSql,/zone_override_prior_assignedto/);
+  assert.match(perennialPreviewSql,/where a\.present_in_drive/);
+});
+
+test('every release migration probe names the result consumed by the deployment runner', () => {
+  for (const name of releaseDatabaseMigrations) {
+    assert.match(migrationContractQuery(name), /\bas installed\s*$/i, name);
+  }
+});
+
+test('queue removal deployment consumes the probe alias and rolls back a failed contract', async () => {
+  const contract = migrationContractQuery(requestQueueRemoveMigrationName);
+  const resultColumn = contract.match(/\bas\s+(\w+)\s*$/i)?.[1];
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${requestQueueRemoveMigrationName}`, import.meta.url), 'utf8');
+  for (const installed of [true, false]) {
+    const calls = [];
+    const client = { query: async (sql) => {
+      calls.push(sql);
+      return { rows: sql === contract ? [{ [resultColumn]: installed }] : [] };
+    } };
+    const operation = applyItemLowStockMigration({ client, source, targetMigrationName: requestQueueRemoveMigrationName });
+    if (installed) {
+      assert.deepEqual(await operation, { status: 'applied' });
+      assert.equal(calls.at(-1), 'commit');
+    } else {
+      await assert.rejects(operation, /LOW_STOCK_DATABASE_CONTRACT_MISSING/);
+      assert.equal(calls.at(-1), 'rollback');
+      assert.ok(!calls.includes('commit'));
+    }
+  }
+});
+
+test('queue removal migration is ordered after raw importer and has the guarded service-only contract', () => {
+  assert.equal(releaseDatabaseMigrations.indexOf(requestQueueRemoveMigrationName), releaseDatabaseMigrations.indexOf(smartShieldRawImportMigrationName) + 1);
+  assert.equal(releaseDatabaseMigrations.indexOf(requestQueueRemoveMigrationName), releaseDatabaseMigrations.indexOf(smartShieldRawImportMigrationName) + 1);
+  const query = migrationContractQuery(requestQueueRemoveMigrationName);
+  for (const marker of ['ph_request_queue_removal_commands', 'REQUEST_REMOVE_STALE_REVISION',
+    'delete from public.ph_active_request']) assert.ok(query.includes(marker), marker);
+  assert.match(query, /not has_function_privilege\('anon'/);
+  assert.match(query, /not has_function_privilege\('authenticated'/);
+  assert.match(query, /has_function_privilege\('service_role'/);
+  assert.match(query, /not has_table_privilege\('service_role'.*ph_request_queue_removal_commands/);
+  const migration = fs.readFileSync(new URL(`../supabase/migrations/${requestQueueRemoveMigrationName}`, import.meta.url), 'utf8');
+  assert.match(migration, /private\.request_archive_actor_allowed_v1/);
+  assert.match(migration, /REQUEST_REMOVE_IDEMPOTENCY_CONFLICT/);
+  assert.match(migration, /REQUEST_REMOVE_PENDING_REQUIRED/);
+  assert.match(migration, /enable row level security/i);
+  assert.match(migration, /revoke all on private\.ph_request_queue_removal_commands from public, anon, authenticated, service_role/i);
+  assert.match(migration, /grant execute on function public\.request_queue_remove_v1[\s\S]*to service_role/i);
+});
+
+
+test('Prompt 2.5 migration follows Queue removal and restricts the V7 mutation endpoint', () => {
+  assert.equal(releaseDatabaseMigrations.indexOf(prompt25HotfixMigrationName), releaseDatabaseMigrations.indexOf(requestQueueRemoveMigrationName) + 1);
+  const contract = migrationContractQuery(prompt25HotfixMigrationName);
+  assert.match(contract, /enqueue_drive_reclass_inquiry_v7/);
+  assert.match(contract, /not has_function_privilege\('authenticated'/);
+  assert.match(contract, /not has_function_privilege\('anon'/);
+  const source = fs.readFileSync(new URL(`../supabase/migrations/${prompt25HotfixMigrationName}`,import.meta.url),'utf8');
+  assert.match(source,/^begin;/i);
+  assert.match(source,/commit;\s*$/i);
+  assert.equal((source.match(/^begin;\s*$/gmi) || []).length, 1, 'release migration has one atomic transaction');
+  assert.equal((source.match(/^commit;\s*$/gmi) || []).length, 1, 'no partial migration can commit');
+});
+
+test('Smart Shield release probe follows the preserved private V6 Eval wrapper after V7 installation', () => {
+  const query = migrationContractQuery(reclassSmartShieldMigrationName);
+  for (const version of [1, 2]) {
+    assert.ok(query.includes(`private.submit_eval_work_v${version}_v6_impl(uuid,text,integer,jsonb,jsonb,text)`));
+    assert.ok(query.includes(`position('submit_eval_work_v${version}_v6_impl' in pg_get_functiondef('public.submit_eval_work_v${version}`));
+    assert.ok(query.includes(`not has_function_privilege('service_role',to_regprocedure('private.submit_eval_work_v${version}_v6_impl`));
+  }
+  assert.ok(query.includes("position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef(to_regprocedure('private.submit_eval_work_"));
 });

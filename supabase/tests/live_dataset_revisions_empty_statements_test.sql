@@ -1,3 +1,4 @@
+-- @test-runtime: live-dataset-revision-sql
 -- Disposable fixture only: the entire test transaction is rolled back.
 begin;
 do $$ begin

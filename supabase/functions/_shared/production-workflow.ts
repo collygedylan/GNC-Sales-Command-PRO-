@@ -1,7 +1,11 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+import { jsonValue } from "../../../services/database-contract-runtime.ts";
+
 /** Protected adapters; actorProfile and moduleAllowed come from the authenticated
  * API context, never from the request JSON. SQL repeats active-profile checks. */
 type JsonRecord = Record<string, unknown>;
-type RpcClient = { rpc: (name: string, params: JsonRecord) => PromiseLike<{ data: unknown; error: unknown }> };
+type RpcClient = Pick<SupabaseClient<Database>, "rpc">;
 export type WorkflowContext = { supabase: RpcClient; actorProfile: JsonRecord; moduleAllowed: boolean; payload: JsonRecord };
 
 const TYPES = new Set(['propagation', 'planting']);
@@ -66,7 +70,7 @@ export async function handleProductionWorkflow({ supabase, actorProfile, moduleA
   requireWorkflowActor(actorProfile, moduleAllowed);
   const { operation, input } = normalizeProductionCommand(payload);
   const { data, error } = await supabase.rpc('production_workflow_command_v1', {
-    p_actor_id: actorProfile.id, p_operation: operation, p_payload: input,
+    p_actor_id: String(actorProfile.id), p_operation: operation, p_payload: jsonValue(input),
   });
   if (error) throw error;
   return data;
@@ -95,7 +99,7 @@ export async function handleInventoryTransactionHistory({ supabase, actorProfile
     throw new Error('INVENTORY_MANAGER_REQUIRED');
   }
   const { data, error } = await supabase.rpc('inventory_transaction_history_v1', {
-    p_actor_id: actorProfile.id, p_payload: normalizeInventoryHistoryQuery(payload),
+    p_actor_id: String(actorProfile.id), p_payload: jsonValue(normalizeInventoryHistoryQuery(payload)),
   });
   if (error) throw error;
   return data;

@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
+
 import { readFileSync } from 'node:fs';
+// @test-group: @local-e2e,@release-functional
+
 const moduleCode = readFileSync('assets/photo-history-v2026090401.js','utf8');
 
 async function setup(page: any, mobile = false) {
@@ -34,7 +37,7 @@ async function setup(page: any, mobile = false) {
   await expect(page.locator('.phg-card').first()).toBeVisible();
 }
 
-test('mobile gallery auto-loads without Load More, bounds DOM and never downloads originals while scrolling',async({page})=>{
+test('mobile gallery auto-loads without Load More, bounds DOM and never downloads originals while scrolling', {"tag":["@local-e2e","@release-functional"]},async({page})=>{
   const originals:string[]=[];page.on('request',r=>{if(r.url().includes('/original-'))originals.push(r.url());});
   await setup(page,true);
   await expect(page.getByRole('button',{name:/Load More/i})).toHaveCount(0);
@@ -47,7 +50,7 @@ test('mobile gallery auto-loads without Load More, bounds DOM and never download
   expect(originals).toEqual([]);
 });
 
-test('selection survives searches, native input keeps focus and explicit open fetches one original',async({page})=>{
+test('selection survives searches, native input keeps focus and explicit open fetches one original', {"tag":["@local-e2e","@release-functional"]},async({page})=>{
   const originals:string[]=[];page.on('request',r=>{if(r.url().includes('/original-'))originals.push(r.url());});
   await setup(page,true);
   await page.getByRole('checkbox').first().check();
@@ -60,7 +63,7 @@ test('selection survives searches, native input keeps focus and explicit open fe
   await expect(search).toHaveValue('Lemon Grass');await expect(page.getByRole('checkbox').first()).toBeChecked();
 });
 
-test('single email submission uses IDs only and an interrupted retry keeps the same token',async({page})=>{
+test('single email submission uses IDs only and an interrupted retry keeps the same token', {"tag":["@local-e2e","@release-functional"]},async({page})=>{
   await setup(page);
   await expect(page.locator('.phg-tray')).toContainText('Dylan and JD are included automatically with the selected sales rep');
   await page.getByRole('checkbox').nth(0).check();await page.getByRole('checkbox').nth(1).check();
@@ -76,7 +79,7 @@ test('single email submission uses IDs only and an interrupted retry keeps the s
   await expect(page.locator('#phg-notices')).toBeEmpty();
 });
 
-test('terminal notices survive close/reopen, delivered sends have no retry and dismiss is persistent',async({page})=>{
+test('terminal notices survive close/reopen, delivered sends have no retry and dismiss is persistent', {"tag":["@local-e2e","@release-functional"]},async({page})=>{
   await setup(page);await page.evaluate(()=>{(window as any).status='delivered';});
   await page.getByRole('checkbox').first().check();await page.locator('#phg-recipientId').selectOption('rep1');
   await page.getByRole('button',{name:'Send One Email'}).click();await expect(page.locator('#phg-notices')).toContainText('Email Sent');
@@ -85,7 +88,7 @@ test('terminal notices survive close/reopen, delivered sends have no retry and d
   await page.getByRole('button',{name:'Dismiss',exact:true}).click();await expect(page.locator('#phg-notices')).toBeEmpty();
 });
 
-test('thumbnail failure shows retry without original fallback and revoked access cannot reopen',async({page})=>{
+test('thumbnail failure shows retry without original fallback and revoked access cannot reopen', {"tag":["@local-e2e","@release-functional"]},async({page})=>{
   await setup(page,true);
   await page.route('**/fixtures/thumb-0.svg',r=>r.abort());
   await page.getByRole('searchbox').fill('failure');await page.waitForTimeout(350);
@@ -96,7 +99,7 @@ test('thumbnail failure shows retry without original fallback and revoked access
   await page.getByRole('button',{name:'Open Photo History',exact:true}).click();await expect(page.locator('#photo-history-dialog')).not.toBeVisible();
 });
 
-test('different approved accounts keep separate gallery selections and messages on the same device',async({page})=>{
+test('different approved accounts keep separate gallery selections and messages on the same device', {"tag":["@local-e2e","@release-functional"]},async({page})=>{
   await setup(page);
   await page.getByRole('checkbox').first().check();
   await page.locator('#phg-message-input').fill('Dylan draft');
@@ -117,7 +120,7 @@ test('different approved accounts keep separate gallery selections and messages 
   await expect(page.getByRole('checkbox').first()).toBeChecked();
 });
 
-for(const username of ['dylan_collyge','madison_austin','madelyn_gray'])test(`${username} can open real Sales Photo History with native input focus; other managers cannot`,async({page})=>{
+for(const username of ['dylan_collyge','madison_austin','madelyn_gray'])test(`${username} can open real Sales Photo History with native input focus; other managers cannot`, {"tag":["@local-e2e","@release-functional"]},async({page})=>{
   await page.setViewportSize({width:390,height:844});
   await page.route('**/functions/v1/app-api',route=>{
     const body=route.request().postDataJSON();

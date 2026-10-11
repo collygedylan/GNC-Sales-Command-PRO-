@@ -1,14 +1,34 @@
 import { handleSalesWorkflow } from "../_shared/sales-workflow.ts";
+import { isRequestRecipientDirectoryUser, readRequestRecipientDirectory } from "../_shared/request-recipient-directory.ts";
+import { RECLASS_SHEARED_POLICY, validateReclassShearedProposals } from "../../../services/reclassSheared.ts";
+import { RECLASS_SMART_SHIELD_POLICY, validateReclassSmartShieldProposals } from "../../../services/reclassSmartShield.ts";
+import { RECLASS_EDITABLE_FIELDS_POLICY, validateReclassEditableFieldProposals } from "../../../services/reclassEditableFields.ts";
+import { handleSuspendTag, verifySuspendTagSession, SUSPEND_TAG_EDITORS, suspendTagError } from "../_shared/suspend-tag.ts";
 import { readAvPage } from "../_shared/av-read.ts";
 import { handleNavigationPreferences, resolveModuleAllowed } from "../_shared/navigation-preferences.ts";
 import { handleProductionWorkflow, handleInventoryTransactionHistory, workflowError } from "../_shared/production-workflow.ts";
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "../_shared/database.types.ts";
+import {
+  INVENTORY_MASTER_BROWSE_FIELDS as MASTER_BROWSE_FIELDS,
+  INVENTORY_MASTER_FULL_FIELDS as MASTER_FULL_FIELDS,
+  INVENTORY_MASTER_INITIAL_BASE_FIELDS as MASTER_INITIAL_BASE_FIELDS,
+  INVENTORY_MASTER_INITIAL_FIELDS as MASTER_INITIAL_FIELDS,
+  INVENTORY_NCR_QUEUE_FIELDS,
+  INVENTORY_NOT_ON_INVENTORY_FIELDS,
+  INVENTORY_PO_DETAIL_FIELDS,
+  projectInventoryRows,
+} from "../_shared/inventory-projections.ts";
+import { createDatabaseRestBridge, legacyDatabaseTableAliases } from "../../../services/databaseRest.ts";
+import { jsonObject, jsonValue, type Json } from "../../../services/database-contract-runtime.ts";
+import { suspendTagRowsFromResult } from "./suspend-tag-read.ts";
 import { createAppSession, getRoleAccessState, isAppAccountActive, isForcedPasswordValue, normalizeUsername, readAppSessionFromRequest, readSupabaseOrAppSessionFromRequest } from "../_shared/app-auth.ts";
 import { recordHandledError, withObservedRequest } from "../_shared/observability.ts";
 import { auraInventoryV2ProfileMatches } from "../_shared/aura-auth.ts";
 import { auraInventoryV2Rpc } from "../_shared/aura-inventory.ts";
 import { historyPhotoUrl, publicHistoryPhoto, readArchivedHistoryThumbnail, isPhotoHistoryUsernameAllowed } from "../_shared/photo-history.ts";
+import { isCustomerRepMappingEditorRole, validateCustomerRepMappingRequest } from "../_shared/customer-rep-mapping.ts";
 import {
   PHOTO_LEGACY_MAX_BYTES,
   PHOTO_V2_DISPLAY_MAX_BYTES,
@@ -27,6 +47,10 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
   "Cache-Control": "private, no-store",
 };
+const databaseBridge = createDatabaseRestBridge(async (url, init, timeout) => fetch(url, {
+  ...init,
+  signal: AbortSignal.timeout(timeout),
+}), legacyDatabaseTableAliases);
 
 const SUPABASE_URL = String(Deno.env.get("SUPABASE_URL") || "").trim();
 const SUPABASE_SERVICE_ROLE_KEY = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
@@ -183,6 +207,8 @@ const READABLE_TABLES = new Set([
   "ph_hold_stop_itemcode_cycles",
   "ph_hold_stop_itemcode_summaries",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_hl_po",
   "ph_view_po_27f1_hl",
   AV_OPTION_EVAL_REQUESTS_TABLE,
@@ -276,6 +302,8 @@ const REP_READ_TABLES = new Set([
   "ph_cav_import",
   "ph_av_notes",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_dock_team_status",
   "ph_dock_item_status",
   "ph_inventory_edit_requests",
@@ -292,6 +320,8 @@ const SALES_MARKETING_READ_TABLES = new Set([
   "ph_cav_import",
   "ph_av_notes",
   "ph_warehouse_assigned_items",
+  "ph_inventory_row_assignments",
+  "ph_itemcode_default_owners",
   "ph_dock_team_status",
   "ph_dock_item_status",
 ]);
@@ -314,7 +344,7 @@ const QC_WRITE_TABLES = new Set([
 ]);
 const MASTER_QC_WRITABLE_FIELDS = new Set(["dock_note"]);
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
@@ -392,11 +422,132 @@ function withSelect(query = "", selectValue = "*") {
   return params.toString();
 }
 
+const INTERNAL_MOVE_REQUEST_INSERT_FIELDS = new Set([
+  "unique_id", "master_id", "commonname", "contsize", "locationcode", "lotcode", "itemcode", "ptravailable",
+  "priority", "requested_by", "request_folder", "req_customer", "req_qty", "desired_spec", "desired_caliper",
+  "req_reserve", "req_comments", "req_archived", "req_status", "app_tab_assignment", "assignedto", "move_batch_id",
+  "move_approval_stage", "move_status", "move_group_key", "move_from_locationcode", "move_to_locationcode",
+  "move_planned_qty", "move_actual_qty", "move_destination_needs_row", "move_dylan_approved_at", "move_jd_approved_at",
+  "move_completed_at", "move_completed_by", "created_at", "updated_at",
+]);
+const INTERNAL_EVAL_REQUEST_INSERT_FIELDS = new Set([
+  "unique_id", "master_id", "commonname", "contsize", "locationcode", "lotcode", "itemcode", "ptravailable",
+  "season_supply", "priority", "qualitycode", "field_tag_color", "requested_by", "request_folder", "req_customer",
+  "req_qty", "desired_spec", "desired_caliper", "request_note", "est_ship", "req_reserve", "req_match", "req_spec",
+  "req_caliper", "req_pic_note", "req_comments", "av_note", "req_photo_link", "req_photo_name", "req_archived",
+  "date_completed", "req_status",
+]);
+
+function classifyInternalCustomerRequestInsert(body: unknown): "move" | "eval" | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const row = body as Record<string, unknown>;
+  const keys = Object.keys(row).map(key => key.trim().toLowerCase());
+  if (new Set(keys).size !== keys.length || keys.includes("request_source")
+    || keys.some(key => ["customeridentityid", "customername", "consigneeidentityid", "consigneename", "request_selected_rep_username", "request_selected_rep_display"].includes(key))) return null;
+  const move = keys.every(key => INTERNAL_MOVE_REQUEST_INSERT_FIELDS.has(key))
+    && /^move_req_[a-z0-9_]{1,120}$/i.test(String(row.unique_id || ""))
+    && String(row.req_customer || "").trim() === "Location Move"
+    && /^(?:Manual )?Location Move\b/.test(String(row.request_folder || "").trim())
+    && String(row.app_tab_assignment || "").trim().toLowerCase() === "moves"
+    && !!String(row.move_batch_id || "").trim()
+    && ["dylan", "jd"].includes(String(row.move_approval_stage || "").trim().toLowerCase())
+    && String(row.move_status || "").trim().toLowerCase() === `pending_${String(row.move_approval_stage || "").trim().toLowerCase()}`
+    && String(row.req_status || "").trim().toLowerCase() === "pending"
+    && row.req_archived === false;
+  if (move) return "move";
+  const evalTask = keys.every(key => INTERNAL_EVAL_REQUEST_INSERT_FIELDS.has(key))
+    && /^eval-[a-z0-9._-]{1,180}$/i.test(String(row.unique_id || ""))
+    && String(row.req_customer || "").trim().startsWith("EVAL Task")
+    && String(row.request_folder || "").trim().startsWith("EVAL-")
+    && String(row.req_status || "").trim().toLowerCase() === "pending";
+  return evalTask ? "eval" : null;
+}
+
+function stampInternalCustomerRequestSource(body: unknown) {
+  if (!body || typeof body !== "object" || Array.isArray(body) || !classifyInternalCustomerRequestInsert(body)) return null;
+  return { ...(body as Record<string, unknown>), request_source: "internal" };
+}
+
+function protectCustomerRequestDbWrite(table: string, method: string, body: unknown) {
+  if (table !== "ph_active_request") return null;
+  if (method === "POST") {
+    // Move approvals and Eval assignments are legacy internal workflows. Keep
+    // their narrow row contracts working; handleDb rechecks the active actor
+    // and the corresponding permission before using the service-role proxy.
+    if (classifyInternalCustomerRequestInsert(body)) return null;
+    return errorResponse("Create requests through the authorized request batch operation.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+  }
+  if (method === "PATCH" && Array.isArray(body)) {
+    return errorResponse("Bulk request updates require the protected request workflow.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+  }
+  if (method === "PATCH" && body && typeof body === "object" && !Array.isArray(body)) {
+    const protectedFields = new Set([
+      "request_source", "customeridentityid", "customername", "consigneeidentityid", "consigneename",
+      "requested_by", "request_selected_rep_username", "request_selected_rep_display",
+    ]);
+    const bodyFields = Object.keys(body as Record<string, unknown>).map((key) => key.trim().toLowerCase());
+    if (bodyFields.some((key) => protectedFields.has(key))) {
+      return errorResponse("Customer identity and selected-representative fields require the protected request workflow.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+    }
+  }
+  return null;
+}
+
+async function authorizeInternalCustomerRequestInsert(
+  session: Awaited<ReturnType<typeof readAppSessionFromRequest>>,
+  body: unknown,
+) {
+  const kind = classifyInternalCustomerRequestInsert(body);
+  if (!kind || !body || typeof body !== "object" || Array.isArray(body)) {
+    return errorResponse("Create requests through the authorized request batch operation.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
+  }
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account profile is required.", 403, { code: "ACTIVE_PROFILE_REQUIRED" }); }
+  const username = normalizeUsername(String(actor.username || ""));
+  const access = getRoleAccessState(String(actor.role || ""));
+  if (!username || (!access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username))) {
+    return errorResponse("This request workflow is not available to this account.", 403, { code: "INTERNAL_REQUEST_FORBIDDEN" });
+  }
+  if (kind === "eval" && !EVAL_WORK_MANAGER_USERS.has(username)) {
+    return errorResponse("Eval assignments are available only to authorized managers.", 403, { code: "EVAL_WORK_ASSIGNMENT_FORBIDDEN" });
+  }
+  const row = body as Record<string, unknown>;
+  const masterId = String(row.master_id || "").trim();
+  if (!masterId || masterId.length > 200) {
+    return errorResponse("A valid inventory source row is required.", 400, { code: "INTERNAL_REQUEST_SOURCE_INVALID" });
+  }
+  const { data: master, error } = await supabase.from("ph_master_inventory")
+    .select("unique_id,itemcode,locationcode,lotcode,commonname,contsize")
+    .eq("unique_id", masterId).maybeSingle();
+  if (error) return databaseFailureResponse("The inventory source row could not be verified.", error, "INTERNAL_REQUEST_SOURCE_UNAVAILABLE");
+  if (!master) return errorResponse("The inventory source row is no longer available.", 409, { code: "INTERNAL_REQUEST_SOURCE_CHANGED" });
+  if (kind === "move") {
+    // The master UID plus item/location/lot are the stable source identity.
+    // Common name and container size are display fields and may legitimately
+    // differ in formatting between an older cached card and the current row.
+    const exactSource = ["itemcode", "locationcode", "lotcode"]
+      .every(key => String(row[key] ?? "").trim() === String(master[key as keyof typeof master] ?? "").trim());
+    const from = String(row.move_from_locationcode || "").trim();
+    const to = String(row.move_to_locationcode || "").trim();
+    const qty = String(row.move_planned_qty ?? "").trim();
+    const requester = String(row.requested_by || "").trim();
+    const displayName = String(actor.display_name || "").trim();
+    if (!exactSource || from !== String(master.locationcode || "").trim() || !to || to.toLowerCase() === from.toLowerCase()
+      || !/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(qty) || !Number.isFinite(Number(qty))
+      || (normalizeUsername(requester) !== username && requester.toLowerCase() !== displayName.toLowerCase())) {
+      return errorResponse("The move request no longer matches its source row or signed-in requester.", 409, { code: "INTERNAL_MOVE_REQUEST_INVALID" });
+    }
+  } else if (!EVAL_WORK_ASSIGNABLE_USERS.has(normalizeUsername(String(row.requested_by || "")))) {
+    return errorResponse("Choose an authorized Eval assignee.", 400, { code: "EVAL_WORK_ASSIGNMENT_INVALID" });
+  }
+  return null;
+}
+
 async function restRequest(table: string, method = "GET", query = "", body: unknown = null) {
   const normalizedTable = normalizeTableName(table);
   const querySuffix = String(query || "").trim();
   const request = async (tableName: string) => {
-    const url = `${SUPABASE_URL}/rest/v1/${tableName}${querySuffix ? `?${querySuffix}` : ""}`;
     const options: RequestInit = {
       method,
       headers: buildRestHeaders(method, tableName),
@@ -404,7 +555,7 @@ async function restRequest(table: string, method = "GET", query = "", body: unkn
     if (body !== null && body !== undefined && method !== "GET") {
       options.body = JSON.stringify(body);
     }
-    return await fetch(url, options);
+    return await databaseBridge.fetchTable(SUPABASE_URL, tableName, querySuffix, options, 30_000, "app-api.rest-request");
   };
   const response = await request(normalizedTable);
   if (!response.ok && normalizedTable.startsWith("ph_") && await responseLooksLikeMissingRelation(response)) {
@@ -479,6 +630,7 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   ph_request_queue_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,delivery_event_id,delivery_status,delivery_attempt_count,delivery_next_attempt_at,delivery_first_attempt_at,delivery_last_attempt_at,delivery_lease_expires_at,delivery_error_code,delivery_email_delivered_at,delivery_push_delivered_at,delivery_delivered_at,delivery_mode,delivery_age_seconds,delivery_display_state",
   ph_active_request_live_rows: "id,unique_id,master_id,commonname,contsize,locationcode,lotcode,itemcode,ptravailable,season_supply,priority,qualitycode,field_tag_color,plantgroupcode,requested_by,request_folder,req_customer,req_qty,desired_spec,desired_caliper,est_ship,req_reserve,req_photo_link,req_photo_name,req_archived,req_status,req_rep_action,created_at,req_match,req_spec,req_caliper,req_pic_note,req_sales_note,req_comments,av_note,date_completed,completed_by_username,completed_by_display,completed_by_email,req_photo_mode,move_batch_id,move_approval_stage,move_status,move_group_key,move_from_locationcode,move_to_locationcode,move_planned_qty,move_actual_qty,move_destination_needs_row,move_dylan_approved_at,move_jd_approved_at,move_completed_at,move_completed_by,request_note,request_created_by_username,request_created_by_display,request_created_by_email,request_selected_rep_username,request_selected_rep_display,request_selected_rep_email,app_tab_assignment,master_app_tab_assignment,request_source,client_batch_id,updated_at,row_version,drive_row_missing,drive_last_updated,drive_assignedto,drive_match,drive_loc_match_qty,drive_spec,drive_caliper,drive_pic_note,drive_av_note,drive_photo_link,drive_photo_name,av_rule_bundle_updated_at,av_rule_av_note_updated_at,av_rule_spec_updated_at,av_rule_match_updated_at,av_rule_caliper_updated_at,av_rule_photo_updated_at,av_rule_priority_snapshot,av_rule_holdstop_snapshot,av_rule_last_clear_reason,av_rule_last_cleared_at,customeridentityid,customername,consigneeidentityid,consigneename",
   ph_soc_master: "unique_id,concat,last_updated,assignedto,date_completed,dock_photo_link,dock_photo_name,dock_spec,dock_caliper,dock_note,contsize,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccount,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortnamevariety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landed,retailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,dock_num,source,desigitem,desigcust,desigloc,filename",
+  suspend_tag: "unique_id,concat,last_updated,date_completed,assignedto,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,dock_num,dock,stopnumber,transactionnumber,itemcode,commonname,contsize,locationcode,lotcode,source,suspend,suspend_to,quantityordered,quantityshipped,ptravailable,priority,planstart,requestdateweek,purchaseordernumber,desigitem,desigcust,desigloc,spec,caliper,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,photo_link,photo_name,match,loc_match_qty,av_note,pic_note,picknote,salesnote,sales_note,salesnote_1,ptronhand,ptrreviewed,holdstopcode",
   ph_cav_import: "unique_id,last_updated,filename,itemcode,commonname,contsize,season,ptravailable,brand,spec,hz,unitprice,holdstopreason,ordertotal,product_description,brand_code,h,available,reserved_qty,order_qty,unit_price,n_star,hot_price,hold_reason,ext_item_total,created_at",
   ph_reserves: "unique_id,concat,last_updated,assigned_to,assignedto,spec,caliper,pic_note,sales_note,av_note,photo_link,photo_name,dock_spec,dock_caliper,dock_note,dock_photo_link,dock_photo_name,date_completed,flyer_cat,flyer_title,flyer_inst,flyer_assigned,flyer_notes,flyer_photo_link,flyer_photo_name,flyer_completed,initial_ptr,loc_match_qty,end_cap_folder,end_cap_qty,end_cap_level,match,item,size,container,location,lot,warehouseid,warehousename,isreserve,salesrepid,salesrepname,nationalaccountidgroup,national_account_idgroup,idgroup,customeridentityid,customername,consigneeidentityid,consigneename,consigneecity,consigneestate,consigneezip,tripnumber,stopnumber,zonecode,tagcode,transactionnumber,purchaseordernumber,extunitprice,ordertotal,requestdate,stagename,step,customersku,formattedupc,printedcontainercode,lotcode,locationcode,descriptorcode,itemcode,plantgroupcode,sortname,variety,containersort,qualitycode,commonname,quantityordered,quantityshipped,listprice,unitprice,handlingchargeperitem,taggingchargeperitem,combinedprice,freightrateperitem,landedretailprice,holdstopcode,holdstopreason,salesnote,fnsalesnote,picknote,planstart,generalloadinstr,invoicedate,consigneeaddress_1,consigneeaddress_2,altshipcomment,shiptotelephone_1,okloadinstructions,txloadinstructions,ncloadinstructions,hlloadinstructions,dock,equiv_unit,equiv_uom,wingdingunits,dropweight,internalinvnote,hardinesszone,brand,tagdeptnote,ext_unit,merch_shipped,ext_unit_merch_shipped,ext_eunit_shipped,avg_price_eunit_shipped,requestdateweek,carrier,suspend,suspend_to,qa_code,grower,nationalaccount,sortnamevariety,landed,retailprice,dock_num,priority,ptronhand,ptrreviewed,ptravailable,season_supply,s_lts,itemspec,season,mcstatus,hz,intercopo,insurancegroup,si_lts,a_lts,ai_lts,si_available,holdstopenddate,salesnote_1,contsize,source,desigitem,desigcust,desigloc,filename",
   ph_sales_office: "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,priority,sales_note,photo_link,completed_by,completed_at,master_id,so_source,order_folder,order_number,order_customer,order_qty,order_desired_spec,order_desired_caliper,order_reserve,order_submitted_by,order_submitted_at,order_status,av_note,spec,caliper,photo_name,move_batch_id,move_from_locationcode,move_to_locationcode,move_actual_qty,workflow_status,workflow_detail,state_revision,reopen_reason,source_revision,updated_at,arrived_at",
@@ -488,7 +640,8 @@ const DATASET_READ_COLUMN_PROJECTIONS: Record<string, string> = {
   ph_dock_issue_allocations: "allocation_unique_id,issue_source_unique_id,alt_master_unique_id,alt_master_id,allocated_qty,alt_locationcode,alt_lotcode,alt_itemcode,alt_commonname,alt_contsize,alt_ptravailable,updated_by,updated_at",
   ph_productivity_history: "id,event_key,completed_by_username,completed_by_display,completed_at,source_table,source_kind,source_unique_id,source_assignment,itemcode,commonname,contsize,locationcode,lotcode,customer_name,request_folder,snapshot",
 };
-const DATASET_READ_SOURCES: Record<string, { table: string; permission: string; key: string; fields: string; signatures?: string; filterFields: Set<string>; orderFields: Set<string> }> = {
+type DatasetReadRelation = (keyof Database["public"]["Tables"] | keyof Database["public"]["Views"]) & string;
+const DATASET_READ_SOURCES: Record<string, { table: DatasetReadRelation; permission: string; key: string; fields: string; signatures?: string; filterFields: Set<string>; orderFields: Set<string> }> = {
   inventory_edits: {
     table: "ph_inventory_edit_requests", permission: "ph_inventory_edit_requests", key: "id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_inventory_edit_requests,
     filterFields: new Set(["id", "status", "workflow_stage", "stage", "source_unique_id", "master_unique_id", "itemcode", "locationcode", "lotcode", "stage_updated_at", "updated_at"]),
@@ -515,6 +668,12 @@ const DATASET_READ_SOURCES: Record<string, { table: string; permission: string; 
     table: "ph_soc_master", permission: "ph_soc_master", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_soc_master,
     filterFields: new Set(["unique_id", "tripnumber", "stopnumber", "dock_num", "assignedto", "salesrepid", "salesrepname", "customername", "consigneename", "transactionnumber", "itemcode", "locationcode", "lotcode", "season", "source", "last_updated", "date_completed", "planstart", "warehouseid", "stagename"]),
     orderFields: new Set(["unique_id", "last_updated", "date_completed", "tripnumber", "stopnumber", "itemcode", "locationcode"]),
+  },
+  // Suspend Tag is a server-filtered subset of SOC. Keep the same SOC
+  // authorization boundary while returning only fields used by its cards/actions.
+  suspend_tag: {
+    table: "ph_soc_master", permission: "ph_soc_master", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.suspend_tag,
+    filterFields: new Set(), orderFields: new Set(["unique_id"]),
   },
   cav: {
     table: "ph_cav_import", permission: "ph_cav_import", key: "unique_id", fields: DATASET_READ_COLUMN_PROJECTIONS.ph_cav_import,
@@ -579,7 +738,7 @@ function validateDatasetReadParams(payload: Record<string, unknown>) {
 function datasetReadScalar(value: unknown) {
   if (value === null || typeof value === "boolean") return value;
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string" && value.length <= 500 && !/[\x00-\x1f]/.test(value)) return value;
+  if (typeof value === "string" && value.length <= 500 && ![...value].some((character) => character.charCodeAt(0) < 32)) return value;
   throw new Error("DATASET_READ_FILTER_VALUE_INVALID");
 }
 
@@ -620,6 +779,7 @@ function datasetReadOrCondition(filter: { field: string; op: string; value: unkn
 async function handleDatasetRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
+  request?: Request,
 ) {
   if (!session) return errorResponse("Unauthorized", 401, { code: "DATASET_READ_UNAUTHORIZED" });
   if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
@@ -631,22 +791,31 @@ async function handleDatasetRead(
   const dataset = String(payload.dataset || "").trim().toLowerCase();
   const source = DATASET_READ_SOURCES[dataset];
   if (!source) return errorResponse("Unsupported dataset.", 400, { code: "DATASET_READ_INVALID" });
-  if (!hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  if (dataset === "suspend_tag" ? !SUSPEND_TAG_EDITORS.has(username) : !hasTableReadAccess(role, source.permission, username)) return errorResponse("You do not have access to this dataset.", 403, { code: "DATASET_READ_FORBIDDEN" });
+  if (dataset === "suspend_tag") {
+    try { actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, request); }
+    catch { return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" }); }
+  }
   let parsed: ReturnType<typeof validateDatasetReadParams>;
   try { parsed = validateDatasetReadParams(payload); }
   catch (error) { return errorResponse(String(error instanceof Error ? error.message : error), 400, { code: String(error instanceof Error ? error.message : error) }); }
 
   if (parsed.projection === "signature" && !source.signatures) return errorResponse("This dataset has no signature projection.", 400, { code: "DATASET_READ_PROJECTION_INVALID" });
   const fields = parsed.projection === "ids" ? source.key : parsed.projection === "signature" ? source.signatures! : source.fields;
-  let query: any = supabase.from(source.table).select(fields, { count: "exact" });
   try {
+    const query = new URLSearchParams();
+    query.set("select", fields);
     const filters = datasetReadFilterParts(source, parsed.filters);
     for (const filter of filters) {
-      if (filter.op === "in") query = query.in(filter.field, filter.value);
-      else if (filter.op === "is") query = query.is(filter.field, filter.value);
-      else if (filter.op === "not.is") query = query.not(filter.field, "is", filter.value);
-      else if (filter.op === "not.ilike") query = query.not(filter.field, "ilike", filter.value);
-      else query = query.filter(filter.field, filter.op, filter.value);
+      const value = Array.isArray(filter.value) ? `(${filter.value.map(datasetReadOrLiteral).join(",")})` : datasetReadOrLiteral(filter.value);
+      query.append(filter.field, `${filter.op}.${value}`);
+    }
+    if (dataset === "suspend_tag") {
+      // Mirror the Suspend Tag eligibility normalization in index.html, but
+      // enforce it in PostgREST before exact count/paging so callers cannot
+      // widen the result or receive inconsistent page totals.
+      query.append("suspend", "imatch.^[[:space:]\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]*[s\\u017f]uspend[[:space:]\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]*$");
+      query.append("suspend_to", "imatch.^[^a-z0-9]*d[^a-z0-9]*c[^a-z0-9]*$");
     }
     const anyOf = datasetReadFilterParts(source, parsed.anyOf);
     if (parsed.anyOf.length && !anyOf.length) throw new Error("DATASET_READ_FILTER_INVALID");
@@ -665,9 +834,9 @@ async function handleDatasetRead(
       if (!patterns.size) return errorResponse("Your sales representative profile is incomplete.", 403, { code: "DATASET_READ_REP_IDENTITY_REQUIRED" });
       const repScope = [...patterns].map((pattern) => `salesrepname.ilike.${datasetReadOrLiteral(pattern)}`).join(",");
       const anyOfScope = anyOf.length ? `or(${anyOf.map(datasetReadOrCondition).join(",")})` : "";
-      query = query.or(anyOfScope ? `and(or(${repScope}),${anyOfScope})` : repScope);
+      query.set("or", anyOfScope ? `and(or(${repScope}),${anyOfScope})` : repScope);
     } else if (anyOf.length) {
-      query = query.or(anyOf.map(datasetReadOrCondition).join(","));
+      query.set("or", `(${anyOf.map(datasetReadOrCondition).join(",")})`);
     }
 
     for (const raw of parsed.order) {
@@ -676,19 +845,85 @@ async function handleDatasetRead(
       if (Object.keys(order).some((key) => !["field", "ascending"].includes(key)) || typeof order.ascending !== "boolean") throw new Error("DATASET_READ_ORDER_INVALID");
       const field = String(order.field || "");
       if (!source.orderFields.has(field)) throw new Error("DATASET_READ_ORDER_INVALID");
-      query = query.order(field, { ascending: order.ascending });
+      query.append("order", `${field}.${order.ascending ? "asc" : "desc"}`);
     }
     if (!parsed.order.some((entry) => entry && typeof entry === "object" && (entry as Record<string, unknown>).field === source.key)) {
-      query = query.order(source.key, { ascending: true });
+      query.append("order", `${source.key}.asc`);
     }
-    const { data, error, count } = await query.range(parsed.offset, parsed.offset + parsed.limit - 1);
-    if (error) return databaseFailureResponse("Dataset read failed.", error, "DATASET_READ_UNAVAILABLE");
-    if (!Array.isArray(data) || !Number.isInteger(count) || count < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
-    return jsonResponse({ ok: true, data: { rows: data, total: count, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < count } });
+    query.set("offset", String(parsed.offset));
+    query.set("limit", String(parsed.limit));
+    const response = await databaseBridge.fetchTable(SUPABASE_URL, source.table, query.toString(), {
+      method: "GET", headers: { ...buildRestHeaders("GET", source.table), Prefer: "count=exact" },
+    }, 30_000, "app-api.dataset-read");
+    const responseData = await readResponsePayload(response);
+    if (!response.ok) return databaseFailureResponse("Dataset read failed.", responseData, "DATASET_READ_UNAVAILABLE");
+    const checkedData = jsonValue(responseData);
+    if (!Array.isArray(checkedData) || checkedData.some((row) => !row || typeof row !== "object" || Array.isArray(row))) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    const data: Array<Record<string, Json | undefined>> = checkedData.map((row) => jsonObject(row));
+    const range = response.headers.get("content-range") || "";
+    const total = Number(range.match(/\/(\d+)$/)?.[1]);
+    if (!Number.isInteger(total) || total < 0) return errorResponse("Dataset read returned an invalid page.", 503, { code: "DATASET_READ_INVALID_PAGE" });
+    if (dataset === "suspend_tag") {
+      const ids = data.map((row) => row.unique_id).filter((value): value is string => typeof value === "string");
+      const state = await handleSuspendTag(supabase, actor, { operation: "rows", payload: { ids } });
+      const stateRows = suspendTagRowsFromResult(state);
+      const byId = new Map(stateRows.map((item) => { const row = jsonObject(item); return [String(row.unique_id || ""), row] as const; }));
+      for (const row of data) {
+        const current = typeof row.unique_id === "string" ? byId.get(row.unique_id) : undefined;
+        if (current) for (const [key, value] of Object.entries(current)) if (key.startsWith("suspend_tag_") || key in row) row[key] = value;
+      }
+    }
+    return jsonResponse({ ok: true, data: { rows: data, total, offset: parsed.offset, limit: parsed.limit, hasMore: parsed.offset + data.length < total } });
   } catch (error) {
     const code = String(error instanceof Error ? error.message : error || "DATASET_READ_FILTER_INVALID");
+    if (dataset === "suspend_tag" && code.includes("SUSPEND_TAG_")) {
+      const failure = suspendTagError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
     return errorResponse("Dataset read parameters are invalid.", 400, { code });
   }
+}
+
+function isRequestRemovalTimestamp(value: string): boolean {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,6})?(?:Z|([+-])(\d{2}):(\d{2}))$/.exec(value);
+  if (!parts || !Number.isFinite(Date.parse(value))) return false;
+  const year = Number(parts[1]), month = Number(parts[2]), day = Number(parts[3]);
+  const days = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return year >= 1000 && month >= 1 && month <= 12 && day >= 1 && day <= days
+    && Number(parts[4]) < 24 && Number(parts[5]) < 60 && Number(parts[6]) < 60
+    && (!parts[7] || (Number(parts[8]) < 16 && Number(parts[9]) < 60));
+}
+
+async function handleRequestQueueRemove(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, payload: Record<string, unknown>) {
+  if (!session) return errorResponse("Sign in before removing requests.", 401);
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" }); }
+  const actorId = typeof actor.id === "string" ? actor.id : "";
+  if (!actorId) return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" });
+  const uid = typeof payload.uid === "string" ? payload.uid.trim() : "";
+  const key = typeof payload.idempotencyKey === "string" ? payload.idempotencyKey.toLowerCase() : "";
+  const version = payload.expectedRowVersion;
+  const updatedAt = typeof payload.expectedUpdatedAt === "string" ? payload.expectedUpdatedAt : "";
+  if (Object.keys(payload).some(key => !["action", "uid", "idempotencyKey", "expectedRowVersion", "expectedUpdatedAt"].includes(key))
+    || !uid || uid.length > 240 || typeof version !== "number" || !Number.isSafeInteger(version) || version < 1
+    || !isRequestRemovalTimestamp(updatedAt)
+    || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(key)) {
+    return errorResponse("Refresh the request before removing it.", 400, { code: "REQUEST_REMOVE_COMMAND_INVALID" });
+  }
+  const { data, error } = await supabase.rpc("request_queue_remove_v1", {
+    p_actor_id: actorId, p_uid: uid, p_expected_row_version: version,
+    p_expected_updated_at: updatedAt, p_idempotency_key: key,
+  });
+  if (error) return databaseFailureResponse("The request was not removed. Refresh Que and retry.", error, "REQUEST_REMOVE_FAILED");
+  const result = data && typeof data === "object" && !Array.isArray(data) ? jsonObject(data) : {};
+  if (result.uid !== uid || result.state !== "removed" || result.idempotencyKey !== key || typeof result.replayed !== "boolean") {
+    return errorResponse("The removal response could not be verified. Refresh Que.", 503, { code: "REQUEST_REMOVE_RESPONSE_INVALID" });
+  }
+  return jsonResponse({ ok: true, data: {
+    uid: result.uid, state: result.state, idempotencyKey: result.idempotencyKey, replayed: result.replayed,
+  } });
 }
 
 async function handleRequestArchive(session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>, payload: Record<string, unknown>) {
@@ -696,11 +931,13 @@ async function handleRequestArchive(session: Awaited<ReturnType<typeof readSupab
     let actor: Record<string, unknown>;
     try { actor = await resolveActiveSessionProfile(session); }
     catch { return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" }); }
+    const actorId = typeof actor.id === "string" ? actor.id : "";
+    if (!actorId) return errorResponse("An active account is required.", 403, { code: "ACCOUNT_INACTIVE" });
     const operation = String(payload.operation || "");
     if (operation === "list") {
       const offset = Number(payload.offset ?? 0), limit = Number(payload.limit ?? 100);
       if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) return errorResponse("Invalid archive page.", 400);
-      const { data, error } = await supabase.rpc("request_archive_list_v1", { p_actor_id: actor.id, p_offset: offset, p_limit: Math.min(limit, 500) });
+      const { data, error } = await supabase.rpc("request_archive_list_v1", { p_actor_id: actorId, p_offset: offset, p_limit: Math.min(limit, 500) });
       if (error) return databaseFailureResponse("Archived requests could not be loaded.", error, "REQUEST_ARCHIVE_READ_FAILED");
       return jsonResponse({ ok: true, data });
     }
@@ -709,7 +946,7 @@ async function handleRequestArchive(session: Awaited<ReturnType<typeof readSupab
       return errorResponse("Invalid archive command.", 400, { code: "REQUEST_ARCHIVE_COMMAND_INVALID" });
     }
     const { data, error } = await supabase.rpc("request_archive_command_v1", {
-      p_actor_id: actor.id, p_uid: uid, p_operation: operation, p_idempotency_key: key,
+      p_actor_id: actorId, p_uid: uid, p_operation: operation, p_idempotency_key: key,
     });
     if (error) return databaseFailureResponse("The archive change was not accepted. Refresh the request and retry.", error, "REQUEST_ARCHIVE_FAILED");
     return jsonResponse({ ok: true, data });
@@ -812,9 +1049,12 @@ async function handleProductionScheduleAction(
   if (parsed.operation === "metadata") {
     const { data, error } = await supabase.rpc("production_schedule_read_metadata_v1");
     if (error) return databaseFailureResponse("Production Schedule metadata is unavailable.", error, "PRODUCTION_SCHEDULE_METADATA_UNAVAILABLE");
-    return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { snapshot: null, sheets: [] }) });
+    const metadata = data && typeof data === "object" && !Array.isArray(data) ? jsonObject(data) : { snapshot: null, sheets: [] };
+    return jsonResponse({ ok: true, ...metadata });
   }
   if (parsed.operation === "rows") {
+    if (!Number.isInteger(parsed.sheetId) || typeof parsed.cursor !== "number" || typeof parsed.limit !== "number"
+      || typeof parsed.q !== "string" || !parsed.filters || !parsed.snapshotId) return errorResponse("Invalid schedule request.", 400);
     const { data, error } = await supabase.rpc(parsed.projection === "cards" ? "production_schedule_read_cards_v1" : "production_schedule_read_rows_v1", {
       p_sheet_index: parsed.sheetId,
       p_snapshot_id: parsed.snapshotId,
@@ -828,6 +1068,7 @@ async function handleProductionScheduleAction(
     return jsonResponse({ ok: true, ...(data && typeof data === "object" ? data as Record<string, unknown> : { rows: [], nextCursor: null, total: 0, snapshotId: null, hasMore: false }) });
   }
   if (parsed.operation === "row_detail") {
+    if (!parsed.snapshotId || typeof parsed.sheetId !== "number" || typeof parsed.sourceRow !== "number") return errorResponse("Invalid schedule row.", 400);
     // Pin the detail to the same published snapshot as its card. A staged or
     // failed import must never leak into an otherwise complete page.
     const snapshot = await supabase.from("production_schedule_snapshots").select("id")
@@ -845,9 +1086,9 @@ async function handleProductionScheduleAction(
     if (runId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(runId)) {
       return errorResponse("Production Schedule run ID is invalid.", 400, { code: "PRODUCTION_SCHEDULE_RUN_INVALID" });
     }
-    const { data, error } = await supabase.rpc("production_schedule_read_status_v1", { p_snapshot_id: runId || null });
+    const { data, error } = await supabase.rpc("production_schedule_read_status_v1", runId ? { p_snapshot_id: runId } : {});
     if (error) return databaseFailureResponse("Production Schedule status is unavailable.", error, "PRODUCTION_SCHEDULE_STATUS_UNAVAILABLE");
-    return jsonResponse({ ok: true, run: data && typeof data === "object" ? data : { id: null, status: "empty" } });
+    return jsonResponse({ ok: true, run: data && typeof data === "object" ? jsonObject(data) : { id: null, status: "empty" } });
   }
 
   if (!PRODUCTION_SCHEDULE_APPS_SCRIPT_URL || !PRODUCTION_SCHEDULE_SIGNING_SECRET) {
@@ -912,12 +1153,12 @@ async function handleAppendProductivityHistory(
   if (Object.keys(payload).some((key) => !["action", "entries"].includes(key)) || !Array.isArray(payload.entries) || payload.entries.length < 1 || payload.entries.length > 500) {
     return errorResponse("Productivity history entries are invalid.", 400, { code: "PRODUCTIVITY_HISTORY_PAYLOAD_INVALID" });
   }
-  const entries: Record<string, unknown>[] = [];
+  const entries: Database["public"]["Tables"]["ph_productivity_history"]["Insert"][] = [];
   const keys = new Set<string>();
   try {
     for (const raw of payload.entries) {
       if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("PRODUCTIVITY_HISTORY_ENTRY_INVALID");
-      const entry = raw as Record<string, unknown>;
+      const entry = jsonObject(raw);
       if (Object.keys(entry).some((key) => !PRODUCTIVITY_HISTORY_ENTRY_FIELDS.has(key))) throw new Error("PRODUCTIVITY_HISTORY_ENTRY_INVALID");
       const eventKey = String(entry.event_key || "").trim();
       const completedBy = normalizeUsername(String(entry.completed_by_username || ""));
@@ -932,7 +1173,7 @@ async function handleAppendProductivityHistory(
       const expectedEventKey = `${sourceTable}|${sourceKind}|${sourceUid}|${completedAt}|${completedBy}`;
       if (eventKey !== expectedEventKey || keys.has(eventKey)) throw new Error("PRODUCTIVITY_HISTORY_IDEMPOTENCY_KEY_INVALID");
       keys.add(eventKey);
-      const snapshot = entry.snapshot && typeof entry.snapshot === "object" && !Array.isArray(entry.snapshot) ? entry.snapshot : {};
+      const snapshot = entry.snapshot && typeof entry.snapshot === "object" && !Array.isArray(entry.snapshot) ? jsonObject(entry.snapshot) : {};
       if (JSON.stringify(snapshot).length > 40000) throw new Error("PRODUCTIVITY_HISTORY_SNAPSHOT_TOO_LARGE");
       entries.push({
         event_key: eventKey,
@@ -950,7 +1191,7 @@ async function handleAppendProductivityHistory(
         lotcode: String(entry.lotcode || "").trim().slice(0, 160) || null,
         customer_name: String(entry.customer_name || "").trim().slice(0, 300) || null,
         request_folder: String(entry.request_folder || "").trim().slice(0, 200) || null,
-        snapshot,
+        snapshot: jsonValue(snapshot),
       });
     }
     const { data, error } = await supabase.from("ph_productivity_history")
@@ -971,8 +1212,9 @@ function hasTableWriteAccess(role = "", table = "", method = "POST", body: unkno
   // Request creation, Eval assignments, and push identity are now enforced by
   // authenticated RPCs. Never let this legacy service-role proxy bypass those
   // database authorization boundaries.
-  if (table === "ph_warehouse_assigned_items" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
+  if (table === "ph_warehouse_assigned_items" || table === "ph_inventory_row_assignments" || table === "ph_itemcode_default_owners" || table === "ph_push_subscriptions" || table === "ph_shear_list") return false;
   if (table === "ph_dock_team_status") return false;
+  if (table === "ph_soc_master") return false; // Native column grants / protected Suspend Tag command own SOC writes.
   if (table === "ph_active_request" && access.isRep) return false;
   if (FULL_ACCESS_USER_KEYS.has(userKey)) return ["POST", "PATCH", "DELETE"].includes(method);
   if (table === AV_OPTION_EVAL_REQUESTS_TABLE) return ["POST", "PATCH", "DELETE"].includes(method);
@@ -1036,6 +1278,167 @@ async function resolveActiveSessionProfile(
   return profile as Record<string, unknown>;
 }
 
+export async function handleFieldCountAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Sign in to use Field Count.", 401, { code: "FIELD_COUNT_UNAUTHORIZED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "FIELD_COUNT_FORBIDDEN" });
+  let actor: Record<string, unknown>;
+  try {
+    actor = await resolveActiveSessionProfile(session);
+  } catch {
+    return errorResponse("An active account profile is required.", 403, { code: "FIELD_COUNT_FORBIDDEN" });
+  }
+  try {
+    const allowed = new Set(["action", "operation", "payload", "commandId"]);
+    if (Object.keys(payload).some(key => !allowed.has(key)) || !["read", "save", "complete"].includes(String(payload.operation))) {
+      return errorResponse("FIELD_COUNT_PAYLOAD_INVALID", 400);
+    }
+    const input = jsonObject(payload.payload);
+    if (input.countType !== "bunch" && input.countType !== "spread") return errorResponse("FIELD_COUNT_TYPE_INVALID", 400);
+    const table = input.countType === "bunch" ? "ph_bunch_counts" : "ph_spread_counts";
+    if (!hasTableReadAccess(String(actor.role), table, String(actor.username))
+      || !hasTableWriteAccess(String(actor.role), table, "POST", null, String(actor.username))) {
+      return errorResponse("FIELD_COUNT_FORBIDDEN", 403, { code: "FIELD_COUNT_FORBIDDEN" });
+    }
+    const { data, error } = await supabase.rpc("field_count_command_v1", {
+      p_actor_id: String(actor.id), p_operation: String(payload.operation), p_payload: input,
+      ...(typeof payload.commandId === "string" ? { p_command_id: payload.commandId } : {}),
+    });
+    if (error) throw error;
+    return jsonResponse({ ok: true, data });
+  } catch (error) {
+    const failure = error as { message?: string; code?: string };
+    const message = /^FIELD_COUNT_[A-Z_]+$/.test(failure.message || "") ? failure.message! : "FIELD_COUNT_UNAVAILABLE";
+    return errorResponse(message, failure.code === "42501" ? 403 : /CONFLICT|CHANGED/.test(message) ? 409 : 400, { code: message });
+  }
+}
+
+export async function handleRequestRecipientDirectory(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+  dependencies = {
+    resolveActiveProfile: resolveActiveSessionProfile,
+    readDirectory: () => readRequestRecipientDirectory(supabase),
+  },
+) {
+  const forbidden = () => errorResponse("An authorized Bloom or Request email workflow is required.", 403, { code: "RECIPIENT_DIRECTORY_FORBIDDEN" });
+  if (!session || session.mustChangePassword) return forbidden();
+  let actor: Record<string, unknown>;
+  try { actor = await dependencies.resolveActiveProfile(session); }
+  catch { return forbidden(); }
+  if (!isRequestRecipientDirectoryUser(actor.username)) return forbidden();
+  if (Object.keys(payload).some(key => key !== "action")) {
+    return errorResponse("Recipient directory filters are server controlled.", 400, { code: "RECIPIENT_DIRECTORY_INPUT_INVALID" });
+  }
+  try { return jsonResponse(await dependencies.readDirectory()); }
+  catch { return errorResponse("Recipients could not be loaded. Retry loading the email picker.", 503, { code: "RECIPIENT_DIRECTORY_UNAVAILABLE" }); }
+}
+
+async function handleManagerSeasonSettings(
+  req: Request,
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  const forbidden = () => errorResponse("An authorized Managers account is required.", 403, { code: "AURA_MANAGER_SETTINGS_FORBIDDEN" });
+  const authorization = String(req.headers.get("authorization") || "").trim();
+  if (!session?.authUserId || session.mustChangePassword || !/^Bearer\s+\S+$/i.test(authorization)) return forbidden();
+  let actor: Record<string, unknown>;
+  try {
+    // This operation requires native Auth even during the app's legacy-session window.
+    const { data, error } = await supabase.auth.getUser(authorization.replace(/^Bearer\s+/i, ""));
+    if (error || !data?.user?.id || data.user.id !== session.authUserId) return forbidden();
+    actor = await resolveActiveSessionProfile(session);
+    if (typeof actor.id !== "string" || actor.id !== data.user.id || !FULL_ACCESS_USER_KEYS.has(String(actor.username || ""))) return forbidden();
+  } catch { return forbidden(); }
+  const operation = payload.operation === "read" || payload.operation === "save" ? payload.operation : null;
+  if (!operation) return errorResponse("Choose read or save.", 400, { code: "AURA_MANAGER_SETTINGS_INPUT_INVALID" });
+  const allowed = operation === "read" ? new Set(["action", "operation"])
+    : new Set(["action", "operation", "seasonCode", "salesYear", "expectedRevision"]);
+  if (!["read", "save"].includes(String(operation)) || Object.keys(payload).some(key => !allowed.has(key))
+    || (operation === "save" && (!Number.isSafeInteger(payload.expectedRevision) || Number(payload.expectedRevision) < 0
+      || !["S1", "F1"].includes(String(payload.seasonCode)) || !Number.isInteger(payload.salesYear)
+      || Number(payload.salesYear) < 1 || Number(payload.salesYear) > 99))) {
+    return errorResponse("Choose S1 or F1, a sales year from 1 to 99, and reload the setting before saving.", 400, { code: "AURA_MANAGER_SETTINGS_INPUT_INVALID" });
+  }
+  try {
+    const { data, error } = await supabase.rpc("aura_manager_season_settings_v1", {
+    p_actor_id: String(actor.id), p_operation: operation,
+      p_expected_revision: operation === "save" ? Number(payload.expectedRevision) : undefined,
+      p_season_code: operation === "save" ? String(payload.seasonCode) : undefined,
+      p_sales_year: operation === "save" ? Number(payload.salesYear) : undefined,
+    });
+    if (error) throw error;
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+    const setting = jsonObject(data);
+    const seasonCode = setting.seasonCode;
+    const salesYear = setting.salesYear;
+    const revision = setting.revision;
+    if (typeof seasonCode !== "string" || !["S1", "F1"].includes(seasonCode) || typeof salesYear !== "number" || !Number.isInteger(salesYear)
+      || salesYear < 1 || salesYear > 99 || typeof revision !== "number" || !Number.isSafeInteger(revision) || revision < 0) throw new Error("AURA_SEASON_SETTINGS_UNAVAILABLE");
+    return jsonResponse({ ok: true, data: { seasonCode, salesYear, revision } });
+  } catch (error) {
+    const detail = error as { code?: string; message?: string };
+    if (detail.code === "42501") return forbidden();
+    if (detail.code === "40001" || detail.message === "AURA_MANAGER_SETTINGS_CONFLICT") {
+      return errorResponse("Another manager changed the season. Reload the current setting and review your update.", 409, { code: "AURA_MANAGER_SETTINGS_CONFLICT" });
+    }
+    return errorResponse("Current season settings are unavailable. Reload and try again; no update has been confirmed.", 503, { code: "AURA_SEASON_SETTINGS_UNAVAILABLE" });
+  }
+}
+
+async function handleCustomerRepMappingAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Sign in to manage customer mappings.", 401, { code: "CUSTOMER_REP_MAPPING_UNAUTHORIZED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  let actor: Record<string, unknown>;
+  try { actor = await resolveActiveSessionProfile(session); }
+  catch { return errorResponse("An active account profile is required.", 403, { code: "CUSTOMER_REP_MAPPING_PROFILE_INACTIVE" }); }
+  let request: ReturnType<typeof validateCustomerRepMappingRequest>;
+  try { request = validateCustomerRepMappingRequest(payload); }
+  catch (error) {
+    const code = String(error instanceof Error ? error.message : "CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    return errorResponse("The customer mapping request is invalid.", 400, { code });
+  }
+  if (request.operation === "options" && !hasTableReadAccess(String(actor.role || ""), "ph_customer_consignee_sales_reps", String(actor.username || ""))) {
+    return errorResponse("Forbidden", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
+  }
+  if (request.operation !== "options" && !isCustomerRepMappingEditorRole(actor.role)) {
+    return errorResponse("Customer mapping management is available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
+  }
+  try {
+    const { data, error } = await supabase.rpc("customer_rep_mapping_manage_v1", {
+      p_actor_id: String(actor.id || ""),
+      p_operation: request.operation,
+      p_payload: jsonValue(request.payload),
+    });
+    if (error) {
+      const failure = String(error.message || "");
+      if (/CUSTOMER_REP_MAPPING_(?:CONFLICT|DUPLICATE)/.test(failure)) {
+        return errorResponse("This mapping changed or conflicts with another row. Reload and review it before saving.", 409, { code: "CUSTOMER_REP_MAPPING_CONFLICT" });
+      }
+      if (/CUSTOMER_REP_MAPPING_NOT_FOUND/.test(failure)) {
+        return errorResponse("The customer mapping no longer exists. Reload the list.", 404, { code: "CUSTOMER_REP_MAPPING_NOT_FOUND" });
+      }
+      if (/CUSTOMER_REP_MAPPING_(?:FORBIDDEN|PROFILE_INACTIVE)/.test(failure)) {
+        return errorResponse("Customer mappings are available only to active Administrators and Managers.", 403, { code: "CUSTOMER_REP_MAPPING_FORBIDDEN" });
+      }
+      if (/CUSTOMER_REP_MAPPING_(?:PAYLOAD|FILTER|VALUE|REVISION|IDENTITY_MISSING|REP_UNVERIFIED|OPERATION)/.test(failure)) {
+        return errorResponse("The customer mapping could not be saved. Review the active customer, consignee, and sales representative.", 400, { code: failure.match(/CUSTOMER_REP_MAPPING_[A-Z_]+/)?.[0] || "CUSTOMER_REP_MAPPING_INVALID" });
+      }
+      throw error;
+    }
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("CUSTOMER_REP_MAPPING_RESPONSE_INVALID");
+    return jsonResponse(data);
+  } catch (error) {
+    recordHandledError("app-api", "customer-rep-map", error, 503);
+    return errorResponse("Customer mappings are temporarily unavailable. Retry after refreshing the list.", 503, { code: "CUSTOMER_REP_MAPPING_UNAVAILABLE" });
+  }
+}
+
 function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
   const sourceInput = payload.source && typeof payload.source === "object" && !Array.isArray(payload.source)
     ? payload.source as Record<string, unknown>
@@ -1044,6 +1447,9 @@ function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
     ? payload.transaction as Record<string, unknown>
     : {};
   const rowOverlays = Array.isArray(payload.rowOverlays) ? payload.rowOverlays : [];
+  const editableFields = payload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY;
+  const sourceContext = jsonObject(payload.sourceContext ?? {});
+  const sourceMode = String(sourceContext.sourceMode || "drive");
   return {
     workflowPolicyVersion: String(payload.workflowPolicyVersion || "").trim(),
     idempotencyToken: String(payload.idempotencyToken || payload.idempotency_token || "").trim(),
@@ -1056,25 +1462,47 @@ function sanitizeDriveReclassPayload(payload: Record<string, unknown>) {
     },
     transaction,
     rowOverlays,
+    ...(editableFields ? {
+      sourceContext: { sourceMode, ...(sourceMode === "eval-report-2" ? {
+        reportId: String(sourceContext.reportId || "").trim().toLowerCase(),
+        itemcode: String(sourceContext.itemcode || "").trim(),
+      } : {}) },
+      recipientEmails: sourceMode === "item-inquiry" && Array.isArray(payload.recipientEmails) ? payload.recipientEmails : [],
+    } : {}),
     clientVersion: String(payload.clientVersion || "").trim().slice(0, 80),
   };
 }
 
 function driveReclassErrorResponse(message: string) {
   const raw = String(message || "").trim().toUpperCase();
+  if (/V7_.*(?:CONFLICT|STALE|ROW_MISSING|SOURCE_MISSING|SOURCE_CHANGED)/.test(raw)) {
+    return errorResponse("Inventory changed. Refresh and review the edited fields before sending again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
+  if (/V[67]_INVENTORY_REFRESH_REQUIRED|V[67]_INVENTORY_REVISION_MISSING/.test(raw)) {
+    return errorResponse("Inventory is refreshing. Wait for the import to finish, then review and retry this inquiry.", 503, { code: "DRIVE_RECLASS_INVENTORY_REFRESH_REQUIRED" });
+  }
+  if (/V6_.*(?:SETTINGS|SEASON_SETTING).*(?:UNAVAILABLE|INVALID|MISSING)/.test(raw)) {
+    return errorResponse("Current season settings are unavailable. Reload the Managers setting before submitting a hold.", 503, { code: "DRIVE_RECLASS_SEASON_SETTINGS_UNAVAILABLE" });
+  }
+  if (/V6_LIVE_EDIT_(CONFLICT|ROW_MISSING)|V6_ORIGINAL_SNAPSHOT_CONFLICT/.test(raw)) {
+    return errorResponse("Inventory changed. Refresh Drive Mode and review the priority and hold fields before sending again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
   if (/TOKEN_OWNERSHIP/.test(raw)) {
     return errorResponse("This saved inquiry belongs to another user.", 403, { code: "DRIVE_RECLASS_TOKEN_OWNERSHIP_CONFLICT" });
   }
   if (/FORBIDDEN|PERMISSION_REQUIRED|ROW_NOT_ASSIGNED|PROFILE_NOT_ACTIVE|ACTOR_REQUIRED/.test(raw)) {
     return errorResponse("You do not have access to Reclass this Drive row.", 403, { code: "DRIVE_RECLASS_FORBIDDEN" });
   }
-  if (/SOURCE_CHANGED|SOURCE_MISSING|TOKEN_CONFLICT/.test(raw)) {
+  if (/SOURCE_(?:ROW_)?(?:CHANGED|MISSING)|TOKEN_CONFLICT|V5_ORIGINAL_SNAPSHOT_CONFLICT/.test(raw)) {
     return errorResponse("Inventory or inquiry state changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
+  }
+  if (/EVAL_WORK_(ORIGINAL_OH|VERSION|SUBMISSION_TOKEN)_.*CONFLICT|EVAL_WORK_SUBMISSION_TOKEN_CONFLICT/.test(raw)) {
+    return errorResponse("The inventory or saved inquiry changed. Refresh Drive Mode, review the row, and send again.", 409, { code: "DRIVE_RECLASS_SOURCE_CHANGED" });
   }
   if (/RECIPIENTS_UNAVAILABLE/.test(raw)) {
     return errorResponse("No required Reclass recipient is currently available.", 422, { code: "DRIVE_RECLASS_RECIPIENTS_UNAVAILABLE" });
   }
-  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|STATUS_INVALID|RETRY_INVALID/.test(raw)) {
+  if (/PAYLOAD|TOKEN|SOURCE_REQUIRED|ACTIONS_INVALID|V3_REQUIRED|V4_|V5_|V6_|V7_|STATUS_INVALID|RETRY_INVALID|EVAL_WORK_(MOVE_|INQUIRY_|ROW_|ACTION_|PROPOSAL_|SPLIT_|ORIGINAL_OH_)/.test(raw)) {
     return errorResponse("The Reclass inquiry is incomplete. Review it and try again.", 400, { code: "DRIVE_RECLASS_INVALID" });
   }
   return errorResponse("Reclass service is temporarily unavailable. Retry with the same inquiry.", 503, { code: "DRIVE_RECLASS_SERVICE_UNAVAILABLE" });
@@ -1095,17 +1523,21 @@ async function handlePhotoHistoryAction(
   }
   // The session supplies the actor. RPCs freeze recipients and asset references themselves.
   const input = payload.input && typeof payload.input === 'object' && !Array.isArray(payload.input)
-    ? payload.input as Record<string, unknown> : {};
+    ? jsonObject(payload.input) : {};
   try {
+    if (typeof profile.id !== "string") throw new Error("PHOTO_HISTORY_PROFILE_INVALID");
     const { data, error } = await supabase.rpc('photo_history_gallery_v1', {
       p_actor_id: profile.id, p_operation: operation, p_input: input,
     });
     if (error) throw new Error(error.message);
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("PHOTO_HISTORY_RESPONSE_INVALID");
+    const result = jsonObject(data);
     if (operation === 'search') {
-      return jsonResponse({ ...data, photos: (data.photos || []).map((a: Record<string, unknown>) => publicHistoryPhoto(SUPABASE_URL, a)) });
+      const photos = Array.isArray(result.photos) ? result.photos.map((value) => publicHistoryPhoto(SUPABASE_URL, jsonObject(value))) : [];
+      return jsonResponse({ ...result, photos });
     }
     if (operation === 'asset') {
-      const asset = data.asset as Record<string, unknown>;
+      const asset = jsonObject(result.asset);
       if (input.open === true) {
         const url = asset.storage_available ? historyPhotoUrl(SUPABASE_URL, asset, true)
           : `https://drive.google.com/file/d/${encodeURIComponent(String(asset.drive_file_id || ''))}/view`;
@@ -1114,7 +1546,7 @@ async function handlePhotoHistoryAction(
       if (asset.storage_available) return jsonResponse({ ok: true, thumbnail: historyPhotoUrl(SUPABASE_URL, asset) });
       return jsonResponse(await readArchivedHistoryThumbnail(asset));
     }
-    return jsonResponse(data);
+    return jsonResponse(result);
   } catch (error) {
     const raw = String(error instanceof Error ? error.message : '');
     const codes: Record<string, string> = {
@@ -1131,7 +1563,7 @@ async function handlePhotoHistoryAction(
   }
 }
 
-async function handleDriveReclassAction(
+export async function handleDriveReclassAction(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
 ) {
@@ -1146,7 +1578,7 @@ async function handleDriveReclassAction(
     if (operation === "season_priority_list") {
       const assignedTo = String(payload.assignedTo || payload.assigned_to || "all").trim().slice(0, 120);
       const { data, error } = await supabase.rpc("manager_season_priority_list_v1", {
-        p_actor_id: activeProfile.id,
+        p_actor_id: String(activeProfile.id),
         p_assigned_to: assignedTo,
       });
       if (error) return seasonPriorityErrorResponse(error.message || "");
@@ -1154,8 +1586,8 @@ async function handleDriveReclassAction(
     }
     if (operation === "season_priority_submit") {
       const expectedPriority = Number(payload.expectedPriority ?? payload.expected_priority);
-      const { data, error } = await supabase.rpc("submit_manager_season_priority_v1", {
-        p_actor_id: activeProfile.id,
+      const { data, error } = await supabase.rpc("submit_manager_season_priority_v2", {
+        p_actor_id: String(activeProfile.id),
         p_source_unique_id: String(payload.sourceUid || payload.source_uid || "").trim(),
         p_expected_priority: Number.isInteger(expectedPriority) ? expectedPriority : 0,
         p_scope_fingerprint: String(payload.scopeFingerprint || payload.scope_fingerprint || "").trim().toLowerCase(),
@@ -1169,13 +1601,17 @@ async function handleDriveReclassAction(
         ? payload.itemcodes.slice(0, 101).map((value) => String(value || "").trim()).filter(Boolean)
         : null;
       const { data, error } = await supabase.rpc("manager_season_priority_state_v1", {
-        p_actor_id: activeProfile.id,
-        p_itemcodes: itemcodes,
+        p_actor_id: String(activeProfile.id),
+        ...(itemcodes ? { p_itemcodes: itemcodes } : {}),
       });
       if (error) return seasonPriorityErrorResponse(error.message || "");
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, requests: [] });
     }
     if (operation === "create") {
+      if (payload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY && payload.sourceContext != null
+        && (typeof payload.sourceContext !== "object" || Array.isArray(payload.sourceContext))) {
+        return driveReclassErrorResponse("DRIVE_RECLASS_V7_SOURCE_CONTEXT_INVALID");
+      }
       const manualTransaction = payload.transaction && typeof payload.transaction === "object" && !Array.isArray(payload.transaction)
         ? payload.transaction as Record<string, unknown>
         : {};
@@ -1188,7 +1624,22 @@ async function handleDriveReclassAction(
         ...sanitizeDriveReclassPayload(payload),
         actorUsername,
       };
-      const { data, error } = await supabase.rpc("enqueue_drive_reclass_inquiry_v1", { p_payload: protectedPayload });
+      try {
+        validateReclassShearedProposals(protectedPayload);
+        validateReclassSmartShieldProposals(protectedPayload);
+        validateReclassEditableFieldProposals(protectedPayload);
+      }
+      catch (error) { return driveReclassErrorResponse(error instanceof Error ? error.message : "DRIVE_RECLASS_V5_PAYLOAD_INVALID"); }
+      const enqueueRpc = protectedPayload.workflowPolicyVersion === RECLASS_EDITABLE_FIELDS_POLICY
+        ? "enqueue_drive_reclass_inquiry_v7"
+        : protectedPayload.workflowPolicyVersion === RECLASS_SMART_SHIELD_POLICY
+        ? "enqueue_drive_reclass_inquiry_v6"
+        : protectedPayload.workflowPolicyVersion === RECLASS_SHEARED_POLICY
+          ? "enqueue_drive_reclass_inquiry_v5"
+        : protectedPayload.workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"
+          ? "enqueue_drive_reclass_inquiry_v4"
+          : "enqueue_drive_reclass_inquiry_v1";
+      const { data, error } = await supabase.rpc(enqueueRpc, { p_payload: jsonValue(protectedPayload) });
       if (error) return driveReclassErrorResponse(error.message || "");
       return jsonResponse(data && typeof data === "object" ? data : { ok: false, status: "failed" });
     }
@@ -1212,6 +1663,7 @@ async function handleDriveReclassAction(
 
 function seasonPriorityErrorResponse(error: unknown) {
   const raw = String(error || "SEASON_PRIORITY_SERVICE_UNAVAILABLE").toUpperCase();
+  if (/RECLASS_V6_/.test(raw)) return driveReclassErrorResponse(raw);
   const code = (raw.match(/SEASON_PRIORITY_[A-Z0-9_]+/) || ["SEASON_PRIORITY_SERVICE_UNAVAILABLE"])[0];
   if (/FORBIDDEN|PERMISSION_REQUIRED|TOKEN_OWNERSHIP_CONFLICT/.test(code)) {
     return errorResponse("Season Priority is available only to active Managers and Administrators.", 403, { code });
@@ -1505,12 +1957,12 @@ async function handleShearLocationAction(
       });
       const recipients = await resolveShearRecipients(payload.recipientProfileIds);
       const { data, error } = await supabase.rpc("create_shear_location_inquiries_v1", {
-        p_payload: {
+        p_payload: jsonValue({
           actorUsername: actor,
           idempotencyKey: String(payload.idempotencyKey || "").trim(),
           selections,
           recipients,
-        },
+        }),
       });
       if (error) throw error;
       return jsonResponse({ ok: true, data });
@@ -1695,7 +2147,7 @@ async function handleLocationWorkAction(
       const completionRecipient = directory.find((entry) => entry.username === LOCATION_WORK_CREATOR);
       if (!completionRecipient) throw new Error("location_work_completion_recipient_invalid");
       const { data, error } = await supabase.rpc("create_location_work_job_v1", {
-        p_payload: {
+        p_payload: jsonValue({
           actorUsername: actor,
           idempotencyKey: String(payload.idempotencyKey || "").trim(),
           title: String(payload.title || "").trim(),
@@ -1703,7 +2155,7 @@ async function handleLocationWorkAction(
           lines,
           recipients,
           completionRecipient,
-        },
+        }),
       });
       if (error) throw error;
       return jsonResponse({ ok: true, data });
@@ -1726,7 +2178,7 @@ async function handleLocationWorkAction(
         p_actor_username: actor,
         p_expected_revision: expectedRevision,
         p_resolution_status: resolutionStatus,
-        p_actual_qty: actualQty,
+        p_actual_qty: actualQty ?? undefined,
         p_not_completed_reason: String(payload.notCompletedReason || "").trim(),
         p_variance_confirmed: payload.varianceConfirmed === true,
       });
@@ -1758,14 +2210,11 @@ async function handleLocationWorkAction(
       const jobId = String(payload.jobId || "").trim();
       const expectedRevision = Number(payload.expectedRevision);
       if (!jobId || !Number.isInteger(expectedRevision) || expectedRevision < 1) throw new Error("location_work_revision_conflict");
-      const rpcName = operation === "cancel" ? "cancel_location_work_job_v1" : "retry_location_work_delivery_v1";
-      const args: Record<string, unknown> = {
-        p_job_id: jobId,
-        p_actor_username: actor,
-        p_expected_revision: expectedRevision,
-      };
-      if (operation === "retry") args.p_delivery_kind = String(payload.deliveryKind || "assignment").trim().toLowerCase();
-      const { data, error } = await supabase.rpc(rpcName, args);
+      const result = operation === "cancel"
+        ? await supabase.rpc("cancel_location_work_job_v1", { p_job_id: jobId, p_actor_username: actor, p_expected_revision: expectedRevision })
+        : await supabase.rpc("retry_location_work_delivery_v1", { p_job_id: jobId, p_actor_username: actor,
+          p_expected_revision: expectedRevision, p_delivery_kind: String(payload.deliveryKind || "assignment").trim().toLowerCase() });
+      const { data, error } = result;
       if (error) throw error;
       return jsonResponse({ ok: true, data });
     }
@@ -1840,13 +2289,13 @@ async function handleDockTripStatusAction(
     }
     const { data, error } = await supabase.rpc("save_dock_trip_status_v1", {
       p_tripnumber: tripnumber,
-      p_dock_num: dockNum || null,
-      p_checker: checker || null,
-      p_inspector: inspector || null,
-      p_mistake: mistake || null,
+      p_dock_num: dockNum,
+      p_checker: checker,
+      p_inspector: inspector,
+      p_mistake: mistake,
       p_status: dockStatus,
       p_actor_username: actor,
-      p_expected_revision: expectedRevision,
+      p_expected_revision: expectedRevision ?? undefined,
     });
     if (error) throw error;
     const savedStatus = Array.isArray(data) ? data[0] : data;
@@ -1982,6 +2431,10 @@ function evalWorkError(error: unknown) {
   const source = error && typeof error === "object" ? error as Record<string, unknown> : {};
   const code = String(source.code || "").trim();
   const message = String(source.message || error || "eval_work_failed").trim();
+  if (/RECLASS_V6_/i.test(message)) return driveReclassErrorResponse(message);
+  if (/EVAL_WORK_V6_COMPLETION_OUTBOX_MISSING/i.test(message)) {
+    return errorResponse("Eval Work delivery is unavailable. No live edit was committed; retry with the same submission.", 503, { code: "EVAL_WORK_DELIVERY_UNAVAILABLE" });
+  }
   const reviewCode = (message.match(/\bREVIEW_[A-Z_]+\b/i) || [""])[0].toUpperCase();
   const reviewMessages: Record<string, string> = {
     REVIEW_SOURCE_MISSING: "The opening inventory row is no longer available. Close this review and reopen the current row.",
@@ -2200,7 +2653,7 @@ async function handleEvalWorkAction(
           source,
           inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
         };
-        const { data, error } = await supabase.rpc("create_eval_work_legacy_sep09_v1", { p_payload: rpcPayload });
+        const { data, error } = await supabase.rpc("create_eval_work_legacy_sep09_v1", { p_payload: jsonValue(rpcPayload) });
         if (error) throw error;
         return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
       }
@@ -2216,7 +2669,7 @@ async function handleEvalWorkAction(
         source,
         inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : undefined,
       };
-      const { data, error } = await supabase.rpc("create_eval_work_multi_v1", { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc("create_eval_work_multi_v1", { p_payload: jsonValue(rpcPayload) });
       if (error) throw error;
       return jsonResponse({ ok: true, data: await withEvalWorkDeliveryStatus(data as Record<string, unknown>) });
     }
@@ -2304,7 +2757,7 @@ async function handleEvalWorkAction(
       const rpcName = report2ItemCount === items.length
         ? "create_eval_report2_batch_v1"
         : "create_eval_work_batch_multi_v2";
-      const { data, error } = await supabase.rpc(rpcName, { p_payload: rpcPayload });
+      const { data, error } = await supabase.rpc(rpcName, { p_payload: jsonValue(rpcPayload) });
       if (error) throw error;
       const report2Result = report2ItemCount === items.length && data && typeof data === "object" && !Array.isArray(data)
         ? data as Record<string, unknown>
@@ -2333,9 +2786,6 @@ async function handleEvalWorkAction(
         return errorResponse("Only an assigned evaluator can update this work.", 403, { code: "eval_work_edit_forbidden" });
       }
       const isV2 = String(row.contract_version || "") === "eval-work-v2-multi-origin";
-      const rpcName = isV2
-        ? (operation === "submit" ? "submit_eval_work_v2" : "save_eval_work_v2")
-        : (operation === "submit" ? "submit_eval_work_v1" : "save_eval_work_v1");
       let evidence: Record<string, unknown> = {};
       if (isV2) {
         const input = payload.evidenceByOrigin && typeof payload.evidenceByOrigin === "object"
@@ -2347,14 +2797,20 @@ async function handleEvalWorkAction(
       } else {
         evidence = normalizeEvalWorkEvidence(workId, payload.evidence && typeof payload.evidence === "object" ? payload.evidence : {});
       }
-      const { data, error } = await supabase.rpc(rpcName, {
+      const args = {
         p_work_id: workId,
         p_actor_username: actor,
         p_expected_version: Number(payload.expectedVersion),
-        p_inquiry: payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft,
-        ...(isV2 ? { p_evidence_by_origin: evidence } : { p_evidence: evidence }),
-        ...(operation === "submit" ? { p_submission_token: String(payload.submissionToken || "").trim() } : {}),
-      });
+        p_inquiry: jsonValue(payload.inquiry && typeof payload.inquiry === "object" ? payload.inquiry : row.inquiry_draft ?? {}),
+      };
+      const result = isV2
+        ? operation === "submit"
+          ? await supabase.rpc("submit_eval_work_v2", { ...args, p_evidence_by_origin: jsonValue(evidence), p_submission_token: String(payload.submissionToken || "").trim() })
+          : await supabase.rpc("save_eval_work_v2", { ...args, p_evidence_by_origin: jsonValue(evidence) })
+        : operation === "submit"
+          ? await supabase.rpc("submit_eval_work_v1", { ...args, p_evidence: jsonValue(evidence), p_submission_token: String(payload.submissionToken || "").trim() })
+          : await supabase.rpc("save_eval_work_v1", { ...args, p_evidence: jsonValue(evidence) });
+      const { data, error } = result;
       if (error) throw error;
       const withDelivery = await withEvalWorkDeliveryStatus(data as Record<string, unknown>);
       return jsonResponse({ ok: true, data: (await withEvalWorkOrigins([withDelivery]))[0] });
@@ -2877,7 +3333,7 @@ async function handlePasswordChange(
     const fingerprint = await passwordChangeFingerprint(newPassword);
     const prepare = async (authUserId: string | null) => {
       const { data, error } = await supabase.rpc("prepare_password_change_profile", {
-        p_username: username, p_auth_user_id: authUserId, p_password_fingerprint: fingerprint,
+        p_username: username, ...(authUserId ? { p_auth_user_id: authUserId } : {}), p_password_fingerprint: fingerprint,
       });
       const row = Array.isArray(data) ? data[0] : data;
       return { row: row as Record<string, unknown> | null, error };
@@ -2964,13 +3420,53 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   let query = String(payload.query || "").trim();
 
   if (!["GET", "POST", "PATCH", "DELETE"].includes(method)) return errorResponse("Unsupported method.", 400);
+  const customerRequestWriteError = protectCustomerRequestDbWrite(table, method, body);
+  if (customerRequestWriteError) return customerRequestWriteError;
   if (table === "ph_master_inventory" && method === "GET") {
     return errorResponse("Use the role-checked inventory_read operations.", 410, { code: "INVENTORY_READ_API_REQUIRED" });
+  }
+  if (table === "ph_customer_consignee_sales_reps" && method === "GET") {
+    // The source JSON is returned only by the Admin/Manager detail RPC. The
+    // generic compatibility read uses service credentials, so pin its column
+    // projection even when a legacy caller asks for `*` or raw_data.
+    const safeMappingColumns = new Set([
+      "unique_id", "customeridentityid", "customername", "customerstatus", "consigneeid", "consigneename",
+      "consigneestatus", "salesrepid", "salesrepname", "territorycode", "territorydesc", "updated_at",
+      "mapping_revision", "mapping_updated_by",
+    ]);
+    const mappingParams = new URLSearchParams(query);
+    const allowedMappingQueryKeys = new Set([...safeMappingColumns, "select", "order", "limit", "offset"]);
+    if (query.length > 2000 || [...mappingParams.keys()].some((key) => !allowedMappingQueryKeys.has(key))) {
+      return errorResponse("Unsupported customer mapping query.", 400, { code: "CUSTOMER_REP_MAPPING_QUERY_INVALID" });
+    }
+    const invalidOrder = mappingParams.getAll("order").some((orderValue) => orderValue.split(",").some((part) => {
+      const [column, direction, nulls] = part.trim().split(".");
+      return !column || !safeMappingColumns.has(column)
+        || ![undefined, "asc", "desc"].includes(direction)
+        || ![undefined, "nullsfirst", "nullslast"].includes(nulls);
+    }));
+    if (invalidOrder) {
+      return errorResponse("Unsupported customer mapping sort.", 400, { code: "CUSTOMER_REP_MAPPING_QUERY_INVALID" });
+    }
+    for (const key of ["limit", "offset"]) {
+      const values = mappingParams.getAll(key);
+      if (values.some((value) => !/^\d{1,6}$/.test(value) || Number(value) > 1_000_000)) {
+        return errorResponse("Unsupported customer mapping page.", 400, { code: "CUSTOMER_REP_MAPPING_QUERY_INVALID" });
+      }
+    }
+    query = withSelect(query,
+      "unique_id,customeridentityid,customername,customerstatus,consigneeid,consigneename,consigneestatus,salesrepid,salesrepname,territorycode,territorydesc,updated_at,mapping_revision,mapping_updated_by");
   }
   if (method === "GET") {
     if (!hasTableReadAccess(session.role, table, session.username)) return errorResponse("Forbidden", 403);
   } else if (!hasTableWriteAccess(session.role, table, method, body, session.username)) {
     return errorResponse("Forbidden", 403);
+  }
+  if (table === "ph_active_request" && method === "POST") {
+    const internalRequestError = await authorizeInternalCustomerRequestInsert(session, body);
+    if (internalRequestError) return internalRequestError;
+    body = stampInternalCustomerRequestSource(body);
+    if (!body) return errorResponse("Create requests through the authorized request batch operation.", 410, { code: "REQUEST_BATCH_API_REQUIRED" });
   }
 
   if (table === "ph_app_users" && method === "GET") {
@@ -3000,86 +3496,10 @@ async function handleDb(session: Awaited<ReturnType<typeof readAppSessionFromReq
   return jsonResponse({ ok: true, data: responsePayload });
 }
 
-const INVENTORY_MASTER_INITIAL_FIELDS = [
-  "unique_id", "warehouseid", "plantgroupcode", "itemcode", "qualitycode", "contsize", "commonname",
-  "lotcode", "locationcode", "source", "desigitem", "desigcust", "desigloc", "priority", "ptravailable", "s_lts", "season_supply", "saleyear",
-  "itemspec", "locationnote", "locationnotedate", "fieldtagcolor", "holdstopcode", "holdstopreason", "holdstopbegindate", "season", "blockalpha", "blocknumber",
-  "hold_release_approved_at", "hold_release_approved_by", "hold_release_approved_by_display", "hold_release_approved_holdstopbegindate",
-  "app_tab_assignment", "assignedto", "date_completed", "av_note", "sales_note", "salesnote", "match", "loc_match_qty", "initial_ptr", "spec", "caliper",
-  "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at",
-  "av_rule_priority_snapshot", "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at",
-  "eval_task_type", "eval_task_status", "eval_task_instructions", "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by", "eval_task_completed_at",
-  "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action", "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note",
-  "photo_link", "photo_name", "dock_photo_link", "dock_photo_name", "flyer_photo_link", "flyer_photo_name", "flyer_completed",
-  "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec", "flyer_caliper", "flyer_pick", "flyer_initial_ptr",
-].join(",");
-const INVENTORY_MASTER_INITIAL_BASE_FIELDS = INVENTORY_MASTER_INITIAL_FIELDS.split(",").filter((field) =>
-  !field.startsWith("hold_release_") && !field.startsWith("av_rule_")
-).join(",");
-// Explicit full contracts preserve existing detail/export fields without exposing
-// future schema additions automatically. Browse includes every current Drive filter.
-const INVENTORY_MASTER_FULL_FIELDS = [
-  "unique_id", "itemcode", "commonname", "contsize", "locationcode", "lotcode", "ptravailable",
-  "season_supply", "priority", "qualitycode", "field_tag_color", "s_lts", "season", "plantgroupcode",
-  "listprice", "concat", "last_updated", "assignedto", "date_completed", "end_cap_folder", "end_cap_qty",
-  "end_cap_level", "match", "spec", "caliper", "pic_note", "sales_note", "av_note",
-  "photo_link", "photo_name", "dock_spec", "dock_caliper", "dock_note", "dock_photo_link", "dock_photo_name",
-  "flyer_cat", "flyer_title", "flyer_inst", "flyer_assigned", "flyer_notes", "flyer_photo_link", "flyer_photo_name",
-  "flyer_completed", "initial_ptr", "loc_match_qty", "warehousei", "desigitem", "desigcust", "desigloc",
-  "ptronhand", "ptrreviewed", "holdstopcode", "holdstopbegindate", "holdstopreason", "hsreasonbegin", "season_oh",
-  "season_demand", "oversellpercentage", "itemspec", "locationnote", "locationnotedate", "suspend", "suspendto",
-  "specialpuller", "pulltagnote1", "pulltagnote2", "fieldtagcolor", "salesnote", "inventorynote", "locationptn1",
-  "locationptn2", "prisetby", "priupdated", "bypassloc", "largeptrqty", "maxorderquantity", "lochold",
-  "ext_ptronhand", "varietycode", "genusname", "botanicalname", "reversecommon", "sortnamevariety", "containersort",
-  "saleyear", "blockalpha", "blocknumber", "bay", "pullerresponsibility", "grower", "si_lts",
-  "a_lts", "ai_lts", "season_available", "holdstopenddate", "salesnote_1", "fnsalesnote", "warehousename",
-  "mcstatus", "hz", "intercopo", "insurancegroup", "brand", "printedcontainercode", "warehouseid",
-  "isreserve", "salesrepid", "salesrepname", "nationalaccount", "idgroup", "customeridentityid", "customername",
-  "consigneeidentityid", "consigneename", "consigneecity", "consigneestate", "consigneezip", "tripnumber", "stopnumber",
-  "zonecode", "tagcode", "transactionnumber", "purchaseordernumber", "extunitprice", "ordertotal", "requestdate",
-  "stagename", "step", "customersku", "formattedupc", "descriptorcode", "quantityordered", "quantityshipped",
-  "unitprice", "handlingchargeperitem", "taggingchargeperitem", "combinedprice", "freightrateperitem", "landed", "retailprice",
-  "picknote", "planstart", "generalloadinstr", "invoicedate", "consigneeaddress_1", "consigneeaddress_2", "altshipcomment",
-  "shiptotelephone_1", "okloadinstructions", "txloadinstructions", "ncloadinstructions", "hlloadinstructions", "dock", "dock_num",
-  "equiv_unit", "equiv_uom", "wingdingunits", "dropweight", "internalinvnote", "hardinesszone", "tagdeptnote",
-  "ext_unit_merch_shipped", "ext_eunit_shipped", "avg_price_eunit_shipped", "requestdateweek", "carrier", "suspend_to", "qa_code",
-  "si_available", "source", "filename", "app_tab_assignment", "salesnotebegindate", "ncr_approval_type", "ncr_requested_by_username",
-  "ncr_requested_by_display", "ncr_requested_by_email", "ncr_requested_at", "ncr_approval_message", "hold_release_approved_at", "hold_release_approved_by", "hold_release_approved_by_display",
-  "hold_release_approved_holdstopbegindate", "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec", "flyer_caliper", "flyer_pick",
-  "flyer_initial_ptr", "eval_task_type", "eval_task_status", "eval_task_instructions", "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by",
-  "eval_task_completed_at", "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action", "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note",
-  "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at", "av_rule_priority_snapshot",
-  "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at",
-].join(",");
-const INVENTORY_MASTER_BROWSE_FIELDS = [
-  "unique_id", "warehouseid", "plantgroupcode", "itemcode", "qualitycode", "contsize", "commonname",
-  "lotcode", "locationcode", "source", "desigitem", "desigcust", "desigloc", "priority",
-  "ptravailable", "s_lts", "season_supply", "saleyear", "itemspec", "locationnote", "locationnotedate",
-  "fieldtagcolor", "holdstopcode", "holdstopreason", "holdstopbegindate", "season", "blockalpha", "blocknumber",
-  "hold_release_approved_at", "hold_release_approved_by", "hold_release_approved_by_display", "hold_release_approved_holdstopbegindate", "app_tab_assignment", "assignedto", "date_completed",
-  "av_note", "sales_note", "salesnote", "match", "loc_match_qty", "initial_ptr", "spec",
-  "caliper", "av_rule_bundle_updated_at", "av_rule_av_note_updated_at", "av_rule_spec_updated_at", "av_rule_match_updated_at", "av_rule_caliper_updated_at", "av_rule_photo_updated_at",
-  "av_rule_priority_snapshot", "av_rule_holdstop_snapshot", "av_rule_last_clear_reason", "av_rule_last_cleared_at", "eval_task_type", "eval_task_status", "eval_task_instructions",
-  "eval_task_assigned_by", "eval_task_assigned_at", "eval_task_completed_by", "eval_task_completed_at", "eval_task_recount_qty", "eval_task_moved_up_qty", "eval_task_hold_action",
-  "eval_task_hold_code", "eval_task_hold_reason", "eval_task_result_note", "photo_link", "photo_name", "dock_photo_link", "dock_photo_name",
-  "flyer_photo_link", "flyer_photo_name", "flyer_completed", "flyer_av_note", "flyer_match", "flyer_loc_match_qty", "flyer_spec",
-  "flyer_caliper", "flyer_pick", "flyer_initial_ptr", "warehousei", "ptronhand", "ptrreviewed", "hsreasonbegin",
-  "season_oh", "season_demand", "oversellpercentage", "suspend", "suspendto", "specialpuller", "pulltagnote1",
-  "pulltagnote2", "inventorynote", "locationptn1", "locationptn2", "prisetby", "priupdated", "bypassloc",
-  "largeptrqty", "maxorderquantity", "lochold", "listprice", "ext_ptronhand", "varietycode", "genusname",
-  "botanicalname", "reversecommon", "sortnamevariety", "containersort", "bay", "pullerresponsibility", "grower",
-  "si_lts", "a_lts", "ai_lts", "season_available", "holdstopenddate", "fnsalesnote", "warehousename",
-  "mcstatus", "hz", "intercopo", "insurancegroup", "brand", "printedcontainercode", "salesnotebegindate",
-  "equiv_unit", "last_updated", "filename", "ncr_approval_type", "ncr_requested_by_username", "ncr_requested_by_display", "ncr_requested_by_email",
-  "ncr_requested_at", "ncr_approval_message", "end_cap_folder", "end_cap_qty", "end_cap_level", "flyer_cat", "flyer_title",
-  "flyer_inst", "flyer_assigned", "flyer_notes", "pic_note",
-  "consigneename", "customername", "dock", "dock_caliper", "dock_note", "dock_num", "dock_spec",
-  "field_tag_color", "picknote", "planstart", "qa_code", "salesnote_1", "salesrepid", "salesrepname",
-  "stopnumber", "suspend_to", "tripnumber",
-].join(",");
-const INVENTORY_PO_DETAIL_FIELDS = "unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptravailable,app_tab_assignment,priority,season";
-const INVENTORY_NCR_QUEUE_FIELDS = "unique_id,warehouseid,plantgroupcode,itemcode,qualitycode,contsize,commonname,itemspec,locationcode,lotcode,source,desigitem,desigcust,desigloc,priority,ptronhand,ptravailable,s_lts,saleyear,season,locationnote,locationnotedate,locationptn1,fieldtagcolor,holdstopcode,holdstopreason,holdstopbegindate,last_updated,photo_link,photo_name,dock_photo_link,dock_photo_name,flyer_photo_link,flyer_photo_name,flyer_completed,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,av_note,sales_note,salesnote,match,loc_match_qty,initial_ptr,spec,caliper,ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at,ncr_approval_message,hold_release_approved_at,hold_release_approved_by,hold_release_approved_by_display,hold_release_approved_holdstopbegindate,app_tab_assignment,assignedto,eval_task_type,eval_task_status,eval_task_instructions,eval_task_assigned_by,eval_task_assigned_at,eval_task_completed_by,eval_task_completed_at,eval_task_recount_qty,eval_task_moved_up_qty,eval_task_hold_action,eval_task_hold_code,eval_task_hold_reason,eval_task_result_note";
-const INVENTORY_NOT_ON_INVENTORY_FIELDS = "unique_id,warehouseid,plantgroupcode,itemcode,qualitycode,contsize,commonname,itemspec,locationcode,lotcode,source,desigitem,desigcust,desigloc,priority,ptronhand,ptravailable,s_lts,saleyear,season,locationnote,locationnotedate,locationptn1,fieldtagcolor,holdstopcode,holdstopreason,holdstopbegindate,last_updated,photo_link,photo_name,dock_photo_link,dock_photo_name,flyer_photo_link,flyer_photo_name,flyer_completed,flyer_av_note,flyer_match,flyer_loc_match_qty,flyer_spec,flyer_caliper,flyer_pick,flyer_initial_ptr,av_note,sales_note,salesnote,match,loc_match_qty,initial_ptr,spec,caliper,app_tab_assignment,assignedto";
+const INVENTORY_MASTER_INITIAL_FIELDS = MASTER_INITIAL_FIELDS;
+const INVENTORY_MASTER_INITIAL_BASE_FIELDS = MASTER_INITIAL_BASE_FIELDS;
+const INVENTORY_MASTER_FULL_FIELDS = MASTER_FULL_FIELDS;
+const INVENTORY_MASTER_BROWSE_FIELDS = MASTER_BROWSE_FIELDS;
 const INVENTORY_NCR_ASSIGNMENT_TYPES = new Set(["new-crop", "move-up", "move-down", "hold-release", "recount"]);
 const INVENTORY_NCR_FIRST_STAGE_USERS = new Set(["dylan_collyge", "megan_kelly"]);
 const INVENTORY_NCR_JD_STAGE_USERS = new Set(["jd_jones", "megan_kelly"]);
@@ -3126,8 +3546,8 @@ function inventoryActorQueueAssignments(username: string) {
   return allowed;
 }
 
-function inventoryReadQuery(table: string, fields: string, actor: Record<string, unknown>, includeCount = true) {
-  let query: any = supabase.from(table).select(fields, includeCount ? { count: "exact" } : {});
+function inventoryReadQuery(actor: Record<string, unknown>, fields: string, includeCount = true) {
+  let query = supabase.from("ph_master_inventory").select(fields, includeCount ? { count: "exact" } : {});
   const role = String(actor.role || "").trim();
   const access = getRoleAccessState(role);
   const compactRole = role.toUpperCase().replace(/[^A-Z0-9]+/g, "");
@@ -3139,7 +3559,6 @@ function inventoryReadQuery(table: string, fields: string, actor: Record<string,
   }
   return query;
 }
-
 async function handleInventoryRead(
   session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
   payload: Record<string, unknown>,
@@ -3160,13 +3579,13 @@ async function handleInventoryRead(
   try {
     if (operation === "source_freshness") {
       inventoryReadParams(payload, []);
-      const { data, error } = await inventoryReadQuery("ph_master_inventory", "filename,last_updated", actor, false)
+      const { data, error } = await inventoryReadQuery(actor, "filename,last_updated", false)
         .not("last_updated", "is", null)
         .order("last_updated", { ascending: false, nullsFirst: false })
         .limit(1);
       if (error) throw error;
-      const row = Array.isArray(data) ? data[0] || null : null;
-      return jsonResponse({ ok: true, data: { filename: row?.filename ?? null, last_updated: row?.last_updated ?? null } });
+      const row = projectInventoryRows(data, "filename,last_updated")[0];
+      return jsonResponse({ ok: true, data: { filename: row && !Array.isArray(row) && typeof row === "object" ? row.filename ?? null : null, last_updated: row && !Array.isArray(row) && typeof row === "object" ? row.last_updated ?? null : null } });
     }
 
     if (operation === "schema_capabilities") {
@@ -3199,7 +3618,7 @@ async function handleInventoryRead(
       const fields = projection === "browse" ? INVENTORY_MASTER_BROWSE_FIELDS
         : dataset === "avOpen" || projection === "full" ? INVENTORY_MASTER_FULL_FIELDS
         : projection === "initial_base" ? INVENTORY_MASTER_INITIAL_BASE_FIELDS : INVENTORY_MASTER_INITIAL_FIELDS;
-      let response = inventoryReadQuery("ph_master_inventory", fields, actor);
+      let response = inventoryReadQuery(actor, fields);
       if (dataset === "avOpen") response.in("season", ["F1", "S1", "U1", "U2"]);
       if (dataset === "lookup") {
         if (uniqueId) response.eq("unique_id", uniqueId);
@@ -3212,7 +3631,7 @@ async function handleInventoryRead(
       response = response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, fields);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count,
         projection, fieldCoverage: projection === "browse" ? "browse" : dataset === "avOpen" || projection === "full" ? "full" : "initial", columns: fields.split(",") } });
     }
@@ -3222,12 +3641,12 @@ async function handleInventoryRead(
       const { limit, offset } = inventoryReadPageBounds(params);
       const since = String(params.since || "").trim();
       if (!since || !Number.isFinite(Date.parse(since))) throw new Error("INVENTORY_READ_SINCE_INVALID");
-      const response = inventoryReadQuery("ph_master_inventory", INVENTORY_MASTER_FULL_FIELDS, actor);
+      const response = inventoryReadQuery(actor, INVENTORY_MASTER_FULL_FIELDS);
       response.gt("last_updated", since);
       response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, INVENTORY_MASTER_FULL_FIELDS);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
     }
 
@@ -3238,12 +3657,12 @@ async function handleInventoryRead(
       const contSize = String(params.contSize || "").trim();
       if (!itemCode || !contSize) throw new Error("PO_DETAIL_FILTER_REQUIRED");
       if (!await resolveModuleAllowed(supabase, actor, "po-management")) return errorResponse("Forbidden", 403, { code: "PO_ACCESS_FORBIDDEN" });
-      const response = inventoryReadQuery("ph_master_inventory", INVENTORY_PO_DETAIL_FIELDS, actor);
+      const response = inventoryReadQuery(actor, INVENTORY_PO_DETAIL_FIELDS);
       response.eq("itemcode", itemCode).eq("contsize", contSize);
       response.order("unique_id", { ascending: true }).range(offset, offset + limit - 1);
       const { data, error, count } = await response;
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, INVENTORY_PO_DETAIL_FIELDS);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
     }
 
@@ -3253,7 +3672,7 @@ async function handleInventoryRead(
       const params = inventoryReadParams(payload, allowedParams);
       const { limit, offset } = inventoryReadPageBounds(params);
       let assignment = "ncr_inventory_recount";
-      let fields = "*";
+      let fields = INVENTORY_MASTER_FULL_FIELDS;
       let updatedAtFirst = true;
       if (operation === "ncr_queue") {
         const queueType = String(params.queueType || "").trim();
@@ -3276,12 +3695,12 @@ async function handleInventoryRead(
       } else if (!FULL_ACCESS_USER_KEYS.has(username) && !getRoleAccessState(role).isAdmin && !getRoleAccessState(role).isQcSupervisor) {
         return errorResponse("Forbidden", 403, { code: "QUEUE_ASSIGNMENT_FORBIDDEN" });
       }
-      let query: any = supabase.from("ph_master_inventory").select(fields, { count: "exact" }).eq("app_tab_assignment", assignment);
-      query = updatedAtFirst ? query.order("last_updated", { ascending: false, nullsFirst: false }).order("unique_id", { ascending: true })
-        : query.order("unique_id", { ascending: true });
+      let query = supabase.from("ph_master_inventory").select(fields, { count: "exact" }).eq("app_tab_assignment", assignment);
+      if (updatedAtFirst) query = query.order("last_updated", { ascending: false, nullsFirst: false }).order("unique_id", { ascending: true });
+      else query = query.order("unique_id", { ascending: true });
       const { data, error, count } = await query.range(offset, offset + limit - 1);
       if (error) throw error;
-      const rows = Array.isArray(data) ? data : [];
+      const rows = projectInventoryRows(data, fields);
       return jsonResponse({ ok: true, data: { rows, total: count ?? null, offset, limit, hasMore: count === null ? rows.length === limit : offset + rows.length < count } });
     }
 
@@ -3297,7 +3716,7 @@ async function handleInventoryRead(
       if (kind === "not_on_inventory" && !INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS.has(assignment)) throw new Error("INVENTORY_ROW_VERIFICATION_INVALID");
       const { data, error } = await supabase.from("ph_master_inventory").select("unique_id,app_tab_assignment,assignedto").eq("unique_id", uniqueId).maybeSingle();
       if (error) throw error;
-      const row = data as Record<string, unknown> | null;
+      const row = data;
       if (!row) return jsonResponse({ ok: true, data: { status: "missing", matches: false } });
       const assignmentMatches = String(row.app_tab_assignment || "").trim().toLowerCase() === assignment;
       const assigneeMatches = !Object.prototype.hasOwnProperty.call(params, "expectedAssignee")
@@ -3412,20 +3831,25 @@ export async function handleAuraInventoryV2(
     timeoutStage = "database";
     const { data, error } = await auraInventoryV2Rpc(supabase, input, rpcSignal);
     if (error) throw error;
-    if (!data || typeof data !== "object" || data.ok !== true) {
-      return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: String(data?.code || "AURA_V2_RESULT_INVALID"), data });
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: "AURA_V2_RESULT_INVALID", data });
     }
-    if (data.code === "AURA_ACTIVE_SEASON_REQUIRED") {
+    const resultData = jsonObject(data);
+    if (resultData.ok !== true) {
+      return errorResponse("AURA inventory settings changed. Refresh the catalog and retry.", 409, { code: String(resultData.code || "AURA_V2_RESULT_INVALID"), data: resultData });
+    }
+    if (resultData.code === "AURA_ACTIVE_SEASON_REQUIRED") {
       return errorResponse("The active season changed. Refresh the inventory and review the draft again.", 409, { code: "AURA_ACTIVE_SEASON_REQUIRED", data });
     }
 
-    if (input.operation !== "validate_draft" || data.valid !== true || !Array.isArray(data.rows) || !data.rows.length) {
-      return jsonResponse({ ok: true, data });
+    if (input.operation !== "validate_draft" || resultData.valid !== true || !Array.isArray(resultData.rows) || !resultData.rows.length) {
+      return jsonResponse({ ok: true, data: resultData });
     }
+    const resultRows = resultData.rows.map((row) => jsonObject(row));
 
     const currentSettings = await readAuraSeasonSettings();
-    if (currentSettings.season !== String(data.season || "").toUpperCase()
-      || currentSettings.salesYear !== Number(data.salesYear)) {
+    if (currentSettings.season !== String(resultData.season || "").toUpperCase()
+      || currentSettings.salesYear !== Number(resultData.salesYear)) {
       return errorResponse("The active season or sales year changed. Refresh the inventory and review the draft again.", 409, {
         code: "AURA_ACTIVE_SEASON_REQUIRED",
       });
@@ -3434,8 +3858,8 @@ export async function handleAuraInventoryV2(
     // Re-read full inventory fields for the <=50 explicitly selected IDs so
     // the existing Bloom Picker editor receives its ordinary row contract.
     // This avoids returning every column through the SQL validation function.
-    const selectedIds = data.rows.map((row: Record<string, unknown>) => String(row.unique_id || "").trim()).filter(Boolean);
-    if (selectedIds.length !== data.rows.length || selectedIds.length > 50) {
+    const selectedIds = resultRows.map((row) => String(row.unique_id || "").trim()).filter(Boolean);
+    if (selectedIds.length !== resultRows.length || selectedIds.length > 50) {
       return errorResponse("AURA could not safely prepare those inventory rows. Review the selection again.", 409, { code: "AURA_V2_DRAFT_RESULT_INVALID" });
     }
     const fullRowsQuery = supabase.from("ph_master_inventory")
@@ -3444,11 +3868,12 @@ export async function handleAuraInventoryV2(
       ? fullRowsQuery.abortSignal(options.signal)
       : fullRowsQuery);
     if (fullRowsError) throw fullRowsError;
-    const fullInventoryRows = (Array.isArray(fullRows) ? fullRows : []) as unknown as Record<string, unknown>[];
+    const fullInventoryRows = Array.isArray(fullRows) ? fullRows.map((row) => jsonObject(jsonValue(row))) : [];
     const freshById = new Map(fullInventoryRows.map(row => [String(row.unique_id || ""), row]));
     const validatedRows: Record<string, unknown>[] = [];
-    const failures = [...(Array.isArray(data.failures) ? data.failures : [])] as Record<string, unknown>[];
-    for (const requested of input.lines as Record<string, unknown>[]) {
+    const failures = Array.isArray(resultData.failures) ? resultData.failures.map((row) => jsonObject(row)) : [];
+    for (const line of input.lines || []) {
+      const requested = jsonObject(line);
       const uid = String(requested.unique_id || "").trim();
       const row = freshById.get(uid);
       if (!row
@@ -3457,8 +3882,8 @@ export async function handleAuraInventoryV2(
         || auraCanonicalSize(row.contsize) !== auraCanonicalSize(requested.contsize)
         || String(row.locationcode || "").trim().toUpperCase() !== String(requested.locationcode || "").trim().toUpperCase()
         || String(row.lotcode || "").trim().toUpperCase() !== String(requested.lotcode || "").trim().toUpperCase()
-        || auraCanonicalName(row.season) !== auraCanonicalName(data.season)
-        || auraComparableSalesYear(row.saleyear) == null || auraComparableSalesYear(row.saleyear)! > Number(data.salesYear)
+         || auraCanonicalName(row.season) !== auraCanonicalName(resultData.season)
+         || auraComparableSalesYear(row.saleyear) == null || auraComparableSalesYear(row.saleyear)! > Number(resultData.salesYear)
         || auraNumber(row.ptravailable) == null || auraNumber(row.s_lts) == null || auraNumber(row.s_lts)! <= 0
         || auraNumber(requested.quantity) == null || !Number.isInteger(auraNumber(requested.quantity))
         || auraNumber(requested.quantity)! < 1 || auraNumber(requested.quantity)! > 999_999
@@ -3471,7 +3896,7 @@ export async function handleAuraInventoryV2(
       validatedRows.push({ ...row, quantity: Number(requested.quantity) });
     }
     return jsonResponse({ ok: true, data: {
-      ...data,
+      ...resultData,
       complete: failures.length === 0,
       valid: failures.length === 0,
       rows: failures.length === 0 ? validatedRows : [],
@@ -4079,8 +4504,8 @@ async function auraChatSend(session: DylanSession, payload: Record<string, unkno
   const suppliedConversation = String(payload.conversationId || "").trim();
   if (!body || body.length > 4000 || !/^[A-Za-z0-9_-]{8,120}$/.test(clientId)) return errorResponse("AURA needs a message and a valid idempotency key.", 400, { code: "AURA_CHAT_INVALID" });
 
-  let recipientUsername = "";
-  let recipientName = "";
+  let recipientUsername: string;
+  let recipientName: string;
   let conversationId = suppliedConversation;
   if (suppliedConversation) {
     if (!await alphaConversationAccess(suppliedConversation)) return errorResponse("This conversation is unavailable to the active account.", 404, { code: "ALPHA_CHAT_NOT_FOUND" });
@@ -4463,6 +4888,10 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   const payload = await req.json().catch(() => ({})) as Record<string, unknown>;
   const action = String(payload.action || "").trim().toLowerCase();
 
+  if (action === "manager_season_settings") return await handleManagerSeasonSettings(req, session, payload);
+  if (action === "request_recipient_directory") return await handleRequestRecipientDirectory(session, payload);
+  if (action === "customer-rep-map") return await handleCustomerRepMappingAction(session, payload);
+
   if (action === "request_history" || action === "sales_credit") {
     return await handleSalesWorkflow({ session, payload, supabase, resolveActiveSessionProfile, headers: corsHeaders });
   }
@@ -4477,6 +4906,17 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       return jsonResponse(data);
     } catch (error) {
       const failure = workflowError(error);
+      return jsonResponse(failure.body, failure.status);
+    }
+  }
+  if (action === "suspend_tag") {
+    if (!session?.authUserId || session.mustChangePassword) return errorResponse("Sign in again.", 401, { code: "SUSPEND_TAG_SESSION_REQUIRED" });
+    try {
+      const actor = await resolveActiveSessionProfile(session);
+      actor.nativeSessionId = await verifySuspendTagSession(supabase, actor, req);
+      return jsonResponse({ ok: true, data: await handleSuspendTag(supabase, actor, payload) });
+    } catch (error) {
+      const failure = suspendTagError(error);
       return jsonResponse(failure.body, failure.status);
     }
   }
@@ -4498,12 +4938,14 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     if (!session || session.mustChangePassword) return errorResponse("Sign in again.", 401);
     try {
       const actor = await resolveActiveSessionProfile(session);
+      if (typeof actor.id !== "string") throw new Error("BUNCH_NOTE_ACTOR_INVALID");
       const allowed = new Set(["action", "operation", "payload", "commandId", "expectedRevision"]);
       if (Object.keys(payload).some(key => !allowed.has(key))) throw new Error("BUNCH_NOTE_PAYLOAD_INVALID");
+      const operation = String(payload.operation || "");
       const { data, error } = await supabase.rpc("bunch_note_command_v1", {
-        p_actor_id: actor.id, p_operation: String(payload.operation || ""),
-        p_payload: payload.payload || {}, p_command_id: payload.commandId || null,
-        p_expected_revision: payload.expectedRevision ?? null,
+        p_actor_id: actor.id, p_operation: operation,
+        p_payload: jsonValue(payload.payload || {}), ...(typeof payload.commandId === "string" && payload.commandId ? { p_command_id: payload.commandId } : {}),
+        ...(typeof payload.expectedRevision === "number" ? { p_expected_revision: payload.expectedRevision } : {}),
       });
       if (error) throw error;
       return jsonResponse({ ok: true, data });
@@ -4512,6 +4954,9 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const code = String(source.message || "BUNCH_NOTE_FAILED");
       return errorResponse(code, source.code === "42501" ? 403 : /CONFLICT|CHANGED|CLAIMED/.test(code) ? 409 : 400, { code });
     }
+  }
+  if (action === "field_count") {
+    return await handleFieldCountAction(session, payload);
   }
   if (action === "location_work") return await handleLocationWorkAction(session, payload);
   if (action === "dock_trip_status") return await handleDockTripStatusAction(session, payload);
@@ -4539,7 +4984,8 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       });
     }
   }
-  if (action === "dataset_read") return await handleDatasetRead(session, payload);
+  if (action === "dataset_read") return await handleDatasetRead(session, payload, req);
+  if (action === "request_queue_remove") return await handleRequestQueueRemove(session, payload);
   if (action === "request_archive") return await handleRequestArchive(session, payload);
   if (action === "production_schedule") return await handleProductionScheduleAction(session, payload);
   if (action === "append_productivity_history") return await handleAppendProductivityHistory(session, payload);
@@ -4554,15 +5000,27 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
       const role = String(actor.role || "");
       const access = getRoleAccessState(role);
       const data = await readAvPage({ supabase, actor, payload,
-        // readAvPage exposes only the single current-season setting here; do
-        // not grant rep-like accounts access to arbitrary app settings.
+        // Existing active master-inventory readers may read the single
+        // current-season dependency. readAvPage pins settings to that key.
         canRead: table => hasTableReadAccess(role, table, username)
-          || (table === "ph_app_settings" && access.isRepLike),
+          || (table === "ph_app_settings" && hasTableReadAccess(role, "ph_master_inventory", username)),
         restrictRep: access.isRep && !access.isAdmin && !FULL_ACCESS_USER_KEYS.has(username),
       });
       return jsonResponse({ ok: true, data });
     } catch (error) {
-      const failure = error as { message?: string; status?: number; code?: string };
+      const failure = error as { message?: string; status?: number; code?: string; stage?: string };
+      const status = Number(failure.status) || 503;
+      const sqlState = /^[0-9A-Z]{5}$/.test(String(failure.code || "")) ? String(failure.code) : null;
+      const dataset = ["reserves", "notes", "hot_prices", "settings"].includes(String(payload.dataset))
+        ? String(payload.dataset) : "unknown";
+      if (status === 403 || status >= 500) {
+        recordHandledError("app-api", "av_read", error, status, {
+          requestId: req.headers.get("x-request-id") || undefined,
+          sqlState,
+          dataset,
+          denialStage: failure.stage || (status === 403 ? "authorization" : "upstream"),
+        });
+      }
       return errorResponse(failure.message || "AV_READ_UNAVAILABLE", failure.status || 503, {
         code: failure.code || failure.message || "AV_READ_UNAVAILABLE",
       });
@@ -4579,4 +5037,4 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
   }
 
   return errorResponse("Unsupported action.", 400);
-}));
+}, { serverTiming: true }));

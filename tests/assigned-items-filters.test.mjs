@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import { noHistoryLowStockTargets } from './fixtures/hl-order-state.mjs';
+import { appApiDatabaseBridge } from './helpers/database-bridge.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnState', 'getManagerAssignedColumnValue',
@@ -14,7 +15,7 @@ const names = ['getManagerAssignedColumnDefinitions', 'getManagerAssignedColumnS
   'normalizeWarehouseAssignedMatchPart', 'normalizeWarehouseAssignedCompactPart', 'getWarehouseAssignedIdentityParts',
   'buildWarehouseAssignedLookupKeys', 'clearWarehouseAssignedItemCaches', 'rebuildWarehouseAssignedItemIndexes',
   'chooseWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowsForItem', 'getWarehouseAssignedRowForItem',
-  'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue'];
+  'getWarehouseAssignedUserForItem', 'getMasterAssignedToValue', 'getManagerEvalAssignmentReason'];
 function helper(name) {
   const start = html.indexOf(`        function ${name}(`);
   assert.ok(start >= 0, name);
@@ -73,6 +74,25 @@ test('low-stock no-history fixture returns one complete fallback summary per nor
     },
   ]);
   assert.deepEqual(noHistoryLowStockTargets(null), []);
+});
+
+test('low-stock no-history fixture passes the app-api RPC response contract without weakening validation', async () => {
+  const fixture = noHistoryLowStockTargets(['0012'])[0];
+  const invoke = async (row) => {
+    const bridge = appApiDatabaseBridge(async () => new Response(JSON.stringify([row]), {
+      headers: { 'content-type': 'application/json' },
+    }));
+    return bridge.fetchRpc('https://fixture.invalid', 'get_eval_item_low_stock_targets_v1', {
+      method: 'POST', body: JSON.stringify({ p_itemcodes: ['0012'], p_limit: 1 }),
+    }, 1000, 'low-stock fixture contract');
+  };
+
+  const accepted = await invoke(fixture);
+  assert.deepEqual(await accepted.json(), [fixture], 'the faithful nullable no-history row is accepted');
+  await assert.rejects(invoke(Object.fromEntries(Object.entries(fixture).filter(([key]) => key !== 'qualifying_line_count'))), /Invalid.*response/);
+  await assert.rejects(invoke({ ...fixture, unexpected_field: true }), /Invalid.*response/);
+  await assert.rejects(invoke({ ...fixture, effective_qty: '150' }), /Invalid.*response/);
+  await assert.rejects(invoke({ ...fixture, history_ready: 'true' }), /Invalid.*response/);
 });
 
 test('each data column filters normalized values without modifying source records', () => {
@@ -216,7 +236,7 @@ test('real normalization preserves zeros, codes and location codes in exported v
   const result = ctx.getFilteredManagerAssignedItemsExportRows();
   assert.equal(result.length, 1);
   assert.deepEqual(Array.from(ctx.getManagerAssignedItemsExportColumns(), col => col.value(result[0])),
-      ['', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Saved assignment']);
+      ['zero', '', '', '', 'No', '0', '000012', '0', 'Mixed Case', 'D.08.002', '0', '', '', '', 150, '', '', '', 'Assignment pending reconciliation']);
   assert.equal(ctx.getManagerAssignedColumnOptions('WAREHOUSEI')[0].label, '0');
   assert.equal(data[0].warehousei, 0, 'source dataset remains unchanged');
 });
@@ -245,7 +265,7 @@ test('export metadata uses retained display labels, Unassigned, and readable sor
   const matching = ctx.getFilteredManagerAssignedItemsExportRows();
   const metadata = new Map(Array.from(ctx.getManagerAssignedItemsExportMetaRows(matching), row => Array.from(row)));
   assert.equal(metadata.get('Rows'), '1');
-  assert.equal(metadata.get('Column Filters'), 'AssignedTo: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
+  assert.equal(metadata.get('Column Filters'), 'Effective Worker: Unassigned; Common Name: Acer; Genus Name: (Blanks)');
   assert.equal(metadata.get('Sort'), 'Item Code descending');
 });
 
@@ -259,4 +279,29 @@ test('compact Assigned Items controls expose values and sort in triggers without
   assert.match(controls, /<div class="assigned-phone-filters">/);
   assert.match(controls, /hasFilters \? '<button[^']*assigned-filter-clear/);
   assert.doesNotMatch(controls, /<details|<summary|assigned-filter-chip/);
+});
+
+test('Assigned Items filter panel clamps wide visual viewports to the layout viewport', () => {
+  const style = { setProperty(name, value) { this[name] = value; } };
+  const panel = { style };
+  const scope = { querySelector: () => ({ getBoundingClientRect: () => ({ left: 40, bottom: 80 }) }) };
+  const ctx = vm.createContext({
+    document: {
+      documentElement: { clientWidth: 412 },
+      getElementById: id => id === 'manager-assigned-filter-panel' ? panel : null,
+      querySelector: () => scope,
+    },
+    window: { visualViewport: { offsetLeft: 0, offsetTop: 0, width: 432, height: 800 }, innerWidth: 412, innerHeight: 800 },
+    getManagerAssignedColumnState: () => ({ editor: { field: 'COMMONNAME' } }),
+  });
+  vm.runInContext(`${helper('positionManagerAssignedColumnFilter')}\npositionManagerAssignedColumnFilter()`, ctx);
+  const left = Number.parseFloat(style.left);
+  const width = Number.parseFloat(style.width);
+  assert.ok(left >= 0);
+  assert.ok(left + width <= 412);
+});
+
+test('Assigned Items fixed dialog opts out of the generic non-fixed modal width rule', () => {
+  const source = helper('openManagerAssignedColumnFilter');
+  assert.match(source, /class="excel-filter-panel assigned-column-panel fixed"/);
 });

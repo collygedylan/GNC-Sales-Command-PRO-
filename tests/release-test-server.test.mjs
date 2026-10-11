@@ -1,3 +1,4 @@
+// @test-group: local-validation
 import assert from 'node:assert/strict';
 import { lstat, mkdir, mkdtemp, readFile, readdir, rmdir, symlink, unlink, writeFile } from 'node:fs/promises';
 import { request } from 'node:http';
@@ -21,7 +22,7 @@ async function removeOwnedFixture(directory, root) {
   await rmdir(directory);
 }
 
-async function fixture(t, { start = true } = {}) {
+async function fixture(t, { start = true, rootFixture } = {}) {
   const directory = await mkdtemp(path.join(os.tmpdir(), 'gnc-release-test-server-'));
   let server;
   t.after(async () => {
@@ -51,7 +52,7 @@ async function fixture(t, { start = true } = {}) {
     writeFile(path.join(sourceDir, 'tests', 'private.test.mjs'), 'PRIVATE TEST'),
     writeFile(path.join(fixtureDir, 'ops-precision-browser.html'), '<link rel="stylesheet" href="../../assets/app.css">FIXTURE'),
   ]);
-  if (start) server = await startReleaseTestServer({ siteDir, fixtureDir, port: 0 });
+  if (start) server = await startReleaseTestServer({ siteDir, fixtureDir, port: 0, rootFixture });
   return { directory, siteDir, sourceDir, fixtureDir, server,
     get: (url, method = 'GET') => new Promise((resolve, reject) => {
       const req = request({ hostname: '127.0.0.1', port: server.address().port, path: url, method }, response => {
@@ -64,6 +65,19 @@ async function fixture(t, { start = true } = {}) {
     }),
   };
 }
+
+test('worker isolation substitutes only the root document without modifying the sealed app', async t => {
+  const configuration = await readFile(new URL('../playwright.sw-isolation.config.ts', import.meta.url), 'utf8');
+  const rootFixture = configuration.match(/rootFixture: '([^']+)'/)?.[1];
+  assert.ok(rootFixture, 'exercise the root fixture supplied by the actual browser configuration');
+  const f = await fixture(t, { rootFixture });
+  assert.equal((await f.get('/')).body, rootFixture);
+  assert.equal((await f.get('/index.html')).body, rootFixture);
+  assert.match((await f.get('/index.html')).body, /<h1>Local test fixture only<\/h1>/);
+  assert.equal((await f.get('/', 'HEAD')).body, '');
+  assert.equal((await f.get('/v2/')).body, '<html>SEALED V2</html>');
+  assert.equal(await readFile(path.join(f.siteDir, 'index.html'), 'utf8'), '<html>SEALED COMPILED SHELL</html>');
+});
 
 test('release server serves the artifact entry point at root, index and compiled aliases', async t => {
   const f = await fixture(t);

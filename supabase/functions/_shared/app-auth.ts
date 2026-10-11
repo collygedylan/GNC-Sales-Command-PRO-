@@ -1,3 +1,6 @@
+import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
+import type { Database } from "./database.types.ts";
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -177,15 +180,14 @@ export async function verifyAppSessionToken(token = ""): Promise<AppSessionClaim
   }
 }
 
-type AccountClient = { rpc: (name: string, args: Record<string, unknown>) => PromiseLike<any> };
+type AccountClient = Pick<SupabaseClient<Database>, "rpc">;
 
 // Check the stored cutoff on every request. JWT/HMAC expiry and Auth bans alone
 // cannot revoke a previously issued token at the scheduled handover time.
 export async function isAppAccountActive(client: AccountClient, identity: { id?: string; username?: string }) {
   try {
     const { data, error } = await client.rpc("app_account_active_v1", {
-      p_profile_id: identity.id || null,
-      p_username: identity.id ? null : normalizeUsername(identity.username || ""),
+      ...(identity.id ? { p_profile_id: identity.id } : { p_username: normalizeUsername(identity.username || "") }),
     });
     return !error && data === true;
   } catch { return false; }
@@ -207,7 +209,7 @@ export async function readAppSessionFromRequest(req: Request, supabaseAdmin?: Ac
 
 export async function readSupabaseOrAppSessionFromRequest(
   req: Request,
-  supabaseAdmin: AccountClient & { auth: { getUser: (token: string) => Promise<any> }; from: (table: string) => any },
+  supabaseAdmin: SupabaseClient<Database>,
 ): Promise<AppSessionClaims | null> {
   const bearer = String(req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
   if (bearer && supabaseAdmin) try {

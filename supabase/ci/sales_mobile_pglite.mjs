@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { runRequestHistoryScaleFixture } from '../../scripts/test-request-history-scale.mjs';
+import { discoverTests } from '../../scripts/test-discovery.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const args = process.argv.slice(2);
@@ -15,6 +16,14 @@ const require = createRequire(path.join(path.resolve(dependencyRoot), 'package.j
 const { PGlite } = require('@electric-sql/pglite');
 const db = new PGlite();
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
+// psql's fail-fast meta-command is not SQL. PGlite exec already stops on the
+// first SQL error; strip only this directive from test inputs for the WASM run.
+const readTest = file => read(file)
+  .replace(/^[ \t]*\\set[ \t]+ON_ERROR_STOP[ \t]+on[ \t]*\r?$/gim, '')
+  // The PGlite harness checks these files' explicit assertion helpers; it does
+  // not provide PostgreSQL's pgTAP extension. Native SQL runners still execute
+  // the original CREATE EXTENSION statement and ON_ERROR_STOP directive.
+  .replace(/^create extension if not exists pgtap with schema extensions;[ \t]*\r?$/gim, '');
 let currentStep = 'platform baseline';
 try {
   await db.waitReady;
@@ -33,6 +42,23 @@ try {
     create table storage.buckets(id text primary key,name text,public boolean default false,file_size_limit bigint,allowed_mime_types text[]);
     create table storage.objects(id uuid primary key default gen_random_uuid(),bucket_id text references storage.buckets(id),name text,metadata jsonb,unique(bucket_id,name));
     alter table storage.objects enable row level security;
+  `);
+  // Sales/mobile SQL uses a single pgTAP smoke assertion after its own detailed
+  // exception checks. The browserless WASM fixture supplies only those three
+  // pgTAP entry points; native runners still use the real extension.
+  await db.exec(`
+    create temporary table pglite_tap_state(expected integer, actual integer not null default 0);
+    create function public.plan(integer) returns text language plpgsql as $$
+      begin insert into pglite_tap_state(expected) values ($1); return 'plan'; end $$;
+    create function public.ok(boolean,text) returns text language plpgsql as $$
+      begin update pglite_tap_state set actual=actual+1;
+        if not coalesce($1,false) then raise exception 'pgTAP assertion failed: %',$2; end if;
+        return 'ok'; end $$;
+    create function public.finish() returns setof text language plpgsql as $$
+      declare s pglite_tap_state%rowtype;
+      begin select * into s from pglite_tap_state;
+        if s.actual is distinct from s.expected then raise exception 'pgTAP planned %, executed %',s.expected,s.actual; end if;
+        return next 'all assertions passed'; end $$;
   `);
   const files = [
     'supabase/ci/request_workflow_baseline.sql',
@@ -61,12 +87,7 @@ try {
     'supabase/archive_migrations/20260924155542_restore_request_delivery_after_metadata_guard.sql',
     'supabase/archive_migrations/20260924172552_request_drive_evidence_reset_guard.sql',
     'supabase/archive_migrations/20260924181019_optimize_request_history_read_projection.sql',
-    'supabase/tests/request_drive_reset_test.sql',
-    'supabase/tests/request_metadata_notifications_test.sql',
-    'supabase/tests/sales_credit_workflow_test.sql',
-    'supabase/tests/sales_history_docks_test.sql',
-    'supabase/tests/navigation_preferences_test.sql',
-    'supabase/tests/production_workflow_test.sql',
+    ...discoverTests({ group: 'sql-secondary-harness', harness: 'sales-mobile' }),
   ];
   for (const file of files) {
     currentStep = file;
@@ -85,7 +106,7 @@ try {
       if (start < 0 || end < start) throw new Error('FOLDER_STATE_BASELINE_NOT_FOUND');
       await db.exec(folderMigration.slice(start, end));
     }
-    await db.exec(read(file));
+    await db.exec(file.startsWith('supabase/tests/') ? readTest(file) : read(file));
   }
   console.log('PASS: Sales/Credits, Navigation, and Production/Audit migrations and transactional SQL checks. Native platform and concurrent-connection checks remain required in CI.');
   if (args.includes('--history-scale')) {

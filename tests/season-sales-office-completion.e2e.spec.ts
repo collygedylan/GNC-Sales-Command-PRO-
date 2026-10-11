@@ -1,4 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
+// @test-group: @season-sales-office,season-office
+
+
 
 type FixtureRow = Record<string, string | number>;
 type Reply = { status?: number; body?: Record<string, unknown>; abort?: boolean; wait?: Promise<void> };
@@ -215,7 +218,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures) {
   return { requests, replies, card, done, seed, refresh, assertClean };
 }
 
-test('blank AV Notes stay out of the Season queue and export while note updates refresh visibility', async ({ page, baseURL }) => {
+test('blank AV Notes stay out of the Season queue and export while note updates refresh visibility', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const rows = [
     { ...fixtures[0], AV_NOTE: 'KEEP THIS USER NOTE' },
     { ...fixtures[1], AV_NOTE: '' },
@@ -264,7 +267,7 @@ test('blank AV Notes stay out of the Season queue and export while note updates 
   app.assertClean();
 });
 
-test('every eligible Season card uses protected Done and stays absent across stale refresh and reload', async ({ page, baseURL }) => {
+test('every eligible Season card uses protected Done and stays absent across stale refresh and reload', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   for (const row of fixtures) {
     await expect(app.done(row)).toBeVisible();
@@ -287,7 +290,7 @@ test('every eligible Season card uses protected Done and stays absent across sta
   app.assertClean();
 });
 
-test('only a newer reopened revision can return a confirmed item', async ({ page, baseURL }) => {
+test('only a newer reopened revision can return a confirmed item', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const row = fixtures[0];
   const app = await harness(page, baseURL!, [row]);
   await app.done(row).tap();
@@ -304,7 +307,7 @@ test('only a newer reopened revision can return a confirmed item', async ({ page
   app.assertClean();
 });
 
-test('rapid repeated activation sends one completion and keeps card until acknowledgment', async ({ page, baseURL }) => {
+test('rapid repeated activation sends one completion and keeps card until acknowledgment', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const row = fixtures[0];
   const app = await harness(page, baseURL!, [row]);
   let release!: () => void;
@@ -324,7 +327,7 @@ test('rapid repeated activation sends one completion and keeps card until acknow
   app.assertClean();
 });
 
-test('ambiguous network failure leaves Done actionable and reuses the request token after app reopen', async ({ page, baseURL }) => {
+test('ambiguous network failure leaves Done actionable and reuses the request token after app reopen', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const row = fixtures[0];
   const app = await harness(page, baseURL!, [row]);
   app.replies.push({ abort: true });
@@ -354,7 +357,7 @@ test('ambiguous network failure leaves Done actionable and reuses the request to
   app.assertClean();
 });
 
-test('navigation cancels an in-flight request queue read without launching a teardown fallback', async ({ page, baseURL }) => {
+test('navigation cancels an in-flight request queue read without launching a teardown fallback', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!, [fixtures[0]]);
   let beginRead: () => void = () => {};
   let releaseRead: () => void = () => {};
@@ -404,7 +407,7 @@ test('navigation cancels an in-flight request queue read without launching a tea
   app.assertClean();
 });
 
-test('a dataset read started before Done cannot resurrect its card when it arrives late', async ({ page, baseURL }) => {
+test('a dataset read started before Done cannot resurrect its card when it arrives late', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const row = fixtures[0];
   const app = await harness(page, baseURL!, [row]);
   await page.evaluate(() => window.eval(`
@@ -431,7 +434,7 @@ for (const failure of [
   { status: 403, message: 'You are not assigned to complete Season Sales Notes.' },
   { status: 409, message: 'Season Sales Note changed. Refresh and review before completing.' },
 ]) {
-  test(`HTTP ${failure.status} keeps row actionable and displays the real protected API error`, async ({ page, baseURL }) => {
+  test(`HTTP ${failure.status} keeps row actionable and displays the real protected API error`, {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
     const row = fixtures[0];
     const app = await harness(page, baseURL!, [row]);
     app.replies.push({ status: failure.status, body: { ok: false, error: failure.message } });
@@ -446,7 +449,7 @@ for (const failure of [
   });
 }
 
-test('all Season row origins use the same read-only permission gate', async ({ page, baseURL }) => {
+test('all Season row origins use the same read-only permission gate', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await page.evaluate(() => window.eval(`
     avBlanksPhotoBypassAccessCache = { username: 'dylan_collyge', allowed: false, canManage: false, loadedAt: Date.now() };
@@ -462,7 +465,7 @@ test('all Season row origins use the same read-only permission gate', async ({ p
   app.assertClean();
 });
 
-test('legacy row without revision uses its canonical revision and removes only Season-view duplicates', async ({ page, baseURL }) => {
+test('legacy row without revision uses its canonical revision and removes only Season-view duplicates', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const canonical = { ...fixtures[0], STATE_REVISION: 3 };
   const legacy: FixtureRow = {
     ...canonical, UNIQUE_ID: 'season-done-legacy-duplicate', SO_SOURCE: 'flyer_folder',
@@ -484,7 +487,7 @@ test('legacy row without revision uses its canonical revision and removes only S
   app.assertClean();
 });
 
-test('local completion receipts stay scoped to the signed-in user', async ({ page, baseURL }) => {
+test('local completion receipts stay scoped to the signed-in user', {"tag":["@season-sales-office"]}, async ({ page, baseURL }) => {
   const row = fixtures[0];
   const app = await harness(page, baseURL!, [row]);
   await app.done(row).tap();

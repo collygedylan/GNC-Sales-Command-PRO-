@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 -- Disposable local/CI database only. All fixtures and effects roll back.
 begin;
 create extension if not exists pgtap with schema extensions;

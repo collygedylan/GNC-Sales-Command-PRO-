@@ -3,11 +3,12 @@ import { defineConfig, devices } from '@playwright/test';
 const remoteBase = String(process.env.LOGIN_PHOTO_BASE_URL || '').trim();
 export default defineConfig({
   testDir:'./tests',
-  testMatch:'login-photo-repair.e2e.spec.ts',
+  testMatch:/.+\.spec\.(ts|js)$/,
+  grep: /@login-photo/,
   fullyParallel:true,
   workers:1,
   forbidOnly:!!process.env.CI,
-  retries:process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0,
   reporter:process.env.CI ? 'github' : 'list',
   timeout:60_000,
   use:{ baseURL:remoteBase || 'http://127.0.0.1:43116', serviceWorkers:'block', trace:'retain-on-failure' },

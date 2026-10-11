@@ -1,7 +1,17 @@
 import { assertEquals } from 'jsr:@std/assert@1';
-import { createHlPoPdfHandler, createHlPoServiceAuthorizer } from './index.ts';
+import { createHlPoPdfHandler, createHlPoServiceAuthorizer, type HlPoPdfStageArgs, type HlPoRpcClient, type HlPoRpcResult } from './index.ts';
 const client={rpc(){throw new Error('Invalid requests must never reach database');}} as never;
 const authorize=async(request:Request)=>request.headers.get('authorization')==='Bearer isolated-service-key'?client:null;
+function stageClient(stage:(args:HlPoPdfStageArgs)=>PromiseLike<HlPoRpcResult>):HlPoRpcClient {
+ function rpc(name:'hl_po_import_capabilities'):PromiseLike<HlPoRpcResult>;
+ function rpc(name:'hl_po_pdf_stage',args:HlPoPdfStageArgs):PromiseLike<HlPoRpcResult>;
+ function rpc(name:'hl_po_import_capabilities'|'hl_po_pdf_stage',args?:HlPoPdfStageArgs):PromiseLike<HlPoRpcResult> {
+  if(name==='hl_po_import_capabilities') return Promise.resolve({data:{version:2,pdf:true},error:null});
+  if(!args) throw new Error('Test stage arguments are required.');
+  return stage(args);
+ }
+ return {rpc};
+}
 function reportFixture(times:string[]) {
  const fontId=3+times.length*2;
  const objects=['<< /Type /Catalog /Pages 2 0 R >>',`<< /Type /Pages /Kids [${times.map((_,i)=>`${3+i*2} 0 R`).join(' ')}] /Count ${times.length} >>`];
@@ -22,11 +32,12 @@ function reportFixture(times:string[]) {
 Deno.test('complete PDF worker accepts advancing page print times and rejects mixed reports before staging',async()=>{
  for(const [last,expected] of [['9/11/2026 4:17:26 PM',200],['9/11/2026 4:18:26 PM',422]] as const) {
   const pages:Array<Record<string,unknown>>=[];
-  const handler=createHlPoPdfHandler(async()=>({rpc:async(_name,args)=>{pages.push(args);return {data:{status:'pending'},error:null};}}));
+  const handler=createHlPoPdfHandler(async()=>stageClient(async args=>{pages.push(args);return {data:{status:'pending'},error:null};}));
   const result=await handler(new Request('https://fixture.invalid',{method:'POST',body:JSON.stringify({source_file_id:'synthetic-print-run',source_file_name:'PO.pdf',pdf_base64:reportFixture(['9/11/2026 4:17:25 PM',last])})}));
   assertEquals(result.status,expected,JSON.stringify(await result.clone().json()));
   if(expected===200){
    assertEquals(pages.map(p=>p.p_page),[1,2,null]);
+   assertEquals(pages.map(p=>p.p_complete),[false,false,true]);
    assertEquals(((pages[0].p_rows as Array<Record<string,unknown>>)[0]).report_printed_at,'2026-09-11T21:17:25.000Z');
    assertEquals(((pages[1].p_rows as Array<Record<string,unknown>>)[0]).report_printed_at,'2026-09-11T21:17:26.000Z');
   }else{assertEquals(pages.length,0);assertEquals((await result.json()).code,'HL_PO_PDF_MIXED_REPORT');}
@@ -50,11 +61,11 @@ Deno.test('PDF importer validates method and original PDF before any staging',as
 
 Deno.test('PDF worker returns safe database review codes without exposing database details',async()=>{
  for(const [message,expected] of [['HL_PO_INVALID_PDF_LINE','HL_PO_INVALID_PDF_LINE'],['private database details','HL_PO_PDF_STAGE_FAILED']]) {
-  const handler=createHlPoPdfHandler(async()=>({rpc:async()=>({data:null,error:{message}})}));
+  const handler=createHlPoPdfHandler(async()=>stageClient(async()=>({data:null,error:{message}})));
   const result=await handler(new Request('https://fixture.invalid',{method:'POST',body:JSON.stringify({source_file_id:'synthetic-error-file',source_file_name:'PO.pdf',pdf_base64:reportFixture(['9/11/2026 4:17:26 PM'])})}));
   assertEquals(result.status,422);assertEquals(await result.json(),{ok:false,code:expected});
  }
- const handler=createHlPoPdfHandler(async()=>client);
+ const handler=createHlPoPdfHandler(async()=>stageClient(async()=>({data:null,error:null})));
  const malformed=btoa(atob(reportFixture(['9/11/2026 4:17:26 PM'])).replace('(Remaining)','(Unknownxx)'));
  const result=await handler(new Request('https://fixture.invalid',{method:'POST',body:JSON.stringify({source_file_id:'synthetic-missing-column',source_file_name:'PO.pdf',pdf_base64:malformed})}));
  assertEquals(await result.json(),{ok:false,code:'HL_PO_PDF_MISSING_COLUMNS'});
@@ -70,7 +81,7 @@ Deno.test('service authentication uses caller credentials and protected PostgRES
   }) as typeof fetch);
   const verified=await check(new Request('https://fixture.invalid',{headers}));
   assertEquals(!!verified,true);
-  await verified!.rpc('hl_po_pdf_stage',{p_page:1});
+  await verified!.rpc('hl_po_pdf_stage',{p_run_id:'synthetic-run',p_metadata:{},p_page:1,p_rows:[],p_complete:false});
   assertEquals(calls.map(c=>c.url),['https://fixture.invalid/rest/v1/rpc/hl_po_import_capabilities','https://fixture.invalid/rest/v1/rpc/hl_po_pdf_stage']);
   for(const call of calls){
    assertEquals(call.headers.get('apikey'),headers.apikey);

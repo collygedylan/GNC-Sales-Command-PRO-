@@ -79,7 +79,7 @@ test('dedicated API validates live profiles and recipient profile IDs without ex
   assert.match(api, /operation === "recipient_options"[\s\S]*directory\.map\(\(\{ profileId, username, display \}\)/);
   assert.match(api, /resolveShearRecipients\(payload\.recipientProfileIds\)/);
   assert.match(api, /supabase\.rpc\("create_shear_location_inquiries_v1"/);
-  assert.match(api, /if \(table === "ph_warehouse_assigned_items" \|\| table === "ph_push_subscriptions" \|\| table === "ph_shear_list"\) return false/);
+  assert.match(api, /if \(table === "ph_warehouse_assigned_items" \|\| table === "ph_inventory_row_assignments" \|\| table === "ph_itemcode_default_owners" \|\| table === "ph_push_subscriptions" \|\| table === "ph_shear_list"\) return false/);
   assert.doesNotMatch(html, /supabaseFetch\(SHEAR_LIST_TABLE, '(?:POST|PATCH|DELETE)'/);
 });
 

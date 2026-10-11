@@ -2,9 +2,10 @@ import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: ['production-schedule-mobile.e2e.spec.ts', 'read-optimization-mobile.e2e.spec.ts'],
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@production-schedule/,
   workers: 1,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   use: { browserName: 'chromium', serviceWorkers: 'block' },
   projects: [

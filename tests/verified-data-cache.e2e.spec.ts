@@ -1,9 +1,12 @@
 // September 9 behavior coverage; preserved complete tests/docks-filter.e2e.spec.ts fixture.
 // See docs/rollback-sep09-validation.md for deliberately removed later contracts.
 import { expect, test, type Page } from '@playwright/test';
+
 import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { installInventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+// @test-group: @verified-data-cache,inventory
+
 
 const expectedRelease = `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`;
 const moduleHashes = new Map(['registry', 'adapters', 'coordinator'].map(name => {
@@ -211,7 +214,7 @@ async function harness(page: Page, baseURL: string, rows: Row[], customCustomers
   return { seed, importRows, assertClean: () => expect(errors).toEqual([]) };
 }
 
-test('compact filter rail remains usable across themes, larger text and shortened phone height', async ({ page, baseURL }, testInfo) => {
+test('compact filter rail remains usable across themes, larger text and shortened phone height', {"tag":["@verified-data-cache"]}, async ({ page, baseURL }, testInfo) => {
   const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
   await expectDockCounts(page, 55, 117);
   await openDockMobileFilters(page);
@@ -220,7 +223,20 @@ test('compact filter rail remains usable across themes, larger text and shortene
   session.assertClean();
 });
 
-test('two sessions retain local choices, converge after clear, and keep All inclusive after import/relaunch', async ({ page, browser, baseURL }, testInfo) => {
+test('Docks cached display layout and filters fit 320, 390 and 430 pixel phones', {"tag":["@verified-data-cache"]}, async ({ page, baseURL }) => {
+  const session = await harness(page, baseURL!, dock28, ['Selected 0', 'Selected 1', 'Selected 2', 'Selected 3']);
+  for (const width of [320, 390, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.evaluate(() => window.eval('renderDocks();'));
+    await expectDockCounts(page, 55, 117);
+    await openDockMobileFilters(page);
+    await expect(page.locator('[data-dock-clear-filters]')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
+  session.assertClean();
+});
+
+test('two sessions retain local choices, converge after clear, and keep All inclusive after import/relaunch', {"tag":["@verified-data-cache"]}, async ({ page, browser, baseURL }, testInfo) => {
   // A separate context is essential: filters are intentionally isolated per device.
   const use = testInfo.project.use;
   const secondContext = await browser.newContext({ baseURL, viewport: use.viewport, userAgent: use.userAgent,
@@ -299,6 +315,7 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
       supabaseRpc = async (name, payload) => {
         if (name !== 'get_my_dataset_revisions_v1') throw new Error('UNEXPECTED_FIXTURE_RPC:' + name);
         fixture.revisionReads++;
+        if (fixture.revisionGate) { fixture.revisionGateReached = true; await fixture.revisionGate; }
         if (fixture.readFailure) throw new Error('Synthetic revision connection failure');
         return { contractVersion: 1, permissionVersion: 'fixture-access-1', serverTime: new Date().toISOString(),
           sources: payload.p_dataset_keys.map(key => ({ key, revision: key === 'ph_soc_master' ? fixture.revision : '1', state: key === 'ph_soc_master' ? fixture.state : 'ready' })) };
@@ -400,7 +417,100 @@ async function enableNativeCoordinator(page: Page, rows: Row[]) {
   await page.screenshot({path:test.info().outputPath('native-search-clear.png')});
 }
 
-test('native shared coordinator preserves filtered sessions, stages import races and resumes after a lost connection', async ({ page, browser, baseURL }, testInfo) => {
+test('cached native Docks cohort renders from saved snapshots before revisions finish', {"tag":["@verified-data-cache"]}, async ({ page, baseURL }) => {
+  const app = await harness(page, baseURL!, dock28);
+  await enableNativeCoordinator(page, dock28);
+  await expectDockCounts(page, 117, 117);
+
+  // Confirm this is the real bounded IndexedDB cohort written by the initial
+  // verified production-adapter cycle, rather than a fixture-side render cache.
+  await page.waitForFunction(async () => window.eval(`(async () => {
+    const context = getProductionLiveSyncContext();
+    const entries = await Promise.all(context.adapters.map(async adapter => {
+      const meta = { contractVersion: 1, scope: context.scope, adapterId: adapter.id,
+        cacheKey: adapter.cacheKey, dataPermissionVersion: String(context.dataPermissionVersion || '') };
+      return loadCacheValue(verifiedSnapshotCacheKey(meta));
+    }));
+    return entries.length > 0 && entries.every(Boolean);
+  })()`));
+
+  const cohort = await page.evaluate(() => window.eval(`(() => ({
+    adapters: getProductionLiveSyncContext().adapters.map(adapter => adapter.id),
+    proof: hasCurrentProductionLiveSyncProof()
+  }))()`)) as { adapters: string[], proof: boolean };
+  expect(cohort.adapters.some(id => id.startsWith('core:'))).toBe(true);
+  expect(cohort.proof).toBe(true);
+
+  // The shared setup exercises typing/search controls. Measure cold-entry data
+  // readiness after those real interaction guards settle; retain the guards.
+  await page.waitForFunction(() => window.eval(
+    '!isUserActivelyTyping() && !isUserActivelyTouching() && !isUserActivelyScrolling()'
+  ));
+  const revisionReadsBefore = await page.evaluate(() => (window as any).__nativeSyncFixture.revisionReads);
+  await page.evaluate(() => window.eval(`(() => {
+    const fixture = window.__nativeSyncFixture;
+    fixture.revisionGate = new Promise(resolve => { fixture.releaseRevision = resolve; });
+    fixture.revisionGateReached = false;
+    resetProductionLiveSync();
+    processAndLoadData({ socData: [], data: [], _fromCache: true });
+    showViewLoadingState('docks', 'Loading data...', true);
+    fixture.cachedRenderElapsedMs = null;
+    const container = document.getElementById('docks-content');
+    const loadingSignature = getContainerRenderSignature(container);
+    let frameQueued = false;
+    const hasRestoredDocks = () => container.dataset.renderSignature !== loadingSignature
+      && Array.from(container.querySelectorAll('.bg-white.border-2')).some(card => (card.textContent || '').includes('117 Items'));
+    const recordAfterLayout = () => {
+      if (frameQueued || !hasRestoredDocks()) return;
+      frameQueued = true;
+      requestAnimationFrame(() => {
+        frameQueued = false;
+        if (!hasRestoredDocks()) return;
+        const card = Array.from(container.querySelectorAll('.bg-white.border-2')).find(item => (item.textContent || '').includes('117 Items'));
+        const bounds = card?.getBoundingClientRect();
+        if (!bounds?.width || !bounds.height) return;
+        // The RAF callback plus this layout read records DOM-ready render time
+        // without including Playwright's polling/assertion round trips.
+        fixture.cachedRenderElapsedMs = performance.now() - fixture.previewStartedAt;
+        fixture.cachedRenderObserver.disconnect();
+        fixture.cachedRenderObserver = null;
+      });
+    };
+    fixture.cachedRenderObserver = new MutationObserver(recordAfterLayout);
+    fixture.cachedRenderObserver.observe(container, { childList: true, subtree: true, attributes: true, characterData: true });
+    fixture.previewStartedAt = performance.now();
+    void getProductionLiveSyncCoordinator().check('fixture-cached-cohort-preview');
+  })()`));
+
+  try {
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeSyncFixture.revisionReads))
+      .toBeGreaterThan(revisionReadsBefore);
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeSyncFixture.revisionGateReached)).toBe(true);
+    await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Syncing');
+    await expect.poll(() => page.evaluate(() => window.eval('hasProgressiveViewData()'))).toBe(true);
+    await expectDockCounts(page, 117, 117);
+    await expect.poll(() => page.evaluate(() => (window as any).__nativeSyncFixture.cachedRenderElapsedMs)).not.toBeNull();
+    expect(await page.evaluate(() => window.eval('hasCurrentProductionLiveSyncProof()')),
+      'a display-only cached preview must not restore write proof').toBe(false);
+    expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
+    const elapsedMs = await page.evaluate(() => (window as any).__nativeSyncFixture.cachedRenderElapsedMs);
+    console.log(`CACHED_COHORT_DOCKS_RENDER_MS=${Math.round(elapsedMs)}`);
+  } finally {
+    await page.evaluate(() => {
+      const fixture = (window as any).__nativeSyncFixture;
+      fixture.cachedRenderObserver?.disconnect();
+      fixture.cachedRenderObserver = null;
+      fixture.revisionGate = null;
+      fixture.releaseRevision?.();
+    });
+  }
+  await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  await expectDockCounts(page, 117, 117);
+  expect(await page.evaluate(() => window.eval('hasCurrentProductionLiveSyncProof()'))).toBe(true);
+  app.assertClean();
+});
+
+test('native shared coordinator preserves filtered sessions, stages import races and resumes after a lost connection', {"tag":["@verified-data-cache"]}, async ({ page, browser, baseURL }, testInfo) => {
   const use = testInfo.project.use;
   const secondContext = await browser.newContext({ baseURL, viewport: use.viewport, userAgent: use.userAgent,
     isMobile: use.isMobile, hasTouch: use.hasTouch, deviceScaleFactor: use.deviceScaleFactor, serviceWorkers: 'block' });
@@ -469,7 +579,7 @@ test('native shared coordinator preserves filtered sessions, stages import races
   }
 });
 
-test('real customer controls expose empty Custom, All and device-saved selections', async ({ page, baseURL }) => {
+test('real customer controls expose empty Custom, All and device-saved selections', {"tag":["@verified-data-cache"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!, [row('a', 'Customer A'), row('b', 'Customer B', '29')]);
   await openDockMobileFilters(page);
   await page.locator('[data-dock-filter-shell="customer"] > button').click();
@@ -492,7 +602,7 @@ test('real customer controls expose empty Custom, All and device-saved selection
   app.assertClean();
 });
 
-test('native refresh preserves an open Dock draft and reloads changed query and identity scopes', async ({ page, baseURL }) => {
+test('native refresh preserves an open Dock draft and reloads changed query and identity scopes', {"tag":["@verified-data-cache"]}, async ({ page, baseURL }) => {
   const initial = [row('draft-a', 'Customer A')];
   const app = await harness(page, baseURL!, initial);
   // The editor display case requires a foreground page after multi-context tests.

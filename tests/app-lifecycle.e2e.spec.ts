@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
+
 import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
+// @test-group: @app-lifecycle
+
 
 for (const width of [320, 390, 430]) {
-  test(`AURA V2 split widget keeps draft choices and review usable at ${width}px`, async ({ page, baseURL }) => {
+  test(`AURA V2 split widget keeps draft choices and review usable at ${width}px`, {"tag":["@app-lifecycle"]}, async ({ page, baseURL }) => {
     await page.setViewportSize({ width, height: 844 });
     await page.route('**/aura-v2-fixture', route => route.fulfill({ contentType: 'text/html', body:
       '<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="margin:0;background:#050806"></body>' }));
@@ -75,7 +78,7 @@ for (const width of [320, 390, 430]) {
   });
 }
 
-test('compiled bootstrap owns lifecycle before a failed runtime and Reload aborts the old document', async ({ page, baseURL }) => {
+test('compiled bootstrap owns lifecycle before a failed runtime and Reload aborts the old document', {"tag":["@app-lifecycle"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, {
     username: 'lifecycle_start_admin',
     role: 'ADMIN',
@@ -122,7 +125,7 @@ test('compiled bootstrap owns lifecycle before a failed runtime and Reload abort
   expect(fixture.blockedMutations).toEqual([]);
 });
 
-test('real view and account resets fence a deferred verified read without treating token refresh as an account change', async ({ page, baseURL }) => {
+test('real view and account resets fence a deferred verified read without treating token refresh as an account change', {"tag":["@app-lifecycle"]}, async ({ page, baseURL }) => {
   const fixture = await installHlOrderFixture(page, baseURL!, {
     username: 'dylan_collyge',
     role: 'ADMIN',

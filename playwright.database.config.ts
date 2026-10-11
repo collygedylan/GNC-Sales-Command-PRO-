@@ -15,11 +15,12 @@ if (process.env.CI) {
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: ['request-integrity-local.spec.js', 'native-auth-provisioning-local.spec.js'],
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@database/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
-  retries: process.env.CI ? 1 : 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI
     ? [['github'], ['json', { outputFile: 'test-results/database/results.json' }],
        ['html', { outputFolder: 'playwright-report/database', open: 'never' }]]

@@ -1,3 +1,4 @@
+// @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -199,3 +200,4 @@ test('runtime cache and pending read are bound to the current signal; force stil
   h.resolve(2, 'newer');
   assert.equal((await forced).build, 'newer');
 });
+// @test-group: foundation

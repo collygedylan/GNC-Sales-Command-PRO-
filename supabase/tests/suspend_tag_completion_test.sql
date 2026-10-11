@@ -1,3 +1,4 @@
+-- @test-runtime: suspend-tag-postgres
 \set ON_ERROR_STOP on
 -- Synthetic disposable database only; all business fixtures roll back.
 begin;
@@ -73,6 +74,7 @@ begin
     perform pg_temp.assert_true((public.complete_suspend_tag_v1('synthetic-a','2026-09-08T12:00:00Z',gen_random_uuid())->>'alreadyCompleted')::boolean,'existing JD/Megan Suspend membership preserved');
   end loop;
   perform set_config('request.jwt.claims',claims,true);
+
   perform pg_temp.assert_true(not has_table_privilege('authenticated','public.ph_soc_master','UPDATE'),'SOC update grants remain revoked');
   perform pg_temp.assert_true(not has_table_privilege('authenticated','suspend_tag_private.completion_commands','INSERT'),'no receipt forgery grant');
   perform pg_temp.assert_true(not has_function_privilege('anon','public.complete_suspend_tag_v1(text,timestamptz,uuid)','EXECUTE'),'anonymous wrapper denied');

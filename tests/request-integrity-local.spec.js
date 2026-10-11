@@ -1,4 +1,7 @@
 import { test, expect } from '@playwright/test';
+// @test-group: @database,@local-e2e
+
+
 
 const localUrl = String(process.env.SUPABASE_LOCAL_URL || '').replace(/\/$/, '');
 const anonKey = String(process.env.SUPABASE_LOCAL_ANON_KEY || '');
@@ -7,7 +10,7 @@ const serviceKey = String(process.env.SUPABASE_LOCAL_SERVICE_ROLE_KEY || '');
 async function jsonFetch(url, options = {}) {
   const response = await fetch(url, options);
   const text = await response.text();
-  let body = null;
+  let body;
   try { body = text ? JSON.parse(text) : null; } catch { body = text; }
   return { response, body };
 }
@@ -63,15 +66,26 @@ async function rpc(name, token, payload) {
   });
 }
 
-test.describe('Drive-canonical request transactions', () => {
+test.describe('Drive-canonical request transactions', {"tag":["@database","@local-e2e"]}, () => {
   test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
 
-  test('roles, retries, History/outbox, push, assignments, and browser outbox', async ({ page }) => {
+  test('roles, retries, History/outbox, push, assignments, and browser outbox', {"tag":["@database","@local-e2e"]}, async ({ page }) => {
     const suffix = Date.now().toString(36);
     const password = 'Request-test-2026!';
     const rep = await createUser(`rep_${suffix}@example.com`, password, `rep_${suffix}`, 'REP');
     const csr = await createUser(`csr_${suffix}@example.com`, password, `csr_${suffix}`, 'CSR');
-    const evalUser = await createUser(`eval_${suffix}@example.com`, password, 'abigail_vazquez', 'EVAL');
+    const evalUser = await createUser(`eval_${suffix}@example.com`, password, `eval_${suffix}`, 'EVAL');
+    const evalRoster = await jsonFetch(`${localUrl}/rest/v1/ph_eval_assignment_users`, {
+      method: 'POST',
+      headers: {
+        apikey: serviceKey,
+        Authorization: `Bearer ${serviceKey}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify({ username: evalUser.username, display_name: evalUser.username, active: true, source: 'request_integrity_local' })
+    });
+    expect(evalRoster.response.ok, JSON.stringify(evalRoster.body)).toBeTruthy();
     const dylan = await createUser(`dylan_${suffix}@example.com`, password, 'dylan_collyge', 'ADMIN');
 
     const masterId = `MASTER-${suffix}`;
@@ -84,7 +98,7 @@ test.describe('Drive-canonical request transactions', () => {
         'Content-Type': 'application/json',
         Prefer: 'return=representation'
       },
-      body: JSON.stringify({ unique_id: masterId, itemcode, genusname: 'Test Genus', commonname: 'Canonical Drive Name', ptravailable: '20', app_tab_assignment: 'location' })
+      body: JSON.stringify({ unique_id: masterId, itemcode, genusname: 'Test Genus', commonname: 'Canonical Drive Name', locationcode: 'A.01.001', ptravailable: '20', app_tab_assignment: 'location' })
     });
     expect(master.response.ok, JSON.stringify(master.body)).toBeTruthy();
 
@@ -167,13 +181,59 @@ test.describe('Drive-canonical request transactions', () => {
     });
     expect(push.response.ok, JSON.stringify(push.body)).toBeTruthy();
 
-    const deniedAssignment = await rpc('set_eval_itemcode_assignment', csrToken, { itemcode, genusname: 'Test Genus', assignedto: evalUser.username });
+    const defaultOwnerResult = await jsonFetch(`${localUrl}/rest/v1/ph_itemcode_default_owners?select=revision&itemcode_normalized=eq.${encodeURIComponent(itemcode)}`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    });
+    expect(defaultOwnerResult.response.ok, JSON.stringify(defaultOwnerResult.body)).toBeTruthy();
+    expect(defaultOwnerResult.body).toEqual([]);
+    const expectedRevision = 0;
+    const assignmentChanges = [{ itemcode, assignedto: evalUser.username, expectedRevision }];
+    const deniedAssignment = await rpc('set_itemcode_default_owners_v1', csrToken, {
+      p_changes: assignmentChanges,
+      p_request_id: crypto.randomUUID()
+    });
     expect(deniedAssignment.response.status).toBe(403);
     const dylanToken = await signIn(dylan);
-    const assignment = await rpc('set_eval_itemcode_assignment', dylanToken, { itemcode, genusname: 'Test Genus', assignedto: evalUser.username });
+    const assignmentRequestId = crypto.randomUUID();
+    const assignment = await rpc('set_itemcode_default_owners_v1', dylanToken, {
+      p_changes: assignmentChanges,
+      p_request_id: assignmentRequestId
+    });
     expect(assignment.response.ok, JSON.stringify(assignment.body)).toBeTruthy();
-    expect(assignment.body.assignedto).toBe(evalUser.username);
-    expect(assignment.body.assignment_key).toBe(`${itemcode}|test genus`);
+    expect(assignment.body.contractVersion).toBe('inventory-row-assignments-v1');
+    expect(assignment.body.defaults).toEqual(expect.arrayContaining([
+      expect.objectContaining({ itemcode: itemcode, assignedto: evalUser.username, revision: expectedRevision + 1 })
+    ]));
+    expect(assignment.body.assignments).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        master_unique_id: masterId,
+        unique_id: masterId,
+        itemcode_normalized: itemcode,
+        locationcode: 'A.01.001',
+        assignedto: evalUser.username,
+        default_assignedto: evalUser.username
+      })
+    ]));
+    const assignmentRetry = await rpc('set_itemcode_default_owners_v1', dylanToken, {
+      p_changes: assignmentChanges,
+      p_request_id: assignmentRequestId
+    });
+    expect(assignmentRetry.response.ok, JSON.stringify(assignmentRetry.body)).toBeTruthy();
+    expect(assignmentRetry.body).toEqual(assignment.body);
+
+    const exactAssignment = await jsonFetch(`${localUrl}/rest/v1/ph_inventory_row_assignments?select=master_unique_id,assignedto,default_assignedto,assignment_reason,locationcode&master_unique_id=eq.${encodeURIComponent(masterId)}`, {
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` }
+    });
+    expect(exactAssignment.response.ok, JSON.stringify(exactAssignment.body)).toBeTruthy();
+    expect(exactAssignment.body).toEqual([
+      expect.objectContaining({
+        master_unique_id: masterId,
+        assignedto: evalUser.username,
+        default_assignedto: evalUser.username,
+        assignment_reason: 'itemcode_default',
+        locationcode: 'A.01.001'
+      })
+    ]);
 
     await page.goto('/');
     const browserBatchId = crypto.randomUUID();

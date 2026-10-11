@@ -12,6 +12,8 @@ const stamp = value => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 const seconds = (start, end) => start !== null && end !== null && end >= start ? (end - start) / 1000 : null;
+// Remove control characters before writing values into release reports.
+// eslint-disable-next-line no-control-regex
 const clean = value => String(value || '').replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 400);
 const rounded = number => Math.round(number * 100) / 100;
 

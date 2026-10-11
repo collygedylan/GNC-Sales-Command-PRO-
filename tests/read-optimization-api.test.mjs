@@ -67,7 +67,7 @@ test('schedule card read selects bounded RPC and keeps legacy RPC for full calle
   assert.equal(f.calls[0][1], 'production_schedule_read_cards_v1');
   assert.equal(f.calls[0][2].p_limit, 100);
   assert.deepEqual([...f.calls[0][2].p_column_indexes], [1, 4]);
-  await f.invoke(authorized, { operation: 'rows', sheetId: 0 });
+  await f.invoke(authorized, { operation: 'rows', sheetId: 0, snapshotId });
   assert.equal(f.calls[1][1], 'production_schedule_read_rows_v1');
   assert.equal('p_column_indexes' in f.calls[1][2], false);
 });

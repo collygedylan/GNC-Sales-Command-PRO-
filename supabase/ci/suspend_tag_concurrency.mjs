@@ -1,4 +1,5 @@
 // Committed synthetic fixtures only, on CI's disposable local PostgreSQL.
+// @test-runtime: suspend-tag-concurrency
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';

@@ -7,7 +7,8 @@ const canaryBaseURL = String(process.env.CANARY_BASE_URL || '').trim().replace(/
 // The optional canary origin uses the same isolated baseline fixture.
 export default defineConfig({
   ...base,
-  testMatch: /review-assignedto\.e2e\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@review-assignedto/,
   use: {
     ...base.use,
     baseURL: canaryBaseURL || base.use?.baseURL,

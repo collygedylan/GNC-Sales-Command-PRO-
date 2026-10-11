@@ -1,0 +1,46 @@
+[
+  {
+    "path": "supabase/migrations/20261009053029_reclass_smart_priority_hold_shield_v6.sql",
+    "gitBlob": "b183fc1d573c7234af13fe157ede80c8c6b00b3a"
+  },
+  {
+    "path": "supabase/migrations/20261009053030_smart_shield_raw_import_acknowledgment.sql",
+    "gitBlob": "4583b108c0224db8e186c182d41fb4ef57575267"
+  },
+  {
+    "path": "supabase/migrations/20261009170000_request_queue_remove_v1.sql",
+    "gitBlob": "85faff0494bd8805d450de280bb9319c30630446"
+  },
+  {
+    "path": "supabase/migrations/20261009202507_prompt25_editable_field_shield_and_hold_clear.sql",
+    "gitBlob": "2786346e7c8130789664f86430974ededb471e2c"
+  },
+  {
+    "path": "supabase/migrations/20261010024830_customer_rep_mapping_management.sql",
+    "gitBlob": "5a508f96f386419036a772cdd8db027802d44f95"
+  },
+  {
+    "path": "supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql",
+    "gitBlob": "74b781db0f324d65432ec24bab3b69bdb1b889f2"
+  },
+  {
+    "path": "supabase/migrations/20261010080140_field_counting_commands_and_reports.sql",
+    "gitBlob": "a8f6702517f642a84bcf30d345cf006a8650c396"
+  },
+  {
+    "path": "supabase/migrations/20261010152556_customer_rep_mapping_finalize_timeout_55s.sql",
+    "gitBlob": "001361077b2e3ab13158786e03d21c2228c75f8e"
+  },
+  {
+    "path": "supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql",
+    "gitBlob": "91713ec84fbe72c3daf6085c8ad7178aa4194bbf"
+  },
+  {
+    "path": "supabase/migrations/20261010200046_aura_voice_role_access.sql",
+    "gitBlob": "ee4e8256827a26302d816017dbb90014a7dfa797"
+  },
+  {
+    "path": "supabase/migrations/20261011032352_aura_voice_soc_reads.sql",
+    "gitBlob": "03b3586af779e1820c1ad98996c66848b21bfae1"
+  }
+]

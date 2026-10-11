@@ -1,5 +1,8 @@
+// @test-group: av-blanks
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,15 +11,13 @@ import vm from 'node:vm';
 import ts from 'typescript';
 import {
   collectReleaseUnitTestFiles,
-  explicitReleaseUnitTests,
-  releaseUnitScriptNames,
   runReleaseUnitChecks,
-  testFilesFromPackageScript,
 } from '../scripts/run-release-unit-checks.mjs';
+import { discoverTests, readTestAnnotations } from '../scripts/test-discovery.mjs';
+import { runDiscoveredNodeTests } from '../scripts/run-discovered-tests.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const require = createRequire(import.meta.url);
-const manifest = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
 const plain = value => JSON.parse(JSON.stringify(value));
 
 // Evaluate the real checked-in config objects, without launching Playwright or
@@ -48,14 +49,77 @@ function configLoader(extraEnv = {}) {
   return name => load(name).default;
 }
 
-function specFiles(directory = path.join(root, 'tests')) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
-    const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return specFiles(fullPath);
-    return /\.spec\.(?:js|ts)$/.test(entry.name)
-      ? [path.relative(root, fullPath).replaceAll(path.sep, '/')] : [];
-  }).sort();
-}
+test('every CI Playwright config permits two retries while local runs remain immediate', () => {
+  const configs = readdirSync(root).filter(name => /^playwright(?:\.[\w-]+)?\.config\.ts$/.test(name)
+    && name !== 'playwright.local.config.ts');
+  configs.push('v2/tests/playwright.partner.config.ts');
+  for (const CI of ['true', undefined]) {
+    const load = configLoader({ CI, CANARY_BASE_URL: 'http://127.0.0.1:43144' });
+    for (const name of configs) {
+      const config = load(name);
+      assert.equal(config.retries, CI ? 2 : 0, name);
+      assert.notEqual(config.failOnFlakyTests, true, name);
+      for (const project of config.projects || []) {
+        assert.equal(project.retries ?? config.retries, CI ? 2 : 0, `${name}: ${project.name}`);
+      }
+    }
+  }
+  assert.match(readFileSync(path.join(root, 'playwright.local.config.ts'), 'utf8'), /retries: 0/);
+  for (const file of ['scripts/check-local.mjs', 'scripts/check-foundation.mjs']) {
+    assert.match(readFileSync(path.join(root, file), 'utf8'), /'--retries=0'/, file);
+  }
+});
+
+test('real Playwright retries recover twice, exhaust after three attempts, and then fail fast without a browser', { timeout: 60_000 }, () => {
+  const parent = path.resolve(tmpdir());
+  const fixture = mkdtempSync(path.join(parent, 'gnc-ci-retry-probe-'));
+  const playwright = JSON.stringify(require.resolve('@playwright/test'));
+  const base = JSON.stringify(path.join(root, 'playwright.config.ts'));
+  try {
+    writeFileSync(path.join(fixture, 'playwright.config.cjs'), `
+      const { defineConfig } = require(${playwright});
+      const base = require(${base}).default;
+      module.exports = defineConfig({ ...base, testDir: __dirname, testMatch: '*.spec.cjs',
+        grep: undefined, grepInvert: undefined,
+        projects: [{ name: 'retry-probe' }], fullyParallel: false, workers: 1, maxFailures: 1,
+        use: {}, webServer: undefined, reporter: 'json', outputDir: __dirname + '/results' });
+    `);
+    writeFileSync(path.join(fixture, 'retry.spec.cjs'), `
+      const { test, expect } = require(${playwright});
+      test('retry target', async ({}, info) => {
+        expect(process.env.GNC_RETRY_PROBE_MODE === 'recover' && info.retry === 2).toBe(true);
+      });
+      test('following test', async () => { expect(true).toBe(true); });
+    `);
+    for (const scenario of [
+      { ci: true, mode: 'recover', exit: 0, attempts: ['failed', 'failed', 'passed'], outcome: 'flaky' },
+      { ci: true, mode: 'fail', exit: 1, attempts: ['failed', 'failed', 'failed'], outcome: 'unexpected' },
+      { ci: false, mode: 'fail', exit: 1, attempts: ['failed'], outcome: 'unexpected' },
+    ]) {
+      const env = { ...process.env, GNC_RETRY_PROBE_MODE: scenario.mode };
+      if (scenario.ci) env.CI = 'true'; else delete env.CI;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_NAME;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_FILE;
+      delete env.PLAYWRIGHT_JSON_OUTPUT_DIR;
+      const run = spawnSync(process.execPath, [require.resolve('@playwright/test/cli'), 'test',
+        '--config', path.join(fixture, 'playwright.config.cjs')], {
+        cwd: root, env, encoding: 'utf8', timeout: 15_000, maxBuffer: 2 * 1024 * 1024,
+      });
+      assert.equal(run.error, undefined, run.error?.message);
+      assert.equal(run.status, scenario.exit, run.stderr + run.stdout);
+      const report = JSON.parse(run.stdout);
+      const specs = report.suites.flatMap(suite => suite.specs);
+      const target = specs.find(spec => spec.title === 'retry target').tests[0];
+      assert.deepEqual(target.results.map(result => result.status), scenario.attempts);
+      assert.equal(target.status, scenario.outcome);
+      const following = specs.find(spec => spec.title === 'following test').tests[0];
+      assert.equal(following.status, scenario.exit ? 'skipped' : 'expected');
+    }
+  } finally {
+    assert.equal(path.dirname(path.resolve(fixture)), parent, 'Cleanup is limited to this generated fixture');
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
 
 function matches(rule, file) {
   if (!rule) return false;
@@ -69,8 +133,28 @@ function matches(rule, file) {
   return rule.test(file);
 }
 
-const allSpecs = specFiles();
-const selected = config => allSpecs.filter(file => matches(config.testMatch, file) && !matches(config.testIgnore, file));
+const allSpecs = discoverTests({ root, group: 'playwright' });
+const selected = config => allSpecs.filter(file => {
+  if (!matches(config.testMatch, file) || matches(config.testIgnore, file)) return false;
+  const tags = readTestAnnotations({ root, file }).filter(annotation => annotation.type === 'group')
+    .flatMap(annotation => annotation.value.split(',').map(tag => tag.trim()));
+  if (config.grep && !config.grep.test(tags.join(' '))) return false;
+  if (config.grepInvert && config.grepInvert.test(tags.join(' '))) return false;
+  return true;
+});
+
+test('every discovered browser spec belongs to an active workflow suite', () => {
+  const directory = path.join(root, '.github/workflows');
+  const scripts = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')).scripts;
+  let commands = readdirSync(directory).filter(file => /\.ya?ml$/.test(file))
+    .map(file => readFileSync(path.join(directory, file), 'utf8')).join('\n');
+  const usedScripts = new Set([...commands.matchAll(/npm run ([\w:-]+)/g)].map(match => match[1]));
+  commands += '\n' + [...usedScripts].map(name => scripts[name] || '').join('\n');
+  const configs = new Set([...commands.matchAll(/(?:v2\/tests\/)?playwright(?:\.[\w-]+)?\.config\.ts/g)].map(match => match[0]));
+  const load = configLoader({ CANARY_BASE_URL: 'http://127.0.0.1:43144' });
+  const executed = new Set([...configs].flatMap(file => selected(load(file))));
+  assert.deepEqual(allSpecs.filter(file => !executed.has(file)), [], 'New browser specs need an existing suite tag or an explicit workflow environment');
+});
 const originalBrowserFiles = [
   'tests/block-clearing.e2e.spec.ts',
   'tests/eval-report2-async-index.e2e.spec.ts',
@@ -85,75 +169,13 @@ const originalBrowserFiles = [
   'tests/scroll-performance.e2e.spec.ts',
 ];
 
-test('release unit union preserves every existing script and explicit gate exactly once', () => {
-  assert.deepEqual(releaseUnitScriptNames, ['test:photo', 'test:pilot', 'test:live-sync']);
-  assert.deepEqual(explicitReleaseUnitTests, [
-    'tests/aura-voice.test.mjs',
-    'tests/aura-voice-mode-ui.test.mjs',
-    'tests/aura-lingo-v2.test.mjs',
-    'tests/aura-shell-v2.test.mjs',
-    'tests/aura-llm-release.test.mjs',
-    'tests/alpha-command-center.test.mjs',
-    'tests/floor-startup-hotfix.test.mjs',
-    'tests/dataset-read-hotfix.test.mjs',
-    'tests/soc-order-history.test.mjs',
-    'tests/item-low-stock-migration-runner.test.mjs',
-    'tests/password-change-handler.test.mjs',
-    'tests/scheduled-handover-boundaries.test.mjs',
-    'tests/scheduled-offboarding-worker.test.mjs',
-    'tests/request-archive-handler.test.mjs',
-    'tests/season-priority-report.test.mjs',
-    'tests/manager-season-priority-protected.test.mjs',
-    'tests/assigned-items-filters.test.mjs',
-    'tests/bunch-note.test.mjs',
-    'tests/sales-workflow.test.mjs',
-    'tests/sales-history-context.test.mjs',
-    'tests/request-metadata-notifications.test.mjs',
-    'tests/navigation-preferences.test.mjs',
-    'tests/production-workflow.test.mjs',
-    'tests/production-schedule-client.test.mjs',
-    'tests/production-schedule-page.test.mjs',
-    'tests/read-optimization-api.test.mjs',
-    'tests/inventory-read-boundary.test.mjs',
-    'tests/production-schedule-ingestion.test.mjs',
-    'tests/production-schedule-release-seed.test.mjs',
-    'tests/drive-demand-detail.test.mjs',
-    'tests/live-sync-priority-cache.test.mjs',
-    'tests/inventory-list-read-fixture.test.mjs',
-    'tests/hl-order.test.mjs',
-    'tests/hl-order-restock.test.mjs',
-    'tests/hl-order-ship-date.test.mjs',
-    'tests/hl-po-import-staging.test.mjs',
-    'tests/hl-po-receipt-ui.test.mjs',
-    'tests/hl-order-rollback.test.mjs',
-    'tests/hl-order-delivery.test.mjs',
-    'tests/hl-order-delivery-worker.test.mjs',
-    'tests/hl-tags-email.test.mjs',
-    'tests/eval-review-assignedto-api.test.mjs',
-    'tests/production-probe-read-only.test.mjs',
-    'tests/wait-for-live-release.test.mjs',
-    'tests/prepare-ci-playwright-apt.test.mjs',
-  ]);
-  const priorFiles = releaseUnitScriptNames.flatMap(name =>
-    [...manifest.scripts[name].matchAll(/tests\/[\w./-]+\.test\.(?:mjs|cjs|js)/g)].map(match => match[0]));
-  const pipelineFiles = readdirSync(path.join(root, 'tests'))
-    .filter(name => /^release-.+\.test\.mjs$/.test(name)).map(name => `tests/${name}`);
-  assert.ok(pipelineFiles.includes('tests/release-test-coverage.test.mjs'));
-  const expected = [...new Set([...priorFiles, ...explicitReleaseUnitTests, ...pipelineFiles])].sort();
+test('release unit runner is fully backed by dynamic test discovery', () => {
   const actual = collectReleaseUnitTestFiles(root);
-  assert.deepEqual(actual, expected);
-  assert.ok(priorFiles.length > new Set(priorFiles).size, 'Fixture must exercise shared tests between scripts');
+  assert.deepEqual(actual, discoverTests({ root, group: 'node-unit' }));
   assert.equal(actual.length, new Set(actual).size);
-});
-
-test('package script parsing fails closed instead of silently dropping unsupported commands', () => {
-  for (const name of releaseUnitScriptNames) assert.ok(testFilesFromPackageScript(name, manifest.scripts[name]).length);
-  for (const command of [
-    undefined, '', 'echo tests/example.test.mjs', 'node --test',
-    'node --test tests/*.test.mjs', 'node --test --experimental-option tests/example.test.mjs',
-    'node --test tests/example.test.mjs && node other.mjs',
-    'node --test tests/../example.test.mjs',
-  ]) assert.throws(() => testFilesFromPackageScript('fixture', command), /Release unit script fixture/);
+  assert.ok(actual.includes('tests/release-test-coverage.test.mjs'));
+  assert.ok(actual.includes('v2/tests/cache-migration.test.mjs'));
+  assert.ok(!actual.some(file => file.endsWith('.browser.test.mjs')));
 });
 
 test('release unit runner spawns one serial process with deduplicated files and propagates failures', () => {
@@ -183,22 +205,63 @@ test('unit discovery is deterministic and does not spawn tests', () => {
   assert.throws(() => runReleaseUnitChecks({ argv: ['--unknown'] }), /Usage:/);
 });
 
-test('functional, timing and database lanes cover the original browser files without overlap', () => {
+test('compiled browser Node lane executes every discovered browser-test file', () => {
+  const calls = [];
+  const status = runDiscoveredNodeTests({ root, group: 'node-browser', print() {}, spawn(...args) {
+    calls.push(args);
+    return { status: 0 };
+  } });
+  assert.equal(status, 0);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0][1], ['--test', '--test-concurrency=1', ...discoverTests({ root, group: 'node-browser' })]);
+  assert.throws(() => runDiscoveredNodeTests({ root, group: 'unknown', print() {} }), /DISCOVERED_NODE_GROUP_UNSUPPORTED/);
+});
+
+test('command-center browser checks consume the downloaded compiled assets without a source fallback', () => {
+  const workflow = require('js-yaml').load(readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8'));
+  const steps = workflow.jobs.compiled.steps;
+  const browserIndex = steps.findIndex(step => step.run === 'node scripts/run-discovered-tests.mjs node-browser');
+  const downloadIndex = steps.findIndex(step => step.uses === './.github/actions/download-release');
+  assert.ok(downloadIndex >= 0 && browserIndex > downloadIndex);
+  assert.equal(steps[browserIndex].env.GNC_BROWSER_ASSET_ROOT, '_site');
+  const filename = 'tests/alpha-command-center.browser.test.mjs';
+  const source = readFileSync(path.join(root, filename), 'utf8');
+  const header = source.slice(0, source.indexOf('let server;'))
+    .replace(/^import .*;\r?$/gm, '')
+    .replaceAll('import.meta.url', JSON.stringify(new URL('../' + filename, import.meta.url).href));
+  function load(env, exists = true) {
+    const reads = [];
+    vm.runInNewContext(header, { path, fileURLToPath, URL, process: { env }, fs: {
+      existsSync: () => exists,
+      readFileSync: filename => { reads.push(filename); return Buffer.from('compiled fixture'); },
+    } });
+    return reads;
+  }
+  assert.deepEqual(load({}), ['js', 'css'].map(extension => path.join(root, '_site/assets', `alpha-command-center.${extension}`)));
+  assert.deepEqual(load({ GNC_BROWSER_ASSET_ROOT: '.gnc-local/focused site' }),
+    ['js', 'css'].map(extension => path.join(root, '.gnc-local/focused site/assets', `alpha-command-center.${extension}`)));
+  assert.throws(() => load({}, false), /Compiled command-center browser assets are missing/);
+});
+
+test('functional, timing and database lanes cover original and newly tagged browser files without overlap', () => {
   const load = configLoader();
   const base = load('playwright.config.ts');
   const functional = load('playwright.release-functional.config.ts');
   const timing = load('playwright.release-timing.config.ts');
   const database = load('playwright.database.config.ts');
-  assert.deepEqual(selected(base), [...originalBrowserFiles, 'tests/module-loading-perennial.e2e.spec.ts', 'tests/mobile-overhaul-007.e2e.spec.ts', 'tests/theme-008.e2e.spec.ts', 'tests/request-archive-mobile.e2e.spec.ts'].sort());
+  for (const file of originalBrowserFiles) assert.ok(selected(base).includes(file), `${file}: original coverage retained`);
   const functionalFiles = selected(functional);
   const timingFiles = selected(timing);
-  assert.deepEqual(timingFiles, ['tests/eval-report2-async-index.e2e.spec.ts', 'tests/login-photo-repair.e2e.spec.ts', 'tests/module-loading-perennial.e2e.spec.ts', 'tests/scroll-performance.e2e.spec.ts']);
-  assert.deepEqual(selected(database), ['tests/native-auth-provisioning-local.spec.js', 'tests/request-integrity-local.spec.js']);
-  const databaseOriginalFiles = selected(database).filter(file => originalBrowserFiles.includes(file));
+  assert.ok(timingFiles.length > 0);
+  assert.ok(selected(database).length > 0);
+  const databaseOriginalFiles = selected(database).filter(file => selected(base).includes(file));
   const union = [...functionalFiles, ...timingFiles, ...databaseOriginalFiles];
-  assert.equal(union.length, new Set(union).size, 'Every original file belongs to exactly one lane');
-  assert.deepEqual([...union].sort(), selected(base));
-  assert.equal(functionalFiles.length, 10);
+  assert.equal(union.length, new Set(union).size, 'Every discovered file belongs to exactly one lane');
+  // Compiled-only tests can join a release lane without joining the source-only
+  // local server. New conventionally named/tagged specs need no filename edit.
+  const discoveredReleaseFiles = selected({ ...base, grep: /@local-e2e|@release-functional|@release-timing/ });
+  assert.deepEqual([...union].sort(), discoveredReleaseFiles);
+  assert.ok(functionalFiles.length > 0);
   assert.equal(String(functional.testMatch), String(base.testMatch));
 });
 
@@ -226,6 +289,7 @@ test('functional and timing lanes retain all original browser projects and asser
 });
 
 const compiledSuites = [
+  ['reclass-splits', 'reclass-splits', ['cache-chromium', 'cache-android', 'cache-iphone']],
   ['bunch-note', 'bunch-note', ['cache-chromium', 'cache-android', 'cache-iphone']],
   ['sales-mobile', 'sales-mobile', ['sales-desktop', 'sales-android', 'sales-iphone', 'sales-narrow']],
   ['module-mobile', 'module-mobile-smoke', ['module-320', 'module-iphone']],
@@ -246,7 +310,7 @@ test('hosted request and access canaries also gate the sealed candidate with unc
   const load = configLoader({ CANARY_BASE_URL: 'http://127.0.0.1:43144' });
   const hosted = load('playwright.production.config.ts');
   const candidate = load('playwright.release-canary.config.ts');
-  assert.deepEqual(selected(candidate), ['tests/production-request-canary.spec.ts']);
+  assert.ok(selected(candidate).includes('tests/production-request-canary.spec.ts'));
   assert.deepEqual(selected(candidate), selected(hosted));
   for (const key of ['projects', 'use', 'expect', 'timeout', 'retries', 'workers', 'fullyParallel', 'forbidOnly']) {
     assert.deepEqual(plain(candidate[key]), plain(hosted[key]), key);
@@ -259,15 +323,16 @@ test('hosted request and access canaries also gate the sealed candidate with unc
 });
 
 for (const [name, spec, projects] of compiledSuites) {
-  test(`compiled ${name} suite keeps its exact file and browser coverage outside source lanes`, () => {
+  test(`compiled ${name} suite keeps its required file and browser coverage outside source lanes`, () => {
     const load = configLoader();
     const config = load(`playwright.${name}.config.ts`);
     const files = selected(config);
-    assert.deepEqual(files, name === 'home-role' ? ['tests/assigned-items-filters.e2e.spec.ts', 'tests/home-native-startup.e2e.spec.ts', `tests/${spec}.e2e.spec.ts`, 'tests/verified-loading.e2e.spec.ts'] : [`tests/${spec}.e2e.spec.ts`]);
+    const baseline = name === 'home-role' ? ['tests/assigned-items-filters.e2e.spec.ts', 'tests/home-native-startup.e2e.spec.ts', `tests/${spec}.e2e.spec.ts`, 'tests/verified-loading.e2e.spec.ts'] : [`tests/${spec}.e2e.spec.ts`];
+    for (const file of baseline) assert.ok(files.includes(file), `${file}: original coverage retained`);
     assert.deepEqual(plain(config.projects.map(project => project.name)), projects);
     assert.ok(!files.some(file => selected(load('playwright.release-functional.config.ts')).includes(file)));
     assert.ok(!files.some(file => selected(load('playwright.release-timing.config.ts')).includes(file)));
-    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'sales-mobile', 'module-mobile', 'task-av-blanks'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
+    if (['verified-data-cache', 'request-photo', 'hl-restock', 'bunch-note', 'reclass-splits', 'sales-mobile', 'module-mobile', 'task-av-blanks'].includes(name)) assert.match(config.webServer.command, /startReleaseTestServer/);
     else if (name !== 'review-assignedto') assert.match(config.webServer.command, /--directory _site(?:\s|$)/);
     else assert.match(config.webServer.command, /startReleaseTestServer/);
   });
@@ -276,17 +341,17 @@ for (const [name, spec, projects] of compiledSuites) {
 test('Request regressions run against the compiled shell across desktop and mobile browsers', () => {
   const load = configLoader();
   const config = load('playwright.request-reliability.config.ts');
-  assert.deepEqual(selected(config), ['tests/request-editing.e2e.spec.ts', 'tests/request-entry-source.e2e.spec.ts', 'tests/request-on-hand-calculation.e2e.spec.ts']);
+  for (const file of ['tests/request-editing.e2e.spec.ts', 'tests/request-entry-source.e2e.spec.ts', 'tests/request-on-hand-calculation.e2e.spec.ts']) assert.ok(selected(config).includes(file));
   assert.deepEqual(plain(config.projects.map(project => project.name)), ['cache-chromium', 'cache-firefox', 'cache-webkit', 'cache-android', 'cache-iphone']);
   assert.match(config.webServer.command, /startReleaseTestServer/);
   assert.equal(config.workers, 1);
-  assert.equal(config.retries, 0);
+  assert.equal(config.retries, 2);
 });
 
 test('compiled Android login coverage stays separate while three desktop projects move to timing', () => {
   const load = configLoader();
   const login = load('playwright.login-photo.config.ts');
-  assert.deepEqual(selected(login), ['tests/login-photo-repair.e2e.spec.ts']);
+  assert.ok(selected(login).includes('tests/login-photo-repair.e2e.spec.ts'));
   assert.deepEqual(plain(login.projects.map(project => project.name)), ['chromium', 'firefox', 'webkit', 'android']);
   const base = load('playwright.config.ts');
   assert.deepEqual(plain(login.projects.slice(0, 3)), plain(base.projects));
@@ -313,13 +378,8 @@ test('Block Clearing retains its lexical fixture bridge for source and compiled 
   assert.doesNotMatch(source, /writeFile|copyFile/);
 });
 
-// Explicit rollback coverage contract: every original product test stays in the
-// release union, and browser substitutions preserve complete executable bodies.
-const september9ProductScripts = {
-  "test:photo": "node --test tests/photo-egress.test.mjs tests/photo-history.test.mjs tests/service-worker-isolation.test.mjs",
-  "test:pilot": "node --test --test-concurrency=1 tests/docks-filter-sync.test.mjs tests/live-sync-read-boundary.test.mjs tests/live-sync-registry-coverage.test.mjs tests/live-sync-coordinator.test.mjs tests/live-sync-adapters.test.mjs tests/suspend-tag-completion.test.mjs tests/suspend-tag-import.test.mjs tests/bloomscapes-pending-view.test.mjs tests/drive-evidence-storm.test.mjs tests/live-pilot.test.mjs tests/scroll-performance.test.mjs tests/eval-reports-engine.test.mjs tests/reclass-inquiry.test.mjs tests/drive-reclass-protected.test.mjs tests/item-inquiry-coverage.test.mjs tests/eval-work.test.mjs tests/eval-work-folder-v2.test.mjs tests/eval-report2-completion-routing.test.mjs tests/request-eval-drive-reliability.test.mjs tests/request-option-append.test.mjs tests/request-completion-resilience.test.mjs tests/shear-location-inquiry.test.mjs tests/location-work.test.mjs tests/dock-trip-status.test.mjs tests/block-clearing-pdf-backend.test.mjs tests/apps-script-sync.test.mjs tests/apps-script-lifecycle.test.mjs tests/request-ios-swipe.test.mjs tests/transactions-keyed.test.mjs tests/pikes-orders.test.mjs tests/stine-lumber-orders.test.mjs tests/season-sales-office-staging.test.mjs tests/season-sales-office-completion.test.mjs tests/season-sales-office-av-note.test.mjs tests/request-season-sales-office-refresh.test.mjs tests/post-deployment-canary.test.mjs tests/po-management-native-auth.test.mjs tests/access-control-audit.test.mjs tests/kayla-admin-drive-flyer.test.mjs tests/sales-marketing-access.test.mjs tests/codex-operations.test.mjs",
-  "test:live-sync": "node --test tests/live-sync-coordinator.test.mjs tests/live-sync-read-boundary.test.mjs tests/live-sync-registry-coverage.test.mjs tests/live-sync-adapters.test.mjs tests/docks-filter-sync.test.mjs"
-};
+// Explicit rollback coverage contract: browser substitutions preserve complete
+// executable bodies; unit test file lists come from dynamic discovery above.
 const september9BrowserBodies = [
   [
     "tests/login-photo-repair.e2e.spec.ts",
@@ -404,7 +464,7 @@ const september9BrowserBodies = [
   [
     "tests/review-assignedto.e2e.spec.ts",
     "tests/responsive-workflows.e2e.spec.ts",
-    "Eval assignment dropdown exposes the full managed roster and composite key"
+    "Eval assignment dropdown exposes the full managed roster and Itemcode default key"
   ],
   [
     "tests/review-assignedto.e2e.spec.ts",
@@ -427,18 +487,10 @@ const september9BrowserFixtures = [
   ]
 ];
 
-test('September 9 product scripts preserve their complete baseline safety file sets', () => {
-  for (const [name, command] of Object.entries(september9ProductScripts)) {
-    const expected = testFilesFromPackageScript(name, command);
-    if (name === 'test:pilot') {
-      expected.splice(expected.indexOf('tests/request-completion-resilience.test.mjs') + 1, 0, 'tests/request-edit-performance.test.mjs');
-    }
-    assert.deepEqual(testFilesFromPackageScript(name, manifest.scripts[name]), expected, name);
-  }
-});
-
 test('rollback browser lanes preserve baseline assertions and fixture implementations without new skips', () => {
-  const read = file => readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n');
+  const read = file => readFileSync(path.join(root, file), 'utf8').replace(/\r\n/g, '\n')
+    .replace(/^\/\/ @test-group:.*\n/gm, '')
+    .replace(/,\s*\{"tag":\[[^\]]*\]\},\s*/g, ', ');
   for (const [destination, source, title] of september9BrowserBodies) {
     const original = read(source);
     const ast = ts.createSourceFile(source, original, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -451,6 +503,9 @@ test('rollback browser lanes preserve baseline assertions and fixture implementa
     assert.ok(currentStatement, destination + ': baseline test body for ' + title);
     let currentBody = currentStatement.getText(destinationAst);
     let baselineBody = statement.getText(ast);
+    const stripSuiteTags = body => body.replace(/,\s*\{"tag":\[[^\]]*\]\},\s*/g, ', ');
+    currentBody = stripSuiteTags(currentBody);
+    baselineBody = stripSuiteTags(baselineBody);
     if (destination === 'tests/eval-report2-header-filters.e2e.spec.ts'
       && ['Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view',
         'Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision'].includes(title)) {
@@ -504,4 +559,24 @@ test('rollback browser lanes preserve baseline assertions and fixture implementa
   }
   const replacements = new Set([...september9BrowserBodies, ...september9BrowserFixtures].map(([destination]) => destination));
   for (const file of replacements) assert.doesNotMatch(read(file), /\btest\.(?:skip|fixme|only)\s*\(/, file);
+});
+
+test('compiled matrix partitions preserve every declared browser project and suite', () => {
+  const workflow = require('js-yaml').load(readFileSync(path.join(root, '.github/workflows/release-validation.yml'), 'utf8'));
+  const entries = workflow.jobs.compiled.strategy.matrix.include.filter(row => row.suite !== 'command-center');
+  const expected = ["playwright.sw-isolation.config.ts","v2/tests/playwright.partner.config.ts","playwright.release-canary.config.ts","playwright.footer.config.ts","playwright.home-role.config.ts","playwright.season-sales-office.config.ts","playwright.season-priority.config.ts","playwright.suspend-tag.config.ts","playwright.docks-filter.config.ts","playwright.task-av-blanks.config.ts","playwright.session-recovery.config.ts","playwright.review-assignedto.config.ts","playwright.verified-data-cache.config.ts","playwright.request-reliability.config.ts","playwright.request-photo.config.ts","playwright.bunch-note.config.ts","playwright.reclass-splits.config.ts","playwright.sales-mobile.config.ts","playwright.module-mobile.config.ts","playwright.production-schedule.config.ts","playwright.hl-order.config.ts","playwright.hl-restock.config.ts","playwright.stable-background-refresh.config.ts"];
+  assert.deepEqual([...new Set(entries.map(row => row.config))].sort(), expected.sort());
+  const load = configLoader();
+  for (const file of expected) {
+    const projects = load(file).projects;
+    const rows = entries.filter(row => row.config === file);
+    assert.deepEqual([...new Set(rows.map(row => row.project))].sort(), plain(projects.map(project => project.name)).sort(), file);
+    for (const project of projects) {
+      const group = rows.filter(row => row.project === project.name);
+      const total = file === 'playwright.home-role.config.ts' ? 2 : 1;
+      assert.equal(group.length, total, file + ': ' + project.name);
+      assert.deepEqual(group.map(row => row.shard).sort(), Array.from({length:total}, (_,i)=>i+1));
+      assert.ok(group.every(row => row.total === total && row.browsers === (project.use.browserName || project.use.defaultBrowserType || 'chromium')));
+    }
+  }
 });

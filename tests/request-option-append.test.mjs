@@ -1,3 +1,4 @@
+import { assertHistoricalMigration, assertIsolatedSqlTest } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -38,8 +39,8 @@ test('append RPC is authenticated, server-authoritative, transactional, and appe
   assert.match(migration, /revoke all on function public\.append_request_options_v1[\s\S]*from public, anon, authenticated/);
   assert.match(migration, /grant execute on function public\.append_request_options_v1[\s\S]*to authenticated/);
   assert.doesNotMatch(migration, /delete from public\.(?:ph_active_request|ph_request_history|ph_request_delivery_outbox)/i);
-  assert.match(performanceWorkflow, /20260901192727_repair_request_option_append\.sql/);
-  assert.match(performanceWorkflow, /request_option_append_test\.sql/);
+  assertHistoricalMigration('20260901192727_repair_request_option_append.sql');
+  assertIsolatedSqlTest('request_option_append_test.sql');
   assert.match(sqlTest, /select plan\(26\)/);
 });
 

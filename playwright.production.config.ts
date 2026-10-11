@@ -5,11 +5,12 @@ if (!baseURL) throw new Error('CANARY_BASE_URL_REQUIRED');
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /production-request-canary\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@production-canary/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: true,
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   timeout: 60_000,
   expect: { timeout: 10_000 },

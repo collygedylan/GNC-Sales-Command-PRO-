@@ -1,3 +1,4 @@
+/* global canAccessView */
 (function(root){
  'use strict';
  const activationFor=(view,action)=>{

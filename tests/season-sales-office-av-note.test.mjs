@@ -15,7 +15,9 @@ const ownedStateSource = between('function getSeasonSalesOfficeOwnedAvNote(', 'f
 const adoptionSource = between('function maybeAdoptSalesOfficeOwnedStateToMaster(', 'function getRowPhotoLink(');
 const photoOwnedValueSource = between('function getLocPhotoOwnedValue(', 'function parseLocPhotoEvidenceTimestamp(');
 const normalizePhotoSource = between('function normalizeRowPhotoFields(', 'function getSharedAppPhotoName(');
+const masterEvidenceSyncKeysSource = between('const MASTER_EVIDENCE_SYNC_KEYS = [', 'const EXACT_ROW_SYNC_KEYS');
 const masterSyncSource = between('function syncMasterFieldsToRow(', 'const REQUEST_ROW_OWNED_SYNC_KEYS');
+const preserveDriveEvidenceSource = between('function preserveConfirmedDriveEvidence(', 'function reconcileConfirmedDriveEvidence(');
 const clearPayloadSource = between('function buildMasterAvRuleClearPayload(', 'function getDetailPhotoUrls(');
 const explicitClearSource = between('async function clearCurrentSectionData(', 'function movePhotoInSet(');
 const officeHydrationSource = between('function syncRealtimeSalesOfficeRows(', 'function syncRealtimeReserveRows(');
@@ -48,6 +50,8 @@ function harness(options = {}) {
     buildSearchIndex: (row) => row,
     parseAppNumber: (value) => value === '' ? null : Number(value),
     LINKED_ROW_SYNC_KEYS: ['AV_NOTE', 'SPEC', 'CALIPER', 'SALES_NOTE', 'PTRAVAILABLE'],
+    confirmedDriveEvidenceRows: new Map(),
+    getSupabaseReadIdentityScope: () => 'season-av-note-fixture',
     clonePhotoFields: (source, row) => { row.PHOTO_LINK = source.PHOTO_LINK ?? ''; row.PHOTO_NAME = source.PHOTO_NAME ?? ''; },
     syncSharedFlyerPhotoFields() {},
     findLinkedMasterRow: () => master,
@@ -103,7 +107,7 @@ function harness(options = {}) {
     showToast() {},
   };
   vm.createContext(ctx);
-  vm.runInContext(`${photoOwnedValueSource}\n${normalizePhotoSource}\n${masterSyncSource}\n${ownedStateSource}\n${adoptionSource}\n${formatterSource}\n${displaySource}\n${seasonListSource}\n${exportContextSource}\n${remoteSource}\n${realtimeDetailSource}\n${clearPayloadSource}\n${explicitClearSource}\n${officeHydrationSource}\n${fieldDisplaySource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
+  vm.runInContext(`${photoOwnedValueSource}\n${normalizePhotoSource}\n${masterEvidenceSyncKeysSource}\n${masterSyncSource}\n${preserveDriveEvidenceSource}\n${ownedStateSource}\n${adoptionSource}\n${formatterSource}\n${displaySource}\n${seasonListSource}\n${exportContextSource}\n${remoteSource}\n${realtimeDetailSource}\n${clearPayloadSource}\n${explicitClearSource}\n${officeHydrationSource}\n${fieldDisplaySource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
   return { ctx, calls, master, writes, rendered };
 }
 

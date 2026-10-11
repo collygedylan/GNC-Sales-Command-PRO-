@@ -19,15 +19,31 @@ function gh(args) {
 async function readDescriptor({ runId, name }) {
   const temp = await realpath(os.tmpdir());
   const directory = await mkdtemp(path.join(temp, 'gnc-publication-'));
+  let descriptor;
+  let readError;
   try {
     gh(['run', 'download', String(runId), '--repo', repository, '--name', name, '--dir', directory]);
-    return JSON.parse(await readFile(path.join(directory, 'publication.json'), 'utf8'));
-  } finally {
+    descriptor = JSON.parse(await readFile(path.join(directory, 'publication.json'), 'utf8'));
+  } catch (error) {
+    readError = error;
+  }
+
+  let cleanupError;
+  try {
     // Remove only this invocation's own temporary download, never a checkout.
     if (path.dirname(directory) !== temp || !path.basename(directory).startsWith('gnc-publication-')
       || await realpath(directory) !== directory) throw new Error('PAGES_PUBLICATION_TEMP_INVALID');
     await rm(directory, { recursive: true, force: false });
+  } catch (error) {
+    cleanupError = error;
   }
+
+  if (readError && cleanupError) {
+    throw new AggregateError([readError, cleanupError], 'PAGES_PUBLICATION_DESCRIPTOR_AND_CLEANUP_FAILED', { cause: readError });
+  }
+  if (readError) throw readError;
+  if (cleanupError) throw cleanupError;
+  return descriptor;
 }
 const baseUrl = String(process.env.CANARY_BASE_URL || 'https://agmetricapp.com').trim().replace(/\/+$/, '');
 const timeoutMs = Math.max(1_000, Math.min(10 * 60_000, Number(process.env.CANARY_WAIT_TIMEOUT_MS || 180_000)));

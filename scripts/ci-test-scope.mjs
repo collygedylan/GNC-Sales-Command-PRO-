@@ -13,5 +13,5 @@ export function testScopeForPaths(paths) {
 
 export function maySkipTestJob(name, scope) {
   if (!scope.backend && /^validation \/ database(?: \/|$)/.test(name)) return true;
-  return !scope.frontend && /^validation \/ (?:foundation|functional|compiled|timing|lighthouse)(?: \(|$)/.test(name);
+  return !scope.frontend && /^validation \/ (?:foundation|functional|compiled|timing|performance|lighthouse)(?: \(|$)/.test(name);
 }

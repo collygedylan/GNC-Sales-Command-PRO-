@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @test-runtime: local-auth-smoke
 import crypto from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 
@@ -11,8 +12,11 @@ if (!url || !serviceRoleKey || !publishableKey || !expectedProjectRef) {
   throw new Error('SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_PUBLISHABLE_KEY, and EXPECTED_PROJECT_REF are required.');
 }
 
-const projectRef = new URL(url).hostname.split('.')[0];
-if (projectRef !== expectedProjectRef) throw new Error('Refusing to run against an unexpected Supabase project.');
+const endpoint = new URL(url);
+if (endpoint.protocol !== 'http:' || !['localhost', '127.0.0.1'].includes(endpoint.hostname) || expectedProjectRef !== 'local') {
+  throw new Error('Native auth smoke tests only run against the disposable local Supabase stack.');
+}
+const projectRef = 'local';
 
 const admin = createClient(url, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }

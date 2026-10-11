@@ -4,8 +4,12 @@ import { createHash } from 'node:crypto';
 
 export function loadSeasonPriorityReport() {
   const code = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');
+  const helperStart = code.indexOf('function repairDisplayUtf8Mojibake_(');
+  if (helperStart < 0) throw new Error('Code.gs is missing repairDisplayUtf8Mojibake_');
+  const helperEnd = code.indexOf('\nfunction ', helperStart + 1);
+  const displayRepair = code.slice(helperStart, helperEnd < 0 ? undefined : helperEnd);
   const context = {
-    console, Map, Set, Number, Object, String, Date, JSON,
+    console, Map, Set, Number, Object, String, Date, JSON, TextEncoder, TextDecoder,
     firstNonEmptyRequestValue_: (...values) => values.find(value => value != null && String(value).trim()) ?? '',
     normalizeInventoryTransactionText_: value => String(value ?? '').trim(),
     normalizeInventoryTransactionCompareText_: value => String(value ?? '').trim().toUpperCase(),
@@ -14,12 +18,18 @@ export function loadSeasonPriorityReport() {
       for (const key of keys) if (Object.hasOwn(row, key)) return row[key] ?? '';
       return fallback;
     },
-    Utilities: { formatDate: () => '9/22/2026, 10:00:00 AM' },
+    Utilities: {
+      formatDate: () => '9/22/2026, 10:00:00 AM',
+      newBlob: value => {
+        const bytes = Array.isArray(value) ? Uint8Array.from(value, byte => byte & 255) : new TextEncoder().encode(String(value ?? ''));
+        return { getBytes: () => Array.from(bytes), getDataAsString: encoding => new TextDecoder(encoding, { fatal: true }).decode(bytes) };
+      },
+    },
     buildPhoneSizedEmailHtml_: value => value,
     escapeEmailHtml_: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
   };
   vm.createContext(context);
-  vm.runInContext(code.slice(code.indexOf('const RECLASS_INQUIRY_ROW_FIELDS_'), code.indexOf('function handleInventoryTransaction_')), context);
+  vm.runInContext(displayRepair + '\n' + code.slice(code.indexOf('const RECLASS_INQUIRY_ROW_FIELDS_'), code.indexOf('function handleInventoryTransaction_')), context);
   return context;
 }
 

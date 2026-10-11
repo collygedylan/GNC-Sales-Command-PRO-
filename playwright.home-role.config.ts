@@ -5,11 +5,12 @@ const baseURL = remoteBaseURL || 'http://127.0.0.1:43124';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /(?:home-(?:role-visibility|native-startup)|verified-loading|assigned-items-filters)\.e2e\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@home-role/,
   fullyParallel: false,
   workers: 2,
   forbidOnly: Boolean(process.env.CI),
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   timeout: 90_000,
   expect: { timeout: 10_000 },

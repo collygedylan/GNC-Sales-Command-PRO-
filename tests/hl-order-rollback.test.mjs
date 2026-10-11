@@ -211,6 +211,11 @@ function apiFixture({ active = true, manager = true } = {}) {
   const assignees = [{ username: 'charley_robertson', displayName: 'Charley Robertson', email: 'verified@example.invalid' }];
   const work = { id: 'saved-work', delivery: {} };
   const context = vm.createContext({
+    jsonValue: value => value,
+    jsonObject: value => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
+      return value;
+    },
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     isEvalWorkManager: () => manager,
     resolveActiveSessionProfile: async () => active ? { id: 'active-actor' } : null,

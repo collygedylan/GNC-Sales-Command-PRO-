@@ -468,6 +468,7 @@
   const compactBrowseRailState = new WeakMap();
   const compactBrowseRailOpenState = new Map();
   let compactBrowseRailFrame = 0;
+  let hasCompactBrowseRails = false;
 
   function compactBrowseRailKey(rail) {
     const owner = rail.closest('[id]');
@@ -478,6 +479,9 @@
   function decorateCompactBrowseRails() {
     compactBrowseRailFrame = 0;
     const mobile = window.innerWidth <= 767;
+    // Desktop has nothing to restore until a mobile rail has been created.
+    // Avoid a full selector scan after every unrelated card mutation.
+    if (!mobile && !hasCompactBrowseRails) return;
     document.querySelectorAll(BROWSE_RAIL_SELECTOR).forEach((rail) => {
       const saved = compactBrowseRailState.get(rail);
       if (!mobile) {
@@ -514,7 +518,9 @@
       rail.appendChild(details);
       rail.classList.add('mobile-browse-rail');
       compactBrowseRailState.set(rail, { children, details, reportGrid, report });
+      hasCompactBrowseRails = true;
     });
+    if (!mobile) hasCompactBrowseRails = false;
   }
 
   function scheduleCompactBrowseRails() {

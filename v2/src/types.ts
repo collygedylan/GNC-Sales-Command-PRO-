@@ -11,20 +11,20 @@ export type DataSource = 'sandbox' | 'cache';
 
 export type InventoryRow = Record<string, unknown> & {
   unique_id: string | number;
-  itemcode?: string;
-  commonname?: string;
-  contsize?: string;
-  locationcode?: string;
-  lotcode?: string;
-  saleyear?: number | string;
-  blockalpha?: string;
-  blocknumber?: number | string;
+  itemcode?: string | null;
+  commonname?: string | null;
+  contsize?: string | null;
+  locationcode?: string | null;
+  lotcode?: string | null;
+  saleyear?: number | string | null;
+  blockalpha?: string | null;
+  blocknumber?: number | string | null;
   // These database columns are stored as text in the inventory table; retain
   // numeric support for sandbox fixtures that provide normalized quantities.
-  ptravailable?: number | string;
-  ptronhand?: number | string;
-  ptrreviewed?: number | string;
-  holdstopcode?: string;
+  ptravailable?: number | string | null;
+  ptronhand?: number | string | null;
+  ptrreviewed?: number | string | null;
+  holdstopcode?: string | null;
   source_payload?: Record<string, unknown>;
 };
 
@@ -36,9 +36,9 @@ export type WorkflowRow = {
   owner?: string;
   status?: string;
   count?: number;
-  itemcode?: string;
-  locationcode?: string;
-  lotcode?: string;
+  itemcode?: string | null;
+  locationcode?: string | null;
+  lotcode?: string | null;
   detail?: Record<string, unknown>;
 };
 
@@ -53,13 +53,13 @@ export type RequestRow = Record<string, unknown> & {
   CONSIGNEEIDENTITYID?: string | null;
   CONSIGNEENAME?: string | null;
   COMMONNAME?: string;
-  commonname?: string;
+  commonname?: string | null;
   LOCATIONCODE?: string;
-  locationcode?: string;
+  locationcode?: string | null;
   LOTCODE?: string;
-  lotcode?: string;
+  lotcode?: string | null;
   CONTSIZE?: string;
-  contsize?: string;
+  contsize?: string | null;
 };
 
 export type AvOptionRow = InventoryRow & {

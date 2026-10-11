@@ -1,3 +1,4 @@
+-- @test-runtime: bloomscapes-postgres
 \set ON_ERROR_STOP on
 begin;
 create function pg_temp.assert_true(value boolean,label text) returns void language plpgsql as $$begin if value is distinct from true then raise exception 'FAILED: %',label;end if;end$$;

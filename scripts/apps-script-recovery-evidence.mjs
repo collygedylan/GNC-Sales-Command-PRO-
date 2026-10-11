@@ -63,7 +63,8 @@ export async function createAppsScriptRecoveryEvidence({
 
   const deadline = Number(now()) + 90000;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    let observedVersion = null;
+    let observedVersionBefore = null;
+    let observedVersionAfter = null;
     let observedCommit = null;
     try {
       const requestOptions = () => {
@@ -72,11 +73,11 @@ export async function createAppsScriptRecoveryEvidence({
         return { timeout: Math.min(12000, remaining), retry: false };
       };
       const before = await script.projects.deployments.get({ scriptId, deploymentId }, requestOptions());
-      observedVersion = deploymentVersion(before, deploymentId);
-      if (expectedVersionNumber !== undefined && observedVersion !== expectedVersionNumber) {
-        throw evidenceError(observedVersion > expectedVersionNumber ? 'DEPLOYMENT_ADVANCED' : 'VERSION_NOT_VISIBLE');
+      observedVersionBefore = deploymentVersion(before, deploymentId);
+      if (expectedVersionNumber !== undefined && observedVersionBefore !== expectedVersionNumber) {
+        throw evidenceError(observedVersionBefore > expectedVersionNumber ? 'DEPLOYMENT_ADVANCED' : 'VERSION_NOT_VISIBLE');
       }
-      const versionNumber = expectedVersionNumber ?? observedVersion;
+      const versionNumber = expectedVersionNumber ?? observedVersionBefore;
       const content = await script.projects.getContent({ scriptId, versionNumber }, requestOptions());
       const source = codeSource(content);
       observedCommit = fingerprintFromSource(source);
@@ -84,7 +85,10 @@ export async function createAppsScriptRecoveryEvidence({
       if (expectedSource !== undefined && source !== expectedSource) throw evidenceError('SOURCE_MISMATCH');
 
       const after = await script.projects.deployments.get({ scriptId, deploymentId }, requestOptions());
-      if (deploymentVersion(after, deploymentId) !== versionNumber) throw evidenceError('DEPLOYMENT_CHANGED_DURING_VERIFICATION');
+      observedVersionAfter = deploymentVersion(after, deploymentId);
+      if (observedVersionAfter !== versionNumber) {
+        throw evidenceError(observedVersionAfter > versionNumber ? 'DEPLOYMENT_ADVANCED' : 'VERSION_NOT_VISIBLE');
+      }
       const verifiedAtMs = Number(now());
       if (!Number.isFinite(verifiedAtMs)) throw evidenceError('TIME_INVALID');
       return {
@@ -95,7 +99,9 @@ export async function createAppsScriptRecoveryEvidence({
     } catch (error) {
       const retryable = ['VERSION_NOT_VISIBLE', 'COMMIT_MISMATCH', 'SOURCE_MISMATCH']
         .some(code => error?.code === `APPS_SCRIPT_RECOVERY_EVIDENCE_${code}`);
-      onObservation({ attempt, expectedVersion: expectedVersionNumber ?? null, observedVersion, observedCommit,
+      onObservation({ attempt, expectedVersion: expectedVersionNumber ?? null,
+        observedVersion: observedVersionAfter ?? observedVersionBefore,
+        observedVersionBefore, observedVersionAfter, observedCommit,
         code: error instanceof AppsScriptRecoveryEvidenceError ? error.code : 'APPS_SCRIPT_RECOVERY_EVIDENCE_READ_FAILED' });
       if (!retryable || attempt === attempts || Number(now()) >= deadline) throw error;
       await sleep(Math.min(retryDelayMs, deadline - Number(now())));

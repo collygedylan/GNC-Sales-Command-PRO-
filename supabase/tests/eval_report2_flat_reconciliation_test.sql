@@ -1,3 +1,4 @@
+-- @test-runtime: isolated-supabase
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(15);
@@ -18,8 +19,15 @@ select ok(has_function_privilege('service_role', 'public.reconcile_eval_report2_
 select ok(has_function_privilege('service_role', 'public.get_eval_report2_direct_inquiry_recipients_v1(text)', 'execute'), 'service role can resolve recipients');
 
 select ok(
-  pg_get_functiondef('private.eval_report2_item_qualifies_v1(text,text,timestamp with time zone)'::regprocedure)
-    ~ E'in \\(''Y'', ''U3''\\).*SHFT',
+  private.eval_report2_is_excluded_row_v1('Y', 'SHFT')
+    and private.eval_report2_is_excluded_row_v1(' U3 ', 'north SHFT stock')
+    and not private.eval_report2_is_excluded_row_v1('Y', '')
+    and not private.eval_report2_is_excluded_row_v1('U3', 'ordinary stock')
+    and not private.eval_report2_is_excluded_row_v1('U2', 'SHFT')
+    and position(
+      'not private.eval_report2_is_excluded_row_v1(m.season, m.desigitem)'
+      in pg_get_functiondef('private.eval_report2_item_qualifies_v1(text,text,timestamp with time zone)'::regprocedure)
+    ) > 0,
   'shared predicate excludes Y and U3 SHFT rows'
 );
 select ok(

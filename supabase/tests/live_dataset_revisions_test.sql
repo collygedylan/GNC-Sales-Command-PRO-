@@ -1,3 +1,4 @@
+-- @test-runtime: live-dataset-revision-sql
 -- This transaction is rolled back; no customer fixtures or production records.
 begin;
 do $$ begin

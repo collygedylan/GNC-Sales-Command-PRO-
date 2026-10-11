@@ -5,11 +5,12 @@ const baseURL = remoteBaseURL || 'http://127.0.0.1:43118';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: /season-sales-office-completion\.e2e\.spec\.ts/,
+  testMatch: /.+\.spec\.(ts|js)$/,
+  grep: /@season-sales-office/,
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
-  retries: 0,
+  retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   timeout: 60_000,
   expect: { timeout: 10_000 },

@@ -1,3 +1,4 @@
+/* global getMainAreaScrollTop, setMainAreaScrollTop */
 (function(root) {
  'use strict';
  const normalize = value => String(value ?? '').trim().toUpperCase();

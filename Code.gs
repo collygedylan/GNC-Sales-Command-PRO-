@@ -881,6 +881,9 @@ function getSupabaseHeaders_(extraHeaders) {
   const headers = getSupabaseHeadersForKey_(SUPABASE_KEY, extraHeaders);
   if (datasetImportFenceContext_ && datasetImportFenceContext_.runId) {
     headers['x-gnc-import-run-id'] = datasetImportFenceContext_.runId;
+    // SQL may acknowledge an app edit only after this importer presents the
+    // original PH legacy tuple, without the historical approved-hold masking.
+    headers['x-gnc-master-tuple-policy'] = 'raw-priority-hold-v1';
   }
   return headers;
 }
@@ -1067,6 +1070,7 @@ const DRIVE_AROUND_HISTORY_BACKFILL_TRIGGER_HANDLER = 'runDriveAroundHistoryBack
 const DRIVE_AROUND_HISTORY_BACKFILL_RETRY_DELAY_MS = 15 * 60 * 1000;
 const GOOGLE_SHEETS_MIME_TYPE = 'application/vnd.google-apps.spreadsheet';
 const WAREHOUSE_ASSIGNED_ITEMS_TABLE = 'ph_warehouse_assigned_items';
+const WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE = 'ph_inventory_row_assignments';
 // Eval assignment review sheet. Supabase is authoritative; this file is export-only.
 const WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID = '16mK_5MWcIwVsbok0lGkBG65UeZt553nf5IEPiv0k34Q';
 const WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID = '1PLQJjNIM4dBTBlFOYiumLb-ICccPZbgn';
@@ -1097,8 +1101,9 @@ const FOLDERS = {
   SOC_PROCESSED: '13hwbF-5wUDruKnjFujjtsyuyrPFgsqpo',
   RESERVES_DROP: '1Xiyp6WQGAF-4Tm-KwSwi9RsBqulFcSAG',
   RESERVES_PROCESSED: '1u4Vk5L92zmcXXT2qNWzImWTud73Bpole',
-  CUSTOMER_REP_DROP: '1Fgsu1Xnpt_SW9CneVh1gPOdTu338p5W8',
-  CUSTOMER_REP_PROCESSED: '1_62SsOENs5DSEU6JIyGi3ZsC3Z8IDGUd',
+  CUSTOMER_REP_SOURCE_PARENT: '1S4OTJVC8rpVNfuuEv2A0lHq-xFdjydBI',
+  CUSTOMER_REP_PENDING: '13zlcdCp_nc_j2GGKxkB5Nrko4G-MWaYl',
+  CUSTOMER_REP_PROCESSED: '1lXgfgChixjodh_zDvofmMnXUBPiO4epV',
   CAV_DROP: '1K-y4thhw_iu2UEEZGRc39LzlpUZtcOBZ',
   CAV_PROCESSED: '1reWKO3GzeFhwsy_ot7Sjb2RPiFs448A5',
   WAREHOUSE_ASSIGNED_ITEMS_SOURCE: WAREHOUSE_ASSIGNED_ITEMS_FOLDER_ID,
@@ -1148,14 +1153,54 @@ const ALLOWED_DB_COLUMNS = new Set([
   'hold_release_approved_at', 'hold_release_approved_by', 'hold_release_approved_by_display', 'hold_release_approved_holdstopbegindate'
 ]);
 
+const MASTER_ITEM6_FIELD_MASK_HEADER_ = 'x-gnc-master-item6-fields';
+const MASTER_ITEM6_FIELD_MASK_PROPERTY_ = '__gncMasterItem6RawFields';
+const MASTER_ITEM6_FIELD_MASK_FIELDS_ = Object.freeze([
+  'locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc',
+  'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'
+]);
+
+function setMasterItem6RawFieldMask_(row, fields) {
+  const allowed = new Set(MASTER_ITEM6_FIELD_MASK_FIELDS_);
+  const mask = Array.from(new Set((Array.isArray(fields) ? fields : []).map(function(field) {
+    return String(field || '').trim().toLowerCase();
+  }).filter(function(field) { return allowed.has(field); })));
+  Object.defineProperty(row, MASTER_ITEM6_FIELD_MASK_PROPERTY_, {
+    configurable: true,
+    enumerable: false,
+    value: mask
+  });
+  return row;
+}
+
+function getMasterItem6RawFieldMask_(row) {
+  const allowed = new Set(MASTER_ITEM6_FIELD_MASK_FIELDS_);
+  const raw = row && Object.prototype.hasOwnProperty.call(row, MASTER_ITEM6_FIELD_MASK_PROPERTY_)
+    ? row[MASTER_ITEM6_FIELD_MASK_PROPERTY_] : [];
+  return Array.from(new Set((Array.isArray(raw) ? raw : []).map(function(field) {
+    return String(field || '').trim().toLowerCase();
+  }).filter(function(field) { return allowed.has(field); })));
+}
+
+function getMasterItem6ChunkFieldMask_(rows) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  if (!safeRows.length) return [];
+  const intersection = new Set(getMasterItem6RawFieldMask_(safeRows[0]));
+  safeRows.slice(1).forEach(function(row) {
+    const fields = new Set(getMasterItem6RawFieldMask_(row));
+    Array.from(intersection).forEach(function(field) { if (!fields.has(field)) intersection.delete(field); });
+  });
+  return MASTER_ITEM6_FIELD_MASK_FIELDS_.filter(function(field) { return intersection.has(field); });
+}
+
 function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, getRuntimeSiteSplitTableName_('ph_soc_master', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runDriveAroundOnly() {
   return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'ph_master_inventory', buildMasterPayload);
 }
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
-function runCustomerRepMapOnly() { return processLatestFileOnlyFolder(FOLDERS.CUSTOMER_REP_DROP, FOLDERS.CUSTOMER_REP_PROCESSED, CUSTOMER_REP_MAP_TABLE, buildCustomerRepMapPayload, { deltaMode: true, selectColumnsBuilder: getCustomerRepMapSelectColumns_, headerMatcher: isCustomerRepMapHeaderRow_ }); }
-function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_ASSIGNED_ITEMS_TABLE); }
+function runCustomerRepMapOnly() { return processCustomerRepMapSnapshot_(); }
+function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE); }
 function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
   const safeRevision = String(importRevision || new Date().toISOString()).trim();
   const safeSource = String(sourceName || 'canonical_import').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 60);
@@ -1560,11 +1605,11 @@ function emitManualSyncLiveEvent_(status) {
 }
 
 const MANUAL_SYNC_STAGE_DEFINITIONS = Object.freeze({
-  drive: { label: 'Drive Around', run: runDriveAroundOnly },
+  drive: { label: 'Drive Around', run: runDriveAroundOnly, continueOnSourceValidationFailure: true },
   drive_history: { label: 'Drive Around History', run: runDriveAroundHistoryOnly },
-  soc: { label: 'SOC', run: runSOCOnly },
-  reserves: { label: 'Reserves', run: runReservesOnly },
-  customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly },
+  soc: { label: 'SOC', run: runSOCOnly, continueOnSourceValidationFailure: true },
+  reserves: { label: 'Reserves', run: runReservesOnly, continueOnSourceValidationFailure: true },
+  customer_rep_map: { label: 'Customer Rep Map', run: runCustomerRepMapOnly, continueOnSourceValidationFailure: true },
   warehouse_assigned_items: { label: 'Warehouse Assigned Items', run: runWarehouseAssignedItemsOnly },
   cav: { label: 'CAV', run: runCavOnly },
   disease: { label: 'Disease Lab Assets (Retired)', run: runRetiredDiseaseManualSyncStage_ },
@@ -1763,7 +1808,161 @@ function normalizeManualSyncFailedFileEntries_(stageResult) {
   }).filter(function(entry) { return entry.name || entry.error; });
 }
 
+const IMPORT_SOURCE_VALIDATION_ERROR_CODES_ = Object.freeze([
+  'IMPORT_SOURCE_EMPTY',
+  'IMPORT_SOURCE_NO_HEADER',
+  'IMPORT_SOURCE_NO_VALID_IDENTITIES',
+  'IMPORT_SOURCE_DUPLICATE_IDENTITIES'
+]);
+const IMPORT_SOURCE_REJECTION_MARKERS_KEY_ = 'IMPORT_SOURCE_REJECTION_MARKERS_V1';
+const IMPORT_SOURCE_REJECTION_MARKERS_MAX_ = 48;
+
+function createImportSourceRejectionTrackerError_(message) {
+  const error = new Error(String(message || 'Could not safely retain a rejected source file for review.'));
+  error.errorCode = 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED';
+  return error;
+}
+
+function readImportSourceRejectionMarkers_() {
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(IMPORT_SOURCE_REJECTION_MARKERS_KEY_) || '';
+  if (!raw) return { properties: properties, markers: {} };
+  let markers;
+  try { markers = JSON.parse(raw); } catch (ignored) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  if (!markers || typeof markers !== 'object' || Array.isArray(markers)) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  Object.keys(markers).forEach(function(key) {
+    const marker = markers[key];
+    if (!marker || typeof marker !== 'object' || !Number.isFinite(Number(marker.modifiedAt)) || !isImportSourceValidationErrorCode_(marker.errorCode)) {
+      throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+    }
+  });
+  return { properties: properties, markers: markers };
+}
+
+function getImportSourceRejectionFileIdentity_(tableName, file) {
+  const fileId = String(file && file.getId && file.getId() || '').trim();
+  const modifiedAt = Number(file && file.getLastUpdated && file.getLastUpdated().getTime());
+  if (!fileId || !Number.isFinite(modifiedAt) || modifiedAt < 0) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  return { key: `${String(tableName || '').trim()}|${fileId}`, fileId: fileId, modifiedAt: modifiedAt };
+}
+
+function saveImportSourceRejectionMarkers_(state) {
+  const markers = state && state.markers || {};
+  const keys = Object.keys(markers);
+  const serialized = JSON.stringify(markers);
+  if (keys.length > IMPORT_SOURCE_REJECTION_MARKERS_MAX_ || serialized.length > 7000) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  try {
+    state.properties.setProperty(IMPORT_SOURCE_REJECTION_MARKERS_KEY_, serialized);
+  } catch (ignored) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+}
+
+function pruneImportSourceRejectionMarkers_(tableName, pendingFiles) {
+  const state = readImportSourceRejectionMarkers_();
+  const prefix = `${String(tableName || '').trim()}|`;
+  const pendingById = new Map();
+  (Array.isArray(pendingFiles) ? pendingFiles : []).forEach(function(file) {
+    const identity = getImportSourceRejectionFileIdentity_(tableName, file);
+    pendingById.set(identity.fileId, identity.modifiedAt);
+  });
+  let changed = false;
+  Object.keys(state.markers).forEach(function(key) {
+    if (key.indexOf(prefix) !== 0) return;
+    const marker = state.markers[key];
+    const fileId = key.slice(prefix.length);
+    if (!pendingById.has(fileId) || pendingById.get(fileId) !== Number(marker.modifiedAt)) {
+      delete state.markers[key];
+      changed = true;
+    }
+  });
+  if (changed) saveImportSourceRejectionMarkers_(state);
+  return state;
+}
+
+function recordImportSourceRejection_(state, tableName, file, errorCode) {
+  const identity = getImportSourceRejectionFileIdentity_(tableName, file);
+  const code = String(errorCode || '').trim().toUpperCase();
+  if (!isImportSourceValidationErrorCode_(code)) {
+    throw createImportSourceRejectionTrackerError_('IMPORT_SOURCE_REJECTION_TRACKER_FAILED');
+  }
+  state.markers[identity.key] = { modifiedAt: identity.modifiedAt, errorCode: code };
+  saveImportSourceRejectionMarkers_(state);
+  return identity;
+}
+
+function getImportSourceRejectionMarker_(state, tableName, file) {
+  const identity = getImportSourceRejectionFileIdentity_(tableName, file);
+  const marker = state && state.markers ? state.markers[identity.key] : null;
+  return marker && Number(marker.modifiedAt) === identity.modifiedAt ? marker : null;
+}
+
+function createImportSourceValidationError_(errorCode, message) {
+  const safeCode = String(errorCode || '').trim().toUpperCase();
+  if (IMPORT_SOURCE_VALIDATION_ERROR_CODES_.indexOf(safeCode) < 0) {
+    throw new Error('IMPORT_SOURCE_VALIDATION_CODE_INVALID');
+  }
+  const error = new Error(String(message || 'The import source did not contain a usable snapshot.'));
+  error.errorCode = safeCode;
+  return error;
+}
+
+function getImportSourceValidationErrorCode_(stats, totalRows) {
+  const safeStats = stats || {};
+  const sourceRows = Math.max(Number(safeStats.sourceRows) || 0, Number(totalRows) || 0);
+  const validIdentityRows = Number(safeStats.validIdentityRows) || 0;
+  if (sourceRows <= 0) return 'IMPORT_SOURCE_EMPTY';
+  if (validIdentityRows <= 0) return 'IMPORT_SOURCE_NO_VALID_IDENTITIES';
+  return '';
+}
+
+function throwIfSnapshotSourceInvalid_(stats, totalRows, sourceName, tableName) {
+  const errorCode = getImportSourceValidationErrorCode_(stats, totalRows);
+  if (!errorCode) return;
+  const safeSource = String(sourceName || 'source file').trim();
+  const safeTable = String(tableName || 'table').trim();
+  const message = errorCode === 'IMPORT_SOURCE_EMPTY'
+    ? `No data rows were found in ${safeSource}; skipped destructive sync for ${safeTable}.`
+    : `0 valid snapshot identities were found in ${safeSource}; skipped destructive sync for ${safeTable}.`;
+  throw createImportSourceValidationError_(errorCode, message);
+}
+
+function isImportSourceValidationErrorCode_(value) {
+  return IMPORT_SOURCE_VALIDATION_ERROR_CODES_.indexOf(String(value || '').trim().toUpperCase()) >= 0;
+}
+
+function isRecoverableManualSyncSourceFailure_(stageDef, stageResult, failedEntries) {
+  if (!stageDef || stageDef.continueOnSourceValidationFailure !== true || !stageResult || stageResult.fatalFailure === true || stageResult.error) return false;
+  const stageErrorCode = String(stageResult.errorCode || stageResult.error_code || '').trim().toUpperCase();
+  if (stageErrorCode && !isImportSourceValidationErrorCode_(stageErrorCode)) return false;
+  const entries = Array.isArray(failedEntries) ? failedEntries : [];
+  const failedCount = Math.max(0, Number(stageResult.failedFiles) || 0);
+  return failedCount > 0 && entries.length >= failedCount && entries.every(function(entry) {
+    return isImportSourceValidationErrorCode_(entry && entry.errorCode);
+  });
+}
+
+function createImportFileFailureEntry_(file, error) {
+  const message = String(error && error.message || error || 'Import source failed validation.');
+  return {
+    name: String(file && file.getName && file.getName() || ''),
+    error: message,
+    errorCode: getSafeImportFailureCode_(error)
+  };
+}
+
 function getSafeImportFailureCode_(error) {
+  const explicitCode = String(error && (error.errorCode || error.error_code) || '').trim().toUpperCase();
+  if (isImportSourceValidationErrorCode_(explicitCode)) return explicitCode;
+  if (explicitCode === 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED') return explicitCode;
   const message = String(error && error.message || error || '');
   // Publish only a structured SQLSTATE, never database details or source rows.
   const databaseError = /^Supabase (?:upsert|delete) failed for [a-zA-Z0-9_]+ \(\d{3}\):\s*(\{[\s\S]*\})$/.exec(message);
@@ -1789,6 +1988,7 @@ function sanitizeManualSyncStatusForClient_(status) {
   if (!status || typeof status !== 'object') return status || null;
   const next = JSON.parse(JSON.stringify(status));
   next.runId = String(next.runId || '').replace(/[^a-zA-Z0-9_-]+/g, '').slice(0, 40);
+  next.sourceFailureCount = Math.max(0, Number(next.sourceFailureCount) || 0);
   next.stageResults = (Array.isArray(next.stageResults) ? next.stageResults : []).map(function(result) {
     return {
       key: String(result && result.key || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 64),
@@ -1796,6 +1996,13 @@ function sanitizeManualSyncStatusForClient_(status) {
       filesProcessed: Math.max(0, Number(result && result.filesProcessed || 0)),
       tempFilesRemoved: Math.max(0, Number(result && result.tempFilesRemoved || 0)),
       failedFiles: Math.max(0, Number(result && result.failedFiles || 0)),
+      skippedFiles: Math.max(0, Number(result && result.skippedFiles || 0)),
+      outcome: ['succeeded', 'partial', 'failed', 'skipped'].indexOf(String(result && result.outcome || '').toLowerCase()) >= 0
+        ? String(result.outcome).toLowerCase()
+        : '',
+      reasonCode: result && result.reasonCode
+        ? sanitizeManualSyncErrorCode_(result.reasonCode, 'MANUAL_SYNC_STAGE_FAILED')
+        : '',
       errorCode: result && result.errorCode
         ? sanitizeManualSyncErrorCode_(result.errorCode, 'MANUAL_SYNC_STAGE_FAILED')
         : '',
@@ -1806,8 +2013,15 @@ function sanitizeManualSyncStatusForClient_(status) {
     const safeCode = sanitizeManualSyncErrorCode_(next.errorCode, 'MANUAL_SYNC_STAGE_FAILED');
     const stageLabel = String(next.currentStageLabel || next.currentStage || 'Data update').replace(/[^a-z0-9 &()-]+/gi, '').slice(0, 80) || 'Data update';
     next.errorCode = safeCode;
-    next.error = `${stageLabel} did not finish. Error code: ${safeCode}.`;
-    next.message = `${next.error} The source file remains available for retry.`;
+    if (safeCode === 'MANUAL_SYNC_SOURCE_FAILURES') {
+      const count = Math.max(1, Number(next.sourceFailureCount) || 0);
+      next.sourceFailureCount = count;
+      next.error = `Manual sync finished with ${count} invalid source file${count === 1 ? '' : 's'}. Failed files remain available for review and retry.`;
+      next.message = next.error;
+    } else {
+      next.error = `${stageLabel} did not finish. Error code: ${safeCode}.`;
+      next.message = `${next.error} The source file remains available for retry.`;
+    }
   }
   return next;
 }
@@ -1820,6 +2034,29 @@ function buildManualSyncStageFailureMessage_(stageDef, stageResult, errorCode) {
   const failureCount = Math.max(failedFiles, failedEntries.length, 1);
   const safeCode = sanitizeManualSyncErrorCode_(errorCode, 'MANUAL_SYNC_STAGE_FAILED');
   return `${label} did not finish for ${failureCount} file${failureCount === 1 ? '' : 's'}. Error code: ${safeCode}. The file remains available for retry.`;
+}
+
+function appendSkippedManualSyncStages_(status, stageOrder, startIndex, reasonCode) {
+  if (!status || !Array.isArray(stageOrder)) return;
+  if (!Array.isArray(status.stageResults)) status.stageResults = [];
+  const safeStart = Math.max(0, Number(startIndex) || 0);
+  for (let index = safeStart; index < stageOrder.length; index++) {
+    const key = String(stageOrder[index] || '');
+    if (status.stageResults.some(function(result) { return String(result && result.key || '') === key; })) continue;
+    const stageDef = MANUAL_SYNC_STAGE_DEFINITIONS[key];
+    status.stageResults.push({
+      key: key,
+      label: String(stageDef && stageDef.label || key),
+      filesProcessed: 0,
+      tempFilesRemoved: 0,
+      failedFiles: 0,
+      skippedFiles: 0,
+      outcome: 'skipped',
+      reasonCode: sanitizeManualSyncErrorCode_(reasonCode, 'MANUAL_SYNC_STAGE_SKIPPED'),
+      errorCode: '',
+      completedAt: new Date().toISOString()
+    });
+  }
 }
 
 function queueManualSyncRequest_(options) {
@@ -1884,6 +2121,7 @@ function queueManualSyncRequest_(options) {
       currentStageLabel: 'Queued',
       completedStages: [],
       stageResults: [],
+      sourceFailureCount: 0,
       startedAt: timestamp,
       updatedAt: timestamp,
       finishedAt: '',
@@ -1979,12 +2217,24 @@ function runQueuedManualSyncStage_(options) {
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
       const stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
+      if (stageResult.continuationPending === true) {
+        const progressRows = Math.max(0, Number(stageResult.stagedRows) || 0);
+        const totalRows = Math.max(0, Number(stageResult.totalRows) || 0);
+        status.updatedAt = new Date().toISOString();
+        status.message = `Staged ${progressRows} of ${totalRows} ${stageDef.label} rows. Queueing bounded continuation...`;
+        saveManualSyncStatus_(status);
+        scheduleManualSyncStageTrigger_();
+        break;
+      }
       const filesProcessed = Number(stageResult.filesProcessed || 0);
       const tempFilesRemoved = Number(stageResult.tempFilesRemoved || 0);
       const failedFiles = Number(stageResult.failedFiles || 0);
       const failedFileNames = Array.isArray(stageResult.failedFileNames) ? stageResult.failedFileNames : [];
       const failedFileErrors = normalizeManualSyncFailedFileEntries_(stageResult);
       const completedAt = new Date().toISOString();
+      const stageHasFailure = failedFiles > 0 || failedFileErrors.length > 0 || !!stageResult.error;
+      const recoverableSourceFailure = stageHasFailure && isRecoverableManualSyncSourceFailure_(stageDef, stageResult, failedFileErrors);
+      const stageOutcome = !stageHasFailure ? 'succeeded' : (recoverableSourceFailure && filesProcessed > 0 ? 'partial' : 'failed');
 
       if (!Array.isArray(status.completedStages)) status.completedStages = [];
       if (!Array.isArray(status.stageResults)) status.stageResults = [];
@@ -1994,28 +2244,34 @@ function runQueuedManualSyncStage_(options) {
         filesProcessed: filesProcessed,
         tempFilesRemoved: tempFilesRemoved,
         failedFiles: failedFiles,
+        skippedFiles: Math.max(0, Number(stageResult.skippedFiles) || 0),
+        outcome: stageOutcome,
         importStatus: String(stageResult.importStatus || ''),
         awaitingReconciliation: stageResult.awaitingReconciliation === true,
         failedFileNames: failedFileNames,
         failedFileErrors: failedFileErrors.map(function(entry) {
           return { errorCode: sanitizeManualSyncErrorCode_(entry && entry.errorCode, 'MANUAL_SYNC_STAGE_FAILED') };
         }),
-        errorCode: (failedFiles > 0 || failedFileErrors.length || stageResult.error)
-          ? sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code, 'MANUAL_SYNC_STAGE_FAILED')
+        errorCode: stageHasFailure
+          ? sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code || (failedFileErrors[0] && failedFileErrors[0].errorCode), 'MANUAL_SYNC_STAGE_FAILED')
           : '',
         completedAt: completedAt
       });
 
-      if (failedFiles > 0 || failedFileErrors.length || stageResult.error) {
+      if (stageHasFailure && !recoverableSourceFailure) {
         status.updatedAt = completedAt;
-        status.errorCode = sanitizeManualSyncErrorCode_(failedFileErrors[0] && failedFileErrors[0].errorCode || stageResult.errorCode || stageResult.error_code, 'MANUAL_SYNC_STAGE_FAILED');
+        status.errorCode = sanitizeManualSyncErrorCode_(stageResult.errorCode || stageResult.error_code || (failedFileErrors[0] && failedFileErrors[0].errorCode), 'MANUAL_SYNC_STAGE_FAILED');
         status.error = buildManualSyncStageFailureMessage_(stageDef, stageResult, status.errorCode);
         status.message = status.error;
         saveManualSyncStatus_(status);
         throw new Error(status.error);
       }
 
-      status.completedStages.push(stageKey);
+      if (recoverableSourceFailure) {
+        status.sourceFailureCount = Math.max(0, Number(status.sourceFailureCount) || 0) + Math.max(failedFiles, failedFileErrors.length);
+      } else {
+        status.completedStages.push(stageKey);
+      }
 
       status.stageIndex = currentStageIndex + 1;
       const hasMoreStages = status.stageIndex < stageOrder.length;
@@ -2024,6 +2280,10 @@ function runQueuedManualSyncStage_(options) {
       const fileSummary = (filesProcessed > 0
         ? `${filesProcessed} file${filesProcessed === 1 ? '' : 's'} processed`
         : 'no files found') + (stageResult.awaitingReconciliation === true ? ', awaiting Dylan receipt reconciliation' : '');
+      const sourceFailureSummary = recoverableSourceFailure
+        ? `; ${failedFiles} invalid source file${failedFiles === 1 ? '' : 's'} left in the drop folder` +
+          (Number(stageResult.skippedFiles) > 0 ? `; ${Number(stageResult.skippedFiles)} related file${Number(stageResult.skippedFiles) === 1 ? '' : 's'} held for review` : '')
+        : '';
       const tempSummary = tempFilesRemoved > 0
         ? `, ${tempFilesRemoved} temp file${tempFilesRemoved === 1 ? '' : 's'} cleared`
         : '';
@@ -2031,10 +2291,21 @@ function runQueuedManualSyncStage_(options) {
       status.updatedAt = completedAt;
       if (!hasMoreStages) {
         status.active = false;
+        status.finishedAt = completedAt;
+        if (Number(status.sourceFailureCount) > 0) {
+          status.currentStage = 'failed';
+          status.currentStageLabel = 'Source Validation';
+          status.errorCode = 'MANUAL_SYNC_SOURCE_FAILURES';
+          status.error = `Manual sync finished with ${Number(status.sourceFailureCount)} invalid source file${Number(status.sourceFailureCount) === 1 ? '' : 's'}. Failed files remain available for review and retry.`;
+          status.message = status.error;
+          saveManualSyncStatus_(status);
+          removeManualSyncStageTriggers_();
+          console.warn(`[MANUAL SYNC][${status.runId}] MANUAL_SYNC_SOURCE_FAILURES`);
+          break;
+        }
         status.currentStage = 'complete';
         status.currentStageLabel = 'Complete';
-        status.finishedAt = completedAt;
-        status.message = `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Manual sync complete.`;
+        status.message = `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Manual sync complete.`;
         saveManualSyncStatus_(status);
         emitManualSyncLiveEvent_(status);
         removeManualSyncStageTriggers_();
@@ -2045,8 +2316,8 @@ function runQueuedManualSyncStage_(options) {
       const elapsedMs = Date.now() - invocationStartedAt;
       const shouldContinueInline = elapsedMs < nextStageStartCutoffMs && elapsedMs < executionBudgetMs;
       status.message = shouldContinueInline
-        ? `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Continuing to ${nextStageDef ? nextStageDef.label : nextStageKey}...`
-        : `Finished ${stageDef.label}: ${fileSummary}${tempSummary}. Queueing ${nextStageDef ? nextStageDef.label : nextStageKey}...`;
+        ? `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Continuing to ${nextStageDef ? nextStageDef.label : nextStageKey}...`
+        : `Finished ${stageDef.label}: ${fileSummary}${sourceFailureSummary}${tempSummary}. Queueing ${nextStageDef ? nextStageDef.label : nextStageKey}...`;
       saveManualSyncStatus_(status);
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
@@ -2057,11 +2328,34 @@ function runQueuedManualSyncStage_(options) {
     }
   } catch (err) {
     if (status) {
+      const stageOrder = Array.isArray(status.stageOrder) ? status.stageOrder : MANUAL_SYNC_STAGE_ORDER_DEFAULT.slice();
+      if (!Array.isArray(status.stageResults)) status.stageResults = [];
+      const failedStageKey = String(status.currentStage || '');
+      const failedStageIndex = stageOrder.indexOf(failedStageKey);
+      const currentResult = status.stageResults.find(function(result) { return String(result && result.key || '') === failedStageKey; });
+      if (!currentResult && failedStageKey && failedStageKey !== 'queued' && failedStageKey !== 'complete') {
+        const failedStageDef = MANUAL_SYNC_STAGE_DEFINITIONS[failedStageKey];
+        status.stageResults.push({
+          key: failedStageKey,
+          label: String(failedStageDef && failedStageDef.label || failedStageKey),
+          filesProcessed: 0,
+          tempFilesRemoved: 0,
+          failedFiles: 1,
+          skippedFiles: 0,
+          outcome: 'failed',
+          reasonCode: '',
+          errorCode: getSafeImportFailureCode_(err),
+          completedAt: new Date().toISOString()
+        });
+      }
+      const numericStageIndex = Math.max(0, Number(status.stageIndex) || 0);
+      const skippedStart = failedStageIndex >= 0 ? failedStageIndex + 1 : numericStageIndex;
+      appendSkippedManualSyncStages_(status, stageOrder, skippedStart, 'MANUAL_SYNC_ABORTED_AFTER_FATAL_FAILURE');
       status.active = false;
       status.updatedAt = new Date().toISOString();
       status.finishedAt = status.updatedAt;
       const stageLabel = status.currentStageLabel || status.currentStage || 'manual sync';
-      status.errorCode = sanitizeManualSyncErrorCode_(status.errorCode, 'MANUAL_SYNC_STAGE_FAILED');
+      status.errorCode = sanitizeManualSyncErrorCode_(status.errorCode || getSafeImportFailureCode_(err), 'MANUAL_SYNC_STAGE_FAILED');
       status.error = `${stageLabel} did not finish. Error code: ${status.errorCode}.`;
       status.message = status.error;
       saveManualSyncStatus_(status);
@@ -3389,9 +3683,13 @@ function clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow) {
   return nextRow;
 }
 
-function applyMasterImportAppFieldRules_(nextRow, existingRow) {
+function applyMasterImportAppFieldRules_(nextRow, existingRow, tableName) {
   if (!nextRow || !existingRow) return nextRow;
-  if (shouldSuppressMasterImportHoldByRelease_(nextRow, existingRow)) suppressMasterImportHoldForApprovedRelease_(nextRow);
+  // The PH database must see the source tuple unchanged to acknowledge its
+  // pending app-edit shield. Other site importers retain their release policy.
+  if (tableName !== 'ph_master_inventory' && shouldSuppressMasterImportHoldByRelease_(nextRow, existingRow)) {
+    suppressMasterImportHoldForApprovedRelease_(nextRow);
+  }
   clearMasterImportAppOwnedFieldsForNewHold_(nextRow, existingRow);
   preserveMasterImportAppOwnedFields_(nextRow, existingRow);
   return nextRow;
@@ -3568,6 +3866,110 @@ function isCustomerRepMapHeaderRow_(row) {
   const hasConsignee = normalizedHeaders.indexOf('consigneename') !== -1 || normalizedHeaders.indexOf('consigneeid') !== -1;
   const hasSalesRep = normalizedHeaders.indexOf('salesrepname') !== -1 || normalizedHeaders.indexOf('salesrepid') !== -1;
   return knownHeaderCount >= 5 && hasCustomer && hasConsignee && hasSalesRep;
+}
+
+function isCustomerRepMapCompleteHeaderRow_(row) {
+  if (!isCustomerRepMapHeaderRow_(row)) return false;
+  const headers = row.map(normalizeCustomerRepMapColumnKey_);
+  return ['customeridentityid', 'customername', 'consigneeid', 'consigneename', 'salesrepid', 'salesrepname', 'customerstatus', 'consigneestatus']
+    .every(function(key) { return headers.indexOf(key) !== -1; });
+}
+
+function getCustomerRepMapIdentityKey_(row) {
+  const customerId = String(row && row.customeridentityid || '').trim();
+  const consigneeId = String(row && row.consigneeid || '').trim();
+  const salesRepId = String(row && row.salesrepid || '').trim();
+  if (!customerId || !consigneeId) return '';
+  // Empty sales-rep IDs are valid source rows. Include the empty value in the
+  // tuple so a blank-assignment row cannot collide with a named rep mapping.
+  return [customerId, consigneeId, salesRepId].join('|');
+}
+
+function buildCustomerRepMapSnapshot_(rawData, syncStartTime, fileName) {
+  if (!Array.isArray(rawData) || !rawData.length || !isCustomerRepMapCompleteHeaderRow_(rawData[0])) {
+    throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', 'Customer Rep Map source is missing required identity/status headers.');
+  }
+  if (rawData.length < 2) throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', 'Customer Rep Map source has no data rows.');
+  const rawHeaders = rawData[0].map(function(header) { return String(header == null ? '' : header); });
+  const normalizedHeaders = rawHeaders.map(normalizeCustomerRepMapColumnKey_);
+  const headerCounts = new Map();
+  normalizedHeaders.forEach(function(header) {
+    if (!header) return;
+    headerCounts.set(header, (headerCounts.get(header) || 0) + 1);
+  });
+  const duplicateHeaders = Array.from(headerCounts.entries()).filter(function(entry) { return entry[1] > 1; }).map(function(entry) { return entry[0]; });
+  if (duplicateHeaders.length) {
+    throw createImportSourceValidationError_('IMPORT_SOURCE_DUPLICATE_IDENTITIES', 'Customer Rep Map source contains duplicate normalized columns.');
+  }
+  const headerIndex = new Map();
+  normalizedHeaders.forEach(function(header, index) { if (header) headerIndex.set(header, index); });
+  const sourceHeaderRowIndex = Math.max(0, Number(rawData.__sourceHeaderRowIndex) || 0);
+  const rows = [];
+  const seenIdentity = new Set();
+  const seenIds = new Set();
+  let nonemptyRows = 0;
+  for (let index = 1; index < rawData.length; index++) {
+    const sourceRow = Array.isArray(rawData[index]) ? rawData[index] : [];
+    if (sourceRow.slice(rawHeaders.length).some(function(value) { return value != null && String(value).trim() !== ''; })) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', `Customer Rep Map row ${sourceHeaderRowIndex + index + 1} contains values without source headers.`);
+    }
+    const rawValues = rawHeaders.map(function(_, column) {
+      const value = sourceRow[column];
+      return value == null ? '' : String(value);
+    });
+    if (!rawValues.some(function(value) { return String(value).trim() !== ''; })) continue;
+    nonemptyRows++;
+    const get = function(key) {
+      const column = headerIndex.has(key) ? headerIndex.get(key) : -1;
+      return column < 0 ? '' : String(rawValues[column] == null ? '' : rawValues[column]).trim();
+    };
+    const identity = { customeridentityid: get('customeridentityid'), consigneeid: get('consigneeid'), salesrepid: get('salesrepid') };
+    const identityKey = getCustomerRepMapIdentityKey_(identity);
+    if (!identityKey) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_NO_VALID_IDENTITIES', `Customer Rep Map row ${index + 1} is missing customer or consignee identity.`);
+    }
+    if (seenIdentity.has(identityKey)) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_DUPLICATE_IDENTITIES', `Customer Rep Map contains duplicate identity tuple at source row ${index + 1}.`);
+    }
+    seenIdentity.add(identityKey);
+    const identityParts = [
+      identity.customeridentityid, get('customername'), identity.consigneeid, get('consigneename'),
+      identity.salesrepid, get('salesrepname'), get('territorycode')
+    ];
+    const identitySource = identityParts.join('|');
+    const identityDigest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, identitySource, Utilities.Charset.UTF_8);
+    const uniqueId = 'cust_rep_' + Utilities.base64EncodeWebSafe(identityDigest).replace(/=+$/g, '').slice(0, 48);
+    if (seenIds.has(uniqueId)) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_DUPLICATE_IDENTITIES', `Customer Rep Map generated duplicate identity at source row ${index + 1}.`);
+    }
+    seenIds.add(uniqueId);
+    const values = {};
+    normalizedHeaders.forEach(function(key, column) {
+      if (!key) return;
+      // Preserve raw source text including leading zeroes and Unicode. Unknown
+      // source columns remain available in raw_data instead of being discarded.
+      values[rawHeaders[column]] = rawValues[column];
+    });
+    const obj = {
+      unique_id: uniqueId,
+      filename: fileName,
+      source_file_name: fileName,
+      source_row_number: sourceHeaderRowIndex + index + 1,
+      raw_data: values,
+      imported_at: syncStartTime,
+      updated_at: syncStartTime
+    };
+    normalizedHeaders.forEach(function(key, column) {
+      if (!CUSTOMER_REP_MAP_COLUMN_SET.has(key)) return;
+      const value = String(rawValues[column] == null ? '' : rawValues[column]).trim();
+      obj[key] = value === '' || value.toUpperCase() === 'NULL' ? null : value;
+    });
+    obj.row_hash = buildRowSyncHash_(obj, ['imported_at', 'updated_at']);
+    rows.push(obj);
+  }
+  if (!nonemptyRows) throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', 'Customer Rep Map source has no data rows.');
+  if (!rows.length) throw createImportSourceValidationError_('IMPORT_SOURCE_NO_VALID_IDENTITIES', 'Customer Rep Map source has no valid identity rows.');
+  return { rows: rows, sourceRowCount: nonemptyRows, headerCount: rawHeaders.length };
 }
 
 function getCustomerRepMapSelectColumns_() {
@@ -3807,7 +4209,7 @@ function getAssignedItemLowStockExportTargets_(rows) {
 
 function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const safeSheetId = String(sheetId || WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID).trim();
-  const safeTableName = String(tableName || WAREHOUSE_ASSIGNED_ITEMS_TABLE).trim();
+  const safeTableName = String(tableName || WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE).trim();
   if (!safeSheetId) throw new Error('Missing Warehouse Assigned Items export sheet ID.');
 
   // Reconciliation belongs to the one scheduled maintenance worker. Exporting
@@ -3815,34 +4217,43 @@ function exportWarehouseAssignedItemsToSheet_(sheetId, tableName) {
   const maintenance = { status: 'owned_by_scheduled_worker' };
   const rows = Object.values(fetchAllSupabaseData(
     safeTableName,
-    'unique_id,itemcode,itemcode_normalized,assignedto,assigned_by,assigned_at,commonname,contsize,locationcode,present_in_drive,first_seen_at,last_seen_at,updated_at',
+    'master_unique_id,unique_id,itemcode,itemcode_normalized,genusname,commonname,contsize,locationcode,lotcode,source,warehousei,assignedto,default_assignedto,default_revision,assignment_reason,review_required,zone_override_active,present_in_drive,assigned_at,updated_at',
     getSupabaseFetchOptionsForTable_(safeTableName)
   )).sort(function(a, b) {
-    return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true });
+    return String(a.itemcode_normalized || a.itemcode || '').localeCompare(String(b.itemcode_normalized || b.itemcode || ''), undefined, { numeric: true }) ||
+      String(a.locationcode || '').localeCompare(String(b.locationcode || ''), undefined, { numeric: true }) ||
+      String(a.master_unique_id || a.unique_id || '').localeCompare(String(b.master_unique_id || b.unique_id || ''), undefined, { numeric: true });
   });
 
   const lowStockTargets = getAssignedItemLowStockExportTargets_(rows);
   const spreadsheet = SpreadsheetApp.openById(safeSheetId);
   const sheet = spreadsheet.getSheets()[0];
   const headers = [
-    'ITEMCODE', 'ASSIGNEDTO', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
-    'PRESENT_IN_DRIVE', 'ASSIGNED_BY', 'ASSIGNED_AT', 'FIRST_SEEN_AT',
-    'LAST_SEEN_AT', 'UPDATED_AT', 'AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY',
+    'MASTER_UNIQUE_ID', 'ITEMCODE', 'GENUSNAME', 'ASSIGNEDTO', 'DEFAULT_ASSIGNEDTO', 'DEFAULT_REVISION',
+    'ASSIGNMENT_REASON', 'REVIEW_REQUIRED', 'ZONE_OVERRIDE_ACTIVE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
+    'LOTCODE', 'SOURCE', 'WAREHOUSEI', 'PRESENT_IN_DRIVE', 'ASSIGNED_AT', 'UPDATED_AT', 'AVERAGE_ORDER_QTY', 'LOW_STOCK_QTY',
     'SUGGESTED_LOW_STOCK_QTY', 'ORDER_LINE_OBSERVATIONS', 'HISTORY_DAYS', 'HISTORY_CALCULATED_AT'
   ];
   const values = [headers].concat(rows.map(function(row) {
     const target = lowStockTargets[String(row.itemcode_normalized || row.itemcode || '').trim().toUpperCase()] || {};
     return [
+      row.master_unique_id || row.unique_id || '',
       row.itemcode_normalized || row.itemcode || '',
+      row.genusname || '',
       row.assignedto || '',
+      row.default_assignedto || '',
+      row.default_revision == null ? '' : row.default_revision,
+      row.assignment_reason || '',
+      row.review_required === true,
+      row.zone_override_active === true,
       row.commonname || '',
       row.contsize || '',
       row.locationcode || '',
+      row.lotcode || '',
+      row.source || '',
+      row.warehousei == null ? '' : row.warehousei,
       row.present_in_drive === true,
-      row.assigned_by || '',
       row.assigned_at || '',
-      row.first_seen_at || '',
-      row.last_seen_at || '',
       row.updated_at || '',
       target.history_ready === false ? 'History processing' : (target.mean_quantity == null ? 'No history' : target.mean_quantity),
       target.effective_qty == null ? '' : target.effective_qty,
@@ -4008,10 +4419,7 @@ function combineSnapshotDeleteIds_(existingRows, seenIds) {
 }
 
 function shouldAbortSnapshotDelete_(stats, totalRows) {
-  const safeStats = stats || {};
-  const sourceRows = Math.max(Number(safeStats.sourceRows) || 0, Number(totalRows) || 0);
-  const validIdentityRows = Number(safeStats.validIdentityRows) || 0;
-  return sourceRows > 0 && validIdentityRows <= 0;
+  return !!getImportSourceValidationErrorCode_(stats, totalRows);
 }
 
 function fetchAllSupabaseData(tableName, selectColumns, options) {
@@ -4501,20 +4909,27 @@ function buildSupabaseUpsertRequests_(tableName, payloadArray) {
   const chunkSize = isMasterInventoryTable_(tableName) ? SUPABASE_MASTER_UPSERT_CHUNK_SIZE : 1000;
   let requests = [];
   for (let i = 0; i < payloadArray.length; i += chunkSize) {
-    const chunk = normalizeSupabaseUpsertChunk(payloadArray.slice(i, i + chunkSize));
-    requests.push(buildSupabaseUpsertRequest_(tableName, chunk));
+    const sourceChunk = payloadArray.slice(i, i + chunkSize);
+    const fieldMask = isMasterInventoryTable_(tableName) ? getMasterItem6ChunkFieldMask_(sourceChunk) : [];
+    const chunk = normalizeSupabaseUpsertChunk(sourceChunk);
+    requests.push(buildSupabaseUpsertRequest_(tableName, chunk, fieldMask));
   }
   return requests;
 }
 
-function buildSupabaseUpsertRequest_(tableName, normalizedChunk) {
+function buildSupabaseUpsertRequest_(tableName, normalizedChunk, item6FieldMask) {
+  const headers = getSupabaseHeaders_({
+    'Content-Type': 'application/json',
+    'Prefer': 'resolution=merge-duplicates,return=minimal'
+  });
+  const mask = Array.isArray(item6FieldMask) ? item6FieldMask : [];
+  if (isMasterInventoryTable_(tableName) && mask.length) {
+    headers[MASTER_ITEM6_FIELD_MASK_HEADER_] = JSON.stringify(mask);
+  }
   return {
     url: `${SUPABASE_URL}/rest/v1/${tableName}`,
     method: 'post',
-    headers: getSupabaseHeaders_({
-      'Content-Type': 'application/json',
-      'Prefer': 'resolution=merge-duplicates,return=minimal'
-    }),
+    headers: headers,
     payload: JSON.stringify(normalizedChunk || []),
     muteHttpExceptions: true
   };
@@ -4596,7 +5011,9 @@ function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialRe
       `(${payloadRows.length} rows). Retrying as ${splitChunks.map(function(chunk) { return chunk.length; }).join(' + ')} rows.`);
     let splitFailures = [];
     splitChunks.forEach(function(chunk, index) {
-      const splitRequest = buildSupabaseUpsertRequest_(tableName, chunk);
+      const splitMaskText = request && request.headers ? request.headers[MASTER_ITEM6_FIELD_MASK_HEADER_] : '';
+      const splitMask = splitMaskText ? JSON.parse(splitMaskText) : [];
+      const splitRequest = buildSupabaseUpsertRequest_(tableName, chunk, splitMask);
       const splitResponse = UrlFetchApp.fetch(splitRequest.url, splitRequest);
       splitFailures = splitFailures.concat(executeSupabaseUpsertRequestWithRecovery_(
         tableName,
@@ -4650,6 +5067,9 @@ function removeSupabaseColumnsFromPayload_(payloadArray, columns) {
     Object.keys(row || {}).forEach(function(key) {
       if (!removeSet[String(key || '').trim().toLowerCase()]) next[key] = row[key];
     });
+    if (row && Object.prototype.hasOwnProperty.call(row, MASTER_ITEM6_FIELD_MASK_PROPERTY_)) {
+      setMasterItem6RawFieldMask_(next, getMasterItem6RawFieldMask_(row).filter(function(field) { return !removeSet[field]; }));
+    }
     return next;
   });
 }
@@ -4828,6 +5248,325 @@ function processLatestFileOnlyFolder(dropFolderId, processedFolderId, tableName,
     return processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options);
   });
 }
+
+const CUSTOMER_REP_MAP_STAGE_CHUNK_SIZE_ = 300;
+// Keep each Apps Script invocation bounded so the manual-sync trigger can
+// resume a large source before the platform execution ceiling.
+const CUSTOMER_REP_MAP_STAGE_BUDGET_MS_ = 180000;
+const CUSTOMER_REP_MAP_CONTINUATION_KEY_ = 'CUSTOMER_REP_MAP_CONTINUATION_V1';
+
+function readCustomerRepMapContinuation_() {
+  const properties = PropertiesService.getScriptProperties();
+  const raw = properties.getProperty(CUSTOMER_REP_MAP_CONTINUATION_KEY_);
+  if (!raw) return null;
+  let state;
+  try { state = JSON.parse(raw); } catch (ignored) { throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_INVALID'); }
+  if (!state || typeof state !== 'object' || Array.isArray(state)
+      || !String(state.fileId || '').trim()
+      || !Number.isFinite(Date.parse(String(state.modifiedAt || '')))
+      || !/^[a-f0-9]{64}$/.test(String(state.sourceHash || ''))
+      || !/^[a-zA-Z0-9-]{8,64}$/.test(String(state.runId || ''))
+      || String(state.fileName || '').length > 180) {
+    throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_INVALID');
+  }
+  return {
+    properties: properties,
+    fileId: String(state.fileId),
+    modifiedAt: new Date(state.modifiedAt).toISOString(),
+    sourceHash: String(state.sourceHash),
+    runId: String(state.runId),
+    fileName: String(state.fileName || ''),
+    published: state.published === true
+  };
+}
+
+function saveCustomerRepMapContinuation_(state) {
+  const safe = state || {};
+  const value = {
+    fileId: String(safe.fileId || ''),
+    modifiedAt: String(safe.modifiedAt || ''),
+    sourceHash: String(safe.sourceHash || ''),
+    runId: String(safe.runId || ''),
+    fileName: String(safe.fileName || '').slice(0, 180),
+    published: safe.published === true
+  };
+  if (!value.fileId || !Number.isFinite(Date.parse(value.modifiedAt)) || !/^[a-f0-9]{64}$/.test(value.sourceHash)
+      || !/^[a-zA-Z0-9-]{8,64}$/.test(value.runId)) throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_INVALID');
+  try { PropertiesService.getScriptProperties().setProperty(CUSTOMER_REP_MAP_CONTINUATION_KEY_, JSON.stringify(value)); }
+  catch (ignored) { throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_UNAVAILABLE'); }
+  return value;
+}
+
+function clearCustomerRepMapContinuation_() {
+  try { PropertiesService.getScriptProperties().deleteProperty(CUSTOMER_REP_MAP_CONTINUATION_KEY_); }
+  catch (ignored) { throw new Error('CUSTOMER_REP_MAP_CONTINUATION_STATE_UNAVAILABLE'); }
+}
+
+function customerRepMapContinuationFailureResult_(fileName, errorCode) {
+  const name = String(fileName || 'Customer Rep Map source');
+  const code = /^[A-Z][A-Z0-9_]{1,63}$/.test(String(errorCode || '')) ? String(errorCode) : 'CUSTOMER_REP_MAP_CONTINUATION_FAILED';
+  return {
+    tableName: CUSTOMER_REP_MAP_TABLE,
+    filesProcessed: 0,
+    tempFilesRemoved: 0,
+    failedFiles: 1,
+    failedFileNames: [name],
+    failedFileErrors: [{ name: name, errorCode: code, error: code }],
+    skippedFiles: 0,
+    skippedFileNames: [],
+    skippedFileErrors: [],
+    totalRows: 0,
+    stagedRows: 0,
+    published: false
+  };
+}
+
+function customerRepMapSourceHash_(rows) {
+  const source = JSON.stringify((Array.isArray(rows) ? rows : []).map(function(row) { return row.raw_data || {}; }));
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, source, Utilities.Charset.UTF_8);
+  return digest.map(function(value) { return ('0' + (Number(value) & 255).toString(16)).slice(-2); }).join('');
+}
+
+function stageCustomerRepMapRows_(runId, rows, stagedRows, startedAt, budgetMs) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  let offset = Math.max(0, Number(stagedRows) || 0);
+  const started = Number(startedAt) || Date.now();
+  const budget = Math.max(1000, Number(budgetMs) || CUSTOMER_REP_MAP_STAGE_BUDGET_MS_);
+  if (offset > safeRows.length || Math.floor(offset) !== offset) throw new Error('CUSTOMER_REP_MAP_STAGE_CURSOR_INVALID');
+  while (offset < safeRows.length) {
+    // Always make forward progress with one chunk; subsequent chunks stop
+    // before the per-invocation budget and resume from the server cursor.
+    if (offset > Number(stagedRows || 0) && Date.now() - started >= budget) break;
+    const chunkEnd = Math.min(safeRows.length, offset + CUSTOMER_REP_MAP_STAGE_CHUNK_SIZE_);
+    const chunk = safeRows.slice(offset, chunkEnd).map(function(sourceRow) {
+      const row = {};
+      Object.keys(sourceRow || {}).forEach(function(key) { if (key !== 'raw_data') row[key] = sourceRow[key]; });
+      return {
+        unique_id: String(sourceRow && sourceRow.unique_id || ''),
+        source_row_number: Number(sourceRow && sourceRow.source_row_number) || 0,
+        raw_data: sourceRow && sourceRow.raw_data && typeof sourceRow.raw_data === 'object' ? sourceRow.raw_data : {},
+        row: row
+      };
+    });
+    const response = callSupabaseRpc_('stage_customer_rep_mapping_rows_v1', {
+      p_run_id: runId,
+      p_rows: chunk
+    });
+    const nextStagedRows = Number(response && response.stagedRows);
+    if (!response || response.ok !== true || String(response.runId || '') !== String(runId)
+        || !Number.isInteger(nextStagedRows) || nextStagedRows !== chunkEnd) {
+      throw new Error('CUSTOMER_REP_MAP_STAGE_INCOMPLETE');
+    }
+    offset = nextStagedRows;
+  }
+  return { stagedRows: offset, complete: offset === safeRows.length };
+}
+
+function isCustomerRepMapAlreadyPublished_(response, source) {
+  return !!(response && response.ok === true && response.alreadyPublished === true
+    && Number(response.rowCount) === Number(source.rowCount)
+    && isCustomerRepMapRevision_(response.revision));
+}
+
+function isCustomerRepMapRevision_(value) {
+  return /^[1-9]\d*$/.test(String(value == null ? '' : value).trim());
+}
+
+function customerRepMapSkippedResult_(fileName, errorCode, olderFiles) {
+  const safeCode = String(errorCode || 'CUSTOMER_REP_IMPORT_STALE_SOURCE');
+  const older = Array.isArray(olderFiles) ? olderFiles : [];
+  const skippedNames = [String(fileName || '')].concat(older.map(function(entry) { return String(entry.file.getName() || ''); }));
+  const skippedErrors = [{ name: String(fileName || ''), errorCode: safeCode }].concat(older.map(function(entry) {
+    return { name: String(entry.file.getName() || ''), errorCode: 'CUSTOMER_REP_IMPORT_OLDER_PENDING' };
+  }));
+  return {
+    tableName: CUSTOMER_REP_MAP_TABLE,
+    filesProcessed: 0,
+    tempFilesRemoved: 0,
+    skippedFiles: skippedNames.length,
+    skippedFileNames: skippedNames,
+    skippedFileErrors: skippedErrors,
+    failedFiles: 0,
+    failedFileNames: [],
+    failedFileErrors: [],
+    totalRows: 0,
+    stagedRows: 0,
+    published: false
+  };
+}
+
+function processCustomerRepMapSnapshot_() {
+  return withDatasetImportProcessorLock_(processCustomerRepMapSnapshotLocked_);
+}
+
+function processCustomerRepMapSnapshotLocked_() {
+  const stageStartedAt = Date.now();
+  let continuation = readCustomerRepMapContinuation_();
+  const processedFolder = getDriveFolderByIdWithRetry_(FOLDERS.CUSTOMER_REP_PROCESSED, 'Customer Rep Map processed folder');
+  const sourceFolders = [
+    { id: FOLDERS.CUSTOMER_REP_SOURCE_PARENT, label: 'Customer Rep Map source parent' },
+    { id: FOLDERS.CUSTOMER_REP_PENDING, label: 'Customer Rep Map pending folder' }
+  ];
+  const pendingFiles = [];
+  const seenFileIds = new Set();
+  sourceFolders.forEach(function(sourceFolder) {
+    const folder = getDriveFolderByIdWithRetry_(sourceFolder.id, sourceFolder.label);
+    const files = listDriveFilesWithRetry_(folder, sourceFolder.label);
+    while (files.hasNext()) {
+      const file = files.next();
+      const fileId = String(file.getId() || '').trim();
+      if (!fileId || seenFileIds.has(fileId)) continue;
+      seenFileIds.add(fileId);
+      pendingFiles.push({ file: file, folderId: sourceFolder.id });
+    }
+  });
+  const markerState = pruneImportSourceRejectionMarkers_(CUSTOMER_REP_MAP_TABLE, pendingFiles.map(function(entry) { return entry.file; }));
+  if (!pendingFiles.length) {
+    if (continuation) {
+      clearCustomerRepMapContinuation_();
+      if (!continuation.published) return customerRepMapContinuationFailureResult_(continuation.fileName, 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_MISSING');
+    }
+    return { tableName: CUSTOMER_REP_MAP_TABLE, filesProcessed: 0, tempFilesRemoved: 0,
+      failedFiles: 0, failedFileNames: [], failedFileErrors: [], totalRows: 0, stagedRows: 0, published: false };
+  }
+  pendingFiles.sort(function(a, b) {
+    const timeDiff = b.file.getLastUpdated().getTime() - a.file.getLastUpdated().getTime();
+    return timeDiff || String(a.file.getName() || '').localeCompare(String(b.file.getName() || ''));
+  });
+  let sourceEntry = pendingFiles[0];
+  if (continuation) {
+    const pinnedEntry = pendingFiles.find(function(entry) { return String(entry.file.getId() || '') === continuation.fileId; });
+    if (!pinnedEntry) {
+      if (continuation.published) {
+        clearCustomerRepMapContinuation_();
+        continuation = null;
+      } else {
+        clearCustomerRepMapContinuation_();
+        return customerRepMapContinuationFailureResult_(continuation.fileName, 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_MISSING');
+      }
+    } else if (pinnedEntry.file.getLastUpdated().toISOString() !== continuation.modifiedAt) {
+      clearCustomerRepMapContinuation_();
+      return customerRepMapContinuationFailureResult_(pinnedEntry.file.getName(), 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_CHANGED');
+    } else {
+      sourceEntry = pinnedEntry;
+    }
+  }
+  const sourceFile = sourceEntry.file;
+  const olderFiles = pendingFiles.filter(function(entry) { return entry !== sourceEntry; });
+  const fileName = String(sourceFile.getName() || 'customer-rep-map');
+  const sourceFileId = String(sourceFile.getId() || '').trim();
+  const sourceModifiedAt = sourceFile.getLastUpdated().toISOString();
+  const priorRejection = getImportSourceRejectionMarker_(markerState, CUSTOMER_REP_MAP_TABLE, sourceFile);
+  if (priorRejection) return customerRepMapSkippedResult_(fileName, priorRejection.errorCode, olderFiles);
+  let published = false;
+  let sourceRows = 0;
+  const failedFiles = [];
+  try {
+    if (!sourceFileId) throw new Error('CUSTOMER_REP_MAP_SOURCE_FILE_ID_MISSING');
+    // Use the Drive source revision time so an exact retry produces identical
+    // row metadata across continuation invocations.
+    const syncStartTime = sourceModifiedAt;
+    const rawData = extractDataFromFile(sourceFile, sourceEntry.folderId, {
+      headerMatcher: isCustomerRepMapCompleteHeaderRow_,
+      displayValues: true,
+      preserveHeaderRowIndex: true
+    });
+    const snapshot = buildCustomerRepMapSnapshot_(rawData, syncStartTime, fileName);
+    sourceRows = snapshot.rows.length;
+    const sourceHash = customerRepMapSourceHash_(snapshot.rows);
+    if (continuation && continuation.sourceHash !== sourceHash) {
+      clearCustomerRepMapContinuation_();
+      return customerRepMapContinuationFailureResult_(fileName, 'CUSTOMER_REP_MAP_CONTINUATION_SOURCE_CHANGED');
+    }
+    const requestedRunId = continuation ? continuation.runId : Utilities.getUuid();
+    const source = { fileId: sourceFileId, modifiedAt: sourceModifiedAt, sourceHash: sourceHash, rowCount: sourceRows };
+    const begun = callSupabaseRpc_('begin_customer_rep_mapping_import_v1', {
+      p_run_id: requestedRunId,
+      p_source_file_id: source.fileId,
+      p_source_modified_at: source.modifiedAt,
+      p_source_hash: source.sourceHash,
+      p_expected_rows: source.rowCount
+    });
+    if (isCustomerRepMapAlreadyPublished_(begun, source)) {
+      moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, `Customer Rep Map published replay ${fileName}`);
+      if (continuation) clearCustomerRepMapContinuation_();
+    } else {
+      if (!begun || begun.ok !== true || !String(begun.runId || '').trim() || begun.status !== 'active') {
+        if (begun && begun.ok !== true && String(begun.errorCode || '') === 'CUSTOMER_REP_IMPORT_STALE_SOURCE') {
+          if (continuation) clearCustomerRepMapContinuation_();
+          return customerRepMapSkippedResult_(fileName, 'CUSTOMER_REP_IMPORT_STALE_SOURCE', olderFiles);
+        }
+        throw new Error(String(begun && begun.errorCode || 'CUSTOMER_REP_MAP_IMPORT_BEGIN_FAILED'));
+      }
+      const runId = String(begun.runId);
+      if (continuation && continuation.runId !== runId) throw new Error('CUSTOMER_REP_MAP_CONTINUATION_RUN_MISMATCH');
+      if (!continuation) continuation = saveCustomerRepMapContinuation_({
+        fileId: sourceFileId, modifiedAt: sourceModifiedAt, sourceHash: sourceHash, runId: runId, fileName: fileName
+      });
+      const rawCursor = begun.stagedRows == null ? begun.rowCount : begun.stagedRows;
+      const stagedCursor = Number(rawCursor);
+      if (!Number.isInteger(stagedCursor) || stagedCursor < 0 || stagedCursor > source.rowCount) {
+        throw new Error('CUSTOMER_REP_MAP_STAGE_CURSOR_INVALID');
+      }
+      const staging = stageCustomerRepMapRows_(runId, snapshot.rows, stagedCursor, stageStartedAt);
+      if (!staging.complete) {
+        return {
+          tableName: CUSTOMER_REP_MAP_TABLE,
+          filesProcessed: 0,
+          tempFilesRemoved: 0,
+          skippedFiles: olderFiles.length,
+          skippedFileNames: olderFiles.map(function(entry) { return String(entry.file.getName() || ''); }),
+          skippedFileErrors: olderFiles.map(function(entry) { return { name: String(entry.file.getName() || ''), errorCode: 'CUSTOMER_REP_IMPORT_OLDER_PENDING' }; }),
+          failedFiles: 0,
+          failedFileNames: [],
+          failedFileErrors: [],
+          totalRows: sourceRows,
+          stagedRows: staging.stagedRows,
+          continuationPending: true,
+          published: false
+        };
+      }
+      const finalized = callSupabaseRpc_('finalize_customer_rep_mapping_import_v1', { p_run_id: runId });
+      if (!finalized || finalized.ok !== true || String(finalized.runId || '') !== runId
+          || Number(finalized.rowCount) !== source.rowCount || !isCustomerRepMapRevision_(finalized.revision)) {
+        throw new Error(String(finalized && finalized.errorCode || 'CUSTOMER_REP_MAP_PUBLICATION_UNCONFIRMED'));
+      }
+      published = true;
+      saveCustomerRepMapContinuation_({
+        fileId: sourceFileId, modifiedAt: sourceModifiedAt, sourceHash: sourceHash, runId: runId, fileName: fileName, published: true
+      });
+      moveDriveFileToFolderWithRetry_(sourceFile, processedFolder, `Customer Rep Map published ${fileName}`);
+      clearCustomerRepMapContinuation_();
+    }
+  } catch (error) {
+    const failure = createImportFileFailureEntry_(sourceFile, error);
+    if (isImportSourceValidationErrorCode_(failure.errorCode)) {
+      try { recordImportSourceRejection_(markerState, CUSTOMER_REP_MAP_TABLE, sourceFile, failure.errorCode); }
+      catch (trackerError) { failure.error = String(trackerError && trackerError.message || 'Could not retain rejected source.'); failure.errorCode = getSafeImportFailureCode_(trackerError); }
+    }
+    failedFiles.unshift(failure);
+  }
+  if (published) {
+    emitTableSyncLiveEvent_(CUSTOMER_REP_MAP_TABLE, { filesProcessed: 1, totalRows: sourceRows, sourceFileId: sourceFileId });
+  }
+  return {
+    tableName: CUSTOMER_REP_MAP_TABLE,
+    filesProcessed: published ? 1 : 0,
+    tempFilesRemoved: 0,
+    skippedFiles: olderFiles.length,
+    skippedFileNames: olderFiles.map(function(entry) { return String(entry.file.getName() || ''); }),
+    skippedFileErrors: olderFiles.map(function(entry) {
+      return { name: String(entry.file.getName() || ''), errorCode: 'CUSTOMER_REP_IMPORT_OLDER_PENDING' };
+    }),
+    failedFiles: failedFiles.length,
+    failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+    failedFileErrors: failedFiles,
+    totalRows: sourceRows,
+    stagedRows: sourceRows,
+    published: published
+  };
+}
+
 function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tableName, payloadBuilderFunc, options) {
   const dropFolder = getDriveFolderByIdWithRetry_(dropFolderId, `${tableName} drop folder`);
   const processedFolder = getDriveFolderByIdWithRetry_(processedFolderId, `${tableName} processed folder`);
@@ -4846,6 +5585,8 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     }
     pendingFiles.push(file);
   }
+
+  const rejectionMarkerState = pruneImportSourceRejectionMarkers_(tableName, pendingFiles);
 
   if (!pendingFiles.length) {
     console.log(`[SKIP] No files found for ${tableName}.`);
@@ -4879,6 +5620,9 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   let syncDiagnostics = createDeltaSyncStats_();
   let failedFiles = [];
   let importSucceeded = false;
+  let skippedFiles = 0;
+  let fatalFailure = false;
+  let fatalErrorCode = '';
   let revisionFence = null;
 
   console.log(
@@ -4890,7 +5634,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     const syncStartTime = new Date().toISOString();
     const rawData = extractDataFromFile(newestFile, dropFolderId, options);
     if (!rawData || rawData.length < 1) {
-      throw new Error(`No readable rows were found in ${newestFileName}.`);
+      throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No readable rows were found in ${newestFileName}.`);
     }
     const selectColumns = (options && typeof options.selectColumnsBuilder === 'function')
       ? options.selectColumnsBuilder(rawData, tableName)
@@ -4901,9 +5645,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     const seenIds = results && results.seenIds instanceof Set ? results.seenIds : new Set();
     totalRows = Number(results && results.totalRows) || 0;
     syncDiagnostics = results && results.stats ? results.stats : createDeltaSyncStats_();
-    if (shouldAbortSnapshotDelete_(syncDiagnostics, totalRows)) {
-      throw new Error(`0 valid snapshot identities were found in ${newestFileName}; skipped destructive sync for ${tableName}.`);
-    }
+    throwIfSnapshotSourceInvalid_(syncDiagnostics, totalRows, newestFileName, tableName);
     const deletes = deltaMode ? combineSnapshotDeleteIds_(existingRows, seenIds) : [];
     syncDiagnostics.deletedRows = deletes.length;
     upsertCount = upserts.length;
@@ -4935,19 +5677,45 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     const errorMessage = err && err.message ? err.message : String(err);
     upsertCount = 0;
     deleteCount = 0;
-    failedFiles.push({ name: newestFileName, error: errorMessage });
+    const failureEntry = createImportFileFailureEntry_(newestFile, err);
+    if (isImportSourceValidationErrorCode_(failureEntry.errorCode)) {
+      try {
+        recordImportSourceRejection_(rejectionMarkerState, tableName, newestFile, failureEntry.errorCode);
+      } catch (trackerError) {
+        failureEntry.error = String(trackerError && trackerError.message || 'Could not safely retain the rejected source marker.');
+        failureEntry.errorCode = getSafeImportFailureCode_(trackerError);
+        fatalFailure = true;
+        fatalErrorCode = failureEntry.errorCode;
+      }
+    } else {
+      fatalFailure = true;
+      fatalErrorCode = failureEntry.errorCode;
+    }
+    failedFiles.push(failureEntry);
     console.error(`[ERROR] Failed processing latest file ${newestFileName} for ${tableName}: ${err && err.stack ? err.stack : errorMessage}`);
     console.warn(`[LEAVE] Keeping ${newestFileName} in drop folder for retry/manual review.`);
   }
 
   if (importSucceeded) {
     olderFiles.forEach(function(file) {
+      const rejectionMarker = getImportSourceRejectionMarker_(rejectionMarkerState, tableName, file);
+      if (rejectionMarker) {
+        failedFiles.push({
+          name: String(file.getName() || ''),
+          error: 'Previously rejected source remains in the drop folder for review and retry.',
+          errorCode: rejectionMarker.errorCode
+        });
+        skippedFiles++;
+        console.warn(`[LEAVE] Retaining previously rejected source ${file.getName()} in the drop folder for review.`);
+        return;
+      }
       console.log(`[ARCHIVE] Skipping older pending file for ${tableName}: ${file.getName()}`);
       moveDriveFileToFolderWithRetry_(file, processedFolder, `${tableName} archived older file ${file.getName()}`);
       skippedFilesArchived++;
     });
     syncDiagnostics.archivedOlderFiles = skippedFilesArchived;
   } else if (olderFiles.length) {
+    skippedFiles = olderFiles.length;
     console.warn(`[LEAVE] Newest file for ${tableName} failed, so ${olderFiles.length} older pending file${olderFiles.length === 1 ? '' : 's'} will stay in drop.`);
   }
 
@@ -4978,8 +5746,11 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     tempFilesRemoved: tempFilesRemoved,
     skippedFilesArchived: skippedFilesArchived,
     failedFiles: failedFiles.length,
+    skippedFiles: skippedFiles,
     failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
     failedFileErrors: failedFiles,
+    fatalFailure: fatalFailure,
+    errorCode: fatalFailure ? fatalErrorCode : (failedFiles.length ? failedFiles[0].errorCode : ''),
     upsertCount: upsertCount,
     deleteCount: deleteCount,
     totalRows: totalRows,
@@ -4996,10 +5767,8 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
   const seenIds = new Set();
 
   parsedFiles.forEach(function(entry) {
-    const preview = previewMasterSnapshotFile_(entry.rawData, tableName);
-    if (shouldAbortSnapshotDelete_(preview.stats, preview.totalRows)) {
-      throw new Error(`0 valid snapshot identities were found in ${entry.fileName}; skipped destructive sync for ${tableName}.`);
-    }
+    const preview = entry.preview || previewMasterSnapshotFile_(entry.rawData, tableName);
+    throwIfSnapshotSourceInvalid_(preview.stats, preview.totalRows, entry.fileName, tableName);
     mergeDeltaSyncStats_(previewStats, preview.stats);
     previewEntries.push({
       file: entry.file,
@@ -5013,9 +5782,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
     });
   });
 
-  if (shouldAbortSnapshotDelete_(previewStats, previewStats.sourceRows)) {
-    throw new Error(`0 valid snapshot identities were found for ${tableName}; skipped destructive sync.`);
-  }
+  throwIfSnapshotSourceInvalid_(previewStats, previewStats.sourceRows, tableName, tableName);
 
   console.log(`[MASTER SNAPSHOT][${tableName}] stage=existing_ids_scan | pendingFiles=${parsedFiles.length}`);
   const existingIds = fetchAllSupabaseRowIdsForMaster_(tableName);
@@ -5033,9 +5800,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
   previewEntries.forEach(function(entry) {
     const results = payloadBuilderFunc(entry.rawData, tableName, mutableExistingRows, syncStartTime, entry.fileName);
     const fileStats = results && results.stats ? results.stats : createDeltaSyncStats_();
-    if (shouldAbortSnapshotDelete_(fileStats, results && results.totalRows)) {
-      throw new Error(`0 valid snapshot identities were found in ${entry.fileName}; skipped destructive sync for ${tableName}.`);
-    }
+    throwIfSnapshotSourceInvalid_(fileStats, results && results.totalRows, entry.fileName, tableName);
     mergeDeltaSyncStats_(combinedStats, fileStats);
     (results.upserts || []).forEach(function(row) {
       const uid = String(row && row.unique_id || '').trim();
@@ -5049,9 +5814,7 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
     });
   });
 
-  if (shouldAbortSnapshotDelete_(combinedStats, combinedStats.sourceRows)) {
-    throw new Error(`0 valid snapshot identities were found for ${tableName}; skipped destructive sync.`);
-  }
+  throwIfSnapshotSourceInvalid_(combinedStats, combinedStats.sourceRows, tableName, tableName);
 
   const deletes = existingIds.filter(function(uid) {
     const safeUid = String(uid || '').trim();
@@ -5307,10 +6070,13 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   const syncStartTime = new Date().toISOString();
   const parsedFiles = [];
   const failedFiles = [];
+  const failedFileObjects = new Set();
   const combinedStats = createDeltaSyncStats_();
   let upsertCount = 0;
   let deleteCount = 0;
   let importSucceeded = false;
+  let fatalFailure = false;
+  let fatalErrorCode = '';
   let revisionFence = null;
   let evalReport2Reconciliation = null;
 
@@ -5320,12 +6086,63 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     pendingFiles.forEach(function(file) {
       const fileName = file.getName();
       console.log(`[PARSE] ${fileName}`);
-      const rawData = extractDataFromFile(file, dropFolderId);
-      if (!rawData || rawData.length < 1) {
-        throw new Error(`No readable rows were found in ${fileName}.`);
+      try {
+        const rawData = extractDataFromFile(file, dropFolderId);
+        if (!rawData || rawData.length < 2) {
+          throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No data rows were found in ${fileName}.`);
+        }
+        const entry = { file: file, fileName: fileName, rawData: rawData };
+        if (isMasterInventoryTable_(tableName)) {
+          entry.preview = previewMasterSnapshotFile_(rawData, tableName);
+          throwIfSnapshotSourceInvalid_(entry.preview.stats, entry.preview.totalRows, fileName, tableName);
+        }
+        parsedFiles.push(entry);
+      } catch (sourceError) {
+        if (!isImportSourceValidationErrorCode_(sourceError && sourceError.errorCode)) throw sourceError;
+        failedFiles.push(createImportFileFailureEntry_(file, sourceError));
+        failedFileObjects.add(file);
       }
-      parsedFiles.push({ file: file, fileName: fileName, rawData: rawData });
     });
+
+    const unsafeSourceFailure = isMasterInventoryTable_(tableName) && failedFiles.some(function(entry) {
+      return entry.errorCode !== 'IMPORT_SOURCE_EMPTY';
+    });
+
+    if (unsafeSourceFailure) {
+      console.warn(`[SKIP] Incomplete ${tableName} batch was not applied; all pending files remain available for review.`);
+      return {
+        tableName: tableName,
+        filesProcessed: 0,
+        skippedFiles: parsedFiles.length,
+        tempFilesRemoved: tempFilesRemoved,
+        failedFiles: failedFiles.length,
+        failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+        failedFileErrors: failedFiles,
+        fatalFailure: false,
+        errorCode: failedFiles.length ? failedFiles[0].errorCode : 'IMPORT_SOURCE_BATCH_INCOMPLETE',
+        upsertCount: 0,
+        deleteCount: 0,
+        diagnostics: combinedStats
+      };
+    }
+
+    if (!parsedFiles.length) {
+      console.warn(`[SKIP] No valid snapshot files were available for ${tableName}; invalid files remain in the drop folder.`);
+      return {
+        tableName: tableName,
+        filesProcessed: 0,
+        tempFilesRemoved: tempFilesRemoved,
+        failedFiles: failedFiles.length,
+        failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
+        failedFileErrors: failedFiles,
+        fatalFailure: false,
+        skippedFiles: 0,
+        errorCode: failedFiles.length ? failedFiles[0].errorCode : '',
+        upsertCount: 0,
+        deleteCount: 0,
+        diagnostics: combinedStats
+      };
+    }
 
     let upserts = [];
     let deletes = [];
@@ -5350,9 +6167,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       parsedFiles.forEach(function(entry) {
         const results = payloadBuilderFunc(entry.rawData, tableName, mutableExistingRows, syncStartTime, entry.fileName);
         const fileStats = results && results.stats ? results.stats : createDeltaSyncStats_();
-        if (shouldAbortSnapshotDelete_(fileStats, results && results.totalRows)) {
-          throw new Error(`0 valid snapshot identities were found in ${entry.fileName}; skipped destructive sync for ${tableName}.`);
-        }
+        throwIfSnapshotSourceInvalid_(fileStats, results && results.totalRows, entry.fileName, tableName);
         mergeDeltaSyncStats_(combinedStats, fileStats);
         (results.upserts || []).forEach(function(row) {
           const uid = String(row && row.unique_id || '').trim();
@@ -5366,9 +6181,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
         });
       });
 
-      if (shouldAbortSnapshotDelete_(combinedStats, combinedStats.sourceRows)) {
-        throw new Error(`0 valid snapshot identities were found for ${tableName}; skipped destructive sync.`);
-      }
+      throwIfSnapshotSourceInvalid_(combinedStats, combinedStats.sourceRows, tableName, tableName);
 
       deletes = combineSnapshotDeleteIds_(existingRows, seenIds);
       combinedStats.deletedRows = deletes.length;
@@ -5428,17 +6241,22 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   } catch (err) {
     failDatasetImportFence_(revisionFence);
     const errorMessage = err && err.message ? err.message : String(err);
+    const caughtErrorCode = getSafeImportFailureCode_(err);
+    fatalFailure = !isImportSourceValidationErrorCode_(err && err.errorCode);
+    fatalErrorCode = fatalFailure ? caughtErrorCode : '';
     upsertCount = 0;
     deleteCount = 0;
-    failedFiles.push.apply(failedFiles, pendingFiles.map(function(file) {
-      return { name: file.getName(), error: errorMessage };
-    }));
+    pendingFiles.forEach(function(file) {
+      if (failedFileObjects.has(file)) return;
+      failedFiles.push(createImportFileFailureEntry_(file, err));
+      failedFileObjects.add(file);
+    });
     console.error(`[ERROR] Failed snapshot batch for ${tableName}: ${err && err.stack ? err.stack : errorMessage}`);
     console.warn(`[LEAVE] Keeping pending ${tableName} snapshot files in drop folder for retry/manual review.`);
   }
 
   console.log(
-    `[DONE] ${tableName}: ${importSucceeded ? `${pendingFiles.length} snapshot file${pendingFiles.length === 1 ? '' : 's'} processed` : 'snapshot batch failed'}` +
+    `[DONE] ${tableName}: ${importSucceeded ? `${parsedFiles.length} snapshot file${parsedFiles.length === 1 ? '' : 's'} processed` : 'snapshot batch failed'}` +
     `${failedFiles.length ? ` | ${failedFiles.length} file${failedFiles.length === 1 ? '' : 's'} left in drop` : ''}` +
     ` | ${deleteCount} removed row${deleteCount === 1 ? '' : 's'}` +
     ` | ${upsertCount} row${upsertCount === 1 ? '' : 's'} upserted` +
@@ -5447,7 +6265,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
 
   if (importSucceeded) {
     emitTableSyncLiveEvent_(tableName, {
-      filesProcessed: pendingFiles.length,
+      filesProcessed: parsedFiles.length,
       tempFilesRemoved: tempFilesRemoved,
       upsertCount: upsertCount,
       deleteCount: deleteCount,
@@ -5457,11 +6275,14 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
 
   return {
     tableName: tableName,
-    filesProcessed: importSucceeded ? pendingFiles.length : 0,
+    filesProcessed: importSucceeded ? parsedFiles.length : 0,
     tempFilesRemoved: tempFilesRemoved,
     failedFiles: failedFiles.length,
     failedFileNames: failedFiles.map(function(entry) { return entry.name; }),
     failedFileErrors: failedFiles,
+    fatalFailure: !importSucceeded && fatalFailure,
+    errorCode: fatalFailure ? fatalErrorCode : (failedFiles.length ? failedFiles[0].errorCode : ''),
+    skippedFiles: 0,
     upsertCount: upsertCount,
     deleteCount: deleteCount,
     evalReport2Reconciliation: evalReport2Reconciliation,
@@ -5550,7 +6371,7 @@ function buildStandardPayload(rawData, tableName, existingRows, syncStartTime, f
   const invoiceColumns = rawHeaders.map(function(header) { return normalizePayloadColumnKey_(header).replace(/_/g, ''); });
   const invoiceIdx = invoiceColumns.indexOf('invoicedate');
   if (logicalTable === 'ph_soc_master' && (invoiceIdx < 0 || invoiceColumns.lastIndexOf('invoicedate') !== invoiceIdx)) {
-    throw new Error('SOC report must contain exactly one INVOICEDATE column; no data was changed.');
+    throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', 'SOC report must contain exactly one INVOICEDATE column; no data was changed.');
   }
 
   let iIdx = getIdx('ITEMCODE'), dockIdx = getIdx('DOCK');
@@ -5769,6 +6590,9 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
     targetSite: getSiteCodeFromSiteSplitTableName_(tableName)
   });
   const rawHeaders = context.rawHeaders;
+  const rawItem6Fields = MASTER_ITEM6_FIELD_MASK_FIELDS_.filter(function(field) {
+    return rawHeaders.some(function(header) { return normalizePayloadColumnKey_(header) === field; });
+  });
   const upserts = [];
   const seenIds = new Set();
   const idTracker = {};
@@ -5799,7 +6623,7 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
     }
 
     const existingRow = existingMap[uniqueId];
-    applyMasterImportAppFieldRules_(obj, existingRow);
+    applyMasterImportAppFieldRules_(obj, existingRow, tableName);
 
     const existingAssignedTo = existingRow && existingRow.assignedto
       ? String(existingRow.assignedto).trim()
@@ -5808,6 +6632,7 @@ function buildMasterPayload(rawData, tableName, existingRows, syncStartTime, fil
     const assignedToOverride = getMasterAssignedToOverride_(obj) || getMasterAssignedToOverride_(existingRow);
     obj.assignedto = assignedToOverride || existingAssignedTo || null;
     obj.concat = buildRowSyncHash_(obj, ['assignedto']);
+    setMasterItem6RawFieldMask_(obj, rawItem6Fields);
 
     seenIds.add(uniqueId);
     if (!existingRow) {
@@ -6002,7 +6827,7 @@ function extractDataFromFile(file, folderId, options) {
 
   try {
     if (mime === MimeType.CSV || normalizedFileName.endsWith('.csv')) {
-      const csvString = file.getBlob().getDataAsString();
+      const csvString = file.getBlob().getDataAsString('UTF-8');
       allValues = Utilities.parseCsv(csvString);
     } else {
       let sheetId = file.getId();
@@ -6016,9 +6841,22 @@ function extractDataFromFile(file, folderId, options) {
         : SpreadsheetApp.openById(sheetId);
       const sheets = ss.getSheets();
       if (!sheets || !sheets.length) {
-        throw new Error(`No sheets found in ${originalFileName}.`);
+        throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No sheets found in ${originalFileName}.`);
       }
-      allValues = sheets[0].getDataRange().getValues();
+      const dataRange = sheets[0].getDataRange();
+      allValues = options && options.displayValues === true && typeof dataRange.getDisplayValues === 'function'
+        ? dataRange.getDisplayValues()
+        : dataRange.getValues();
+    }
+
+    if (!Array.isArray(allValues) || !allValues.length) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No source rows were found in ${originalFileName}.`);
+    }
+    const hasNonEmptyCell = allValues.some(function(row) {
+      return Array.isArray(row) && row.some(function(cell) { return cell != null && String(cell).trim() !== ''; });
+    });
+    if (!hasNonEmptyCell) {
+      throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No source rows were found in ${originalFileName}.`);
     }
 
     let headerRowIdx = -1;
@@ -6038,14 +6876,18 @@ function extractDataFromFile(file, folderId, options) {
     }
 
     if (headerRowIdx === -1) {
-      throw new Error(`No recognized header row found in ${originalFileName}.`);
+      throw createImportSourceValidationError_('IMPORT_SOURCE_NO_HEADER', `No recognized header row found in ${originalFileName}.`);
     }
 
     allValues.splice(0, headerRowIdx);
+    if (options && options.preserveHeaderRowIndex === true) {
+      Object.defineProperty(allValues, '__sourceHeaderRowIndex', { configurable: true, enumerable: false, value: headerRowIdx });
+    }
     return allValues;
   } catch (err) {
     const errorMessage = err && err.message ? err.message : String(err);
     console.error(`[ERROR] extractDataFromFile failed for ${originalFileName}: ${errorMessage}`);
+    if (isImportSourceValidationErrorCode_(err && err.errorCode)) throw err;
     throw new Error(errorMessage);
   } finally {
     cleanupTempGoogleSheet_(tempSheetId, originalFileName);
@@ -6167,7 +7009,7 @@ function extractHlPoParsedSheet_(file, folderId) {
 
   try {
     if (mime === MimeType.CSV || normalizedFileName.endsWith('.csv')) {
-      const csvValues = Utilities.parseCsv(file.getBlob().getDataAsString());
+      const csvValues = Utilities.parseCsv(file.getBlob().getDataAsString('UTF-8'));
       if (!hasHlPoNonBlankCells_(csvValues)) {
         throw createHlPoParsedError_('HL_PO_EMPTY_SHEET', `No data was found in ${fileName}.`);
       }
@@ -7160,7 +8002,7 @@ function extractPikesOrderSheet_(file, folderId) {
   let tempSheetId = '';
   try {
     if (mime === String(MimeType.CSV || '').toLowerCase() || normalizedFileName.endsWith('.csv')) {
-      const values = Utilities.parseCsv(file.getBlob().getDataAsString());
+      const values = Utilities.parseCsv(file.getBlob().getDataAsString('UTF-8'));
       const scanLimit = Math.min(75, values.length);
       for (let rowIndex = 0; rowIndex < scanLimit; rowIndex++) {
         const inspection = inspectPikesOrderHeaderRow_(values[rowIndex]);
@@ -11324,7 +12166,7 @@ function fetchEmailApprovalMasterRow_(uid) {
       muteHttpExceptions: true
     });
     if (res.getResponseCode() !== 200) continue;
-    const rows = JSON.parse(res.getContentText() || '[]');
+    const rows = JSON.parse(res.getContentText('UTF-8') || '[]');
     if (Array.isArray(rows) && rows.length) {
       rows[0].__approval_table_name = tableName;
       return rows[0];
@@ -12230,14 +13072,13 @@ const RECLASS_INQUIRY_ROW_FIELDS_ = [
 ];
 
 const RECLASS_INQUIRY_IDENTITY_FIELDS_ = [
-  { key: 'plantgroupcode', label: 'Plant Grp', aliases: ['plantgroupcode', 'PLANTGROUPCODE'] },
   { key: 'commonname', label: 'Common Name', aliases: ['commonname', 'COMMONNAME', 'description', 'DESCRIPTION'] },
   { key: 'contsize', label: 'Cont.', aliases: ['contsize', 'CONTSIZE'] },
   { key: 'itemcode', label: 'Item Code', aliases: ['itemcode', 'ITEMCODE'] },
   { key: 'genusname', label: 'Genus', aliases: ['genusname', 'GENUSNAME', 'genus', 'GENUS'] },
   { key: 'fieldtagcolor', label: 'Tag Color', aliases: ['fieldtagcolor', 'FIELDTAGCOLOR'] },
   { key: 'itemspec', label: 'Item Spec', aliases: ['itemspec', 'ITEMSPEC'] },
-  { key: 'pullerresponsibility', label: 'Puller Resp.', aliases: ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER'] },
+  { key: 'pullerresponsibility', label: 'Pull', aliases: ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER'] },
   { key: 'holdstopcode', label: 'HOLDSTOPCODE', aliases: ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'] }
 ];
 
@@ -12256,10 +13097,10 @@ const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
   { key: 'source', label: 'Source', width: '.50in' },
   { key: 'priority', label: 'Priority', width: '.75in' },
   { key: 'ptronhand', label: 'OH', width: '1.25in' },
-  { key: 'ptrreviewed', label: 'PTRREVIEWED', width: '.85in' },
+  { key: 'ptrreviewed', label: 'Rev', width: '.85in' },
   { key: 'locationnotedate', label: 'Loc Note Date', width: '.90in' },
-  { key: 'locationptn1', label: 'LOCATIONPTN1', width: '1.15in' },
-  { key: 'locationnote', label: 'Location Note' }
+  { key: 'locationptn1', label: 'Loc PTN1', width: '1.15in' },
+  { key: 'locationnote', label: 'Loc Note' }
 ];
 
 const RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_ = Object.freeze([
@@ -12276,13 +13117,24 @@ const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
   recount: 'Re-Count Request',
   priority_change: 'Priority Change',
   move_up: 'Move Up Request',
-  move_down: 'Move Down Request'
+  move_down: 'Move Down Request',
+  sheared: 'Sheared Request'
 });
 
 const RECLASS_ACTION_WORKFLOW_V2_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_ = 'reclass-action-workflow-v2-live-20260826';
 const RECLASS_ACTION_WORKFLOW_V3_ENABLED_ = true;
 const RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ = 'reclass-action-workflow-v3-row-actions-20260826';
+const RECLASS_ACTION_WORKFLOW_V4_ENABLED_ = true;
+const RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ = 'reclass-action-workflow-v4-split-moves-20261006';
+const RECLASS_ACTION_WORKFLOW_V5_ENABLED_ = true;
+const RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ = 'reclass-action-workflow-v5-sheared-20261008';
+const RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ = 'reclass-action-workflow-v6-smart-shield-20261009';
+const RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_ = 'reclass-action-workflow-v7-editable-fields-20261009';
+const RECLASS_INQUIRY_V7_EDITABLE_FIELDS_ = Object.freeze([
+  'locationnote', 'locationptn1', 'desigitem', 'desigcust', 'desigloc',
+  'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'
+]);
 const RECLASS_INQUIRY_DESTINATION_SEASONS_V2_ = Object.freeze(['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z']);
 const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   hold: Object.freeze({ kind: 'hold_on', code: 'H', label: 'On Hold Request' }),
@@ -12295,6 +13147,7 @@ const RECLASS_INQUIRY_ACTION_RULES_V2_ = Object.freeze({
   move_down: Object.freeze({ kind: 'move', label: 'Move Down Request' })
 });
 const RECLASS_INQUIRY_ACTION_ORDER_V3_ = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down']);
+const RECLASS_INQUIRY_ACTION_ORDER_V5_ = Object.freeze(RECLASS_INQUIRY_ACTION_ORDER_V3_.concat(['sheared']));
 const RECLASS_INQUIRY_HOLD_ACTIONS_V3_ = Object.freeze(['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship']);
 const RECLASS_INQUIRY_TEMPORARY_FIELDS_V3_ = Object.freeze({
   holdstopreason: Object.freeze({ label: 'Hold/Stop Reason', maxLength: 1000, renderKey: 'holdstopreason', lower: true }),
@@ -12416,7 +13269,7 @@ function fetchReclassInquiryItemRows_(sourceRow) {
     if (code < 200 || code >= 300) throw new Error('Could not refresh the current Item Inquiry rows (' + code + ').');
     let pageRows = [];
     try {
-      pageRows = JSON.parse(response.getContentText() || '[]');
+      pageRows = JSON.parse(response.getContentText('UTF-8') || '[]');
     } catch (error) {
       throw new Error('The refreshed Item Inquiry rows were unreadable.');
     }
@@ -12703,6 +13556,12 @@ function getReclassInquiryActionsLabelV3_(actions) {
   return ordered.map(getReclassInquiryActionLabel_).join(' + ');
 }
 
+function getReclassInquiryActionsLabelV5_(actions) {
+  const ordered = RECLASS_INQUIRY_ACTION_ORDER_V5_.filter(function(action) { return (Array.isArray(actions) ? actions : []).indexOf(action) !== -1; });
+  if (!ordered.length) return 'Reclass Item Inquiry';
+  return ordered.map(getReclassInquiryActionLabel_).join(' + ');
+}
+
 function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authoritativeRows, overlays, authoritativeScope) {
   const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope'], 'The Reclass transaction');
   const safeRows = Array.isArray(authoritativeRows) ? authoritativeRows : [];
@@ -12850,6 +13709,9 @@ function buildReclassInquiryActionRowsV3SeasonScopeLegacy_(transaction, authorit
 
 function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overlays, authoritativeScope, options) {
   const safeOptions = options && typeof options === 'object' ? options : {};
+  const isV5 = safeOptions.policyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_;
+  const isV4 = safeOptions.policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ || isV5;
+  const actionOrder = isV5 ? RECLASS_INQUIRY_ACTION_ORDER_V5_ : RECLASS_INQUIRY_ACTION_ORDER_V3_;
   const allowEmptyActions = safeOptions.allowEmptyActions === true;
   const now = safeOptions.now instanceof Date ? safeOptions.now : new Date();
   const safeTransaction = assertReclassInquiryObjectKeysV2_(transaction, ['requestActions', 'holdStopProposals', 'scope', 'seasonPriority'], 'The Reclass transaction');
@@ -12874,7 +13736,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     : [];
   if ((!requestedActions.length && !allowEmptyActions) || new Set(requestedActions).size !== requestedActions.length) throw new Error('The Reclass action list is empty or duplicated.');
   requestedActions.forEach(function(action) {
-    if (RECLASS_INQUIRY_ACTION_ORDER_V3_.indexOf(action) === -1) throw new Error('The Reclass action list contains an unsupported action.');
+    if (actionOrder.indexOf(action) === -1) throw new Error('The Reclass action list contains an unsupported action.');
   });
   const normalizedHoldProposals = [];
   function addHoldProposal_(rawAction, rawReason, label) {
@@ -12942,7 +13804,9 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const uid = getInventoryTransactionRowUid_(row);
     const overlay = overlayByUid.get(uid);
     if (!overlay) return { ok: false, status: 'conflict', message: 'An Item Inquiry row changed or is no longer available. Sync and try again.' };
-    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, ['itemcode', 'lotcode', 'locationcode', 'ptronhand', 'priority', 'ptravailable', 'lineageHash', 'lineage'], 'The expected row identity');
+    const expectedFields = ['itemcode', 'lotcode', 'locationcode', 'ptronhand', 'priority', 'ptravailable', 'lineageHash', 'lineage'];
+    if (isV5) expectedFields.push('desigitem');
+    const expected = assertReclassInquiryObjectKeysV2_(overlay.expected, expectedFields, 'The expected row identity');
     const checks = [
       ['ItemCode', getInventoryTransactionRowValue_(row, ['itemcode', 'ITEMCODE'], ''), expected.itemcode],
       ['Lot', getInventoryTransactionRowValue_(row, ['lotcode', 'LOTCODE'], ''), expected.lotcode],
@@ -12950,6 +13814,11 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     ];
     const mismatch = checks.find(function(check) { return normalizeInventoryTransactionCompareText_(check[1]) !== normalizeInventoryTransactionCompareText_(check[2]); });
     if (mismatch) return { ok: false, status: 'conflict', message: mismatch[0] + ' changed for an Item Inquiry row. Sync and review it before sending.' };
+    if (isV5 && Object.prototype.hasOwnProperty.call(expected, 'desigitem')
+        && normalizeInventoryTransactionCompareText_(getInventoryTransactionRowValue_(row, ['desigitem', 'DESIGITEM'], ''))
+          !== normalizeInventoryTransactionCompareText_(expected.desigitem)) {
+      return { ok: false, status: 'conflict', message: 'Designation changed for an Item Inquiry row. Sync and review it before sending.' };
+    }
     const originalPriority = String(getInventoryTransactionRowValue_(row, ['priority', 'PRIORITY'], '')).trim();
     if (seasonPriority && !Object.prototype.hasOwnProperty.call(expected, 'priority')) throw new Error('Season Priority requires every expected Priority.');
     if (Object.prototype.hasOwnProperty.call(expected, 'priority') && originalPriority !== String(expected.priority == null ? '' : expected.priority).trim()) {
@@ -12990,6 +13859,10 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
       const expectedOh = String(expected.ptronhand == null ? '' : expected.ptronhand).trim().replace(/,/g, '');
       if (currentOh !== expectedOh) return { ok: false, status: 'conflict', message: 'OH changed for an Item Inquiry row. Sync and review it before sending.' };
     }
+    if (isV4 && overlay.proposals.some(function(proposal) { return proposal && ['move_up', 'move_down'].indexOf(String(proposal.action || '').trim().toLowerCase()) !== -1; })
+        && !Object.prototype.hasOwnProperty.call(expected, 'ptronhand')) {
+      throw new Error('Split Move proposals require the expected original OH. Refresh and review the row before sending.');
+    }
     const values = {};
     RECLASS_INQUIRY_ROW_FIELDS_.forEach(function(field) { values[field.key] = getReclassInquiryExactValue_(row, field.aliases, ''); });
     const actionValues = {};
@@ -12997,6 +13870,7 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const rowActions = [];
     const seenRowActions = new Set();
     let combinedMoveQuantity = 0;
+    let combinedShearedQuantity = 0;
     if (holdProposal) {
       const rowSeason = getReclassInquiryCurrentSeasonV2_(row);
       const rowSalesYear = normalizeReclassInquirySalesYearV3_(getReclassInquiryExactValue_(row, ['saleyear', 'SALEYEAR', 'salesyear', 'SALESYEAR'], ''));
@@ -13017,7 +13891,9 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     overlay.proposals.forEach(function(rawProposal) {
       const baseProposal = rawProposal && typeof rawProposal === 'object' && !Array.isArray(rawProposal) ? rawProposal : {};
       const action = String(baseProposal.action || '').trim().toLowerCase();
-      const rule = getReclassInquiryActionRuleV2_(action);
+      const rule = isV5 && action === 'sheared'
+        ? { kind: 'sheared', label: 'Sheared Request' }
+        : getReclassInquiryActionRuleV2_(action);
       if (!rule) throw new Error('A row proposal contains an unsupported action.');
       if (RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) !== -1) return;
       if (seenRowActions.has(action)) throw new Error('A row action may be selected only once.');
@@ -13041,18 +13917,60 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
         values.priority = requestedPriority;
         changedFields.push('priority');
       } else if (rule.kind === 'move') {
-        const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'moveQuantity', 'destinationSeason'], 'A Move proposal');
         const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
-        const quantity = Number(proposal.moveQuantity);
-        if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1 || quantity > originalOh) throw new Error(rule.label + ' Qty must be a whole number from 1 through original OH.');
-        const destination = String(proposal.destinationSeason || '').trim().toUpperCase();
-        if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
-        if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
-        combinedMoveQuantity += quantity;
         const prefix = action === 'move_up' ? 'moveup' : 'movedown';
-        actionValues[prefix + 'quantity'] = String(quantity);
-        actionValues[prefix + 'season'] = destination;
-        changedFields.push(prefix + 'quantity', prefix + 'season');
+        if (isV4) {
+          const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'splits', 'applyHold', 'holdReason'], 'A Move proposal');
+          if (!Array.isArray(proposal.splits) || !proposal.splits.length || proposal.splits.length > 100) throw new Error(rule.label + ' requires between 1 and 100 destination splits.');
+          const applyHold = proposal.applyHold === true;
+          if (proposal.applyHold !== undefined && typeof proposal.applyHold !== 'boolean') throw new Error(rule.label + ' Place on Hold must be a boolean.');
+          const holdReason = String(proposal.holdReason == null ? '' : proposal.holdReason).trim().toLowerCase();
+          if (applyHold && !holdReason) throw new Error(rule.label + ' Place on Hold requires a reason.');
+          if (holdReason.length > 1000) throw new Error(rule.label + ' hold reason must be 1000 characters or fewer.');
+          if (!applyHold && holdReason) throw new Error(rule.label + ' hold reason must be blank unless Place on Hold is selected.');
+          const splits = proposal.splits.map(function(rawSplit) {
+            const split = assertReclassInquiryObjectKeysV2_(rawSplit, ['quantity', 'destinationSeason'], 'A Move split');
+            const quantity = Number(split.quantity);
+            if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1) throw new Error(rule.label + ' split quantity must be a positive whole number.');
+            const destination = String(split.destinationSeason || '').trim().toUpperCase();
+            if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
+            if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
+            combinedMoveQuantity += quantity;
+            return { quantity: quantity, destinationSeason: destination };
+          });
+          actionValues[prefix + 'splits'] = splits;
+          actionValues[prefix + 'applyhold'] = applyHold;
+          actionValues[prefix + 'holdreason'] = applyHold ? holdReason : '';
+          changedFields.push(prefix + 'splits');
+          if (applyHold) changedFields.push(prefix + 'applyhold', prefix + 'holdreason');
+        } else {
+          const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'moveQuantity', 'destinationSeason'], 'A Move proposal');
+          const quantity = Number(proposal.moveQuantity);
+          if (!Number.isFinite(originalOh) || originalOh < 1 || !Number.isInteger(quantity) || quantity < 1 || quantity > originalOh) throw new Error(rule.label + ' Qty must be a whole number from 1 through original OH.');
+          const destination = String(proposal.destinationSeason || '').trim().toUpperCase();
+          if (RECLASS_INQUIRY_DESTINATION_SEASONS_V2_.indexOf(destination) === -1) throw new Error(rule.label + ' requires a configured destination season.');
+          if (destination === getReclassInquiryCurrentSeasonV2_(row)) throw new Error(rule.label + ' destination season must differ from the current season.');
+          combinedMoveQuantity += quantity;
+          actionValues[prefix + 'quantity'] = String(quantity);
+          actionValues[prefix + 'season'] = destination;
+          changedFields.push(prefix + 'quantity', prefix + 'season');
+        }
+      } else if (rule.kind === 'sheared') {
+        if (!isV5) throw new Error('Sheared is supported only by the current Reclass workflow.');
+        const proposal = assertReclassInquiryObjectKeysV2_(baseProposal, ['action', 'quantity', 'desigitem'], 'A Sheared proposal');
+        if (!Object.prototype.hasOwnProperty.call(expected, 'desigitem')) throw new Error('Sheared proposals require the original designation snapshot. Refresh and review the row before sending.');
+        const quantity = proposal.quantity;
+        if (typeof quantity !== 'number' || !Number.isSafeInteger(quantity) || quantity < 1) {
+          throw new Error('Sheared quantity must be a positive whole number.');
+        }
+        const proposedDesigitem = String(quantity) + '-->#';
+        if (proposal.desigitem !== proposedDesigitem) throw new Error('The stored Sheared designation proposal is invalid. Refresh and review the row before sending.');
+        const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
+        if (!Number.isFinite(originalOh) || originalOh < 1) throw new Error('Selected Sheared rows must have a positive original OH.');
+        combinedShearedQuantity += quantity;
+        actionValues.shearedquantity = quantity;
+        actionValues.shearedproposeddesigitem = proposedDesigitem;
+        changedFields.push('ptronhand');
       } else if (rule.kind === 'recount') {
         assertReclassInquiryObjectKeysV2_(baseProposal, ['action'], 'A Re-Count proposal');
       }
@@ -13060,7 +13978,8 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
     const temporaryChanges = applyReclassInquiryTemporaryOverlayV3_(overlay, values, changedFields, now);
     const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).trim().replace(/,/g, ''));
     if (combinedMoveQuantity && (!Number.isFinite(originalOh) || combinedMoveQuantity > originalOh)) throw new Error('Combined Move Up and Move Down quantities cannot exceed original OH.');
-    const orderedRowActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return rowActions.indexOf(action) !== -1; });
+    if (isV5 && combinedMoveQuantity + combinedShearedQuantity > originalOh) throw new Error('Combined Move and Sheared quantities cannot exceed current OH.');
+    const orderedRowActions = actionOrder.filter(function(action) { return rowActions.indexOf(action) !== -1; });
     reportRows.push({
       unique_id: uid,
       expectedPriority: seasonPriority ? originalPriority : undefined,
@@ -13075,9 +13994,9 @@ function buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, overla
   if (seasonPriority && seasonPrioritySelectedRows !== 1) throw new Error('The selected Season Priority row is missing or ambiguous.');
   if (overlayByUid.size !== safeRows.length) return { ok: false, status: 'conflict', message: 'The Item Inquiry row set changed. Sync, reopen Reclass, and review it before sending.' };
   if (holdProposal && !holdAffectedCount) throw new Error(getReclassInquiryActionLabel_(holdProposal.action) + ' has no eligible rows in the configured current-season scope.');
-  const canonicalActions = RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return actionUnion.has(action); });
+  const canonicalActions = actionOrder.filter(function(action) { return actionUnion.has(action); });
   if (!canonicalActions.length && !allowEmptyActions) throw new Error('Choose at least one Reclass action before sending.');
-  if (canonicalActions.join('|') !== RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return requestedActions.indexOf(action) !== -1; }).join('|')) {
+  if (canonicalActions.join('|') !== actionOrder.filter(function(action) { return requestedActions.indexOf(action) !== -1; }).join('|')) {
     throw new Error('The Reclass action summary does not match the row proposals.');
   }
   return {
@@ -13122,11 +14041,437 @@ function hasReclassInquiryHoldProposalV3_(transaction, overlays) {
   });
 }
 
+function getProtectedLiveEditDelivery_(payload, sourceUid, transaction, overlays, origins) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const protectedDelivery = safePayload.protectedDelivery && typeof safePayload.protectedDelivery === 'object'
+    ? safePayload.protectedDelivery : {};
+  const rows = protectedDelivery.v6FrozenRows;
+  const edits = protectedDelivery.liveEdits;
+  const revision = String(protectedDelivery.inventoryRevision == null ? '' : protectedDelivery.inventoryRevision);
+  if (!Array.isArray(rows) || !rows.length || rows.length > 5000 || !Array.isArray(edits) || !edits.length
+      || !/^[1-9]\d*$/.test(revision)) {
+    throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_SNAPSHOT_INVALID');
+  }
+  const required = new Set([normalizeInventoryTransactionText_(sourceUid)]);
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  (Array.isArray(overlays) ? overlays : []).forEach(function(overlay) {
+    const uid = normalizeInventoryTransactionText_(overlay && overlay.unique_id);
+    if (uid) required.add(uid);
+  });
+  (Array.isArray(origins) ? origins : []).forEach(function(origin) {
+    const uid = normalizeInventoryTransactionText_(origin && firstNonEmptyRequestValue_(origin.unique_id, origin.uniqueId));
+    if (uid) required.add(uid);
+  });
+  (Array.isArray(safeTransaction.holdStopProposals) ? safeTransaction.holdStopProposals : []).forEach(function(proposal) {
+    const uid = normalizeInventoryTransactionText_(proposal && proposal.sourceUid);
+    if (uid) required.add(uid);
+  });
+  const rowsByUid = new Map();
+  rows.forEach(function(row) {
+    const uid = getInventoryTransactionRowUid_(row);
+    if (!uid || rowsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_ROWS_INVALID');
+    rowsByUid.set(uid, row);
+  });
+  required.forEach(function(uid) {
+    if (!uid || !rowsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_ROW_MISSING');
+  });
+  const editsByUid = new Map();
+  edits.forEach(function(edit) {
+    const uid = normalizeInventoryTransactionText_(edit && edit.unique_id);
+    if (!uid || editsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_RESULT_INVALID');
+    ['priority', 'holdstopcode', 'holdstopreason', 'av_rule_last_clear_reason', 'av_rule_last_cleared_at', 'last_updated'].forEach(function(field) {
+      if (!Object.prototype.hasOwnProperty.call(edit, field)
+          || (edit[field] !== null && typeof edit[field] !== 'string')) {
+        throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_RESULT_INVALID');
+      }
+    });
+    editsByUid.set(uid, edit);
+  });
+  const scope = protectedDelivery.liveEditScope && typeof protectedDelivery.liveEditScope === 'object'
+    ? protectedDelivery.liveEditScope : {};
+  const holdProposals = Array.isArray(safeTransaction.holdStopProposals) ? safeTransaction.holdStopProposals : [];
+  if (holdProposals.length) {
+    const holdSourceUid = normalizeInventoryTransactionText_(holdProposals[0] && holdProposals[0].sourceUid);
+    const fanoutCount = Number(scope.holdFanoutCount);
+    const siblingCount = Number(scope.holdFanoutSiblingCount);
+    if (holdProposals.length !== 1 || scope.holdSourceUid !== holdSourceUid || !editsByUid.has(holdSourceUid)
+        || typeof scope.holdFanoutApplied !== 'boolean' || !Number.isInteger(fanoutCount) || fanoutCount < 1
+        || (scope.holdFanoutApplied && (!Number.isInteger(siblingCount) || siblingCount < 0 || fanoutCount !== siblingCount + 1))
+        || (!scope.holdFanoutApplied && fanoutCount !== 1)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_SCOPE_INVALID');
+    }
+  } else if (scope.holdFanoutApplied === true) {
+    throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_SCOPE_INVALID');
+  }
+  editsByUid.forEach(function(edit, uid) {
+    if (!rowsByUid.has(uid) && (!holdProposals.length || scope.holdFanoutApplied !== true)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_ROW_MISSING');
+    }
+  });
+  return {
+    rows: rows,
+    rowsByUid: rowsByUid,
+    edits: edits,
+    editsByUid: editsByUid,
+    revision: revision,
+    scope: scope,
+    protectedDelivery: protectedDelivery
+  };
+}
+
+function getProtectedInventoryFieldDeliveryV7_(payload, sourceUid, transaction, overlays, origins) {
+  const safePayload = payload && typeof payload === 'object' ? payload : {};
+  const protectedDelivery = safePayload.protectedDelivery && typeof safePayload.protectedDelivery === 'object'
+    ? safePayload.protectedDelivery : {};
+  const frozenRows = protectedDelivery.v7FrozenRows;
+  const rawFieldEdits = protectedDelivery.inventoryFields;
+  const rawLiveEdits = protectedDelivery.liveEdits;
+  const revision = String(protectedDelivery.inventoryRevision == null ? '' : protectedDelivery.inventoryRevision);
+  const scope = protectedDelivery.v7Scope && typeof protectedDelivery.v7Scope === 'object' ? protectedDelivery.v7Scope : null;
+  if (!Array.isArray(frozenRows) || !frozenRows.length || frozenRows.length > 5000
+      || !Array.isArray(rawFieldEdits) || rawFieldEdits.length > 5000
+      || !Array.isArray(rawLiveEdits) || rawLiveEdits.length > 5000
+      || !/^[1-9]\d*$/.test(revision) || !scope) {
+    throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_SNAPSHOT_INVALID');
+  }
+  const rowsByUid = new Map();
+  frozenRows.forEach(function(row) {
+    const uid = getInventoryTransactionRowUid_(row);
+    if (!uid || rowsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_ROWS_INVALID');
+    rowsByUid.set(uid, row);
+  });
+  const required = new Set([normalizeInventoryTransactionText_(sourceUid)]);
+  (Array.isArray(overlays) ? overlays : []).forEach(function(overlay) {
+    const uid = normalizeInventoryTransactionText_(overlay && overlay.unique_id);
+    if (uid) required.add(uid);
+  });
+  (Array.isArray(origins) ? origins : []).forEach(function(origin) {
+    const uid = normalizeInventoryTransactionText_(origin && firstNonEmptyRequestValue_(origin.unique_id, origin.uniqueId));
+    if (uid) required.add(uid);
+  });
+  required.forEach(function(uid) {
+    if (!uid || !rowsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_ROW_MISSING');
+  });
+  const livePayload = Object.assign({}, safePayload, {
+    protectedDelivery: Object.assign({}, protectedDelivery, { v6FrozenRows: frozenRows, liveEdits: rawLiveEdits })
+  });
+  let liveDelivery = null;
+  if (rawLiveEdits.length) {
+    liveDelivery = getProtectedLiveEditDelivery_(livePayload, sourceUid, transaction, overlays, origins);
+  } else {
+    if (rawFieldEdits.length) throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_RECEIPT_MISSING');
+    liveDelivery = {
+      rows: frozenRows,
+      rowsByUid: rowsByUid,
+      edits: [],
+      editsByUid: new Map(),
+      revision: revision,
+      scope: {},
+      protectedDelivery: protectedDelivery
+    };
+  }
+  if (liveDelivery.revision !== revision) throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_REVISION_MISMATCH');
+  const fieldsByUid = new Map();
+  rawFieldEdits.forEach(function(entry) {
+    const uid = normalizeInventoryTransactionText_(entry && entry.unique_id);
+    if (!uid || fieldsByUid.has(uid) || !rowsByUid.has(uid) || !liveDelivery.editsByUid.has(uid)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_RESULT_INVALID');
+    }
+    const before = entry.before;
+    const after = entry.after;
+    if (!before || typeof before !== 'object' || Array.isArray(before) || !after || typeof after !== 'object' || Array.isArray(after)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_RESULT_INVALID');
+    }
+    const beforeKeys = Object.keys(before).sort();
+    const afterKeys = Object.keys(after).sort();
+    const expectedFieldKeys = RECLASS_INQUIRY_V7_EDITABLE_FIELDS_.slice().sort();
+    if (beforeKeys.length !== expectedFieldKeys.length || afterKeys.length !== expectedFieldKeys.length
+        || beforeKeys.some(function(field, index) { return field !== expectedFieldKeys[index]; })
+        || afterKeys.some(function(field, index) { return field !== expectedFieldKeys[index]; })) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_RESULT_INVALID');
+    }
+    RECLASS_INQUIRY_V7_EDITABLE_FIELDS_.forEach(function(field) {
+      [before, after].forEach(function(values) {
+        if (!Object.prototype.hasOwnProperty.call(values, field) || (values[field] !== null && typeof values[field] !== 'string')) {
+          throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_RESULT_INVALID');
+        }
+      });
+      const frozen = getReclassInquiryExactValue_(rowsByUid.get(uid), [field, field.toUpperCase()], '');
+      if (String(before[field] == null ? '' : before[field]) !== String(frozen == null ? '' : frozen)) {
+        throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_BEFORE_MISMATCH');
+      }
+    });
+    if (!Array.isArray(entry.changedFields)) throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_RESULT_INVALID');
+    const changed = new Set();
+    RECLASS_INQUIRY_V7_EDITABLE_FIELDS_.forEach(function(field) {
+      const differs = String(before[field] == null ? '' : before[field]) !== String(after[field] == null ? '' : after[field]);
+      if (differs) changed.add(field);
+    });
+    const declared = entry.changedFields.map(function(field) { return String(field || '').trim().toLowerCase(); });
+    if (new Set(declared).size !== declared.length || declared.some(function(field) {
+      return RECLASS_INQUIRY_V7_EDITABLE_FIELDS_.indexOf(field) === -1 || !changed.has(field);
+    }) || Array.from(changed).some(function(field) { return declared.indexOf(field) === -1; })) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_CHANGED_LIST_INVALID');
+    }
+    const stamps = entry.stamps;
+    if (!stamps || typeof stamps !== 'object' || Array.isArray(stamps)) throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_STAMPS_INVALID');
+    const stampKeys = Object.keys(stamps).sort();
+    const expectedStampKeys = ['evaldate', 'locationnotedate', 'prisetby', 'priupdated'];
+    if (stampKeys.length !== expectedStampKeys.length || stampKeys.some(function(field, index) { return field !== expectedStampKeys[index]; })) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_STAMPS_INVALID');
+    }
+    ['prisetby', 'priupdated', 'locationnotedate', 'evaldate'].forEach(function(field) {
+      if (!Object.prototype.hasOwnProperty.call(stamps, field) || (stamps[field] !== null && typeof stamps[field] !== 'string')) {
+        throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_STAMPS_INVALID');
+      }
+    });
+    fieldsByUid.set(uid, entry);
+  });
+  const reportStamps = scope.reportStamps;
+  const reportRequired = new Set();
+  (Array.isArray(overlays) ? overlays : []).forEach(function(overlay) {
+    const uid = normalizeInventoryTransactionText_(overlay && overlay.unique_id);
+    if (uid) reportRequired.add(uid);
+  });
+  if (!reportRequired.size || !Array.isArray(reportStamps) || reportStamps.length !== reportRequired.size) {
+    throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_REPORT_STAMPS_INVALID');
+  }
+  const reportStampsByUid = new Map();
+  reportStamps.forEach(function(entry) {
+    const uid = normalizeInventoryTransactionText_(entry && entry.unique_id);
+    const stamps = entry && entry.stamps;
+    if (!uid || !reportRequired.has(uid) || reportStampsByUid.has(uid) || !rowsByUid.has(uid)
+        || !stamps || typeof stamps !== 'object' || Array.isArray(stamps)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_REPORT_STAMPS_INVALID');
+    }
+    ['prisetby', 'priupdated', 'locationnotedate', 'evaldate'].forEach(function(field) {
+      if (!Object.prototype.hasOwnProperty.call(stamps, field) || (stamps[field] !== null && typeof stamps[field] !== 'string')) {
+        throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_REPORT_STAMPS_INVALID');
+      }
+    });
+    reportStampsByUid.set(uid, stamps);
+  });
+  reportRequired.forEach(function(uid) {
+    if (!reportStampsByUid.has(uid)) throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_REPORT_STAMPS_INVALID');
+  });
+  fieldsByUid.forEach(function(entry, uid) {
+    if (!reportRequired.has(uid) || !Array.isArray(entry.changedFields) || entry.changedFields.length === 0) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_INVENTORY_FIELD_RESULT_INVALID');
+    }
+  });
+  return {
+    rows: frozenRows,
+    rowsByUid: rowsByUid,
+    revision: revision,
+    scope: scope,
+    liveDelivery: liveDelivery,
+    inventoryFields: rawFieldEdits,
+    inventoryFieldsByUid: fieldsByUid,
+    reportStamps: reportStamps,
+    reportStampsByUid: reportStampsByUid
+  };
+}
+
+function buildProtectedLiveEditSummary_(delivery, transaction) {
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  const scope = delivery && delivery.scope && typeof delivery.scope === 'object' ? delivery.scope : {};
+  const proposal = Array.isArray(safeTransaction.holdStopProposals) ? safeTransaction.holdStopProposals[0] : null;
+  const rule = proposal ? getReclassInquiryActionRuleV2_(proposal.action) : null;
+  const holdAction = rule && (rule.kind === 'hold_on' || rule.kind === 'hold_off')
+    ? String(proposal.action || '').trim().toLowerCase() : '';
+  const sourceEdit = holdAction ? delivery.editsByUid.get(normalizeInventoryTransactionText_(scope.holdSourceUid)) : null;
+  const sourceRow = holdAction ? delivery.rowsByUid.get(normalizeInventoryTransactionText_(scope.holdSourceUid)) : null;
+  const holdCode = sourceEdit ? String(sourceEdit.holdstopcode || '').trim().toUpperCase() : '';
+  const holdReason = sourceEdit ? String(sourceEdit.holdstopreason || '').trim().toLowerCase() : '';
+  const fanoutApplied = scope.holdFanoutApplied === true;
+  const fanoutCount = Number(scope.holdFanoutCount);
+  const count = Number.isFinite(fanoutCount) && fanoutCount >= 0 ? Math.trunc(fanoutCount) : (holdAction ? 1 : 0);
+  const season = String(scope.holdSeason || getReclassInquiryExactValue_(sourceRow, ['season', 'SEASON'], '') || '').trim().toUpperCase();
+  const salesYear = normalizeReclassInquirySalesYearV3_(scope.holdSalesYearMax || getReclassInquiryExactValue_(sourceRow, ['saleyear', 'SALEYEAR', 'salesyear', 'SALESYEAR'], ''));
+  const itemcode = String(scope.holdItemcode || getReclassInquiryExactValue_(sourceRow, ['itemcode', 'ITEMCODE'], '') || '').trim();
+  let scopeNote = '';
+  if (holdAction) {
+    if (fanoutApplied && itemcode && season && salesYear != null) {
+      const displayYear = salesYear >= 2000 && salesYear <= 2099 ? String(salesYear).slice(-2) : String(salesYear);
+      scopeNote = 'Same item ' + itemcode + ' | ' + season + ' | sales year <= ' + displayYear + ' | ' + count + ' row' + (count === 1 ? '' : 's') + ' in scope';
+    } else {
+      scopeNote = 'Selected row only | ' + count + ' row' + (count === 1 ? '' : 's') + ' in scope';
+    }
+  }
+  return {
+    inventoryRevision: delivery.revision,
+    rowCount: delivery.edits.length,
+    priorityCount: delivery.edits.filter(function(edit) { return edit.priority !== null; }).length,
+    holdAction: holdAction,
+    holdCode: holdCode,
+    holdReason: holdReason,
+    holdFanoutApplied: fanoutApplied,
+    holdFanoutCount: count,
+    holdItemcode: itemcode,
+    holdSeason: season,
+    holdSalesYearMax: salesYear,
+    scopeNote: scopeNote
+  };
+}
+
+function buildProtectedLiveEditReportRows_(transaction, frozenRows, overlays, liveEditDelivery, options) {
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  const safeOptions = options && typeof options === 'object' ? options : {};
+  const holdActions = RECLASS_INQUIRY_HOLD_ACTIONS_V3_;
+  const sanitizedTransaction = {
+    requestActions: (Array.isArray(safeTransaction.requestActions) ? safeTransaction.requestActions : [])
+      .filter(function(action) { return holdActions.indexOf(String(action || '').trim().toLowerCase()) === -1; }),
+    holdStopProposals: [],
+    scope: {}
+  };
+  if (safeTransaction.seasonPriority) {
+    sanitizedTransaction.seasonPriority = Object.assign({}, safeTransaction.seasonPriority, { contractVersion: 'manager-season-priority-v1' });
+  }
+  const safeOverlays = (Array.isArray(overlays) ? overlays : []).map(function(overlay) {
+    const rawOverlay = overlay && typeof overlay === 'object' ? overlay : {};
+    const safeOverlay = {
+      unique_id: rawOverlay.unique_id,
+      proposals: Array.isArray(rawOverlay.proposals) ? rawOverlay.proposals : []
+    };
+    if (rawOverlay.temporaryValues && typeof rawOverlay.temporaryValues === 'object') safeOverlay.temporaryValues = rawOverlay.temporaryValues;
+    if (Array.isArray(rawOverlay.temporaryChangedFields)) safeOverlay.temporaryChangedFields = rawOverlay.temporaryChangedFields;
+    const expected = rawOverlay.expected && typeof rawOverlay.expected === 'object' ? rawOverlay.expected : {};
+    const allowedExpected = {};
+    ['itemcode', 'lotcode', 'locationcode', 'ptronhand', 'priority', 'ptravailable', 'lineageHash', 'lineage', 'desigitem']
+      .forEach(function(key) {
+        if (Object.prototype.hasOwnProperty.call(expected, key)) allowedExpected[key] = expected[key];
+      });
+    safeOverlay.expected = allowedExpected;
+    return safeOverlay;
+  });
+  const proposal = buildReclassInquiryActionRowsV3_(sanitizedTransaction, frozenRows, safeOverlays, null, {
+    allowEmptyActions: true,
+    now: safeOptions.now instanceof Date ? safeOptions.now : new Date(),
+    policyVersion: RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_
+  });
+  if (!proposal.ok) throw new Error('RECLASS_CONFLICT:' + String(proposal.message || 'FROZEN_ROW_PROPOSAL_INVALID'));
+  safeOverlays.forEach(function(overlay) {
+    const uid = normalizeInventoryTransactionText_(overlay.unique_id);
+    (Array.isArray(overlay.proposals) ? overlay.proposals : []).forEach(function(rawProposal) {
+      if (String(rawProposal && rawProposal.action || '').trim().toLowerCase() !== 'priority_change') return;
+      const liveEdit = liveEditDelivery.editsByUid.get(uid);
+      const proposedPriority = String(rawProposal.priority == null ? '' : rawProposal.priority).trim();
+      const confirmedPriority = liveEdit ? String(liveEdit.priority == null ? '' : liveEdit.priority).trim() : null;
+      if (!liveEdit || proposedPriority !== confirmedPriority) throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_PRIORITY_MISMATCH');
+    });
+  });
+  proposal.rows.forEach(function(row) {
+    const edit = liveEditDelivery.editsByUid.get(normalizeInventoryTransactionText_(row.unique_id));
+    if (!edit) return;
+    const fields = ['priority', 'holdstopcode', 'holdstopreason'];
+    fields.forEach(function(field) {
+      const oldValue = String(row.values[field] == null ? '' : row.values[field]);
+      const nextValue = String(edit[field] == null ? '' : edit[field]);
+      if (oldValue === nextValue) return;
+      row.values[field] = nextValue;
+      if (row.changedFields.indexOf(field) === -1) row.changedFields.push(field);
+    });
+    row.liveEditConfirmed = true;
+  });
+  if (Array.isArray(safeTransaction.holdStopProposals) && safeTransaction.holdStopProposals.length) {
+    const holdProposal = safeTransaction.holdStopProposals[0];
+    const action = String(holdProposal && holdProposal.action || '').trim().toLowerCase();
+    if (safeTransaction.holdStopProposals.length !== 1 || holdActions.indexOf(action) === -1) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_HOLD_ACTION_INVALID');
+    }
+    const sourceUid = normalizeInventoryTransactionText_(holdProposal.sourceUid);
+    if (!sourceUid || !liveEditDelivery.editsByUid.has(sourceUid)) {
+      throw new Error('RECLASS_CONFLICT:PROTECTED_LIVE_EDIT_HOLD_SOURCE_MISSING');
+    }
+  }
+  return proposal.rows;
+}
+
+function buildProtectedInventoryFieldReportRowsV7_(transaction, frozenRows, overlays, v7Delivery, options) {
+  const safeTransaction = transaction && typeof transaction === 'object' ? transaction : {};
+  const cleanTransaction = Object.assign({}, safeTransaction, {
+    requestActions: (Array.isArray(safeTransaction.requestActions) ? safeTransaction.requestActions : [])
+      .filter(function(action) { return String(action || '').trim().toLowerCase() !== 'inventory_fields'; })
+  });
+  const cleanOverlays = (Array.isArray(overlays) ? overlays : []).map(function(rawOverlay) {
+    const overlay = rawOverlay && typeof rawOverlay === 'object' ? rawOverlay : {};
+    const safeOverlay = {
+      unique_id: overlay.unique_id,
+      expected: overlay.expected && typeof overlay.expected === 'object' ? overlay.expected : {},
+      proposals: Array.isArray(overlay.proposals) ? overlay.proposals : []
+    };
+    if (overlay.temporaryValues && typeof overlay.temporaryValues === 'object') safeOverlay.temporaryValues = overlay.temporaryValues;
+    if (Array.isArray(overlay.temporaryChangedFields)) safeOverlay.temporaryChangedFields = overlay.temporaryChangedFields;
+    return safeOverlay;
+  });
+  let rows;
+  if (v7Delivery.liveDelivery.edits.length) {
+    rows = buildProtectedLiveEditReportRows_(cleanTransaction, frozenRows, cleanOverlays, v7Delivery.liveDelivery, options);
+  } else {
+    const proposal = buildReclassInquiryActionRowsV3_(cleanTransaction, frozenRows, cleanOverlays, null, {
+      allowEmptyActions: true,
+      now: options && options.now instanceof Date ? options.now : new Date(),
+      policyVersion: RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_
+    });
+    if (!proposal.ok) throw new Error('RECLASS_CONFLICT:' + String(proposal.message || 'FROZEN_ROW_PROPOSAL_INVALID'));
+    rows = proposal.rows;
+  }
+  const reportStampsByUid = v7Delivery.reportStampsByUid;
+  rows.forEach(function(row) {
+    const uid = normalizeInventoryTransactionText_(row && row.unique_id);
+    const reportStamps = reportStampsByUid.get(uid);
+    if (!reportStamps) return;
+    row.v7ReportStamps = reportStamps;
+    const entry = v7Delivery.inventoryFieldsByUid.get(uid);
+    if (!entry) return;
+    row.v7InventoryFields = entry;
+    RECLASS_INQUIRY_V7_EDITABLE_FIELDS_.forEach(function(field) {
+      row.values[field] = entry.after[field] == null ? '' : entry.after[field];
+      if (entry.changedFields.indexOf(field) !== -1 && row.changedFields.indexOf(field) === -1) row.changedFields.push(field);
+    });
+    const stamps = entry.stamps;
+    row.values.prisetby = stamps.prisetby == null ? '' : stamps.prisetby;
+    row.values.priupdated = stamps.priupdated == null ? '' : stamps.priupdated;
+    if (entry.changedFields.indexOf('locationnote') !== -1) {
+      row.values.locationnotedate = stamps.locationnotedate == null ? '' : stamps.locationnotedate;
+      if (row.changedFields.indexOf('locationnotedate') === -1) row.changedFields.push('locationnotedate');
+    }
+  });
+  return rows;
+}
+
+function buildReclassInquiryInventoryFieldHtml_(row, key) {
+  const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+  const fieldEdit = row && row.v7InventoryFields && typeof row.v7InventoryFields === 'object' ? row.v7InventoryFields : null;
+  const before = fieldEdit && fieldEdit.before && typeof fieldEdit.before === 'object' ? fieldEdit.before : {};
+  const after = fieldEdit && fieldEdit.after && typeof fieldEdit.after === 'object' ? fieldEdit.after : {};
+  const changed = new Set(fieldEdit && Array.isArray(fieldEdit.changedFields) ? fieldEdit.changedFields : []);
+  const rowChanges = new Set(Array.isArray(row && row.changedFields) ? row.changedFields : []);
+  const current = String(Object.prototype.hasOwnProperty.call(values, key) ? (values[key] == null ? '' : values[key]) : '');
+  const prior = String(Object.prototype.hasOwnProperty.call(before, key) ? (before[key] == null ? '' : before[key]) : '');
+  const confirmed = String(Object.prototype.hasOwnProperty.call(after, key) ? (after[key] == null ? '' : after[key]) : current);
+  const isEdited = changed.has(key) || (!fieldEdit && rowChanges.has(key));
+  if (isEdited && fieldEdit) {
+    let display = confirmed ? escapeEmailHtml_(confirmed) : '[blank]';
+    if (key === 'suspend' && prior && !confirmed) {
+      display = '<s>' + escapeEmailHtml_(prior) + '</s> &rarr; [blank]';
+    } else if (key === 'suspend' && !prior && confirmed) {
+      display = 'Yes - ' + escapeEmailHtml_(confirmed);
+    } else if (prior && prior !== confirmed) {
+      display = '<s>' + escapeEmailHtml_(prior) + '</s> &rarr; ' + display;
+    }
+    return '<span class="inventory-field-value edited-cell" data-edited="true">' + display + '</span>';
+  }
+  return '<span class="inventory-field-value' + (isEdited ? ' edited-cell' : '') + '"' + (isEdited ? ' data-edited="true"' : '') + '>'
+    + (current ? escapeEmailHtml_(current) : '&nbsp;') + '</span>';
+}
+
 function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, payload, now) {
   const identity = {};
   RECLASS_INQUIRY_IDENTITY_FIELDS_.forEach(function(field) {
     identity[field.key] = getReclassInquiryExactValue_(sourceRow, field.aliases, getReclassInquiryExactValue_(authoritativeRows[0], field.aliases, ''));
   });
+  identity.commonname = repairDisplayUtf8Mojibake_(identity.commonname);
   identity.holdstopreason = getReclassInquiryExactValue_(sourceRow, ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], getReclassInquiryExactValue_(authoritativeRows[0], ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], '')).trim().toLowerCase();
   const normalizedReportRows = (Array.isArray(reportRows) ? reportRows : []).map(function(row) {
     const normalizedRow = Object.assign({}, row || {});
@@ -13136,6 +14481,25 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     normalizedRow.temporaryChanges = Array.isArray(row && row.temporaryChanges)
       ? row.temporaryChanges.map(function(change) { return Object.assign({}, change || {}); }) : [];
     return normalizedRow;
+  });
+  const sourceRowsByUid = new Map((Array.isArray(authoritativeRows) ? authoritativeRows : []).map(function(row) {
+    return [normalizeInventoryTransactionText_(getInventoryTransactionRowUid_(row)), row];
+  }));
+  const compactInventoryDetails = [
+    ['desigitem', ['desigitem', 'DESIGITEM', 'DesigItem']],
+    ['desigcust', ['desigcust', 'DESIGCUST', 'DesigCust']],
+    ['desigloc', ['desigloc', 'DESIGLOC', 'DesigLoc']],
+    ['pullerresponsibility', ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER']],
+    ['oversellpercentage', ['oversellpercentage', 'OVERSELLPERCENTAGE', 'oversell', 'OVERSELL']],
+    ['salesnote', ['salesnote', 'SALESNOTE']],
+    ['suspend', ['suspend', 'SUSPEND']]
+  ];
+  normalizedReportRows.forEach(function(row) {
+    const source = sourceRowsByUid.get(normalizeInventoryTransactionText_(row.unique_id));
+    compactInventoryDetails.forEach(function(field) {
+      if (Object.prototype.hasOwnProperty.call(row.values, field[0])) return;
+      row.values[field[0]] = getReclassInquiryExactValue_(source, field[1], '');
+    });
   });
   const sourceUid = getInventoryTransactionRowUid_(sourceRow);
   const originReportRow = normalizedReportRows.find(function(row) {
@@ -13171,9 +14535,14 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   });
   const actor = payload && payload.actor && typeof payload.actor === 'object' ? payload.actor : {};
   const transaction = payload && payload.transaction && typeof payload.transaction === 'object' ? payload.transaction : {};
+  const isV7 = String(payload && payload.workflowPolicyVersion || '') === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_;
+  const isV6 = isV7 || String(payload && payload.workflowPolicyVersion || '') === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_
+    || String(transaction.seasonPriority && transaction.seasonPriority.contractVersion || '') === 'manager-season-priority-v2';
+  const isV5 = String(payload && payload.workflowPolicyVersion || '') === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ || isV6;
   const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
+  const rawRequestActions = Array.isArray(transaction.requestActions) ? transaction.requestActions : [];
   const requestActions = Array.isArray(transaction.requestActions)
-    ? RECLASS_INQUIRY_ACTION_ORDER_V3_.filter(function(action) { return transaction.requestActions.indexOf(action) !== -1; })
+    ? (isV5 ? RECLASS_INQUIRY_ACTION_ORDER_V5_ : RECLASS_INQUIRY_ACTION_ORDER_V3_).filter(function(action) { return rawRequestActions.indexOf(action) !== -1; })
     : (requestAction ? [requestAction] : []);
   const rawHoldProposal = Array.isArray(transaction.holdStopProposals) && transaction.holdStopProposals.length
     ? transaction.holdStopProposals[0]
@@ -13182,13 +14551,28 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
   const holdProposalSummary = holdProposalRule && (holdProposalRule.kind === 'hold_on' || holdProposalRule.kind === 'hold_off')
     ? {
         action: String(rawHoldProposal.action || '').trim().toLowerCase(),
-        code: holdProposalRule.kind === 'hold_on' ? String(holdProposalRule.code || '').trim().toUpperCase() : '',
-        reason: holdProposalRule.kind === 'hold_on' ? String(rawHoldProposal.reason || '').trim().toLowerCase() : '',
-        affectedCount: Math.max(0, Math.trunc(Number(transaction.scope && transaction.scope.affectedCount) || 0))
+        code: isV6 && payload.liveEditSummary ? String(payload.liveEditSummary.holdCode || '').trim().toUpperCase()
+          : (holdProposalRule.kind === 'hold_on' ? String(holdProposalRule.code || '').trim().toUpperCase() : ''),
+        reason: isV6 && payload.liveEditSummary ? String(payload.liveEditSummary.holdReason || '').trim().toLowerCase()
+          : (holdProposalRule.kind === 'hold_on' ? String(rawHoldProposal.reason || '').trim().toLowerCase() : ''),
+        affectedCount: isV6 && payload.liveEditSummary
+          ? Math.max(0, Math.trunc(Number(payload.liveEditSummary.holdFanoutCount) || 0))
+          : Math.max(0, Math.trunc(Number(transaction.scope && transaction.scope.affectedCount) || 0))
       }
     : null;
   const editedRows = normalizedReportRows.filter(function(row) { return row && Array.isArray(row.changedFields) && row.changedFields.length; });
   const hasLocationDetailChanges = hasReclassInquiryLocationDetailChangeV3_(normalizedReportRows);
+  const v7InventoryFields = isV7 && payload && Array.isArray(payload.v7InventoryFields) ? payload.v7InventoryFields : [];
+  const v7ReportStamps = isV7 && payload && Array.isArray(payload.v7ReportStamps) ? payload.v7ReportStamps : [];
+  const v7ChangedFieldCount = v7InventoryFields.reduce(function(total, entry) {
+    return total + (Array.isArray(entry && entry.changedFields) ? entry.changedFields.length : 0);
+  }, 0);
+  const v7ChangedUidSet = new Set(v7InventoryFields.filter(function(entry) {
+    return Array.isArray(entry && entry.changedFields) && entry.changedFields.length;
+  }).map(function(entry) { return normalizeInventoryTransactionText_(entry && entry.unique_id); }));
+  const visibleRequestActions = rawRequestActions.filter(function(action) {
+    return String(action || '').trim().toLowerCase() !== 'inventory_fields';
+  });
   return {
     identity: identity,
     identityChangedFields: identityChangedFields,
@@ -13199,16 +14583,30 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     holdProposalSummary: holdProposalSummary,
     requestAction: requestAction,
     requestActions: requestActions,
-    requestActionLabel: transaction.seasonPriority ? 'Season Priority - Make Priority 1 (requested)' : hasLocationDetailChanges && !requestActions.length
-      ? 'Location Detail Update'
-      : (requestActions.length > 1 || (!requestAction && requestActions.length)
-        ? getReclassInquiryActionsLabelV3_(requestActions)
-        : getReclassInquiryActionLabel_(requestAction)),
+    requestActionLabel: transaction.seasonPriority
+      ? (isV6 && payload.liveEditSummary ? 'Season Priority - Make Priority 1 (applied)' : 'Season Priority - Make Priority 1 (requested)')
+      : (isV7 && v7ChangedFieldCount
+        ? (visibleRequestActions.length
+          ? getReclassInquiryActionsLabelV5_(requestActions) + ' + Inventory Fields Updated'
+          : 'Inventory Fields Updated and queued')
+        : (hasLocationDetailChanges && !requestActions.length
+          ? 'Location Detail Update'
+          : (requestActions.length > 1 || (!requestAction && requestActions.length)
+            ? (isV5 ? getReclassInquiryActionsLabelV5_(requestActions) : getReclassInquiryActionsLabelV3_(requestActions))
+            : getReclassInquiryActionLabel_(requestAction)))),
     actorDisplay: normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(actor.display, actor.username, 'Unknown User')),
     submittedAt: Utilities.formatDate(now, 'America/Chicago', 'M/d/yyyy, h:mm:ss a'),
+    liveEditSummary: payload && payload.liveEditSummary && typeof payload.liveEditSummary === 'object' ? payload.liveEditSummary : null,
+    isV7: isV7,
+    v7InventoryFields: v7InventoryFields,
+    v7ReportStamps: v7ReportStamps,
+    v7ChangedFieldCount: v7ChangedFieldCount,
+    v7ChangedUidSet: v7ChangedUidSet,
     editSummary: {
-      rowCount: editedRows.length,
-      fieldCount: editedRows.reduce(function(total, row) { return total + row.changedFields.length; }, 0)
+      rowCount: Math.max(editedRows.length, v7ChangedUidSet.size),
+      fieldCount: editedRows.reduce(function(total, row) {
+        return total + row.changedFields.filter(function(field) { return RECLASS_INQUIRY_V7_EDITABLE_FIELDS_.indexOf(field) === -1; }).length;
+      }, 0) + v7ChangedFieldCount
     }
   };
 }
@@ -13228,7 +14626,7 @@ function buildReclassInquiryReportText_(model) {
   const safeModel = model || {};
   const identity = safeModel.identity || {};
   const editSummary = safeModel.editSummary || {};
-  return [
+  const body = [
     'GNC PH Reclass Item Inquiry',
     'Submitted: ' + String(safeModel.submittedAt || ''),
     'Submitted By: ' + String(safeModel.actorDisplay || ''),
@@ -13239,19 +14637,35 @@ function buildReclassInquiryReportText_(model) {
     'Edited Rows: ' + String(editSummary.rowCount || 0),
     'Edited Fields: ' + String(editSummary.fieldCount || 0),
     buildSeasonPriorityDecisionText_(safeModel),
-    '',
-    'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.'
-  ].join('\n');
+    buildProtectedLiveEditDecisionText_(safeModel)
+  ];
+  const splitMoveText = buildReclassInquirySplitMoveText_(safeModel);
+  if (splitMoveText) body.push(splitMoveText);
+  body.push('', 'Open the attached PDF to review the complete Item Inquiry. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.');
+  return body.join('\n');
 }
 
 function buildSeasonPriorityDecisionText_(model) {
   if (!(model && model.transaction && model.transaction.seasonPriority)) return '';
-  return ['Requested priorities only - no inventory has been changed.'].concat((model.rows || []).filter(function(row) {
+  const liveConfirmed = model.liveEditSummary && Number(model.liveEditSummary.rowCount) > 0;
+  return [liveConfirmed ? 'Season priorities were applied to inventory in the same transaction as this inquiry.' : 'Requested priorities only - no inventory has been changed.'].concat((model.rows || []).filter(function(row) {
     return (row.changedFields || []).indexOf('priority') !== -1;
   }).map(function(row) {
     return String(row.values.locationcode || '') + ' / ' + String(row.values.lotcode || '') + ' / ' + String(row.values.source || '')
       + ': ' + String(row.expectedPriority || '[blank]') + ' -> ' + String(row.values.priority || '[blank]');
   })).join('\n');
+}
+
+function buildProtectedLiveEditDecisionText_(model) {
+  const summary = model && model.liveEditSummary;
+  if (!summary || !(Number(summary.rowCount) > 0)) return '';
+  const lines = ['Confirmed live priority / Hold / Stop edits were applied atomically with this inquiry.'];
+  if (summary.holdAction) lines.push(String(summary.scopeNote || 'The selected Hold/Stop source row was updated.'));
+  const actions = Array.isArray(model.transaction && model.transaction.requestActions) ? model.transaction.requestActions : [];
+  if (actions.some(function(action) { return ['move_up', 'move_down', 'sheared'].indexOf(String(action || '').trim().toLowerCase()) !== -1; })) {
+    lines.push('Requested quantity, season, and designation moves remain inquiry proposals; inventory quantities were not changed.');
+  }
+  return lines.join('\n');
 }
 
 function buildReclassInquiryEmailHtml_(model) {
@@ -13265,10 +14679,87 @@ function buildReclassInquiryEmailHtml_(model) {
     '<p><strong>Request:</strong> ' + escapeEmailHtml_(safeModel.requestActionLabel || 'Reclass Item Inquiry') + '</p>',
     '<p><strong>Item:</strong> ' + escapeEmailHtml_(identity.commonname || '') + '<br><strong>Item Code:</strong> ' + escapeEmailHtml_(identity.itemcode || '') + '<br><strong>Container:</strong> ' + escapeEmailHtml_(identity.contsize || '') + '</p>',
     '<p><strong>Edited Rows:</strong> ' + escapeEmailHtml_(editSummary.rowCount || 0) + '<br><strong>Edited Fields:</strong> ' + escapeEmailHtml_(editSummary.fieldCount || 0) + '</p>',
+    buildReclassInquirySplitMoveHtml_(safeModel),
     safeModel.transaction && safeModel.transaction.seasonPriority ? '<p style="white-space:pre-line;overflow-wrap:anywhere;">' + escapeEmailHtml_(buildSeasonPriorityDecisionText_(safeModel)) + '</p>' : '',
     '<p style="padding:12px 14px;border-radius:10px;background:#fffbeb;border:2px solid #111827;color:#111827;"><strong>PDF attached:</strong> Open the Item Inquiry PDF to review every current row. Yellow, boxed values are requested changes and remain visible in color and black-and-white printing.</p>',
     '</div>'
   ].join(''));
+}
+
+function getReclassInquirySplitMoveEntries_(model) {
+  const entries = [];
+  (Array.isArray(model && model.rows) ? model.rows : []).forEach(function(row) {
+    const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+    const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
+    [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
+      const prefix = pair[0];
+      const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
+      splits.forEach(function(split) {
+        entries.push({
+          direction: pair[1], quantity: String(split && split.quantity != null ? split.quantity : ''),
+          destinationSeason: String(split && split.destinationSeason || '').toUpperCase(),
+          applyHold: actionValues[prefix + 'applyhold'] === true,
+          holdReason: String(actionValues[prefix + 'holdreason'] || '').trim().toLowerCase(),
+          location: String(values.locationcode || ''), lot: String(values.lotcode || '')
+        });
+      });
+    });
+  });
+  return entries;
+}
+
+function getReclassInquirySplitMoveSummaries_(model) {
+  return (Array.isArray(model && model.rows) ? model.rows : []).map(function(row) {
+    const values = row && row.values && typeof row.values === 'object' ? row.values : {};
+    const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
+    let combinedTotal = 0;
+    let hasMoves = false;
+    const directions = [['moveup', 'UP'], ['movedown', 'DOWN']].map(function(pair) {
+      const splits = Array.isArray(actionValues[pair[0] + 'splits']) ? actionValues[pair[0] + 'splits'] : [];
+      if (!splits.length) return null;
+      const total = splits.reduce(function(sum, split) { return sum + Number(split && split.quantity || 0); }, 0);
+      combinedTotal += total;
+      hasMoves = true;
+      return { direction: pair[1], splits: splits, total: total };
+    }).filter(Boolean);
+    return hasMoves ? { location: String(values.locationcode || ''), lot: String(values.lotcode || ''), directions: directions, combinedTotal: combinedTotal } : null;
+  }).filter(Boolean);
+}
+
+function buildReclassInquirySplitMoveText_(model) {
+  const entries = getReclassInquirySplitMoveEntries_(model);
+  if (!entries.length) return '';
+  const lines = ['Move split instructions (request only; inventory was not changed):'].concat(entries.map(function(entry) {
+    return [entry.location, entry.lot, entry.direction + ' ' + entry.quantity + ' to ' + entry.destinationSeason,
+      entry.applyHold ? 'Place on Hold requested' + (entry.holdReason ? ': ' + entry.holdReason : '') : ''].filter(Boolean).join(' / ');
+  }));
+  const summaries = getReclassInquirySplitMoveSummaries_(model);
+  if (summaries.length) {
+    lines.push('Requested totals by source row:');
+    summaries.forEach(function(group) {
+      const directionText = group.directions.map(function(direction) {
+        return direction.direction + ' total requested: ' + String(direction.total);
+      }).join(' / ');
+      lines.push([group.location, group.lot, directionText, 'UP + DOWN total requested: ' + String(group.combinedTotal)].filter(Boolean).join(' / '));
+    });
+  }
+  return lines.join('\n');
+}
+
+function buildReclassInquirySplitMoveHtml_(model) {
+  const entries = getReclassInquirySplitMoveEntries_(model);
+  if (!entries.length) return '';
+  const esc = escapeEmailHtml_;
+  const summaries = getReclassInquirySplitMoveSummaries_(model);
+  const summaryHtml = summaries.length ? '<p><strong>Requested totals by source row</strong><br>' + summaries.map(function(group) {
+    const directionText = group.directions.map(function(direction) { return direction.direction + ' total requested: ' + String(direction.total); }).join(' · ');
+    return esc(group.location) + ' / ' + esc(group.lot) + ' — ' + esc(directionText) + ' · UP + DOWN total requested: ' + esc(String(group.combinedTotal));
+  }).join('<br>') + '</p>' : '';
+  return '<section style="margin:14px 0;padding:12px;border:1px solid #94a3b8;border-radius:8px;overflow-wrap:anywhere;"><strong>Move split instructions (request only; inventory was not changed)</strong>' + summaryHtml + '<ul>'
+    + entries.map(function(entry) {
+      return '<li>' + esc(entry.location) + ' / ' + esc(entry.lot) + ' — ' + esc(entry.direction + ' ' + entry.quantity + ' to ' + entry.destinationSeason)
+        + (entry.applyHold ? ' — Place on Hold requested' + (entry.holdReason ? ': ' + esc(entry.holdReason) : '') : '') + '</li>';
+    }).join('') + '</ul></section>';
 }
 
 function sortReclassInquiryCompactRows_(rows) {
@@ -13300,11 +14791,21 @@ function formatReclassInquiryScopeNote_(scope) {
 function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const safeModel = model || {};
   const esc = escapeEmailHtml_;
-  const editSummary = safeModel.editSummary || {};
-  const actionLabel = String(firstNonEmptyRequestValue_(safeModel.requestActionLabel, getReclassInquiryActionLabel_(safeModel.requestAction), 'Reclass Item Inquiry'));
-  const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions);
+  const pageHeaderText = (safeModel.isSyntheticPilot ? 'TEST PILOT - SYNTHETIC DATA ONLY | ' : '') + 'GNC PH Reclass Item Inquiry';
+  const holdColumns = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
+    .some(function(field) { return field.key === 'holdstopcode'; });
+  const compactWidths = holdColumns
+    ? { lotcode: '.50in', locationcode: '.60in', source: '.35in', priority: '.45in', ptronhand: '.50in', ptrreviewed: '.40in', locationnotedate: '.85in', locationptn1: '.65in', holdstopcode: '.35in', holdstopreason: '.70in', desigitem: '.50in', desigcust: '.50in', desigloc: '.50in', pullerresponsibility: '.45in', oversellpercentage: '.35in', salesnote: '.75in', suspend: '.32in' }
+    : { lotcode: '.55in', locationcode: '.65in', source: '.40in', priority: '.55in', ptronhand: '.70in', ptrreviewed: '.55in', locationnotedate: '.85in', locationptn1: '.85in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.50in', oversellpercentage: '.35in', salesnote: '.95in', suspend: '.35in' };
+  const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
+    .map(function(field) { return Object.assign({}, field, { width: compactWidths[field.key] || '' }); });
+  [
+    ['desigitem', 'Desig Item'], ['desigcust', 'Desig Cust'], ['desigloc', 'Desig Loc'],
+    ['pullerresponsibility', 'Pull'], ['oversellpercentage', 'OS%'], ['salesnote', 'Sales Note'], ['suspend', 'SUS']
+  ].forEach(function(field) { compactFields.push({ key: field[0], label: field[1], width: compactWidths[field[0]] || '' }); });
   const identityChangedFields = Array.isArray(safeModel.identityChangedFields) ? safeModel.identityChangedFields : [];
-  const scopeNote = formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
+  const scopeNote = String(safeModel.liveEditSummary && safeModel.liveEditSummary.scopeNote || '')
+    || formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
     if (field.key === 'holdstopcode') {
       const identityWasEdited = identityChangedFields.indexOf('holdstopcode') !== -1 || identityChangedFields.indexOf('holdstopreason') !== -1;
@@ -13330,7 +14831,10 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const sortedRows = sortReclassInquiryCompactRows_(safeModel.rows);
   const rowBody = sortedRows.map(function(row) {
     const changedFields = Array.isArray(row && row.changedFields) ? row.changedFields : [];
-    return '<tr>' + compactFields.map(function(field) {
+    return '<tr data-location-row="true">' + compactFields.map(function(field) {
+      if (['desigitem', 'desigcust', 'desigloc', 'pullerresponsibility', 'oversellpercentage', 'salesnote', 'suspend'].indexOf(field.key) !== -1) {
+        return '<td>' + buildReclassInquiryInventoryFieldHtml_(row, field.key) + '</td>';
+      }
       const edited = changedFields.indexOf(field.key) !== -1;
       const sourceValues = field.source === 'actionValues' ? row && row.actionValues : row && row.values;
       let rawValue = sourceValues && Object.prototype.hasOwnProperty.call(sourceValues, field.key) ? sourceValues[field.key] : '';
@@ -13340,15 +14844,38 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       if (field.key === 'ptronhand') {
         const actionValues = row && row.actionValues && typeof row.actionValues === 'object' ? row.actionValues : {};
         const movementLines = [];
-        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('UP ' + String(actionValues.moveupquantity).trim() + ' TO ' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
-        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_('DOWN ' + String(actionValues.movedownquantity).trim() + ' TO ' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        const v4MovementDetails = [];
+        [['moveup', 'UP'], ['movedown', 'DOWN']].forEach(function(pair) {
+          const prefix = pair[0];
+          const splits = Array.isArray(actionValues[prefix + 'splits']) ? actionValues[prefix + 'splits'] : [];
+          splits.forEach(function(split) {
+            v4MovementDetails.push(buildReclassInquiryProposalBoxHtml_(String(split && split.quantity != null ? split.quantity : '')
+              + '-->' + String(split && split.destinationSeason || '').toUpperCase(), 'proposal-box-movement'));
+          });
+          if (splits.length && actionValues[prefix + 'applyhold'] === true) {
+            const reason = String(actionValues[prefix + 'holdreason'] || '').trim();
+            movementLines.push(buildReclassInquiryProposalBoxHtml_('Place on Hold requested' + (reason ? ': ' + reason : ''), 'proposal-box-movement'));
+          }
+        });
+        movementLines.push.apply(movementLines, v4MovementDetails);
+        if (String(actionValues.moveupquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.moveupquantity).trim() + '-->' + String(actionValues.moveupseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (String(actionValues.movedownquantity || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.movedownquantity).trim() + '-->' + String(actionValues.movedownseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+        if (String(actionValues.shearedproposeddesigitem || '').trim()) movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.shearedproposeddesigitem).trim(), 'proposal-box-movement'));
         if (!movementLines.length && String(actionValues.movequantity || '').trim()) {
-          const direction = String(safeModel.requestAction || '').trim().toLowerCase() === 'move_down' ? 'DOWN' : 'UP';
-          movementLines.push(buildReclassInquiryProposalBoxHtml_(direction + ' ' + String(actionValues.movequantity).trim() + ' TO ' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
+          movementLines.push(buildReclassInquiryProposalBoxHtml_(String(actionValues.movequantity).trim() + '-->' + String(actionValues.destinationseason || '').trim().toUpperCase(), 'proposal-box-movement'));
         }
         return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
       }
-      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + '</td>';
+      let stampHtml = '';
+      if (field.key === 'priority' && row && row.v7ReportStamps) {
+        const stamps = row.v7ReportStamps;
+        const stampParts = [];
+        if (stamps.prisetby) stampParts.push('By ' + String(stamps.prisetby));
+        if (stamps.evaldate) stampParts.push('Eval ' + String(stamps.evaldate));
+        if (stamps.priupdated) stampParts.push('Updated ' + String(stamps.priupdated));
+        if (stampParts.length) stampHtml = '<small class="row-stamps">' + esc(stampParts.join(' | ')) + '</small>';
+      }
+      return '<td' + (edited ? ' class="edited-cell" data-edited="true"' : '') + '>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;')) + stampHtml + '</td>';
     }).join('') + '</tr>';
   }).join('');
   const compactFieldKeys = new Set(compactFields.map(function(field) { return field.key; }));
@@ -13373,9 +14900,15 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
         return '<tr><td>' + esc(change.locationcode) + '</td><td>' + esc(change.lotcode) + '</td><td>' + esc(change.label) + '</td><td class="edited-cell" data-edited="true">' + buildReclassInquiryProposalBoxHtml_(change.value) + '</td></tr>';
       }).join('') + '</tbody></table>'
     : '';
-  const pilotBanner = safeModel.isSyntheticPilot
-    ? '<div class="pilot-banner">TEST PILOT - SYNTHETIC DATA ONLY</div>'
-    : '';
+  const liveEditSummary = safeModel.liveEditSummary && typeof safeModel.liveEditSummary === 'object' ? safeModel.liveEditSummary : null;
+  const hasConfirmedV7Changes = Number(safeModel.v7ChangedFieldCount) > 0 || !!(liveEditSummary && Number(liveEditSummary.rowCount) > 0);
+  const proposalLegend = safeModel.isV7
+    ? (hasConfirmedV7Changes
+      ? 'Confirmed editable inventory fields and priority / Hold / Stop values were applied to inventory. Yellow, boxed quantity and season movement values are inquiry proposals; inventory quantities were not changed.'
+      : 'Yellow, boxed quantity and season movement values are inquiry proposals. No live inventory fields were changed.')
+    : (liveEditSummary && Number(liveEditSummary.rowCount) > 0
+    ? 'Confirmed priority / Hold / Stop values were applied to inventory. Yellow, boxed movement values are inquiry proposals; inventory quantities were not changed.'
+    : 'Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.');
   const evidenceRows = Array.isArray(safeModel.evaluationResultsRows)
     ? safeModel.evaluationResultsRows
     : (safeModel.evaluationResults && typeof safeModel.evaluationResults === 'object' ? [safeModel.evaluationResults] : []);
@@ -13396,9 +14929,10 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
       }).join('')
     : '';
   return '<!doctype html><html><head><meta charset="utf-8"><style>' +
-    '@page{size:Letter landscape;margin:.34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:8pt;line-height:1.22}h1{margin:0 0 3px;font-size:15pt}.pilot-banner{margin:0 0 5px;padding:4px 8px;border:2px solid #000;background:#fee2e2;color:#000;font-size:8pt;font-weight:700;text-align:center;letter-spacing:.08em}.meta{margin-bottom:5px}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px}.original-oh{display:block;font-size:8pt}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:3px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:7pt;text-align:left}td{font-size:8pt;white-space:pre-line}.edited-cell{background:#fff176!important}' +
-    '</style></head><body>' + pilotBanner + '<h1>GNC PH Reclass Item Inquiry</h1><div class="meta"><strong>Request:</strong> ' + esc(actionLabel) + ' &nbsp; <strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + ' &nbsp; <strong>Edited:</strong> ' + esc(editSummary.fieldCount || 0) + ' field(s) across ' + esc(editSummary.rowCount || 0) + ' row(s)</div><div class="proposal-legend"><span>Yellow, boxed values are requested changes and remain visible on black-and-white printers. Report only; no inventory was changed.</span></div>' +
-    '<div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr>' + rowHead + '</tr></thead><tbody>' + rowBody + '</tbody></table>' + supplementalTemporaryHtml + '</body></html>';
+    '@page{size:Letter landscape;margin:.16in .34in .34in}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;background:#fff;color:#000;font-family:Arial,Helvetica,sans-serif;font-size:7pt;line-height:1.15}.page-title-cell{padding:0;border:0}.page-header{padding:3px 8px;border:2px solid #000;background:#fff176;color:#000;font:800 10pt Arial,Helvetica,sans-serif;text-align:center}.report-summary-cell{padding:3px 0;border:0}.report-summary-row{break-inside:auto;page-break-inside:auto}.meta{margin:0 0 5px;font-size:8pt}.proposal-legend{display:flex;align-items:center;gap:6px;margin:0 0 6px;padding:4px 6px;border:2px solid #000;background:#fff;font-size:7pt;font-weight:700}.proposal-swatch{display:inline-block;padding:2px 5px;border:2px solid #000;background:#fff176;color:#000;font-weight:800}.identity{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #000}.evaluation-origin{margin:0 0 6px;break-inside:avoid}.evaluation-origin h3{margin:0;padding:3px 5px;border:1px solid #000;border-bottom:0;background:#e5e7eb;font-size:7.5pt}.evaluation-results{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #000}.identity-cell,.evaluation-cell{min-height:29px;padding:3px 4px;border-right:1px solid #000;border-bottom:1px solid #000;overflow-wrap:anywhere}.identity-cell:nth-child(3n),.evaluation-cell:nth-child(4n){border-right:0}.identity-cell:nth-last-child(-n+3),.evaluation-cell:nth-last-child(-n+4){border-bottom:0}.identity-cell>span,.evaluation-cell>span{display:block;font-size:7pt;text-transform:uppercase}.identity-cell>strong,.evaluation-cell>strong{display:block;font-size:8pt}.identity-sub-label{margin-top:2px}.scope-note{display:block;margin-top:3px;padding-top:2px;border-top:1px solid #000;font-size:6.5pt;font-weight:700}.proposal-box{display:block;margin:1px 0;padding:2px 3px;border:2px solid #000;background:#fff176!important;color:#000!important;font-weight:800;box-shadow:inset 0 0 0 1px #000;white-space:normal}.proposal-box .proposal-label{display:block;font-size:5.8pt;line-height:1;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}.proposal-box strong{display:block;font-size:7.5pt;color:#000}.proposal-box-identity{margin-top:1px}.proposal-box-identity .identity-sub-label{display:block;margin-top:2px;font-size:5.8pt;text-transform:uppercase}.proposal-box-movement{margin-top:2px;break-inside:avoid;page-break-inside:avoid}.original-oh{display:block;font-size:7pt}.row-stamps{display:block;margin-top:2px;font-size:5.5pt;line-height:1.1;overflow-wrap:anywhere}.inventory-field-value{overflow-wrap:anywhere;word-break:break-word}.evaluation-photos{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}.evaluation-photos img{width:1.15in;height:.78in;object-fit:cover;border:1px solid #000}.section-title{margin:8px 0 3px;font-size:9pt;font-weight:700;text-transform:uppercase}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid}th,td{border:1px solid #000;padding:2px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}th{background:#e5e7eb;font-size:6.5pt;text-align:left}td{font-size:6.5pt;white-space:pre-line}.edited-cell{background:#fff176!important}.inventory-field-value s{color:#333}' +
+    '</style></head><body><table class="location-table"><colgroup>' + columnWidths + '</colgroup><thead><tr class="page-title-row"><th class="page-title-cell" colspan="' + compactFields.length + '"><div class="page-header">' + esc(pageHeaderText) + '</div></th></tr><tr class="column-heading-row">' + rowHead + '</tr></thead><tbody>' +
+    '<tr class="report-summary-row"><td class="report-summary-cell" colspan="' + compactFields.length + '"><div class="meta"><strong>Submitted:</strong> ' + esc(safeModel.submittedAt || '') + ' &nbsp; <strong>By:</strong> ' + esc(safeModel.actorDisplay || '') + '</div><div class="proposal-legend"><span>' + esc(proposalLegend) + '</span></div><div class="identity">' + identityCells + '</div>' + evidenceHtml + '<div class="section-title">Location / Lot Item Inquiry</div></td></tr>' +
+    rowBody + (supplementalTemporaryHtml ? '<tr class="supplemental-temporary-row"><td colspan="' + compactFields.length + '">' + supplementalTemporaryHtml + '</td></tr>' : '') + '</tbody></table></body></html>';
 }
 
 function getReclassInquiryCompactPilotRows_() {
@@ -13622,7 +15156,7 @@ function enqueueReclassInquiryEmail_(payload) {
     return { ok: false, status: 'unauthorized', message: 'Refresh the app and sign in before sending this Drive Mode inquiry.' };
   }
   const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
-  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
+  if (policyVersion !== RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ && policyVersion !== RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_) {
     return { ok: false, status: 'conflict', message: 'The Reclass workflow was updated. Refresh the app and review the current rows.' };
   }
   const recipients = getReclassInquiryEmailRecipients_(safePayload);
@@ -13658,19 +15192,36 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
     const source = safePayload.source && typeof safePayload.source === 'object' ? safePayload.source : {};
     const sourceUid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(source.unique_id, source.uniqueId));
     if (!sourceUid) throw new Error('RECLASS_VALIDATION:SOURCE_ID_REQUIRED');
-    const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+    const now = new Date();
+    const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
+    const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
+    const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
+    const rawProtected = safePayload.protectedDelivery && typeof safePayload.protectedDelivery === 'object' ? safePayload.protectedDelivery : {};
+    const isManagerV2 = String(transaction.seasonPriority && transaction.seasonPriority.contractVersion || '') === 'manager-season-priority-v2'
+      && String(rawProtected.liveEditVersion || '') === 'manager-season-priority-v2';
+    const isV7 = policyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_;
+    const isV6 = policyVersion === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_ || isManagerV2;
+    const v7Delivery = isV7
+      ? getProtectedInventoryFieldDeliveryV7_(safePayload, sourceUid, transaction, safePayload.rowOverlays, [])
+      : null;
+    const liveEditDelivery = isV7
+      ? v7Delivery.liveDelivery
+      : (isV6
+      ? getProtectedLiveEditDelivery_(safePayload, sourceUid, transaction, safePayload.rowOverlays, [])
+      : null);
+    const sourceRow = liveEditDelivery ? liveEditDelivery.rowsByUid.get(sourceUid) : fetchEmailApprovalMasterRow_(sourceUid);
     if (!sourceRow) throw new Error('RECLASS_CONFLICT:SOURCE_ROW_MISSING');
     try {
       validateInventoryTransactionSourceIdentity_(sourceRow, source);
     } catch (identityError) {
       throw new Error('RECLASS_CONFLICT:SOURCE_ROW_CHANGED');
     }
-    const authoritativeRows = fetchReclassInquiryItemRows_(sourceRow);
-    const now = new Date();
-    const transaction = safePayload.transaction && typeof safePayload.transaction === 'object' ? safePayload.transaction : {};
-    const requestAction = String(firstNonEmptyRequestValue_(transaction.requestAction, transaction.request_action, '') || '').trim().toLowerCase();
-    const policyVersion = normalizeInventoryTransactionText_(safePayload.workflowPolicyVersion);
-    const isV3 = RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_;
+    const authoritativeRows = v7Delivery
+      ? v7Delivery.rows
+      : (liveEditDelivery ? liveEditDelivery.rows : fetchReclassInquiryItemRows_(sourceRow));
+    const isV5 = (RECLASS_ACTION_WORKFLOW_V5_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_) || isV7;
+    const isV4 = RECLASS_ACTION_WORKFLOW_V4_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_;
+    const isV3 = (RECLASS_ACTION_WORKFLOW_V3_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_) || isV4 || isV5 || isV6 || isV7;
     const isV2 = RECLASS_ACTION_WORKFLOW_V2_ENABLED_ && policyVersion === RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
     if (!isV3 && !isV2) {
       throw new Error('RECLASS_CONFLICT:WORKFLOW_POLICY_CHANGED');
@@ -13680,27 +15231,34 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
         throw new Error('RECLASS_VALIDATION:ACTION_REQUIRED');
       }
     }
-    const authoritativeScope = isV3 && hasReclassInquiryHoldProposalV3_(transaction, safePayload.rowOverlays)
+    const authoritativeScope = isV3 && !isV6 && !isV7 && hasReclassInquiryHoldProposalV3_(transaction, safePayload.rowOverlays)
       ? fetchReclassInquiryScopeSettingsV3_()
       : null;
     const allowLocationDetailOnly = isV3 && hasReclassInquiryLocationDetailProposalV3_(safePayload.rowOverlays);
     let overlayResult;
     try {
-      overlayResult = isV3
-        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now })
-        : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays);
+      overlayResult = isV7
+        ? { ok: true, rows: buildProtectedInventoryFieldReportRowsV7_(transaction, authoritativeRows, safePayload.rowOverlays, v7Delivery, { now: now }) }
+        : (isV6
+        ? { ok: true, rows: buildProtectedLiveEditReportRows_(transaction, authoritativeRows, safePayload.rowOverlays, liveEditDelivery, { now: now }) }
+        : (isV3
+        ? buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, safePayload.rowOverlays, authoritativeScope, { allowEmptyActions: allowLocationDetailOnly, now: now, policyVersion: isV5 ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '') })
+        : buildReclassInquiryActionRowsV2_(requestAction, authoritativeRows, safePayload.rowOverlays)));
     } catch (validationError) {
       throw new Error('RECLASS_VALIDATION:' + String(validationError && validationError.message || 'PROPOSAL_INVALID'));
     }
     if (!overlayResult.ok) throw new Error('RECLASS_CONFLICT:' + String(overlayResult.message || 'ROW_IDENTITY_CHANGED'));
-    if (isV3 && !overlayResult.requestActions.length && !hasReclassInquiryLocationDetailChangeV3_(overlayResult.rows)) {
+    if (isV3 && !isV6 && !isV7 && !overlayResult.requestActions.length && !hasReclassInquiryLocationDetailChangeV3_(overlayResult.rows)) {
       throw new Error('RECLASS_VALIDATION:LOCATION_DETAIL_CHANGE_REQUIRED');
     }
-    const reportPayload = isV3 ? Object.assign({}, safePayload, {
+    const liveEditSummary = liveEditDelivery && liveEditDelivery.edits.length
+      ? buildProtectedLiveEditSummary_(liveEditDelivery, transaction) : null;
+    const reportPayload = isV3 ? Object.assign({}, safePayload, liveEditSummary ? { liveEditSummary: liveEditSummary } : {}, {
+      ...(isV7 ? { v7InventoryFields: v7Delivery.inventoryFields, v7ReportStamps: v7Delivery.reportStamps } : {}),
       transaction: Object.assign({}, transaction, {
-        requestActions: overlayResult.requestActions,
-        holdStopProposals: overlayResult.holdStopProposals || [],
-        scope: overlayResult.scope || {}
+        requestActions: isV6 || isV7 ? (Array.isArray(transaction.requestActions) ? transaction.requestActions : []) : overlayResult.requestActions,
+        holdStopProposals: isV6 || isV7 ? (Array.isArray(transaction.holdStopProposals) ? transaction.holdStopProposals : []) : (overlayResult.holdStopProposals || []),
+        scope: isV6 || isV7 ? {} : (overlayResult.scope || {})
       })
     }) : safePayload;
     const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, overlayResult.rows, reportPayload, now);
@@ -13735,8 +15293,12 @@ function deliverReclassInquiryPayload_(payload, messageIdHeader, frozenRecipient
       });
       result.subject = subject;
       result.submittedAt = now.toISOString();
-      result.policyVersion = isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_;
-      result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. Requested changes are highlighted yellow; no inventory data was changed.';
+      result.policyVersion = isV7 ? RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_ : (isV6 ? (isManagerV2 ? 'manager-season-priority-v2' : RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_)
+        : (isV5 ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4 ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : (isV3 ? RECLASS_ACTION_WORKFLOW_V3_POLICY_VERSION_ : RECLASS_ACTION_WORKFLOW_V2_POLICY_VERSION_))));
+      const hasConfirmedEdits = !!liveEditSummary || (isV7 && v7Delivery.inventoryFields.some(function(entry) { return entry.changedFields.length > 0; }));
+      result.message = model.requestActionLabel + ' Item Inquiry PDF delivered. ' + (hasConfirmedEdits
+        ? (isV7 ? 'Confirmed editable inventory fields and priority / Hold / Stop updates are live; requested movement effects remain inquiry-only.' : 'Confirmed priority / Hold / Stop edits are live; requested movement effects remain inquiry-only.')
+        : 'Requested changes are highlighted yellow; no inventory data was changed.');
       return result;
     } catch (emailError) {
       if (/^RECLASS_/.test(String(emailError && emailError.message || ''))) throw emailError;
@@ -15721,13 +17283,98 @@ function base64UrlEncode_(value) {
   return Utilities.base64EncodeWebSafe(value, Utilities.Charset.UTF_8);
 }
 
+function repairDisplayUtf8Mojibake_(value) {
+  let current = String(value == null ? '' : value);
+  const cp1252 = { 0x20ac:128, 0x201a:130, 0x192:131, 0x201e:132, 0x2026:133, 0x2020:134, 0x2021:135, 0x2c6:136, 0x2030:137, 0x160:138, 0x2039:139, 0x152:140, 0x17d:142, 0x2018:145, 0x2019:146, 0x201c:147, 0x201d:148, 0x2022:149, 0x2013:150, 0x2014:151, 0x2dc:152, 0x2122:153, 0x161:154, 0x203a:155, 0x153:156, 0x17e:158, 0x178:159 };
+  function toByte(character) {
+    const code = character.charCodeAt(0);
+    if (code <= 0x7f || (code >= 0xa0 && code <= 0xff)) return code;
+    return Object.prototype.hasOwnProperty.call(cp1252, code) ? cp1252[code] : -1;
+  }
+  function decodeCandidate(text) {
+    const bytes = [];
+    for (const character of text) {
+      const byte = toByte(character);
+      if (byte < 0) return '';
+      bytes.push(byte);
+    }
+    try {
+      const decoded = Utilities.newBlob(bytes).getDataAsString('UTF-8');
+      const encoded = Utilities.newBlob(decoded).getBytes();
+      if (encoded.length !== bytes.length) return '';
+      for (let index = 0; index < bytes.length; index++) {
+        if ((encoded[index] & 255) !== bytes[index]) return '';
+      }
+      return decoded;
+    } catch (error) {
+      return '';
+    }
+  }
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    const markersBefore = (current.match(/[ÃÂâðÐ]/g) || []).length;
+    const output = [];
+    for (let index = 0; index < current.length;) {
+      if (!/[ÃÂâðÐ]/.test(current.charAt(index))) {
+        output.push(current.charAt(index++));
+        continue;
+      }
+      const firstByte = toByte(current.charAt(index));
+      const sequenceLength = firstByte >= 0xc2 && firstByte <= 0xdf ? 2
+        : (firstByte >= 0xe0 && firstByte <= 0xef ? 3
+          : (firstByte >= 0xf0 && firstByte <= 0xf4 ? 4 : 0));
+      const end = index + sequenceLength;
+      const candidate = sequenceLength && end <= current.length ? current.slice(index, end) : '';
+      const decoded = decodeCandidate(candidate);
+      if (decoded && decoded !== candidate) {
+        output.push(decoded);
+        changed = true;
+        index = end;
+      } else {
+        output.push(current.charAt(index));
+        index++;
+      }
+    }
+    const next = output.join('');
+    const markersAfter = (next.match(/[ÃÂâðÐ]/g) || []).length;
+    if (!changed || markersAfter >= markersBefore) break;
+    current = next;
+  }
+  return current;
+}
+
+function encodeMimeHeaderWord_(value) {
+  const text = String(value == null ? '' : value);
+  if (!/[\u0080-\uFFFF]/.test(text)) return text;
+  const words = [];
+  let chunk = '';
+  for (const character of text) {
+    const candidate = chunk + character;
+    const bytes = Utilities.newBlob(candidate).getBytes();
+    if (chunk && bytes.length > 42) {
+      words.push('=?UTF-8?B?' + Utilities.base64Encode(Utilities.newBlob(chunk).getBytes()) + '?=');
+      chunk = character;
+    } else {
+      chunk = candidate;
+    }
+  }
+  if (chunk) words.push('=?UTF-8?B?' + Utilities.base64Encode(Utilities.newBlob(chunk).getBytes()) + '?=');
+  return words.join('\r\n ');
+}
+
+function encodeMimeBody_(value) {
+  return Utilities.base64Encode(Utilities.newBlob(String(value == null ? '' : value)).getBytes()).replace(/(.{76})/g, '$1\r\n');
+}
+
 function formatMimeMailbox_(displayName, email) {
   const safeEmail = String(email || '').trim();
   const safeName = String(displayName || '').trim();
+  if (/[\r\n]/.test(safeEmail) || /[\r\n]/.test(safeName)) throw new Error('EMAIL_HEADER_INVALID');
   if (safeName && safeEmail) {
+    if (/[\u0080-\uFFFF]/.test(safeName)) return encodeMimeHeaderWord_(safeName) + ' <' + safeEmail + '>';
     return '"' + safeName.replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '" <' + safeEmail + '>';
   }
-  return safeEmail || safeName;
+  return safeEmail || encodeMimeHeaderWord_(safeName);
 }
 
 function resolveAutomatedEmailSenderAddress_() {
@@ -15749,6 +17396,9 @@ function buildMimeEmail_(options) {
   const alternativeBoundary = 'gnc_alt_' + Utilities.getUuid().replace(/-/g, '');
   const mixedBoundary = 'gnc_mix_' + Utilities.getUuid().replace(/-/g, '');
   const attachments = Array.isArray(options.attachments) ? options.attachments.filter(Boolean) : [];
+  ['toList', 'ccList', 'bccList', 'messageIdHeader', 'inReplyTo', 'references'].forEach(function(key) {
+    if (/[\r\n]/.test(String(options[key] || ''))) throw new Error('EMAIL_HEADER_INVALID');
+  });
   const lines = [
     'MIME-Version: 1.0',
     'To: ' + String(options.toList || '')
@@ -15757,9 +17407,16 @@ function buildMimeEmail_(options) {
   if (options.ccList) lines.push('Cc: ' + String(options.ccList));
   if (options.bccList) lines.push('Bcc: ' + String(options.bccList));
   if (fromHeader) lines.push('From: ' + fromHeader);
+  if (options.replyTo) {
+    const replyTo = String(options.replyTo).trim();
+    if (!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(replyTo)) throw new Error('EMAIL_REPLY_TO_INVALID');
+    lines.push('Reply-To: ' + replyTo);
+  }
   const messageIdHeader = String(options.messageIdHeader || '').trim();
   if (messageIdHeader) lines.push('Message-ID: ' + messageIdHeader);
-  lines.push('Subject: ' + String(options.subject || ''));
+  const subject = String(options.subject || '');
+  if (/[\r\n]/.test(subject)) throw new Error('EMAIL_HEADER_INVALID');
+  lines.push('Subject: ' + encodeMimeHeaderWord_(subject));
   lines.push('Content-Type: ' + (attachments.length
     ? 'multipart/mixed; boundary="' + mixedBoundary + '"'
     : 'multipart/alternative; boundary="' + alternativeBoundary + '"'));
@@ -15777,13 +17434,15 @@ function buildMimeEmail_(options) {
   }
   lines.push('--' + alternativeBoundary);
   lines.push('Content-Type: text/plain; charset=UTF-8');
+  lines.push('Content-Transfer-Encoding: base64');
   lines.push('');
-  lines.push(String(options.textBody || ''));
+  lines.push(encodeMimeBody_(options.textBody || ''));
   lines.push('');
   lines.push('--' + alternativeBoundary);
   lines.push('Content-Type: text/html; charset=UTF-8');
+  lines.push('Content-Transfer-Encoding: base64');
   lines.push('');
-  lines.push(String(options.htmlBody || ''));
+  lines.push(encodeMimeBody_(options.htmlBody || ''));
   lines.push('');
   lines.push('--' + alternativeBoundary + '--');
 
@@ -16506,14 +18165,30 @@ function buildEvalWorkReportModel_(eventPayload) {
   const contractVersion = String(payload.contractVersion || 'eval-work-v1');
   const selectedOrigins = contractVersion === 'eval-work-v2-multi-origin' && Array.isArray(payload.origins)
     ? payload.origins.filter(Boolean) : [];
-  const sourceRow = fetchEmailApprovalMasterRow_(sourceUid);
+  const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
+  const inquiryPolicyVersion = normalizeInventoryTransactionText_(inquiry.workflowPolicyVersion);
+  const isV7Inquiry = String(payload.deliveryKind || '') === 'completion'
+    && inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION_;
+  const isV6Inquiry = String(payload.deliveryKind || '') === 'completion'
+    && inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION_;
+  const v7Delivery = isV7Inquiry
+    ? getProtectedInventoryFieldDeliveryV7_(payload, sourceUid, transaction, inquiry.rowOverlays, selectedOrigins)
+    : null;
+  const liveEditDelivery = isV7Inquiry
+    ? v7Delivery.liveDelivery
+    : (isV6Inquiry
+      ? getProtectedLiveEditDelivery_(payload, sourceUid, transaction, inquiry.rowOverlays, selectedOrigins)
+      : null);
+  const sourceRow = liveEditDelivery ? liveEditDelivery.rowsByUid.get(sourceUid) : fetchEmailApprovalMasterRow_(sourceUid);
   if (!sourceRow) throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_MISSING');
   try {
     validateInventoryTransactionSourceIdentity_(sourceRow, source);
   } catch (error) {
     throw new Error('EVAL_WORK_CONFLICT:SOURCE_ROW_CHANGED');
   }
-  const allCurrentItemRows = fetchReclassInquiryItemRows_(sourceRow);
+  const allCurrentItemRows = v7Delivery
+    ? v7Delivery.rows
+    : (liveEditDelivery ? liveEditDelivery.rows : fetchReclassInquiryItemRows_(sourceRow));
   if (String(payload.scopeContract || '') === 'itemcode-all-rows-v1') {
     const expectedCount = Math.max(0, Number(payload.membershipCount) || 0);
     const selectedIds = selectedOrigins.map(function(originInput) {
@@ -16529,7 +18204,7 @@ function buildEvalWorkReportModel_(eventPayload) {
   }
   const authoritativeRows = selectedOrigins.length ? selectedOrigins.map(function(originInput) {
     const uid = normalizeInventoryTransactionText_(firstNonEmptyRequestValue_(originInput.unique_id, originInput.uniqueId));
-    const current = uid ? fetchEmailApprovalMasterRow_(uid) : null;
+    const current = uid ? (v7Delivery ? v7Delivery.rowsByUid.get(uid) : (liveEditDelivery ? liveEditDelivery.rowsByUid.get(uid) : fetchEmailApprovalMasterRow_(uid))) : null;
     if (!current) throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_MISSING');
     try { validateInventoryTransactionSourceIdentity_(current, originInput); }
     catch (error) { throw new Error('EVAL_WORK_CONFLICT:ORIGIN_ROW_CHANGED'); }
@@ -16540,7 +18215,8 @@ function buildEvalWorkReportModel_(eventPayload) {
     }
     return current;
   }) : allCurrentItemRows;
-  const transaction = inquiry.transaction && typeof inquiry.transaction === 'object' ? inquiry.transaction : {};
+  const isV5Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ || isV6Inquiry || isV7Inquiry;
+  const isV4Inquiry = inquiryPolicyVersion === RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ || isV5Inquiry;
   const requestActions = Array.isArray(transaction.requestActions)
     ? transaction.requestActions.map(function(value) { return String(value || '').trim().toLowerCase(); }).filter(Boolean)
     : [];
@@ -16551,10 +18227,29 @@ function buildEvalWorkReportModel_(eventPayload) {
   let proposalResult = null;
   if (requestActions.length || hasTemporaryChanges || hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)) {
     try {
-      const authoritativeScope = hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)
+      const authoritativeScope = !isV6Inquiry && !isV7Inquiry && hasReclassInquiryHoldProposalV3_(transaction, inquiry.rowOverlays)
         ? fetchReclassInquiryScopeSettingsV3_()
         : null;
-      proposalResult = buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, { allowEmptyActions: true });
+      proposalResult = isV7Inquiry
+        ? {
+            ok: true,
+            rows: buildProtectedInventoryFieldReportRowsV7_(transaction, authoritativeRows, inquiry.rowOverlays, v7Delivery, { now: new Date() }),
+            requestActions: Array.isArray(transaction.requestActions) ? transaction.requestActions.filter(function(action) { return String(action || '').trim().toLowerCase() !== 'inventory_fields'; }) : [],
+            holdStopProposals: Array.isArray(transaction.holdStopProposals) ? transaction.holdStopProposals : [],
+            scope: {}
+          }
+        : (isV6Inquiry
+        ? {
+            ok: true,
+            rows: buildProtectedLiveEditReportRows_(transaction, authoritativeRows, inquiry.rowOverlays, liveEditDelivery, { now: new Date() }),
+            requestActions: Array.isArray(transaction.requestActions) ? transaction.requestActions : [],
+            holdStopProposals: Array.isArray(transaction.holdStopProposals) ? transaction.holdStopProposals : [],
+            scope: {}
+          }
+        : buildReclassInquiryActionRowsV3_(transaction, authoritativeRows, inquiry.rowOverlays, authoritativeScope, {
+          allowEmptyActions: true,
+          policyVersion: isV5Inquiry ? RECLASS_ACTION_WORKFLOW_V5_POLICY_VERSION_ : (isV4Inquiry ? RECLASS_ACTION_WORKFLOW_V4_POLICY_VERSION_ : '')
+        }));
     } catch (error) {
       throw new Error('EVAL_WORK_VALIDATION:' + String(error && error.message || 'PROPOSAL_INVALID'));
     }
@@ -16579,7 +18274,12 @@ function buildEvalWorkReportModel_(eventPayload) {
   const actorDisplay = String(payload.deliveryKind || '') === 'completion'
     ? firstNonEmptyRequestValue_(payload.assigneeDisplay, payload.assigneeUsername, 'Evaluator')
     : firstNonEmptyRequestValue_(payload.creatorDisplay, payload.creatorUsername, 'Eval Work Manager');
-  const reportPayload = Object.assign({}, inquiry, {
+  const liveEditSummary = liveEditDelivery && liveEditDelivery.edits.length
+    ? buildProtectedLiveEditSummary_(liveEditDelivery, transaction) : null;
+  const reportPayload = Object.assign({}, inquiry, isV7Inquiry ? {
+    v7InventoryFields: v7Delivery.inventoryFields,
+    v7ReportStamps: v7Delivery.reportStamps
+  } : {}, liveEditSummary ? { liveEditSummary: liveEditSummary } : {}, {
     source: source,
     actor: { display: actorDisplay, username: firstNonEmptyRequestValue_(payload.assigneeUsername, payload.creatorUsername, '') },
     transaction: Object.assign({ requestActions: [], holdStopProposals: [], scope: {} }, transaction, proposalResult ? {
@@ -16589,7 +18289,12 @@ function buildEvalWorkReportModel_(eventPayload) {
     } : {})
   });
   const model = buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRows, reportPayload, new Date());
-  model.requestActionLabel = requestActions.length ? getReclassInquiryActionsLabelV3_(requestActions) : 'Evidence Review';
+  const visibleRequestActions = requestActions.filter(function(action) { return action !== 'inventory_fields'; });
+  model.requestActionLabel = isV7Inquiry && v7Delivery.inventoryFields.some(function(entry) { return entry.changedFields.length; })
+    ? (visibleRequestActions.length ? getReclassInquiryActionsLabelV5_(visibleRequestActions) + ' + Inventory Fields Updated' : 'Inventory Fields Updated and queued')
+    : (visibleRequestActions.length
+      ? (isV5Inquiry ? getReclassInquiryActionsLabelV5_(visibleRequestActions) : getReclassInquiryActionsLabelV3_(visibleRequestActions))
+      : 'Evidence Review');
   model.evalWork = {
     id: String(payload.evalWorkId || ''),
     deliveryKind: String(payload.deliveryKind || ''),
@@ -17742,6 +19447,11 @@ function handleSignedHlOrderDelivery_(delivery) {
 
 function buildBunchNotePdfHtml_(report) {
   const e = escapeEmailHtml_;
+  const rich = function(value) { return e(value == null ? '' : value).replace(/\b(red\s+flags?|blue\s+flags?|pink\s+ribbons?|yellow\s+ribbons?)\b/gi,function(word){const key=word.split(/\s/)[0].toLowerCase(),colors={red:['#fee2e2','#991b1b'],blue:['#dbeafe','#1e40af'],pink:['#fce7f3','#9d174d'],yellow:['#fef9c3','#713f12']}[key];return '<b style="background:'+colors[0]+';color:'+colors[1]+'">'+word+'</b>';}); };
+  const badge = function(tag) { if(!tag)return '—';const tags=['BOB','QC','SAM','RHETT','BUNCHERS','TA','SHARON','MATT'],colors=['#1d4ed8','#6d28d9','#047857','#9a3412','#334155','#9f1239','#0e7490','#854d0e'];return '<b class="crew" style="background:'+(colors[tags.indexOf(String(tag).toUpperCase())]||'#475569')+'">'+e(tag)+'</b>'; };
+  const sections=report.house_sections||[], ranks={}; sections.forEach(function(h,i){ranks[h.id]=i+1;});
+  const orderedActions=(report.actions||[]).map(function(a,i){return {a:a,i:i};}).sort(function(x,y){return ((ranks[x.a.section_id]||0)-(ranks[y.a.section_id]||0)) || ((x.a.sequence_order||x.i+1)-(y.a.sequence_order||y.i+1));}).map(function(x){return x.a;});
+  let lastHouse = null, activeCard = null;
   const number = function(v) { return v === null || v === undefined || String(v).trim() === '' || !/^-?\d+(\.\d+)?$/.test(String(v).trim()) ? null : Number(v); };
   const qty = function(v) { return number(v) === null ? 'Unknown' : String(number(v)); };
   const kind = function(a) { return a.kind || (String(a.label || a.instructions || '').indexOf('TA / culls') === 0 ? 'ta' : a.label === 'Move' ? 'move' : a.group === 'hauling' && String(a.label || a.instructions || '').indexOf('Wait') !== 0 ? 'hauling' : 'instruction'); };
@@ -17762,13 +19472,24 @@ function buildBunchNotePdfHtml_(report) {
     rows += '<tr class="item"><td colspan="6"><b>' + e(itemcode) + ' · ' + e(lots[0].commonname) + '</b><br>LOC On Hand ' + e(total('stock')) + ' · LOC Review ' + e(total('review')) + ' · LOC Available ' + e(total('available')) + '</td></tr>';
     rows += lots.map(function(r) { return '<tr><td>'+e(r.commonname)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'</td><td>'+e(r.lotcode)+'<br>Sales year '+e(r.salesyear || 'Unknown')+'<br>Season '+e(r.season || 'Unknown')+'<br>DesigItem '+e(r.desigitem || '—')+'</td><td>On Hand '+e(qty(r.stock))+'<br>Review '+e(qty(r.review))+'<br>Available '+e(qty(r.available))+'</td><td>'+e(r.flags || '—')+'<br>'+e(r.hold || '—')+'<br>'+e(r.warehouse || '—')+'</td><td>'+e(r.location_notes || '—')+'<br><small>'+e(r.unique_id)+'</small></td></tr>'; }).join('');
   });
-  const actions = (report.actions || []).map(function(a) {
+  const actionRow = function(a) {
     const target = a.scope === 'location' ? 'Whole location' : (a.row_ids || []).map(function(id) { const r=(report.source||[]).find(function(r) { return r.unique_id===id; }); return r ? [r.itemcode,r.contsize,r.lotcode,'Sales year '+(r.salesyear || 'Unknown')].join(' / ') : id; }).join('; ');
     const recorded = current.filter(function(x) { return x.action_id===a.id; });
     const status = (report.progress || {})[a.id] || {};
     const completion = work ? e(status.status || 'Unresolved')+'<br>'+e(status.reason || '')+(status.review_flags && status.review_flags.length ? '<br><b>REVIEW: '+e(reviewText(status.review_flags))+'</b>' : '') : '☐ Done<br>☐ Not needed<br>Reason:';
-    return '<tr><td>'+e(a.label || a.group)+'<br>'+e(a.crew || '')+(a.worker_added?'<br><b>Worker added</b>':'')+'</td><td>'+e(target)+'</td><td>Planned '+e(a.quantity || '—')+' / '+e(a.percentage || '—')+'%'+(work?'<br>Actual '+(recorded.length?e(recorded.reduce(function(sum,x) { return sum+Number(x.quantity); },0)):'Not recorded'):'')+'</td><td>'+e(a.stage || '')+'<br>'+e(a.destination || '')+'<br>'+e(a.marking || '')+'</td><td class="pre">'+e(a.instructions)+'</td><td>'+completion+'</td></tr>';
-  }).join('');
+    const section=sections.find(function(h){return h.id===a.section_id;}),houseId=section?section.id:'';
+    const cardScoped=activeCard&&activeCard.kind==='inventory',houseName=cardScoped&&activeCard.house?activeCard.house:section?section.name:'General tasks',houseDirection=cardScoped?activeCard.direction:((section&&section.direction)||report.direction);
+    const house=lastHouse===houseId?'':'<tr class="house"><th colspan="5">'+e(houseName)+(houseDirection?' · '+e(houseDirection):'')+'</th></tr>';
+    lastHouse=houseId;
+    return house+'<tr><td>'+badge(a.margin_tag == null ? a.crew : a.margin_tag)+'<br>'+e(a.label || a.group)+(a.worker_added?'<br><b>Worker added</b>':'')+'</td><td><b>'+e([a.item_size,a.item_desc].filter(Boolean).join(' · '))+'</b><br>'+e(target)+'</td><td>'+((a.quantity_constraint !== undefined && a.quantity_constraint !== '')?'<b>'+e(a.quantity_constraint)+'</b><br>':'')+'Planned '+e(a.quantity == null || a.quantity === '' ? '—' : a.quantity)+' / '+e(a.percentage || '—')+'%'+(work?'<br>Actual '+(recorded.length?e(recorded.reduce(function(sum,x) { return sum+Number(x.quantity); },0)):'Not recorded'):'')+'</td><td class="pre routing">'+(a.stage?e(a.stage)+'<br>':'')+(a.destination?'<b>To '+e(a.destination)+'</b><br>':'')+(a.marking?rich(a.marking)+'<br>':'')+rich(a.instructions)+'</td><td>'+completion+'</td></tr>';
+  };
+  const cardHeading = function(card) {
+    const ids=new Set(card.row_ids||[]),seenRows=new Set(),source=(report.source||[]).filter(function(r){if(!ids.has(r.unique_id)||seenRows.has(r.unique_id))return false;seenRows.add(r.unique_id);return true;});
+    const total=function(field){const values=source.map(function(r){return number(r[field]);});return source.length!==ids.size||values.some(function(v){return v===null;})?'Unknown / incomplete':String(values.reduce(function(sum,v){return sum+v;},0));};
+    return '<tr class="house"><th colspan="5">'+e(card.kind==='shared'?'General / Shared Work':[card.itemcode,card.commonname,card.contsize].filter(Boolean).join(' · '))+'<br><small>Worker: '+e(card.owner_name||'Unassigned')+' · House: '+e(card.house||'Not specified')+' · Direction: '+e(card.direction||'Not specified')+(card.kind==='shared'?'':'<br>Location Total (On Hand): '+e(total('stock'))+' · Available: '+e(total('available'))+' · '+source.length+' lot rows')+'</small></th></tr>';
+  };
+  const cards=report.cards||[];
+  const actions=cards.length?cards.map(function(card){lastHouse=null;activeCard=card;return cardHeading(card)+orderedActions.filter(function(a){return a.card_id===card.id;}).map(actionRow).join('');}).join(''):orderedActions.map(actionRow).join('');
   let recorded = '';
   if (work) {
     const totals={};
@@ -17776,7 +19497,22 @@ function buildBunchNotePdfHtml_(report) {
     recorded='<h2>Recorded totals by action type</h2><p>'+Object.keys(totals).map(function(type) { return e(type.toUpperCase())+': '+e(totals[type]); }).join(' · ')+'</p><h2>Actual work and correction history</h2><table><thead><tr><th>Action / item</th><th>Size / lot</th><th>Quantity / destination</th><th>Record / actor</th><th>Explanation / review</th></tr></thead><tbody>'+
       actuals.map(function(a) { const r=a.source_snapshot;return '<tr><td>'+e(a.action_snapshot.label || a.action_snapshot.instructions)+'<br>'+e(r.itemcode)+'</td><td>'+e(r.contsize)+'<br>'+e(r.lotcode)+'<br>Sales year '+e(r.salesyear || 'Unknown')+'</td><td>'+e(a.quantity)+'<br>'+e(a.destination || '—')+'</td><td>'+e(a.created_at)+'<br>'+e(a.actor_id)+'<br>'+e(a.superseded?'Replaced; excluded from totals':a.replaces_id?'Correction; current':'Current')+'</td><td class="pre">'+e(a.explanation || '—')+(a.review_flags.length?'<br><b>REVIEW: '+e(reviewText(a.review_flags))+'</b>':'')+'</td></tr>'; }).join('')+'</tbody></table>';
   }
-  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px}h2{font-size:15px}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}</style></head><body><h1>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h1><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Purposes:</b> '+e(report.purposes)+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+e(report.instructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+e(report.prerequisites || '—')+'</p><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Sales Year / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table><h2>Work checklist'+(work?' — planned versus actual':'')+'</h2><table><thead><tr><th>Action / crew label</th><th>Applies to</th><th>Qty / %</th><th>Stage / destination / marking</th><th>Instructions</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table>'+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>@page{size:letter landscape;margin:12mm 12mm 16mm;@bottom-left{content:"GNC PARK HILL | BUNCH NOTES";font:9px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:9px Arial}}body{font:11px Arial;color:#18372b}h1{font-size:23px;margin:0 0 10px}p{margin:6px 0}h2{font-size:15px;margin:12px 0 6px;break-after:avoid;page-break-after:avoid}tr.item{break-after:avoid;page-break-after:avoid}table{width:100%;border-collapse:collapse;table-layout:fixed;margin:12px 0}thead{display:table-header-group}th,td{border:1px solid #9bab9e;padding:7px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th,.item{background:#e5eee8}tr{break-inside:avoid;page-break-inside:avoid}.pre{white-space:pre-wrap;overflow-wrap:anywhere}.meta{padding:10px;background:#e5eee8}.crew{display:inline-block;color:#fff;padding:5px;font-size:12px;overflow-wrap:anywhere}.house{break-after:avoid;page-break-after:avoid}.house th{font-size:15px;background:#dce8df}.routing{font-size:12px;font-weight:bold}</style></head><body><h1>'+e(report.purposes || 'Bunch Notes')+'</h1><h2>Bunch Note '+e(report.note_number)+' · Revision '+e(report.instruction_revision)+(work?' · Completed work '+e(report.work_revision):'')+'</h2><div class="meta"><b>Block:</b> '+e(report.block)+' <b>Location:</b> '+e(report.location)+'<br><b>Direction:</b> '+e(report.direction || 'Not specified')+' <b>Target houses:</b> '+e(report.target_houses || 'Not specified')+'<br><b>Purposes:</b> '+e(report.purposes)+'<br><b>Priority / order:</b> '+e(report.priority || '—')+(work?'<br><b>Owner:</b> '+e(report.owner_name || report.owner_id || '—'):'')+'</div><h2>General instructions</h2><p class="pre">'+rich(report.instructions || report.general_instructions || '—')+'</p><h2>Prerequisites / wait instructions</h2><p class="pre">'+rich(report.prerequisites || '—')+'</p><h2>Crew task instructions'+(work?' — planned versus actual':'')+'</h2><table><colgroup><col style="width:13%"><col style="width:23%"><col style="width:12%"><col style="width:38%"><col style="width:14%"></colgroup><thead><tr><th>Crew / action</th><th>Item / source</th><th>Quantity</th><th>Instructions / routing</th><th>Completion</th></tr></thead><tbody>'+actions+'</tbody></table><h2>Plant details — saved source snapshot</h2><table><thead><tr><th>Plant / Item Code</th><th>Container</th><th>Lot / Sales Year / Season / Designation</th><th>Quantities</th><th>Flags / Hold / Warehouse</th><th>Location Notes / Source</th></tr></thead><tbody>'+rows+'</tbody></table>'+recorded+'<p>Instructions and recorded work only. Inventory remains controlled by existing imports. Crew labels do not assign accounts. Previous emailed copies cannot be withdrawn; use the current revision in the Queue.</p></body></html>';
+}
+
+function freezeBunchNoteReportPdfs_(previewId, reports) {
+  let total = 0;
+  const pdfs = (Array.isArray(reports) ? reports : []).map(function(report) {
+    const filename = report.note_number + (report.report_kind === 'completed_work' ? '_WORK_R' + report.work_revision : '_R' + report.instruction_revision) + '.pdf';
+    let bytes;
+    try { bytes = HtmlService.createHtmlOutput(buildBunchNotePdfHtml_(report)).getBlob().getAs(MimeType.PDF).getBytes(); }
+    catch (ignored) { throw new Error('BUNCH_NOTE_PDF_RENDER_UNAVAILABLE'); }
+    total += bytes.length;
+    if (total > 15000000) throw new Error('BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS');
+    return {job_id:report.job_id,filename:filename,base64:Utilities.base64Encode(bytes)};
+  });
+  if (!pdfs.length) throw new Error('BUNCH_NOTE_PDF_REPORT_REQUIRED');
+  return requestDeliveryRest_('rpc/bunch_note_freeze_pdfs_v1','POST','',{p_preview_id:previewId,p_pdfs:pdfs}).pdfs;
 }
 
 function handleBunchNotePreview_(payload) {
@@ -17784,18 +19520,7 @@ function handleBunchNotePreview_(payload) {
     if (Object.keys(payload).some(function(key) { return ['type','nativeAuthAccessToken','previewId'].indexOf(key) === -1; })) throw new Error('BUNCH_NOTE_PREVIEW_INVALID');
     const actor = verifyHlTagsSender_({accessToken: payload.nativeAuthAccessToken});
     const preview = requestDeliveryRest_('rpc/bunch_note_command_v1', 'POST', '', {p_actor_id:actor.id,p_operation:'preview_read',p_payload:{preview_id:payload.previewId}});
-    let pdfs = preview.pdfs;
-    if (!pdfs) {
-      let total = 0;
-      pdfs = preview.reports.map(function(report) {
-        const filename = report.note_number + (report.report_kind === 'completed_work' ? '_WORK_R' + report.work_revision : '_R' + report.instruction_revision) + '.pdf';
-        const bytes = HtmlService.createHtmlOutput(buildBunchNotePdfHtml_(report)).getBlob().getAs(MimeType.PDF).getBytes();
-        total += bytes.length;
-        if (total > 15000000) throw new Error('BUNCH_NOTE_BATCH_TOO_LARGE_SELECT_FEWER_LOCATIONS');
-        return {job_id:report.job_id,filename:filename,base64:Utilities.base64Encode(bytes)};
-      });
-      pdfs = requestDeliveryRest_('rpc/bunch_note_freeze_pdfs_v1','POST','',{p_preview_id:preview.id,p_pdfs:pdfs}).pdfs;
-    }
+    const pdfs = preview.pdfs || freezeBunchNoteReportPdfs_(preview.id, preview.reports);
     return {ok:true,pdfs:pdfs,recipients:preview.recipients};
   } catch (error) {
     return {ok:false,code:'BUNCH_NOTE_PREVIEW_FAILED',message:String(error.message || 'PDF preview failed. No work was published.')};
@@ -17831,7 +19556,8 @@ function handleSignedBunchNoteDelivery_(delivery) {
     }
     if (delivery.reconciliationOnly === true || ['sending','sent','unknown'].indexOf(saved.delivery_status) !== -1) { started=true; throw new Error('BUNCH_NOTE_DELIVERY_UNKNOWN'); }
     if (!isGmailAdvancedServiceAvailable_()) throw new Error('BUNCH_NOTE_GMAIL_UNAVAILABLE');
-    const attachments = saved.pdfs.map(function(pdf) { return Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename); });
+    const pdfs = saved.pdfs || freezeBunchNoteReportPdfs_(saved.preview_id, saved.reports);
+    const attachments = pdfs.map(function(pdf) { return Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename); });
     const block = saved.reports[0].block;
     const purposes = Array.from(new Set(saved.reports.map(function(r) { return r.purposes; }))).join('; ');
     const completedWork = saved.reports[0].report_kind === 'completed_work';
@@ -17848,15 +19574,203 @@ function handleSignedBunchNoteDelivery_(delivery) {
   } catch (error) {
     if (started) { try { bunchNoteDeliveryRecord_(delivery,'unknown',{message_id_header:delivery.messageIdHeader}); } catch (ignored) {} }
     const code = started ? 'BUNCH_NOTE_DELIVERY_UNKNOWN' : String(error.message || 'BUNCH_NOTE_DELIVERY_FAILED');
-    return {ok:false,code:code,deliveryUncertain:started,retryable:!started && /BUSY|UNAVAILABLE/.test(code),message:started?'Delivery needs reconciliation. Do not send another copy.':'The saved work and PDFs are retained.'};
+    const retryableBeforeSend = !started && /BUSY|UNAVAILABLE|BUNCH_NOTE_PDF_REPORT_REQUIRED|BUNCH_NOTE_PDF_RENDER_UNAVAILABLE/.test(code);
+    return {ok:false,code:code,deliveryUncertain:started,retryable:retryableBeforeSend,message:started?'Delivery needs reconciliation. Do not send another copy.':'The saved work and PDFs are retained.'};
   } finally { if(lock) { try { lock.releaseLock(); } catch(ignored) {} } }
+}
+
+function buildFieldCountCompletionPdfHtml_(report) {
+  const e = escapeEmailHtml_;
+  const value = function(input) { return input === null || typeof input === 'undefined' || String(input).trim() === '' ? '—' : String(input); };
+  const rows = (Array.isArray(report.rows) ? report.rows : []).map(function(row, index) {
+    return {row:row,index:index};
+  }).sort(function(a,b) {
+    const left=Number(a.row.rowOrder)||a.index+1, right=Number(b.row.rowOrder)||b.index+1;
+    return left-right || a.index-b.index;
+  }).map(function(entry) {
+    const row=entry.row;
+    return '<tr><td class="ordinal">'+e(value(row.rowOrder || entry.index+1))+'</td>'
+      +'<td><b>'+e(value(row.itemcode))+'</b><br>'+e(value(row.commonname))+'<br><small>'+e(value(row.sourceUid))+'</small></td>'
+      +'<td>'+e(value(row.contsize))+'</td><td>'+e(value(row.lotcode))+'<br>'+e(value(row.season))+'</td>'
+      +'<td class="number">'+e(value(row.onHand))+'</td><td class="number counted">'+e(value(row.countedQty))+'</td>'
+      +'<td>'+e(value(row.direction))+'</td><td class="note">'+e(value(row.note))+'</td></tr>';
+  }).join('');
+  const type=report.countType==='bunch'?'Bunch':'Spread';
+  return '<!doctype html><html><head><meta charset="utf-8"><style>'
+    +'@page{size:letter landscape;margin:12mm 10mm 14mm;@bottom-left{content:"GNC PARK HILL | FIELD COUNT";font:8px Arial}@bottom-right{content:"Page " counter(page) " of " counter(pages);font:8px Arial}}'
+    +'body{font:9pt Arial,sans-serif;color:#18372b}h1{font-size:18pt;margin:0 0 5mm}.meta{border:1px solid #8b9d90;background:#edf3ee;padding:3mm;margin-bottom:4mm;line-height:1.45}'
+    +'table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}'
+    +'th,td{border:1px solid #87988b;padding:2mm;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#dce8df;font-size:8pt}tbody tr:nth-child(even){background:#f6f8f6}'
+    +'.ordinal,.number{text-align:center;white-space:nowrap}.counted{font-weight:bold}.note{white-space:pre-wrap}'
+    +'</style></head><body><h1>Field Count Completion</h1><div class="meta"><b>Type:</b> '+e(type)
+    +' &nbsp; <b>Block:</b> '+e(value(report.block))+' &nbsp; <b>Location:</b> '+e(value(report.location))
+    +'<br><b>Completed:</b> '+e(value(report.completedAt))+' &nbsp; <b>By:</b> '+e(value(report.actor))
+    +' &nbsp; <b>Direction:</b> '+e(value(report.rows && report.rows[0] && report.rows[0].direction))
+    +' &nbsp; <b>Rows:</b> '+e(String(Array.isArray(report.rows)?report.rows.length:0))+'</div>'
+    +'<table><colgroup><col style="width:5%"><col style="width:24%"><col style="width:9%"><col style="width:15%"><col style="width:9%"><col style="width:9%"><col style="width:12%"><col style="width:17%"></colgroup>'
+    +'<thead><tr><th>#</th><th>Item / source</th><th>Container</th><th>Lot / season</th><th>On hand</th><th>Counted</th><th>Direction</th><th>Note</th></tr></thead><tbody>'
+    +(rows||'<tr><td colspan="8">No rows were saved in this report.</td></tr>')+'</tbody></table></body></html>';
+}
+
+function fieldCountDeliveryRecord_(delivery, status, result) {
+  return requestDeliveryRest_('rpc/field_count_delivery_record_v1','POST','',{
+    p_event_id:delivery.eventId,p_lease_token:delivery.leaseToken,p_status:status,p_result:result||{}
+  });
+}
+
+function fieldCountReceipt_(result, messageIdHeader, recipients) {
+  return {gmail_message_id:String(result.gmailMessageId||result.gmail_message_id||''),
+    thread_id:String(result.threadId||result.thread_id||''),message_id:String(result.messageId||result.message_id||messageIdHeader),
+    message_id_header:messageIdHeader,recipients:Array.isArray(result.recipients)?result.recipients:recipients,mode:'field_count_gmail_api'};
+}
+
+function isFieldCountPreSendTransient_(error) {
+  const status=Number(error&&error.status);
+  if(Number.isInteger(status)&&(status===408||status===425||status===429||(status>=500&&status<=599)))return true;
+  const message=String(error&&error.message||error||'');
+  return /\b(?:timed?\s*out|timeout|temporarily unavailable|address unavailable|DNS error|connection reset|connection refused|service invoked too many times in a short time)\b/i.test(message);
+}
+
+function handleSignedFieldCountDelivery_(delivery) {
+  let lock,sendStarted=false;
+  try {
+    const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if(!uuid.test(String(delivery.eventId||''))||!uuid.test(String(delivery.leaseToken||'')))throw new Error('FIELD_COUNT_DELIVERY_INVALID');
+    lock=LockService.getScriptLock();if(!lock.tryLock(10000))throw new Error('FIELD_COUNT_DELIVERY_BUSY');
+    const saved=requestDeliveryRest_('rpc/field_count_delivery_lookup_v1','POST','',{p_event_id:delivery.eventId});
+    if(!saved||saved.event_id!==delivery.eventId||saved.event_type!=='field_count_completion'||saved.event_key!==delivery.eventKey
+      ||!saved.report||!uuid.test(String(saved.report.id||''))||saved.event_key!=='field-count:'+saved.report.id)throw new Error('FIELD_COUNT_DELIVERY_INVALID');
+    const digest=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(saved.event_key),Utilities.Charset.UTF_8);
+    const expectedId='<gnc-'+digest.map(function(byte){return ('0'+(byte&255).toString(16)).slice(-2);}).join('').slice(0,40)+'@request-delivery.agdatasolutions.local>';
+    if(delivery.messageIdHeader!==expectedId)throw new Error('FIELD_COUNT_DELIVERY_INVALID');
+    const recipients=Array.from(new Set((Array.isArray(saved.recipients)?saved.recipients:[]).map(function(entry){
+      return normalizeEmailAddress_(typeof entry==='string'?entry:entry&&entry.email);
+    }).filter(Boolean)));
+    if(!recipients.length||recipients.some(function(email){return !isLikelyEmailAddress_(email);}))throw new Error('FIELD_COUNT_RECIPIENT_INVALID');
+    const receipt=saved.receipt&&saved.receipt.gmail_message_id?saved.receipt:getRequestDeliveryReceipt_(expectedId)||findSentRequestDeliveryByMessageId_(expectedId);
+    if(receipt){
+      const recovered=fieldCountReceipt_(receipt,expectedId,recipients);
+      fieldCountDeliveryRecord_(delivery,'sent',recovered);
+      return {ok:true,gmailMessageId:recovered.gmail_message_id,threadId:recovered.thread_id,messageId:expectedId,messageIdHeader:expectedId,recipients:recipients,recovered:true};
+    }
+    if(delivery.reconciliationOnly===true||['sending','sent','unknown'].indexOf(saved.delivery_status)!==-1){sendStarted=true;throw new Error('FIELD_COUNT_DELIVERY_UNKNOWN');}
+    if(!isGmailAdvancedServiceAvailable_())throw new Error('FIELD_COUNT_GMAIL_UNAVAILABLE');
+    let pdf=saved.pdf;
+    if(!pdf){
+      let bytes;
+      try{bytes=HtmlService.createHtmlOutput(buildFieldCountCompletionPdfHtml_(saved.report)).getBlob().getAs(MimeType.PDF).getBytes();}
+      catch(ignored){throw new Error('FIELD_COUNT_PDF_RENDER_UNAVAILABLE');}
+      if(bytes.length>15000000)throw new Error('FIELD_COUNT_PDF_TOO_LARGE');
+      const name='Field_Count_'+saved.report.id+'.pdf';
+      pdf=requestDeliveryRest_('rpc/field_count_freeze_pdf_v1','POST','',{p_event_id:delivery.eventId,p_pdf:{filename:name,base64:Utilities.base64Encode(bytes)}}).pdf;
+    }
+    if(!pdf||pdf.filename!=='Field_Count_'+saved.report.id+'.pdf'||!pdf.base64)throw new Error('FIELD_COUNT_PDF_INVALID');
+    const attachment=Utilities.newBlob(Utilities.base64Decode(pdf.base64),MimeType.PDF,pdf.filename);
+    const report=saved.report;
+    const subject=('Field Count — '+(report.countType==='bunch'?'Bunch':'Spread')+' — '+report.block+' / '+report.location).replace(/[\r\n]+/g,' ');
+    const text='Field Count Completion\nType: '+(report.countType==='bunch'?'Bunch':'Spread')+'\nBlock: '+report.block+'\nLocation: '+report.location
+      +'\nCompleted: '+report.completedAt+'\nBy: '+report.actor+'\nRows: '+(Array.isArray(report.rows)?report.rows.length:0)+'\n\nThe saved count report is attached.';
+    const intent=fieldCountDeliveryRecord_(delivery,'sending',{message_id_header:expectedId,recipients:recipients});
+    if(!intent||intent.allow_send!==true){sendStarted=true;throw new Error('FIELD_COUNT_DELIVERY_UNKNOWN');}
+    sendStarted=true;
+    const result=sendGmailApiMessage_({toList:recipients.join(','),toArray:recipients,subject:subject,textBody:text,
+      htmlBody:'<pre>'+escapeEmailHtml_(text)+'</pre>',attachments:[attachment],fromName:'GNC Park Hill Field Counts',
+      fromAddress:resolveAutomatedEmailSenderAddress_(),messageIdHeader:expectedId});
+    if(!result||!result.ok||!result.gmailMessageId)throw new Error('FIELD_COUNT_DELIVERY_UNKNOWN');
+    try{saveRequestDeliveryReceipt_(expectedId,result);}catch(ignored){}
+    const durable=fieldCountReceipt_(result,expectedId,recipients);
+    fieldCountDeliveryRecord_(delivery,'sent',durable);
+    return Object.assign({},result,{ok:true,recipients:result.recipients||recipients,messageIdHeader:expectedId,mode:'field_count_gmail_api'});
+  }catch(error){
+    if(sendStarted){try{fieldCountDeliveryRecord_(delivery,'unknown',{message_id_header:delivery.messageIdHeader});}catch(ignored){}}
+    const transientBeforeSend=!sendStarted&&isFieldCountPreSendTransient_(error);
+    const code=sendStarted?'FIELD_COUNT_DELIVERY_UNKNOWN':transientBeforeSend?'FIELD_COUNT_TRANSPORT_UNAVAILABLE':String(error.message||'FIELD_COUNT_DELIVERY_FAILED');
+    const permanent=['FIELD_COUNT_DELIVERY_INVALID','FIELD_COUNT_RECIPIENT_INVALID','FIELD_COUNT_PDF_INVALID','FIELD_COUNT_PDF_TOO_LARGE'].indexOf(code)!==-1;
+    const retryable=!sendStarted&&!permanent&&(transientBeforeSend||/BUSY|UNAVAILABLE|RENDER/.test(code));
+    return {ok:false,code:code,deliveryUncertain:sendStarted,retryable:retryable,
+      message:sendStarted?'Delivery needs reconciliation. Do not send another copy.':'The saved count report is retained.'};
+  }finally{if(lock){try{lock.releaseLock();}catch(ignored){}}}
+}
+
+function buildSuspendTagApprovalEmail_(delivery) {
+  const approval = delivery.payload.approval;
+  const row = approval.snapshot;
+  const decision = delivery.eventType === 'suspend_tag_approval_decided';
+  const value = function(v) { return v === null || typeof v === 'undefined' ? '' : String(v); };
+  const fields = [
+    ['Customer', value(row.customername)], ['Consignee', value(row.consigneename)],
+    ['Item Description', [row.commonname, row.contsize].filter(Boolean).join(' ')],
+    ['Location Code', value(row.locationcode)], ['Qty', value(row.quantityordered)],
+    ['Spec', value(row.dock_spec)], ['Caliper', value(row.dock_caliper)],
+    ['LOC MATCH %', value(row.match)], ['Match Qty', value(row.loc_match_qty)], ['Initial PTR', value(row.initial_ptr)],
+    ['AV Note', value(row.av_note)], ['Notes', value(row.dock_note)]
+  ];
+  const appUrl = 'https://agmetricapp.com/' + '?suspendApproval=' + encodeURIComponent(approval.id);
+  const title = decision ? value(row.rep_display) + ' ' + (approval.status === 'approved' ? 'approved' : 'denied') + ' this Suspend Tag row.'
+    : approval.status !== 'pending' ? 'Saved Suspend Tag review. The Sales Rep has already ' + value(approval.status) + ' this round.' : 'Please review this completed Suspend Tag row.';
+  const subject = ('GNC PH Suspend Tag - ' + value(row.customername || row.consigneename) + ' - ' + value(row.commonname) + ' - ' + approval.id).replace(/[\r\n]+/g, ' ');
+  const item = Object.assign({}, row, { req_qty: row.quantityordered, req_spec: row.dock_spec, req_caliper: row.dock_caliper,
+    req_photo_link: row.dock_photo_link, req_photo_name: row.dock_photo_name, req_customer: [row.customername,row.consigneename].filter(Boolean).join(' | ') });
+  return {
+    subject: subject, to: decision ? approval.submitter_email : approval.rep_email,
+    replyTo: decision ? approval.rep_email : approval.submitter_email,
+    textBody: ['GNC PH Suspend Tag', title].concat(fields.map(function(f) { return f[0] + ': ' + f[1]; }),
+      ['Photos: ' + value(row.dock_photo_link), 'Open approval: ' + appUrl]).join('\n'),
+    htmlBody: '<div style="font-family:Arial,sans-serif"><h2>GNC PH Suspend Tag</h2><p>' + escapeEmailHtml_(title) + '</p>'
+      + fields.map(function(f) { return '<p><strong>' + escapeEmailHtml_(f[0]) + ':</strong> ' + escapeEmailHtml_(f[1]) + '</p>'; }).join('')
+      + buildRequestEmailTableItemsHtml_({ requestItems: [item], folderId: 'suspend-tag-' + approval.id }, { title: 'Suspend Tag Row' })
+      + '<p><a href="' + escapeEmailHtml_(appUrl) + '">Open approval in the app</a></p></div>'
+  };
+}
+
+function handleSignedSuspendTagDelivery_(delivery) {
+  const approval = delivery.payload && delivery.payload.approval;
+  if (!approval || !approval.id || !approval.snapshot || !delivery.messageIdHeader) throw new Error('SUSPEND_TAG_DELIVERY_INVALID');
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) throw new Error('REQUEST_DELIVERY_BUSY');
+  try {
+    const messageId = String(delivery.messageIdHeader);
+    const saved = getRequestDeliveryReceipt_(messageId) || findSentRequestDeliveryByMessageId_(messageId);
+    if (saved) return Object.assign({ ok: true, mode: 'gmail_api_idempotent_recovery', recipients: [] }, saved, { messageIdHeader: messageId });
+    const model = buildSuspendTagApprovalEmail_(delivery);
+    const thread = delivery.thread || {};
+    const isDecision = delivery.eventType === 'suspend_tag_approval_decided';
+    if (isDecision && (!thread.threadId || !thread.messageId)) throw new Error('SUSPEND_TAG_ORIGINAL_EMAIL_PENDING');
+    const props = PropertiesService.getScriptProperties();
+    const intentKey = 'suspend_tag_send:' + messageId;
+    if (props.getProperty(intentKey)) throw new Error('SUSPEND_TAG_EMAIL_RECONCILIATION_REQUIRED');
+    // Validate delivery-time routing before recording a potentially sent message.
+    const routed = resolveOperationalEmailHeaders_([model.to], [], []).to;
+    if (routed.length !== 1 || routed[0].toLowerCase() !== String(model.to).toLowerCase()) throw new Error('SUSPEND_TAG_RECIPIENT_CHANGED');
+    props.setProperty(intentKey, new Date().toISOString());
+    let result;
+    try { result = sendGmailApiMessage_({ toList: model.to, toArray: [model.to], replyTo: model.replyTo,
+      fromName: 'GNC PH Suspend Tag', fromAddress: resolveAutomatedEmailSenderAddress_(), subject: model.subject,
+      textBody: model.textBody, htmlBody: model.htmlBody, messageIdHeader: messageId,
+      threadId: isDecision ? thread.threadId : '', inReplyTo: isDecision ? thread.messageId : '', references: isDecision ? thread.messageId : '' });
+    } catch (error) {
+      // A definite Gmail rejection is safe to retry. A timeout or lost response
+      // retains intent until the stable Message-ID can be reconciled.
+      const status = Number(error && (error.code || (error.details && error.details.code)));
+      if ([400,401,403,404,429].indexOf(status) >= 0) props.deleteProperty(intentKey);
+      throw error;
+    }
+    if (!result.gmailMessageId || !result.threadId) throw new Error('SUSPEND_TAG_EMAIL_RECONCILIATION_REQUIRED');
+    result.messageIdHeader = messageId;
+    result.replyToMessageId = isDecision ? thread.messageId : '';
+    saveRequestDeliveryReceipt_(messageId, result);
+    props.deleteProperty(intentKey);
+    return result;
+  } finally { lock.releaseLock(); }
 }
 
 function handleSignedRequestDeliveryEvent_(payload) {
   const delivery = verifySignedRequestDelivery_(payload);
   const eventType = String(delivery.eventType || '').trim();
+  if (eventType === 'suspend_tag_approval_requested' || eventType === 'suspend_tag_approval_decided') return handleSignedSuspendTagDelivery_(delivery);
   if (eventType === 'hl_order_submission' || eventType === 'hl_order_cancellation') return handleSignedHlOrderDelivery_(delivery);
   if (eventType === 'bunch_note_submission') return handleSignedBunchNoteDelivery_(delivery);
+  if (eventType === 'field_count_completion') return handleSignedFieldCountDelivery_(delivery);
   if (eventType === 'photo_history_share') return handleSignedPhotoHistoryShare_(delivery);
   if (eventType === RECLASS_DELIVERY_EVENT_TYPE_) {
     return handleSignedReclassInquiryDelivery_(delivery);
@@ -17980,12 +19894,12 @@ function processRequestDeliveryOutbox_(limit) {
     events = requestDeliveryRest_(
       'ph_request_delivery_outbox',
       'GET',
-      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
+      'select=*&event_type=not.in.(photo_history_share,hl_order_submission,hl_order_cancellation,bunch_note_submission,field_count_completion)&status=eq.pending&next_attempt_at=lte.' + encodeURIComponent(new Date().toISOString()) + '&order=created_at.asc&limit=' + batchLimit,
       null
     );
     events.forEach(function(eventRow) {
       // The leased Edge worker exclusively owns HL email delivery and reconciliation.
-      if (['hl_order_submission', 'hl_order_cancellation', 'bunch_note_submission'].indexOf(String(eventRow.event_type || '')) !== -1) return;
+      if (['hl_order_submission', 'hl_order_cancellation', 'bunch_note_submission', 'field_count_completion'].indexOf(String(eventRow.event_type || '')) !== -1) return;
       const eventId = String(eventRow.event_id || '');
       const claimedRows = requestDeliveryRest_(
         'ph_request_delivery_outbox',

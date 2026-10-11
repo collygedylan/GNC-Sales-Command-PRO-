@@ -1,8 +1,11 @@
+import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 import { verifyPoManagementHealth } from '../scripts/po-management-health.mjs';
+import { createDatabaseRestBridge } from '../services/databaseRest.ts';
+import { PO_MANAGEMENT_PROJECTION_FIELDS, poManagementCanaryRows, poManagementRow } from './fixtures/po-management-canary.mjs';
 
 const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const appApi = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
@@ -85,6 +88,34 @@ test('hosted health and exact-live canary cover the PO authorization contract', 
   assert.match(productionCanary, /retired proxy or mutation attempted/);
 });
 
+test('PO canary fixture satisfies the generated PostgREST projection contract', async () => {
+  const selectStart = html.indexOf('const PO_MANAGEMENT_SELECT_FIELDS = [');
+  const selectEnd = html.indexOf('].join', selectStart);
+  assert.ok(selectStart >= 0 && selectEnd > selectStart, 'PO Management projection fields are present');
+  const fields = [...html.slice(selectStart, selectEnd).matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert.deepEqual(fields, PO_MANAGEMENT_PROJECTION_FIELDS, 'shared fixture fields stay aligned with the application projection');
+  for (const [table, lotcode] of [['ph_view_po_27f1_hl', '27.F1'], ['ph_view_po_27s1_hl', '27.S1']]) {
+    const rows = table === 'ph_view_po_27f1_hl'
+      ? poManagementCanaryRows()
+      : [poManagementRow({ id: 3, run_id: 'CANARY', row_index: 1, itemcode: 'CANARY.PO.S1', commonname: 'Synthetic S1 Canary', contsize: '#3 TEST', lotcode, po_remain: 6 })];
+    const bridge = createDatabaseRestBridge(async () => new Response(JSON.stringify(rows), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    }));
+    const response = await bridge.fetchTable('https://example.test', table,
+      `select=${fields.join(',')}&order=row_index.asc&limit=1000&offset=0`, { method: 'GET' }, 1000, `${table} canary fixture contract`);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).length, rows.length);
+  }
+  assert.throws(() => poManagementRow({ unknown_column: 'invalid' }), /PO_MANAGEMENT_FIXTURE_FIELDS_UNSUPPORTED/);
+  const invalidBridge = createDatabaseRestBridge(async () => new Response(JSON.stringify([poManagementRow({ id: 'invalid' })]), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' }
+  }));
+  await assert.rejects(invalidBridge.fetchTable('https://example.test', 'ph_view_po_27f1_hl',
+    `select=${fields.join(',')}`, { method: 'GET' }, 1000, 'invalid PO fixture override'), /fields and values must match the database schema/);
+});
+
 test('PO health reads the bounded latest source scope instead of rebuilding the live view', () => {
   assert.match(healthRepair, /ph_27f1_hl_po_latest_import_idx/);
   assert.match(healthRepair, /ph_27f1_hl_po_scope_key_idx/);
@@ -93,8 +124,8 @@ test('PO health reads the bounded latest source scope instead of rebuilding the 
   assert.doesNotMatch(healthRepair, /from public\.ph_view_po_27f1_hl/);
   assert.match(healthRepair, /security definer/);
   assert.match(healthRepair, /grant execute on function public\.get_po_management_health_snapshot\(\)[\s\S]*to service_role/);
-  assert.match(performanceWorkflow, /20260809011735_ph_27f1_hl_po\.sql/);
-  assert.match(performanceWorkflow, /20260902160400_optimize_po_management_health_snapshot\.sql/);
+  assertHistoricalMigration('20260809011735_ph_27f1_hl_po.sql');
+  assertHistoricalMigration('20260902160400_optimize_po_management_health_snapshot.sql');
 });
 
 const now = Date.parse('2026-09-20T12:00:00Z');

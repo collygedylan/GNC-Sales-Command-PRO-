@@ -1,3 +1,4 @@
+// @test-group: foundation
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -256,3 +257,4 @@ test('a subscriber failure is isolated from later subscribers', () => {
   assert.deepEqual(calls, ['view']);
   assert.equal(h.errors.length, 1);
 });
+// @test-group: foundation

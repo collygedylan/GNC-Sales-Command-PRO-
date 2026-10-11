@@ -1,14 +1,18 @@
+// @test-group: drive
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { transformSync } from 'esbuild';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 const migration = read('supabase/archive_migrations/20260903032040_protected_drive_reclass_inquiry_v1.sql');
+const v4Migration = read('supabase/migrations/20261006145333_reclass_split_move_inquiries_v4.sql');
 const auditBaseline = read('supabase/archive_migrations/20260903035800_drive_reclass_access_audit_baseline_v1.sql');
 const api = read('supabase/functions/app-api/index.ts');
 const app = read('index.html');
 const worker = read('Code.gs');
+const deliveryWorker = read('supabase/functions/request-delivery-worker/index.ts');
 
 test('Drive Reclass enqueue is service-only, idempotent, actor-bound, and source-locked', () => {
   assert.match(migration, /^begin;/);
@@ -56,15 +60,51 @@ test('Drive Reclass recipients are active verified profiles derived on the serve
 
 test('app API discards browser actor and recipients and returns only allowlisted errors', () => {
   const sanitizer = api.slice(api.indexOf('function sanitizeDriveReclassPayload'), api.indexOf('function driveReclassErrorResponse'));
-  assert.doesNotMatch(sanitizer, /actor|recipientEmails|emailRecipients|recipients/);
+  assert.doesNotMatch(sanitizer, /actor|emailRecipients|canonicalRowIds|protectedDelivery/);
+  const policy = 'reclass-action-workflow-v7-editable-fields-20261009';
+  const js = transformSync(sanitizer, {loader:'ts'}).code;
+  const sanitize = new Function('RECLASS_EDITABLE_FIELDS_POLICY','jsonObject',js+'; return sanitizeDriveReclassPayload;')(
+    policy, value => value && typeof value === 'object' && !Array.isArray(value) ? value : {});
+  const untrusted = {actorUsername:'fake',actor:{username:'fake'},recipientEmails:['unverified@example.invalid'],
+    sourceContext:{sourceMode:'drive',canonicalRowIds:['other'],reportLabel:'forged'},protectedDelivery:{frozen:true}};
+  assert.equal(sanitize(untrusted).recipientEmails,undefined,'legacy Drive cannot choose delivery recipients');
+  const drive = sanitize({...untrusted,workflowPolicyVersion:policy});
+  assert.deepEqual(drive.recipientEmails,[],'V7 Drive keeps server-fixed recipients');
+  assert.deepEqual(drive.sourceContext,{sourceMode:'drive'});
+  const inquiry = sanitize({...untrusted,workflowPolicyVersion:policy,sourceContext:{sourceMode:'item-inquiry'}});
+  assert.deepEqual(inquiry.recipientEmails,untrusted.recipientEmails,'only item-inquiry selections reach authoritative SQL validation');
+  for (const value of [drive,inquiry]) {
+    assert.equal(value.actor,undefined); assert.equal(value.actorUsername,undefined); assert.equal(value.protectedDelivery,undefined);
+  }
   assert.match(api, /actorUsername/);
   assert.match(api, /enqueue_drive_reclass_inquiry_v1/);
+  assert.match(api, /workflowPolicyVersion === "reclass-action-workflow-v4-split-moves-20261006"[\s\S]*enqueue_drive_reclass_inquiry_v4/);
   assert.match(api, /get_drive_reclass_inquiry_status_v1/);
   assert.match(api, /retry_drive_reclass_inquiry_v1/);
   assert.match(api, /action === "drive_reclass_inquiry"/);
   const errors = api.slice(api.indexOf('function driveReclassErrorResponse'), api.indexOf('async function handleDriveReclassAction'));
   assert.doesNotMatch(errors, /code:\s*raw|code:\s*code/);
   assert.match(errors, /DRIVE_RECLASS_SERVICE_UNAVAILABLE/);
+});
+
+test('split-move V4 retains ordered split snapshots, validates hold semantics, and never changes inventory', () => {
+  const enqueue = v4Migration.slice(v4Migration.indexOf('create or replace function public.enqueue_drive_reclass_inquiry_v4'), v4Migration.indexOf('revoke all on function public.enqueue_drive_reclass_inquiry_v4'));
+  assert.match(v4Migration, /reclass-action-workflow-v4-split-moves-20261006/);
+  assert.match(v4Migration, /split_count < 1\) or split_count > 100/);
+  assert.match(v4Migration, /projected_proposals := projected_proposals \|\| jsonb_build_array\(jsonb_build_object/);
+  assert.match(v4Migration, /btrim\(hold_reason\) <> hold_reason/);
+  assert.match(v4Migration, /lower\(hold_reason\) <> hold_reason/);
+  assert.match(v4Migration, /elsif not p_allow_incomplete and hold_reason <> '' then/);
+  assert.match(v4Migration, /private\.validate_eval_work_inquiry_legacy_v1\(private\.project_reclass_split_move_v4\(p_payload,false\),itemcode_value,context_rows\)/);
+  assert.match(v4Migration, /requestFingerprint/);
+  assert.match(v4Migration, /saved_fingerprint is distinct from fingerprint/);
+  assert.doesNotMatch(enqueue, /update public\.ph_master_inventory|insert into public\.ph_master_inventory|delete from public\.ph_master_inventory/i);
+  assert.match(v4Migration, /revoke all on function public\.enqueue_drive_reclass_inquiry_v4\(jsonb\) from public, anon, authenticated/);
+  assert.match(v4Migration, /grant execute on function public\.enqueue_drive_reclass_inquiry_v4\(jsonb\) to service_role/);
+  const forwarder = deliveryWorker.slice(deliveryWorker.indexOf('async function callAppsScript'), deliveryWorker.indexOf('async function sendPush'));
+  assert.match(forwarder, /payload: event\.payload/);
+  assert.match(forwarder, /JSON\.stringify\(delivery\)/);
+  assert.match(deliveryWorker, /\["photo_history_share", "reclass_inquiry"/);
 });
 
 test('Drive Mode keeps one eight-action V3 editor and routes only Drive through the protected API', () => {

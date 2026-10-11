@@ -2,6 +2,13 @@ import { inventoryReadFixture } from './inventory-list-read-fixture.mjs';
 
 export const hlUserId = '54c87ebf-d76d-452b-96b4-beaaeb1742d9';
 export const hlRecipient = 'dylan_collyge@greenleafnursery.com';
+export function hlProfileRow({ id = hlUserId, username = 'dylan_collyge', role = 'ADMIN' } = {}) {
+  return { id, legacy_user_id: null, username, display_name: username, role, division: '10', language: 'English',
+    disabled_at: null, locked_until: null, must_change_password: false, passkey_pilot: false };
+}
+export function hlSeasonSettingsRows() {
+  return [{ key: 'current_season_salesyear', value: { seasonCode: 'F1', salesYear: '27' }, updated_by: null, updated_at: '2026-01-01T00:00:00Z' }];
+}
 export const hlSoc = (source_id, changes = {}) => ({ source_id, unique_id: source_id, itemcode: 'SYNTH.003', commonname: 'Synthetic HL Holly',
   contsize: '#3', locationcode: 'C.12.001', lotcode: '27.F1', quantityordered: '10', ptravailable: null, dock: '4', planstartdate: '2026-09-15',
   stopnumber: '2', tripnumber: '1', transactionnumber: 'SYNTH-ORDER', purchaseordernumber: 'SYNTH-PO', customername: 'Synthetic Customer',
@@ -11,6 +18,10 @@ export const hlMaster = (unique_id, changes = {}) => inventoryReadFixture.row({ 
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const uuid = (index) => `10000000-0000-4000-8000-${String(index).padStart(12, '0')}`;
+export function hlOrderFixtureRpcResult(operation) {
+  if (operation === 'report_app_health_event') return 1;
+  throw new Error(`HL_FIXTURE_UNSUPPORTED_RPC_RESULT:${String(operation || '')}`);
+}
 export function noHistoryLowStockTargets(itemcodes = []) {
   const codes = Array.isArray(itemcodes) ? itemcodes : [];
   return [...new Set(codes.map((code) => String(code || '').trim().toUpperCase()).filter(Boolean))].map((code) => ({
@@ -459,10 +470,10 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     control.commands.length = 0;
   }
   const origin = new URL(baseURL).origin;
-  const seasonSettings = [{ key: 'current_season_salesyear', value: { seasonCode: 'F1', salesYear: '27' } }];
+  const seasonSettings = hlSeasonSettingsRows();
   const claims = { sub: hlUserId, aud: 'authenticated', role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000) };
   const token = [Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url'), Buffer.from(JSON.stringify(claims)).toString('base64url'), 'synthetic'].join('.');
-  const profile = { id: hlUserId, username, display_name: username, role, division: '10', language: 'English', disabled_at: null, locked_until: null, must_change_password: false };
+  const profile = hlProfileRow({ username, role });
   const session = { access_token: token, refresh_token: 'synthetic', expires_at: claims.exp, expires_in: 3600, token_type: 'bearer', user: { id: hlUserId, aud: 'authenticated', role: 'authenticated', email: 'hl-test@example.invalid', app_metadata: {}, user_metadata: {}, created_at: '2026-01-01T00:00:00Z' } };
   const json = (route, value, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers: {
     'access-control-allow-origin': origin,
@@ -582,6 +593,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       if (op === 'get_request_capabilities') return json(route, { contract_version: 2, username, scope: 'global', can_view_queue: true, can_edit: true, can_complete: true });
       if (op === 'get_request_schema_compatibility') return json(route, { compatible: true, contract_version: 2 });
       if (op === 'get_eval_item_low_stock_targets_v1') return json(route, noHistoryLowStockTargets(body.p_itemcodes));
+      if (op === 'report_app_health_event') return json(route, hlOrderFixtureRpcResult(op));
       if (/^(get_|list_|report_app_health_event)/.test(op || '')) return json(route, []);
       control.blockedMutations.push(`RPC ${op}`); return json(route, { error: 'Blocked' }, 403);
     }
@@ -639,6 +651,11 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};
+      const managerSeasonRead = method === 'POST' && body.action === 'manager_season_settings' && body.operation === 'read'
+        && Object.keys(body).every(key => ['action', 'operation'].includes(key))
+        && req.headers().authorization === 'Bearer ' + token
+        && ['dylan_collyge', 'jd_jones', 'megan_kelly'].includes(username);
+      if (managerSeasonRead) return json(route, { ok: true, data: { seasonCode: 'F1', salesYear: 27, revision: 0, updatedAt: null, updatedBy: '' } });
       const salesCompatibilityRead = method === 'POST' && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && url.pathname === '/functions/v1/app-api' && ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
         && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
@@ -654,7 +671,7 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         && (!body.params || (typeof body.params === 'object' && !Array.isArray(body.params) && Object.keys(body.params).length === 0))
         && !req.headers()['idempotency-key'];
       if (sourceFreshnessRead) return json(route, { ok: true, data: { filename: null, last_updated: null } });
-      const datasetRead = body.action === 'dataset_read' && ['soc', 'reserves', 'cav', 'sales_office', 'request_queue',
+      const datasetRead = body.action === 'dataset_read' && ['soc', 'suspend_tag', 'reserves', 'cav', 'sales_office', 'request_queue', 'active_request',
         'dock_item', 'dock_issue', 'dock_allocations', 'inventory_edits', 'shear'].includes(body.dataset)
         && Object.keys(body).every(key => ['action', 'dataset', 'params'].includes(key))
         && body.params && typeof body.params === 'object' && !Array.isArray(body.params)

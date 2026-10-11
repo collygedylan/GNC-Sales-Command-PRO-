@@ -1,7 +1,10 @@
+// @test-group: hl-orders
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { appApiDatabaseBridge, installDatabaseBridge } from './helpers/database-bridge.mjs';
+import { hlOrderFixtureRpcResult, hlProfileRow, hlSeasonSettingsRows } from './fixtures/hl-order-state.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const blockStart = html.indexOf('        // HL selections mirror');
@@ -12,6 +15,48 @@ const source = (name) => {
   assert.ok(start >= 0, `${name} must be present`);
   return html.slice(start, html.indexOf('\n        }', start) + 10);
 };
+
+test('HL browser fixture returns a contract-valid health RPC result through the strict database bridge', async () => {
+  const fixtureSource = readFileSync(new URL('./fixtures/hl-order-state.mjs', import.meta.url), 'utf8');
+  assert.match(fixtureSource, /if \(op === 'report_app_health_event'\) return json\(route, hlOrderFixtureRpcResult\(op\)\)/);
+  assert.throws(() => hlOrderFixtureRpcResult('unknown_operation'), /HL_FIXTURE_UNSUPPORTED_RPC_RESULT/);
+  const bridge = appApiDatabaseBridge(async (_url, init) => {
+    assert.equal(JSON.parse(String(init.body)).duration_ms, null);
+    return new Response(JSON.stringify(hlOrderFixtureRpcResult('report_app_health_event')), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  });
+  const response = await bridge.fetchRpc('https://fixture.invalid', 'report_app_health_event', {
+    method: 'POST',
+    body: JSON.stringify({ event_name: 'fixture_live_control', area: 'test', severity: 'error', sanitized_code: 'TEST',
+      duration_ms: null, sample_rate: 1, app_build: 'fixture', metadata: {} })
+  }, 1000, 'fixture semantic health event');
+  assert.equal((await response.json()), 1);
+});
+
+test('HL profile and season-settings fixtures satisfy the app-selected database response contracts', async () => {
+  const liveDatabase = readFileSync(new URL('../services/liveDatabase.ts', import.meta.url), 'utf8');
+  const profileSelect = liveDatabase.match(/\.select\('([^']+)'\)/)?.[1];
+  assert.ok(profileSelect, 'profile projection must be read from the live database adapter');
+  const settingsSelect = html.match(/select=([^&'`]+)&key=eq\.\$\{encodeURIComponent\(APP_SEASON_SETTINGS_KEY\)\}/)?.[1];
+  assert.ok(settingsSelect, 'season settings projection must be read from the application');
+  const bridge = appApiDatabaseBridge(async (url) => {
+    const table = new URL(url).pathname.split('/').at(-1);
+    const rows = table === 'profiles' ? [hlProfileRow()] : table === 'ph_app_settings' ? hlSeasonSettingsRows() : null;
+    assert.ok(rows, `unexpected fixture table ${table}`);
+    return new Response(JSON.stringify(table === 'profiles' ? rows[0] : rows), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  });
+  const profileResponse = await bridge.fetchTable('https://fixture.invalid', 'profiles', `select=${profileSelect}`, { method: 'GET' }, 1000, 'HL profile fixture');
+  assert.equal((await profileResponse.json()).passkey_pilot, false);
+  const settingsQuery = `select=${settingsSelect}&key=eq.current_season_salesyear&limit=1`;
+  const settingsResponse = await bridge.fetchTable('https://fixture.invalid', 'ph_app_settings', settingsQuery, { method: 'GET' }, 1000, 'HL season settings fixture');
+  const [settingsRow] = await settingsResponse.json();
+  assert.equal(settingsRow.updated_by, null);
+  assert.equal(settingsRow.updated_at, '2026-01-01T00:00:00Z');
+});
 const row = (unique_id = 'soc-a', changes = {}) => ({ unique_id, itemcode: 'PLANT.003', commonname: 'Synthetic Holly', contsize: '#3',
   locationcode: 'C.12.001', lotcode: '27.F1', quantityordered: '10', dock: '4', planstartdate: '2026-09-15', stopnumber: '2',
   transactionnumber: 'SO-1', purchaseordernumber: 'PO-1', tripnumber: '3', customername: 'Synthetic Customer', consigneename: 'Synthetic Consignee', ...changes });
@@ -31,7 +76,9 @@ function runtime() {
 }
 function quantityRuntime() {
   const ctx = vm.createContext({
-    escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+    escapeHtml: (value) => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'),
+    getCardLocationOnHandValue: () => null,
+    formatLocPhotoMatchQtyValue: () => 'Not verified'
   });
   vm.runInContext([
     source('firstNonEmptyValue'),
@@ -143,6 +190,41 @@ test('HL cart refresh removes only committed rows and empty date groups while re
   } finally { dom.window.close(); }
 });
 
+test('HL order render refreshes locked-cart guidance after replacing or keeping identical markup', async () => {
+  const {JSDOM}=await import('jsdom');
+  const dom=new JSDOM('<div id="hl-order-content"></div>');
+  try {
+    const ctx=runtime();
+    ctx.document=dom.window.document;
+    ctx.canUseHlOrder=()=>true;
+    ctx.syncHlOrderCartCommittedRows=()=>{};
+    ctx.refreshHlOrderWarning=()=>{};
+    ctx.setSurfaceDisplayPending=()=>{};
+    ctx.rememberHlOrderDriveCards=()=>{};
+    ctx.hasHlOrderUnsavedInputs=()=>false;
+    ctx.buildFastInvokeAttrs=()=>'';
+    ctx.buildHlOrderCartHtml=()=>'<section id="hl-order-cart"><div id="hl-order-cart-status"></div><article data-hl-draft-source-id="locked">Waiting for delivery reconciliation</article></section>';
+    vm.runInContext("hlOrderTab='cart'; hlOrderStateData={revision:1,draft:[{source_id:'locked',status:'needs_review',can_remove:false}],orders:[],delivery_issues:[]};",ctx);
+    ctx.refreshHlBloomStatus=()=>{
+      const status=ctx.document.getElementById('hl-order-cart-status');
+      if (status && vm.runInContext('hlOrderStateData.draft.some(entry=>entry.can_remove===false)',ctx)) {
+        status.innerHTML='<button type="button">Open HL Orders</button>';
+      }
+    };
+    vm.runInContext(source('setHlOrderContent')+'\n'+source('renderHlOrder'),ctx);
+
+    ctx.renderHlOrder();
+    assert.equal(ctx.document.querySelector('#hl-order-cart-status button')?.textContent,'Open HL Orders',
+      'freshly committed markup gets the guidance for its locked row');
+
+    ctx.document.querySelector('#hl-order-cart-status').replaceChildren();
+    ctx.renderHlOrder();
+    assert.equal(ctx.document.querySelector('#hl-order-cart-status button')?.textContent,'Open HL Orders',
+      'guidance is restored even when the content setter keeps identical markup');
+    assert.match(ctx.document.querySelector('[data-hl-draft-source-id="locked"]').textContent,/Waiting for delivery reconciliation/);
+  } finally { dom.window.close(); }
+});
+
 test('HL drafts never enter the ordinary Bloom selection set', () => {
   const ctx=runtime();
   ctx.selectedItems.add('ordinary-a'); ctx.selectedItemSources.set('ordinary-a','drive');
@@ -199,6 +281,7 @@ test('HL command retries retain ambiguous HTTP failures and release only structu
 
 test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects and ambiguous transport outcomes', async () => {
   let calls=0;
+  const rpcArgs = { p_action: 'state', p_command_id: '00000000-0000-4000-8000-000000000001', p_payload: {} };
   const ctx=vm.createContext({
     getNativeAuthRequestHeaders:async()=>null,
     nativeSessionRecoveryError:()=>new Error('Sign in again.'),
@@ -206,11 +289,12 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
     SUPABASE_URL:'https://synthetic.invalid', SUPABASE_WRITE_TIMEOUT_MS:5000,
     getResponseError:async(_response,fallback)=>fallback
   });
+  installDatabaseBridge(ctx);
   const rpcStart=html.indexOf('        async function supabaseRpc(');
   const rpcSource=html.slice(rpcStart,html.indexOf('\n        }',rpcStart)+10);
   assert.ok(rpcStart>=0);
   vm.runInContext(`${rpcSource}\n${source('isHlOrderCommandDefinitelyRejected')}`,ctx);
-  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
     assert.equal(error.hlOrderCommandDispatch,'not_sent');
     assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),true);
     return true;
@@ -230,7 +314,7 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
     calls++;
     return {ok:false,status:403,clone:()=>({json:async()=>({code:responseCode})}),text:async()=>'{"code":"42501"}'};
   };
-  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
     assert.equal(error.code,'42501');
     assert.equal(error.hlOrderCommandDispatch,'response_received');
     assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),true);
@@ -239,7 +323,7 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
 
   responseCode='';
   ctx.fetchWithTimeout=async()=>{calls++;throw new TypeError('connection reset after dispatch');};
-  await assert.rejects(ctx.supabaseRpc('hl_order_command',{}),error=>{
+  await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
     assert.equal(error.hlOrderCommandDispatch,undefined);
     assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),false);
     return true;
@@ -479,7 +563,8 @@ test('HL normal Drive quantity cards preserve unknown verified values while reta
   assert.match(unknown, /app-card-qty-label">Open Stock<\/span>.*?app-card-qty-value[^>]*>Unknown<\/span>/);
   const zero = ctx.buildInventoryQuantityChipsHtml({ ptravailable: '0', ptronhand: '0', ptrreviewed: '0', s_lts: '0' }, { layout: 'row', compact: true, preserveUnknown: true });
   assert.match(zero, /app-card-qty-label">Available<\/span>.*?app-card-qty-value[^>]*>0<\/span>/);
-  assert.doesNotMatch(zero, /Available<\/span>.*?Unknown/);
+  assert.match(zero, /data-inventory-card-metric="available"[\s\S]*?app-card-qty-value[^>]*>0<\/span>/);
+  assert.match(zero, /data-inventory-card-metric="loc-on-hand"[\s\S]*?app-card-qty-value[^>]*>Unknown<\/span>/);
 });
 
 test('HL dirty inputs remain protected after blur until explicitly saved or reset', () => {

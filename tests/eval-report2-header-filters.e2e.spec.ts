@@ -1,7 +1,10 @@
 // September 9 behavior coverage; see docs/rollback-sep09-validation.md.
 import { expect, test } from '@playwright/test';
+// @test-group: @local-e2e,@release-functional,eval
 
-test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', async ({ page }) => {
+
+
+test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE selection in the flat view', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-direct-multiselect', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');
@@ -17,8 +20,8 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
       { UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', COMMONNAME: 'Alpha Canary', CONTSIZE: '#3', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 20, LOCATIONCODE: 'A.01.001', PTRAVAILABLE: 20 },
       { UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', COMMONNAME: 'Beta Canary', CONTSIZE: '#5', SEASON: 'F1', SALEYEAR: 27, PRIORITY: '', S_LTS: 18, LOCATIONCODE: 'B.01.001', PTRAVAILABLE: 18 }
     ], warehouseAssignedItemsData: [
-      { UNIQUE_ID: 'eval2-assign-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
-      { UNIQUE_ID: 'eval2-assign-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
+      { master_unique_id: 'eval2-click-a', UNIQUE_ID: 'eval2-click-a', ITEMCODE: 'CLICK.A', GENUSNAME: 'Rosa', ASSIGNEDTO: 'dylan_collyge' },
+      { master_unique_id: 'eval2-click-b', UNIQUE_ID: 'eval2-click-b', ITEMCODE: 'CLICK.B', GENUSNAME: 'Acer', ASSIGNEDTO: 'dylan_collyge' }
     ], _fromCache: true });
     const masterState = getDatasetState('master');
     const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -103,7 +106,7 @@ test('Eval Reports #2 uses real checkbox clicks and preserves whole-ITEMCODE sel
   expect(await host.evaluate((element) => element.scrollWidth <= 391)).toBe(true);
 });
 
-test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', async ({ page }) => {
+test('Eval Reports #2 filters the coherent assignment index locally and adopts a later verified revision', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=eval2-authoritative-user-filter', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).applyManagerEvalReport2UserFilter === 'function');
   const result = await page.evaluate(() => (window as any).eval(`(async () => {
@@ -123,8 +126,8 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
         { UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', COMMONNAME:'Current Beta', CONTSIZE:'#5', SEASON:'X', SALEYEAR:27, PRIORITY:'1', LOCATIONCODE:'B.01.001' }
       ];
       warehouseAssignedItemsInventory = [
-        { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
-        { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
+        { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'dylan_collyge' },
+        { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'megan_kelly' }
       ];
       const masterState = getDatasetState('master');
       const assignmentState = getDatasetState('warehouseAssignedItems');
@@ -149,8 +152,8 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
       const localRows = getManagerEvalReport2RowsBeforeCommonName().map(row => getManagerEvalReport2ItemCode(row));
       // A later verified background snapshot, not a filter click, changes ownership.
       warehouseAssignedItemsInventory = [
-          { UNIQUE_ID:'assignment-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
-          { UNIQUE_ID:'assignment-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
+          { master_unique_id:'stale-a', UNIQUE_ID:'stale-a', ITEMCODE:'STALE.A', GENUSNAME:'Rosa', ASSIGNEDTO:'megan_kelly' },
+          { master_unique_id:'current-b', UNIQUE_ID:'current-b', ITEMCODE:'CURRENT.B', GENUSNAME:'Acer', ASSIGNEDTO:'dylan_collyge' }
         ];
       assignmentState.initialLoaded = assignmentState.fullLoaded = true;
       assignmentState.lastLoadedAt = new Date().toISOString();
@@ -178,7 +181,7 @@ test('Eval Reports #2 filters the coherent assignment index locally and adopts a
   });
 });
 
-test('Eval Reports #2 manager search refreshes while the search field remains active', async ({ page }) => {
+test('Eval Reports #2 manager search refreshes while the search field remains active', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?e2e=eval2-manager-search', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).renderManagerEvalReports2Panel === 'function');

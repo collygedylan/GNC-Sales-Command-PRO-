@@ -1,3 +1,6 @@
+\set ON_ERROR_STOP on
+-- @test-runtime: isolated-acceptance
+-- @test-harness: sales-mobile
 begin;
 create temporary table sales_checks(description text);
 create function pg_temp.sales_check(ok boolean, description text) returns void language plpgsql as $$
@@ -138,4 +141,10 @@ begin
   delete from private.navigation_view_overrides where profile_id=rep and view_key='sales-credit';
 end $$;
 select count(*) as sales_workflow_checks from sales_checks;
+
+create extension if not exists pgtap with schema extensions;
+set local search_path = public,extensions,pg_temp;
+select plan(1);
+select ok((select count(*) > 0 from sales_checks), 'sales_credit_workflow_test.sql: all exception assertions completed');
+select * from finish();
 rollback;

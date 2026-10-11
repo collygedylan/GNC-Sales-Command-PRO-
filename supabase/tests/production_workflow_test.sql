@@ -1,3 +1,6 @@
+\set ON_ERROR_STOP on
+-- @test-runtime: isolated-acceptance
+-- @test-harness: sales-mobile
 -- Isolated database acceptance only. All fixtures and trigger changes roll back.
 begin;
 create temporary table workflow_checks(description text);
@@ -114,4 +117,10 @@ begin
   perform pg_temp.wf_check((select ptronhand::numeric=8 from public.ph_master_inventory where unique_id='WF-SOURCE-A'),'request-report audit does not mutate inventory');
 end $$;
 select count(*) as production_workflow_checks_passed from workflow_checks;
+
+create extension if not exists pgtap with schema extensions;
+set local search_path = public,extensions,pg_temp;
+select plan(1);
+select ok((select count(*) > 0 from workflow_checks), 'production_workflow_test.sql: all exception assertions completed');
+select * from finish();
 rollback;
