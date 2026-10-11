@@ -30,6 +30,14 @@ test('all three views use the same layout and the six-metric renderer',()=>{
   assert.match(html,/sourceView: 'request', preserveUnknown: true/);
   for(const label of ['On Hand','Review','Available','Open Stock','Loc Photo Match','Loc On Hand'])assert.ok(html.includes("'"+label+"'")||html.includes(label+':'));
 });
+
+test('Docks details preserve field chips without duplicating the six inventory metrics',()=>{
+  const docks=html.slice(html.indexOf("if(sourceView === 'docks'){"),html.indexOf("if(sourceView==='sales-office-order'){"));
+  assert.ok(docks.includes('buildSharedInventoryCardLayout(item, {'));
+  assert.match(docks,/detailsHtml: `\$\{buildInventoryCardFieldChipsHtml\(item, \{ compact: true \}\)\}\$\{noteHtml\}\$\{inventoryEditActionHtml\}\$\{actionBtns\}`/);
+  assert.doesNotMatch(docks,/\$\{compactCardFieldChipsHtml\}/);
+  assert.equal((docks.match(/buildInventoryQuantityChipsHtml\(/g)||[]).length,1);
+});
 test('operational metrics require a verified exact inventory row',()=>{
   let verified=true;
   const c=vm.createContext({getDatasetState:()=>({rowCompleteness:'complete',initialLoaded:true}),getCardLocationOnHandValue:()=>verified?'0':null,fullInventory:[{ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1',PTRONHAND:0}],isSameDockSuspendDcRequestCardDataLocation:(a,b)=>['ITEMCODE','LOCATIONCODE','LOTCODE'].every(k=>a[k]===b[k])});
