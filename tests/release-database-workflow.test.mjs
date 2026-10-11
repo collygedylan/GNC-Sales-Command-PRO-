@@ -124,7 +124,7 @@ test('historical regression fixture uses the explicit migration order manifest a
   const root = repositoryRoot;
   const manifest = readHistoricalMigrationManifest({ root });
   assert.equal(manifest.length, 186);
-  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 174);
+  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 186);
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(fs.existsSync(new URL('../' + entry.source, import.meta.url)), entry.source);
   const destinations = new Map(manifest.map((entry, index) => [entry.destination, index]));
