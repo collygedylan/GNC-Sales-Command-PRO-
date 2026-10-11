@@ -181,6 +181,9 @@ jobs:
     timeout-minutes: 25
     permissions:
       contents: write
+      actions: read
+      pull-requests: read
+      pages: write
     steps:
       - name: Check out the authorized main release
         uses: actions/checkout@v4
@@ -246,6 +249,12 @@ jobs:
           fi
           git -C "$pages_dir" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Publish ${GITHUB_SHA:0:12} to GitHub Pages"
           git -C "$pages_dir" push "$repository" HEAD:gh-pages
+
+      # GITHUB_TOKEN pushes do not trigger a branch-based Pages build.
+      - name: Request the GitHub Pages build for the published branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --jq '.status'
 
       - name: Verify published current descriptor and immutable fingerprint
         env:
