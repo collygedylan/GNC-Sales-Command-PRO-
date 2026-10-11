@@ -443,11 +443,9 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
   const activate = async (control: import('@playwright/test').Locator) => {
     if (!testInfo.project.name.includes('iphone')) return control.click();
     await expect(control).toBeInViewport();
-    const bounds = await control.boundingBox();
-    if (!bounds) throw new Error('Expected a visible touch target');
-    // Locator auto-scroll can advance WebKit's snap gallery before the tap.
-    // Touch the visible control directly, as a phone user does.
-    await page.touchscreen.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    // Locator.tap keeps native touch input while checking that the target
+    // receives the tap; a raw viewport coordinate can land on an overlay.
+    await control.tap();
   };
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_photo_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
