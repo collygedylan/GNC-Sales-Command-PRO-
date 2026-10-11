@@ -114787,8 +114787,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return {
                 ...resolved,
                 initialRows: Number(resolved.initialRows) > 0 ? resolved.initialRows : (narrowScreen ? 4 : 8),
-                chunkSize: resolved.chunkSize ?? (narrowScreen ? 4 : undefined),
-                perFrameRows: resolved.perFrameRows ?? (narrowScreen ? 4 : undefined)
+                chunkSize: resolved.chunkSize ?? (narrowScreen ? 8 : undefined),
+                perFrameRows: resolved.perFrameRows ?? (narrowScreen ? 8 : undefined)
             };
         }
 

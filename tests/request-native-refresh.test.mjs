@@ -698,8 +698,8 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   ctx.window = { matchMedia: query => { assert.equal(query, '(max-width: 639px)'); return { matches: true }; } };
   const narrow = ctx.getPendingRequestChunkRenderOptions(input);
   assert.equal(narrow.initialRows, 4);
-  assert.equal(narrow.chunkSize, 4);
-  assert.equal(narrow.perFrameRows, 4);
+  assert.equal(narrow.chunkSize, 8);
+  assert.equal(narrow.perFrameRows, 8);
   assert.equal(narrow.onComplete, onComplete);
   const explicit = ctx.getPendingRequestChunkRenderOptions({ initialRows: 3, chunkSize: 2, perFrameRows: 1 });
   assert.equal(explicit.initialRows, 3);
