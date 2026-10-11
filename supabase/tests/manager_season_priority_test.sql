@@ -92,6 +92,7 @@ declare
   listed jsonb; submitted jsonb; duplicate_result jsonb; state_result jsonb;
   scope_fingerprint text; before_inventory jsonb; overlays jsonb; v_event_id uuid;
   frozen_scope jsonb; frozen_hash text; scope_row jsonb;
+  replacement_row public.ph_master_inventory;
 begin
   listed:=public.manager_season_priority_list_v1(manager1,'sp_manager_1');
   perform pg_temp.sp_check(listed->>'contractVersion'='manager-season-priority-v1','list returns the protected contract');
@@ -204,10 +205,13 @@ begin
   state_result:=public.manager_season_priority_state_v1(manager1,array['SP-ITEM-X']);
   perform pg_temp.sp_check(state_result#>>'{requests,0,lifecycleStatus}'='awaiting_import','unchanged later import stays pending');
 
-  update public.ph_master_inventory set
-    priority=case when unique_id in ('SP-X-1A','SP-X-1B') then '2' when unique_id='SP-X-3' then '1' else priority end,
-    unique_id=case when unique_id='SP-X-3' then 'SP-X-3-NEW' else unique_id end
-  where itemcode='SP-ITEM-X';
+  update public.ph_master_inventory set priority='2' where unique_id in ('SP-X-1A','SP-X-1B');
+  -- V6 protects an existing row's ID. Model a replaced legacy source row while
+  -- retaining the changed-ID lineage assertions and every other stored field.
+  delete from public.ph_master_inventory where unique_id='SP-X-3' returning * into replacement_row;
+  replacement_row.unique_id := 'SP-X-3-NEW';
+  replacement_row.priority := '1';
+  insert into public.ph_master_inventory select (replacement_row).*;
   update public.app_dataset_revisions set revision=revision+1,state='ready' where key='ph_master_inventory';
   state_result:=public.manager_season_priority_state_v1(manager1,array['SP-ITEM-X']);
   perform pg_temp.sp_check(state_result#>>'{requests,0,lifecycleStatus}'='fulfilled','changed UID fulfills by priority-independent lineage');
