@@ -49,9 +49,16 @@ try {
  const batch=async row=>db.query(`select private.insert_request_batch($1,$2::jsonb,'av')`,[admin,JSON.stringify([row])]);
  await batch(request);
  assert.equal((await db.query(`select request_selected_salesrep_id from public.ph_active_request where unique_id='r1'`)).rows[0].request_selected_salesrep_id,'S01');
+ await assert.rejects(db.query(`update public.ph_active_request set request_selected_rep_display='Other Rep' where unique_id='r1'`),/REQUEST_CUSTOMER_MAPPING_REQUIRED/);
+ await assert.rejects(db.query(`update public.ph_active_request set requested_by='Other Rep' where unique_id='r1'`),/REQUEST_CUSTOMER_MAPPING_REQUIRED/);
+ await assert.rejects(db.query(`update public.ph_active_request set request_selected_rep_username='unknown_rep' where unique_id='r1'`),/REQUEST_CUSTOMER_MAPPING_REQUIRED/);
+ await db.query(`update public.profiles set display_name='Verified Profile Alias' where id=$1`,[rep]);
+ await db.query(`update public.ph_active_request set request_selected_rep_display='Verified Profile Alias' where unique_id='r1'`);
  await assert.rejects(batch({...request,unique_id:'r2',request_selected_salesrep_id:'S02'}),/REQUEST_CUSTOMER_MAPPING_REQUIRED/);
  await batch({...request,unique_id:'legacy',request_selected_salesrep_id:undefined});
  assert.equal((await db.query(`select request_selected_salesrep_id from public.ph_active_request where unique_id='legacy'`)).rows[0].request_selected_salesrep_id,'S01');
+ await assert.rejects(db.query(`update public.ph_active_request set request_selected_rep_display='Other Rep' where unique_id='legacy'`),/REQUEST_CUSTOMER_MAPPING_REQUIRED/);
+ await assert.rejects(db.query(`update public.ph_active_request set requested_by='Other Rep' where unique_id='legacy'`),/REQUEST_CUSTOMER_MAPPING_REQUIRED/);
  await db.query(`select set_config('test.actor','',false)`);
  await db.exec(`insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,customerstatus,consigneeid,consigneename,consigneestatus,salesrepid,salesrepname) values('ambiguous','00001','Same Customer','A','00011','Same Consignee','A','S03','One, Rep')`);
  await assert.rejects(batch({...request,unique_id:'ambiguous-legacy',request_selected_rep_username:null,request_selected_salesrep_id:undefined}),/REQUEST_CUSTOMER_MAPPING_REQUIRED/);

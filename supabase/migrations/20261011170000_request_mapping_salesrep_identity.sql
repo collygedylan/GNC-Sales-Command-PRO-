@@ -94,6 +94,21 @@ begin
       else sales_private.rep_name_key(mapping.salesrepname)=sales_private.rep_name_key(
         coalesce(nullif(btrim(new.request_selected_rep_display),''),nullif(btrim(new.request_selected_rep_username),''),new.requested_by)) end)
     and (caller_id is null or sales_private.request_mapping_rep_allowed_v1(caller_id,mapping.salesrepid))
+    -- A resolved external ID must not let later label/owner changes bypass
+    -- membership. Accept the imported name or names of its verified profile.
+    and coalesce(nullif(btrim(new.request_selected_rep_display),''),
+      nullif(btrim(new.request_selected_rep_username),''),nullif(btrim(new.requested_by),'')) is not null
+    and not exists (
+      select 1 from unnest(array[new.requested_by,new.request_selected_rep_display]) as labels(value)
+      where nullif(btrim(labels.value),'') is not null
+        and sales_private.rep_name_key(labels.value) is distinct from sales_private.rep_name_key(mapping.salesrepname)
+        and not exists (
+          select 1 from sales_private.rep_identities identity join public.profiles rep on rep.id=identity.profile_id
+          where identity.kind='external_id' and identity.identity_key=sales_private.key(mapping.salesrepid)
+            and sales_private.rep_name_key(labels.value) in
+              (sales_private.rep_name_key(rep.username),sales_private.rep_name_key(rep.display_name))
+            and rep.disabled_at is null and not rep.must_change_password
+            and (rep.locked_until is null or rep.locked_until<=clock_timestamp())))
     and (nullif(btrim(new.request_selected_rep_username),'') is null or exists(
       select 1 from sales_private.rep_identities identity join public.profiles rep on rep.id=identity.profile_id
       where identity.kind='external_id' and identity.identity_key=sales_private.key(mapping.salesrepid)
