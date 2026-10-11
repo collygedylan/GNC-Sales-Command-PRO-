@@ -62,6 +62,34 @@ jobs:
       artifact-id: ${{ steps.site.outputs.artifact-id }}
     steps:
       - uses: actions/checkout@v4
+      # Build Cloud handles Docker image builds; Node builds and SQL/browser
+      # verification retain their existing GitHub-hosted runners and gates.
+      - name: Check Docker Build Cloud credentials
+        id: docker-cloud
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PAT: ${{ secrets.DOCKER_PAT }}
+        run: |
+          if [ -n "$DOCKER_USERNAME" ] && [ -n "$DOCKER_PAT" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Docker Build Cloud awaits DOCKER_USERNAME and DOCKER_PAT secrets. Existing release validation remains on GitHub runners."
+          fi
+      - name: Log in to Docker
+        if: steps.docker-cloud.outputs.enabled == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PAT }}
+      - name: Set up Docker Build Cloud
+        if: steps.docker-cloud.outputs.enabled == 'true'
+        uses: docker/setup-buildx-action@v4
+        with:
+          version: v0.37.0
+          driver: cloud
+          endpoint: agmetricapp/greenleaf-ci-builder
+          install: true
       - uses: ./.github/actions/setup-node-dependencies
       - run: npm run build:pilot-monitoring
       - run: npm run build:live:assets

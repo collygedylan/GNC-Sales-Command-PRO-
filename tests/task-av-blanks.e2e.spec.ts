@@ -443,11 +443,9 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
   const activate = async (control: import('@playwright/test').Locator) => {
     if (!testInfo.project.name.includes('iphone')) return control.click();
     await expect(control).toBeInViewport();
-    const bounds = await control.boundingBox();
-    if (!bounds) throw new Error('Expected a visible touch target');
-    // Locator auto-scroll can advance WebKit's snap gallery before the tap.
-    // Touch the visible control directly, as a phone user does.
-    await page.touchscreen.tap(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+    // Locator.tap keeps native touch input while checking that the target
+    // receives the tap; a raw viewport coordinate can land on an overlay.
+    await control.tap();
   };
   const fixture = await installHlOrderFixture(page, baseURL!, { username: 'av_photo_fixture', role: 'ADMIN' });
   await settleIosShellVersion(page, testInfo.project.name);
@@ -476,7 +474,7 @@ test('AV cached card refreshes priority and preserves photo and picker hooks off
       PHOTO_LINK: `https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/one.webp,https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/${photoDate}/two.webp` };
     const root = document.createElement('section');
     root.id = 'av-photo-fixture';
-    root.style.cssText = 'position:fixed;inset:0;z-index:1000;overflow-y:auto;padding:8px;width:100%;height:100vh;box-sizing:border-box;background:var(--ops-surface,#fff)';
+    root.style.cssText = 'position:fixed;inset:var(--app-top-chrome-height,0px) 0 var(--app-bottom-nav-height,0px);z-index:1000;overflow-y:auto;padding:8px;width:100%;box-sizing:border-box;background:var(--ops-surface,#fff)';
     document.body.prepend(root);
     (window as any).__avPhotoFixtureRow = row;
     window.eval('fullInventory.push(window.__avPhotoFixtureRow); invalidateInventoryDomIdLookup()');

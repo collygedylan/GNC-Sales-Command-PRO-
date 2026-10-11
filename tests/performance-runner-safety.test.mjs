@@ -7,7 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
 import { parse } from 'acorn';
-import { installPerformanceFixture } from '../scripts/performance-browser-fixture.mjs';
+import { installPerformanceAuraAccessFixture, installPerformanceFixture } from '../scripts/performance-browser-fixture.mjs';
 import {
   PERFORMANCE_API_SOURCE_DIRECTORIES,
   restorePerformanceApiSources,
@@ -16,6 +16,55 @@ import {
 } from '../scripts/performance-api-source-snapshots.mjs';
 
 const source = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
+
+test('performance Aura fixture serves one authenticated capability read and denies provider commands locally', async () => {
+  const routes = [];
+  const page = { route: async (pattern, handler) => routes.push({ pattern, handler }) };
+  const origin = 'http://127.0.0.1:43210';
+  const counts = await installPerformanceAuraAccessFixture(page, origin);
+  assert.equal(routes.length, 1);
+  assert.equal(routes[0].pattern, '**/functions/v1/aura-llm-router');
+  const route = ({ method, body = null, headers = {} }) => {
+    let result;
+    return {
+      request: () => ({ method: () => method, headers: () => headers,
+        postDataJSON: () => { if (body === null) throw new Error('NO_JSON_BODY'); return body; } }),
+      fulfill: async value => { result = value; return value; },
+      result: () => result,
+    };
+  };
+
+  const options = route({ method: 'OPTIONS', headers: { 'access-control-request-headers': 'authorization, content-type' } });
+  await routes[0].handler(options);
+  assert.equal(options.result().status, 204);
+  assert.equal(options.result().headers['access-control-allow-origin'], origin);
+
+  const capabilities = route({ method: 'POST', body: { mode: 'capabilities' } });
+  await routes[0].handler(capabilities);
+  const response = JSON.parse(capabilities.result().body);
+  assert.equal(response.ok, true);
+  assert.deepEqual(response.capabilities, { id: '54c87ebf-d76d-452b-96b4-beaaeb1742d9',
+    username: 'performance_admin', role: 'ADMIN', inventory: true, history: false, drafts: false,
+    socReserves: false, socOpenOrders: false });
+  assert.equal(response.configured, true);
+
+  const providerCommand = route({ method: 'POST', body: { mode: 'command', text: 'stock' } });
+  await routes[0].handler(providerCommand);
+  assert.equal(providerCommand.result().status, 403);
+  assert.deepEqual(JSON.parse(providerCommand.result().body), { ok: false, error: 'PERFORMANCE_AURA_SCOPE_DENIED' });
+  const extraKey = route({ method: 'POST', body: { mode: 'capabilities', text: 'unexpected' } });
+  await routes[0].handler(extraKey);
+  assert.equal(extraKey.result().status, 403);
+  assert.deepEqual(counts, { capabilityReads: 1, rejectedRequests: 2 });
+});
+
+test('live performance persona carries the matching Drive navigation grant for its Aura capability mock', async () => {
+  const fixture = source('../scripts/performance-browser-fixture.mjs');
+  assert.match(fixture, /appPermissions: \[\{ permissionKey: 'module\.drive\.view', kind: 'module', moduleKey: 'drive', allowed: true \}\]/);
+  assert.match(fixture, /inventory: true, history: false, drafts: false, socReserves: false, socOpenOrders: false/);
+  assert.match(fixture, /configured: true/);
+  assert.match(fixture, /installPerformanceAuraAccessFixture\(page, origin\)/);
+});
 
 test('historical browser build uses an immutable pinned archive in its own verified output directory', () => {
   const build = source('../scripts/build-performance-baseline.mjs');

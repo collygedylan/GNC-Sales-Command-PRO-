@@ -179,6 +179,8 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'node scripts/run-discovered-database-tests.mjs pglite "$pglite_root"',
     'node scripts/run-discovered-database-tests.mjs postgres-concurrency "$DB_URL"',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
+    'deno cache --node-modules-dir=auto "${entrypoints[@]}" "${tests[@]}"',
+    'deno check --node-modules-dir=auto "${entrypoints[@]}"',
     'deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"',
   ];
   let previous = -1;
@@ -193,6 +195,28 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
   assert.ok(resetAt >= 0 && lintAt > resetAt, 'historical reset finishes before strict function lint');
   assert.match(lintWrapper, /--fail-on', 'error'/);
   assert.doesNotMatch(workflow, /strategy:|matrix:/);
+});
+
+test('Edge graph prefetch retries only bounded transient failures before one check and test pass', () => {
+  const cache = databaseJob.steps.find(step => step.id === 'deno_cache');
+  assert.ok(cache, 'discovered Edge dependencies are prefetched before validation');
+  assert.equal(cache.shell, 'bash');
+  assert.match(cache.run, /node scripts\/test-discovery\.mjs deno-entrypoints/);
+  assert.match(cache.run, /node scripts\/test-discovery\.mjs deno-tests/);
+  assert.match(cache.run, /for attempt in 1 2 3/);
+  assert.match(cache.run, /sleep "\$delay"/);
+  assert.match(cache.run, /429\[\[:space:\]\]\+Too Many Requests/);
+  assert.match(cache.run, /5\[0-9\]\{2\}/);
+  assert.match(cache.run, /connection reset by peer/);
+  assert.match(cache.run, /non-retryable error/);
+  assert.doesNotMatch(cache.run, /deno (check|test)/, 'prefetch does not rerun validation commands');
+
+  const edge = databaseJob.steps.find(step => step.id === 'edge');
+  assert.ok(edge);
+  assert.match(edge.run, /deno check --node-modules-dir=auto "\$\{entrypoints\[@\]\}"/);
+  assert.match(edge.run, /deno test --node-modules-dir=auto --allow-env --allow-net "\$\{tests\[@\]\}"/);
+  assert.equal(databaseJob.steps.indexOf(cache) + 1, databaseJob.steps.indexOf(edge),
+    'the cached graph is validated immediately after prefetch');
 });
 
 test('canonical schema contracts run as an isolated database-check gate', () => {

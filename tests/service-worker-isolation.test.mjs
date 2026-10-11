@@ -125,7 +125,7 @@ test('fresh install precaches the exact versioned runtime requested by the compi
 
 test('all split AURA modules bypass shared service-worker storage', async () => {
   const h = harness();
-  for (const file of ['components/common/auraVoiceWidget', 'services/auraVoiceService', 'services/auraConversation', 'utils/auraIntentParser', 'utils/auraLingo']) {
+  for (const file of ['assets/aura-voice', 'components/common/auraVoiceWidget', 'components/common/auraQueryPanel', 'services/auraVoiceService', 'services/auraConversation', 'utils/auraIntentParser', 'utils/auraLingo']) {
     const path = `/${file}.js?v=V2026.10.01.007`;
     assert.equal(h.evaluate(`shouldBypassServiceWorkerCache({url:${JSON.stringify(absolute(path))}})`), true);
     const result = await h.dispatch('fetch', { request: request(path) });

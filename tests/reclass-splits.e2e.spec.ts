@@ -401,8 +401,15 @@ test('V7 field-only inquiry enables submission, preserves the draft on failure a
 test('Take off hold YES queues the inquiry and retains confirmed photos and specs', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name);
   const photo = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/2026-10-09/keep.webp';
+  // Seed both the mounted cache and the authoritative fixture row. Background
+  // master reads must see the already-saved capture before the live Hold edit.
+  Object.assign(f.control.master[0], {
+    holdstopcode: 'H', holdstopreason: 'test hold', photo_link: photo, photo_name: '2026-10-09-keep.webp',
+    spec: 'keep specs', caliper: '2', match: '100', av_note: 'keep note', last_updated: '2026-10-09T12:00:00Z',
+  });
+  f.control.datasetRevision = 501;
   await page.evaluate(photo => window.eval(`(() => {
-    Object.assign(fullInventory[0], {HOLDSTOPCODE:'H',HOLDSTOPREASON:'test hold',PHOTO_LINK:${JSON.stringify(photo)},PHOTO_NAME:'2026-10-09-keep.webp',SAVED_PHOTO_LINK:${JSON.stringify(photo)},SPEC:'keep specs',CALIPER:'2',MATCH:'100',AV_NOTE:'keep note'});
+    Object.assign(fullInventory[0], {HOLDSTOPCODE:'H',HOLDSTOPREASON:'test hold',PHOTO_LINK:${JSON.stringify(photo)},PHOTO_NAME:'2026-10-09-keep.webp',SAVED_PHOTO_LINK:${JSON.stringify(photo)},SPEC:'keep specs',CALIPER:'2',MATCH:'100',AV_NOTE:'keep note',LAST_UPDATED:'2026-10-09T12:00:00Z',last_updated:'2026-10-09T12:00:00Z'});
     rebuildMasterInventoryIndexes();
     if (!canSubmitLiveHoldRemoval(fullInventory[0])) throw new Error('Fixture must be authorized for live Hold removal');
     void sendDriveRowToHoldRelease(fullInventory[0].UNIQUE_ID);

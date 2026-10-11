@@ -147,8 +147,12 @@ authorization checks, response and scheduling behavior remain unchanged. Those
 requests remain counted in startup and full-context totals. A missing scheduler
 contract or unfinished validation fails readiness instead of dropping a read.
 Read counts include every API request started within the measurement window.
-Payload bytes come from those same requests after bounded completion; later
-background responses cannot enter the window. Deliberate browser cancellations
+The authenticated `POST /functions/v1/aura-llm-router` with exactly
+`{"mode":"capabilities"}` is classified as a read; router commands, malformed
+bodies and other paths remain opaque traffic. This classification does not
+remove the request from total request or response-byte accounting. Payload bytes
+come from those same requests after bounded completion; later background
+responses cannot enter the window. Deliberate browser cancellations
 are recorded separately with zero completed payload, while unexpected HTTP,
 network and body-capture failures invalidate the measurement.
 React render isolation has separate deterministic mount tests because the normal

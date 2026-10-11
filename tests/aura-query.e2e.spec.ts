@@ -147,3 +147,152 @@ test('Aura hands-free wakes globally, waits for final speech, and resumes after 
     expect(await page.evaluate(() => (window as any).__auraEngines.at(-1).continuous)).toBe(true);
   } finally { await context.close(); }
 });
+
+test('the React-owned Aura bundle keeps one voice session and reports processing and response states', {"tag":["@local-e2e","@release-functional"]}, async ({ browser }) => {
+  const routes = new Set(['assets/aura-voice.js']);
+  const contexts = [];
+  const pendingCommands: Array<() => void> = [];
+  const sent: any[] = [];
+  async function launch(width: number) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: 'block' });
+    contexts.push(context);
+    await context.addInitScript(() => {
+      (window as any).__auraEngines = [];
+      (window as any).__auraUtterances = [];
+      class FakeRecognition {
+        static async available() { return 'unavailable'; }
+        processLocally = false;
+        continuous = false;
+        onstart?: () => void;
+        onresult?: (event: any) => void;
+        onerror?: (event: any) => void;
+        onend?: () => void;
+        start() { this.onstart?.(); }
+        abort() {}
+        stop() {}
+        constructor() { (window as any).__auraEngines.push(this); }
+      }
+      (window as any).SpeechRecognition = FakeRecognition;
+      class FakeUtterance { text: string; constructor(text: string) { this.text = text; } }
+      (window as any).SpeechSynthesisUtterance = FakeUtterance;
+      Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+        getVoices: () => [{ name: 'Local English', lang: 'en-US', localService: true }],
+        cancel() {}, speak: (utterance: any) => (window as any).__auraUtterances.push(utterance),
+      } });
+      Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => ({ state: 'granted' }) } });
+    });
+    await context.exposeFunction('auraReactRequest', async (body: any) => {
+      sent.push({ width, body });
+      if (body.mode === 'create') return { ok: true, conversationId: `react-${width}`, revision: 0 };
+      if (body.mode === 'command' && body.source === 'typed') {
+        await new Promise<void>(resolve => pendingCommands.push(resolve));
+        return { ok: true, conversationId: `react-${width}`, revision: 2, reply: 'Typed answer.', speech: 'Typed speech must stay silent.' };
+      }
+      return { ok: true, conversationId: `react-${width}`, revision: 1, reply: 'Voice answer.', speech: 'Voice answer spoken.' };
+    });
+    const page = await context.newPage();
+    await page.route('**/*', async route => {
+      const url = new URL(route.request().url());
+      if (url.origin !== 'https://aura-react.test') return route.abort();
+      const file = url.pathname.slice(1);
+      if (!file) return route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body><span id="shell-sentinel">Shell stays mounted</span></body></html>' });
+      if (!routes.has(file)) return route.abort();
+      return route.fulfill({ contentType: 'text/javascript; charset=utf-8', body: await fs.readFile(path.join(process.cwd(), file), 'utf8') });
+    });
+    await page.goto('https://aura-react.test');
+    await page.evaluate(async () => {
+      const module = await import('/assets/aura-voice.js');
+      let reactHost = document.getElementById('aura-react-root');
+      if (!reactHost) {
+        reactHost = document.createElement('div');
+        reactHost.id = 'aura-react-root';
+        document.body.append(reactHost);
+      }
+      (window as any).auraReactHandle = module.mountAuraWidgetReact(reactHost, {
+        userId: `authorized-${location.host}`, isAuthorized: () => true,
+        requestAssistant: (body: any) => (window as any).auraReactRequest(body),
+      });
+    });
+    await page.getByRole('button', { name: 'Open AURA voice assistant' }).waitFor();
+    return page;
+  }
+  try {
+    for (const width of [390, 1100]) {
+      const page = await launch(width);
+      await page.getByRole('button', { name: 'Open AURA voice assistant' }).click();
+      const status = page.locator('.aura-status');
+      await page.getByRole('button', { name: 'Start voice input' }).click();
+      await expect.poll(() => page.evaluate(() => (window as any).__auraEngines.length)).toBe(1);
+      await expect(status).toHaveText(/Listening/);
+      await page.evaluate(() => {
+        const row = [{ transcript: 'Check current inventory', confidence: .99 }];
+        (row as any).isFinal = true;
+        const engine = (window as any).__auraEngines[0];
+        engine.onresult({ results: [row], resultIndex: 0 });
+        engine.onend();
+      });
+      await expect(status).toHaveText('Responding…');
+      await expect(page.getByRole('log')).toContainText('Voice answer.');
+      await expect.poll(() => page.evaluate(() => (window as any).__auraUtterances.length)).toBe(1);
+      expect(sent.some(item => item.width === width && item.body.source === 'voice')).toBe(true);
+      await page.evaluate(() => (window as any).__auraUtterances[0].onend?.());
+
+      await page.getByRole('textbox', { name: 'Type a command for AURA' }).fill('Check one more thing');
+      await page.getByRole('button', { name: 'Go', exact: true }).click();
+      await expect(status).toHaveText('Processing…');
+      const release = pendingCommands.shift();
+      expect(release).toBeTruthy();
+      release!();
+      await expect(page.getByRole('log')).toContainText('Typed answer.');
+      expect(await page.evaluate(() => (window as any).__auraUtterances.length)).toBe(1);
+      expect(await page.evaluate(() => (window as any).__auraEngines.length)).toBe(1, 'React wrapper must not create another capture session');
+      await page.evaluate(() => (window as any).auraReactHandle.destroy());
+      await expect(page.locator('#shell-sentinel')).toHaveText('Shell stays mounted');
+    }
+  } finally { for (const context of contexts) await context.close(); }
+});
+
+test('the shell Aura bridge retries stale app context once without changing the voice turn ID', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+  const html = await fs.readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('async function requestAuraQuery(body, options = {}) {');
+  const end = html.indexOf('\n        async function openAuraQueryAction', start);
+  expect(start, 'the production shell command bridge exists').toBeGreaterThanOrEqual(0);
+  expect(end, 'the production shell command bridge has a stable end').toBeGreaterThan(start);
+  const bridgeSource = html.slice(start, end);
+  await page.goto('about:blank');
+  const result = await page.evaluate(async (source) => {
+    const calls: Array<{ body: any; requestId: string }> = [];
+    let settings = { seasonCode: 'S1', salesYear: 27, revision: 4 };
+    const invoke = new Function('crypto', 'isAuraRouterWidgetAuthorized', 'getSupabaseReadIdentityScope',
+      'auraRouterCapabilities', 'APP_CURRENT_SEASON_OPTIONS', 'getCurrentAppSeasonSettings',
+      'normalizeAppSeasonSettingsPayload', 'writeLocalAppSeasonSettings', 'callAuraLlmRouter',
+      `${source}; return requestAuraQuery;`);
+    const requestAuraQuery = invoke({ randomUUID: () => 'unused-id' }, () => true,
+      () => 'admin:session-current', { configured: true }, ['S1', 'F1'],
+      () => settings,
+      (value: any) => ({ seasonCode: value.seasonCode || value.season, salesYear: Number(value.salesYear ?? value.salesyear), revision: Number(value.revision ?? value.settingRevision) }),
+      (value: any) => { settings = { seasonCode: value.seasonCode, salesYear: value.salesYear, revision: value.revision }; return settings; },
+      async (body: any, options: any) => {
+        calls.push({ body, requestId: options.requestId });
+        if (calls.length === 1) throw Object.assign(new Error('stale app settings'), {
+          code: 'AURA_APP_CONTEXT_STALE', status: 409,
+          payload: { appContext: { season: 'F1', salesyear: 28, settingRevision: 5 } },
+        });
+        return { ok: true, requestId: body.turnId, reply: 'Updated answer', source: 'voice' };
+      });
+    const response = await requestAuraQuery({ mode: 'command', text: 'Check open stock', source: 'voice', turnId: 'voice-turn-7' },
+      { requestId: 'voice-turn-7' });
+    await requestAuraQuery({ mode: 'command', text: 'Check another item', source: 'typed', turnId: 'voice-turn-8' },
+      { requestId: 'voice-turn-8' });
+    return { calls, response, settings };
+  }, bridgeSource);
+  expect(result.calls).toHaveLength(3);
+  expect(result.calls[0].body.appContext).toEqual({ season: 'S1', salesyear: 27, settingRevision: 4 });
+  expect(result.calls[1].body.appContext).toEqual({ season: 'F1', salesyear: 28, settingRevision: 5 });
+  expect(result.calls.map(call => call.requestId)).toEqual(['voice-turn-7', 'voice-turn-7', 'voice-turn-8']);
+  expect(result.calls.map(call => call.body.turnId)).toEqual(['voice-turn-7', 'voice-turn-7', 'voice-turn-8']);
+  expect(result.calls.map(call => call.body.source)).toEqual(['voice', 'voice', 'typed']);
+  expect(result.response).toMatchObject({ requestId: 'voice-turn-7', reply: 'Updated answer', source: 'voice' });
+  expect(result.settings).toEqual({ seasonCode: 'F1', salesYear: 28, revision: 5 });
+  expect(result.calls[2].body.appContext).toEqual({ season: 'F1', salesyear: 28, settingRevision: 5 });
+});

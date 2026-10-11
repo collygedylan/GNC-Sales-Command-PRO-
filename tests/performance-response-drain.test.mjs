@@ -47,6 +47,48 @@ test('API diagnostics retain only allowlisted health event identity without tele
     healthEvent: { eventName: 'view_render', area: 'rendering', reason: 'request-main' } }), /DIAGNOSTIC_INVALID/);
 });
 
+test('API diagnostics classify only the exact Aura capabilities request as a read and retain traffic accounting', async () => {
+  const page = new EventEmitter();
+  const totals = { apiRequests: [], pending: [], errors: [] };
+  attachPerformanceResponseTracker(page, totals);
+  const makeRequest = ({ method = 'POST', path = '/functions/v1/aura-llm-router', body, malformed = false }) => ({
+    method: () => method,
+    url: () => `https://fixture.invalid${path}`,
+    postDataJSON: () => {
+      if (malformed) throw new Error('bad JSON');
+      return body;
+    },
+  });
+  const requests = [
+    makeRequest({ body: { mode: 'capabilities' } }),
+    makeRequest({ body: { mode: 'command', command: 'inventory_stock' } }),
+    makeRequest({ body: { mode: 'capabilities', actorId: 'forged' } }),
+    makeRequest({ malformed: true }),
+    makeRequest({ path: '/functions/v1/other-router', body: { mode: 'capabilities' } }),
+    makeRequest({ method: 'GET', body: { mode: 'capabilities' } }),
+  ];
+  const responseSizes = [326, 73, 89, 41, 51, 62];
+  for (const [index, request] of requests.entries()) {
+    page.emit('request', request);
+    page.emit('response', {
+      request: () => request,
+      url: () => request.url(),
+      status: () => 200,
+      finished: async () => null,
+      body: async () => new Uint8Array(responseSizes[index]),
+    });
+    page.emit('requestfinished', request);
+  }
+  await drainPerformanceApiRequests(totals);
+
+  const diagnostics = totals.apiRequests.map(safePerformanceApiDiagnostic);
+  assert.equal(diagnostics[0].operation, 'aura:capabilities');
+  assert.deepEqual(diagnostics.slice(1).map(item => item.operation), [null, null, null, null, null]);
+  assert.equal(totals.apiRequests.length, requests.length, 'classified reads remain in the full request count');
+  assert.equal(totals.apiRequests.reduce((sum, request) => sum + request.bytes, 0), responseSizes.reduce((sum, size) => sum + size, 0));
+  assert.deepEqual(diagnostics.map(item => item.bytes), responseSizes, 'response byte accounting is unchanged');
+});
+
 test('response body drain clears completed batches and captures responses added while waiting', async () => {
   const totals = { pending: [], errors: [] };
   let release;
@@ -100,7 +142,8 @@ test('API boundary waits for fixture API idle before freezing the request index 
   }), /fixture failure/);
 });
 
-test('API idle tracker keeps a delayed non-revision request in the current boundary', async () => {
+test('API idle tracker keeps a delayed non-revision request in the current boundary', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const page = new EventEmitter();
   const tracker = attachPerformanceApiIdleTracker(page, { quietMs: 40 });
   const makeRequest = path => ({ method: () => 'GET', url: () => `http://fixture.invalid/rest/v1/${path}` });
@@ -116,6 +159,14 @@ test('API idle tracker keeps a delayed non-revision request in the current bound
       setTimeout(() => page.emit('requestfinished', late), 10);
     }, 15);
   }, 5);
+
+  // Advance the same 5/15/10/40 ms schedule deterministically. Real timers can
+  // be coalesced under parallel test load, letting the quiet timer win first.
+  t.mock.timers.tick(5);
+  t.mock.timers.tick(15);
+  t.mock.timers.tick(10);
+  for (let index = 0; index < 5; index++) await Promise.resolve();
+  t.mock.timers.tick(40);
 
   const result = await idle;
   assert.equal(result.activityCount, 4);
