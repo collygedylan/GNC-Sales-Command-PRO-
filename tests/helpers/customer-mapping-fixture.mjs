@@ -11,7 +11,7 @@ export function requestMappingFunctions() {
     'getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
     'isActiveRequestCustomerMapping','buildRequestModalCustomerOptionsCache','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
-    'isCurrentRequestCustomerContext','buildRequestCustomerPickerGroups','processCustStep',
+    'isCurrentRequestCustomerContext','buildRequestCustomerPickerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
   return names.map(name => {
     const start = html.indexOf(`        function ${name}(`);

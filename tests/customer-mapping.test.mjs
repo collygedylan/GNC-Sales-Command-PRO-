@@ -48,6 +48,20 @@ test('Request membership rechecks both IDs, names and the current map revision',
   c.customerRepMapRows=[];c.mappingRevision='2';
   assert.equal(c.isCurrentRequestCustomerContext(context),false);
 });
+
+test('verified mapping metadata survives grouping and permits an exact new folder selection',()=>{
+  const c=requestFixture();
+  const option=c.getRequestModalCustomerOptionsForRep('Rep One')[0];
+  const mapRow={...option,customername:option.customerName,consigneename:option.consigneeName,consigneeid:option.consigneeidentityid,salesrepid:option.request_selected_salesrep_id};
+  assert.equal(c.isActiveRequestCustomerMapping(mapRow),true);
+  c.getSelectedExistingRequestFolderGroups=()=>({customerGroup:{label:option.customerName},consigneeGroup:{mapRows:[mapRow]}});
+  c.getExistingRequestFolderPairLabel=()=>option.label;
+  c.createNewRequestFolderForSelectedExistingPair();
+  assert.equal(c.qtyCalls.length,1);
+  assert.equal(c.qtyCalls[0][1],option.label);
+  assert.equal(c.tempRequestCustomerSelectedContext.request_selected_salesrep_id,'01');
+  assert.equal(c.isCurrentRequestCustomerContext(c.tempRequestCustomerSelectedContext),true);
+});
 test('rejected mapping submissions require review while transport failures remain retryable',()=>{
   const c=requestFixture();
   assert.equal(c.getRequestOutboxFailureStatus(new Error('REQUEST_CUSTOMER_MAPPING_REQUIRED')),'mapping-review');

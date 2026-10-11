@@ -56459,6 +56459,9 @@ function toggleDriveQuickRequestItem(domId) {
             if (!label) return null;
             return {
                 ...getRequestCustomerContext(source),
+                salesrepname: String(firstNonEmptyValue(source && source.SALESREPNAME, source && source.salesrepname, '') || '').trim(),
+                customerstatus: String(firstNonEmptyValue(source && source.CUSTOMERSTATUS, source && source.customerstatus, '') || '').trim(),
+                consigneestatus: String(firstNonEmptyValue(source && source.CONSIGNEESTATUS, source && source.consigneestatus, '') || '').trim(),
                 label,
                 customerName,
                 consigneeName,
