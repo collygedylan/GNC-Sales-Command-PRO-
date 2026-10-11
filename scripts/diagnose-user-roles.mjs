@@ -8,11 +8,12 @@ import { installHlOrderFixture, hlMaster } from '../tests/fixtures/hl-order-stat
 
 export const diagnosticRoles = ['ADMIN', 'REP', '\nREP', 'CSR', 'DATA ENTRY', 'DATA ENTRY SUPERVISOR',
   'EVAL', 'FOREMAN', 'GROWER', 'QC', 'QC SUPERVISOR', 'TAKE BACKS'];
+export const diagnosticScreens = ['drive', 'sales-inventory', 'request', 'request-history', 'historical-requests'];
 const rolesWithDrive = new Set(diagnosticRoles.filter(role => !['GROWER', 'TAKE BACKS'].includes(role)));
 const readActions = new Set(['inventory_read', 'request_history', 'sales_credit', 'historical_requests',
   'request_recipient_directory', 'native_session_bridge', 'navigation_preferences', 'dataset_revisions', 'app_access', 'dataset_read']);
 const readOperations = new Set(['get', 'read', 'list', 'summary', 'customers', 'consignees', 'requests', 'reps',
-  'compatibility', 'master_page', 'master_delta', 'source_freshness', 'schema_capabilities', 'po_detail',
+  'compatibility', 'search', 'folders', 'master_page', 'master_delta', 'source_freshness', 'schema_capabilities', 'po_detail',
   'recount_queue', 'ncr_queue', 'not_on_inventory_queue', 'scope', 'settings']);
 export function diagnosticRequestAllowed(url, method, body) {
   const target = new URL(url);
@@ -67,12 +68,27 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
         if (fixture) {
           await installHlOrderFixture(page, baseURL, { role: account.role, username: account.username,
             startupMode: 'cold', master: [hlMaster('diagnostic-stock', { priority: '1', assignedto: account.username })],
-            appPermissions: ['drive', 'sales-inventory', 'request', 'historical-requests'].map(moduleKey => ({
+            appPermissions: diagnosticScreens.map(moduleKey => ({
               permissionKey: `module.${moduleKey}.view`, kind: 'module', moduleKey,
               allowed: moduleKey === 'drive' ? rolesWithDrive.has(account.role)
                 : moduleKey === 'historical-requests' ? account.role === 'ADMIN'
-                  : moduleKey === 'request' ? ['ADMIN', 'REP', '\nREP', 'CSR'].includes(account.role) : true,
+                  : ['request', 'request-history'].includes(moduleKey) ? ['ADMIN', 'REP', '\nREP', 'CSR'].includes(account.role) : true,
             })) });
+          await page.route('**/functions/v1/app-api', async route => {
+            const request = route.request();
+            let body;
+            try { body = request.postDataJSON(); } catch { return route.fallback(); }
+            const payload = body?.payload;
+            const historyRead = request.method() === 'POST' && body?.action === 'request_history'
+              && ['search', 'folders'].includes(body.operation)
+              && Object.keys(body).every(key => ['action', 'operation', 'payload'].includes(key))
+              && payload?.status === 'all' && payload?.query === '' && payload?.limit === 50
+              && Object.keys(payload).every(key => ['query', 'status', 'limit'].includes(key))
+              && request.headers().authorization?.startsWith('Bearer ')
+              && !request.headers()['idempotency-key'];
+            if (!historyRead) return route.fallback();
+            return route.fulfill({ json: { ok: true, data: { rows: [], nextCursor: null } } });
+          });
         } else {
           assert.ok(account.session?.access_token && account.session?.user?.id === account.id, 'Verified account session required');
           await page.route('**/*', async route => {
@@ -104,16 +120,23 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
             assert.equal(entry.baseline.history.status, 200, 'Authorized Request History baseline is unavailable');
           }
         }
-        for (const screen of ['drive', 'sales-inventory', 'request', 'historical-requests']) {
+        for (const screen of diagnosticScreens) {
           const tile = page.locator(`#home-tile-${screen},#home-sales-open-${screen}`).filter({ visible: true }).first();
-          const allowed = await tile.isVisible();
+          const tileVisible = await tile.isVisible();
+          const allowed = tileVisible || (screen === 'request-history' && await page.evaluate(() => window.eval("canAccessView('request-history')")));
           const item = { screen, allowed, visible: false, cards: 0 };
           entry.screens.push(item);
           if (!allowed) continue;
-          await tile.click();
+          if (tileVisible) await tile.click();
+          else await page.evaluate(() => window.eval("switchView('request-history')"));
           const view = page.locator(`#view-${screen}`);
           await view.waitFor({ state: 'visible', timeout: 20000 });
           if (screen === 'drive') await openDiagnosticDriveCards(page);
+          if (screen === 'request-history') {
+            await view.locator('.sales-workspace').waitFor({ state: 'visible', timeout: 30000 });
+            await view.locator('[role="status"]').waitFor({ state: 'hidden', timeout: 30000 });
+            assert.equal(await view.locator('.sw-error').count(), 0, 'Authorized Request History could not load');
+          }
           item.visible = true;
           item.cards = await view.locator('.app-smart-card,[data-request-id],[data-inventory-card]').count();
           item.headings = await view.locator('h1,h2,h3').allTextContents();

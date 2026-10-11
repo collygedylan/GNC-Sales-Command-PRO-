@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { diagnosticRoles, diagnosticRequestAllowed, probeRoleBaseline, openDiagnosticDriveCards } from '../scripts/diagnose-user-roles.mjs';
+import { diagnosticRoles, diagnosticScreens, diagnosticRequestAllowed, probeRoleBaseline, openDiagnosticDriveCards } from '../scripts/diagnose-user-roles.mjs';
 const api = 'https://example.supabase.co/functions/v1/app-api';
+
+test('diagnostics cover both nested Request History and Historical Requests routes', () => {
+  assert.ok(diagnosticScreens.includes('request-history'));
+  assert.ok(diagnosticScreens.includes('historical-requests'));
+});
 
 test('Drive diagnostics wait for real inventory cards before checking Reclass', async () => {
   for (const mobile of [true, false]) {
@@ -39,6 +44,9 @@ test('authenticated baseline probes retain status and counts without recording r
   assert.doesNotMatch(JSON.stringify(baseline),/private-token|Private customer|Private consignee|private-id|price/);
 });
 test('diagnostics permit actual inventory reads and deny submissions and auth administration', () => {
+  for (const operation of ['search','folders']) {
+    assert.equal(diagnosticRequestAllowed(api,'POST',{action:'request_history',operation}),true);
+  }
   for (const operation of ['master_page','master_delta','source_freshness','schema_capabilities']) {
     assert.equal(diagnosticRequestAllowed(api,'POST',{action:'inventory_read',operation}),true);
   }
