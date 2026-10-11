@@ -81,10 +81,16 @@ select pg_temp.history_check(sales_private.assigned_rep('{"salesrepname":"New, H
 select pg_temp.history_check((select assigned_rep_id='97100000-0000-4000-8000-000000000003'::uuid from public.ph_credit_sources where source_id='HD-PENDING-REP'),'later identity ambiguity does not rewrite established historical owner');
 
 -- Durable context in ordinary creation, live view, history, completion, and credit.
+insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,customerstatus,
+  consigneeid,consigneename,consigneestatus,salesrepid,salesrepname) values
+  ('HD-REQUEST-MAP','HD-C','Identical Customer','A','HD-SOUTH','South Destination','A','HD-REP','Brown, History Ben');
 select private.insert_request_batch('97100000-0000-4000-8000-000000000010','[
- {"unique_id":"HD-REQUEST","requested_by":"History Ben Brown","request_selected_rep_username":"history_ben_brown","request_created_by_username":"office_csr","request_folder":"HD-FOLDER","customeridentityid":"HD-C","customername":"Identical Customer","consigneeidentityid":"HD-SOUTH","consigneename":"South Destination","itemcode":"HD-ITEM","commonname":"Hydrangea","req_status":"Pending"},
- {"unique_id":"HD-LEGACY","requested_by":"History Ben Brown","request_selected_rep_username":"history_ben_brown","req_customer":"Legacy Customer","req_status":"Pending"}
+ {"unique_id":"HD-REQUEST","requested_by":"History Ben Brown","request_selected_rep_username":"history_ben_brown","request_selected_rep_display":"History Ben Brown","request_selected_salesrep_id":"HD-REP","request_created_by_username":"office_csr","request_folder":"HD-FOLDER","customeridentityid":"HD-C","customername":"Identical Customer","consigneeidentityid":"HD-SOUTH","consigneename":"South Destination","itemcode":"HD-ITEM","commonname":"Hydrangea","req_status":"Pending"}
 ]'::jsonb,'general');
+-- Imported legacy records retain their missing identities and remain readable.
+select private.insert_request_batch('97100000-0000-4000-8000-000000000011','[
+ {"unique_id":"HD-LEGACY","requested_by":"History Ben Brown","request_selected_rep_username":"history_ben_brown","req_customer":"Legacy Customer","req_status":"Pending"}
+]'::jsonb,'legacy');
 select pg_temp.history_check((select customeridentityid='HD-C' and consigneeidentityid='HD-SOUTH' from public.ph_active_request_live_rows where unique_id='HD-REQUEST'),'creation and active read retain customer/consignee IDs');
 select pg_temp.history_check((select customername='Identical Customer' and snapshot->>'consigneename'='South Destination' from public.ph_request_history where unique_id='HD-REQUEST'),'history and snapshot retain context from same request ID');
 select pg_temp.history_check((select customername='Legacy Customer' and consigneeidentityid is null from public.ph_request_history where unique_id='HD-LEGACY'),'older clients preserve known names without inventing identity');

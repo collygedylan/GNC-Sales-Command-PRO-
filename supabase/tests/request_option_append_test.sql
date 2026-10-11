@@ -35,6 +35,11 @@ values (
   'request_append_csr', 'Request Append CSR', 'CSR'
 ) on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
+-- The imported relationship remains valid even without a REP picker profile.
+insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,customerstatus,
+  consigneeid,consigneename,consigneestatus,salesrepid,salesrepname) values
+  ('APPEND-VALID-MAP','APPEND-C','Persisted Customer','A','APPEND-CN','Persisted Destination','A','APPEND-REP','Persisted Rep Missing From Picker');
+
 insert into public.ph_master_inventory (
   unique_id, itemcode, commonname, contsize, locationcode, lotcode,
   ptravailable, season_supply, priority, qualitycode, field_tag_color,
