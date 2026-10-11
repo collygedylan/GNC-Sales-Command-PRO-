@@ -6,6 +6,18 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import pg from 'pg';
 
+// These rows model imported historical evidence, not new native submissions.
+// Restore the prior claims before every protected read, including on failure.
+async function insertLegacyActiveFixture(db, sql, values) {
+  const prior = (await db.query("select current_setting('request.jwt.claim.role',true) role,current_setting('request.jwt.claims',true) claims")).rows[0];
+  try {
+    await db.query("select set_config('request.jwt.claim.role','service_role',true),set_config('request.jwt.claims','{\"role\":\"service_role\"}',true)");
+    return await db.query(sql, values);
+  } finally {
+    await db.query("select set_config('request.jwt.claim.role',$1,true),set_config('request.jwt.claims',$2,true)", [prior.role || '', prior.claims || '{}']);
+  }
+}
+
 export async function runRequestHistoryScaleFixture(db) {
   const actors=[randomUUID(),randomUUID()],prefix=`HISTORY-SCALE-${randomUUID()}`;
   const names=[`${prefix.toLowerCase()}_rep`,`${prefix.toLowerCase()}_other`];
@@ -33,8 +45,8 @@ export async function runRequestHistoryScaleFixture(db) {
       from generate_series(1,3651) i`,[prefix,...names]);
     // Same IDs, conflicting assignment/status. Retained history must win before
     // authorization; invisible history cannot expose a visible active fallback.
-    await db.query(`insert into public.ph_active_request(unique_id,request_selected_rep_username,req_status)
-      select $1||'-'||i,$2,'Pending' from generate_series(1,3512) i`,[prefix,names[0]]);
+    await insertLegacyActiveFixture(db, `insert into public.ph_active_request(unique_id,request_selected_rep_username,req_status,request_source)
+      select $1||'-'||i,$2,'Pending','legacy' from generate_series(1,3512) i`,[prefix,names[0]]);
     assert.equal((await db.query('select count(*)::int n from public.ph_request_history where unique_id like $1',[`${prefix}-%`])).rows[0].n,3651);
     assert.equal((await db.query('select count(*)::int n from public.ph_active_request where unique_id like $1',[`${prefix}-%`])).rows[0].n,3512);
     await db.query('analyze public.ph_request_history');
@@ -78,8 +90,8 @@ export async function runRequestHistoryScaleFixture(db) {
     assert.equal((await read('detail',{id:`${prefix}-2`})).rows[0].canRequestCredit,false,'Another rep canonical source never inherits credit permission');
     assert.equal((await read('detail',{id:`${prefix}-4`})).rows.length,0,'Invisible retained history cannot expose assigned active fallback');
     assert.equal((await read('search',{status:'completed',query:'DeepFolderNeedle'})).rows.length,0);
-    await db.query(`insert into public.ph_active_request(unique_id,request_selected_rep_username,req_status)
-      values($1,$2,'Pending')`,[`${prefix}-active-only`,names[0]]);
+    await insertLegacyActiveFixture(db, `insert into public.ph_active_request(unique_id,request_selected_rep_username,req_status,request_source)
+      values($1,$2,'Pending','legacy')`,[`${prefix}-active-only`,names[0]]);
     assert.equal((await read('detail',{id:`${prefix}-active-only`})).rows.length,1,'Active-only assignment fallback remains visible');
     assert.equal((await db.query('select count(*) n from public.ph_request_delivery_outbox')).rows[0].n,outboxBefore,
       'Fixtures and read-only history calls must not enqueue emails');
