@@ -6,6 +6,12 @@ on:
       production-health:
         type: boolean
         default: false
+      run-frontend-tests:
+        type: boolean
+        default: true
+      run-backend-tests:
+        type: boolean
+        default: true
     outputs:
       digest:
         description: Verified release manifest SHA256
@@ -43,15 +49,18 @@ jobs:
       - uses: ./.github/actions/setup-node-dependencies
       - run: node scripts/prepare-release-version.mjs --check
       - run: npm run check:inline
+        if: inputs.run-frontend-tests
       - run: npm run check:tooling
       - run: node scripts/run-release-unit-checks.mjs
       - run: npm run test:v2
+        if: inputs.run-frontend-tests
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - run: node scripts/run-discovered-tests.mjs python
 
   database:
+    if: inputs.run-backend-tests
     uses: ./.github/workflows/release-database.yml
 
   build:
@@ -89,7 +98,6 @@ jobs:
           version: v0.37.0
           driver: cloud
           endpoint: agmetricapp/greenleaf-ci-builder
-          install: true
       - uses: ./.github/actions/setup-node-dependencies
       - run: npm run build:pilot-monitoring
       - run: npm run build:live:assets
@@ -107,6 +115,7 @@ jobs:
           retention-days: 7
 
   foundation:
+    if: inputs.run-frontend-tests
     needs: build
     runs-on: ubuntu-latest
     # Browser dependency installation can consume over eight minutes on a cold runner.
@@ -141,6 +150,7 @@ jobs:
           if-no-files-found: ignore
 
   functional:
+    if: inputs.run-frontend-tests
     needs: [build, foundation]
     runs-on: ubuntu-latest
     # A cold browser install can leave too little of a 15-minute job for the shard.
@@ -155,6 +165,8 @@ jobs:
         shard:
           - 1
           - 2
+          - 3
+          - 4
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-browser-tests
@@ -163,8 +175,8 @@ jobs:
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
-      - name: Functional browsers, shard ${{ matrix.shard }} of 2
-        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --shard=${{ matrix.shard }}/2 --project=${{ matrix.project }} --max-failures=1 --reporter=github,blob
+      - name: Functional browsers, shard ${{ matrix.shard }} of 4
+        run: npx playwright test --config playwright.release-functional.config.ts --workers=1 --shard=${{ matrix.shard }}/4 --project=${{ matrix.project }} --max-failures=1 --reporter=github,blob
       - name: Verify tests did not change the release package
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
@@ -179,6 +191,7 @@ jobs:
           if-no-files-found: ignore
 
   compiled:
+    if: inputs.run-frontend-tests
     needs: [build, foundation]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -708,6 +721,7 @@ jobs:
           if-no-files-found: ignore
 
   timing:
+    if: inputs.run-frontend-tests
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -748,6 +762,7 @@ jobs:
           if-no-files-found: ignore
 
   performance:
+    if: inputs.run-frontend-tests
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -786,6 +801,7 @@ jobs:
           if-no-files-found: error
 
   lighthouse:
+    if: inputs.run-frontend-tests
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -843,10 +859,14 @@ jobs:
         env:
           RELEASE_JOB_RESULTS: ${{ toJSON(needs) }}
           REQUIRE_PRODUCTION_HEALTH: ${{ inputs.production-health }}
+          RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
+          RUN_BACKEND_TESTS: ${{ inputs.run-backend-tests }}
         run: |
           node --input-type=module <<'NODE'
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
-          const required = ['unit','database','build','foundation','functional','compiled','timing','performance','lighthouse'];
+          const required = ['unit','build'];
+          if (process.env.RUN_FRONTEND_TESTS === 'true') required.push('foundation','functional','compiled','timing','performance','lighthouse');
+          if (process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
           if (process.env.REQUIRE_PRODUCTION_HEALTH === 'true') required.push('production-health');
           for (const name of required) {
             if (jobs[name]?.result !== 'success') throw new Error(`RELEASE_GATE_FAILED_${name}`);
@@ -858,6 +878,8 @@ jobs:
         env:
           RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
           RELEASE_SITE_ID: ${{ needs.build.outputs.artifact-id }}
+          RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
+          RUN_BACKEND_TESTS: ${{ inputs.run-backend-tests }}
         run: |
           mkdir -p proof
           node --input-type=module <<'NODE'
@@ -866,7 +888,8 @@ jobs:
             schemaVersion:'gnc-release-proof-v1', repository:process.env.GITHUB_REPOSITORY,
             commit:process.env.GITHUB_SHA, runId:Number(process.env.GITHUB_RUN_ID),
             attempt:Number(process.env.GITHUB_RUN_ATTEMPT), siteArtifactId:Number(process.env.RELEASE_SITE_ID),
-            digest:process.env.RELEASE_DIGEST
+            digest:process.env.RELEASE_DIGEST,
+            testScope:{frontend:process.env.RUN_FRONTEND_TESTS === 'true', backend:process.env.RUN_BACKEND_TESTS === 'true'}
           }));
           NODE
       - uses: actions/checkout@v4

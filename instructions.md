@@ -23,6 +23,8 @@ Keep release markers synchronized with package.json using the repository's relea
 
 After pushing a candidate, create or reuse its PR and monitor with the fail-fast workflow in AGENTS.md. Same-repository `codex/` candidates merge only after the exact full `PWA and Supabase performance` run succeeds; that guarded publisher then dispatches the backend deployment before Pages. Do not enable GitHub Auto-Merge before validation or patch production directly. See the Development-to-Production Flow in AGENTS.md.
 
+After a merge is handed off for production, follow the Deployment Visibility procedure in AGENTS.md. Monitor the matching `main` commit through backend and final Pages publication, read the deployed version from that commit, and report the requested live-production confirmation only after the final deployment succeeds.
+
 ## Cleanup
 
 Follow AGENTS.md for task-scoped cleanup. Preserve unrelated work, shared resources, and diagnostics needed for unresolved failures. A pre-existing dirty worktree is not authorization to discard someone else's changes.

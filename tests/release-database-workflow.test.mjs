@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { startIsolatedDatabase, collectDatabaseEvidence, excludedServices } from '../scripts/release-database-startup.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
+import { backendTestMatrices } from '../scripts/ci-backend-matrix.mjs';
 
 const workflow = fs.readFileSync(new URL('../.github/workflows/release-database.yml', import.meta.url), 'utf8');
 const yaml = createRequire(import.meta.url)('js-yaml');
@@ -112,7 +113,7 @@ test('database reusable workflow is secret-free and has read-only repository per
 });
 
 test('Edge Function CI resolves pinned npm imports used by the push sender', () => {
-  const edge = databaseJob.steps.find(step => step.name === 'Run Edge Function unit tests');
+  const edge = workflowConfig.jobs['edge-functions'].steps.find(step => step.name === 'Run Edge Function unit tests');
   assert.ok(edge);
   for (const line of edge.run.split('\n').filter(line => /^\s*deno (?:check|test)\b/.test(line))) {
     assert.match(line, /--node-modules-dir=auto/, 'Deno must install pinned npm imports before checking or testing');
@@ -166,22 +167,18 @@ test('audit baseline repair checks both historical-row preservation and missing-
   const snapshot = destinations.get('20261002134137_ci_nelly_baseline_snapshot.sql');
   const repair = destinations.get('20261002134138_nelly_access_audit_baseline_repair_007.sql');
   assert.ok(snapshot > destinations.get('20261001215507_ci_scheduled_handover_fixture.sql') && repair > snapshot);
-  assert.match(workflow, /node scripts\/run-discovered-database-tests\.mjs pglite "\$pglite_root"/);
+  assert.match(workflow, /node "\$PGLITE_TEST" --pglite-root/);
   const runner = fs.readFileSync(new URL('../scripts/apply-item-low-stock-migration.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(runner, /nelly_access_audit_baseline_snapshot_fixture|ci_nelly_baseline_snapshot/);
 });
 
-test('database migration, pgTAP, concurrency, browser, and Edge checks stay serialized', () => {
+test('database mutation checks stay serialized while independent tests use separate runners', () => {
   const commands = [
     'node scripts/release-database-startup.mjs start',
     'node scripts/sql-lint-temp-context.mjs --historical-reset "$SUPABASE_CI_ROOT"',
     'supabase --workdir "$SUPABASE_CI_ROOT" test db',
-    'node scripts/run-discovered-database-tests.mjs pglite "$pglite_root"',
     'node scripts/run-discovered-database-tests.mjs postgres-concurrency "$DB_URL"',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
-    'deno cache --node-modules-dir=auto "${entrypoints[@]}" "${tests[@]}"',
-    'deno check --node-modules-dir=auto "${entrypoints[@]}"',
-    'deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"',
   ];
   let previous = -1;
   for (const command of commands) {
@@ -194,15 +191,19 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
   const lintAt = lintWrapper.indexOf("'db', 'lint'");
   assert.ok(resetAt >= 0 && lintAt > resetAt, 'historical reset finishes before strict function lint');
   assert.match(lintWrapper, /--fail-on', 'error'/);
-  assert.doesNotMatch(workflow, /strategy:|matrix:/);
+  assert.equal(databaseJob.strategy, undefined);
+  for(const name of ['integration','edge-functions']) {
+    assert.equal(workflowConfig.jobs[name].strategy['fail-fast'], true);
+    assert.equal(workflowConfig.jobs[name].needs, 'discover');
+  }
 });
 
 test('Edge graph prefetch retries only bounded transient failures before one check and test pass', () => {
-  const cache = databaseJob.steps.find(step => step.id === 'deno_cache');
+  const cache = workflowConfig.jobs['edge-functions'].steps.find(step => step.id === 'deno_cache');
   assert.ok(cache, 'discovered Edge dependencies are prefetched before validation');
   assert.equal(cache.shell, 'bash');
-  assert.match(cache.run, /node scripts\/test-discovery\.mjs deno-entrypoints/);
-  assert.match(cache.run, /node scripts\/test-discovery\.mjs deno-tests/);
+  assert.match(cache.run, /process\.env\.EDGE_TARGETS/);
+  assert.match(cache.run, /process\.env\.EDGE_TESTS/);
   assert.match(cache.run, /for attempt in 1 2 3/);
   assert.match(cache.run, /sleep "\$delay"/);
   assert.match(cache.run, /429\[\[:space:\]\]\+Too Many Requests/);
@@ -211,12 +212,13 @@ test('Edge graph prefetch retries only bounded transient failures before one che
   assert.match(cache.run, /non-retryable error/);
   assert.doesNotMatch(cache.run, /deno (check|test)/, 'prefetch does not rerun validation commands');
 
-  const edge = databaseJob.steps.find(step => step.id === 'edge');
+  const edge = workflowConfig.jobs['edge-functions'].steps.find(step => step.id === 'edge');
   assert.ok(edge);
   assert.match(edge.run, /deno check --node-modules-dir=auto "\$\{entrypoints\[@\]\}"/);
   assert.match(edge.run, /deno test --node-modules-dir=auto --allow-env --allow-net "\$\{tests\[@\]\}"/);
-  assert.equal(databaseJob.steps.indexOf(cache) + 1, databaseJob.steps.indexOf(edge),
-    'the cached graph is validated immediately after prefetch');
+  const steps = workflowConfig.jobs['edge-functions'].steps;
+  const save = steps.findIndex(step => step.name === 'Save prefetched Deno dependency graph');
+  assert.ok(steps.indexOf(cache) < save && save < steps.indexOf(edge), 'save the fetched graph before tests can mutate it');
 });
 
 test('canonical schema contracts run as an isolated database-check gate', () => {
@@ -360,4 +362,16 @@ test('native provisioning legacy-table fixture is installed with service-only ac
   assert.match(legacyBaseline, /grant select, insert, update, delete on table public\.ph_app_users to service_role/);
   assert.doesNotMatch(legacyBaseline, /grant[^;]+to\s+(?:public|anon|authenticated)\b/i);
   assert.match(provisioning, /expect\(deniedLegacy\.body\.code\)\.toBe\('42501'\)/);
+});
+
+test('backend matrices retain every discovered integration, entrypoint, and Edge test', () => {
+  const matrices = backendTestMatrices();
+  assert.deepEqual(matrices.pglite, discoverTests({ group: 'pglite' }));
+  const targets = matrices.edge.include.flatMap(group => group.targets).sort();
+  const tests = matrices.edge.include.flatMap(group => group.tests).sort();
+  assert.deepEqual(tests, discoverTests({ group: 'deno-tests' }));
+  assert.deepEqual(targets, [...discoverTests({ group: 'deno-entrypoints' }), ...tests].sort());
+  assert.equal(new Set(tests).size, tests.length, 'Edge tests run exactly once');
+  assert.equal(workflowConfig.jobs.integration.strategy.matrix.test, '${{ fromJSON(needs.discover.outputs.pglite) }}');
+  assert.equal(workflowConfig.jobs['edge-functions'].strategy.matrix, '${{ fromJSON(needs.discover.outputs.edge) }}');
 });

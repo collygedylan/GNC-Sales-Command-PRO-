@@ -37,7 +37,7 @@ test('internal Aura deploys after its migration and before Pages, including the 
   assert.match(read('supabase/config.toml'), /\[functions\.aura-query\][\s\S]*?verify_jwt = false/);
   const databaseWorkflow = read('.github/workflows/release-database.yml');
   assert.match(databaseWorkflow, /node scripts\/historical-database-fixture\.mjs/);
-  assert.match(databaseWorkflow, /node scripts\/run-discovered-database-tests\.mjs pglite/);
+  assert.match(databaseWorkflow, /node "\$PGLITE_TEST" --pglite-root/);
   const historicalSources = new Set(readHistoricalMigrationManifest().map(entry => entry.source));
   for (const name of releaseDatabaseMigrations.slice(auraStart, auraStart + 4)) {
     assert.ok(historicalSources.has(`supabase/migrations/${name}`), `${name} is replayed by the historical fixture`);

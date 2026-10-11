@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readHistoricalMigrationManifest } from '../../scripts/historical-database-fixture.mjs';
 import { discoverTests } from '../../scripts/test-discovery.mjs';
+import { backendTestMatrices } from '../../scripts/ci-backend-matrix.mjs';
 
 const workflow = () => readFileSync(new URL('../../.github/workflows/release-database.yml', import.meta.url), 'utf8');
 
@@ -17,6 +18,8 @@ export function assertIsolatedSqlTest(name) {
 }
 
 export function assertPgliteTest(name) {
-  assert.match(workflow(), /node scripts\/run-discovered-database-tests\.mjs pglite/);
+  assert.match(workflow(), /node scripts\/ci-backend-matrix\.mjs/);
+  assert.match(workflow(), /node "\$PGLITE_TEST" --pglite-root/);
   assert.ok(discoverTests({ group: 'pglite' }).includes(`supabase/ci/${name}`), `${name} is discovered for PGlite`);
+  assert.ok(backendTestMatrices().pglite.includes(`supabase/ci/${name}`), `${name} is included in the integration matrix`);
 }

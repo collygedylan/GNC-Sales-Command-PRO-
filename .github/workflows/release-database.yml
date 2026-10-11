@@ -11,6 +11,131 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  discover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      pglite: ${{ steps.matrix.outputs.pglite }}
+      edge: ${{ steps.matrix.outputs.edge }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - id: matrix
+        run: node scripts/ci-backend-matrix.mjs
+
+  integration:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: true
+      matrix:
+        test: ${{ fromJSON(needs.discover.outputs.pglite) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Restore isolated PGlite modules
+        id: pglite
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/gnc-handover-pglite
+          key: pglite-v1-${{ runner.os }}-${{ runner.arch }}-node22-0.5.8
+      - name: Install pinned PGlite
+        if: steps.pglite.outputs.cache-hit != 'true'
+        run: npm install --prefix "$RUNNER_TEMP/gnc-handover-pglite" --no-save --package-lock=false --no-audit --no-fund @electric-sql/pglite@0.5.8
+      - name: Save isolated PGlite modules
+        if: steps.pglite.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/gnc-handover-pglite
+          key: ${{ steps.pglite.outputs.cache-primary-key }}
+      - name: Isolated SQL integration behavior
+        env:
+          PGLITE_TEST: ${{ matrix.test }}
+        run: node "$PGLITE_TEST" --pglite-root "$RUNNER_TEMP/gnc-handover-pglite"
+
+  edge-functions:
+    needs: discover
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: true
+      matrix: ${{ fromJSON(needs.discover.outputs.edge) }}
+    env:
+      EDGE_TARGETS: ${{ toJSON(matrix.targets) }}
+      EDGE_TESTS: ${{ toJSON(matrix.tests) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: denoland/setup-deno@v2
+        id: deno
+        with:
+          deno-version: v2.9.6
+      - name: Restore Deno dependencies and installed NPM imports
+        id: modules
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cache/deno
+            node_modules
+            supabase/functions/**/node_modules
+          key: deno-modules-v1-${{ runner.os }}-${{ runner.arch }}-${{ steps.deno.outputs.deno-version }}-${{ hashFiles('deno.lock', 'package.json', 'supabase/functions/**/deno.json', 'supabase/functions/**/deno.jsonc') }}-${{ matrix.suite }}
+      - name: Prefetch discovered Edge modules with bounded transient retries
+        id: deno_cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t entrypoints < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TARGETS)) console.log(file)')
+          mapfile -t tests < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TESTS)) console.log(file)')
+          cache_log="$RUNNER_TEMP/deno-dependency-prefetch.log"
+          transient_pattern='\b429[[:space:]]+Too Many Requests\b|\b5[0-9]{2}[[:space:]]+[A-Za-z][A-Za-z ]*\b|connection reset by peer|connection refused|connection timed out|timed out|unexpected EOF|temporary failure in name resolution|DNS error|failed to connect|network is unreachable|TLS handshake timeout'
+          for attempt in 1 2 3; do
+            if deno cache --node-modules-dir=auto "${entrypoints[@]}" "${tests[@]}" >"$cache_log" 2>&1; then
+              echo "Deno dependency graph cached on attempt $attempt."
+              break
+            else
+              status=$?
+            fi
+            if grep -Eiq "$transient_pattern" "$cache_log"; then
+              if [ "$attempt" -lt 3 ]; then
+                delay=$((attempt * 4))
+                echo "Transient Deno module fetch failure; retrying cache prefetch in ${delay}s (attempt $((attempt + 1))/3)."
+                sleep "$delay"
+                continue
+              fi
+              cat "$cache_log" >&2
+              echo 'Deno dependency prefetch exhausted three transient-failure attempts.' >&2
+              exit "$status"
+            fi
+            cat "$cache_log" >&2
+            echo 'Deno dependency prefetch failed for a non-retryable error.' >&2
+            exit "$status"
+          done
+      - name: Save prefetched Deno dependency graph
+        if: steps.modules.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/deno
+            node_modules
+            supabase/functions/**/node_modules
+          key: ${{ steps.modules.outputs.cache-primary-key }}
+      - name: Run Edge Function unit tests
+        id: edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t entrypoints < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TARGETS)) console.log(file)')
+          mapfile -t tests < <(node -e 'for (const file of JSON.parse(process.env.EDGE_TESTS)) console.log(file)')
+          deno check --node-modules-dir=auto "${entrypoints[@]}"
+          if [ "${#tests[@]}" -gt 0 ]; then
+            deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"
+          fi
+
   schema-contracts:
     runs-on: ubuntu-latest
     # The six serial API benchmark passes can take 31 minutes before typegen;
@@ -66,9 +191,6 @@ jobs:
         id: registry
         shell: bash
         run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.9.6
       - name: Prepare isolated migration project
         id: prepare
         run: node scripts/historical-database-fixture.mjs "$RUNNER_TEMP/gnc-supabase-ci"
@@ -81,13 +203,6 @@ jobs:
       - name: Run pgTAP and RLS tests
         id: sql
         run: supabase --workdir "$SUPABASE_CI_ROOT" test db
-      - name: Isolated handover and archive SQL behavior
-        shell: bash
-        run: |
-          set -euo pipefail
-          pglite_root="$RUNNER_TEMP/gnc-handover-pglite"
-          npm install --prefix "$pglite_root" --no-save --package-lock=false @electric-sql/pglite@0.5.8
-          node scripts/run-discovered-database-tests.mjs pglite "$pglite_root"
       - id: browser_setup
         uses: ./.github/actions/setup-playwright
         with:
@@ -106,44 +221,6 @@ jobs:
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
           npx playwright test --config playwright.database.config.ts --project=chromium --workers=1 --max-failures=1
-      - name: Prefetch discovered Edge modules with bounded transient retries
-        id: deno_cache
-        shell: bash
-        run: |
-          set -euo pipefail
-          mapfile -t entrypoints < <(node scripts/test-discovery.mjs deno-entrypoints)
-          mapfile -t tests < <(node scripts/test-discovery.mjs deno-tests)
-          cache_log="$RUNNER_TEMP/deno-dependency-prefetch.log"
-          transient_pattern='\b429[[:space:]]+Too Many Requests\b|\b5[0-9]{2}[[:space:]]+[A-Za-z][A-Za-z ]*\b|connection reset by peer|connection refused|connection timed out|timed out|unexpected EOF|temporary failure in name resolution|DNS error|failed to connect|network is unreachable|TLS handshake timeout'
-          for attempt in 1 2 3; do
-            if deno cache --node-modules-dir=auto "${entrypoints[@]}" "${tests[@]}" >"$cache_log" 2>&1; then
-              echo "Deno dependency graph cached on attempt $attempt."
-              break
-            else
-              status=$?
-            fi
-            if grep -Eiq "$transient_pattern" "$cache_log"; then
-              if [ "$attempt" -lt 3 ]; then
-                delay=$((attempt * 4))
-                echo "Transient Deno module fetch failure; retrying cache prefetch in ${delay}s (attempt $((attempt + 1))/3)."
-                sleep "$delay"
-                continue
-              fi
-              cat "$cache_log" >&2
-              echo 'Deno dependency prefetch exhausted three transient-failure attempts.' >&2
-              exit "$status"
-            fi
-            cat "$cache_log" >&2
-            echo 'Deno dependency prefetch failed for a non-retryable error.' >&2
-            exit "$status"
-          done
-      - name: Run Edge Function unit tests
-        id: edge
-        run: |
-          mapfile -t entrypoints < <(node scripts/test-discovery.mjs deno-entrypoints)
-          mapfile -t tests < <(node scripts/test-discovery.mjs deno-tests)
-          deno check --node-modules-dir=auto "${entrypoints[@]}"
-          deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"
       - name: Run native authentication smoke tests against loopback Supabase
         shell: bash
         run: |

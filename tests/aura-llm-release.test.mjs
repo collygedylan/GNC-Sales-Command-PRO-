@@ -48,7 +48,7 @@ test('database CI checks quota contention and permissions in an isolated databas
   assert.ok(discoverTests({ group: 'postgres-concurrency' }).includes('scripts/test-aura-llm-quota-concurrency.mjs'), 'quota contention check is runtime-discovered');
   assert.match(workflow, /node scripts\/run-discovered-database-tests\.mjs postgres-concurrency "\$DB_URL"/);
   assert.ok(discoverTests({ group: 'deno-entrypoints' }).includes('supabase/functions/aura-llm-router/index.ts'), 'router is in discovered Edge entrypoints');
-  assert.match(workflow, /node scripts\/test-discovery\.mjs deno-entrypoints/);
+  assert.match(workflow, /node scripts\/ci-backend-matrix\.mjs/);
   const concurrency = read('scripts/test-aura-llm-quota-concurrency.mjs');
   assert.match(concurrency, /LOCAL_DATABASE_ONLY/);
   assert.match(concurrency, /results\.filter\(r=>r\.allowed\)\.length,15/);

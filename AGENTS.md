@@ -39,7 +39,14 @@ This file is the authoritative repository workflow for local development, candid
 - Pause immediately for explicit user approval when a failure involves a database migration, security credential, or production-data risk.
 - Preserve test coverage and assertions. Do not skip, quarantine, disable, or bypass tests or release gates to obtain a passing result.
 
-## 4. File Hygiene
+## 4. Deployment Visibility
+
+- This procedure supersedes earlier fire-and-forget and terminate-immediately instructions. When a PR is merged and handed off for production deployment, stay active and use the `gh` CLI to monitor the workflows for that exact `main` merge commit until the final production deployment succeeds.
+- Follow the complete handoff from `Publish validated candidate` through backend publication and Pages deployment. The publisher's success alone does not prove the app is live; confirm the final publication job actually completed successfully.
+- Read the deployed version from that commit's `package.json`, `deno.json`, or release tag. Only after successful final production deployment, report: "✅ Deployment is officially live in production. The app is now running on Version: [X.X.X]."
+- If the deployment fails or is cancelled, report that state and follow the remediation rules. Do not report a live deployment before success is confirmed.
+
+## 5. File Hygiene
 
 - Keep the branch, PR, and task artifacts synchronized and organized. Track temporary files created by the task and remove them when no longer needed.
 - Remove confirmed obsolete or orphaned artifacts within the task's scope. Preserve unrelated work, shared resources, and diagnostics needed for unresolved failures.

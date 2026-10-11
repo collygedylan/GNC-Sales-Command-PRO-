@@ -57,6 +57,7 @@ export async function selectReleaseProof({ repository, commit, api }) {
 export function verifyReleaseProof(proof, selected, release) {
   for (const k of ['schemaVersion','repository','commit','runId','attempt','siteArtifactId']) if (proof[k] !== selected[k]) fail('RECORD_MISMATCH');
   if (proof.release !== release || !/^[a-f0-9]{64}$/.test(proof.digest || '')) fail('CONTENT_IDENTITY_INVALID');
+  if (selected.testScope && ['frontend', 'backend'].some(name => proof.testScope?.[name] !== selected.testScope[name])) fail('TEST_SCOPE_MISMATCH');
   return proof.digest;
 }
 

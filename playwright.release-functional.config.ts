@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 import base from './playwright.config';
 
-// CI runs two shards per existing browser project, with one worker per runner.
+// CI runs four shards per existing browser project, with one worker per runner.
 // Database integration and timing-sensitive tests have dedicated jobs.
 export default defineConfig({
   ...base,
