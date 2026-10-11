@@ -20,8 +20,11 @@ history endpoints retain their current behavior.
 ## Values and source identity
 
 - History wins when the same request identity also exists in the active queue.
-- Price comes from current master inventory using its exact unique ID, never a
-  name/itemcode match that could duplicate rows.
+- Price comes from current master inventory using its exact unique ID first. When
+  that ID has no current match, the complete item-code, size, location, and lot
+  tuple supplies one price only when all matching rows have the same valid price.
+  Incomplete tuples, conflicting prices, and invalid prices remain unresolved.
+  Historical request rows are never rewritten by this lookup.
 - Value is `COALESCE(NULLIF(request_qty, 0), 25) * listprice`.
 - Blank/missing quantity has the same 25 fallback. Malformed quantities, missing
   inventory identities and unavailable prices are reported as unresolved; they

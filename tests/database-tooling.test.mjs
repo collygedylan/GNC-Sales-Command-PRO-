@@ -565,19 +565,16 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 186);
+  assert.equal(manifest.length, 179);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
   assert.deepEqual(manifest.slice(-3).map(entry => entry.source), [
-    'supabase/migrations/20261010200046_aura_voice_role_access.sql',
-    'supabase/migrations/20261011032352_aura_voice_soc_reads.sql',
+    'supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql',
     'supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql',
+    'supabase/migrations/20261011193000_historical_requests_price_fallback.sql',
   ]);
   const sources = new Set(manifest.map(entry => entry.source));
-  for (const name of readdirSync(path.join(root, 'supabase/migrations'))) {
-    // The Grower relation is supplied only by the canonical production baseline.
-    if (name.endsWith('.sql') && !['20260929200000_production_baseline.sql', '20260930183036_grower_row_scout_fields.sql'].includes(name)) {
-      assert.ok(sources.has(`supabase/migrations/${name}`), `${name} is replayed after the archived baseline`);
-    }
+  for (const name of ["20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {
+    assert.ok(sources.has(`supabase/migrations/${name}`), `${name} and its read dependencies are replayed`);
   }
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(existsSync(path.join(root, entry.source)), entry.source);

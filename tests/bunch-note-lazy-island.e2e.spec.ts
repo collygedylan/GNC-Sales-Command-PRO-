@@ -37,6 +37,39 @@ async function openFixture(page: Page) {
   await page.goto('/tests/fixtures/bunch-note-lazy-island.html');
 }
 
+test('compiled inventory cards keep lot grids visible below their actions at phone and desktop widths', { tag: ['@release-functional'] }, async ({ page, context }) => {
+  await routeCompiledEntry(context);
+  await openFixture(page);
+  await page.addStyleTag({ path: path.join(repo, 'assets', 'bunch-note-cards.css') });
+  await page.evaluate(async () => {
+    const api = await import('/assets/bunch-note-structured.js');
+    api.mountBunchNoteCards(document.querySelector('#cards-host')!, {
+      accountKey: 'lot-grid-user', revisionKey: 'lot-grid-1', users: [],
+      rows: [{ unique_id: 'lot-grid-source', location_code: 'E.2.000', itemcode: '000123',
+        commonname: 'Long common plant name for checking responsive lot detail wrapping', contsize: '#3',
+        lotcode: '27.F1', salesyear: '27', season: 'F1', stock: 0, available: null,
+        flags: 'Review', hold: 'H', warehouse: 'Nursery' }],
+      locations: [{ id: 'lot-grid-location', location_code: 'E.2.000', cards: [] }],
+    });
+  });
+  const grid = page.getByRole('region', { name: 'Lot details' });
+  for (const width of [360, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(grid).toBeVisible();
+    await expect(grid.locator('dl')).toHaveCount(1);
+    for (const label of ['Lot','Item code','Location','Sales year','Size','Season','On Hand','Available','Flags','Hold','Warehouse']) {
+      await expect(grid.getByText(label, { exact: true })).toBeVisible();
+    }
+    await expect(page.locator('details.bn-board-lots')).toHaveCount(0);
+    await expect(page.getByText(/Expand all lot details/)).toHaveCount(0);
+    expect(await grid.evaluate(element => {
+      const actions = element.closest('.bn-board-card')!.querySelector('.bn-board-card__actions')!;
+      return element.getBoundingClientRect().top >= actions.getBoundingClientRect().bottom
+        && element.scrollWidth <= element.clientWidth + 1;
+    })).toBe(true);
+  }
+});
+
 test('compiled Bunch island defers both views and preserves editor input through bridge revision updates', { tag: ['@release-functional'] }, async ({ page, context }) => {
   let cardRequests = 0;
   let structuredRequests = 0;

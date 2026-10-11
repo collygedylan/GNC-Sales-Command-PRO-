@@ -122,14 +122,7 @@ function CardEditor({ location, card, users, busy, viewState, onViewState, onCar
       if (result && typeof result.catch === 'function') result.catch(cause => reportError(cause, 'Could not open the Move action.', false));
     } catch (cause) { reportError(cause, 'Could not open the Move action.', false); }
   };
-  const expanded = (viewState.expandedCardIds || []).includes(stateId);
-  const toggleLots = () => commitViewState({ expandedCardIds: expanded
-    ? (viewStateRef.current.expandedCardIds || []).filter(id => id !== stateId)
-    : [...new Set([...(viewStateRef.current.expandedCardIds || []), stateId])] });
-  const hasControls = target => target.closest('button,input,select,textarea,label,summary,a');
-  return <article className="bn-board-card" data-card-id={card.id} tabIndex={0} aria-expanded={expanded}
-    onClick={event => { if (!hasControls(event.target)) toggleLots(); }}
-    onKeyDown={event => { if (!hasControls(event.target) && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); toggleLots(); } }}>
+  return <article className="bn-board-card" data-card-id={card.id}>
     <fieldset className="bn-board-card__fieldset" disabled={busy || saving}>
     <div className="bn-board-card__top">
       <div><span className="bn-board-card__kind">{card.kind === 'shared' ? 'Shared task' : (form.included ? 'Included inventory' : 'Available inventory')}</span>
@@ -168,19 +161,16 @@ function CardEditor({ location, card, users, busy, viewState, onViewState, onCar
       </>}
       <span>{card.row_ids.length} lot{card.row_ids.length === 1 ? '' : 's'}{!card.row_coverage_complete && <em> · source rows unavailable</em>}</span>
     </div>
+    {error && <p className="bn-board-card__error" role="alert">{error}</p>}
+    {!card.row_coverage_complete && <p className="bn-board-card__error" role="status">Saved selection needs review. Source lot membership changed. Refresh source to review added matching lots; missing or changed lots remain in the saved selection until resolved. Totals are incomplete.</p>}
     <div className="bn-board-card__actions">
       <button type="button" onClick={event => { stop(event); onLocationInstructions?.(location); }}>Location instructions</button>
       <button type="button" disabled={busy || saving || !dirty || !onSave || changeRejected} onClick={save}>{saving ? 'Saving…' : 'Save card'}</button>
       <span aria-live="polite">{dirty ? 'Unsaved changes' : form.included ? 'Included in draft' : 'Not included'}</span>
     </div>
     </fieldset>
-    {error && <p className="bn-board-card__error" role="alert">{error}</p>}
-    {!card.row_coverage_complete && <p className="bn-board-card__error" role="status">Saved selection needs review. Source lot membership changed. Refresh source to review added matching lots; missing or changed lots remain in the saved selection until resolved. Totals are incomplete.</p>}
-    <details className="bn-board-lots" open={expanded} onToggle={event => {
-      const ids = new Set(viewStateRef.current.expandedCardIds || []);
-      event.currentTarget.open ? ids.add(stateId) : ids.delete(stateId);
-      commitViewState({ expandedCardIds: [...ids] });
-    }} onClick={stop}><summary>Expand all lot details ({card.rows.length})</summary>
+    <section className="bn-board-lots" aria-label="Lot details">
+      <h4>Lot details</h4>
       <div>{card.rows.map(row => <dl key={valueOf(row, 'unique_id', 'UNIQUE_ID', 'id')}>
         <dt>Lot</dt><dd>{valueOf(row, 'lotcode', 'LOTCODE', 'lot_code') || '—'}</dd>
         <dt>Item code</dt><dd>{valueOf(row, 'itemcode', 'ITEMCODE') || card.itemcode || '—'}</dd>
@@ -196,7 +186,7 @@ function CardEditor({ location, card, users, busy, viewState, onViewState, onCar
         <dt>Notes</dt><dd>{valueOf(row, 'location_notes', 'LOCATION_NOTES', 'notes') || '—'}</dd>
         <dt>Source UID</dt><dd>{valueOf(row, 'unique_id', 'UNIQUE_ID') || '—'}</dd>
       </dl>)}</div>
-    </details>
+    </section>
   </article>;
 }
 

@@ -6,7 +6,7 @@ import pg from 'pg';
 import yaml from 'js-yaml';
 import {
   validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName,
-  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
+  perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
   createDatabaseClientOptions
@@ -41,7 +41,7 @@ test('mapping publication is release-registered and protects raw source data and
 });
 
 test('mapping finalizer timeout is function-scoped and retains trusted importer ACLs', () => {
-  assert.equal(releaseDatabaseMigrations.at(-5), customerRepMappingFinalizeTimeoutMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-6), customerRepMappingFinalizeTimeoutMigrationName);
   const query = migrationContractQuery(customerRepMappingFinalizeTimeoutMigrationName);
   assert.match(query, /statement_timeout=55s/);
   assert.match(query, /has_function_privilege\('service_role'.*finalize_customer_rep_mapping_import_v1/);
@@ -50,7 +50,7 @@ test('mapping finalizer timeout is function-scoped and retains trusted importer 
 });
 
 test('historical requests reporting is registered with a protected user-bound RPC contract', () => {
-  assert.equal(releaseDatabaseMigrations.at(-4), historicalRequestsMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-5), historicalRequestsMigrationName);
   const query = migrationContractQuery(historicalRequestsMigrationName);
   for (const marker of ['historical_requests_read_v1(jsonb)', 'statement_timeout=10s',
     'historical_requests_number_v1(text)', 'historical-requests',
@@ -63,7 +63,7 @@ test('historical requests reporting is registered with a protected user-bound RP
 });
 
 test('Aura SOC reads are release-registered with authenticated actor and scope guards', () => {
-  assert.equal(releaseDatabaseMigrations.at(-2), auraVoiceSocReadsMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-3), auraVoiceSocReadsMigrationName);
   const query = migrationContractQuery(auraVoiceSocReadsMigrationName);
   for (const marker of ['aura_voice_context_v1()', 'aura_voice_soc_read_v1(text,jsonb,jsonb,integer)',
     'socReserves', 'socOpenOrders', 'requestedVariants', 'expectedSettingRevision',
@@ -82,7 +82,7 @@ test('handover release requires an armed minute job or an already completed Auth
 });
 
 test('approved SQL repair contracts verify every repaired body and retain restricted execution', () => {
-  assert.deepEqual(releaseDatabaseMigrations.slice(-15), [sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations.slice(-16), [sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName]);
   const functions = migrationContractQuery(sqlFunctionCorrectnessRepairsMigrationName);
   for (const marker of ['inventory_rows.available', 'v_before_state_hash', 'AURA_BUNCH_CREATION_DATE_UNAVAILABLE',
     "card.row_ids @> (action->''row_ids'')", 'outbox.event_id']) assert.ok(functions.includes(marker), marker);
@@ -237,7 +237,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName,auraVoiceRoleAccessMigrationName,auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName,auraVoiceRoleAccessMigrationName,auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName]);
   assert.match(migrationContractQuery(reclassShearedMigrationName),/enqueue_drive_reclass_inquiry_v5/);
   assert.match(migrationContractQuery(reclassShearedMigrationName),/quantity_text/);
   assert.match(migrationContractQuery(auraCommonNamePriorityMigrationName),/common_score/);
@@ -634,4 +634,10 @@ test('Smart Shield release probe follows the preserved private V6 Eval wrapper a
     assert.ok(query.includes(`not has_function_privilege('service_role',to_regprocedure('private.submit_eval_work_v${version}_v6_impl`));
   }
   assert.ok(query.includes("position('eval_work_smart_shield_v6_to_v5' in pg_get_functiondef(to_regprocedure('private.submit_eval_work_"));
+});
+
+test('historical pricing fallback is registered and retains the protected RPC contract', () => {
+  assert.equal(releaseDatabaseMigrations.at(-1), historicalRequestsPriceFallbackMigrationName);
+  const query = migrationContractQuery(historicalRequestsPriceFallbackMigrationName);
+  for (const marker of ['fallback_prices','current_master_found','min(price)=max(price)','has_function_privilege','statement_timeout=10s','navigation_module_allowed_v1']) assert.ok(query.includes(marker), marker);
 });

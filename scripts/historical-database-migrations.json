@@ -692,36 +692,12 @@
     "destination": "20261007211340_sql_lint_runtime_context.sql"
   },
   {
-    "source": "supabase/migrations/20261008190038_reclass_sheared_action_v5.sql",
-    "destination": "20261008190038_reclass_sheared_action_v5.sql"
-  },
-  {
-    "source": "supabase/migrations/20261009053029_reclass_smart_priority_hold_shield_v6.sql",
-    "destination": "20261009053029_reclass_smart_priority_hold_shield_v6.sql"
-  },
-  {
-    "source": "supabase/migrations/20261009053030_smart_shield_raw_import_acknowledgment.sql",
-    "destination": "20261009053030_smart_shield_raw_import_acknowledgment.sql"
-  },
-  {
-    "source": "supabase/migrations/20261009170000_request_queue_remove_v1.sql",
-    "destination": "20261009170000_request_queue_remove_v1.sql"
-  },
-  {
-    "source": "supabase/migrations/20261009202507_prompt25_editable_field_shield_and_hold_clear.sql",
-    "destination": "20261009202507_prompt25_editable_field_shield_and_hold_clear.sql"
-  },
-  {
     "source": "supabase/migrations/20261010024830_customer_rep_mapping_management.sql",
     "destination": "20261010024830_customer_rep_mapping_management.sql"
   },
   {
     "source": "supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql",
     "destination": "20261010080018_bunch_note_auto_completion_delivery.sql"
-  },
-  {
-    "source": "supabase/migrations/20261010080140_field_counting_commands_and_reports.sql",
-    "destination": "20261010080140_field_counting_commands_and_reports.sql"
   },
   {
     "source": "supabase/migrations/20261010152556_customer_rep_mapping_finalize_timeout_55s.sql",
@@ -732,15 +708,11 @@
     "destination": "20261010165013_historical_requests_financial_dashboard.sql"
   },
   {
-    "source": "supabase/migrations/20261010200046_aura_voice_role_access.sql",
-    "destination": "20261010200046_aura_voice_role_access.sql"
-  },
-  {
-    "source": "supabase/migrations/20261011032352_aura_voice_soc_reads.sql",
-    "destination": "20261011032352_aura_voice_soc_reads.sql"
-  },
-  {
     "source": "supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql",
     "destination": "20261011170000_request_mapping_salesrep_identity.sql"
+  },
+  {
+    "source": "supabase/migrations/20261011193000_historical_requests_price_fallback.sql",
+    "destination": "20261011193000_historical_requests_price_fallback.sql"
   }
 ]

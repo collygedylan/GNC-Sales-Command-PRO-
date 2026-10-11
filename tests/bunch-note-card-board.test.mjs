@@ -101,15 +101,23 @@ test('a rejected Move callback is reported in the card', () => {
   cleanup();
 });
 
-test('lot expansion is represented in caller-owned view state for remount persistence', async () => {
-  let viewState = {};
+test('lot details stay visible below card actions without a toggle, including after remount', () => {
+  let viewState = { expandedCardIds: [] };
   const renderBoard = () => render(React.createElement(BunchNoteCardBoard, { rows, locations, viewState,
     onViewState: next => { viewState = next; } }));
   const { unmount } = renderBoard();
-  fireEvent.click(screen.getByText('Expand all lot details (1)'));
-  await waitFor(() => assert.equal(viewState.expandedCardIds?.length, 1));
+  const details = screen.getByRole('region', { name: 'Lot details' });
+  assert.equal(details.tagName, 'SECTION');
+  assert.equal(details.hidden, false);
+  assert.equal(document.querySelector('details.bn-board-lots'), null);
+  assert.equal(screen.queryByText(/Expand all lot details/), null);
+  assert.ok(document.querySelector('.bn-board-card__actions').compareDocumentPosition(details) & window.Node.DOCUMENT_POSITION_FOLLOWING);
+  for (const label of ['Lot','Item code','Location','Sales year','Size','Season','On Hand','Available','Flags','Hold','Warehouse']) {
+    assert.ok([...details.querySelectorAll('dt')].some(node => node.textContent === label), label);
+  }
   unmount(); renderBoard();
-  assert.equal(document.querySelector('.bn-board-lots').open, true);
+  assert.equal(screen.getByRole('region', { name: 'Lot details' }).hidden, false);
+  assert.equal(screen.queryByText(/Expand all lot details/), null);
   cleanup();
 });
 
