@@ -114780,9 +114780,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function getPendingRequestChunkRenderOptions(options = {}) {
             const resolved = getRequestChunkRenderOptions(options);
+            const narrowScreen = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+                && window.matchMedia('(max-width: 639px)').matches;
             // Keep the first paint bounded; subsequent rows use the existing
             // budgeted chunks, completion checks, and cancellation tokens.
-            return { ...resolved, initialRows: Number(resolved.initialRows) > 0 ? resolved.initialRows : 8 };
+            return {
+                ...resolved,
+                initialRows: Number(resolved.initialRows) > 0 ? resolved.initialRows : (narrowScreen ? 4 : 8),
+                chunkSize: resolved.chunkSize ?? (narrowScreen ? 4 : undefined),
+                perFrameRows: resolved.perFrameRows ?? (narrowScreen ? 4 : undefined)
+            };
         }
 
         function getApprovedMoveRequestRowsForCurrentUser(items = requestsInventory) {
