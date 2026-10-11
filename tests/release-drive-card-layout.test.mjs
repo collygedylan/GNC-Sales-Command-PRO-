@@ -31,8 +31,9 @@ test('Drive card header and details stay grouped inside the existing main wrappe
     html.indexOf("if(sourceView==='tasks')")
   );
 
-  assert.match(driveCard, /<div class="app-drive-card-main"><div class="app-drive-card-header">[\s\S]*?<div class="app-drive-card-details"><div class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}<\/div>[\s\S]*?<\/div><\/div>\$\{driveReclassActionHtml\}/);
-  assert.match(driveCard, /class="app-drive-card-itemcode">\$\{esc\(item\.ITEMCODE \|\| '-'\)\}/);
+  assert.match(driveCard, /buildSharedInventoryCardLayout\(item, \{ photoHtml: inlineThumbHtml, actionsHtml: driveReclassActionHtml/);
+  assert.match(html, /app-drive-card-main[\s\S]*?app-drive-card-header[\s\S]*?app-drive-card-details[\s\S]*?app-drive-card-quantity-band/);
+  assert.match(html, /class="app-drive-card-itemcode">\$\{esc\(item\.ITEMCODE \|\| '-'\)\}/);
 });
 
 test('Drive compact layout rules are scoped to Drive Mode and keep Reclass touch-sized', () => {
@@ -52,14 +53,14 @@ test('Drive compact layout rules are scoped to Drive Mode and keep Reclass touch
       continue;
     }
     for (const item of splitSelectors(selector)) {
-      assert.match(item.trim(), /^#drive-content\s+\.app-drive-compact-card\b/, `unscoped Drive card selector: ${item.trim()}`);
+      assert.match(item.trim(), /^:is\(#drive-content, #request-content, #docks-content\)\s+\.app-shared-drive-layout\b/, `unscoped Drive card selector: ${item.trim()}`);
     }
     boundary = index;
   }
 
-  assert.match(driveRules, /#drive-content \.app-drive-compact-card \.app-drive-card-reclass\s*\{[^}]*grid-area:\s*reclass;[^}]*position:\s*static !important/);
-  assert.match(driveRules, /#drive-content \.app-drive-compact-card \.app-drive-card-reclass \.app-card-bottom-btn\s*\{[^}]*min-width:\s*44px !important;[^}]*min-height:\s*44px !important/);
-  assert.match(driveRules, /@media\s*\(max-width:\s*900px\)[\s\S]*#drive-content \.app-drive-compact-card \.app-drive-card-grid\s*\{[^}]*"photo header reclass" "details details details"/);
+  assert.match(driveRules, /:is\(#drive-content, #request-content, #docks-content\) \.app-shared-drive-layout \.app-drive-card-reclass\s*\{[^}]*grid-area:\s*reclass;[^}]*position:\s*static !important/);
+  assert.match(driveRules, /:is\(#drive-content, #request-content, #docks-content\) \.app-shared-drive-layout \.app-drive-card-reclass \.app-card-bottom-btn\s*\{[^}]*min-width:\s*44px !important;[^}]*min-height:\s*44px !important/);
+  assert.match(driveRules, /@media\s*\(max-width:\s*900px\)[\s\S]*\.app-shared-drive-layout \.app-drive-card-grid\s*\{[^}]*"photo header reclass" "details details details"/);
 });
 
 test('Drive card compaction preserves quantity source, labels, and action handlers', () => {
@@ -74,7 +75,7 @@ test('Drive card compaction preserves quantity source, labels, and action handle
   assert.match(html, /\['Loc Photo Match', \(sourceView === 'drive' \|\| sourceView === 'request'\) && locationPhotoMatch === 'Not verified' \? 'N\/A' : locationPhotoMatch\],\s*\['Loc On Hand', getCardLocationOnHandValue\(locationMetricRow\) \?\? 'Unknown'\]/);
   assert.match(driveCard, /const driveListPriceHtml = sourceView !== 'drive' && displayListPrice !== '-'/);
   assert.match(html, /'Loc Photo Match': 'loc-photo-match',[\s\S]*?'Loc On Hand': 'loc-on-hand'/);
-  assert.match(driveCard, /class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}/);
+  assert.match(driveCard, /metricsHtml: driveQuantityRowHtml/);
   assert.match(driveCard, /buildArgosInventoryTransactionRailHtml\(item, 'drive'\)/);
   assert.match(driveCard, /class="app-drive-card-reclass" onclick="event\.stopPropagation\(\);"/);
   assert.match(driveCard, /getInventoryCardBottomRailHtml\(item\.DOM_ID, driveBottomExtraHtml, \{ includeCart: includeDriveBloomPickerBtn, sourceView \}\)/);

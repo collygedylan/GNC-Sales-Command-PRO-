@@ -9,7 +9,7 @@ function requestFixture() {
   vm.runInContext(requestMappingSetup+'\n'+requestMappingFunctions(),context);
   context.customerRepMapRows=[row,{...row,unique_id:'map-2',customeridentityid:'00013',consigneeid:'00008'},
     {...row,unique_id:'inactive',consigneestatus:'I'}, {...row,unique_id:'unassigned',salesrepid:''},
-    {...row,unique_id:'other',salesrepname:'Rep Two',customeridentityid:'other'}];
+    {...row,unique_id:'other',salesrepid:'02',salesrepname:'Rep Two',customeridentityid:'other'}];
   context.reservesInventory=[{...row,customername:'Reserve only',customeridentityid:'reserve'}];
   return context;
 }
@@ -39,7 +39,7 @@ test('Request matching uses production normalization for rep aliases, statuses, 
     assert.equal(groups.length,2,'same customer label with distinct IDs stays distinct');
   }
   assert.equal(c.getRequestModalCustomerOptionsForRep('Morgan Smith').length,1);
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,2,'the existing tolerant name match remains available');
+  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,0,'partial names cannot identify an external sales rep');
 });
 test('Request membership rechecks both IDs, names and the current map revision',()=>{
   const c=requestFixture(); const context={customeridentityid:row.customeridentityid,consigneeidentityid:row.consigneeid,customername:row.customername,consigneename:row.consigneename};

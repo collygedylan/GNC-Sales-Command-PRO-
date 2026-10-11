@@ -26,6 +26,10 @@ The SQL finalizer owns the atomic dataset revision fence. Apps Script holds its 
 
 New submissions require an active customer and consignee relationship for the selected rep. The picker carries external IDs, limits consignees to the selected customer, and clears invalid selections after mapping changes. Reserve-derived suggestions, static exceptions and custom typed names cannot bypass this rule. Existing rep ownership and Request permissions still apply.
 
+The live picker reads complete, revision-consistent pages through the protected `customer-rep-map` options operation with an exact `salesrepId`. Rep option merging retains the external ID. Partial names do not resolve an identity. Duplicate customer and consignee names remain separate by their external IDs, and obsolete reads cannot replace a newer selection.
+
+New Request rows retain `request_selected_salesrep_id`. The server validates the complete active rep/customer/consignee tuple and checks rep account ownership through `sales_private.rep_identities` and its existing profile foreign key. Legacy requests remain readable; legacy submissions receive an external ID only when their selected relationship resolves unambiguously. External rep IDs remain text, including leading zeros.
+
 The server revalidates membership at submission. Existing queued requests and saved snapshots remain readable and deliverable. If a mapping becomes inactive or unavailable, users correct/reselect it before making a new submission; no fallback silently invents a relationship.
 
 ## Validation and release

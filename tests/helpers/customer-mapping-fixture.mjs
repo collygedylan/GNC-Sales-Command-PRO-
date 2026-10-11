@@ -8,9 +8,9 @@ export function requestMappingFunctions() {
   const html = fs.readFileSync('index.html','utf8');
   const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','getRequestRepMatchTokens','doesRequestRepMatchValue',
     'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName',
-    'getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue',
+    'getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
-    'isActiveRequestCustomerMapping','getRequestModalCustomerOptionsCacheSignature','buildRequestModalCustomerOptionsCache','getRequestModalCustomerOptionsForRep',
+    'isActiveRequestCustomerMapping','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
     'isCurrentRequestCustomerContext','buildRequestCustomerPickerGroups','processCustStep',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
   return names.map(name => {
@@ -39,6 +39,6 @@ var REQUEST_MODAL_REP_OPTIONS=['Rep One','Rep Two','Molly Dixon'].map(label=>{co
 var requestModalRepUserOptions=[],requestMappedRepSource=null,requestMappedRepRevision='',requestMappedRepOptions=[];
 var isRequestModalCustomerMapReady=()=>true;
 var tempSelectedReqRep='Rep One',tempRequestCustomerSelectedContext=null,tempRequestCustomerSelectedFinalLabel='';
-var customerRepMapRows=[],reservesInventory=[],toasts=[],qtyCalls=[];
+var customerRepMapRows=[],reservesInventory=[],toasts=[],qtyCalls=[],tempSelectedReqSalesrepId='',requestMappingRpcCache=new Map();
 var showToast=(...args)=>toasts.push(args),goToQtyStep=(...args)=>qtyCalls.push(args);
 `;
