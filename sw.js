@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.10.004';
+const APP_SHELL_BUILD = 'V2026.10.11.001';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -66,8 +66,8 @@ const BRANDING_CANONICAL_ASSETS = Object.freeze([
 // END GENERATED BRANDING ASSETS
 const DEFERRED_VIEW_ASSETS = /* release-generated */ [
   "./assets/bunch-note-cards.css",
-  "./assets/bunch-note-chunks/CardBoard-V4THN57E.js",
-  "./assets/bunch-note-chunks/StructuredBunchNote-M5ZHXRZK.js",
+  "./assets/bunch-note-chunks/CardBoard-BWK6EEDK.js",
+  "./assets/bunch-note-chunks/StructuredBunchNote-B6KJKD2I.js",
   "./assets/bunch-note-chunks/chunk-5ZDRBDCG.js",
   "./assets/bunch-note-structured.js",
   "./assets/bunch-note.css",
@@ -301,9 +301,10 @@ function shouldBypassServiceWorkerCache(request) {
   const requestUrl = getRequestUrl(request);
   if (!requestUrl) return true;
   if (isIndependentAppRequest(request)) return true;
-  // AURA is loaded only after a verified Dylan session. Never persist its modules
+  // AURA is loaded only after a verified authorized session. Never persist its modules
   // in the shared origin's service-worker cache on devices with multiple users.
   if (/\/(?:services\/(?:auraVoiceService|auraConversation)|utils\/(?:auraIntentParser|auraLingo)|components\/common\/(?:auraVoiceWidget|auraQueryPanel))\.js$/i.test(requestUrl.pathname)) return true;
+  if (/\/assets\/aura-voice\.js$/i.test(requestUrl.pathname)) return true;
   if (/\/assets\/alpha-command-center\.(?:js|css)$/i.test(requestUrl.pathname)) return true;
   if (requestUrl.origin !== self.location.origin && PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;
   if (PRIVATE_NETWORK_PATH_REGEX.test(requestUrl.pathname)) return true;

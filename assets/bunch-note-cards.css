@@ -29,7 +29,7 @@
 .bn-board-card__actions>span{color:var(--ops-text-muted,#617068);font-size:.8rem;font-weight:700}
 .bn-board-card__error{margin:8px 0;color:var(--ops-danger,#b83232);font-weight:800}
 .bn-board-lots{border-top:1px solid var(--ops-border,#cbd8d1);margin-top:10px;padding-top:8px}
-.bn-board-lots>summary{min-height:44px;padding:8px 2px;color:var(--ops-brand-strong,#05623c);font-weight:800;cursor:pointer}
+.bn-board-lots>h4{margin:0 0 8px;color:var(--ops-brand-strong,#05623c);font-size:.875rem;font-weight:800}
 .bn-board-lots>div{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:8px}
 .bn-board-lots dl{display:grid;grid-template-columns:minmax(70px,.7fr) minmax(0,1.3fr);gap:4px;margin:0;padding:8px;border:1px solid var(--ops-border,#cbd8d1);border-radius:8px;background:var(--ops-surface,#fff)}
 .bn-board-lots dt{font-weight:800;color:var(--ops-text-muted,#617068)}
