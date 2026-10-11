@@ -565,13 +565,19 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 174);
+  assert.equal(manifest.length, 187);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
   assert.deepEqual(manifest.slice(-3).map(entry => entry.source), [
-    'supabase/migrations/20261007211325_sql_function_correctness_repairs.sql',
-    'supabase/migrations/20261007211340_sql_lint_runtime_context.sql',
-    'supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql',
+    'supabase/migrations/20261010200046_aura_voice_role_access.sql',
+    'supabase/migrations/20261011032352_aura_voice_soc_reads.sql',
+    'supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql',
   ]);
+  const sources = new Set(manifest.map(entry => entry.source));
+  for (const name of readdirSync(path.join(root, 'supabase/migrations'))) {
+    if (name.endsWith('.sql') && name !== '20260929200000_production_baseline.sql') {
+      assert.ok(sources.has(`supabase/migrations/${name}`), `${name} is replayed after the archived baseline`);
+    }
+  }
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(existsSync(path.join(root, entry.source)), entry.source);
   assert.match(workflow, /node scripts\/historical-database-fixture\.mjs "\$RUNNER_TEMP\/gnc-supabase-ci"/);

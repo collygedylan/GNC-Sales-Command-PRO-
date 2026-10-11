@@ -158,6 +158,12 @@ If the request has multiple unrelated meanings or missing required data, call cl
 
 export type GeminiRouteInput = { text: string; actor: AuraActor; context: Record<string, unknown>; apiKey: string; signal: AbortSignal;
   fetcher?: typeof fetch; reserve: (inputBytes: number) => Promise<void> };
+export class AuraGeminiProviderError extends Error {
+  constructor(readonly providerStatus: number) {
+    super(providerStatus === 429 ? "AURA_GEMINI_BUSY" : "AURA_GEMINI_UNAVAILABLE");
+    this.name = "AuraGeminiProviderError";
+  }
+}
 export async function routeAuraWithGemini(input: GeminiRouteInput): Promise<AuraTool> {
   if (!input.apiKey.trim()) throw new Error("AURA_GEMINI_CONFIGURATION_UNAVAILABLE");
   const allowedNames = ["clarify", "refuse", ...(input.actor.inventory ? ["inventory"] : []),
@@ -177,7 +183,7 @@ export async function routeAuraWithGemini(input: GeminiRouteInput): Promise<Aura
   });
   if (!response.ok) {
     await response.body?.cancel();
-    throw new Error(response.status === 429 ? "AURA_GEMINI_BUSY" : "AURA_GEMINI_UNAVAILABLE");
+    throw new AuraGeminiProviderError(response.status);
   }
   if (Number(response.headers.get("content-length")) > 64000) { await response.body?.cancel(); throw new Error("AURA_TOOL_INVALID"); }
   if (!response.body) throw new Error("AURA_TOOL_INVALID");
