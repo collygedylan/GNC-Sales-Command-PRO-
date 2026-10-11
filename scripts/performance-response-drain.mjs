@@ -49,6 +49,14 @@ function safeApiRequestDetails(request) {
         if (typeof body.dataset === 'string' && /^[a-z0-9_.-]{1,80}$/i.test(body.dataset)) operation += `;dataset:${body.dataset}`;
       }
     } catch { /* Opaque or malformed bodies stay undisclosed in diagnostics. */ }
+  } else if (request.method() === 'POST' && path === '/functions/v1/aura-llm-router') {
+    try {
+      const body = request.postDataJSON();
+      if (body && typeof body === 'object' && !Array.isArray(body)
+          && Object.keys(body).length === 1 && Object.hasOwn(body, 'mode') && body.mode === 'capabilities') {
+        operation = 'aura:capabilities';
+      }
+    } catch { /* Unknown or malformed router calls remain opaque. */ }
   }
   const details = { method: request.method(), path, operation };
   const healthEvent = safeHealthEventDetails(request, operation, path);
