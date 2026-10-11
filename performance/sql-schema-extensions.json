@@ -50,5 +50,9 @@
   {
     "path": "supabase/migrations/20261011193000_historical_requests_price_fallback.sql",
     "gitBlob": "5186ccf040ff9ae6f70e7b16d7628d4c055e3ebc"
+  },
+  {
+    "path": "supabase/migrations/20261011223000_reclass_concurrent_hold_rows.sql",
+    "gitBlob": "eedddc58742217dc956e78c46f98b8282e60ed16"
   }
 ]

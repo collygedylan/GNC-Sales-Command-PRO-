@@ -468,6 +468,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261011032352_aura_voice_soc_reads.sql',
       '20261011170000_request_mapping_salesrep_identity.sql',
       '20261011193000_historical_requests_price_fallback.sql',
+      '20261011223000_reclass_concurrent_hold_rows.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

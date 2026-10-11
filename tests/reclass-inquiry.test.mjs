@@ -354,7 +354,8 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
     assert.match(output, /\.edited-cell\{background:#fff176!important\}/);
-    assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>check<\/strong>/);
+    assert.doesNotMatch(output, /class="identity-cell[^>]*holdstop/);
+    assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th><th>H\/S Begin Date<\/th>/);
     assert.doesNotMatch(output, /PROPOSED/i);
     assert.match(output, /F1 \| sales year &lt;= 27 \| 3 rows/);
     assert.match(output, /proposal-legend/);
@@ -401,8 +402,8 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
   const actions = ['priority_change', 'recount', 'move_up', 'move_down', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'];
   const commonHeaders = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev'];
   const detailHeaders = ['Loc Note Date', 'Loc PTN1', 'Loc Note', 'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS'];
-  const fixedHeaders = [...commonHeaders, ...detailHeaders];
-  const holdHeaders = [...commonHeaders, 'H/S', 'H/S Reason', ...detailHeaders];
+  const fixedHeaders = [...commonHeaders, 'H/S', 'H/S Reason', 'H/S Begin Date', ...detailHeaders];
+  const holdHeaders = [...commonHeaders, 'H/S', 'H/S Reason', 'H/S Begin Date', ...detailHeaders];
   const outputs = {};
   for (const action of actions) {
     const model = server.buildReclassInquiryCompactPilotModel_(action, new Date('2026-08-22T14:15:00Z'));
@@ -428,7 +429,7 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
     for (const output of Object.values(outputs)) assert.doesNotMatch(output, new RegExp(`<th>${removed}<\\/th>`), `${removed} must not be an action pilot column`);
   }
   for (const action of ['priority_change', 'recount', 'move_up', 'move_down']) {
-    assert.doesNotMatch(outputs[action], /<th>H\/S<\/th>|<th>H\/S Reason<\/th>/);
+    assert.match(outputs[action], /<th>H\/S<\/th><th>H\/S Reason<\/th><th>H\/S Begin Date<\/th>/);
   }
   assert.match(outputs.priority_change, /<th>Lotcode<\/th>[\s\S]*?<th>Desig Item<\/th>[\s\S]*?<th>Desig Cust<\/th>[\s\S]*?<th>Desig Loc<\/th>[\s\S]*?<th>SUS<\/th>/);
   assert.doesNotMatch(outputs.priority_change, /<strong>Request:<\/strong>|<strong>Edited:<\/strong>/);
@@ -443,21 +444,21 @@ test('action-specific compact PDFs use exact columns, natural ordering, preserve
   assert.doesNotMatch(outputs.recount, /class="edited-cell"/);
 });
 
-test('Reclass identity excludes PGC and retains eight required fields and the detail table stays fixed', () => {
+test('Reclass identity excludes PGC and retains seven item identity fields and the detail table stays fixed', () => {
   const server = loadServerModel();
   assert.deepEqual(Array.from(server.RECLASS_INQUIRY_IDENTITY_FIELDS_, (field) => [field.key, field.label]), [
     ['commonname', 'Common Name'], ['contsize', 'Cont.'],
     ['itemcode', 'Item Code'], ['genusname', 'Genus'], ['fieldtagcolor', 'Tag Color'],
-    ['itemspec', 'Item Spec'], ['pullerresponsibility', 'Pull'], ['holdstopcode', 'HOLDSTOPCODE'],
+    ['itemspec', 'Item Spec'], ['pullerresponsibility', 'Pull'],
   ]);
   assert.deepEqual(Array.from(server.getReclassInquiryCompactFields_('', ['move_down', 'move_up']), (field) => field.label), [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'H/S Begin Date', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
   ]);
   const htmlOutput = server.buildReclassInquiryCompactReportHtml_({ identity: {}, rows: [] }, true);
   assert.match(htmlOutput, /\.identity\{display:grid;grid-template-columns:repeat\(3,1fr\)/);
   assert.doesNotMatch(htmlOutput, /<th>Hold\/Stop Code<\/th>/);
   assert.doesNotMatch(htmlOutput, /<th>Hold\/Stop Reason<\/th>|<th>Move Up|<th>Move Down/);
-  assert.match(htmlOutput, /HOLDSTOPREASON/);
+  assert.match(htmlOutput, /<th>H\/S Reason<\/th>/);
 });
 
 test('workflow V2 validates every action and rejects mixed, stale, and unsafe proposals', () => {
@@ -526,7 +527,7 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   const headerHtml = output.match(/<tr class="column-heading-row">([\s\S]*?)<\/tr>/)?.[1] || '';
   const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
   assert.deepEqual(headers, [
-    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
+    'Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'H/S Begin Date', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
     'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS',
   ]);
   assert.match(output, /proposal-box[\s\S]*?<strong>1<\/strong>/);
@@ -536,7 +537,8 @@ test('workflow V3 scopes Dallas Hold while keeping Move and Priority proposals i
   assert.equal(model.identity.holdstopcode, 'H');
   assert.equal(model.identity.holdstopreason, 'sheared');
   assert.deepEqual(Array.from(model.identityChangedFields), ['holdstopcode', 'holdstopreason']);
-  assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>sheared<\/strong>/);
+    assert.doesNotMatch(output, /class="identity-cell[^>]*holdstop/);
+    assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th><th>H\/S Begin Date<\/th>/);
   assert.match(output, /S1 \| sales year &lt;= 27 \| 1 row/);
   assert.doesNotMatch(output, /Hold\/Stop Proposals|<th>Actions<\/th>/);
   assert.ok(output.indexOf('A.01.000') < output.indexOf('C.16.000'));
@@ -676,8 +678,8 @@ test('Golden Falls hold PDF shows leaf-quality proposals when the opening row is
   assert.equal(model.identity.holdstopcode, '', 'the opening row remains unchanged');
   assert.deepEqual(Array.from(model.identityChangedFields), []);
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  assert.match(output, /Request scope proposal; affected rows are marked below/);
-  assert.match(output, /<strong>H<\/strong>[\s\S]*?HOLDSTOPREASON[\s\S]*?<strong>leaf quality<\/strong>/);
+  assert.doesNotMatch(output, /holdstop-identity/);
+  assert.match(output, /<strong>H<\/strong>[\s\S]*?<strong>leaf quality<\/strong>/);
   assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th>/);
   for (const location of ['B.01.000', 'C.01.000', 'D.01.000']) {
     const rowHtml = output.match(new RegExp(`<tr data-location-row="true">(?:(?!<\\/tr>)[\\s\\S])*?${location.replaceAll('.', '\\.')}(?:(?!<\\/tr>)[\\s\\S])*?<\\/tr>`))?.[0] || '';
@@ -815,7 +817,8 @@ test('originating Hold/Stop proposals drive the top code and all PDF reasons ren
   assert.equal(model.rows[1].values.holdstopreason, 'older mixed reason');
   assert.equal(rows[1].holdstopreason, 'Older MIXED Reason', 'authoritative source must remain untouched');
   const output = server.buildReclassInquiryCompactReportHtml_(model, true);
-  assert.match(output, /holdstop-identity edited-cell" data-edited="true">[\s\S]*?\[blank\][\s\S]*?HOLDSTOPREASON[\s\S]*?\[blank\]/);
+    assert.doesNotMatch(output, /class="identity-cell[^>]*holdstop/);
+    assert.match(output, /<th>H\/S<\/th><th>H\/S Reason<\/th><th>H\/S Begin Date<\/th>/);
   assert.doesNotMatch(output, /PROPOSED/i);
   assert.doesNotMatch(output, /<th>Hold\/Stop Reason<\/th>/);
   assert.doesNotMatch(output, /Mixed CASE|Older MIXED/);
@@ -1044,7 +1047,7 @@ test('every live Reclass row shows direct actions and progressively disclosed re
   assert.match(builder, /toggleArgosReclassV3Action/);
   assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.map/);
   assert.match(html, /<span>Hold code<\/span>/);
-  assert.match(html, /<span>Hold reason<\/span>/);
+  assert.match(html, /<span>holdstopreason<\/span>/);
   assert.match(html, /function renderArgosReclassHoldScopeNotice/);
   assert.match(html, /The selected row receives the Hold \/ Stop request/);
   assert.match(html, /the server determines that scope/);

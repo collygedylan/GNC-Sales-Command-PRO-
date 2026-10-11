@@ -123,8 +123,8 @@ test('Edge Function CI resolves pinned npm imports used by the push sender', () 
 test('historical regression fixture uses the explicit migration order manifest and dynamic SQL tests', () => {
   const root = repositoryRoot;
   const manifest = readHistoricalMigrationManifest({ root });
-  assert.equal(manifest.length, 179);
-  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 179);
+  assert.equal(manifest.length, 180);
+  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 180);
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(fs.existsSync(new URL('../' + entry.source, import.meta.url)), entry.source);
   const destinations = new Map(manifest.map((entry, index) => [entry.destination, index]));

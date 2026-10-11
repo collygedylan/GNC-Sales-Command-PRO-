@@ -48612,22 +48612,6 @@ let avTopControlsRenderToken = 0;
             return rows.some((entry) => !!getArgosReclassV3Proposal(String(entry && entry.unique_id || ''), 'move_up'));
         }
 
-        function clearArgosReclassHoldDraftForMoveUp() {
-            if (argosReclassMultiActionState) argosReclassMultiActionState.holdStopProposals = {};
-            const rows = argosInventoryTransactionState && argosInventoryTransactionState.inquiryModel
-                && Array.isArray(argosInventoryTransactionState.inquiryModel.locationRows)
-                ? argosInventoryTransactionState.inquiryModel.locationRows : [];
-            rows.forEach((entry) => {
-                const rowMap = getArgosReclassRowProposalMap(String(entry && entry.unique_id || ''), false) || {};
-                RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.forEach((action) => { delete rowMap[action]; });
-                ['move_up', 'move_down'].forEach((action) => {
-                    if (!rowMap[action]) return;
-                    rowMap[action].applyHold = false;
-                    rowMap[action].holdReason = '';
-                });
-            });
-        }
-
         function cloneArgosReclassProposal(proposal = {}) {
             const copy = { ...proposal };
             if (['move_up', 'move_down'].includes(copy.action)) {
@@ -48727,7 +48711,6 @@ let avTopControlsRenderToken = 0;
         }
 
         function refreshArgosReclassMultiActionUi() {
-            if (hasArgosReclassMoveUpProposal()) clearArgosReclassHoldDraftForMoveUp();
             document.querySelectorAll('[data-reclass-row-card]').forEach((card) => {
                 const body = card.querySelector('[data-reclass-row-body]');
                 const entry = getArgosReclassRowEditorEntry(card.getAttribute('data-reclass-row-card'));
@@ -48768,10 +48751,6 @@ let avTopControlsRenderToken = 0;
             const rule = getReclassActionWorkflowV5Config(normalized);
             if (!entry || !rule) return false;
             const isHoldAction = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(normalized);
-            if (isHoldAction && hasArgosReclassMoveUpProposal()) {
-                showToast('Hold Unavailable', 'Remove Move Up before adding a Hold/Stop draft.', true);
-                return false;
-            }
             const globalHoldProposal = getArgosReclassV3HoldProposal();
             const existing = isHoldAction && globalHoldProposal && globalHoldProposal.action === normalized
                 ? globalHoldProposal : getArgosReclassV3Proposal(uid, normalized);
@@ -48799,7 +48778,7 @@ let avTopControlsRenderToken = 0;
                         if (!window.confirm(`Replace ${conflictingRule.label} with ${rule.label} for this selected row and any server-authorized matching rows${hasEnteredData ? ' and discard its entered reason' : ''}?`)) return false;
                     }
                     argosReclassMultiActionState.holdStopProposals = {
-                        [normalized]: { action: normalized, reason: '', sourceUid: uid }
+                        [normalized]: { action: normalized, reason: '', sourceUid: uid, holdstopbegindate: new Date().toLocaleDateString('en-CA') }
                     };
                 } else {
                     const rowMap = getArgosReclassRowProposalMap(uid, true);
@@ -48807,7 +48786,6 @@ let avTopControlsRenderToken = 0;
                     else if (rule.kind === 'move') rowMap[normalized] = { action: normalized, splits: [{ quantity: '', destinationSeason: '' }], applyHold: false, holdReason: '' };
                     else if (rule.kind === 'sheared') rowMap[normalized] = { action: normalized, quantity: '' };
                     else rowMap[normalized] = { action: normalized };
-                    if (normalized === 'move_up') clearArgosReclassHoldDraftForMoveUp();
                 }
             }
             if (argosInventoryTransactionState) argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
@@ -48863,7 +48841,7 @@ let avTopControlsRenderToken = 0;
             if (rule.kind === 'hold_on') {
                 const lowerReason = String(proposal.reason || '').toLowerCase();
                 if (proposal.reason !== lowerReason) proposal.reason = lowerReason;
-                return `<div class="argos-reclass-action-proposal"><label><span>Hold code</span><input class="argos-reclass-row-input" value="${escapeHtml(rule.code)}" readonly aria-label="Hold code"></label><label><span>Hold reason</span><textarea class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="reason" oninput="return handleArgosReclassV3ProposalInput(this)" placeholder="Required reason">${escapeHtml(lowerReason)}</textarea></label><small>The selected row is the origin. The server determines whether matching rows in the configured season/year scope are also affected.</small></div>`;
+                return `<div class="argos-reclass-action-proposal"><label><span>Hold code</span><input class="argos-reclass-row-input" value="${escapeHtml(rule.code)}" readonly aria-label="Hold code"></label><label><span>holdstopreason</span><textarea class="argos-reclass-row-input" data-reclass-v3-proposal-action="${escapeHtml(normalized)}" data-reclass-v3-proposal-field="reason" oninput="return handleArgosReclassV3ProposalInput(this)" placeholder="Required reason">${escapeHtml(lowerReason)}</textarea></label><label><span>holdstopbegindate</span><input class="argos-reclass-row-input" data-reclass-hold-begin-date value="${escapeHtml(proposal.holdstopbegindate || new Date().toLocaleDateString('en-CA'))}" readonly aria-label="Hold/Stop begin date"></label><small>The selected row is the origin. The server determines whether matching rows in the configured season/year scope are also affected.</small></div>`;
             }
             if (rule.kind === 'hold_off') {
                 return `<div class="argos-reclass-action-proposal"><span>${escapeHtml(rule.label)}</span><strong>The matching hold code will be removed. Its reason clears only if no hold/stop code remains.</strong><small>The selected row is the origin. The server determines whether matching rows in the configured season/year scope are also affected.</small></div>`;
@@ -48879,7 +48857,6 @@ let avTopControlsRenderToken = 0;
             if (rule.kind === 'move') {
                 const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
                 const currentSeason = getArgosReclassRowCurrentSeason(entry);
-                const holdControlsEnabled = !hasArgosReclassMoveUpProposal();
                 Object.assign(proposal, cloneArgosReclassProposal(proposal));
                 const label = normalized === 'move_up' ? 'Move Up' : 'Move Down';
                 const splitRows = proposal.splits.map((split, index) => {
@@ -48887,11 +48864,9 @@ let avTopControlsRenderToken = 0;
                     const attrs = `data-reclass-v3-proposal-action="${normalized}" data-reclass-split-index="${index}"`;
                     return `<div class="argos-reclass-move-split"><label class="argos-reclass-action-proposal"><span>Quantity ${index + 1}</span><input class="argos-reclass-row-input" type="number" inputmode="numeric" min="1" step="1" max="${escapeHtml(String(Number.isFinite(originalOh) ? originalOh : ''))}" aria-label="${label} quantity ${index + 1}" value="${escapeHtml(String(split.quantity ?? ''))}" ${attrs} data-reclass-v3-proposal-field="quantity" oninput="return handleArgosReclassV3ProposalInput(this)"></label><label class="argos-reclass-action-proposal"><span>Destination ${index + 1}</span><select class="argos-reclass-row-input" aria-label="${label} destination ${index + 1}" ${attrs} data-reclass-v3-proposal-field="destinationSeason" onchange="return handleArgosReclassV3ProposalInput(this)"><option value="">Choose season</option>${options}</select></label><button type="button" class="argos-reclass-action-btn" aria-label="Remove ${label} destination ${index + 1}" onclick="return changeArgosReclassMoveSplit(this,'${normalized}',${index})" ${proposal.splits.length === 1 ? 'disabled' : ''}>Remove</button></div>`;
                 }).join('');
-                const holdHtml = holdControlsEnabled
-                    ? (proposal.applyHold
+                const holdHtml = proposal.applyHold
                         ? '<p class="argos-reclass-action-scope-notice" role="alert">This saved move uses a retired Hold option. Remove and re-add the move, then select On Hold in the action grid.</p>'
-                        : '<p class="argos-reclass-action-scope-notice" role="note">Use On Hold or Off Hold in the action grid for hold changes.</p>')
-                    : '<p class="argos-reclass-move-hold-disabled" role="note">Hold code and reason are unavailable while Move Up is selected.</p>';
+                        : '<p class="argos-reclass-action-scope-notice" role="note">Use On Hold or Off Hold in the action grid for hold changes.</p>';
                 return `<fieldset class="argos-reclass-move-editor" data-reclass-move-action="${normalized}"><legend>${escapeHtml(rule.label)}</legend><p data-reclass-move-balance data-over-limit="${getArgosReclassMoveBalance(entry).remaining < 0}" role="status">${escapeHtml(getArgosReclassMoveBalanceText(entry))}</p>${splitRows}<button type="button" class="argos-reclass-action-btn" onclick="return changeArgosReclassMoveSplit(this,'${normalized}')" ${proposal.splits.length >= 100 ? 'disabled' : ''}>Add destination</button>${holdHtml}<small>Movement quantities remain an inquiry until keyed.</small></fieldset>`;
             }
             return `<div class="argos-reclass-action-proposal"><span>Re-Count Request</span><strong>Read-only Item Inquiry</strong><small>No proposed value boxes are added.</small></div>`;
@@ -48919,7 +48894,6 @@ let avTopControlsRenderToken = 0;
             if (!RECLASS_ACTION_WORKFLOW_V3_ENABLED) return '';
             const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
             const globalHoldProposal = getArgosReclassV3HoldProposal();
-            const moveUpSelected = hasArgosReclassMoveUpProposal();
             const buttons = RECLASS_ACTION_WORKFLOW_V5_ORDER.map((action) => {
                 const rule = getReclassActionWorkflowV5Config(action);
                 const scopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldTargetEntries(action, uid) : [];
@@ -48939,8 +48913,7 @@ let avTopControlsRenderToken = 0;
                     title = `${scopeEntries.length} scoped row${scopeEntries.length === 1 ? '' : 's'} affected`;
                 }
                 const actionLabel = ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS[action] || rule.label;
-                const disabledByMoveUp = moveUpSelected && RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action);
-                return `<button type="button" class="argos-reclass-action-btn" data-reclass-v3-action="${escapeHtml(action)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return toggleArgosReclassV3Action(this, '${escapeHtml(action)}')" ${disabledByMoveUp || !(eligible || active) ? 'disabled' : ''} title="${escapeHtml(disabledByMoveUp ? 'Remove Move Up before adding a Hold/Stop draft' : title)}"><i class="ph-bold ${active ? 'ph-check-circle' : 'ph-circle'}"></i> ${escapeHtml(actionLabel)}${!eligible && argosInventoryTransactionState && argosInventoryTransactionState.sourceView !== 'eval-work' ? `<small>${escapeHtml(title)}</small>` : ''}</button>`;
+                return `<button type="button" class="argos-reclass-action-btn" data-reclass-v3-action="${escapeHtml(action)}" aria-pressed="${active ? 'true' : 'false'}" onclick="return toggleArgosReclassV3Action(this, '${escapeHtml(action)}')" ${!(eligible || active) ? 'disabled' : ''} title="${escapeHtml(title)}"><i class="ph-bold ${active ? 'ph-check-circle' : 'ph-circle'}"></i> ${escapeHtml(actionLabel)}${!eligible && argosInventoryTransactionState && argosInventoryTransactionState.sourceView !== 'eval-work' ? `<small>${escapeHtml(title)}</small>` : ''}</button>`;
             }).join('');
             const activeActions = RECLASS_ACTION_WORKFLOW_V5_ORDER.filter((action) => !!getArgosReclassV3Proposal(uid, action));
             const proposalsHtml = activeActions.map((action) => buildArgosReclassV3ProposalHtml(safeEntry, action)).join('');
@@ -49067,8 +49040,7 @@ let avTopControlsRenderToken = 0;
             const rows = Array.isArray(model.locationRows) ? model.locationRows : [];
             const requestActions = new Set();
             const holdStopProposals = [];
-            const moveUpSelected = hasArgosReclassMoveUpProposal();
-            const globalHoldProposal = moveUpSelected ? null : getArgosReclassV3HoldProposal();
+            const globalHoldProposal = getArgosReclassV3HoldProposal();
             let scope = {};
             if (globalHoldProposal) {
                 const rule = getReclassActionWorkflowV2Config(globalHoldProposal.action);
@@ -49111,7 +49083,7 @@ let avTopControlsRenderToken = 0;
                         const originalPriority = Number.isInteger(originalNumber) ? String(originalNumber) : originalRaw;
                         if (outgoing.priority === originalPriority) throw new Error('Priority Change must add, replace, or remove the selected row Priority.');
                     } else if (rule.kind === 'move') {
-                        Object.assign(outgoing, collectArgosReclassMoveProposal(proposal, entry, rule, !hasArgosReclassMoveUpProposal()));
+                        Object.assign(outgoing, collectArgosReclassMoveProposal(proposal, entry, rule));
                         combinedMoveQuantity += outgoing.splits.reduce((sum, split) => sum + split.quantity, 0);
                     } else if (rule.kind === 'sheared') {
                         const quantity = Number(String(proposal.quantity ?? '').trim());
@@ -108194,6 +108166,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             { key: 'locationptn2', label: 'LOCATIONPTN2', aliases: ['LOCATIONPTN2', 'locationptn2', 'LOC_PTN2', 'loc_ptn2'], multiline: true },
             { key: 'holdstopcode', label: 'HOLDSTOPCODE', aliases: ['HOLDSTOPCODE', 'holdstopcode', 'HOLSTOPCODE', 'holstopcode'], type: 'hold' },
             { key: 'holdstopreason', label: 'HOLDSTOPREASON', aliases: ['HOLDSTOPREASON', 'holdstopreason', 'HOLSTOPREASON', 'holstopreason'], multiline: true },
+            { key: 'holdstopbegindate', label: 'HOLDSTOPBEGINDATE', aliases: ['HOLDSTOPBEGINDATE', 'holdstopbegindate'], readOnly: true },
             { key: 'pullerresponsibility', label: 'Pull', aliases: ['PULLERRESPONSIBILITY', 'pullerresponsibility'] },
             { key: 'oversellpercentage', label: 'OS%', aliases: ['OVERSELLPERCENTAGE', 'oversellpercentage'] },
             { key: 'salesnote', label: 'Sales Note', aliases: ['SALESNOTE', 'salesnote'], multiline: true },
@@ -108204,8 +108177,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         // Keep the complete shared field list above so the temporary Reclass
         // editor retains every editable report field.
         const ITEM_INQUIRY_DISPLAY_IDENTITY_FIELDS = ITEM_INQUIRY_IDENTITY_FIELDS.concat([
-            { key: 'holdstopcode', label: 'HOLDSTOPCODE' },
-            { key: 'holdstopreason', label: 'HOLDSTOPREASON' },
             { key: 'ptronhand', label: 'PTRONHAND' },
             { key: 'ptrreviewed', label: 'PTRREVIEWED' },
             { key: 'ptravailable', label: 'PTRAVAILABLE' }
@@ -108217,8 +108188,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             'ptravailable',
             'pulltagnote2',
             'locationptn2',
-            'holdstopcode',
-            'holdstopreason'
         ].includes(field.key));
 
         const ITEM_INQUIRY_MOBILE_DETAIL_FIELDS = [

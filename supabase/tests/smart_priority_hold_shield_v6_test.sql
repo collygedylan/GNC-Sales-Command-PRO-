@@ -288,7 +288,7 @@ select set_config('request.jwt.claim.role','authenticated',true);
 select throws_ok($$select private.apply_ph_master_inventory_live_edits_v6('[]'::jsonb)$$,
   '42501','RECLASS_V6_LIVE_EDIT_FORBIDDEN','non-service request roles cannot invoke the live mutation helper');
 
-select throws_ok($$select private.validate_reclass_smart_shield_v6(
+select lives_ok($$select private.validate_reclass_smart_shield_v6(
   (pg_temp.v6_hold_payload() || jsonb_build_object(
     'transaction',(pg_temp.v6_hold_payload()->'transaction') || jsonb_build_object('requestActions',jsonb_build_array('hold','move_up')),
     'rowOverlays',jsonb_build_array((pg_temp.v6_hold_payload()->'rowOverlays'->0) || jsonb_build_object(
@@ -296,7 +296,7 @@ select throws_ok($$select private.validate_reclass_smart_shield_v6(
         jsonb_build_object('quantity',1,'destinationSeason','S1')),'applyHold',false,'holdReason',''))
     ))
   )))$$,
-  '22023','DRIVE_RECLASS_V6_MOVE_UP_HOLD_CONFLICT','Move Up cannot coexist with a hold proposal');
+  'Move Up coexists with a validated Hold proposal');
 
 -- Exercise the public V6 queue path: request-only movement is retained while
 -- priority/hold changes apply atomically and are reflected in the protected
