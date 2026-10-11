@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { installDriveCardLayoutFixture, renderDriveLayoutCard, settleDriveLayoutShell } from './fixtures/drive-card-layout';
+// @test-group: @release-functional
 
 for (const theme of ['light','dark','outdoor'] as const) {
  test(`Drive Suspend and Docks share metrics and responsive layout (${theme})`, {tag:['@release-functional']}, async({page,baseURL},testInfo)=>{
