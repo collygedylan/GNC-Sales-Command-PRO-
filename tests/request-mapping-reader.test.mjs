@@ -6,6 +6,10 @@ import { requestMappingFunctions, requestMappingSetup, mappingFixtureRow } from 
 function fixture(fetchPage) {
  const c=vm.createContext({document:{getElementById:()=>null},APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>{},postAppFunctionJson:fetchPage,refreshRequestModalCustomerStepIfVisible:()=>{},resetRequestCustomerSelectionState:()=>{c.tempRequestCustomerSelectedContext=null;},renderExistingRequestFolderPicker:()=>{}});
  vm.runInContext(requestMappingSetup+'\n'+requestMappingFunctions()+`\nvar requestModalAsyncGeneration=0,requestMappingReadGeneration=0,requestModalCustomerOptionsLoadPromise=null,requestModalCustomerOptionsLoading=false,requestModalCustomerOptionsReady=false,requestModalCustomerOptionsError='',requestExistingFolderGroupsCacheKey='';`,c);
+ c.isRequestModalCustomerMapReady=()=>{
+  const id=c.getRequestSelectedSalesrepId(),cached=c.requestMappingRpcCache.get(id);
+  return !!id && !!cached && cached.signature===c.getDatasetLoadSignature('customerRepMap');
+ };
  c.customerRepMapRows=[mappingFixtureRow];
  return c;
 }
@@ -41,4 +45,31 @@ test('transport failure clears the selection and preserves a retryable error',as
  assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
  assert.equal(c.tempRequestCustomerSelectedContext,null);
  assert.match(c.requestModalCustomerOptionsError,/Network unavailable/);
+});
+
+test('modal cache initialization uses only a complete RPC result for the exact rep ID',async()=>{
+ let calls=0;
+ const c=fixture(async()=>{calls++;return {ok:true,rows:[mappingFixtureRow],total:1,revision:'9'};});
+ assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,0);
+ assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,1);
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ assert.equal(calls,1);
+ c.mappingRevision='2';
+ c.tempRequestCustomerSelectedContext={customeridentityid:'00012',consigneeidentityid:'00007',customername:'Garden ®',consigneename:'North ™',request_selected_salesrep_id:'01'};
+ assert.equal(c.buildRequestModalCustomerOptionsCache(true).length,0);
+ assert.equal(c.requestMappingRpcCache.size,0);
+ assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(c.tempRequestCustomerSelectedContext,null);
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ assert.equal(calls,2);
+});
+
+test('directory revision changes during a single-page RPC read reject stale choices',async()=>{
+ let c;
+ c=fixture(async()=>{c.mappingRevision='2';return {ok:true,rows:[mappingFixtureRow],total:1,revision:'9'};});
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),false);
+ assert.equal(c.requestMappingRpcCache.size,0);
+ assert.match(c.requestModalCustomerOptionsError,/changed during loading/);
 });

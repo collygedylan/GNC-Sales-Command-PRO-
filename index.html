@@ -56529,7 +56529,28 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
 
+        function buildRequestModalCustomerOptionsCache(force = false) {
+            const signature = getDatasetLoadSignature('customerRepMap');
+            for (const [id, cached] of requestMappingRpcCache) {
+                if (cached.signature !== signature) requestMappingRpcCache.delete(id);
+            }
+            const id = getRequestSelectedSalesrepId();
+            const cached = requestMappingRpcCache.get(id);
+            requestModalCustomerOptionsReady = !!id && !!cached && cached.signature === signature;
+            requestModalCustomerOptionsCacheKey = requestModalCustomerOptionsReady ? id + ':' + cached.revision : '';
+            if (force) {
+                requestModalCustomerGroupCacheKey = '';
+                requestExistingFolderGroupsCacheKey = '';
+            }
+            if (tempRequestCustomerSelectedContext && !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) resetRequestCustomerSelectionState();
+            return requestModalCustomerOptionsReady ? getRequestModalCustomerOptionsForRep(tempSelectedReqRep) : [];
+        }
+
         function ensureRequestModalCustomerOptionsReady(force = false) {
+            if (!force) {
+                buildRequestModalCustomerOptionsCache();
+                if (requestModalCustomerOptionsReady) return Promise.resolve(true);
+            }
             if (!force && requestModalCustomerOptionsLoadPromise) return requestModalCustomerOptionsLoadPromise;
             const generation = ++requestMappingReadGeneration;
             const requestGeneration = requestModalAsyncGeneration;
@@ -56541,6 +56562,7 @@ function toggleDriveQuickRequestItem(domId) {
                 await ensureDatasetLoaded('customerRepMap', 'full', { force });
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration) return false;
                 const id = getRequestSelectedSalesrepId(rep);
+                const signature = getDatasetLoadSignature('customerRepMap');
                 if (!id) throw new Error('Choose an unambiguous mapped Sales Rep ID before selecting a customer.');
                 let rows = [], revision = null, total = null;
                 for (let page = 0; page <= 1000; page++) {
@@ -56554,9 +56576,10 @@ function toggleDriveQuickRequestItem(domId) {
                     if (rows.length >= total) { if (rows.length !== total) throw new Error('Customer mapping page count is invalid.'); break; }
                     if (!result.rows.length || page === 1000) throw new Error('Customer mappings could not be loaded completely.');
                 }
+                if (signature !== getDatasetLoadSignature('customerRepMap')) throw new Error('Customer mappings changed during loading. Refresh to retry.');
                 const identities = rows.map(row => JSON.stringify([row.salesrepid, row.customeridentityid, row.consigneeid]));
                 if (new Set(identities).size !== rows.length) throw new Error('Customer mapping identities are ambiguous.');
-                requestMappingRpcCache.set(id, { rows, revision, signature: getDatasetLoadSignature('customerRepMap') });
+                requestMappingRpcCache.set(id, { rows, revision, signature });
                 tempSelectedReqSalesrepId = id;
                 requestModalCustomerOptionsCacheKey = id + ':' + revision;
                 requestExistingFolderGroupsCacheKey = '';
@@ -145986,6 +146009,10 @@ C.14.043 C.15.000
                 return;
             }
             if (!requestModalCustomerOptionsReady) {
+                if (requestModalCustomerOptionsError) {
+                    container.innerHTML = `<div class="request-empty-state">${esc(requestModalCustomerOptionsError)}</div>`;
+                    return;
+                }
                 ensureRequestModalCustomerOptionsReady();
                 if (requestModalCustomerOptionsLoading) {
                     container.innerHTML = `<div class="request-empty-state">Loading customer / consignee options...</div>`;

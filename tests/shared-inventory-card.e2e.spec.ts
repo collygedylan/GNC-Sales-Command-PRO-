@@ -7,6 +7,12 @@ for (const theme of ['light','dark','outdoor'] as const) {
   const fixture=await installDriveCardLayoutFixture(page,baseURL!);
   await settleDriveLayoutShell(page,testInfo.project.name);
   await renderDriveLayoutCard(page,{theme,photo:true,longContent:true,knownQuantities:true},fixture);
+  await page.evaluate(()=>window.eval(`(() => {
+   const context=getProductionLiveSyncContext(),state=getDatasetState('master');
+   state.liveVerifiedScope=context.scope;
+   state.liveVerifiedPermission=context.dataPermissionVersion;
+   state.liveVerifiedRevision='1';
+  })()`));
   const layouts=[];
   for(const source of ['drive','request','docks']) {
    await page.evaluate((source)=>window.eval(`(() => {

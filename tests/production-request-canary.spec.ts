@@ -80,6 +80,16 @@ async function fulfillScopedDataRead(route: Route) {
       body: JSON.stringify({ ok: true, data: { filename: null, last_updated: null } }) });
     return true;
   }
+  if (body.action === 'customer-rep-map' && body.operation === 'options' && body.salesrepId === 'CANARY.REP'
+    && body.page === 0 && body.pageSize === 200
+    && Object.keys(body).sort().join(',') === 'action,operation,page,pageSize,salesrepId') {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, revision: '1', total: 1, rows: [{
+      unique_id: 'CANARY.MAP', salesrepid: 'CANARY.REP', salesrepname: 'Hosted Canary Rep',
+      customeridentityid: 'CANARY.CUSTOMER', customername: 'Synthetic Canary Customer',
+      consigneeid: 'CANARY.CONSIGNEE', consigneename: 'Synthetic Canary Dock', customerstatus: 'A', consigneestatus: 'A'
+    }] }) });
+    return true;
+  }
   if (body.action !== 'dataset_read' || !['soc', 'cav', 'reserves', 'request_queue'].includes(body.dataset)
     || Object.keys(body).sort().join(',') !== 'action,dataset,params'
     || !body.params || typeof body.params !== 'object' || Array.isArray(body.params)) return false;
@@ -123,14 +133,15 @@ test('live Request rep to customer, consignee, folder, and quantity flow remains
     && typeof (window as any).buildExistingRequestFolderCustomerGroups === 'function'
     && typeof (window as any).goToQtyStep === 'function');
 
-  const setup = await page.evaluate(() => window.eval(`(() => {
+  const setup = await page.evaluate(() => window.eval(`(async () => {
     const fixture = installMutationBlockedRequestCanaryFixture();
     if (!fixture) throw new Error('REQUEST_CANARY_FIXTURE_UNAVAILABLE');
     hasAppliedInitialHomeView = true;
     document.body.classList.add('ops-precision-pilot');
     showRequestModalBase();
+    selectRepForRequest('Hosted Canary Rep', 'CANARY.REP');
+    if (!await ensureRequestModalCustomerOptionsReady()) throw new Error('REQUEST_CANARY_MAPPING_READ_FAILED');
     const canaryGroups = buildExistingRequestFolderCustomerGroups('Hosted Canary Rep');
-    selectRepForRequest('Hosted Canary Rep');
     return {
       release: String(window.__APP_SHELL_VERSION__ || ''),
       customerStepVisible: !document.getElementById('step-1.5-folder').classList.contains('hidden'),

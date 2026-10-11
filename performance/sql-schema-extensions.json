@@ -42,5 +42,9 @@
   {
     "path": "supabase/migrations/20261011032352_aura_voice_soc_reads.sql",
     "gitBlob": "03b3586af779e1820c1ad98996c66848b21bfae1"
+  },
+  {
+    "path": "supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql",
+    "gitBlob": "584781d12e6a1b322624997ebee51c4fb0047031"
   }
 ]
