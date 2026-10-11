@@ -9,6 +9,7 @@ import { installHlOrderFixture, hlMaster } from '../tests/fixtures/hl-order-stat
 export const diagnosticRoles = ['ADMIN', 'REP', '\nREP', 'CSR', 'DATA ENTRY', 'DATA ENTRY SUPERVISOR',
   'EVAL', 'FOREMAN', 'GROWER', 'QC', 'QC SUPERVISOR', 'TAKE BACKS'];
 export const diagnosticScreens = ['drive', 'sales-inventory', 'request', 'request-history', 'historical-requests'];
+export const diagnosticDriveLoadedSelector = '#drive-content .app-smart-card, #drive-content :text-matches("^No Drive Mode (items match these filters|rows are available for .*\\\\.)$", "i")';
 const rolesWithDrive = new Set(diagnosticRoles.filter(role => !['GROWER', 'TAKE BACKS'].includes(role)));
 const readActions = new Set(['inventory_read', 'request_history', 'sales_credit', 'historical_requests',
   'request_recipient_directory', 'native_session_bridge', 'navigation_preferences', 'dataset_revisions', 'app_access', 'dataset_read']);
@@ -48,7 +49,7 @@ export async function openDiagnosticDriveCards(page) {
   const mobileMode = page.locator('#drive-mobile-mode');
   if (await mobileMode.isVisible()) await mobileMode.selectOption('card');
   else await cardMode.click();
-  await page.locator('#drive-content .app-smart-card').first().waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator(diagnosticDriveLoadedSelector).first().waitFor({ state: 'visible', timeout: 30000 });
 }
 
 /** Authenticated sessions are supplied in memory. Reports never contain credentials or row contents. */
@@ -139,6 +140,7 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
           }
           item.visible = true;
           item.cards = await view.locator('.app-smart-card,[data-request-id],[data-inventory-card]').count();
+          if (fixture && screen === 'drive') assert.ok(item.cards > 0, 'Assigned fixture inventory was not visible');
           item.headings = await view.locator('h1,h2,h3').allTextContents();
           item.headings = item.headings.map(text => text.trim().slice(0, 80)).slice(0, 8);
           if (screen === 'drive') {

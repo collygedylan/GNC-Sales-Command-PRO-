@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { diagnosticRoles, diagnosticScreens, diagnosticRequestAllowed, probeRoleBaseline, openDiagnosticDriveCards } from '../scripts/diagnose-user-roles.mjs';
+import { diagnosticRoles, diagnosticScreens, diagnosticDriveLoadedSelector, diagnosticRequestAllowed, probeRoleBaseline, openDiagnosticDriveCards } from '../scripts/diagnose-user-roles.mjs';
 const api = 'https://example.supabase.co/functions/v1/app-api';
 
 test('diagnostics cover both nested Request History and Historical Requests routes', () => {
@@ -19,7 +19,9 @@ test('Drive diagnostics wait for real inventory cards before checking Reclass', 
     })};
     await openDiagnosticDriveCards(page);
     assert.deepEqual(calls,[mobile?['#drive-mobile-mode','select','card']:['#tab-drive-card','click'],
-      ['#drive-content .app-smart-card','wait',{state:'visible',timeout:30000}]]);
+      [diagnosticDriveLoadedSelector,'wait',{state:'visible',timeout:30000}]]);
+    assert.match(diagnosticDriveLoadedSelector, /items match these filters\|rows are available for/);
+    assert.doesNotMatch(diagnosticDriveLoadedSelector, /rows are loading/);
   }
 });
 test('diagnostic coverage includes sales, nursery and supervisory roles, including whitespace aliases', () => {
