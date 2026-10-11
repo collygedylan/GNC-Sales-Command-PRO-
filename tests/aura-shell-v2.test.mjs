@@ -357,7 +357,12 @@ test('unconfigured Gemini is an explicit unavailable state and does not call the
     callAuraLegacyQuery: async () => { legacyCalls += 1; return { ok: true }; },
   });
   vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
-  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command' }), error => error.code === 'AURA_LLM_UNAVAILABLE');
+  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command' }), error => {
+    assert.equal(error.code, 'AURA_LLM_UNAVAILABLE');
+    assert.doesNotMatch(error.message, /Gemini|Google/i);
+    assert.match(error.message, /Contact your administrator/);
+    return true;
+  });
   assert.equal(routerCalls, 0);
   assert.equal(legacyCalls, 0);
   context.auraRouterCapabilities.configured = true;

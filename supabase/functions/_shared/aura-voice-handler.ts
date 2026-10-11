@@ -1,4 +1,4 @@
-import { auraObject, routeAuraWithGemini, validateAuraTool, validateInventoryFilters, type AuraActor, type AuraTool, type InventoryFilters } from "./aura-gemini.ts";
+import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraTool, validateInventoryFilters, type AuraActor, type AuraTool, type InventoryFilters } from "./aura-gemini.ts";
 import { resolveAuraIntent } from "./aura-query.ts";
 
 type ObjectValue = Record<string, unknown>;
@@ -58,6 +58,59 @@ function memoryArgs(body: ObjectValue, operation: string): AuraMemoryArgs {
 function inventoryStamp(data: ObjectValue) {
   return { settingRevision: data.settingRevision, season: data.season, salesYear: data.salesYear, datasetRevision: data.datasetRevision };
 }
+type DraftConfirmationTuple = {
+  version: 1;
+  inventoryId: string; selectionId: string; itemcode: string; contSize: string; locationCode: string; lotCode: string;
+  quantity: number; customerName: string; consigneeName: string; inventoryStamp: ObjectValue;
+};
+function explicitDraftConfirmation(text: string) {
+  const normalized = text.trim().replace(/[.!?]+$/g, "").replace(/\s+/g, " ").toLowerCase();
+  return ["yes", "yes please", "confirm", "confirmed", "i confirm", "correct", "that's correct", "that is correct", "looks good", "prepare the draft", "prepare draft"].includes(normalized);
+}
+function draftConfirmationTuple(value: unknown): DraftConfirmationTuple | null {
+  const raw = optionalObject(value), stamp = optionalObject(raw.inventoryStamp);
+  const requiredStrings = ["inventoryId", "selectionId", "itemcode", "customerName", "consigneeName"];
+  const optionalDimensions = ["contSize", "locationCode", "lotCode"];
+  if (raw.version !== 1 || requiredStrings.some(key => typeof raw[key] !== "string" || !(raw[key] as string).trim())
+    || optionalDimensions.some(key => typeof raw[key] !== "string")
+    || typeof raw.quantity !== "number" || !Number.isSafeInteger(raw.quantity) || raw.quantity < 1
+    || typeof stamp.settingRevision !== "number" || !Number.isSafeInteger(stamp.settingRevision) || typeof stamp.season !== "string"
+    || typeof stamp.salesYear !== "number" || !Number.isSafeInteger(stamp.salesYear)
+    || (typeof stamp.datasetRevision !== "string" && typeof stamp.datasetRevision !== "number")
+    || typeof stamp.fingerprint !== "string" || !/^[0-9a-f]{64}$/.test(stamp.fingerprint)) return null;
+  return { version: 1, inventoryStamp: stamp, quantity: raw.quantity,
+    inventoryId: String(raw.inventoryId), selectionId: String(raw.selectionId), itemcode: String(raw.itemcode),
+    contSize: String(raw.contSize), locationCode: String(raw.locationCode), lotCode: String(raw.lotCode),
+    customerName: String(raw.customerName).trim(), consigneeName: String(raw.consigneeName).trim() };
+}
+function sameDraftConfirmation(left: DraftConfirmationTuple | null, right: DraftConfirmationTuple | null) {
+  if (!left || !right) return false;
+  return left.inventoryId === right.inventoryId && left.selectionId === right.selectionId && left.itemcode === right.itemcode
+    && left.contSize === right.contSize && left.locationCode === right.locationCode && left.lotCode === right.lotCode
+    && left.quantity === right.quantity && left.customerName === right.customerName && left.consigneeName === right.consigneeName
+    && same(left.inventoryStamp, right.inventoryStamp);
+}
+function makeDraftConfirmationTuple(row: ObjectValue, tool: Extract<AuraTool, { name: "draft_request" }>, data: ObjectValue, fingerprint: string): DraftConfirmationTuple | null {
+  const rowString = (value: unknown, optional = false): string | null => {
+    if (value === null || value === undefined) return optional ? "" : null;
+    return typeof value === "string" ? value.trim() : null;
+  };
+  const inventoryId = rowString(row.uniqueId ?? row.unique_id);
+  const selectionId = rowString(row.selectionId);
+  const itemcode = rowString(row.itemcode);
+  const contSize = rowString(row.contSize ?? row.contsize, true);
+  const locationCode = rowString(row.locationCode ?? row.locationcode, true);
+  const lotCode = rowString(row.lotCode ?? row.lotcode, true);
+  const customerName = String(tool.customerName || "").trim();
+  const consigneeName = String(tool.consigneeName || "").trim();
+  if (!inventoryId || !selectionId || !itemcode || contSize === null || locationCode === null || lotCode === null || !customerName || !consigneeName) return null;
+  return { version: 1, inventoryId, selectionId, itemcode, contSize, locationCode, lotCode,
+    quantity: tool.quantity, customerName, consigneeName, inventoryStamp: { ...inventoryStamp(data), fingerprint } };
+}
+function draftConfirmationPrompt(tuple: DraftConfirmationTuple, changed: boolean) {
+  const dimensions = [tuple.locationCode ? `at ${tuple.locationCode}` : "", tuple.lotCode ? `lot ${tuple.lotCode}` : ""].filter(Boolean).join(", ");
+  return `${changed ? "Inventory, season, or draft details changed. Please review the current details. " : ""}Confirm ${format(tuple.quantity)} × ${tuple.itemcode}${tuple.contSize ? ` ${tuple.contSize}` : ""}${dimensions ? ` (${dimensions})` : ""}; customer ${tuple.customerName}; consignee ${tuple.consigneeName}. Say “yes” to prepare this draft for Request review. Nothing will be submitted or emailed.`;
+}
 async function inventoryFingerprint(data: ObjectValue): Promise<string> {
   // Ownership and evidence can change outside the master import revision. Check
   // the current returned facts as well before displaying a saved answer.
@@ -95,7 +148,7 @@ function recordAction(title: string, rows: ObjectValue[]): ObjectValue[] {
   return rows.length ? [{ type: "records", title, rows, columns: Object.keys(rows[0]) }] : [];
 }
 function label(row: ObjectValue) { return [row.commonName || row.commonname || row.itemcode || row.label || row.username, row.contSize || row.contsize, row.locationCode || row.locationcode, row.lotCode || row.lotcode].filter(Boolean).join(" · "); }
-async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "draft_request" }>, context: ObjectValue, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal, more: boolean, selection?: ObjectValue): Promise<Outcome> {
+async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "draft_request" }>, context: ObjectValue, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal, more: boolean, selection?: ObjectValue, expectedDraft?: DraftConfirmationTuple | null): Promise<Outcome> {
   if (!actor.inventory || tool.name === "draft_request" && !actor.drafts) throw new Error("AURA_TOOL_FORBIDDEN");
   const originalFilters = { ...tool.filters };
   let filters = { ...originalFilters };
@@ -132,9 +185,10 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
   if (!Array.isArray(data.rows) || data.rows.length > 50) throw new Error("AURA_RESULT_INVALID");
   const rows = array(data.rows), choices = array(data.candidateChoices).slice(0, 5);
   const unresolved = number(data.unresolvedCount ?? 0);
+  const sourceFingerprint = await inventoryFingerprint(data);
   const scope = `season ${String(data.season || "unresolved")}, sales year ≤ ${String(data.salesYear || "unresolved")}`;
   const nextContext: ObjectValue = { version: 1, tool: { ...tool, filters }, cursor: data.nextCursor ?? null, inventoryStamp: inventoryStamp(data), choices: [] };
-  const sources = [{ kind: "inventory", operation, filters, cursor, stamp: inventoryStamp(data), fingerprint: await inventoryFingerprint(data), policy: policy(actor) }];
+  const sources = [{ kind: "inventory", operation, filters, cursor, stamp: inventoryStamp(data), fingerprint: sourceFingerprint, policy: policy(actor) }];
   const metadata = { resolvedSeason: { seasonCode: data.season, salesYear: data.salesYear }, settingRevision: data.settingRevision,
     yearCoverage: data.yearCoverage, unresolvedCount: unresolved, complete: data.complete === true };
   let reply: string, actions: ObjectValue[] = [];
@@ -158,10 +212,22 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
       const available = number(row.ptravailable);
       if (tool.quantity > available) reply = `Only ${format(available)} are currently available at this location. Reduce the request quantity or choose another location.`;
       else {
-        reply = `Drafted ${format(tool.quantity)} ${label(row)} for review. Nothing has been submitted or emailed. Select the customer and consignee and confirm in Request.`;
-        actions = [{ type: "review", view: "request", filters: { ...filters, quantity: tool.quantity },
-          proposal: { summary: reply, text: `${format(tool.quantity)} × ${label(row)}. Verify current stock and recipient mapping before submitting.`,
-            inventoryId: String(row.uniqueId || row.unique_id || row.selectionId || ""), quantity: tool.quantity } }];
+        const customerName = String(tool.customerName || "").trim(), consigneeName = String(tool.consigneeName || "").trim();
+        if (!customerName || !consigneeName) {
+          reply = !customerName ? "Which customer should this draft be for?" : "Which consignee should this draft be for?";
+        } else {
+          const tuple = makeDraftConfirmationTuple(row, tool, data, sourceFingerprint);
+          if (!tuple) throw new Error("AURA_RESULT_INVALID");
+          if (!sameDraftConfirmation(expectedDraft || null, tuple)) {
+            nextContext.draftConfirmation = tuple;
+            reply = draftConfirmationPrompt(tuple, expectedDraft !== undefined && expectedDraft !== null);
+          } else {
+            reply = `Draft prepared for Request review: ${format(tuple.quantity)} × ${label(row)}; customer ${tuple.customerName}; consignee ${tuple.consigneeName}. Verify the current Request mapping before submitting. Nothing has been submitted or emailed.`;
+            actions = [{ type: "review", view: "request", filters: { ...filters, quantity: tool.quantity },
+              proposal: { summary: reply, text: `${format(tool.quantity)} × ${label(row)}. Customer: ${tuple.customerName}. Consignee: ${tuple.consigneeName}. Verify the current Request mapping before submitting.`,
+                inventoryId: tuple.inventoryId, quantity: tool.quantity, customerName: tuple.customerName, consigneeName: tuple.consigneeName } }];
+          }
+        }
       }
     }
   } else if (operation === "stock") {
@@ -306,20 +372,42 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
   try {
     let context = optionalObject(begin.context);
     if (context.version !== 1 || !same(context.policy, policy(actor))) context = {};
+    const confirmingDraft = explicitDraftConfirmation(question);
+    let expectedDraft: DraftConfirmationTuple | undefined;
     const more = /^\s*(?:show more|next page)\s*[.!?]?\s*$/i.test(question);
     const selectionNumber = /^\s*(?:option\s*)?(\d{1,2})\s*[.!]?\s*$/i.exec(question);
     const selection = selectionNumber ? array(context.choices)[Number(selectionNumber[1]) - 1] : undefined;
     let tool: AuraTool;
     const oldTool = optionalObject(context.tool);
-    if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values); }
-    else if (selectionNumber) tool = { name: "clarify", reason: "ambiguous" };
-    else if (knownOutsideDomain(question)) tool = { name: "refuse" };
-    else tool = await routeAuraWithGemini({ text: question, actor, context: modelContext(context), apiKey: deps.apiKey(),
-      signal: AbortSignal.any([signal, AbortSignal.timeout(15000)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
+    if (confirmingDraft) {
+      const storedTuple = draftConfirmationTuple(context.draftConfirmation);
+      try {
+        if (!storedTuple || oldTool.name !== "draft_request") throw new Error("AURA_DRAFT_CONFIRMATION_MISSING");
+        const { name, ...values } = oldTool;
+        const storedTool = validateAuraTool(name, values);
+        if (storedTool.name !== "draft_request") throw new Error("AURA_DRAFT_CONFIRMATION_MISSING");
+        tool = storedTool;
+        expectedDraft = storedTuple;
+      } catch {
+        tool = { name: "clarify", reason: "ambiguous" };
+        context = { version: 1, choices: [] };
+      }
+    } else {
+      // A rejected or changed proposal cannot be confirmed by a later bare "yes".
+      delete context.draftConfirmation;
+      if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values); }
+      else if (selectionNumber) tool = { name: "clarify", reason: "ambiguous" };
+      else if (knownOutsideDomain(question)) tool = { name: "refuse" };
+      else tool = await routeAuraWithGemini({ text: question, actor, context: modelContext(context), apiKey: deps.apiKey(),
+        signal: AbortSignal.any([signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
+    }
     if (tool.name === "inventory" || tool.name === "draft_request") {
-      tool.filters = explicitFilters(question, tool.filters);
-      // Only a server-presented choice may supply a opaque selection ID.
-      if (!selection) delete tool.filters.selectionId;
+      if (confirmingDraft && tool.name === "draft_request") tool.filters = validateInventoryFilters(tool.filters);
+      else {
+        tool.filters = explicitFilters(question, tool.filters);
+        // Only a server-presented choice may supply an opaque selection ID.
+        if (!selection) delete tool.filters.selectionId;
+      }
     }
     let outcome: Outcome;
     if (tool.name === "refuse") outcome = { reply: REFUSAL, actions: [], context: {}, sources: [] };
@@ -334,7 +422,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
         && !tool.customerName && !tool.consigneeName;
       const next = more || selection || inherit ? context : { ...context, customerKey: undefined, consigneeKey: undefined, page: 0 };
       outcome = await historyOutcome(tool, next, actor, store, signal, more, selection);
-    } else outcome = await inventoryOutcome(tool, context, actor, store, signal, more, selection);
+    } else outcome = await inventoryOutcome(tool, context, actor, store, signal, more, selection, expectedDraft);
     const completedContext = { ...outcome.context, version: 1, policy: policy(actor) };
     const response = { ok: true, requestId: turnId, conversationId, revision, reply: outcome.reply, speech: outcome.reply, actions: outcome.actions,
       interpretation: { engine: "gemini-tools-v1", intent: tool.name, ...outcome.metadata },
@@ -372,7 +460,7 @@ export async function handleAuraVoiceRequest(request: Request, deps: AuraVoiceDe
       : failure.code === "40001" || failure.code === "55P03" ? "AURA_REVISION_CONFLICT"
       : /^AURA_[A-Z0-9_]+$/.test(raw) ? raw : "AURA_UNAVAILABLE";
     const status = /FORBIDDEN/.test(code) ? 403 : /INVALID/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
-    const errorMessage = code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE" ? "Aura’s Gemini connection is not configured. Ask your administrator to configure the Edge Function secret."
+    const errorMessage = code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE" ? "Aura’s connection is not configured. Ask your administrator to configure the Edge Function secret."
       : /SEASON/.test(code) ? "The Managers current season setting is unavailable or invalid. Ask a manager to save it."
       : status === 403 ? "Your active app permissions do not allow this Aura request."
       : status === 409 ? "The conversation or source data changed. Refresh the conversation and ask again."

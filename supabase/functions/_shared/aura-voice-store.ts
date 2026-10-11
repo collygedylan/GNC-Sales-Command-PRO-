@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
-import { AURA_GEMINI_MODEL, auraObject, routeAuraWithGemini, type AuraActor } from "./aura-gemini.ts";
+import { AURA_GEMINI_MODEL, AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, type AuraActor } from "./aura-gemini.ts";
 import type { AuraVoiceDeps, AuraVoiceStore } from "./aura-voice-handler.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -88,15 +88,22 @@ export async function handleAuraProviderProbe(request: Request, options: { env?:
   let different = 0; for (let i = 0; i < left.length; i++) different |= left[i] ^ right[i];
   if (different || request.method !== "GET") return json({ ok: false, code: "AURA_FORBIDDEN" }, 403);
   try {
-    const tool = await routeAuraWithGemini({ text: "Tell me the history of ancient Rome.",
-      actor: { id: "release-readiness-probe", username: "release-readiness-probe", role: "NONE", inventory: false, history: false, drafts: false },
-      context: {}, apiKey: readEnv("GEMINI_API_KEY"), signal: AbortSignal.any([request.signal, AbortSignal.timeout(15000)]), fetcher: options.fetcher,
-      // The release service principal has no public access to this probe. It performs
-      // one synthetic model call per deployment; ordinary callers use the quota ledger.
+    const probe = (text: string) => routeAuraWithGemini({ text,
+      // Synthetic capabilities exercise the complete tool schema. No returned
+      // tool is executed and no database client is constructed by this probe.
+      actor: { id: "release-readiness-probe", username: "release-readiness-probe", role: "READINESS", inventory: true, history: true, drafts: true },
+      context: {}, apiKey: readEnv("GEMINI_API_KEY"), signal: AbortSignal.any([request.signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: options.fetcher,
+      // Only the release service principal may perform these two synthetic calls.
+      // Ordinary callers always use the quota ledger.
       reserve: async () => {},
     });
+    const tool = await probe("Tell me the history of ancient Rome.");
     if (tool.name !== "refuse") return json({ ok: false, code: "AURA_PROVIDER_CONFINEMENT_PROBE_FAILED" }, 503);
-    return json({ ok: true, model: AURA_GEMINI_MODEL, engine: "gemini-tools-v1" }, 200);
+    const stock = await probe("Check available stock for item code 000123.");
+    if (stock.name !== "inventory" || stock.operation !== "stock" || stock.filters.itemcode !== "000123") {
+      return json({ ok: false, code: "AURA_PROVIDER_ROUTING_PROBE_FAILED" }, 503);
+    }
+    return json({ ok: true, model: AURA_GEMINI_MODEL, engine: "gemini-tools-v1", checks: { refusal: true, inventoryRouting: true } }, 200);
   } catch {
     return json({ ok: false, code: "AURA_PROVIDER_NOT_READY" }, 503);
   }

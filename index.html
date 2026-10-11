@@ -9751,7 +9751,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             // use the server-verified Gemini router for every authorized profile.
             const request = { ...options, requestId: options.requestId || crypto.randomUUID() };
             if (!isAuraRouterWidgetAuthorized()) throw Object.assign(new Error('AURA requires verified router access.'), { status: 403 });
-            if (auraRouterCapabilities?.configured !== true) throw Object.assign(new Error('The Gemini service is not configured yet. Contact your administrator.'), { status: 503, code: 'AURA_LLM_UNAVAILABLE' });
+            if (auraRouterCapabilities?.configured !== true) throw Object.assign(new Error('Aura is not configured yet. Contact your administrator.'), { status: 503, code: 'AURA_LLM_UNAVAILABLE' });
             return callAuraLlmRouter(body, request);
         }
         async function openAuraQueryAction(action, options = {}) {
@@ -9892,7 +9892,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 if (!access.configured || !hasCapability) {
                     const message = access.configured
                         ? 'AURA is not enabled for the active account.'
-                        : 'The Gemini service is not configured yet. Contact your administrator.';
+                        : 'Aura is not configured yet. Contact your administrator.';
                     disposeAuraRouterVoiceWidget();
                     showToast('AURA unavailable', message, true);
                     return;

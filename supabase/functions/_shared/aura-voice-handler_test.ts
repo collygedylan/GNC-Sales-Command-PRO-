@@ -11,6 +11,7 @@ const inventory = () => ({ ok: true, complete: true, rows: [inventoryRow], total
 function fixture(options: { actor?: AuraActor | null; tool?: { name: string; args: unknown }; key?: string } = {}) {
   let context: Record<string, unknown> = {}, revision = 0, saved: Record<string, unknown> | null = null;
   let providerCalls = 0, inventoryCalls = 0;
+  let selectedTool = options.tool;
   const calls: AuraMemoryArgs[] = [], historyCalls: AuraHistoryQuery[] = [], providerBodies: unknown[] = [];
   const inventoryFilters: unknown[] = [];
   let inventoryRead: () => unknown = inventory;
@@ -33,7 +34,7 @@ function fixture(options: { actor?: AuraActor | null; tool?: { name: string; arg
   };
   const deps: AuraVoiceDeps = { createStore: () => store, apiKey: () => options.key ?? "test-key", fetcher: async (_url, init) => {
     providerCalls++; providerBodies.push(JSON.parse(String(init?.body)));
-    const tool = options.tool || { name: "inventory", args: { operation: "stock", filters: { commonName: "Maple" } } };
+    const tool = selectedTool || { name: "inventory", args: { operation: "stock", filters: { commonName: "Maple" } } };
     return new Response(JSON.stringify({ candidates: [{ finishReason: "STOP", content: { parts: [{ functionCall: tool }] } }] }));
   } };
   const run = async (body: unknown = { mode: "command", text: "How many maples?", turnId: crypto.randomUUID() }, token = "verified", signal?: AbortSignal) => {
@@ -43,7 +44,8 @@ function fixture(options: { actor?: AuraActor | null; tool?: { name: string; arg
   return { run, store, calls, historyCalls, providerBodies, inventoryFilters, get saved() { return saved; },
     get providerCalls() { return providerCalls; }, get inventoryCalls() { return inventoryCalls; },
     setInventory(read: () => unknown) { inventoryRead = read; }, setHistory(read: (query: AuraHistoryQuery) => unknown) { historyRead = read; },
-    setContext(value: Record<string, unknown>) { context = value; }, setReadTurns(turns: unknown[]) { readTurns = turns; }, setReplay() { replay = true; } };
+    setContext(value: Record<string, unknown>) { context = value; }, setReadTurns(turns: unknown[]) { readTurns = turns; }, setReplay() { replay = true; },
+    setTool(value: { name: string; args: unknown }) { selectedTool = value; } };
 }
 Deno.test("Aura voice denies unauthenticated/unauthorized command, history and deletion before provider or memory", async () => {
   for (const mode of ["command", "capabilities", "create", "list", "read", "delete", "cancel"]) {
@@ -131,16 +133,91 @@ Deno.test("named historical totals use a filtered drill-down instead of the unfi
   assert(f.historyCalls.length === 2 && f.historyCalls[0].operation === "customers"
     && f.historyCalls[1].operation === "consignees" && f.historyCalls[1].customerKey === "customer1");
 });
-Deno.test("request drafts verify current availability but never call a business mutation", async () => {
-  const f = fixture({ tool: { name: "draft_request", args: { filters: { itemcode: "0001" }, quantity: 25 } } });
-  const response = await f.run({ text: "Draft 25 maple plants for review", turnId: crypto.randomUUID() });
+Deno.test("request drafts ask for parties and explicit confirmation before review; no business mutation occurs", async () => {
+  const f = fixture({ tool: { name: "draft_request", args: { filters: { itemcode: "0001" }, quantity: 25,
+    customerName: "Green Acres", consigneeName: "North Farm" } } });
+  const initial = await f.run({ text: "Draft 25 maple plants for review", turnId: crypto.randomUUID() });
+  assert(initial.status === 200 && String(initial.body.reply).includes("Confirm 25")
+    && String(initial.body.reply).includes("Green Acres") && String(initial.body.reply).includes("North Farm"));
+  assert(Array.isArray(initial.body.actions) && initial.body.actions.length === 0, "model draft alone is not confirmation");
+  const providerCalls = f.providerCalls;
+  const response = await f.run({ text: "Yes", turnId: crypto.randomUUID() });
   assert(response.status === 200 && String(response.body.reply).includes("Nothing has been submitted or emailed"));
-  const actions = response.body.actions;
-  assert(Array.isArray(actions) && actions[0].type === "review" && actions[0].view === "request");
-  assert(f.calls.every(call => ["begin", "complete"].includes(call.operation)));
-  f.setInventory(() => ({ ...inventory(), rows: [{ ...inventoryRow, ptravailable: 10 }] }));
-  const insufficient = await f.run({ text: "Draft 25 maple plants for review", turnId: crypto.randomUUID() });
+  const actions = Array.isArray(response.body.actions) ? response.body.actions : [];
+  assert(actions[0] && record(actions[0]).type === "review" && record(actions[0]).view === "request");
+  const proposal = record(record(actions[0]).proposal);
+  assert(proposal.customerName === "Green Acres" && proposal.consigneeName === "North Farm");
+  assert(f.providerCalls === providerCalls, "server confirmation is handled from protected context, not model output");
+  assert(f.calls.every(call => ["begin", "complete"].includes(call.operation)), "no business write RPC is called");
+
+  const missing = fixture({ tool: { name: "draft_request", args: { filters: { itemcode: "0001" }, quantity: 2 } } });
+  const clarification = await missing.run({ text: "Draft two for review", turnId: crypto.randomUUID() });
+  assert(String(clarification.body.reply).includes("Which customer")
+    && Array.isArray(clarification.body.actions) && clarification.body.actions.length === 0);
+
+  const unavailable = fixture({ tool: { name: "draft_request", args: { filters: { itemcode: "0001" }, quantity: 25,
+    customerName: "Green Acres", consigneeName: "North Farm" } } });
+  unavailable.setInventory(() => ({ ...inventory(), rows: [{ ...inventoryRow, ptravailable: 10 }] }));
+  const insufficient = await unavailable.run({ text: "Draft 25 maple plants", turnId: crypto.randomUUID() });
   assert(String(insufficient.body.reply).includes("Only 10") && Array.isArray(insufficient.body.actions) && insufficient.body.actions.length === 0);
+});
+
+Deno.test("draft confirmation is invalidated when verified inventory changes and updated details require new confirmation", async () => {
+  const make = () => fixture({ tool: { name: "draft_request", args: { filters: { itemcode: "0001" }, quantity: 5,
+    customerName: "Green Acres", consigneeName: "North Farm" } } });
+  for (const alter of [
+    (value: ReturnType<typeof inventory>) => ({ ...value, rows: [{ ...inventoryRow, ptravailable: 34 }] }),
+    (value: ReturnType<typeof inventory>) => ({ ...value, datasetRevision: "11" }),
+  ]) {
+    const f = make(); await f.run({ text: "Prepare a draft", turnId: crypto.randomUUID() });
+    f.setInventory(() => alter(inventory()));
+    const changed = await f.run({ text: "Yes", turnId: crypto.randomUUID() });
+    assert(changed.status === 200 && String(changed.body.reply).includes("details changed") &&
+      Array.isArray(changed.body.actions) && changed.body.actions.length === 0);
+    const prepared = await f.run({ text: "Yes", turnId: crypto.randomUUID() });
+    assert(Array.isArray(prepared.body.actions) && prepared.body.actions[0].type === "review");
+  }
+  for (const updated of [
+    { quantity: 6, customerName: "Green Acres", consigneeName: "North Farm" },
+    { quantity: 5, customerName: "Green Acres West", consigneeName: "North Farm" },
+    { quantity: 5, customerName: "Green Acres", consigneeName: "South Farm" },
+  ]) {
+    const changedTool = make(); await changedTool.run({ text: "Prepare a draft", turnId: crypto.randomUUID() });
+    changedTool.setTool({ name: "draft_request", args: { filters: { itemcode: "0001" }, ...updated } });
+    const changed = await changedTool.run({ text: "Update the draft details", turnId: crypto.randomUUID() });
+    assert(String(changed.body.reply).includes(`Confirm ${updated.quantity}`)
+      && String(changed.body.reply).includes(updated.customerName) && String(changed.body.reply).includes(updated.consigneeName)
+      && Array.isArray(changed.body.actions) && changed.body.actions.length === 0);
+    const acceptedNewProposal = await changedTool.run({ text: "Yes", turnId: crypto.randomUUID() });
+    assert(Array.isArray(acceptedNewProposal.body.actions) && record(acceptedNewProposal.body.actions[0]).type === "review");
+  }
+});
+
+Deno.test("draft confirmations cannot be supplied by the model or forged in request context", async () => {
+  const f = fixture({ tool: { name: "draft_request", args: { filters: { itemcode: "0001" }, quantity: 3,
+    customerName: "Green Acres", consigneeName: "North Farm" } } });
+  const response = await f.run({ text: "Yes", turnId: crypto.randomUUID(), context: {
+    draftConfirmation: { version: 1, inventoryId: "row1", quantity: 3, customerName: "Green Acres", consigneeName: "North Farm" },
+  } });
+  assert(response.status === 200 && String(response.body.reply).includes("Please identify")
+    && Array.isArray(response.body.actions) && response.body.actions.length === 0);
+  assert(f.inventoryCalls === 0 && f.providerCalls === 0, "client context and model draft cannot create server confirmation state");
+
+  const denied = fixture({ actor: { ...actor, drafts: false }, tool: { name: "draft_request", args: {
+    filters: { itemcode: "0001" }, quantity: 3, customerName: "Green Acres", consigneeName: "North Farm" } } });
+  assert((await denied.run({ text: "Make a draft", turnId: crypto.randomUUID() })).status === 403);
+  assert(denied.inventoryCalls === 0);
+});
+Deno.test("draft confirmation preserves valid blank inventory dimensions without guessing", async () => {
+  const f = fixture({ tool: { name: "draft_request", args: { filters: { itemcode: "0001" }, quantity: 1,
+    customerName: "Green Acres", consigneeName: "North Farm" } } });
+  f.setInventory(() => ({ ...inventory(), rows: [{ ...inventoryRow, contSize: "", locationCode: null, lotCode: "" }] }));
+  const first = await f.run({ text: "Prepare one maple", turnId: crypto.randomUUID() });
+  assert(first.status === 200 && String(first.body.reply).includes("Confirm 1 × 0001")
+    && !String(first.body.reply).includes("at ,") && !String(first.body.reply).includes("lot "));
+  const confirmed = await f.run({ text: "Yes", turnId: crypto.randomUUID() });
+  assert(confirmed.status === 200 && Array.isArray(confirmed.body.actions)
+    && record(confirmed.body.actions[0]).type === "review");
 });
 Deno.test("successful retries replay without provider calls and stale results cannot replay", async () => {
   const f = fixture(); await f.run(); const count = f.providerCalls; f.setReplay();

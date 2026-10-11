@@ -28,6 +28,10 @@ unknown fields, arbitrary identifiers for authorization, SQL, additional calls,
 truncated provider output and unrelated queries. It builds final text from
 verified database results; provider prose never becomes an answer.
 
+Every provider interaction starts with the approved Green Leaf Nursery AURA
+system prompt. The fixed execution contract follows it and keeps authentication,
+authorization and draft confirmation under server control.
+
 ## Tools
 
 - `inventory`: available/on-hand totals, locations, lots and ownership using the
@@ -39,8 +43,10 @@ verified database results; provider prose never becomes an answer.
   missing/zero-quantity fallback remain unchanged. Customer/consignee drill-down
   pages have five selectable choices, with explicit pagination.
 - `draft_request`: verify the selected inventory row and available quantity,
-  then open a proposal in Request. Customer/consignee mapping, confirmation and
-  saving remain in the existing workflow. Aura never sends or changes stock.
+  collect Customer, Consignee and Qty, then ask for explicit confirmation.
+  Confirmation rechecks the inventory identity and scope before opening a
+  proposal in Request. The existing workflow validates customer/consignee mapping
+  and performs final confirmation and saving. Aura never sends or changes stock.
 - `clarify` and `refuse`: fixed prompts for ambiguity and unsupported topics.
 
 Saved responses are revalidated before display or retry replay. Changed policy,
@@ -69,13 +75,16 @@ Supabase URL, anon key and service-role key are also required. The global provid
 ledger bounds ordinary traffic to 15 attempts/minute, 100,000 conservative input
 token units/minute and 1,000 attempts/day. Failed attempts count; no silent model
 fallback is configured. Missing credentials, rate limits and provider outages
-produce actionable service errors, never an empty-stock answer.
+produce actionable service errors, never an empty-stock answer. Provider calls
+have a 20-second deadline within the 27-second request deadline; no automatic
+provider retry is added to microphone interactions.
 
 GitHub Actions deploys database changes and both Aura functions before Pages.
 Its authorization smoke requires 403 for missing/invalid bearer tokens. The
 release-only `/aura-llm-router/health` probe requires the exact service credential
-and performs one synthetic refusal against Gemini. It cannot query inventory,
-history or conversations, and returns only model/engine readiness. PWA publication
+and performs synthetic refusal and inventory-routing checks against Gemini using
+the full tool schema. Neither returned tool executes. The probe cannot query
+inventory, history or conversations, and returns only readiness metadata. PWA publication
 fails if the real model/key is unavailable. The probe never logs keys or payloads.
 
 Rollback keeps private conversations and the internal deterministic endpoint.

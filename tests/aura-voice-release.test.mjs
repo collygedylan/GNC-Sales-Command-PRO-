@@ -30,15 +30,16 @@ test('cloud release requires real Gemini readiness after deployment and before P
   assert.ok(deploy >= 0 && provider > deploy);
   assert.ok(workflow.jobs['publish-pages'].needs.includes('sync-codegs'));
   assert.match(steps[provider].env.SUPABASE_SERVICE_ROLE_KEY, /secrets\.SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(read('index.html'), /AIza[A-Za-z0-9_-]{25,}|GEMINI_API_KEY/);
+  assert.doesNotMatch(read('index.html'), /AIza[A-Za-z0-9_-]{25,}|AQ\.[A-Za-z0-9_-]{25,}|GEMINI_API_KEY/);
 });
 test('production provider probe requires expected engine/model and fails closed without readiness', async () => {
   let sent;
   assert.deepEqual(await checkAuraProviderReadiness('https://abcdefghijklmnopqrst.supabase.co', 'secret', async (url, options) => {
-    sent = { url, options }; return new Response(JSON.stringify({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1' }));
+    sent = { url, options }; return new Response(JSON.stringify({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true } }));
   }), { ok: true, model: 'gemini-3.8-flash' });
   assert.equal(sent.url.pathname, '/functions/v1/aura-llm-router/health');
   assert.equal(sent.options.headers.Authorization, 'Bearer secret');
   await assert.rejects(checkAuraProviderReadiness('https://abcdefghijklmnopqrst.supabase.co', 'secret', async () => new Response('{}', { status: 503 })), /AURA_PROVIDER_NOT_READY/);
   await assert.rejects(checkAuraProviderReadiness('https://abcdefghijklmnopqrst.supabase.co', 'secret', async () => new Response(JSON.stringify({ ok: true, model: 'wrong', engine: 'gemini-tools-v1' }))), /MODEL_MISMATCH/);
+  await assert.rejects(checkAuraProviderReadiness('https://abcdefghijklmnopqrst.supabase.co', 'secret', async () => new Response(JSON.stringify({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: true } }))), /ROUTING_UNVERIFIED/);
 });
