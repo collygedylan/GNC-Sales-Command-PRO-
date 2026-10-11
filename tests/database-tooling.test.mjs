@@ -585,6 +585,18 @@ test('historical migration order manifest preserves original inputs and appends 
   assert.doesNotMatch(workflow, /python3 - "\$ci_root"/);
 });
 
+test('historical master rows retain production Hold release approval types for V6 replay', () => {
+  const fixture = readFileSync(path.join(root, 'supabase/ci/request_workflow_baseline.sql'), 'utf8');
+  const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');
+  const fields = ['hold_release_approved_at', 'hold_release_approved_by', 'hold_release_approved_by_display', 'hold_release_approved_holdstopbegindate'];
+  for (const field of fields) {
+    const type = field === 'hold_release_approved_at' ? '(?:timestamptz|timestamp with time zone)' : 'text';
+    const declaration = new RegExp(`\\b${field}\\s+${type}\\s*[,)]`, 'i');
+    assert.match(fixture, declaration);
+    assert.match(baseline, declaration);
+  }
+});
+
 test('historical fixture builder preserves ordered migrations and isolates the scheduled handover', t => {
   const fixtureRoot = mkdtempSync(path.join(os.tmpdir(), 'gnc-historical-fixture-source-'));
   const destination = path.join(mkdtempSync(path.join(os.tmpdir(), 'gnc-historical-fixture-dest-')), 'project');
