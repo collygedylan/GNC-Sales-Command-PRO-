@@ -332,7 +332,9 @@ test('new React voice conversations never fall back to the Dylan-only legacy que
   assert.ok(requestStart >= 0 && requestEnd > requestStart && syncStart >= 0 && syncEnd > syncStart);
   const request = html.slice(requestStart, requestEnd);
   const sync = html.slice(syncStart, syncEnd);
-  assert.match(request, /callAuraLlmRouter\(body, request\)/);
+  assert.match(request, /callAuraLlmRouter\(command, \{ \.\.\.request, requestId: originalTurnId \}\)/);
+  assert.match(request, /AURA_APP_CONTEXT_STALE/);
+  assert.match(sync, /capabilities\.socReserves === true \|\| capabilities\.socOpenOrders === true/);
   assert.doesNotMatch(request, /callAuraLegacyQuery/);
   assert.match(sync, /if \(!access\.configured \|\| !hasCapability\)[\s\S]*showToast\('AURA unavailable'/);
   assert.match(sync, /requestAssistant: requestAuraQuery/);
@@ -352,7 +354,12 @@ test('unconfigured Gemini is an explicit unavailable state and does not call the
   const context = vm.createContext({
     crypto: { randomUUID: () => 'request-1' },
     isAuraRouterWidgetAuthorized: () => true,
+    getSupabaseReadIdentityScope: () => 'manager:session-1',
     auraRouterCapabilities: { configured: false },
+    APP_CURRENT_SEASON_OPTIONS: ['S1', 'F1'],
+    getCurrentAppSeasonSettings: () => ({ seasonCode: 'S1', salesYear: 27, revision: 8 }),
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'S1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: value => value,
     callAuraLlmRouter: async () => { routerCalls += 1; return { ok: true }; },
     callAuraLegacyQuery: async () => { legacyCalls += 1; return { ok: true }; },
   });
@@ -369,6 +376,96 @@ test('unconfigured Gemini is an explicit unavailable state and does not call the
   await context.invokeRequestAuraQuery({ mode: 'command' });
   assert.equal(routerCalls, 1);
   assert.equal(legacyCalls, 0);
+});
+
+test('AURA commands persist a confirmed stale context and use it for the next command', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  const calls = [];
+  let settings = { seasonCode: 'S1', salesYear: 27, revision: 8 };
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'request-id' },
+    isAuraRouterWidgetAuthorized: () => true,
+    getSupabaseReadIdentityScope: () => 'manager:session-1',
+    auraRouterCapabilities: { configured: true },
+    APP_CURRENT_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'],
+    getCurrentAppSeasonSettings: () => settings,
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'F1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: value => { settings = { seasonCode: value.seasonCode, salesYear: value.salesYear, revision: value.revision }; return settings; },
+    callAuraLlmRouter: async (body, options) => {
+      calls.push({ body, options });
+      if (calls.length === 1) throw Object.assign(new Error('stale'), { code: 'AURA_APP_CONTEXT_STALE', status: 409,
+        appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
+      return { ok: true, requestId: body.turnId, reply: 'The current result', actions: [] };
+    },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  const result = await context.invokeRequestAuraQuery({ mode: 'command', text: 'check open stock', source: 'voice', turnId: 'original-turn' }, { requestId: 'original-turn' });
+  assert.equal(calls.length, 2, 'stale settings trigger at most one retry');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0].body.appContext)), { season: 'S1', salesyear: 27, settingRevision: 8 });
+  assert.equal(calls[0].body.source, 'voice');
+  assert.equal(calls[1].body.turnId, 'original-turn');
+  assert.equal(calls[1].options.requestId, 'original-turn', 'cancel and deduplication remain bound to the active voice turn');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[1].body.appContext)), { season: 'F1', salesyear: 28, settingRevision: 9 });
+  assert.equal(calls[1].body.source, 'voice', 'voice origin survives the stale retry');
+  assert.equal(result.requestId, 'original-turn', 'the widget and cancel path retain the original interaction ID');
+  assert.equal(result.reply, 'The current result');
+  assert.deepEqual(JSON.parse(JSON.stringify(settings)), { seasonCode: 'F1', salesYear: 28, revision: 9 });
+  await context.invokeRequestAuraQuery({ mode: 'command', text: 'check another item', source: 'voice', turnId: 'second-turn' }, { requestId: 'second-turn' });
+  assert.equal(calls.length, 3, 'the next command succeeds without another stale-context retry');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[2].body.appContext)), { season: 'F1', salesyear: 28, settingRevision: 9 });
+});
+
+test('AURA stale-context retry is suppressed after the verified identity changes', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  let identity = 'manager:session-1', calls = 0;
+  let settingsWrites = 0;
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'fresh-turn' },
+    isAuraRouterWidgetAuthorized: () => identity === 'manager:session-1',
+    getSupabaseReadIdentityScope: () => identity,
+    auraRouterCapabilities: { configured: true },
+    APP_CURRENT_SEASON_OPTIONS: ['F1', 'S1', 'U1', 'U2', 'U3', 'X', 'Y', 'Z'],
+    getCurrentAppSeasonSettings: () => ({ seasonCode: 'S1', salesYear: 27, revision: 8 }),
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'F1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: () => { settingsWrites++; },
+    callAuraLlmRouter: async () => {
+      calls++;
+      identity = 'other-account:session-2';
+      throw Object.assign(new Error('stale'), { code: 'AURA_APP_CONTEXT_STALE', status: 409,
+        appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
+    },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command', text: 'check', turnId: 'original-turn' }), error => error.code === 'AURA_APP_CONTEXT_STALE');
+  assert.equal(calls, 1, 'an old account response cannot replay under the next identity');
+  assert.equal(settingsWrites, 0, 'an old-account context cannot update current local settings');
+});
+
+test('AURA cancellation during a stale-context response cannot apply settings or retry', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  const controller = new AbortController();
+  let calls = 0, settingsWrites = 0;
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'request-id' },
+    isAuraRouterWidgetAuthorized: () => true,
+    getSupabaseReadIdentityScope: () => 'manager:session-1',
+    auraRouterCapabilities: { configured: true },
+    APP_CURRENT_SEASON_OPTIONS: ['F1', 'S1'],
+    getCurrentAppSeasonSettings: () => ({ seasonCode: 'S1', salesYear: 27, revision: 8 }),
+    normalizeAppSeasonSettingsPayload: value => ({ seasonCode: value.seasonCode || value.season || 'F1', salesYear: Number(value.salesYear ?? value.salesyear ?? 27), revision: Number(value.revision ?? value.settingRevision ?? 0) }),
+    writeLocalAppSeasonSettings: () => { settingsWrites++; },
+    callAuraLlmRouter: async () => {
+      calls++;
+      controller.abort();
+      throw Object.assign(new Error('stale'), { code: 'AURA_APP_CONTEXT_STALE', status: 409,
+        appContext: { season: 'F1', salesyear: 28, settingRevision: 9 } });
+    },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command', text: 'check', turnId: 'original-turn' }, { signal: controller.signal }),
+    error => error.code === 'AURA_APP_CONTEXT_STALE');
+  assert.equal(calls, 1);
+  assert.equal(settingsWrites, 0, 'cancelled command settings are not applied');
 });
 
 test('release packaging ships both V2 modules and versions all relative widget imports', () => {

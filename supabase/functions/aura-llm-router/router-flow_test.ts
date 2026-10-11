@@ -17,6 +17,8 @@ function fixture(options: FixtureOptions = {}) {
   let inventoryCalls = 0;
   let revision = 0;
   const store: AuraVoiceStore = {
+    appContext: async () => ({ season: "F1", salesyear: 27, settingRevision: 1 }),
+    soc: async () => { throw new Error("Unexpected SOC query"); },
     authorize: async () => actor,
     memory: async (_actorId, args) => {
       memoryCalls.push(args);

@@ -38,5 +38,9 @@
   {
     "path": "supabase/migrations/20261010200046_aura_voice_role_access.sql",
     "gitBlob": "ee4e8256827a26302d816017dbb90014a7dfa797"
+  },
+  {
+    "path": "supabase/migrations/20261011032352_aura_voice_soc_reads.sql",
+    "gitBlob": "03b3586af779e1820c1ad98996c66848b21bfae1"
   }
 ]

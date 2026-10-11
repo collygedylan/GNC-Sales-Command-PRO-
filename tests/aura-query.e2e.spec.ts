@@ -251,3 +251,48 @@ test('the React-owned Aura bundle keeps one voice session and reports processing
     }
   } finally { for (const context of contexts) await context.close(); }
 });
+
+test('the shell Aura bridge retries stale app context once without changing the voice turn ID', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+  const html = await fs.readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('async function requestAuraQuery(body, options = {}) {');
+  const end = html.indexOf('\n        async function openAuraQueryAction', start);
+  expect(start, 'the production shell command bridge exists').toBeGreaterThanOrEqual(0);
+  expect(end, 'the production shell command bridge has a stable end').toBeGreaterThan(start);
+  const bridgeSource = html.slice(start, end);
+  await page.goto('about:blank');
+  const result = await page.evaluate(async (source) => {
+    const calls: Array<{ body: any; requestId: string }> = [];
+    let settings = { seasonCode: 'S1', salesYear: 27, revision: 4 };
+    const invoke = new Function('crypto', 'isAuraRouterWidgetAuthorized', 'getSupabaseReadIdentityScope',
+      'auraRouterCapabilities', 'APP_CURRENT_SEASON_OPTIONS', 'getCurrentAppSeasonSettings',
+      'normalizeAppSeasonSettingsPayload', 'writeLocalAppSeasonSettings', 'callAuraLlmRouter',
+      `${source}; return requestAuraQuery;`);
+    const requestAuraQuery = invoke({ randomUUID: () => 'unused-id' }, () => true,
+      () => 'admin:session-current', { configured: true }, ['S1', 'F1'],
+      () => settings,
+      (value: any) => ({ seasonCode: value.seasonCode || value.season, salesYear: Number(value.salesYear ?? value.salesyear), revision: Number(value.revision ?? value.settingRevision) }),
+      (value: any) => { settings = { seasonCode: value.seasonCode, salesYear: value.salesYear, revision: value.revision }; return settings; },
+      async (body: any, options: any) => {
+        calls.push({ body, requestId: options.requestId });
+        if (calls.length === 1) throw Object.assign(new Error('stale app settings'), {
+          code: 'AURA_APP_CONTEXT_STALE', status: 409,
+          payload: { appContext: { season: 'F1', salesyear: 28, settingRevision: 5 } },
+        });
+        return { ok: true, requestId: body.turnId, reply: 'Updated answer', source: 'voice' };
+      });
+    const response = await requestAuraQuery({ mode: 'command', text: 'Check open stock', source: 'voice', turnId: 'voice-turn-7' },
+      { requestId: 'voice-turn-7' });
+    await requestAuraQuery({ mode: 'command', text: 'Check another item', source: 'typed', turnId: 'voice-turn-8' },
+      { requestId: 'voice-turn-8' });
+    return { calls, response, settings };
+  }, bridgeSource);
+  expect(result.calls).toHaveLength(3);
+  expect(result.calls[0].body.appContext).toEqual({ season: 'S1', salesyear: 27, settingRevision: 4 });
+  expect(result.calls[1].body.appContext).toEqual({ season: 'F1', salesyear: 28, settingRevision: 5 });
+  expect(result.calls.map(call => call.requestId)).toEqual(['voice-turn-7', 'voice-turn-7', 'voice-turn-8']);
+  expect(result.calls.map(call => call.body.turnId)).toEqual(['voice-turn-7', 'voice-turn-7', 'voice-turn-8']);
+  expect(result.calls.map(call => call.body.source)).toEqual(['voice', 'voice', 'typed']);
+  expect(result.response).toMatchObject({ requestId: 'voice-turn-7', reply: 'Updated answer', source: 'voice' });
+  expect(result.settings).toEqual({ seasonCode: 'F1', salesYear: 28, revision: 5 });
+  expect(result.calls[2].body.appContext).toEqual({ season: 'F1', salesyear: 28, settingRevision: 5 });
+});

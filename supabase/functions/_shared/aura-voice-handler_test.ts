@@ -3,7 +3,7 @@ import { handleAuraVoiceRequest, type AuraVoiceDeps, type AuraVoiceStore, type A
 import type { AuraActor } from "./aura-gemini.ts";
 
 const ID = "00000000-0000-4000-8000-000000000001", CHAT = "00000000-0000-4000-8000-000000000002";
-const actor: AuraActor = { id: ID, username: "dylan_collyge", role: "ADMIN", inventory: true, history: true, drafts: true };
+const actor: AuraActor = { id: ID, username: "dylan_collyge", role: "ADMIN", inventory: true, history: true, drafts: true, socReserves: true, socOpenOrders: true };
 function assert(value: unknown, message = "Assertion failed") { if (!value) throw new Error(message); }
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value)) : {}; }
 const inventoryRow = { uniqueId: "row1", selectionId: "0001|acer|#5", itemcode: "0001", commonName: "Maple", contSize: "#5", locationCode: "C.06.001", lotCode: "00025", ptravailable: 35, ptronhand: 40 };
@@ -20,6 +20,8 @@ function fixture(options: { actor?: AuraActor | null; tool?: { name: string; arg
   let replay = false;
   const activeActor = options.actor === undefined ? actor : options.actor;
   const store: AuraVoiceStore = {
+    appContext: async () => ({ season: "F1", salesyear: 27, settingRevision: 1 }),
+    soc: async () => { throw new Error("Unexpected SOC query"); },
     authorize: async () => activeActor,
     memory: async (actorId, args, signal) => {
       assert(actorId === activeActor?.id, "memory actor comes from verified identity"); calls.push(args);
@@ -28,7 +30,7 @@ function fixture(options: { actor?: AuraActor | null; tool?: { name: string; arg
       if (args.operation === "read") return { conversationId: CHAT, revision, turns: readTurns };
       return { conversationId: CHAT, revision: ++revision };
     },
-    inventory: async (_op, filters) => { inventoryCalls++; inventoryFilters.push(filters); return inventoryRead(); },
+    inventory: async (_op, filters) => { inventoryCalls++; inventoryFilters.push(filters); return { ...record(inventoryRead()), metric: filters.countMode && filters.countMode !== "quantity" ? filters.countMode : filters.metric || "ptravailable" }; },
     history: async query => { historyCalls.push(query); return historyRead(query); },
     reserve: async () => {},
   };
@@ -57,18 +59,18 @@ Deno.test("Aura voice denies unauthenticated/unauthorized command, history and d
 });
 Deno.test("tool result and current season metadata come exclusively from verified reads", async () => {
   const f = fixture(); const response = await f.run();
-  assert(response.status === 200 && String(response.body.reply).includes("35 units available"));
+  assert(response.status === 200 && String(response.body.reply).includes("35 units open stock"));
   assert(record(response.body.source).settingRevision === 1 && record(response.body.interpretation).engine === "gemini-tools-v1");
   assert(f.calls.at(-1)?.operation === "complete" && f.inventoryCalls === 1);
   assert(!JSON.stringify(f.providerBodies).includes('"uniqueId":"row1"'), "results never sent to provider");
 });
-Deno.test("explicit item codes, quoted common names and next season override model guesses", async () => {
+Deno.test("literal identities override model guesses and open stock enforces active app scope", async () => {
   const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { itemcode: "123", commonName: "Wrong", season: "F1", salesYear: 27 } } } });
   const response = await f.run({ text: 'How many common name "Lily of the Valley" itemcode 000123 next season?', turnId: crypto.randomUUID() });
   assert(response.status === 200);
   const filters = record(f.inventoryFilters[0]);
-  assert(filters.itemcode === "000123" && filters.commonName === "Lily of the Valley" && filters.seasonReference === "next");
-  assert(!("season" in filters) && !("salesYear" in filters));
+  assert(filters.itemcode === "000123" && filters.commonName === "Lily of the Valley" && filters.season === "F1" && filters.salesYear === 27 && filters.metric === "s_lts");
+  assert(!("seasonReference" in filters), "open stock uses the active app cutoff");
 });
 Deno.test("spoken location responses include verified location, lot and available units", async () => {
   const f = fixture({ tool: { name: "inventory", args: { operation: "locations", filters: { itemcode: "0001" } } } });
@@ -274,4 +276,90 @@ Deno.test("exact historical customer and consignee selections stay bound to serv
   assert(response.status === 200 && f.providerCalls === 1);
   assert(f.historyCalls.at(-1)?.customerKey === "opaque-customer" && f.historyCalls.at(-1)?.consigneeKey === "opaque-consignee");
   assert(f.historyCalls.at(-1)?.operation === "requests");
+});
+
+Deno.test("stale app context fails before provider, turn begin or inventory query", async () => {
+  const f = fixture();
+  const result = await f.run({ text: "How many Baby Gem?", appContext: { season: "S1", salesyear: 27, settingRevision: 0 } });
+  assert(result.status === 409 && result.body.code === "AURA_APP_CONTEXT_STALE");
+  assert(record(result.body.appContext).season === "F1" && !f.calls.length && !f.providerCalls && !f.inventoryCalls);
+});
+Deno.test("open-stock selection carries exact s_lts, signed totals and server scope without model widening", async () => {
+  const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { commonName: "Baby Gem Boxwood", metric: "ptravailable", season: "S1", salesYear: 99, openStockOnly: true } } } });
+  f.setInventory(() => ({ ...inventory(), total: -7, metric: "s_lts", rows: [inventoryRow, { ...inventoryRow, uniqueId: "row2" }] }));
+  const result = await f.run({ text: "How many Baby Gem Boxwood are available?", source: "voice", appContext: { season: "F1", salesyear: 27, settingRevision: 1 } });
+  const filters = record(f.inventoryFilters[0]);
+  assert(result.status === 200 && String(result.body.reply).includes("-7 units open stock") && result.body.reply === result.body.speech);
+  assert(filters.metric === "s_lts" && filters.season === "F1" && filters.salesYear === 27 && filters.openStockOnly === false);
+  assert(JSON.stringify(filters.requestedVariants) === "[]" && !record(result.body).choices);
+});
+Deno.test("explicit on-hand and physical counts preserve their requested metrics", async () => {
+  for (const [text, key, value] of [["How many on hand?", "metric", "ptronhand"], ["How many physical rows?", "countMode", "physical_rows"], ["How many distinct items?", "countMode", "unique_items"]]) {
+    const f = fixture(); await f.run({ text }); assert(record(f.inventoryFilters[0])[key] === value);
+  }
+});
+Deno.test("SOC tools use distinct metrics and spoken season; model season and years cannot leak into defaults", async () => {
+  for (const [name, metric, expected, phrase] of [["soc_reserves", "remaining_quantity", 70, "on reserve"], ["soc_open_orders", "ordered_quantity", 100, "on order"]] as const) {
+    const f = fixture({ tool: { name, args: { commonname: "Baby Gem Boxwood", contsize: "3DP", customername: "Acme", season: "S1" } } });
+    const reads: unknown[] = [];
+    f.store.soc = async (kind, filters) => { reads.push({ kind, ...filters }); return { ok: true, complete: true, total: expected, metric, rows: [{ quantity: expected }], season: filters.season,
+      settingRevision: 1, datasetRevision: "soc1", mappingRevision: "map1", yearCoverage: "unavailable", yearFilterApplied: false, hasMore: false, candidateChoices: [] }; };
+    let result = await f.run({ text: `How many Baby Gem Boxwood 3DP does Acme have ${phrase}?`, source: "voice" });
+    assert(result.status === 200 && record(reads[0]).season === "F1" && !('salesYear' in record(reads[0])));
+    assert(String(result.body.reply).includes(String(expected)) && result.body.speech === result.body.reply && record(result.body.source).metric === metric);
+    result = await f.run({ text: `How many Baby Gem Boxwood 3DP does Acme have ${phrase} in U2 salesyear 2030?` });
+    assert(result.status === 200 && record(reads[1]).season === "U2" && String(result.body.reply).includes("Sales-year filtering does not apply"));
+  }
+});
+Deno.test("SOC permission loss blocks tools and prevents private history replay", async () => {
+  const f = fixture({ actor: { ...actor, socReserves: false }, tool: { name: "soc_reserves", args: { commonname: "Maple", contsize: "#5", customername: "Acme" } } });
+  const result = await f.run({ text: "Acme Maple reserves" });
+  assert(result.status === 403 && !f.inventoryCalls);
+});
+Deno.test("SOC ambiguity selects only returned party IDs and stale mapping discards the selection", async () => {
+  const f = fixture({ tool: { name: "soc_reserves", args: { commonname: "Maple", contsize: "#5", customername: "Duplicate" } } });
+  let revision = "map1"; const reads: unknown[] = [];
+  f.store.soc = async (_kind, filters) => { reads.push(filters); return { ok: true, complete: !!filters.customerId, total: filters.customerId ? 12 : null, metric: "remaining_quantity", rows: [],
+    season: "F1", settingRevision: 1, datasetRevision: "soc1", mappingRevision: revision, yearCoverage: "unavailable", yearFilterApplied: false,
+    choiceKind: "customer", candidateChoices: filters.customerId ? [] : [{ customerId: "0001", label: "Duplicate — 0001" }, { customerId: "0002", label: "Duplicate — 0002" }] }; };
+  let result = await f.run({ text: "Maple reserves for Duplicate" });
+  assert(result.status === 200 && String(result.body.reply).includes("Choose the exact customer"));
+  revision = "map2"; result = await f.run({ text: "1" });
+  assert(result.status === 200 && record(reads[1]).customerId === "0001" && !record(reads[2]).customerId);
+  assert(String(result.body.reply).includes("restarted"));
+});
+Deno.test("SOC incomplete snapshots never assert a zero count", async () => {
+  const f = fixture({ tool: { name: "soc_open_orders", args: { commonname: "Maple", contsize: "#5", customername: "Acme" } } });
+  f.store.soc = async () => ({ ok: true, complete: false, total: null, metric: "ordered_quantity", rows: [], season: "F1", yearFilterApplied: false, candidateChoices: [] });
+  const result = await f.run({ text: "Acme Maple orders" });
+  assert(result.status === 200 && String(result.body.reply).includes("incomplete") && !String(result.body.reply).includes("0 ordered"));
+});
+
+Deno.test("an available-count response cannot be mislabeled as open stock", async () => {
+  const f = fixture(); f.store.inventory = async () => ({ ...inventory(), metric: "ptravailable" });
+  const result = await f.run({ text: "How many Baby Gem are available?" });
+  assert(result.status === 400 && result.body.code === "AURA_RESULT_INVALID");
+});
+Deno.test("SOC saved replies recheck verified facts even when revision numbers are unchanged", async () => {
+  const f = fixture({ tool: { name: "soc_reserves", args: { commonname: "Maple", contsize: "#5", customername: "Acme" } } });
+  let total = 12;
+  f.store.soc = async () => ({ ok: true, complete: true, total, metric: "remaining_quantity", rows: [], season: "F1", settingRevision: 1,
+    datasetRevision: "same", mappingRevision: "same", yearFilterApplied: false, candidateChoices: [] });
+  await f.run({ text: "Acme Maple reserves" }); f.setReplay(); total = 0;
+  const result = await f.run({ text: "Acme Maple reserves" });
+  assert(result.status === 409 && result.body.code === "AURA_SAVED_RESULT_STALE");
+});
+
+Deno.test("multiple spoken SOC seasons ask for one scope without reading the feed", async () => {
+  const f = fixture({ tool: { name: "soc_reserves", args: { commonname: "Maple", contsize: "#5", customername: "Acme" } } });
+  const result = await f.run({ text: "Acme Maple reserves in F1 and S1" });
+  assert(result.status === 400 && result.body.code === "AURA_SEASON_AMBIGUOUS");
+  assert(String(result.body.error).includes("choose one season") && !f.calls.some(call => call.operation === "complete"));
+});
+
+Deno.test("how-many inventory questions deterministically aggregate despite a locations tool proposal", async () => {
+  const f = fixture({ tool: { name: "inventory", args: { operation: "locations", filters: { commonName: "Baby Gem Boxwood" } } } });
+  const result = await f.run({ text: "How many Baby Gem Boxwood do we have?" });
+  assert(result.status === 200 && String(result.body.reply).includes("35 units open stock"));
+  assert(record(f.inventoryFilters[0]).metric === "s_lts");
 });

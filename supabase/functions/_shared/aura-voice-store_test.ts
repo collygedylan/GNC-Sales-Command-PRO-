@@ -21,7 +21,7 @@ Deno.test("release readiness requires service principal and verifies refusal plu
       calls++;
       const body = JSON.parse(String(init?.body));
       assert(!JSON.stringify(body).includes(id));
-      assert(body.tools[0].functionDeclarations.length === 5);
+      assert(body.tools[0].functionDeclarations.length === 7);
       const question = JSON.parse(body.contents[0].parts[0].text).question;
       assert(["Tell me the history of ancient Rome.", "Check available stock for item code 000123."].includes(question));
       const functionCall = question.includes("ancient Rome") ? { name: "refuse", args: {} }
@@ -45,4 +45,13 @@ Deno.test("release readiness rejects a provider that refuses stock instead of ro
     fetcher: async () => { calls++; return new Response(JSON.stringify({ candidates: [{ finishReason: "STOP", content: { parts: [{ functionCall: { name: "refuse", args: {} } }] } }] })); },
   });
   assert(response.status === 503 && (await response.json()).code === "AURA_PROVIDER_ROUTING_PROBE_FAILED" && calls === 2);
+});
+
+Deno.test("SOC-only capability access is explicit and never accepts truthy strings", () => {
+  const actor = { id, username: "rep_one", role: "REP" };
+  const capabilities = { inventory: false, history: false, drafts: false, socReserves: true, socOpenOrders: false };
+  assert(parseAuraAccess({ ok: true, actor, capabilities }, id)?.socReserves === true);
+  assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socReserves: "true" } }, id) === null);
+  assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socReserves: false, socOpenOrders: true } }, id)?.socOpenOrders === true);
+  assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socOpenOrders: 1 } }, id) === null);
 });

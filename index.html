@@ -9682,6 +9682,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                     error.status = Number(payload?.status || 0);
                     error.code = String(payload?.code || '').toUpperCase();
                     error.requestId = payload?.requestId || options.requestId;
+                    error.appContext = payload?.appContext ?? payload?.error?.appContext;
                     throw error;
                 }
                 return payload;
@@ -9752,7 +9753,75 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             const request = { ...options, requestId: options.requestId || crypto.randomUUID() };
             if (!isAuraRouterWidgetAuthorized()) throw Object.assign(new Error('AURA requires verified router access.'), { status: 403 });
             if (auraRouterCapabilities?.configured !== true) throw Object.assign(new Error('Aura is not configured yet. Contact your administrator.'), { status: 503, code: 'AURA_LLM_UNAVAILABLE' });
-            return callAuraLlmRouter(body, request);
+            if (body?.mode !== 'command') return callAuraLlmRouter(body, request);
+
+            const identity = getSupabaseReadIdentityScope();
+            const originalTurnId = String(body.turnId || request.requestId);
+            const currentSettings = getCurrentAppSeasonSettings();
+            const appContext = {
+                season: currentSettings.seasonCode,
+                salesyear: currentSettings.salesYear,
+                settingRevision: currentSettings.revision
+            };
+            const command = { ...body, turnId: originalTurnId, appContext };
+            try {
+                return await callAuraLlmRouter(command, { ...request, requestId: originalTurnId });
+            } catch (error) {
+                if (String(error?.code || '').toUpperCase() !== 'AURA_APP_CONTEXT_STALE'
+                    || Number(error?.status) !== 409) throw error;
+                if (!isAuraRouterWidgetAuthorized() || identity !== getSupabaseReadIdentityScope()
+                    || request.signal?.aborted) throw error;
+
+                const normalizeAuthoritativeContext = (value) => {
+                    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+                    const rawSeason = value.season ?? value.seasonCode ?? value.season_code;
+                    const rawYear = value.salesyear ?? value.salesYear ?? value.sales_year;
+                    const rawRevision = value.settingRevision ?? value.revision ?? value.setting_revision;
+                    const normalizedRawSeason = String(rawSeason || '').trim().toUpperCase().replace(/\s+/g, '');
+                    const yearNumber = Number(rawYear);
+                    if ((!APP_CURRENT_SEASON_OPTIONS.includes(normalizedRawSeason) && !['S', 'F'].includes(normalizedRawSeason))
+                        || !Number.isInteger(yearNumber) || (yearNumber < 1 || yearNumber > 99) && (yearNumber < 2000 || yearNumber > 2099)) return null;
+                    const settings = normalizeAppSeasonSettingsPayload({ seasonCode: rawSeason, salesYear: rawYear, revision: rawRevision });
+                    if (!rawSeason || rawYear == null || !Number.isSafeInteger(rawRevision) || rawRevision < 0) return null;
+                    return { season: settings.seasonCode, salesyear: settings.salesYear, settingRevision: settings.revision };
+                };
+                let refreshedContext = normalizeAuthoritativeContext(error?.appContext ?? error?.payload?.appContext ?? error?.payload?.error?.appContext);
+                if (!refreshedContext) {
+                    if (typeof shouldUseProductionLiveSyncSideLoad === 'function' && shouldUseProductionLiveSyncSideLoad()) {
+                        const refreshed = await ensureProductionLiveSyncSideData('settings', true);
+                        if (!refreshed) throw error;
+                        const settings = getCurrentAppSeasonSettings();
+                        refreshedContext = { season: settings.seasonCode, salesyear: settings.salesYear, settingRevision: settings.revision };
+                    } else if (canManageCurrentSeasonSettings()) {
+                        const settings = await callManagerSeasonSettings({ operation: 'read' });
+                        writeLocalAppSeasonSettings(settings);
+                        appSeasonSettingsRemoteLoaded = true;
+                        refreshedContext = { season: settings.seasonCode, salesyear: settings.salesYear, settingRevision: settings.revision };
+                    } else {
+                        const rows = await supabaseFetch(APP_SEASON_SETTINGS_TABLE, 'GET', null,
+                            `select=key,value,updated_by,updated_at&key=eq.${encodeURIComponent(APP_SEASON_SETTINGS_KEY)}&limit=1`);
+                        const settings = parseRemoteAppSeasonSettingsRow(Array.isArray(rows) ? rows[0] : null);
+                        if (!settings) throw error;
+                        writeLocalAppSeasonSettings(settings);
+                        appSeasonSettingsRemoteLoaded = true;
+                        refreshedContext = { season: settings.seasonCode, salesyear: settings.salesYear, settingRevision: settings.revision };
+                    }
+                }
+                if (!isAuraRouterWidgetAuthorized() || identity !== getSupabaseReadIdentityScope()
+                    || request.signal?.aborted) throw error;
+                writeLocalAppSeasonSettings({
+                    seasonCode: refreshedContext.season,
+                    salesYear: refreshedContext.salesyear,
+                    revision: refreshedContext.settingRevision
+                });
+                appSeasonSettingsRemoteLoaded = true;
+
+                // The stale-context check happens before the router creates a
+                // turn. Reuse the interaction ID so an in-flight cancel still
+                // addresses this command after its single context refresh.
+                const retryBody = { ...body, turnId: originalTurnId, appContext: refreshedContext };
+                return callAuraLlmRouter(retryBody, { ...request, requestId: originalTurnId });
+            }
         }
         async function openAuraQueryAction(action, options = {}) {
             const authorize = typeof options.authorize === 'function' ? options.authorize : isAuraWidgetAuthorized;
@@ -9888,7 +9957,8 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 }
                 auraRouterCapabilities = { ...capabilities, configured: access.configured === true };
                 auraRouterVerifiedProfileId = String(session.user.id);
-                const hasCapability = capabilities.inventory === true || capabilities.history === true || capabilities.drafts === true;
+                const hasCapability = capabilities.inventory === true || capabilities.history === true || capabilities.drafts === true
+                    || capabilities.socReserves === true || capabilities.socOpenOrders === true;
                 if (!access.configured || !hasCapability) {
                     const message = access.configured
                         ? 'AURA is not enabled for the active account.'

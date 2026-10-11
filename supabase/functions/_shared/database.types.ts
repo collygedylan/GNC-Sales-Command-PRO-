@@ -16520,6 +16520,7 @@ export type Database = {
         Returns: Json
       }
       aura_voice_access_v1: { Args: never; Returns: Json }
+      aura_voice_context_v1: { Args: never; Returns: Json }
       aura_voice_conversation_v1: {
         Args: {
           p_actor_id: string
@@ -16537,6 +16538,15 @@ export type Database = {
           p_filters?: Json
           p_limit?: number
           p_operation: string
+        }
+        Returns: Json
+      }
+      aura_voice_soc_read_v1: {
+        Args: {
+          p_cursor?: Json
+          p_filters: Json
+          p_kind: string
+          p_limit?: number
         }
         Returns: Json
       }

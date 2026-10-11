@@ -13,9 +13,10 @@ export function parseAuraAccess(value: unknown, expectedId: string): AuraActor |
   if (actor.id !== expectedId || !UUID.test(expectedId) || typeof actor.username !== "string" || !actor.username
     || typeof actor.role !== "string" || (actor.username !== "dylan_collyge" && !allowedRoles.has(actor.role.trim().toUpperCase()))) return null;
   for (const key of ["inventory", "history", "drafts"]) if (typeof capabilities[key] !== "boolean") return null;
-  if (!capabilities.inventory && !capabilities.history) return null;
+  for (const key of ["socReserves", "socOpenOrders"]) if (capabilities[key] !== undefined && typeof capabilities[key] !== "boolean") return null;
+  if (!capabilities.inventory && !capabilities.history && !capabilities.socReserves && !capabilities.socOpenOrders) return null;
   return { id: expectedId, username: actor.username, role: actor.role, inventory: capabilities.inventory === true,
-    history: capabilities.history === true, drafts: capabilities.drafts === true };
+    history: capabilities.history === true, drafts: capabilities.drafts === true, socReserves: capabilities.socReserves === true, socOpenOrders: capabilities.socOpenOrders === true };
 }
 function env(name: string) { return String(Deno.env.get(name) || "").trim(); }
 function required(name: string) { const value = env(name); if (!value) throw new Error("AURA_CONFIGURATION_UNAVAILABLE"); return value; }
@@ -37,6 +38,20 @@ export function createAuraVoiceStore(bearer: string): AuraVoiceStore {
       const actor = parseAuraAccess(access.data, id);
       if (actor) verifiedId = actor.id;
       return actor;
+    },
+    async appContext(signal) {
+      verifyActor(verifiedId);
+      const { data, error } = await user.rpc("aura_voice_context_v1").abortSignal(signal);
+      if (error) throw error; return data;
+    },
+    async soc(kind, filters, cursor, signal) {
+      verifyActor(verifiedId);
+      const { commonname, contsize, customername, consigneename, ...scope } = filters;
+      const { data, error } = await user.rpc("aura_voice_soc_read_v1", { p_kind: kind === "soc_reserves" ? "reserves" : "soc_open_orders",
+        p_filters: jsonValue({ ...scope, commonName: commonname, contSize: contsize, customerName: customername,
+          ...(consigneename ? { consigneeName: consigneename } : {}) }),
+        ...(cursor == null ? {} : { p_cursor: jsonValue(cursor) }), p_limit: 50 }).abortSignal(signal);
+      if (error) throw error; return data;
     },
     async memory(actorId, args, signal) {
       verifyActor(actorId);
@@ -91,7 +106,7 @@ export async function handleAuraProviderProbe(request: Request, options: { env?:
     const probe = (text: string) => routeAuraWithGemini({ text,
       // Synthetic capabilities exercise the complete tool schema. No returned
       // tool is executed and no database client is constructed by this probe.
-      actor: { id: "release-readiness-probe", username: "release-readiness-probe", role: "READINESS", inventory: true, history: true, drafts: true },
+      actor: { id: "release-readiness-probe", username: "release-readiness-probe", role: "READINESS", inventory: true, history: true, drafts: true, socReserves: true, socOpenOrders: true },
       context: {}, apiKey: readEnv("GEMINI_API_KEY"), signal: AbortSignal.any([request.signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: options.fetcher,
       // Only the release service principal may perform these two synthetic calls.
       // Ordinary callers always use the quota ledger.

@@ -1,10 +1,15 @@
-import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraTool, validateInventoryFilters, type AuraActor, type AuraTool, type InventoryFilters } from "./aura-gemini.ts";
+import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraTool, validateInventoryFilters, validateSocFilters, type SocFilters, type SocToolName, type AuraActor, type AuraTool, type InventoryFilters } from "./aura-gemini.ts";
 import { resolveAuraIntent } from "./aura-query.ts";
+
+import { parseAuraAppContext, requestedAuraVariants, spokenAuraSeason, signedAuraQuantity } from "./aura-voice-scope.ts";
+import { socData, socOutcome, socStamp, socFingerprint } from "./aura-voice-soc.ts";
 
 type ObjectValue = Record<string, unknown>;
 export type AuraMemoryArgs = { operation: string; conversationId?: string; turnId?: string; expectedRevision?: number; payload?: ObjectValue };
 export type AuraHistoryQuery = { operation: "customers" | "consignees" | "requests" | "reps" | "summary"; customerKey?: string; consigneeKey?: string; page?: number; pageSize?: number };
 export interface AuraVoiceStore {
+  appContext(signal: AbortSignal): Promise<unknown>;
+  soc(kind: SocToolName, filters: SocFilters, cursor: unknown, signal: AbortSignal): Promise<unknown>;
   authorize(signal: AbortSignal): Promise<AuraActor | null>;
   memory(actorId: string, args: AuraMemoryArgs, signal: AbortSignal): Promise<unknown>;
   inventory(operation: string, filters: InventoryFilters, cursor: unknown, signal: AbortSignal): Promise<unknown>;
@@ -18,7 +23,7 @@ export type AuraVoiceDeps = {
 };
 type Outcome = { reply: string; actions: ObjectValue[]; context: ObjectValue; sources: ObjectValue[]; hasMore?: boolean; metadata?: ObjectValue };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const REFUSAL = "I can help with live nursery inventory, stock, locations, lots, request drafts, and your authorized Historical Requests. Please ask about those records.";
+const REFUSAL = "I can help with live nursery inventory, stock, locations, lots, customer reserves, open orders, request drafts, and your authorized Historical Requests. Please ask about those records.";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-gnc-session, x-app-session, x-request-id", "Access-Control-Allow-Methods": "POST, OPTIONS", "Cache-Control": "private, no-store" };
 const optionalObject = (value: unknown): ObjectValue => value && typeof value === "object" && !Array.isArray(value) ? Object.fromEntries(Object.entries(value)) : {};
 const array = (value: unknown): ObjectValue[] => Array.isArray(value) ? value.map(auraObject) : [];
@@ -29,7 +34,7 @@ function identifier(value: unknown): string { if (typeof value !== "string" || !
 function boundedString(value: unknown, max = 2000): string { if (typeof value !== "string" || !value.trim() || value.length > max) throw new Error("AURA_QUERY_REQUEST_INVALID"); return value.trim(); }
 function result(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json; charset=utf-8" } }); }
 function same(left: unknown, right: unknown) { return JSON.stringify(left) === JSON.stringify(right); }
-function policy(actor: AuraActor) { return { id: actor.id, username: actor.username, role: actor.role, inventory: actor.inventory, history: actor.history, drafts: actor.drafts }; }
+function policy(actor: AuraActor) { return { id: actor.id, username: actor.username, role: actor.role, inventory: actor.inventory, history: actor.history, drafts: actor.drafts, socReserves: actor.socReserves === true, socOpenOrders: actor.socOpenOrders === true }; }
 async function withinSignal<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) throw signal.reason;
   let onAbort: () => void = () => {};
@@ -122,8 +127,10 @@ async function inventoryFingerprint(data: ObjectValue): Promise<string> {
 function modelContext(context: ObjectValue): ObjectValue {
   // No stored answers, arbitrary client context, personnel records or old business rows reach the provider.
   const last = optionalObject(context.tool);
-  if (context.version !== 1 || !["inventory", "history", "draft_request"].includes(String(last.name))) return {};
-  return { previousTool: last };
+  if (context.version !== 1 || !["inventory", "history", "draft_request", "soc_reserves", "soc_open_orders"].includes(String(last.name))) return {};
+  const safe = { ...last };
+  if (safe.filters) safe.filters = Object.fromEntries(Object.entries(optionalObject(safe.filters)).filter(([key]) => !["requestedVariants", "expectedSettingRevision", "selectionId"].includes(key)));
+  return { previousTool: safe };
 }
 function knownOutsideDomain(text: string) {
   // Protect literal common names while rejecting obvious unrelated instructions before any provider call.
@@ -182,7 +189,7 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     data = auraObject(await store.inventory(operation, filters, cursor, signal));
     if (data.ok === false) throw new Error(String(data.code || "AURA_INVENTORY_UNAVAILABLE"));
   }
-  if (!Array.isArray(data.rows) || data.rows.length > 50) throw new Error("AURA_RESULT_INVALID");
+  if (data.ok !== true || !Array.isArray(data.rows) || data.rows.length > 50 || typeof data.complete !== "boolean") throw new Error("AURA_RESULT_INVALID");
   const rows = array(data.rows), choices = array(data.candidateChoices).slice(0, 5);
   const unresolved = number(data.unresolvedCount ?? 0);
   const sourceFingerprint = await inventoryFingerprint(data);
@@ -190,7 +197,7 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
   const nextContext: ObjectValue = { version: 1, tool: { ...tool, filters }, cursor: data.nextCursor ?? null, inventoryStamp: inventoryStamp(data), choices: [] };
   const sources = [{ kind: "inventory", operation, filters, cursor, stamp: inventoryStamp(data), fingerprint: sourceFingerprint, policy: policy(actor) }];
   const metadata = { resolvedSeason: { seasonCode: data.season, salesYear: data.salesYear }, settingRevision: data.settingRevision,
-    yearCoverage: data.yearCoverage, unresolvedCount: unresolved, complete: data.complete === true };
+    yearCoverage: data.yearCoverage, yearFilterApplied: true, metric: data.metric ?? filters.metric, datasetRevision: data.datasetRevision, unresolvedCount: unresolved, complete: data.complete === true };
   let reply: string, actions: ObjectValue[] = [];
   if (data.exactMatch === false && choices.length) {
     const options = choices.map(row => ({ ...row, id: String(row.selectionId || row.uniqueId || row.itemcode), label: label(row) }));
@@ -231,8 +238,10 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
       }
     }
   } else if (operation === "stock") {
-    const total = number(data.total);
-    const metric = filters.countMode === "physical_rows" ? "physical inventory rows" : filters.countMode === "unique_items" ? "distinct items" : filters.metric === "ptronhand" ? "units on hand" : "units available";
+    const expectedMetric = filters.countMode && filters.countMode !== "quantity" ? filters.countMode : filters.metric || "ptravailable";
+    if (data.metric !== expectedMetric) throw new Error("AURA_RESULT_INVALID");
+    const total = signedAuraQuantity(data.total);
+    const metric = filters.countMode === "physical_rows" ? "physical inventory rows" : filters.countMode === "unique_items" ? "distinct items" : filters.metric === "ptronhand" ? "units on hand" : filters.metric === "s_lts" ? "units open stock" : "units available";
     reply = `Verified ${format(total)} ${metric} in ${scope}.`;
     actions = recordAction("Inventory", rows);
   } else {
@@ -243,8 +252,8 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
           : row.ownerStatus === "unassigned" ? "explicitly unassigned" : row.ownerStatus === "ambiguous" ? "ownership is ambiguous" : "ownership is unresolved";
         return `${label(row)}: ${owner}`;
       }
-      const quantity = filters.metric === "ptronhand" ? row.ptronhand : row.ptravailable;
-      return `${label(row)}${typeof quantity === "number" && Number.isFinite(quantity) ? `: ${format(quantity)} ${filters.metric === "ptronhand" ? "on hand" : "available"}` : ""}`;
+      const quantity = filters.metric === "ptronhand" ? row.ptronhand : filters.metric === "s_lts" ? row.s_lts : row.ptravailable;
+      return `${label(row)}${typeof quantity === "number" && Number.isFinite(quantity) ? `: ${format(quantity)} ${filters.metric === "ptronhand" ? "on hand" : filters.metric === "s_lts" ? "open stock" : "available"}` : ""}`;
     });
     reply += ` ${details.join("; ")}.`;
     if (rows.length > 3) reply += " See the result table for the remaining rows.";
@@ -320,12 +329,17 @@ async function historyOutcome(tool: Extract<AuraTool, { name: "history" }>, cont
 async function sourcesCurrent(sources: unknown, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal): Promise<boolean> {
   if (!Array.isArray(sources)) return false;
   if (sources.length > 3) return false;
-  for (const source of array(sources)) {
+  try { for (const source of array(sources)) {
     if (!same(source.policy, policy(actor))) return false;
     if (source.kind === "inventory" && actor.inventory) {
       const data = auraObject(await store.inventory(String(source.operation), validateInventoryFilters(source.filters), source.cursor, signal));
       if (data.ok !== true || data.complete !== true || !same(inventoryStamp(data), source.stamp)
         || source.fingerprint !== await inventoryFingerprint(data)) return false;
+    } else if (source.kind === "soc" && ((source.tool === "soc_reserves" && actor.socReserves) || (source.tool === "soc_open_orders" && actor.socOpenOrders))) {
+      const kind = source.tool === "soc_reserves" ? "soc_reserves" : "soc_open_orders";
+      const data = socData(await store.soc(kind, validateSocFilters(source.filters), source.cursor, signal));
+      if (!data.complete || data.metric !== source.metric || !same(socStamp(data), source.stamp)
+        || await socFingerprint(data) !== source.fingerprint) return false;
     } else if (source.kind === "history" && actor.history) {
       const query = auraObject(source.query);
       const tool = validateAuraTool("history", { operation: query.operation });
@@ -336,7 +350,7 @@ async function sourcesCurrent(sources: unknown, actor: AuraActor, store: AuraVoi
       if (data.scope !== source.scope || data.revision !== source.revision) return false;
     } else return false;
   }
-  return true;
+  return true; } catch { return false; }
 }
 async function memoryResponse(body: ObjectValue, mode: string, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal) {
   const args = memoryArgs(body, mode);
@@ -357,6 +371,10 @@ async function memoryResponse(body: ObjectValue, mode: string, actor: AuraActor,
 }
 async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStore, deps: AuraVoiceDeps, signal: AbortSignal) {
   const question = boundedString(body.text ?? body.question ?? body.prompt);
+  const active = parseAuraAppContext(await store.appContext(signal));
+  if (body.appContext !== undefined && !same(parseAuraAppContext(body.appContext), active)) {
+    throw Object.assign(new Error("AURA_APP_CONTEXT_STALE"), { appContext: active });
+  }
   const args = memoryArgs({ ...body, turnId: body.turnId ?? crypto.randomUUID() }, "begin");
   const source = body.source ?? "typed";
   if (source !== "typed" && source !== "voice") throw new Error("AURA_QUERY_REQUEST_INVALID");
@@ -372,6 +390,9 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
   try {
     let context = optionalObject(begin.context);
     if (context.version !== 1 || !same(context.policy, policy(actor))) context = {};
+    const previousScope = optionalObject(context.appContext);
+    const scopeChanged = Object.keys(previousScope).length > 0 && !same(previousScope, active);
+    if (scopeChanged) { delete context.draftConfirmation; context.cursor = null; }
     const confirmingDraft = explicitDraftConfirmation(question);
     let expectedDraft: DraftConfirmationTuple | undefined;
     const more = /^\s*(?:show more|next page)\s*[.!?]?\s*$/i.test(question);
@@ -384,7 +405,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       try {
         if (!storedTuple || oldTool.name !== "draft_request") throw new Error("AURA_DRAFT_CONFIRMATION_MISSING");
         const { name, ...values } = oldTool;
-        const storedTool = validateAuraTool(name, values);
+        const storedTool = validateAuraTool(name, values, true);
         if (storedTool.name !== "draft_request") throw new Error("AURA_DRAFT_CONFIRMATION_MISSING");
         tool = storedTool;
         expectedDraft = storedTuple;
@@ -395,18 +416,40 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
     } else {
       // A rejected or changed proposal cannot be confirmed by a later bare "yes".
       delete context.draftConfirmation;
-      if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values); }
+      if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values, true); }
       else if (selectionNumber) tool = { name: "clarify", reason: "ambiguous" };
       else if (knownOutsideDomain(question)) tool = { name: "refuse" };
-      else tool = await routeAuraWithGemini({ text: question, actor, context: modelContext(context), apiKey: deps.apiKey(),
+      else tool = await routeAuraWithGemini({ text: question, actor, context: { ...modelContext(context), appContext: active }, apiKey: deps.apiKey(),
         signal: AbortSignal.any([signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
     }
+    const follow = more || !!selection || /^(?:and|what about|how about|those|these)\b/i.test(question);
+    const spokenVariants = requestedAuraVariants(question);
+    const previousVariants = optionalObject(oldTool.filters).requestedVariants ?? context.requestedVariants;
+    const variants = spokenVariants.length || !follow ? spokenVariants
+      : validateInventoryFilters({ requestedVariants: previousVariants ?? [] }).requestedVariants || [];
     if (tool.name === "inventory" || tool.name === "draft_request") {
       if (confirmingDraft && tool.name === "draft_request") tool.filters = validateInventoryFilters(tool.filters);
-      else {
-        tool.filters = explicitFilters(question, tool.filters);
-        // Only a server-presented choice may supply an opaque selection ID.
-        if (!selection) delete tool.filters.selectionId;
+      else if (!(more || selection)) tool.filters = explicitFilters(question, tool.filters);
+      if (!selection) delete tool.filters.selectionId;
+      tool.filters.requestedVariants = confirmingDraft ? tool.filters.requestedVariants || [] : variants;
+      tool.filters.expectedSettingRevision = active.settingRevision;
+      const questionSyntax = question.replace(/["“][^"”]*["”]/g, " ");
+      if (tool.name === "inventory" && /\bhow many\b/i.test(questionSyntax)
+        && !/\b(?:most|maximum|highest)\b/i.test(questionSyntax)) tool.operation = "stock";
+      if (tool.name === "inventory" && tool.operation === "stock") {
+        if (/\b(?:physical rows?|inventory rows?)\b/i.test(question)) tool.filters.countMode = "physical_rows";
+        else if (/\b(?:distinct|unique) items?\b/i.test(question)) tool.filters.countMode = "unique_items";
+        else if (/\bon[ -]hand\b/i.test(question)) { tool.filters.countMode = "quantity"; tool.filters.metric = "ptronhand"; }
+        else if (!(more || selection)) { tool.filters.countMode = "quantity"; tool.filters.metric = "s_lts"; }
+        if (tool.filters.countMode === "quantity" && tool.filters.metric === "s_lts") {
+          tool.filters.season = active.season; tool.filters.salesYear = active.salesyear;
+          delete tool.filters.seasonReference; tool.filters.openStockOnly = false;
+        }
+      }
+    } else if (tool.name === "soc_reserves" || tool.name === "soc_open_orders") {
+      if (!(more || selection)) {
+        const season = spokenAuraSeason(question);
+        if (season) tool.season = season; else delete tool.season;
       }
     }
     let outcome: Outcome;
@@ -414,6 +457,8 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
     else if (tool.name === "clarify") {
       const messages = { plant: "Which plant, item code, location, or lot should I look up?", customer: "Which customer’s requests should I look up?", consignee: "Which consignee should I look up?", quantity: "How many whole units should I prepare for review?", ambiguous: "Please identify one nursery record or choose an option from the latest results." };
       outcome = { reply: messages[tool.reason], actions: [], context, sources: [] };
+    } else if (tool.name === "soc_reserves" || tool.name === "soc_open_orders") {
+      outcome = await socOutcome(tool, context, actor, store, signal, active, variants, more, selection);
     } else if (tool.name === "history") {
       // New named subjects cannot inherit old resolved customer/consignee IDs.
       const follow = /^(?:and|what about|how about|show (?:their|those|the)|their|those|these)\b/i.test(question)
@@ -423,7 +468,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       const next = more || selection || inherit ? context : { ...context, customerKey: undefined, consigneeKey: undefined, page: 0 };
       outcome = await historyOutcome(tool, next, actor, store, signal, more, selection);
     } else outcome = await inventoryOutcome(tool, context, actor, store, signal, more, selection, expectedDraft);
-    const completedContext = { ...outcome.context, version: 1, policy: policy(actor) };
+    const completedContext = { ...outcome.context, appContext: active, version: 1, policy: policy(actor) };
     const response = { ok: true, requestId: turnId, conversationId, revision, reply: outcome.reply, speech: outcome.reply, actions: outcome.actions,
       interpretation: { engine: "gemini-tools-v1", intent: tool.name, ...outcome.metadata },
       source: { kind: source, checkedAt: new Date().toISOString(), ...outcome.metadata }, hasMore: outcome.hasMore === true, nextCursor: null };
@@ -459,14 +504,15 @@ export async function handleAuraVoiceRequest(request: Request, deps: AuraVoiceDe
     const code = signal.aborted ? "AURA_QUERY_TIMEOUT" : failure.code === "42501" ? "AURA_FORBIDDEN"
       : failure.code === "40001" || failure.code === "55P03" ? "AURA_REVISION_CONFLICT"
       : /^AURA_[A-Z0-9_]+$/.test(raw) ? raw : "AURA_UNAVAILABLE";
-    const status = /FORBIDDEN/.test(code) ? 403 : /INVALID/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
+    const status = /FORBIDDEN/.test(code) ? 403 : /INVALID|SEASON_AMBIGUOUS/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
     const errorMessage = code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE" ? "Aura’s connection is not configured. Ask your administrator to configure the Edge Function secret."
-      : /SEASON/.test(code) ? "The Managers current season setting is unavailable or invalid. Ask a manager to save it."
+      : code === "AURA_SEASON_AMBIGUOUS" ? "Please choose one season for this SOC lookup."
+      : /SEASON|APP_CONTEXT_(?:INVALID|UNAVAILABLE)/.test(code) ? "The Managers current season setting is unavailable or invalid. Ask a manager to save it."
       : status === 403 ? "Your active app permissions do not allow this Aura request."
       : status === 409 ? "The conversation or source data changed. Refresh the conversation and ask again."
       : status === 429 ? "Aura is busy. Please wait a moment and try again."
       : status === 400 ? "Aura could not safely interpret that request. Please rephrase using a plant, location, lot, or Historical Request."
       : "Aura’s query could not finish. Please try again.";
-    return result({ ok: false, code, error: errorMessage }, status);
+    return result({ ok: false, code, error: errorMessage, ...(code === "AURA_APP_CONTEXT_STALE" && failure.appContext ? { appContext: failure.appContext } : {}) }, status);
   }
 }

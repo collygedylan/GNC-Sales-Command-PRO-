@@ -1,4 +1,4 @@
-import { hlMaster, installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
+import { hlMaster, hlUserId, installHlOrderFixture } from '../tests/fixtures/hl-order-state.mjs';
 import { installPerformanceCoordinatorObserver } from './performance-coordinator-observer.mjs';
 import { installPerformanceLoginValidationObserver } from './performance-login-validation-observer.mjs';
 import { installPerformanceShellObserver } from './performance-shell-observer.mjs';
@@ -24,6 +24,40 @@ export const PERFORMANCE_POLL_HEADROOM_MS = 12_000;
 export const PERFORMANCE_POLL_WINDOW_TIMEOUT_MS = 45_000;
 
 const performanceControlsByPage = new WeakMap();
+
+export async function installPerformanceAuraAccessFixture(page, origin, actor = {
+  id: hlUserId, username: 'performance_admin', role: 'ADMIN',
+}) {
+  const counts = { capabilityReads: 0, rejectedRequests: 0 };
+  await page.route('**/functions/v1/aura-llm-router', async route => {
+    const request = route.request();
+    const headers = {
+      'access-control-allow-origin': origin,
+      'access-control-allow-methods': 'POST, OPTIONS',
+      'access-control-allow-headers': request.headers()['access-control-request-headers']
+        || 'authorization, apikey, content-type, x-client-info, x-request-id',
+      'access-control-allow-credentials': 'true',
+      'cache-control': 'private, no-store',
+    };
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+    let body = null;
+    try { body = request.postDataJSON(); } catch { /* Invalid fixture requests fail closed below. */ }
+    if (request.method() !== 'POST' || !body || body.mode !== 'capabilities'
+      || Object.keys(body).length !== 1 || Object.keys(body)[0] !== 'mode') {
+      counts.rejectedRequests++;
+      return route.fulfill({ status: 403, contentType: 'application/json', headers,
+        body: JSON.stringify({ ok: false, error: 'PERFORMANCE_AURA_SCOPE_DENIED' }) });
+    }
+    counts.capabilityReads++;
+    return route.fulfill({ status: 200, contentType: 'application/json', headers,
+      body: JSON.stringify({ ok: true,
+        actor: { id: actor.id, username: actor.username, role: actor.role },
+        capabilities: { id: actor.id, username: actor.username, role: actor.role,
+          inventory: true, history: false, drafts: false, socReserves: false, socOpenOrders: false },
+        configured: true }) });
+  });
+  return counts;
+}
 
 export function isPerformanceColdStartupReady(state = {}) {
   if (state.documentReadyState !== 'complete' || state.runtimeBootState !== 'ready' || state.appSessionStartupStarted !== true) return false;
@@ -235,7 +269,9 @@ export async function installPerformanceFixture(page, origin, app) {
   const apiIdleTracker = attachPerformanceApiIdleTracker(page);
   if (app === 'live') {
     await page.addInitScript({ content: `(${installPerformanceCoordinatorObserver.toString()})(globalThis);` });
+    let auraAccess = null;
     const control = await installHlOrderFixture(page, origin, { username: 'performance_admin', role: 'ADMIN', master: inventoryRows,
+      appPermissions: [{ permissionKey: 'module.drive.view', kind: 'module', moduleKey: 'drive', allowed: true }],
       startupMode: 'cold', beforeLogin: async () => {
         await page.locator('#login-button').waitFor({ state: 'visible' });
         await waitForPerformanceColdStartupReady(page);
@@ -264,6 +300,7 @@ export async function installPerformanceFixture(page, origin, app) {
         await page.evaluate(`(${installPerformanceShellObserver.toString()})(globalThis)`);
       },
       beforeNavigate: async () => {
+        auraAccess = await installPerformanceAuraAccessFixture(page, origin);
         await page.route('**/functions/v1/app-api', async route => {
           const body = route.request().postDataJSON();
           if (body?.action !== 'dataset_read' || body.dataset !== 'request_queue') return route.fallback();
@@ -274,6 +311,7 @@ export async function installPerformanceFixture(page, origin, app) {
         });
       } });
     const fixtureControl = Object.assign(control, apiIdleTracker);
+    fixtureControl.auraAccess = auraAccess;
     performanceControlsByPage.set(page, fixtureControl);
     await waitForLiveHomeReadiness(page, fixtureControl, true);
     return fixtureControl;

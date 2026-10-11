@@ -85562,6 +85562,13 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "aura_voice_context_v1": {
+      "oneOf": [
+        {
+          "object": {}
+        }
+      ]
+    },
     "aura_voice_conversation_v1": {
       "oneOf": [
         {
@@ -85660,6 +85667,48 @@ export const contracts: RuntimeContracts<Database> = {
                   "null"
                 ]
               }
+            }
+          }
+        }
+      ]
+    },
+    "aura_voice_soc_read_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_cursor": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_filters": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_kind": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_limit": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
             }
           }
         }
@@ -92448,12 +92497,22 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "aura_voice_context_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "aura_voice_conversation_v1": {
       "oneOf": [
         "json"
       ]
     },
     "aura_voice_inventory_read_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "aura_voice_soc_read_v1": {
       "oneOf": [
         "json"
       ]

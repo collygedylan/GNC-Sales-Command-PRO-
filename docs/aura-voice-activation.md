@@ -34,9 +34,10 @@ authorization and draft confirmation under server control.
 
 ## Tools
 
-- `inventory`: available/on-hand totals, locations, lots and ownership using the
-  existing common-name-priority matcher and Managers season rules. Preserve
-  leading-zero item codes, fuzzy clarification and unresolved counts.
+- `inventory`: open stock is the signed sum of `s_lts`, filtered to the verified active season and `saleyear <=` active sales year. Explicit on-hand and row/item counts retain their own metrics. Exact normalized common name and size aggregate all matching physical rows without location disambiguation. Cone/Tree/Espalier forms are excluded unless requested; fuzzy substitutions never become totals.
+- `soc_reserves`: published `ph_reserves`, remaining quantity = ordered minus shipped.
+- `soc_open_orders`: published, noninvoiced `ph_soc_master`, quantity = ordered.
+  Both require exact plant/size and customer hints, with optional consignee. They use a spoken season or the active app season; sales-year filtering never applies. Invalid numeric values or incomplete imports prevent a confirmed total. Non-Dylan actors see only their assigned source records, after module/account checks; no Admin/Manager all-data override applies. Duplicate party names require an authorized external-ID choice.
 - `history`: the existing `historical_requests_read_v1` RPC. Reps see their own
   assigned requests; exact Dylan/Admin access can see all. Other Managers do not
   inherit global historical access. Current list price and the exact 25-unit
@@ -51,7 +52,14 @@ authorization and draft confirmation under server control.
 
 Saved responses are revalidated before display or retry replay. Changed policy,
 inventory revision, season setting or request revision requires a fresh query.
-Pagination and choices restart when their source scope changes.
+Pagination and choices restart when their source scope changes. Commands carry
+`appContext: { season, salesyear, settingRevision }`; the authenticated context RPC
+verifies this before turn acquisition or model calls. A stale supplied context
+returns 409 with the current context for one client retry; omitted context uses
+the server value for cached-client compatibility. SQL checks the setting revision
+again to reject a scope change during execution. SOC replies expose their metric,
+season, feed/mapping revisions, completeness and `yearFilterApplied: false`.
+Saved SOC responses also compare verified facts and recheck ownership before display.
 Inventory replay also compares a hash of the freshly read facts, so ownership
 changes cannot slip through an unchanged master-import revision. Confirmed plant
 and owner choices become explicit remembered filters. Named historical totals
