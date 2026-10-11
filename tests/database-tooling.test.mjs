@@ -565,7 +565,7 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 187);
+  assert.equal(manifest.length, 186);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
   assert.deepEqual(manifest.slice(-3).map(entry => entry.source), [
     'supabase/migrations/20261010200046_aura_voice_role_access.sql',
@@ -574,7 +574,8 @@ test('historical migration order manifest preserves original inputs and appends 
   ]);
   const sources = new Set(manifest.map(entry => entry.source));
   for (const name of readdirSync(path.join(root, 'supabase/migrations'))) {
-    if (name.endsWith('.sql') && name !== '20260929200000_production_baseline.sql') {
+    // The Grower relation is supplied only by the canonical production baseline.
+    if (name.endsWith('.sql') && !['20260929200000_production_baseline.sql', '20260930183036_grower_row_scout_fields.sql'].includes(name)) {
       assert.ok(sources.has(`supabase/migrations/${name}`), `${name} is replayed after the archived baseline`);
     }
   }

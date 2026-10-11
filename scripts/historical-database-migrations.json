@@ -560,10 +560,6 @@
     "destination": "20260929200001_ci_department_calendar_baseline.sql"
   },
   {
-    "source": "supabase/migrations/20260930183036_grower_row_scout_fields.sql",
-    "destination": "20260930183036_grower_row_scout_fields.sql"
-  },
-  {
     "source": "supabase/migrations/20260930205254_season_sales_business_conflicts_use_pt409.sql",
     "destination": "20260930205254_season_sales_business_conflicts_use_pt409.sql"
   },
