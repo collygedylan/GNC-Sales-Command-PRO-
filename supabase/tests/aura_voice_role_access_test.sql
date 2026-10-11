@@ -118,7 +118,7 @@ select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Con
   'an excluded exact Cone name does not convert fuzzy fallback into a complete match');
 select ok((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}') is null,
   'fuzzy fallback after Cone exclusion does not return a fabricated total');
-select ok(not exists(select 1 from jsonb_array_elements(public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)->'rows') row_value
+select ok(not exists(select 1 from jsonb_array_elements(public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)->'rows') as rows(row_value)
   where row_value->>'commonName'='Voice Cone Plant'),
   'Cone rows remain absent when the variant was not spoken');
 select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","contSize":"1 gal","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":["cone"],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,6::numeric,
