@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { diagnosticRoles, diagnosticRequestAllowed, probeRoleBaseline } from '../scripts/diagnose-user-roles.mjs';
+import { diagnosticRoles, diagnosticRequestAllowed, probeRoleBaseline, openDiagnosticDriveCards } from '../scripts/diagnose-user-roles.mjs';
 const api = 'https://example.supabase.co/functions/v1/app-api';
+
+test('Drive diagnostics wait for real inventory cards before checking Reclass', async () => {
+  for (const mobile of [true, false]) {
+    const calls=[];
+    const page={locator:selector=>({
+      isVisible:async()=>mobile,
+      selectOption:async value=>calls.push([selector,'select',value]),
+      click:async()=>calls.push([selector,'click']),
+      first:()=>({waitFor:async options=>calls.push([selector,'wait',options])}),
+    })};
+    await openDiagnosticDriveCards(page);
+    assert.deepEqual(calls,[mobile?['#drive-mobile-mode','select','card']:['#tab-drive-card','click'],
+      ['#drive-content .app-smart-card','wait',{state:'visible',timeout:30000}]]);
+  }
+});
 test('diagnostic coverage includes sales, nursery and supervisory roles, including whitespace aliases', () => {
   for (const role of ['ADMIN','REP','CSR','DATA ENTRY','DATA ENTRY SUPERVISOR','EVAL','FOREMAN','GROWER','QC','QC SUPERVISOR','TAKE BACKS','\nREP']) {
     assert.ok(diagnosticRoles.includes(role));

@@ -42,6 +42,14 @@ export async function probeRoleBaseline(account, { supabaseURL, key, fetcher = f
   };
 }
 
+export async function openDiagnosticDriveCards(page) {
+  const cardMode = page.locator('#tab-drive-card');
+  const mobileMode = page.locator('#drive-mobile-mode');
+  if (await mobileMode.isVisible()) await mobileMode.selectOption('card');
+  else await cardMode.click();
+  await page.locator('#drive-content .app-smart-card').first().waitFor({ state: 'visible', timeout: 30000 });
+}
+
 /** Authenticated sessions are supplied in memory. Reports never contain credentials or row contents. */
 export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
   output = 'node_modules/.cache/user-role-diagnostics.json', readBaseline } = {}) {
@@ -58,7 +66,7 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
       try {
         if (fixture) {
           await installHlOrderFixture(page, baseURL, { role: account.role, username: account.username,
-            startupMode: 'cold', master: [hlMaster('diagnostic-stock')],
+            startupMode: 'cold', master: [hlMaster('diagnostic-stock', { priority: '1', assignedto: account.username })],
             appPermissions: ['drive', 'sales-inventory', 'request', 'historical-requests'].map(moduleKey => ({
               permissionKey: `module.${moduleKey}.view`, kind: 'module', moduleKey,
               allowed: moduleKey === 'drive' ? rolesWithDrive.has(account.role)
@@ -105,6 +113,7 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
           await tile.click();
           const view = page.locator(`#view-${screen}`);
           await view.waitFor({ state: 'visible', timeout: 20000 });
+          if (screen === 'drive') await openDiagnosticDriveCards(page);
           item.visible = true;
           item.cards = await view.locator('.app-smart-card,[data-request-id],[data-inventory-card]').count();
           item.headings = await view.locator('h1,h2,h3').allTextContents();
