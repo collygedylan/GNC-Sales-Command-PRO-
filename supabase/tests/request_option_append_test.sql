@@ -205,7 +205,7 @@ select throws_ok(
 select lives_ok(
   $q$select public.create_request_batch(
     '91000000-0000-0000-0000-000000000020',
-    '[{"unique_id":"REQUEST-APPEND-COMPLETE-1","master_id":"REQUEST-APPEND-MASTER-1","requested_by":"Persisted Rep Missing From Picker","request_folder":"REQUEST-APPEND-COMPLETE-FOLDER","req_customer":"Persisted Customer","req_qty":"1"}]'::jsonb
+    '[{"unique_id":"REQUEST-APPEND-COMPLETE-1","master_id":"REQUEST-APPEND-MASTER-1","requested_by":"Persisted Rep Missing From Picker","request_folder":"REQUEST-APPEND-COMPLETE-FOLDER","req_customer":"Persisted Customer","customeridentityid":"APPEND-C","customername":"Persisted Customer","consigneeidentityid":"APPEND-CN","consigneename":"Persisted Destination","req_qty":"1"}]'::jsonb
   )$q$,
   'a second source Request is available for completed-folder rejection'
 );

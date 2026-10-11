@@ -80,12 +80,13 @@ values('97100000-0000-4000-8000-000000000004','history_duplicate','History New',
 select pg_temp.history_check(sales_private.assigned_rep('{"salesrepname":"New, History"}') is null,'duplicate normalized names fail closed');
 select pg_temp.history_check((select assigned_rep_id='97100000-0000-4000-8000-000000000003'::uuid from public.ph_credit_sources where source_id='HD-PENDING-REP'),'later identity ambiguity does not rewrite established historical owner');
 
--- Durable context in ordinary creation, live view, history, completion, and credit.
+-- Durable context uses an unambiguous current identity; HD-REP above remains
+-- intentionally conflicted to preserve the archived-owner rejection assertions.
 insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,customerstatus,
   consigneeid,consigneename,consigneestatus,salesrepid,salesrepname) values
-  ('HD-REQUEST-MAP','HD-C','Identical Customer','A','HD-SOUTH','South Destination','A','HD-REP','Brown, History Ben');
+  ('HD-REQUEST-MAP','HD-C','Identical Customer','A','HD-SOUTH','South Destination','A','HD-REQUEST-REP','Brown, History Ben');
 select private.insert_request_batch('97100000-0000-4000-8000-000000000010','[
- {"unique_id":"HD-REQUEST","requested_by":"History Ben Brown","request_selected_rep_username":"history_ben_brown","request_selected_rep_display":"History Ben Brown","request_selected_salesrep_id":"HD-REP","request_created_by_username":"office_csr","request_folder":"HD-FOLDER","customeridentityid":"HD-C","customername":"Identical Customer","consigneeidentityid":"HD-SOUTH","consigneename":"South Destination","itemcode":"HD-ITEM","commonname":"Hydrangea","req_status":"Pending"}
+ {"unique_id":"HD-REQUEST","requested_by":"History Ben Brown","request_selected_rep_username":"history_ben_brown","request_selected_rep_display":"History Ben Brown","request_selected_salesrep_id":"HD-REQUEST-REP","request_created_by_username":"office_csr","request_folder":"HD-FOLDER","customeridentityid":"HD-C","customername":"Identical Customer","consigneeidentityid":"HD-SOUTH","consigneename":"South Destination","itemcode":"HD-ITEM","commonname":"Hydrangea","req_status":"Pending"}
 ]'::jsonb,'general');
 -- Imported legacy records retain their missing identities and remain readable.
 select private.insert_request_batch('97100000-0000-4000-8000-000000000011','[

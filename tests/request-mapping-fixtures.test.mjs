@@ -34,3 +34,25 @@ test('legacy notification fixtures retain explicit internal provenance and servi
     assert.match(seed[2], /,'legacy'$/);
   }
 });
+
+test('append success fixtures retain complete customer tuples and the completed-folder assertions', () => {
+  const source = readFileSync(new URL('../supabase/tests/request_option_append_test.sql', import.meta.url), 'utf8');
+  const batches = [...source.matchAll(/'(\[\{"unique_id"[^\n]+\])'::jsonb/g)].map(match => JSON.parse(match[1]));
+  assert.equal(batches.length, 2);
+  for (const row of batches.flat()) {
+    assert.equal(row.customeridentityid, 'APPEND-C');
+    assert.equal(row.consigneeidentityid, 'APPEND-CN');
+    assert.equal(row.customername, 'Persisted Customer');
+    assert.equal(row.consigneename, 'Persisted Destination');
+  }
+  assert.match(source, /select plan\(26\)/);
+  assert.match(source, /REQUEST_FOLDER_ALREADY_COMPLETED/);
+});
+
+test('history success fixture uses its own verified rep while retaining conflicting-ID coverage', () => {
+  const source = readFileSync(new URL('../supabase/tests/sales_history_docks_test.sql', import.meta.url), 'utf8');
+  assert.match(source, /'HD-REQUEST-REP','Brown, History Ben'/);
+  assert.match(source, /"request_selected_salesrep_id":"HD-REQUEST-REP"/);
+  assert.match(source, /conflicting external IDs cannot fall through to a display name/);
+  assert.match(source, /completed request credit context survives active deletion/);
+});

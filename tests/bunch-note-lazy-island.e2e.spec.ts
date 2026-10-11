@@ -2,10 +2,15 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 
 const repo = path.resolve('.');
-const entryFile = path.join(repo, 'assets', 'bunch-note-structured.js');
-const chunkDirectory = path.join(repo, 'assets', 'bunch-note-chunks');
+// Browser runners download the compiled candidate into _site; checkout assets
+// can still contain bundles from the previous release.
+const assetRoot = process.env.GNC_BROWSER_ASSET_ROOT ||
+  (process.env.CI || existsSync(path.join(repo, '_site', 'assets', 'bunch-note-structured.js')) ? path.join(repo, '_site') : repo);
+const entryFile = path.join(assetRoot, 'assets', 'bunch-note-structured.js');
+const chunkDirectory = path.join(assetRoot, 'assets', 'bunch-note-chunks');
 
 declare global {
   interface Window {
@@ -40,7 +45,7 @@ async function openFixture(page: Page) {
 test('compiled inventory cards keep lot grids visible below their actions at phone and desktop widths', { tag: ['@release-functional'] }, async ({ page, context }) => {
   await routeCompiledEntry(context);
   await openFixture(page);
-  await page.addStyleTag({ path: path.join(repo, 'assets', 'bunch-note-cards.css') });
+  await page.addStyleTag({ path: path.join(assetRoot, 'assets', 'bunch-note-cards.css') });
   await page.evaluate(async () => {
     const api = await import('/assets/bunch-note-structured.js');
     api.mountBunchNoteCards(document.querySelector('#cards-host')!, {
