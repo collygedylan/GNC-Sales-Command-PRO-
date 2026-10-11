@@ -296,7 +296,7 @@ test('Move Up and Hold remain selected together with a row reason and stamped da
   await row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Concurrent quality review');
   await expect(row.locator('[data-reclass-hold-begin-date]')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
   await expect(row.locator('[data-reclass-v3-action="move_up"]')).toHaveAttribute('aria-pressed', 'true');
-  const draft = await page.evaluate(() => window.eval('collectArgosReclassRowDraft()'));
+  const draft = await page.evaluate(() => window.eval('collectArgosReclassV3Draft()'));
   expect(draft.holdStopProposals).toEqual([expect.objectContaining({ action: 'hold', reason: 'concurrent quality review' })]);
   expect(draft.requestActions).toEqual(expect.arrayContaining(['hold', 'move_up']));
   expect(draft.rowOverlays[0].proposals).toEqual([expect.objectContaining({ action: 'move_up' })]);

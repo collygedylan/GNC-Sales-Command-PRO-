@@ -54,5 +54,9 @@
   {
     "path": "supabase/migrations/20261011223000_reclass_concurrent_hold_rows.sql",
     "gitBlob": "eedddc58742217dc956e78c46f98b8282e60ed16"
+  },
+  {
+    "path": "supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql",
+    "gitBlob": "e6eecf6e99bf128e3b7bfcb984863e160dd797a7"
   }
 ]
