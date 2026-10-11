@@ -1,6 +1,7 @@
+begin;
+
 -- Hold/Stop and movement proposals are independent. Existing authorization,
 -- expected-value checks, fanout boundaries and quantity validation remain intact.
-begin;
 
 create or replace function private.validate_reclass_smart_shield_v6(p_payload jsonb)
 returns jsonb

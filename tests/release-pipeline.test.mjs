@@ -14,6 +14,12 @@ const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
+test('unit contracts can read the immutable performance baseline from Git history', () => {
+  const checkout = validation.jobs.unit.steps.find(step => step.uses === 'actions/checkout@v4');
+  assert.equal(checkout.with['fetch-depth'], 0);
+  assert.equal(validation.jobs.unit.needs, undefined);
+});
+
 test('superseded validation cancels only the matching workflow and PR or branch', () => {
   const names = ['release-validation', 'release-database', 'bloomscapes-pending-tests',
     'live-dataset-revisions', 'suspend-tag-tests', 'codex-mobile-path-policy'];

@@ -1,6 +1,7 @@
+begin;
+
 -- Match the browser's whitespace normalization at server authorization boundaries.
 -- Stored profile data, account identities and permission grants are unchanged.
-begin;
 create or replace function sales_private.actor(p_id uuid)
 returns public.profiles language plpgsql stable security definer set search_path='' as $function$
 declare p public.profiles;

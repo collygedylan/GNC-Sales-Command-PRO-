@@ -155,7 +155,7 @@ test('only active inventory readers get the AV current-season settings dependenc
   vm.runInContext(code, context);
   const cases = [
     ['QC Supervisor', 'dan_mccuistion', true, false],
-    ['QC', 'quality_user', false, false],
+    ['QC', 'quality_user', true, false],
     ['REP', 'riley_sales', true, true],
     ['Sales Rep', 'riley_sales', true, true],
     ['salesrep', 'riley_sales', true, true],

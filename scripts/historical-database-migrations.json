@@ -692,6 +692,14 @@
     "destination": "20261007211340_sql_lint_runtime_context.sql"
   },
   {
+    "source": "supabase/migrations/20261008190038_reclass_sheared_action_v5.sql",
+    "destination": "20261008190038_reclass_sheared_action_v5.sql"
+  },
+  {
+    "source": "supabase/migrations/20261009053029_reclass_smart_priority_hold_shield_v6.sql",
+    "destination": "20261009053029_reclass_smart_priority_hold_shield_v6.sql"
+  },
+  {
     "source": "supabase/migrations/20261010024830_customer_rep_mapping_management.sql",
     "destination": "20261010024830_customer_rep_mapping_management.sql"
   },

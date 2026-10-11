@@ -64,6 +64,8 @@ jobs:
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
       - run: node scripts/run-release-unit-checks.mjs
       - run: npm run test:v2

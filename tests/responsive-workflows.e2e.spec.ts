@@ -2716,19 +2716,20 @@ test('Phone Reclass V6 controls support all nine direct actions without row chec
     await second.getByLabel('Move Up quantity 1', { exact: true }).fill('1');
     await second.locator('[data-reclass-v3-proposal-action="move_up"][data-reclass-v3-proposal-field="destinationSeason"]').selectOption('F1');
     await expect(second.locator('[data-reclass-v3-action="move_up"]')).toHaveAttribute('aria-pressed', 'true');
-    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeDisabled();
-    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'false');
-    await expect(holdReason).toHaveCount(0);
-    await expect(second).toHaveAttribute('data-reclass-scope-actions', '');
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(holdReason).toHaveValue('sheared');
+    await expect(second.locator('[data-reclass-hold-begin-date]')).toHaveValue(/^\d{4}-\d{2}-\d{2}$/);
+    await expect(second).toHaveAttribute('data-reclass-scope-actions', 'hold');
     const moveUpDraft = await page.evaluate(() => (window as any).eval('collectArgosReclassV3Draft()'));
-    expect(moveUpDraft.requestActions).toEqual(['priority_change', 'move_up', 'move_down', 'sheared']);
-    expect(moveUpDraft.holdStopProposals).toEqual([]);
+    expect(moveUpDraft.requestActions).toEqual(['hold', 'priority_change', 'move_up', 'move_down', 'sheared']);
+    expect(moveUpDraft.holdStopProposals).toEqual([{ action: 'hold', reason: 'sheared', sourceUid: 'row-1' }]);
     await second.locator('.argos-reclass-row-toggle').click();
     await expect(second).toHaveAttribute('data-reclass-row-expanded', 'false');
     await second.locator('.argos-reclass-row-toggle').click();
-    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeDisabled();
-    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'false');
-    await expect(second.locator('[data-reclass-v3-proposal-field="reason"]')).toHaveCount(0);
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
+    await expect(second.locator('[data-reclass-v3-action="hold"]')).toHaveAttribute('aria-pressed', 'true');
+    await expect(holdReason).toHaveValue('sheared');
   }
 });
 

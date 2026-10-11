@@ -53,10 +53,10 @@
   },
   {
     "path": "supabase/migrations/20261011223000_reclass_concurrent_hold_rows.sql",
-    "gitBlob": "eedddc58742217dc956e78c46f98b8282e60ed16"
+    "gitBlob": "1b2e7eda4619bfd3eaa1b89eb5e86da6b4f350d0"
   },
   {
     "path": "supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql",
-    "gitBlob": "e6eecf6e99bf128e3b7bfcb984863e160dd797a7"
+    "gitBlob": "46cb08153f869ad84509b663d2a021c8052dc5b2"
   }
 ]
