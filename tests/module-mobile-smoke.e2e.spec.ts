@@ -184,32 +184,37 @@ test('Drive compact cards fit phone widths in every theme and keep row actions u
 });
 
 async function fixture(page: Page, baseURL: string, options: { username?: string } = {}) {
-  const source = await installSalesMobileFixture(page, baseURL, options);
   const blocked: string[] = [];
-  // Native Aura verifies its server capability snapshot during startup. Keep
-  // this navigation fixture deterministic and authorized so an unavailable
-  // service toast cannot intercept the module-back tap being tested.
-  await page.route('**/functions/v1/aura-llm-router', async route => {
-    const request = route.request();
-    const origin = new URL(baseURL).origin;
-    const headers = { 'access-control-allow-origin': origin,
-      'access-control-allow-methods': 'POST, OPTIONS',
-      'access-control-allow-headers': request.headers()['access-control-request-headers']
-        || 'authorization, apikey, content-type, x-client-info, x-request-id',
-      'access-control-allow-credentials': 'true', 'cache-control': 'private, no-store' };
-    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
-    let body: any = null;
-    try { body = request.postDataJSON(); } catch { /* Invalid calls fail closed below. */ }
-    if (request.method() !== 'POST' || body?.mode !== 'capabilities'
-      || Object.keys(body).length !== 1 || Object.keys(body)[0] !== 'mode') {
-      return route.fulfill({ status: 403, headers, contentType: 'application/json',
-        body: JSON.stringify({ ok: false, error: 'SMOKE_AURA_COMMAND_BLOCKED' }) });
-    }
-    const actor = { id: source.navigation.profileId, username: source.navigation.username, role: source.navigation.role };
-    return route.fulfill({ status: 200, headers, contentType: 'application/json',
-      body: JSON.stringify({ ok: true, actor,
-        capabilities: { ...actor, inventory: true, history: true, drafts: true,
-          socReserves: false, socOpenOrders: false }, configured: true }) });
+  const source = await installSalesMobileFixture(page, baseURL, {
+    ...options,
+    beforeNavigate: async (fixtureSource) => {
+      // Native Aura reads its capability snapshot during startup. Register the
+      // authorized deterministic response after the generic fixture route but
+      // before navigation, so it cannot be aborted as an unrecognized request.
+      await page.route('**/functions/v1/aura-llm-router', async route => {
+        const request = route.request();
+        const origin = new URL(baseURL).origin;
+        const headers = { 'access-control-allow-origin': origin,
+          'access-control-allow-methods': 'POST, OPTIONS',
+          'access-control-allow-headers': request.headers()['access-control-request-headers']
+            || 'authorization, apikey, content-type, x-client-info, x-request-id',
+          'access-control-allow-credentials': 'true', 'cache-control': 'private, no-store' };
+        if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+        let body: any = null;
+        try { body = request.postDataJSON(); } catch { /* Invalid calls fail closed below. */ }
+        if (request.method() !== 'POST' || body?.mode !== 'capabilities'
+          || Object.keys(body).length !== 1 || Object.keys(body)[0] !== 'mode') {
+          return route.fulfill({ status: 403, headers, contentType: 'application/json',
+            body: JSON.stringify({ ok: false, error: 'SMOKE_AURA_COMMAND_BLOCKED' }) });
+        }
+        const actor = { id: fixtureSource.navigation.profileId, username: fixtureSource.navigation.username,
+          role: fixtureSource.navigation.role };
+        return route.fulfill({ status: 200, headers, contentType: 'application/json',
+          body: JSON.stringify({ ok: true, actor,
+            capabilities: { ...actor, inventory: true, history: true, drafts: true,
+              socReserves: false, socOpenOrders: false }, configured: true }) });
+      });
+    },
   });
   // These Manager reads are outside the HL fixture's inventory projection.
   // Model their empty state explicitly; unknown RPCs and all writes still fall
