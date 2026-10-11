@@ -14,6 +14,10 @@ runs:
         RELEASE_TEST_BROWSERS: ${{ inputs.browsers }}
       run: |
         set -euo pipefail
+        # Fixed preview ports overlap Linux's ephemeral source-port range.
+        # Retain existing reservations and prevent outbound sockets taking them.
+        reserved_ports="$(sysctl -n net.ipv4.ip_local_reserved_ports)"
+        sudo sysctl -w "net.ipv4.ip_local_reserved_ports=${reserved_ports:+$reserved_ports,}43100-43199"
         test -n "$RELEASE_TEST_BROWSERS"
         for browser in $RELEASE_TEST_BROWSERS; do
           case "$browser" in chromium|firefox|webkit) ;; *) echo 'Unsupported browser'; exit 1 ;; esac

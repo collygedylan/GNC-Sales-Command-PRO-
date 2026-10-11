@@ -94,6 +94,19 @@ test('warm browser runners install OS dependencies without downloading cached bi
   }
 });
 
+test('browser runners reserve preview ports and preserve existing system reservations', () => {
+  const setup = browsers.runs.steps.find(step => step.id === 'platform').run;
+  const reservation = setup.slice(setup.indexOf('reserved_ports='), setup.indexOf('test -n "$RELEASE_TEST_BROWSERS"'));
+  const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash';
+  for (const existing of ['', '30000-30010,44444']) {
+    const result = spawnSync(bash, ['-c', 'sysctl() { printf "%s\\n" "$EXISTING_PORTS"; }; sudo() { printf "%s\\n" "$*"; }\n' + reservation], {
+      encoding: 'utf8', env: { ...process.env, EXISTING_PORTS: existing },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stdout.trim(), 'sysctl -w net.ipv4.ip_local_reserved_ports=' + (existing ? existing + ',' : '') + '43100-43199');
+  }
+});
+
 test('all npm CI installs use shared caching without changing caller Node versions or guards', () => {
   const versions = {'apps-script-database-diagnostic.yml':20,'codex-ops.yml':24};
   let count = 0;
