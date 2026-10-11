@@ -56,3 +56,13 @@ test('history success fixture uses its own verified rep while retaining conflict
   assert.match(source, /conflicting external IDs cannot fall through to a display name/);
   assert.match(source, /completed request credit context survives active deletion/);
 });
+
+test('local browser native submissions use active mapping tuples and preserve role denials', () => {
+  const source = readFileSync(new URL('../tests/request-integrity-local.spec.js', import.meta.url), 'utf8');
+  for (const field of ['customeridentityid: customerId', 'consigneeidentityid: consigneeId', 'customerstatus: \'A\'', 'consigneestatus: \'A\'',
+    'request_selected_salesrep_id: salesrepIds.rep', 'request_selected_salesrep_id: salesrepIds.csr']) assert.ok(source.includes(field), field);
+  assert.match(source, /request_source: 'legacy'/);
+  assert.match(source, /expect\(generalDenied.response.status\).toBe\(403\)/);
+  assert.match(source, /expect\(deniedAssignment.response.status\).toBe\(403\)/);
+  assert.match(source, /const avRetry = await rpc\('create_av_request_batch', repToken/);
+});

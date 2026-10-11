@@ -42,7 +42,7 @@ async function createUser(email, password, username, role) {
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates,return=representation'
     },
-    body: JSON.stringify({ id: userId, username, display_name: username, role })
+    body: JSON.stringify({ id: userId, username, display_name: username, role, must_change_password: false })
   });
   expect(profile.response.ok, JSON.stringify(profile.body)).toBeTruthy();
   return { userId, email, password, username, role };
@@ -87,6 +87,18 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     });
     expect(evalRoster.response.ok, JSON.stringify(evalRoster.body)).toBeTruthy();
     const dylan = await createUser(`dylan_${suffix}@example.com`, password, 'dylan_collyge', 'ADMIN');
+    const customerId = `LOCAL-C-${suffix}`, consigneeId = `LOCAL-CN-${suffix}`;
+    const salesrepIds = { rep: `LOCAL-REP-${suffix}`, csr: `LOCAL-CSR-${suffix}` };
+    const mapping = await jsonFetch(`${localUrl}/rest/v1/ph_customer_consignee_sales_reps`, {
+      method: 'POST',
+      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify([rep, csr].map((user, index) => ({
+        unique_id: `LOCAL-MAP-${index}-${suffix}`, customeridentityid: customerId, customername: 'Test Customer', customerstatus: 'A',
+        consigneeid: consigneeId, consigneename: 'Test Destination', consigneestatus: 'A',
+        salesrepid: index === 0 ? salesrepIds.rep : salesrepIds.csr, salesrepname: user.username,
+      }))),
+    });
+    expect(mapping.response.ok, JSON.stringify(mapping.body)).toBeTruthy();
 
     const masterId = `MASTER-${suffix}`;
     const itemcode = `ITEM-${suffix}`.toUpperCase();
@@ -115,6 +127,7 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
         unique_id: legacyRequestId,
         master_id: masterId,
         requested_by: 'legacy_ci',
+        request_source: 'legacy',
         request_folder: `LEGACY-${suffix}`,
         req_status: 'Complete',
         date_completed: new Date().toISOString(),
@@ -139,7 +152,10 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     const repToken = await signIn(rep);
     const repRequestId = `REQ-REP-${suffix}`;
     const repBatchId = crypto.randomUUID();
-    const requestPayload = [{ unique_id: repRequestId, master_id: masterId, requested_by: rep.username, request_folder: `FOLDER-${suffix}`, req_customer: 'Test Customer', req_qty: '2' }];
+    const requestPayload = [{ unique_id: repRequestId, master_id: masterId, requested_by: rep.username, request_folder: `FOLDER-${suffix}`,
+      req_customer: 'Test Customer', customeridentityid: customerId, customername: 'Test Customer',
+      consigneeidentityid: consigneeId, consigneename: 'Test Destination',
+      request_selected_salesrep_id: salesrepIds.rep, request_selected_rep_display: rep.username, req_qty: '2' }];
     const avCreate = await rpc('create_av_request_batch', repToken, { client_batch_id: repBatchId, requests: requestPayload });
     expect(avCreate.response.ok, JSON.stringify(avCreate.body)).toBeTruthy();
     expect(avCreate.body.rows[0].commonname).toBe('Canonical Drive Name');
@@ -158,7 +174,8 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     const csrRequestId = `REQ-CSR-${suffix}`;
     const csrCreate = await rpc('create_request_batch', csrToken, {
       client_batch_id: crypto.randomUUID(),
-      requests: [{ ...requestPayload[0], unique_id: csrRequestId, requested_by: csr.username }]
+      requests: [{ ...requestPayload[0], unique_id: csrRequestId, requested_by: csr.username,
+        request_selected_salesrep_id: salesrepIds.csr, request_selected_rep_display: csr.username }]
     });
     expect(csrCreate.response.ok, JSON.stringify(csrCreate.body)).toBeTruthy();
     const complete = await rpc('save_request_work', csrToken, {
