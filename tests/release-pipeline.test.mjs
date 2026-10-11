@@ -90,7 +90,7 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['lint','unit','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -164,7 +164,7 @@ test('browser shards and compiled suites use isolated runners without racing per
 test('every build consumer verifies the original manifest, never rebuilds or reseals', () => {
   for (const name of ['foundation','functional','compiled','timing','performance','lighthouse']) {
     const job = validation.jobs[name];
-    assert.deepEqual(job.needs, ['functional','compiled'].includes(name) ? ['build','foundation'] : 'build');
+    assert.equal(job.needs, 'build');
     assert.equal(job.steps.filter(s => s.uses === './.github/actions/download-release').length, 1);
     assert.doesNotMatch(job.steps.map(s=>s.run||'').join('\n'), /npm run build|artifact\.mjs seal/);
   }
@@ -281,7 +281,7 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   }
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
   const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'skipped' }]));
-  for (const name of ['unit', 'build', 'fast-browser']) results[name].result = 'success';
+  for (const name of ['lint', 'unit', 'build', 'fast-browser']) results[name].result = 'success';
   results.build.outputs = { digest: 'a'.repeat(64) };
   const execute = () => vm.runInNewContext(gate, { process: { env: {
     RELEASE_JOB_RESULTS: JSON.stringify(results), FAST_PR: 'true', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',

@@ -46,7 +46,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unit:
+  lint:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -58,6 +58,13 @@ jobs:
       - run: npm run check:inline
         if: inputs.run-frontend-tests
       - run: npm run check:tooling
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
       - run: node scripts/run-release-unit-checks.mjs
       - run: npm run test:v2
         if: inputs.run-frontend-tests
@@ -171,7 +178,7 @@ jobs:
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
-      - name: Shared lifecycle fault injection before feature suites
+      - name: Shared lifecycle fault injection
         run: npm run test:foundation -- --project=${{ matrix.project }} --max-failures=1 --reporter=github
       - name: Verify immutable package after foundation checks
         env:
@@ -186,7 +193,7 @@ jobs:
 
   functional:
     if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: [build, foundation]
+    needs: build
     runs-on: ubuntu-latest
     # A cold browser install can leave too little of a 15-minute job for the shard.
     timeout-minutes: 25
@@ -227,7 +234,7 @@ jobs:
 
   compiled:
     if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: [build, foundation]
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -881,7 +888,7 @@ jobs:
 
   release-gate:
     if: always()
-    needs: [unit, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
+    needs: [lint, unit, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
     runs-on: ubuntu-latest
     outputs:
       run-id: ${{ github.run_id }}
@@ -901,7 +908,7 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
-          const required = ['unit','build'];
+          const required = ['lint','unit','build'];
           if (process.env.RUN_FRONTEND_TESTS === 'true') {
             if (process.env.FAST_PR === 'true') required.push('fast-browser');
             else required.push('foundation','functional','compiled','timing','performance','lighthouse');
