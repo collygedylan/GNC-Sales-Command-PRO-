@@ -19,16 +19,20 @@ export async function checkAuraProviderReadiness(baseUrl, serviceKey, fetcher = 
       // Only fixed error codes and numeric statuses enter logs; never echo bodies,
       // provider messages, headers, or credential contents.
       const safeReasons = new Set(['AURA_FORBIDDEN', 'AURA_GEMINI_CONFIGURATION_UNAVAILABLE', 'AURA_GEMINI_BUSY', 'AURA_GEMINI_UNAVAILABLE',
-        'AURA_TOOL_INVALID', 'AURA_TOOL_FORBIDDEN', 'AURA_PROVIDER_CONFINEMENT_PROBE_FAILED', 'AURA_PROVIDER_ROUTING_PROBE_FAILED']);
+        'AURA_GEMINI_TIMEOUT', 'AURA_TOOL_INVALID', 'AURA_TOOL_FORBIDDEN', 'AURA_PROVIDER_CONFINEMENT_PROBE_FAILED', 'AURA_PROVIDER_ROUTING_PROBE_FAILED']);
       let body;
       try { body = await response.json(); } catch { /* Keep malformed responses generic. */ }
       const reason = safeReasons.has(body?.reason) ? body.reason : safeReasons.has(body?.code) ? body.code : 'AURA_PROVIDER_NOT_READY';
       const providerStatus = Number.isInteger(body?.providerStatus) && body.providerStatus >= 400 && body.providerStatus <= 599
         ? `; provider HTTP ${body.providerStatus}` : '';
-      if (attempt < 3 && response.status === 503
-        && ['AURA_GEMINI_UNAVAILABLE', 'AURA_GEMINI_BUSY'].includes(reason)
-        && [408, 429, 500, 502, 503, 504].includes(body?.providerStatus)) {
-        await wait(1000 * 2 ** attempt);
+      const transientProvider = ['AURA_GEMINI_UNAVAILABLE', 'AURA_GEMINI_BUSY'].includes(reason)
+        && [408, 429, 500, 502, 503, 504].includes(body?.providerStatus);
+      const providerTimeout = body?.code === 'AURA_PROVIDER_NOT_READY' && reason === 'AURA_GEMINI_TIMEOUT'
+        && body?.providerStatus === undefined;
+      if (attempt < 3 && response.status === 503 && (transientProvider || providerTimeout)) {
+        // Give provider capacity time to recover instead of sending another
+        // burst immediately. Four attempts remain a hard fail-closed limit.
+        await wait(15000 * 2 ** attempt);
         continue;
       }
       throw new Error(`AURA_PROVIDER_NOT_READY (HTTP ${response.status}; ${reason}${providerStatus})`);

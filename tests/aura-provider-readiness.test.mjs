@@ -11,7 +11,7 @@ test('readiness retries confirmed transient provider errors with bounded exponen
   { wait: async milliseconds => delays.push(milliseconds) });
   assert.deepEqual(result, { ok: true, model: 'gemini-3.8-flash' });
   assert.equal(attempts, 4);
-  assert.deepEqual(delays, [1000, 2000, 4000]);
+  assert.deepEqual(delays, [15000, 30000, 60000]);
 });
 test('persistent provider errors fail after four attempts without bypassing readiness', async () => {
   let attempts = 0; const delays = [];
@@ -19,12 +19,15 @@ test('persistent provider errors fail after four attempts without bypassing read
     attempts++; return Response.json({ reason: 'AURA_GEMINI_UNAVAILABLE', providerStatus: 503 }, { status: 503 });
   }, { wait: async milliseconds => delays.push(milliseconds) }), /provider HTTP 503/);
   assert.equal(attempts, 4);
-  assert.deepEqual(delays, [1000, 2000, 4000]);
+  assert.deepEqual(delays, [15000, 30000, 60000]);
 });
 test('authentication, malformed responses and failed confinement are never retried', async () => {
   for (const response of [Response.json({ reason: 'AURA_FORBIDDEN' }, { status: 403 }),
     Response.json({ reason: 'AURA_GEMINI_UNAVAILABLE', providerStatus: 403 }, { status: 503 }),
     Response.json({ reason: 'AURA_PROVIDER_CONFINEMENT_PROBE_FAILED' }, { status: 503 }),
+    Response.json({ reason: 'AURA_PROVIDER_UNAVAILABLE' }, { status: 503 }),
+    Response.json({ reason: 'AURA_GEMINI_TIMEOUT' }, { status: 503 }),
+    Response.json({ code: 'AURA_PROVIDER_NOT_READY', reason: 'AURA_GEMINI_TIMEOUT', providerStatus: 403 }, { status: 503 }),
     Response.json({ message: 'private-message' }, { status: 503 }),
     Response.json({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: false, inventoryRouting: true } })]) {
     let attempts = 0;
@@ -32,6 +35,20 @@ test('authentication, malformed responses and failed confinement are never retri
       { wait: async () => { throw new Error('WAIT_MUST_NOT_RUN'); } }));
     assert.equal(attempts, 1);
   }
+});
+test('verified provider timeouts recover with bounded backoff and still require both routing checks', async () => {
+  let attempts = 0; const delays = [];
+  await checkAuraProviderReadiness(url, 'test-key', async () => ++attempts === 1
+    ? Response.json({ code: 'AURA_PROVIDER_NOT_READY', reason: 'AURA_GEMINI_TIMEOUT' }, { status: 503 }) : ready(),
+  { wait: async milliseconds => delays.push(milliseconds) });
+  assert.equal(attempts, 2);
+  assert.deepEqual(delays, [15000]);
+  attempts = 0; delays.length = 0;
+  await assert.rejects(checkAuraProviderReadiness(url, 'test-key', async () => {
+    attempts++; return Response.json({ code: 'AURA_PROVIDER_NOT_READY', reason: 'AURA_GEMINI_TIMEOUT' }, { status: 503 });
+  }, { wait: async milliseconds => delays.push(milliseconds) }), /AURA_GEMINI_TIMEOUT/);
+  assert.equal(attempts, 4);
+  assert.deepEqual(delays, [15000, 30000, 60000]);
 });
 test('readiness trims BOM and surrounding whitespace without changing the token', async () => {
   await checkAuraProviderReadiness(url, '\uFEFF test-key\r\n', async (_url, options) => {
