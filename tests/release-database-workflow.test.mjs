@@ -364,6 +364,14 @@ test('native provisioning legacy-table fixture is installed with service-only ac
   assert.match(provisioning, /expect\(deniedLegacy\.body\.code\)\.toBe\('42501'\)/);
 });
 
+test('historical sales mapping fixture supplies imported metadata without assuming active status', () => {
+  const fixture = fs.readFileSync(new URL('../supabase/ci/sales_credit_baseline.sql', import.meta.url), 'utf8');
+  for (const field of ['customerstatus','consigneestatus','territorycode','territorydesc','filename','source_file_name','source_row_number','row_hash','imported_at','created_at','updated_at']) {
+    assert.match(fixture, new RegExp(`\\b${field} (?:text|integer|timestamptz)\\b`), field);
+  }
+  assert.doesNotMatch(fixture, /(?:customerstatus|consigneestatus) text\s+[^,]*default/i);
+});
+
 test('backend matrices retain every discovered integration, entrypoint, and Edge test', () => {
   const matrices = backendTestMatrices();
   assert.deepEqual(matrices.pglite, discoverTests({ group: 'pglite' }));
