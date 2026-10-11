@@ -46,6 +46,7 @@ create table if not exists public.ph_master_inventory (
   hold_release_approved_by text,
   hold_release_approved_by_display text,
   hold_release_approved_holdstopbegindate text,
+  concat text,
   itemspec text,
   locationnote text,
   locationnotedate text,
