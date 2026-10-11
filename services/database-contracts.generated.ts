@@ -85555,6 +85555,116 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "aura_voice_access_v1": {
+      "oneOf": [
+        {
+          "object": {}
+        }
+      ]
+    },
+    "aura_voice_conversation_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_conversation_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_turn_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
+    "aura_voice_inventory_read_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_cursor": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_filters": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_limit": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_operation": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "begin_customer_rep_mapping_import_v1": {
       "oneOf": [
         {
@@ -92329,6 +92439,21 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "aura_resolve_season_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "aura_voice_access_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "aura_voice_conversation_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "aura_voice_inventory_read_v1": {
       "oneOf": [
         "json"
       ]

@@ -135,7 +135,7 @@ test("browser recognition uses compact status without a verbose disclosure card"
     env.engines[0].onresult(result("Hey Aura, cloud locally remote", false));
     await flush();
     assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
-    assert.equal(panel.querySelector(".aura-status").textContent, "Checking request…");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Processing…");
     assert.doesNotMatch(panel.querySelector(".aura-status").textContent, /in the browser network/i);
     env.engines[0].onerror({ error: "audio-capture" });
     assert.equal(badge.textContent, "Browser speech — tap per command · may use network");
@@ -329,12 +329,12 @@ test("browser busy state reports a closed mic and completion does not hide activ
     await flush();
 
     assert.equal(mic.getAttribute("aria-pressed"), "false", "a query may be processing, but browser capture is closed");
-    assert.equal(panel.querySelector(".aura-status").textContent, "Checking request…");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Processing…");
     resolveSend({ ok: true, recipientName: "Megan" });
     await flush();
 
     assert.equal(utterances.length, 1);
-    assert.equal(panel.querySelector(".aura-status").textContent, "Aura responding…");
+    assert.equal(panel.querySelector(".aura-status").textContent, "Responding…");
     assert.equal(mic.getAttribute("aria-pressed"), "false");
 
     utterances[0].onend();

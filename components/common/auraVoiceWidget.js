@@ -64,8 +64,8 @@ const CSS = `
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){[data-aura-root] .aura-panel,[data-aura-root] .aura-fab{backdrop-filter:none;-webkit-backdrop-filter:none}}
 `;
 
-/** Mount after the shell has verified Dylan's native session; this module never authenticates users itself. */
-export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, requestAssistant, openAssistantAction, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false, userId = "", handsFreeAutostart = false, onHandsFreePreferenceChange = () => {} } = {}) {
+/** Mount after the shell has verified the active native session; this module never authenticates users itself. */
+export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, requestAssistant, openAssistantAction, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false, userId = "", handsFreeAutostart = false, onHandsFreePreferenceChange = () => {}, onAssistantState = () => {} } = {}) {
   if (typeof document === "undefined" || !host || !isAuthorized()) return { destroy() {} };
   let destroyed = false;
   let panelOpen = false;
@@ -110,6 +110,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   };
   let handsFreeAutostartEnabled = readHandsFreePreference();
   let voiceStatus = { status: "idle", message: "" };
+  let assistantState = "idle";
   let recognitionMode = null;
   const root = make("div");
   root.dataset.auraRoot = "";
@@ -213,9 +214,10 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   root.append(panel);
   const queryPanel = typeof requestAssistant === "function" ? mountAuraQueryPanel({
     panel, content, input, request: requestAssistant, isAuthorized: current,
+    onAssistantState: value => { assistantState = value; renderStatus(); onAssistantState(value); },
     speak: text => speakReply(text),
     cancelSpeech: () => cancelAuraSpeech(),
-    setBusy: value => { busy = value; setRecognitionBusy(value); },
+    setBusy: value => { busy = value; setRecognitionBusy(value); renderStatus(); },
     openAction: async action => {
       if (typeof openAssistantAction !== "function") throw new Error("Open the relevant app screen to review this request.");
       await openAssistantAction(action); togglePanel(false);
@@ -248,11 +250,18 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     micButton.setAttribute("aria-pressed", micOpen ? "true" : "false");
     fab.dataset.handsFreeListening = String(handsFreeEnabled && micOpen);
     fab.dataset.microphoneActive = String(micOpen);
+    status.dataset.state = assistantState === "processing" ? "processing"
+      : assistantState === "responding" || voiceStatus.status === "speaking" ? "responding"
+        : busy || voiceStatus.status === "hearing" ? "processing"
+        : micOpen || wakeArmed || voiceStatus.status === "listening" ? "listening" : "idle";
     fab.setAttribute("aria-description", micOpen ? handsFreeEnabled ? "Hands-free microphone is listening" : "Microphone is listening" : "");
     const paused = voiceStatus.status === "paused" || conversation.auraMode === "PAUSED";
     micButton.setAttribute("aria-label", paused ? "Resume voice input" : session.enabled ? "Pause voice input" : "Start voice input");
-    if (handsFreeEnabled && wakeArmed) status.textContent = "Listening for your command…";
+    if (status.dataset.state === "processing") status.textContent = "Processing…";
+    else if (status.dataset.state === "responding") status.textContent = "Responding…";
+    else if (handsFreeEnabled && wakeArmed) status.textContent = "Listening for your command…";
     else if (handsFreeEnabled && micOpen) status.textContent = "Hands-free listening";
+    else if (status.dataset.state === "listening") status.textContent = "Listening…";
     else if (voiceStatus.status === "idle" && recognitionMode === "browser") status.textContent = "Tap mic to speak";
     else if (voiceStatus.status === "error" || voiceStatus.status === "unavailable") status.textContent = voiceStatus.message || "Voice unavailable. Tap mic to retry.";
     else if (voiceStatus.status === "paused") status.textContent = "Paused while app is hidden";

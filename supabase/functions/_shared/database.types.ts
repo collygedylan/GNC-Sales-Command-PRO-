@@ -16519,6 +16519,27 @@ export type Database = {
         Args: { p_actor_id: string; p_reference?: string }
         Returns: Json
       }
+      aura_voice_access_v1: { Args: never; Returns: Json }
+      aura_voice_conversation_v1: {
+        Args: {
+          p_actor_id: string
+          p_conversation_id?: string
+          p_expected_revision?: number
+          p_operation: string
+          p_payload?: Json
+          p_turn_id?: string
+        }
+        Returns: Json
+      }
+      aura_voice_inventory_read_v1: {
+        Args: {
+          p_cursor?: Json
+          p_filters?: Json
+          p_limit?: number
+          p_operation: string
+        }
+        Returns: Json
+      }
       begin_customer_rep_mapping_import_v1: {
         Args: {
           p_expected_rows: number

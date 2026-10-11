@@ -1,5 +1,5 @@
 /** Private conversation UI. All data and actions are re-authorized by the server. */
-export function mountAuraQueryPanel({ panel, content, input, request, isAuthorized, speak, setBusy, openAction, cancelSpeech = () => {} }) {
+export function mountAuraQueryPanel({ panel, content, input, request, isAuthorized, speak, setBusy, openAction, cancelSpeech = () => {}, onAssistantState = () => {} }) {
   let conversationId = null, revision = null, active = null, epoch = 0, destroyed = false;
   let historyCursor = null, listCursor = null, cancelling = Promise.resolve();
   const node = (tag, text, className = '') => {
@@ -33,7 +33,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     deleteButton.disabled = !conversationId;
   }
   async function call(body, signal) {
-    if (!current()) throw new Error('Sign in with Dylan’s active account.');
+    if (!current()) throw new Error('Sign in with your active account.');
     const requestId = body.turnId || crypto.randomUUID();
     const response = await request(body, { signal, requestId });
     if (!current() || signal?.aborted) throw new DOMException('Cancelled', 'AbortError');
@@ -101,6 +101,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     active = null;
     pending?.controller.abort();
     setBusy(false);
+    onAssistantState('idle');
     if (pending?.turnId && pending.conversationId) {
       cancelling = call({ mode: 'cancel', conversationId: pending.conversationId, turnId: pending.turnId })
         .then(result => { if (conversationId === pending.conversationId) updateIdentity(result); })
@@ -128,6 +129,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     const controller = new AbortController();
     let submittedTurnId = null, submittedConversationId = null;
     active = { controller, conversationId, turnId: null };
+    onAssistantState('processing');
     setBusy(true);
     for (const control of timeline.querySelectorAll('.aura-context-action')) control.disabled = true;
     status.textContent = 'Checking current data…';
@@ -142,16 +144,19 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       const response = await call({ mode: 'command', text, source: source === 'voice' ? 'voice' : 'typed',
         turnId, conversationId, expectedRevision: revision, context: {} }, controller.signal);
       if (ticket !== epoch) return;
+      onAssistantState('responding');
       updateIdentity(response);
       const entry = addMessage('assistant', response.reply);
       renderActions(response, entry);
       const checkedAt = response.source?.checkedAt || response.checkedAt?.at;
       status.textContent = checkedAt ? `Checked ${new Date(checkedAt).toLocaleString()}` : 'Ready for a follow-up.';
+      onAssistantState('idle');
       input.value = '';
       if (source === 'voice') speak(String(response.speech || response.reply || ''));
       content.scrollTop = content.scrollHeight;
     } catch (error) {
       if (current() && ticket === epoch && !controller.signal.aborted) {
+        onAssistantState('idle');
         status.textContent = error.message || 'Aura is temporarily unavailable.';
         input.value = text;
         button('Retry question', async () => {
@@ -166,7 +171,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
           await submit(text, source, submittedTurnId ? { turnId: submittedTurnId, conversationId: submittedConversationId } : null);
         }, timeline);
       }
-    } finally { if (ticket === epoch) { active = null; setBusy(false); } }
+    } finally { if (ticket === epoch) { active = null; setBusy(false); onAssistantState('idle'); } }
   }
   async function readHistory(id, cursor = null) {
     await cancel();

@@ -1,6 +1,11 @@
 # Aura internal conversational query engine
 
-This replaces the `.011` Gemini proposal. Aura uses a deterministic TypeScript parser, fixed Supabase readers, PostgreSQL product matching, and response templates. It requires no AI provider key, quota reservation, or external formatter. Browser speech recognition remains an optional browser service and may use the network.
+This describes the deterministic legacy `aura-query` endpoint. The current voice
+activation uses the separate authenticated Gemini router described in
+[Aura voice activation](aura-voice-activation.md). The legacy endpoint still uses
+a deterministic TypeScript parser, fixed Supabase readers, PostgreSQL product
+matching, and response templates. Browser speech recognition remains an optional
+browser service and may use the network.
 
 ## Authorization and execution
 

@@ -146,7 +146,9 @@ test('AURA reads enter the shared read boundary and retain error status metadata
   assert.match(api, /error\.code = String\(payload\?\.code/);
 });
 
-test('AURA router calls use the verified native session, bounded deadline, and separate party-bind idempotency', async () => {
+test('AURA router calls use the verified native session, 35-second deadline, and request idempotency', async () => {
+  const authStart = html.indexOf('        const AURA_ROUTER_ACTIVE_ROLES =');
+  const authEnd = html.indexOf('        function disposeAuraWidget()', authStart + 1);
   const start = html.indexOf('        function awaitAuraRead(');
   const end = html.indexOf('        async function resolveAuraOrderParty(', start + 1);
   const postStart = html.indexOf('        async function postAppFunctionJson(');
@@ -156,40 +158,38 @@ test('AURA router calls use the verified native session, bounded deadline, and s
   const context = vm.createContext({
     AbortController, Date, setTimeout, clearTimeout,
     nativeAuthSessionActive: true,
-    nativeAuthProfile: { id: 'profile', username: 'dylan_collyge' },
-    currentUser: 'dylan_collyge', auraVerifiedProfileId: 'profile',
+    nativeAuthProfile: { id: 'profile', username: 'manager', role: 'MANAGER' },
+    currentUser: 'manager', auraVerifiedProfileId: '', auraRouterVerifiedProfileId: 'profile',
+    auraRouterCapabilities: { id: 'profile', username: 'manager', role: 'MANAGER', inventory: true, history: true, drafts: true },
     auraPendingRequests: new Set(), AURA_QUERY_URL: 'https://api.example.test/functions/v1/aura-llm-router',
+    AURA_LLM_ROUTER_URL: 'https://api.example.test/functions/v1/aura-llm-router',
     SUPABASE_KEY: 'project-anon-key',
     getSupabaseReadIdentityScope: () => 'dylan:session',
-    isAuraWidgetAuthorized: () => true,
     getNativeAuthRequestHeaders: async () => ({ Authorization: 'Bearer native-dylan' }),
     getCurrentAppSessionToken: () => 'legacy-token',
     fetchWithTimeout: async (url, init, timeoutMs, label) => {
       calls.push({ url, init, timeoutMs, label });
       const request = JSON.parse(init.body);
-      const response = request.mode === 'bind_party' ? { ok: true, partyRef: 'opaque-ref' } : { ok: true, requestId: 'turn-1' };
+      const response = { ok: true, requestId: 'turn-1' };
       return { ok: true, headers: { get: () => 'turn-1' }, text: async () => JSON.stringify(response) };
     },
     console,
   });
-  vm.runInContext(`${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraRouter = callAuraLlmRouter;`, context);
-  const bind = await context.invokeAuraRouter({ mode: 'bind_party', party: { customerIdentityId: 'cust-1', consigneeIdentityId: 'cons-1', customerName: 'Acme', consigneeName: 'North' } }, { deadlineAt: Date.now() + 15000, requestId: 'turn-1' });
-  const command = { mode: 'command', text: 'check open stock for SKU-1', source: 'typed', turnId: 'turn-1', context: { mode: 'inventory', lines: [] }, partyRef: bind.partyRef,
-    partySidecar: { customerIdentityId: 'cust-1', consigneeIdentityId: 'cons-1', customerName: 'Acme', consigneeName: 'North' } };
-  const result = await context.invokeAuraRouter(command, { deadlineAt: Date.now() + 15000, requestId: 'turn-1' });
+  vm.runInContext(`${html.slice(authStart, authEnd)}\n${html.slice(start, end)}\n${html.slice(postStart, postEnd)}\nglobalThis.invokeAuraRouter = callAuraLlmRouter;`, context);
+  const command = { mode: 'command', text: 'check open stock for SKU-1', source: 'typed', turnId: 'turn-1', context: { mode: 'inventory', lines: [] } };
+  const result = await context.invokeAuraRouter(command, { deadlineAt: Date.now() + 35000, requestId: 'turn-1' });
   assert.equal(result.ok, true);
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
   for (const call of calls) {
     assert.equal(call.url, 'https://api.example.test/functions/v1/aura-llm-router');
-    assert.ok(call.timeoutMs > 0 && call.timeoutMs <= 15000);
+    assert.ok(call.timeoutMs > 0 && call.timeoutMs <= 35000);
     assert.equal(call.init.headers.Authorization, 'Bearer native-dylan');
     assert.equal(call.init.headers['x-request-id'], 'turn-1');
     assert.equal(call.init.headers['x-gnc-session'], undefined);
   }
   assert.equal(calls[0].label, 'AURA command');
-  assert.equal(calls[0].init.headers['Idempotency-Key'], 'turn-1:bind_party');
-  assert.equal(calls[1].init.headers['Idempotency-Key'], 'turn-1:command');
-  assert.deepEqual(JSON.parse(calls[1].init.body), command);
+  assert.equal(calls[0].init.headers['Idempotency-Key'], 'turn-1:command');
+  assert.deepEqual(JSON.parse(calls[0].init.body), command);
   assert.doesNotMatch(JSON.stringify({ text: command.text, context: command.context }), /Acme|North/);
   assert.equal(context.auraPendingRequests.size, 0);
 });
@@ -299,14 +299,20 @@ test('AURA forwards one verified header set, deadline, request metadata, and can
   assert.equal(context.auraPendingRequests.size, 0);
 });
 
-test('the real shell loader never imports AURA for another account or an unverified profile', async () => {
+test('the shell checks router role eligibility and native identity before importing AURA', async () => {
   const candidate = html.slice(html.indexOf('        function isAuraProfileCandidate()'), html.indexOf('        function disposeAuraWidget()'));
   const loader = html.slice(html.indexOf('        async function syncAuraWidgetForSession()'), html.indexOf('        let bloomscapesPendingState'));
-  for (const account of ['sales_rep', 'nelly_aguilar', 'dylan_collyge']) {
+  for (const { account, role, expectedSessionChecks } of [
+    { account: 'sales_rep', role: 'REP', expectedSessionChecks: 1 },
+    { account: 'nelly_aguilar', role: 'CSR', expectedSessionChecks: 1 },
+    { account: 'unapproved_user', role: 'INTERN', expectedSessionChecks: 0 },
+    { account: 'dylan_collyge', role: 'LEGACY', expectedSessionChecks: 1 },
+  ]) {
     let imports = 0, disposed = 0, verified = 0;
     const context = vm.createContext({
-      nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile', username: account },
+      nativeAuthSessionActive: true, nativeAuthProfile: { id: 'profile', username: account, role },
       currentUser: account, auraVerifiedProfileId: '', auraLoadSequence: 0, auraWidgetHandle: null,
+      getSupabaseReadIdentityScope: () => `${account}:session`,
       disposeAuraWidget: () => { disposed += 1; },
       getNativeAuthSession: async () => { verified += 1; return { user: { id: 'different-profile' } }; },
     });
@@ -314,8 +320,50 @@ test('the real shell loader never imports AURA for another account or an unverif
     await context.syncAuraWidgetForSession();
     assert.equal(imports, 0, account);
     assert.equal(disposed, 1, account);
-    assert.equal(verified, account === 'dylan_collyge' ? 1 : 0, account);
+    assert.equal(verified, expectedSessionChecks, account);
   }
+});
+
+test('new React voice conversations never fall back to the Dylan-only legacy query', () => {
+  const requestStart = html.indexOf('        async function requestAuraQuery(');
+  const requestEnd = html.indexOf('        async function openAuraQueryAction(', requestStart + 1);
+  const syncStart = html.indexOf('        async function syncAuraWidgetForSession()');
+  const syncEnd = html.indexOf('        let bloomscapesPendingState', syncStart + 1);
+  assert.ok(requestStart >= 0 && requestEnd > requestStart && syncStart >= 0 && syncEnd > syncStart);
+  const request = html.slice(requestStart, requestEnd);
+  const sync = html.slice(syncStart, syncEnd);
+  assert.match(request, /callAuraLlmRouter\(body, request\)/);
+  assert.doesNotMatch(request, /callAuraLegacyQuery/);
+  assert.match(sync, /if \(!access\.configured \|\| !hasCapability\)[\s\S]*showToast\('AURA unavailable'/);
+  assert.match(sync, /requestAssistant: requestAuraQuery/);
+  assert.doesNotMatch(sync, /requestAssistant: callAuraLegacyQuery|useLegacy/);
+  assert.match(sync, /reactHost\.id = 'aura-react-root'/);
+  assert.match(sync, /mountAuraWidgetReact\(reactHost, options\)/);
+  assert.doesNotMatch(sync, /mountAuraWidgetReact\(document\.body/);
+  const appApi = extract('callAuraAppApi', 'requestAuraInventory');
+  const alpha = html.slice(html.indexOf('        async function mountAlphaCommandCenter('), html.indexOf('        function isAuraProfileCandidate()', html.indexOf('        async function mountAlphaCommandCenter(')));
+  assert.match(appApi, /isAuraWidgetAuthorized\(\)/, 'legacy app-api stays restricted to its original owner');
+  assert.match(alpha, /isAuraWidgetAuthorized\(\)/, 'the separate Alpha command center keeps legacy authorization');
+});
+
+test('unconfigured Gemini is an explicit unavailable state and does not call the legacy endpoint', async () => {
+  const request = extract('requestAuraQuery', 'openAuraQueryAction');
+  let routerCalls = 0, legacyCalls = 0;
+  const context = vm.createContext({
+    crypto: { randomUUID: () => 'request-1' },
+    isAuraRouterWidgetAuthorized: () => true,
+    auraRouterCapabilities: { configured: false },
+    callAuraLlmRouter: async () => { routerCalls += 1; return { ok: true }; },
+    callAuraLegacyQuery: async () => { legacyCalls += 1; return { ok: true }; },
+  });
+  vm.runInContext(`${request}\nglobalThis.invokeRequestAuraQuery = requestAuraQuery;`, context);
+  await assert.rejects(context.invokeRequestAuraQuery({ mode: 'command' }), error => error.code === 'AURA_LLM_UNAVAILABLE');
+  assert.equal(routerCalls, 0);
+  assert.equal(legacyCalls, 0);
+  context.auraRouterCapabilities.configured = true;
+  await context.invokeRequestAuraQuery({ mode: 'command' });
+  assert.equal(routerCalls, 1);
+  assert.equal(legacyCalls, 0);
 });
 
 test('release packaging ships both V2 modules and versions all relative widget imports', () => {

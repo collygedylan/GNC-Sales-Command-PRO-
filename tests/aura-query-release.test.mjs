@@ -6,7 +6,7 @@ import yaml from 'js-yaml';
 import { checkAuraAuthorization } from '../scripts/aura-query-production-smoke.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
-import { auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, releaseDatabaseMigrations, migrationContractQuery } from '../scripts/apply-item-low-stock-migration.mjs';
+import { auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, auraVoiceRoleAccessMigrationName, releaseDatabaseMigrations, migrationContractQuery } from '../scripts/apply-item-low-stock-migration.mjs';
 const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 
 test('internal Aura deploys after its migration and before Pages, including the compatibility endpoint', () => {
@@ -29,6 +29,11 @@ test('internal Aura deploys after its migration and before Pages, including the 
   assert.match(migrationContractQuery(auraDynamicSeasonScopeMigrationName), /settingRevision/);
   assert.match(migrationContractQuery(auraInventoryExplicitProjectionMigrationName), /m\.unique_id,m\.itemcode,m\.commonname/);
   assert.match(migrationContractQuery(auraInventoryExplicitProjectionMigrationName), /position\('m\.\*' in prosrc\)=0/);
+  assert.ok(releaseDatabaseMigrations.includes(auraVoiceRoleAccessMigrationName));
+  const voice = migrationContractQuery(auraVoiceRoleAccessMigrationName);
+  for (const marker of ['aura_voice_access_v1', 'aura_voice_inventory_read_v1', 'datasetRevision', 'aura_voice_conversation_v1']) {
+    assert.match(voice, new RegExp(marker));
+  }
   assert.match(read('supabase/config.toml'), /\[functions\.aura-query\][\s\S]*?verify_jwt = false/);
   const databaseWorkflow = read('.github/workflows/release-database.yml');
   assert.match(databaseWorkflow, /node scripts\/historical-database-fixture\.mjs/);
@@ -52,7 +57,10 @@ test('query UI is packaged, versioned through the widget import and excluded fro
   assert.match(read('scripts/prepare-release-site.mjs'), /'auraQueryPanel\.js'/);
   assert.match(read('sw.js'), /auraVoiceWidget\|auraQueryPanel/);
   assert.match(read('index.html'), /requestAssistant: requestAuraQuery/);
+  assert.match(read('index.html'), /assets\/aura-voice\.js\?v=/);
+  assert.match(read('scripts/build-aura-voice.mjs'), /components\/common\/auraVoiceReact\.tsx/);
   assert.match(read('index.html'), /functions\/v1\/aura-query/);
+  assert.match(read('index.html'), /functions\/v1\/aura-llm-router/);
 });
 
 test('seasonal SOC reader projection is present with production types in the composed CI fixture', () => {
@@ -91,8 +99,8 @@ test('seasonal SOC reader projection is present with production types in the com
   }
 });
 
-test('Aura query and compatibility sources contain no external AI calls or provider activation dependency', () => {
-  const files = ['supabase/functions/aura-query/index.ts', 'supabase/functions/aura-llm-router/index.ts', 'supabase/functions/_shared/aura-query-handler.ts', 'supabase/functions/_shared/aura-query.ts'];
+test('legacy deterministic Aura query retains no external AI calls or provider activation dependency', () => {
+  const files = ['supabase/functions/aura-query/index.ts', 'supabase/functions/_shared/aura-query-handler.ts', 'supabase/functions/_shared/aura-query.ts'];
   for (const file of files) {
     assert.doesNotMatch(read(file), /generativelanguage|api\.openai|GEMINI_API_KEY|OPENAI_API_KEY|AURA_LLM_ENABLED|generateContent/);
   }

@@ -100,7 +100,8 @@ test('API boundary waits for fixture API idle before freezing the request index 
   }), /fixture failure/);
 });
 
-test('API idle tracker keeps a delayed non-revision request in the current boundary', async () => {
+test('API idle tracker keeps a delayed non-revision request in the current boundary', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1000 });
   const page = new EventEmitter();
   const tracker = attachPerformanceApiIdleTracker(page, { quietMs: 40 });
   const makeRequest = path => ({ method: () => 'GET', url: () => `http://fixture.invalid/rest/v1/${path}` });
@@ -116,6 +117,14 @@ test('API idle tracker keeps a delayed non-revision request in the current bound
       setTimeout(() => page.emit('requestfinished', late), 10);
     }, 15);
   }, 5);
+
+  // Advance the same 5/15/10/40 ms schedule deterministically. Real timers can
+  // be coalesced under parallel test load, letting the quiet timer win first.
+  t.mock.timers.tick(5);
+  t.mock.timers.tick(15);
+  t.mock.timers.tick(10);
+  for (let index = 0; index < 5; index++) await Promise.resolve();
+  t.mock.timers.tick(40);
 
   const result = await idle;
   assert.equal(result.activityCount, 4);

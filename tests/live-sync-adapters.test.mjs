@@ -464,6 +464,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261010080140_field_counting_commands_and_reports.sql',
       '20261010152556_customer_rep_mapping_finalize_timeout_55s.sql',
       '20261010165013_historical_requests_financial_dashboard.sql',
+      '20261010200046_aura_voice_role_access.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

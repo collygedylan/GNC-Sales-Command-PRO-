@@ -34,5 +34,9 @@
   {
     "path": "supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql",
     "gitBlob": "91713ec84fbe72c3daf6085c8ad7178aa4194bbf"
+  },
+  {
+    "path": "supabase/migrations/20261010200046_aura_voice_role_access.sql",
+    "gitBlob": "ee4e8256827a26302d816017dbb90014a7dfa797"
   }
 ]

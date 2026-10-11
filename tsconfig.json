@@ -30,6 +30,7 @@
     "components/bunch-notes/BunchNoteEntry.tsx",
     "components/bunch-notes/view-contracts.ts",
     "components/bunch-notes/legacy-views.d.ts",
-    "components/historical-requests"
+    "components/historical-requests",
+    "components/common/auraVoiceReact.tsx"
   ]
 }
