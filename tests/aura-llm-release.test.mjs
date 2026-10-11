@@ -39,7 +39,8 @@ test('database CI checks quota contention and permissions in an isolated databas
   assert.ok(workflow.includes(`cp supabase/migrations/${auraLlmFreeTierMigrationName}`));
   assert.match(workflow, /cp supabase\/tests\/aura_llm_011_test.sql/);
   assert.match(workflow, /AURA_LLM_TEST_DB_URL="\$DB_URL" node scripts\/test-aura-llm-quota-concurrency.mjs/);
-  assert.match(workflow, /deno check[^\n]*aura-llm-router\/index.ts/);
+  assert.ok(yaml.load(workflow).jobs['edge-functions'].strategy.matrix.include.some(entry =>
+    entry.targets === 'supabase/functions/aura-llm-router/index.ts' && entry.tests === 'supabase/functions/aura-llm-router'));
   const concurrency = read('scripts/test-aura-llm-quota-concurrency.mjs');
   assert.match(concurrency, /LOCAL_DATABASE_ONLY/);
   assert.match(concurrency, /results\.filter\(r=>r\.allowed\)\.length,15/);

@@ -14,11 +14,38 @@ concurrency:
   group: performance-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# PR and manual checks run every required lane against one sealed build.
+# PR checks run the affected lanes; scheduled and manual checks run every lane.
 # Main Pages invokes the same validation workflow in its own publication run.
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      pull-requests: read
+    outputs:
+      frontend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.frontend == 'true' }}
+      backend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.backend == 'true' }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        if: github.event_name == 'pull_request'
+        with:
+          predicate-quantifier: every
+          filters: |
+            frontend:
+              - '**'
+              - '!supabase/**'
+              - '!deno.lock'
+              - '!deno.json{,c}'
+            backend:
+              - '{supabase/**,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
+
   validation:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.result == 'success' }}
     uses: ./.github/workflows/release-validation.yml
     with:
       production-health: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      run-frontend-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' }}
+      run-backend-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}
     secrets: inherit

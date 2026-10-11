@@ -19,6 +19,8 @@ function fixture() {
   f.api = async url => {
     if (url.endsWith('/pulls?per_page=100')) return f.associated;
     if (url.endsWith('/pulls/42')) return f.pr;
+    if (url.includes('/pulls/42/files?')) return f.files.slice((Number(new URL('https://example.com/' + url).searchParams.get('page')) - 1) * 100,
+      Number(new URL('https://example.com/' + url).searchParams.get('page')) * 100);
     if (url.includes('/artifacts?')) return { total_count: f.artifacts.length, artifacts: f.artifacts };
     if (url.includes('/jobs?')) return { total_count: f.jobs.length, jobs: f.jobs };
     if (url.includes('/runs?')) return { total_count: f.runs.length, workflow_runs: f.runs };
@@ -46,6 +48,54 @@ test('optional PR production-health skip is allowed; fresh production health is 
   const f = fixture();
   f.jobs.push({ ...f.jobs[0], id: 3, name: 'validation / production-health', conclusion: 'skipped' });
   assert.equal((await f.select()).reuse, true);
+});
+
+test('scoped PR artifact reuse verifies every changed path and the recorded test scope', async () => {
+  for (const [paths, skipped, scope] of [
+    [['supabase/functions/aura-llm-router/index.ts'], ['foundation','functional (1)','compiled (footer)','timing','lighthouse'], { frontend: false, backend: true }],
+    [['v2/src/App.tsx'], ['database'], { frontend: true, backend: false }],
+  ]) {
+    const f = fixture();
+    f.files = paths.map(filename => ({ filename })); f.pr.changed_files = f.files.length;
+    for (const name of skipped) f.jobs.push({ ...f.jobs[0], id: f.jobs.length + 3, name: `validation / ${name}`, conclusion: 'skipped' });
+    const selected = await f.select();
+    assert.equal(selected.reuse, true);
+    assert.deepEqual(selected.testScope, scope);
+    await assert.rejects(f.verify(selected), /TEST_SCOPE_MISMATCH/, 'a legacy proof cannot authorize scoped skips');
+    f.proof.testScope = scope;
+    assert.deepEqual(await f.verify(selected), { digest, buildCommit });
+    f.files.push({ filename: 'package-lock.json' }); f.pr.changed_files++;
+    assert.equal((await f.select()).reuse, false, 'shared dependency changes require both lanes');
+  }
+});
+
+test('incomplete, renamed, or affected paths cannot justify skipping relevant tests', async () => {
+  for (const mutate of [
+    f => f.pr.changed_files = 2,
+    f => f.pr.changed_files = 3001,
+    f => f.files = [],
+    f => f.files = [{ filename: 'v2/src/App.tsx' }],
+    f => f.files = [{ filename: 'supabase/functions/file.ts', status: 'renamed', previous_filename: 'v2/src/App.tsx' }],
+    f => f.files = [{ filename: 'supabase/functions/file.ts', status: 'renamed' }],
+    f => f.jobs[1].name = 'validation / build',
+    f => f.jobs[1].conclusion = 'failure',
+  ]) {
+    const f = fixture();
+    f.pr.changed_files = 1; f.files = [{ filename: 'supabase/functions/aura-llm-router/index.ts' }];
+    f.jobs.push({ ...f.jobs[0], id: 3, name: 'validation / compiled (footer)', conclusion: 'skipped' });
+    mutate(f);
+    assert.equal((await f.select()).reuse, false);
+  }
+});
+
+test('scoped artifact reuse reads all pages of changed files', async () => {
+  const f = fixture();
+  f.files = Array.from({ length: 101 }, (_, i) => ({ filename: `supabase/functions/fixture/${i}.ts` }));
+  f.pr.changed_files = f.files.length;
+  f.jobs.push({ ...f.jobs[0], id: 3, name: 'validation / functional (1)', conclusion: 'skipped' });
+  assert.equal((await f.select()).reuse, true);
+  f.files[100].filename = 'v2/src/App.tsx';
+  assert.equal((await f.select()).reuse, false, 'a later-page frontend change still requires browser tests');
 });
 
 for (const [name, change] of [

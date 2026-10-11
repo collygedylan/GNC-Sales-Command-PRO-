@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { verifyReleaseProof, verifySameRunReleaseProof } from './release-proof.mjs';
+import { testScopeForPaths, maySkipTestJob } from './ci-test-scope.mjs';
 
 const workflowPath = '.github/workflows/performance-monitor.yml';
 const sha = value => /^[a-f0-9]{40}$/.test(value || '');
@@ -51,9 +52,26 @@ async function matchingProof({ repository, commit, api, now }) {
   };
   const run = await latest();
   const jobs = complete(await api(`${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`), 'jobs');
+  let testScope;
+  if (jobs.some(job => job.conclusion === 'skipped' && job.name !== 'validation / production-health')) {
+    // A skipped test lane is reusable only when the complete PR file list proves
+    // that component was unchanged. Build and gate skips are always rejected.
+    if (!positive(pr.changed_files) || pr.changed_files > 3000) unavailable('CHANGED_FILES_INCOMPLETE');
+    const files = [];
+    for (let page = 1; files.length < pr.changed_files; page++) {
+      const rows = await api(`${root}/pulls/${pr.number}/files?per_page=100&page=${page}`);
+      if (!Array.isArray(rows) || !rows.length || rows.length > 100
+        || rows.some(row => typeof row.filename !== 'string' || !row.filename
+          || (row.status === 'renamed' && (typeof row.previous_filename !== 'string' || !row.previous_filename)))) unavailable('CHANGED_FILES_INCOMPLETE');
+      files.push(...rows);
+    }
+    if (files.length !== pr.changed_files || new Set(files.map(row => row.filename)).size !== files.length) unavailable('CHANGED_FILES_INCOMPLETE');
+    testScope = testScopeForPaths(files.flatMap(row => row.status === 'renamed' ? [row.filename, row.previous_filename] : [row.filename]));
+  }
   if (jobs.some(job => !positive(job.id) || job.run_id !== run.id || job.head_sha !== pr.head.sha
     || job.status !== 'completed' || (job.conclusion !== 'success'
-      && !(job.name === 'validation / production-health' && job.conclusion === 'skipped')))) unavailable('JOB_NOT_GREEN');
+      && !(job.conclusion === 'skipped' && (job.name === 'validation / production-health'
+        || (testScope && maySkipTestJob(job.name, testScope))))))) unavailable('JOB_NOT_GREEN');
   const gates = jobs.filter(job => job.name === 'validation / release-gate');
   if (gates.length !== 1 || !gates[0].steps?.some(step => step.name === 'Require every safety lane for this commit'
     && step.status === 'completed' && step.conclusion === 'success')) unavailable('GATE_MISSING');
@@ -80,7 +98,7 @@ async function matchingProof({ repository, commit, api, now }) {
   if (check.id !== run.id || check.run_attempt !== run.run_attempt) unavailable('RUN_CHANGED');
   return { reuse: true, schemaVersion: 'gnc-release-proof-v1', repository, commit: buildCommit,
     mergedCommit: commit, tree: merged.tree.sha, runId: run.id, attempt: run.run_attempt,
-    siteArtifactId: site.id, proofArtifactId: proof.id };
+    siteArtifactId: site.id, proofArtifactId: proof.id, ...(testScope ? { testScope } : {}) };
 }
 
 export async function selectPagesRelease({ repository, commit, api, now = Date.now() }) {

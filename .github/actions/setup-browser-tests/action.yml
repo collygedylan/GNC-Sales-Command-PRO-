@@ -7,16 +7,30 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Restore Playwright browser binaries
+      id: browsers
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package-lock.json') }}-${{ inputs.browsers }}
     - uses: actions/setup-node@v4
       with:
         node-version: 22
         cache: npm
-    - run: npm ci
+    - name: Restore installed NPM modules
+      id: modules
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: npm-modules-${{ runner.os }}-${{ runner.arch }}-node22-${{ hashFiles('package.json', 'package-lock.json', '.npmrc') }}
+    - run: npm ci --no-audit --no-fund
+      if: steps.modules.outputs.cache-hit != 'true'
       shell: bash
     - name: Install pinned Playwright browsers and system dependencies
       shell: bash
       env:
         RELEASE_TEST_BROWSERS: ${{ inputs.browsers }}
+        PLAYWRIGHT_CACHE_HIT: ${{ steps.browsers.outputs.cache-hit }}
       run: |
         set -euo pipefail
         node --test tests/prepare-ci-playwright-apt.test.mjs
@@ -26,4 +40,8 @@ runs:
         for browser in $RELEASE_TEST_BROWSERS; do
           case "$browser" in chromium|firefox|webkit) ;; *) exit 1 ;; esac
         done
-        npx playwright install --with-deps $RELEASE_TEST_BROWSERS
+        if [ "$PLAYWRIGHT_CACHE_HIT" = true ]; then
+          npx playwright install-deps $RELEASE_TEST_BROWSERS
+        else
+          npx playwright install --with-deps $RELEASE_TEST_BROWSERS
+        fi

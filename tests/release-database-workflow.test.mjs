@@ -7,7 +7,8 @@ import { startIsolatedDatabase, collectDatabaseEvidence, excludedServices } from
 
 const workflow = fs.readFileSync(new URL('../.github/workflows/release-database.yml', import.meta.url), 'utf8');
 const yaml = createRequire(import.meta.url)('js-yaml');
-const databaseJob = yaml.load(workflow).jobs['database-and-functions'];
+const databaseWorkflow = yaml.load(workflow);
+const databaseJob = databaseWorkflow.jobs['database-and-functions'];
 const browserConfig = fs.readFileSync(new URL('../playwright.database.config.ts', import.meta.url), 'utf8');
 const provisioning = fs.readFileSync(new URL('./native-auth-provisioning-local.spec.js', import.meta.url), 'utf8');
 const legacyBaseline = fs.readFileSync(new URL('../supabase/ci/native_auth_legacy_user_baseline.sql', import.meta.url), 'utf8');
@@ -92,10 +93,15 @@ test('database reusable workflow is secret-free and has read-only repository per
 });
 
 test('Edge Function CI resolves pinned npm imports used by the push sender', () => {
-  const edge = databaseJob.steps.find(step => step.name === 'Run Edge Function unit tests');
-  assert.ok(edge);
-  for (const line of edge.run.split('\n').filter(line => /^\s*deno (?:check|test)\b/.test(line))) {
-    assert.match(line, /--node-modules-dir=auto/, 'Deno must install pinned npm imports before checking or testing');
+  const edge = databaseWorkflow.jobs['edge-functions'];
+  for (const step of edge.steps.filter(step => /^deno (?:check|test)\b/.test(step.run || ''))) {
+    assert.match(step.run, /--node-modules-dir=auto/, 'Deno must install pinned npm imports before checking or testing');
+  }
+  const testDirectories = edge.strategy.matrix.include.map(entry => entry.tests).filter(Boolean);
+  const files = fs.readdirSync(new URL('../supabase/functions/', import.meta.url), { recursive: true });
+  for (const file of files.filter(name => /[._]test\.ts$/.test(name))) {
+    const normalized = `supabase/functions/${file.replaceAll('\\', '/')}`;
+    assert.ok(testDirectories.some(directory => normalized.startsWith(directory + '/')), `Missing Edge tests: ${normalized}`);
   }
 });
 
@@ -243,12 +249,12 @@ test('audit baseline repair checks both historical-row preservation and missing-
   const repair = workflow.indexOf('cp supabase/migrations/20261002134138_nelly_access_audit_baseline_repair_007.sql');
   assert.ok(snapshot > workflow.indexOf('cp supabase/ci/scheduled_handover_fixture.sql') && repair > snapshot);
   assert.match(workflow, /20261002134137_ci_nelly_baseline_snapshot\.sql/);
-  assert.match(workflow, /node supabase\/ci\/nelly_access_audit_baseline_pglite\.mjs --pglite-root "\$pglite_root"/);
+  assert.ok(databaseWorkflow.jobs.integration.strategy.matrix.suite.includes('nelly_access_audit_baseline'));
   const runner = fs.readFileSync(new URL('../scripts/apply-item-low-stock-migration.mjs', import.meta.url), 'utf8');
   assert.doesNotMatch(runner, /nelly_access_audit_baseline_snapshot_fixture|ci_nelly_baseline_snapshot/);
 });
 
-test('database migration, pgTAP, concurrency, browser, and Edge checks stay serialized', () => {
+test('database mutation checks stay serialized while independent integrations use separate runners', () => {
   const commands = [
     'node scripts/release-database-startup.mjs start',
     'supabase --workdir "$SUPABASE_CI_ROOT" db reset --local --no-seed',
@@ -262,7 +268,6 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     'CI=true REQUEST_DRIVE_TEST_DB_URL="$DB_URL" node scripts/test-request-drive-reset-concurrency.mjs',
     'CI=true REQUEST_HISTORY_TEST_DB_URL="$DB_URL" node scripts/test-request-history-scale.mjs',
     'npx playwright test --config playwright.database.config.ts --project=chromium',
-    'deno test --node-modules-dir=auto --allow-env --allow-net supabase/functions',
   ];
   let previous = -1;
   for (const command of commands) {
@@ -270,7 +275,15 @@ test('database migration, pgTAP, concurrency, browser, and Edge checks stay seri
     assert.ok(at > previous, `Missing or out-of-order command: ${command}`);
     previous = at;
   }
-  assert.doesNotMatch(workflow, /strategy:|matrix:/);
+  assert.equal(databaseJob.strategy, undefined, 'transactions against one database retain their sequence');
+  const integration = databaseWorkflow.jobs.integration;
+  assert.equal(integration.needs, undefined, 'PGlite integrations start independently of Docker');
+  assert.equal(integration.strategy['fail-fast'], false);
+  const suites = ['scheduled_handover', 'handover_assignment', 'request_archive', 'production_schedule_cards',
+    'aura_inventory_v2', 'aura_llm', 'nelly_access_audit_baseline', 'eval_delivery_archive_health'];
+  assert.deepEqual([...integration.strategy.matrix.suite].sort(), suites.sort(), 'every previously required SQL integration is retained');
+  for (const suite of suites) assert.ok(fs.existsSync(new URL(`../supabase/ci/${suite}_pglite.mjs`, import.meta.url)));
+  assert.equal(databaseWorkflow.jobs['edge-functions'].needs, undefined);
 });
 
 test('pinned CLI fallback is restored after setup and remains active for all database steps', () => {

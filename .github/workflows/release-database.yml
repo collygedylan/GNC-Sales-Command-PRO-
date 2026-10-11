@@ -7,6 +7,87 @@ permissions:
   contents: read
 
 jobs:
+  edge-functions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - suite: app-api
+            targets: supabase/functions/app-api/index.ts supabase/functions/request-delivery-worker/index.ts
+            tests: supabase/functions/app-api
+          - suite: alerts
+            targets: supabase/functions/calendar-reminder-sweep/index.ts supabase/functions/send-push-alert/index.ts
+            tests: supabase/functions/_shared
+          - suite: admin
+            targets: supabase/functions/scheduled-offboarding/index.ts supabase/functions/auth-admin/index.ts supabase/functions/inventory-assistant/index.ts
+          - suite: pdf
+            targets: supabase/functions/hl-po-pdf-import/index.ts
+            tests: supabase/functions/hl-po-pdf-import
+          - suite: aura
+            targets: supabase/functions/aura-llm-router/index.ts
+            tests: supabase/functions/aura-llm-router
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        id: deno
+        with:
+          deno-version: v2.x
+      - name: Restore Deno dependencies and installed NPM imports
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/deno
+            node_modules
+            supabase/functions/**/node_modules
+          key: deno-${{ runner.os }}-${{ runner.arch }}-${{ steps.deno.outputs.deno-version }}-${{ hashFiles('deno.lock', '**/deno.json', '**/deno.jsonc') }}-${{ matrix.suite }}
+      - name: Check Edge Function imports
+        env:
+          FUNCTION_TARGETS: ${{ matrix.targets }}
+        run: deno check --node-modules-dir=auto $FUNCTION_TARGETS
+      - name: Run Edge Function unit tests
+        if: matrix.tests != ''
+        env:
+          FUNCTION_TESTS: ${{ matrix.tests }}
+        run: deno test --node-modules-dir=auto --allow-env --allow-net "$FUNCTION_TESTS"
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [scheduled_handover, handover_assignment, request_archive, production_schedule_cards, aura_inventory_v2, aura_llm, nelly_access_audit_baseline, eval_delivery_archive_health]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Restore installed NPM modules
+        id: modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: npm-modules-${{ runner.os }}-${{ runner.arch }}-node22-${{ hashFiles('package.json', 'package-lock.json', '.npmrc') }}
+      - name: Install project dependencies for integration imports
+        if: steps.modules.outputs.cache-hit != 'true'
+        run: npm ci --no-audit --no-fund
+      - name: Restore isolated PGlite modules
+        id: pglite
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/gnc-handover-pglite
+          key: pglite-${{ runner.os }}-${{ runner.arch }}-node22-0.5.8
+      - name: Install pinned PGlite
+        if: steps.pglite.outputs.cache-hit != 'true'
+        run: npm install --prefix "$RUNNER_TEMP/gnc-handover-pglite" --no-save --package-lock=false --no-audit --no-fund @electric-sql/pglite@0.5.8
+      - name: Isolated SQL integration behavior
+        env:
+          INTEGRATION_SUITE: ${{ matrix.suite }}
+        run: node "supabase/ci/${INTEGRATION_SUITE}_pglite.mjs" --pglite-root "$RUNNER_TEMP/gnc-handover-pglite"
+
   database-and-functions:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -23,9 +104,6 @@ jobs:
         id: registry
         shell: bash
         run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
       - name: Prepare isolated migration project
         id: prepare
         shell: bash
@@ -278,29 +356,10 @@ jobs:
       - name: Run pgTAP and RLS tests
         id: sql
         run: supabase --workdir "$SUPABASE_CI_ROOT" test db
-      - id: dependencies
-        run: npm ci
-      - name: Isolated handover and archive SQL behavior
-        shell: bash
-        run: |
-          set -euo pipefail
-          pglite_root="$RUNNER_TEMP/gnc-handover-pglite"
-          npm install --prefix "$pglite_root" --no-save --package-lock=false @electric-sql/pglite@0.5.8
-          node supabase/ci/scheduled_handover_pglite.mjs --pglite-root "$pglite_root"
-          node supabase/ci/handover_assignment_pglite.mjs --pglite-root "$pglite_root"
-          node supabase/ci/request_archive_pglite.mjs --pglite-root "$pglite_root"
-          node supabase/ci/production_schedule_cards_pglite.mjs --pglite-root "$pglite_root"
-          node supabase/ci/aura_inventory_v2_pglite.mjs --pglite-root "$pglite_root"
-          node supabase/ci/aura_llm_pglite.mjs --pglite-root "$pglite_root"
-          node supabase/ci/nelly_access_audit_baseline_pglite.mjs --pglite-root "$pglite_root"
-          node supabase/ci/eval_delivery_archive_health_pglite.mjs --pglite-root "$pglite_root"
       - id: browser_setup
-        run: |
-          node --test tests/prepare-ci-playwright-apt.test.mjs
-          PLAYWRIGHT_CI_NODE="$(command -v node)"
-          test -n "$PLAYWRIGHT_CI_NODE" && test -x "$PLAYWRIGHT_CI_NODE"
-          sudo "$PLAYWRIGHT_CI_NODE" scripts/prepare-ci-playwright-apt.mjs
-          npx playwright install --with-deps chromium
+        uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: chromium
       - name: Run browser request transactions against local Supabase
         id: transactions
         shell: bash
@@ -323,15 +382,6 @@ jobs:
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
           npx playwright test --config playwright.database.config.ts --project=chromium
-      - name: Run Edge Function unit tests
-        id: edge
-        run: |
-          deno check --node-modules-dir=auto supabase/functions/app-api/index.ts supabase/functions/request-delivery-worker/index.ts
-          deno check --node-modules-dir=auto supabase/functions/calendar-reminder-sweep/index.ts supabase/functions/send-push-alert/index.ts
-          deno check --node-modules-dir=auto supabase/functions/scheduled-offboarding/index.ts supabase/functions/auth-admin/index.ts supabase/functions/inventory-assistant/index.ts
-          deno check --node-modules-dir=auto supabase/functions/hl-po-pdf-import/index.ts
-          deno check --node-modules-dir=auto supabase/functions/aura-llm-router/index.ts
-          deno test --node-modules-dir=auto --allow-env --allow-net supabase/functions
       - name: Save relation-size report query
         run: |
           mkdir -p artifacts
