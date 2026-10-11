@@ -86,7 +86,10 @@ export async function authorizeProductionRelease({
   // tree is identical to the trusted merged PR tree. Selector API failures
   // propagate; only a clean "no reusable proof" result permits the legacy
   // exact-main manual-dispatch proof lookup below.
-  const pagesProof = await selectPagesRelease({ repository, commit, api });
+  // The backend workflow runs required full browser validation on this exact
+  // main commit before mutation. A Chromium PR proof authorizes that handoff;
+  // the standalone Pages selector requires a fresh full main proof instead.
+  const pagesProof = await selectPagesRelease({ repository, commit, api, allowPrBrowserProof: true });
   const proof = pagesProof.reuse === true
     ? pagesProof
     : await selectReleaseProof({ repository, commit, api });
@@ -125,7 +128,8 @@ export async function authorizeProductionReleaseFromEnvironment({
 async function main() {
   const result = await authorizeProductionReleaseFromEnvironment();
   const output = String(process.env.GITHUB_OUTPUT || '').trim();
-  if (output) appendFileSync(output, `authorized=true\ncommit=${result.commit}\n`);
+  const scope = result.proof.testScope || { frontend: true, backend: true, schema: true };
+  if (output) appendFileSync(output, `authorized=true\ncommit=${result.commit}\nfrontend=${scope.frontend}\nbackend=${scope.backend}\nschema=${scope.schema}\n`);
   console.log(`Authorized exact current-main release ${result.commit} with candidate proof run ${result.proof.runId} attempt ${result.proof.attempt}.`);
 }
 

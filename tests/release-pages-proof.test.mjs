@@ -60,6 +60,28 @@ test('optional PR production-health skip is allowed; fresh production health is 
   assert.equal((await f.select()).reuse, true);
 });
 
+test('Chromium PR proof authorizes only the backend handoff and cannot bypass full main browser validation', async () => {
+  const f = fixture();
+  f.files = [{ filename: 'index.html' }]; f.pr.changed_files = 1;
+  f.jobs.push({ ...f.jobs[0], id: 3, name: 'validation / fast-browser', conclusion: 'success' });
+  for (const name of ['database', 'foundation', 'functional', 'compiled', 'timing', 'performance', 'lighthouse']) {
+    f.jobs.push({ ...f.jobs[0], id: f.jobs.length + 3, name: `validation / ${name}`, conclusion: 'skipped' });
+  }
+  assert.equal((await f.select()).reuse, false, 'standalone Pages must validate main in full');
+  const handoff = () => selectPagesRelease({ repository, commit, api: f.api, allowPrBrowserProof: true });
+  const selected = await handoff();
+  assert.equal(selected.reuse, true);
+  assert.equal(selected.browserMode, 'pr-chromium');
+  assert.deepEqual(selected.testScope, { frontend: true, backend: false, schema: false });
+  for (const conclusion of ['failure', 'cancelled', 'skipped']) {
+    f.jobs[1].conclusion = conclusion;
+    assert.equal((await handoff()).reuse, false, 'Chromium must succeed for affected UI');
+  }
+  f.jobs[1].conclusion = 'success';
+  f.jobs[2].name = 'validation / build';
+  assert.equal((await handoff()).reuse, false, 'a fast gate cannot justify missing immutable build');
+});
+
 test('Pages accepts complete 102-job proof metadata and finds the gate on the fifth bounded page', async () => {
   const f = fixture();
   const gate = f.jobs[0];
@@ -211,8 +233,8 @@ test('invalid identifiers are rejected before using the API', async () => {
 
 test('scoped PR artifact reuse verifies every changed path and the recorded test scope', async () => {
   for (const [paths, skipped, scope] of [
-    [['supabase/functions/aura-llm-router/index.ts'], ['foundation','functional (1)','compiled (footer)','timing','performance','lighthouse'], { frontend: false, backend: true }],
-    [['v2/src/App.tsx'], ['database'], { frontend: true, backend: false }],
+    [['supabase/functions/aura-llm-router/index.ts'], ['foundation','functional (1)','compiled (footer)','timing','performance','lighthouse'], { frontend: false, backend: true, schema: true }],
+    [['v2/src/App.tsx'], ['database'], { frontend: true, backend: false, schema: false }],
   ]) {
     const f = fixture();
     f.files = paths.map(filename => ({ filename })); f.pr.changed_files = f.files.length;

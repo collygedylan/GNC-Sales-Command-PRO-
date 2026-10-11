@@ -189,6 +189,10 @@ test('backend schema and functions deploy before guarded Pages publication', () 
   assert.equal(backend.permissions.actions, 'read');
   assert.doesNotMatch(JSON.stringify(publish), /APPS_SCRIPT_CLASPRC_JSON/);
 
+  assert.deepEqual(backend.jobs['sync-codegs'].needs, ['authorize-production', 'production-validation']);
+  assert.equal(backend.jobs['production-validation'].uses, './.github/workflows/release-validation.yml');
+  assert.equal(backend.jobs['production-validation'].with['fast-pr'], false);
+  assert.equal(backend.jobs['production-validation'].with['run-backend-tests'], false);
   const backendSteps = backend.jobs['sync-codegs'].steps;
   const migration = backendSteps.findIndex(step => step.name === 'Apply backend release migrations and synchronize reminder Vault credentials');
   const functions = backendSteps.findIndex(step => step.name === 'Configure Production Schedule dispatch and deploy backend functions');

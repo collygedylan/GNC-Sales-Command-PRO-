@@ -26,6 +26,7 @@ jobs:
     outputs:
       frontend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.frontend == 'true' }}
       backend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.backend == 'true' }}
+      schema: ${{ github.event_name != 'pull_request' || steps.filter.outputs.schema == 'true' }}
     steps:
       - uses: dorny/paths-filter@v3
         id: filter
@@ -34,18 +35,19 @@ jobs:
           predicate-quantifier: every
           filters: |
             frontend:
-              - '**'
-              - '!supabase/**'
-              - '!deno.lock'
-              - '!deno.json{,c}'
+              - '{index.html,Code.gs,manifest.json,OneSignalSDKWorker.js,CNAME,assets/**,components/**,styles/**,src/**,v2/**,pages/**,services/**,utils/**,live-src/**,scripts/**,tests/**,.github/**,performance/**,package.json,package-lock.json,playwright*.config.*,vite*.config.*,tsconfig*.json,lighthouserc.json}'
             backend:
-              - '{supabase/**,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
+              - '{supabase/**,migrations/**,database/migrations/**,**/*_migration.sql,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
+            schema:
+              - '{supabase/**,migrations/**,database/migrations/**,**/*_migration.sql}'
 
   validation:
     needs: changes
     if: ${{ !cancelled() && needs.changes.result == 'success' }}
     uses: ./.github/workflows/release-validation.yml
     with:
+      fast-pr: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+      run-schema-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.schema == 'true' }}
       production-health: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
       run-frontend-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' }}
       run-backend-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}

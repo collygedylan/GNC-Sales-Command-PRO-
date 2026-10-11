@@ -303,7 +303,7 @@ test('workflow keeps production credentials inside the guarded deploy step', () 
   const workflow = yaml.load(source);
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
   assert.match(workflow.jobs['authorize-production'].if, /refs\/heads\/main/);
-  assert.equal(workflow.jobs['sync-codegs'].needs, 'authorize-production');
+  assert.deepEqual(workflow.jobs['sync-codegs'].needs, ['authorize-production', 'production-validation']);
   assert.match(workflow.jobs['sync-codegs'].if, /authorized == 'true'/);
   const authorizeSource = JSON.stringify(workflow.jobs['authorize-production']);
   assert.doesNotMatch(authorizeSource, /APPS_SCRIPT_(?:SCRIPT_ID|CLASPRC_JSON|DEPLOYMENT_ID)/);
@@ -348,6 +348,6 @@ test('database diagnosis is isolated, read-only, and cannot authorize a release'
   assert.equal(releaseWorkflow.on.workflow_dispatch, null);
   assert.equal(releaseWorkflow.jobs['diagnose-database'], undefined);
   assert.match(releaseWorkflow.jobs['authorize-production'].if, /github.ref == 'refs\/heads\/main'/);
-  assert.equal(releaseWorkflow.jobs['sync-codegs'].needs, 'authorize-production');
+  assert.deepEqual(releaseWorkflow.jobs['sync-codegs'].needs, ['authorize-production', 'production-validation']);
   assert.deepEqual(releaseWorkflow.jobs['publish-pages'].needs, ['authorize-production', 'sync-codegs']);
 });

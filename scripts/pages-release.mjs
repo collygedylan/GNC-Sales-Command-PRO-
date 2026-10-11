@@ -27,7 +27,7 @@ async function complete(api, endpoint, field) {
 // PR runs report the branch HEAD in the API, but build GITHUB_SHA: the synthetic
 // merge commit. Compare complete Git trees, then retain that build's sealed bytes
 // and fingerprint. Approval or ancestry alone never authorizes artifact reuse.
-async function matchingProof({ repository, commit, api, now }) {
+async function matchingProof({ repository, commit, api, now, allowPrBrowserProof }) {
   const root = `repos/${repository}`;
   const sameRepo = value => value?.toLowerCase() === repository.toLowerCase();
   const associated = await api(`${root}/commits/${commit}/pulls?per_page=100`);
@@ -54,6 +54,8 @@ async function matchingProof({ repository, commit, api, now }) {
   };
   const run = await latest();
   const jobs = await complete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs`, 'jobs');
+  const fastPr = jobs.some(job => job.name === 'validation / fast-browser');
+  if (fastPr && !allowPrBrowserProof) unavailable('PRODUCTION_BROWSER_VALIDATION_REQUIRED');
   let testScope;
   if (jobs.some(job => job.conclusion === 'skipped' && job.name !== 'validation / production-health')) {
     // A skipped test lane is reusable only when the complete PR file list proves
@@ -73,7 +75,9 @@ async function matchingProof({ repository, commit, api, now }) {
   if (jobs.some(job => !positive(job.id) || job.run_id !== run.id || job.head_sha !== pr.head.sha
     || job.status !== 'completed' || (job.conclusion !== 'success'
       && !(job.conclusion === 'skipped' && (job.name === 'validation / production-health'
-        || (testScope && maySkipTestJob(job.name, testScope))))))) unavailable('JOB_NOT_GREEN');
+        || (testScope && maySkipTestJob(job.name, testScope, { fastPr }))))))) unavailable('JOB_NOT_GREEN');
+  if (fastPr && testScope?.frontend && !jobs.some(job => job.name === 'validation / fast-browser'
+    && job.status === 'completed' && job.conclusion === 'success')) unavailable('PR_BROWSER_GATE_MISSING');
   const gates = jobs.filter(job => job.name === 'validation / release-gate');
   if (gates.length !== 1 || !gates[0].steps?.some(step => step.name === 'Require every safety lane for this commit'
     && step.status === 'completed' && step.conclusion === 'success')) unavailable('GATE_MISSING');
@@ -100,12 +104,13 @@ async function matchingProof({ repository, commit, api, now }) {
   if (check.id !== run.id || check.run_attempt !== run.run_attempt) unavailable('RUN_CHANGED');
   return { reuse: true, schemaVersion: 'gnc-release-proof-v1', repository, commit: buildCommit,
     mergedCommit: commit, tree: merged.tree.sha, runId: run.id, attempt: run.run_attempt,
-    siteArtifactId: site.id, proofArtifactId: proof.id, ...(testScope ? { testScope } : {}) };
+    siteArtifactId: site.id, proofArtifactId: proof.id, ...(testScope ? { testScope } : {}),
+    ...(fastPr ? { browserMode: 'pr-chromium' } : {}) };
 }
 
-export async function selectPagesRelease({ repository, commit, api, now = Date.now() }) {
+export async function selectPagesRelease({ repository, commit, api, now = Date.now(), allowPrBrowserProof = false }) {
   identity(repository, commit);
-  try { return await matchingProof({ repository, commit, api, now }); }
+  try { return await matchingProof({ repository, commit, api, now, allowPrBrowserProof }); }
   catch (error) {
     // An unavailable proof is never a waiver. Pages must run the complete suite
     // on main. Transport/API errors fail the job instead of silently publishing.
