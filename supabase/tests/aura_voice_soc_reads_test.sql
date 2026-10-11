@@ -29,6 +29,8 @@ values ('reserves','Reserves',true),('docks','Docks',true)
 on conflict(view_key) do nothing;
 insert into private.navigation_view_overrides(profile_id,view_key,allowed) values
  ('f7110000-0000-4000-8000-000000000001','reserves',true),
+ ('f7110000-0000-4000-8000-000000000001','docks',false),
+ ('f7110000-0000-4000-8000-000000000002','reserves',false),
  ('f7110000-0000-4000-8000-000000000002','docks',true),
  ('f7110000-0000-4000-8000-000000000003','reserves',true),
  ('f7110000-0000-4000-8000-000000000003','docks',true)
@@ -165,6 +167,11 @@ update public.profiles set role='MANAGER' where id='f7110000-0000-4000-8000-0000
 select is((public.aura_voice_soc_read_v1('reserves','{"commonName":"Maple","contSize":"#5","customerName":"Other Customer","season":"U1","expectedSettingRevision":43}',null,50)->>'total')::numeric,0::numeric,
   'non-Dylan Manager does not inherit another rep customer');
 update public.profiles set role='REP' where id='f7110000-0000-4000-8000-000000000001';
+-- Profile role changes rebuild generated aliases from the published mapping
+-- table. Restore the isolated fixture identity for the ownership assertions.
+insert into sales_private.rep_identities(kind,identity_key,profile_id)
+values ('external_id',sales_private.key('SOC-A'),'f7110000-0000-4000-8000-000000000001')
+on conflict(kind,identity_key) do update set profile_id=excluded.profile_id;
 insert into public.ph_reserves(unique_id,itemcode,commonname,contsize,season,customeridentityid,customername,consigneeidentityid,consigneename,salesrepid,salesrepname,quantityordered,quantityshipped)
 values('soc-unresolved-owner','UNKNOWN','Maple','#5','U1','C-1','Twin Customer','N-1','North','SOC-UNKNOWN','', '1000','0');
 select is((pg_temp.soc_reserve_fixture()->>'total')::numeric,7::numeric,'unresolved rep ownership grants no access');

@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions,pg_temp;
-select plan(47);
+select plan(51);
 
 select has_function('public','aura_voice_access_v1',array[]::text[],'Aura Voice exposes an actor-bound capability reader');
 select ok((select prosecdef and exists(select 1 from unnest(proconfig) c where c like 'search_path=%')
@@ -77,13 +77,13 @@ on conflict(key) do update set revision=excluded.revision,state='ready';
 insert into public.ph_eval_assignment_users(username,display_name,active)
 values ('voice_shared_a','Voice Shared Staff',true),('voice_shared_b','Voice Shared Staff',true)
 on conflict(username) do update set display_name=excluded.display_name,active=excluded.active;
-insert into public.ph_master_inventory(unique_id,itemcode,commonname,contsize,locationcode,lotcode,season,saleyear,ptravailable,ptronhand,s_lts,desigitem)
-values ('voice-rep-row','AURA-VOICE-REP','Voice Visible Plant','1 gal','A','L1','F1','27','4','5','-4',''),
- ('voice-rep-row-extra','AURA-VOICE-REP-2','Voice Visible Plant','1 gal','D','L4','F1','27','0','0','-3',''),
- ('voice-rep-row-other-size','AURA-VOICE-REP-3','Voice Visible Plant','2 gal','F','L6','F1','27','0','0','8',''),
- ('voice-rep-cone','AURA-VOICE-CONE','Voice Cone Plant','1 gal','E','L5','F1','27','0','0','6','Cone'),
- ('voice-rep-u3-lot','AURA-VOICE-REP','Voice Hidden U3 Lot','1 gal','B','L2.U3','F1','27','100','100','100',''),
- ('voice-rep-u3-season','AURA-VOICE-REP','Voice Hidden U3 Season','1 gal','C','L3','U3','27','200','200','200','');
+insert into public.ph_master_inventory(unique_id,itemcode,commonname,genusname,contsize,locationcode,lotcode,season,saleyear,ptravailable,ptronhand,s_lts,desigitem)
+values ('voice-rep-row','AURA-VOICE-REP','Voice Visible Plant','Acer','1 gal','A','L1','F1','27','4','5','-4',''),
+ ('voice-rep-row-extra','AURA-VOICE-REP-2','Voice Visible Plant','Acer','1 gal','D','L4','F1','27','0','0','-3',''),
+ ('voice-rep-row-other-size','AURA-VOICE-REP-3','Voice Visible Plant','Acer','2 gal','F','L6','F1','27','0','0','8',''),
+ ('voice-rep-cone','AURA-VOICE-CONE','Voice Cone Plant','Acer','1 gal','E','L5','F1','27','0','0','6','Cone'),
+ ('voice-rep-u3-lot','AURA-VOICE-REP','Voice Hidden U3 Lot','Acer','1 gal','B','L2.U3','F1','27','100','100','100',''),
+ ('voice-rep-u3-season','AURA-VOICE-REP','Voice Hidden U3 Season','Acer','1 gal','C','L3','U3','27','200','200','200','');
 
 select set_config('request.jwt.claim.sub','',true);
 select throws_ok($$select public.aura_voice_access_v1()$$,'42501','AURA_ACTOR_FORBIDDEN','unauthenticated access is rejected');
@@ -106,12 +106,21 @@ select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Vis
   'count-mode totals retain their matching metric label');
 select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Visible Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{complete}'),'false',
   'an exact name spanning multiple sizes remains incomplete without a size choice');
-select ok((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Visible Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>'{total}') is null,
+select ok((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Visible Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}') is null,
   'an unresolved size choice does not return a misleading total');
-select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Visible Plant","contSize":"1 gal","season":"F1","salesYear":27,"metric":"s_lts","countMode":"unique_items","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,-7::numeric,
+select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Visible Plant","contSize":"1 gal","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,-7::numeric,
   'an explicit exact name and size may safely aggregate across item codes');
-select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","contSize":"1 gal","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,0::numeric,
-  'strict variant exclusion omits Cone when it was not spoken');
+select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Visible Plant","contSize":"1 gal","season":"F1","salesYear":27,"metric":"s_lts","countMode":"unique_items","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,2::numeric,
+  'unique_items reports two distinct item identities rather than quantity');
+select is((public.aura_voice_inventory_read_v1('stock','{"itemcode":"AURA-VOICE-CONE","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,0::numeric,
+  'an exact excluded Cone item returns no inventory quantity');
+select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{complete}'),'false',
+  'an excluded exact Cone name does not convert fuzzy fallback into a complete match');
+select ok((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)#>>'{total}') is null,
+  'fuzzy fallback after Cone exclusion does not return a fabricated total');
+select ok(not exists(select 1 from jsonb_array_elements(public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":[],"expectedSettingRevision":43}',null,50)->'rows') row_value
+  where row_value->>'commonName'='Voice Cone Plant'),
+  'Cone rows remain absent when the variant was not spoken');
 select is((public.aura_voice_inventory_read_v1('stock','{"commonName":"Voice Cone Plant","contSize":"1 gal","season":"F1","salesYear":27,"metric":"s_lts","requestedVariants":["cone"],"expectedSettingRevision":43}',null,50)#>>'{total}')::numeric,6::numeric,
   'a spoken Cone variant is retained');
 select throws_ok($$select public.aura_voice_inventory_read_v1('stock','{"itemcode":"AURA-VOICE-REP","expectedSettingRevision":42}',null,50)$$,'40001','AURA_APP_CONTEXT_STALE',
