@@ -407,18 +407,31 @@
     const rootId = LIST_ROOT_IDS[state.activeView];
     const root = rootId ? document.getElementById(rootId) : null;
     if (!root) return;
-    root.classList.remove('ops-record-collection', 'ops-record-node');
-    root.querySelectorAll('.ops-record-collection, .ops-record-node').forEach((element) => {
-      element.classList.remove('ops-record-collection', 'ops-record-node');
-    });
+    const previous = [root, ...root.querySelectorAll('.ops-record-collection, .ops-record-node')];
+    const collections = new Set();
+    const nodes = new Set();
     const candidates = [root, ...Array.from(root.querySelectorAll('div, section, ul')).slice(0, 500)];
     candidates.forEach((container) => {
-      if (container !== root && container.closest('.ops-record-node')) return;
+      // Classify against this pass, not stale classes from the previous pass.
+      if (nodes.has(container)) return;
+      const mountedRecord = container !== root ? container.closest('.ops-record-node') : null;
+      if (mountedRecord && nodes.has(mountedRecord)) return;
+      for (let parent = container.parentElement; container !== root && parent && root.contains(parent); parent = parent.parentElement) {
+        if (nodes.has(parent)) return;
+      }
       const directChildren = Array.from(container.children || []).filter((child) => child instanceof HTMLElement);
       const recordChildren = directChildren.filter(isRecordNode);
       const qualifies = recordChildren.length >= 2 && recordChildren.length >= Math.ceil(directChildren.length * 0.6);
-      container.classList.toggle('ops-record-collection', qualifies);
-      directChildren.forEach((child) => child.classList.toggle('ops-record-node', qualifies && recordChildren.includes(child)));
+      if (qualifies) {
+        collections.add(container);
+        recordChildren.forEach((child) => nodes.add(child));
+      }
+    });
+    // Mutation-driven chunks leave existing cards intact. Changing only the
+    // affected classes avoids invalidating every card's styles on each batch.
+    new Set([...previous, ...collections, ...nodes]).forEach((element) => {
+      if (element.classList.contains('ops-record-collection') !== collections.has(element)) element.classList.toggle('ops-record-collection', collections.has(element));
+      if (element.classList.contains('ops-record-node') !== nodes.has(element)) element.classList.toggle('ops-record-node', nodes.has(element));
     });
   }
 

@@ -9,7 +9,7 @@ function requestFixture() {
   vm.runInContext(requestMappingSetup+'\n'+requestMappingFunctions(),context);
   context.customerRepMapRows=[row,{...row,unique_id:'map-2',customeridentityid:'00013',consigneeid:'00008'},
     {...row,unique_id:'inactive',consigneestatus:'I'}, {...row,unique_id:'unassigned',salesrepid:''},
-    {...row,unique_id:'other',salesrepname:'Rep Two',customeridentityid:'other'}];
+    {...row,unique_id:'other',salesrepid:'02',salesrepname:'Rep Two',customeridentityid:'other'}];
   context.reservesInventory=[{...row,customername:'Reserve only',customeridentityid:'reserve'}];
   return context;
 }
@@ -39,7 +39,7 @@ test('Request matching uses production normalization for rep aliases, statuses, 
     assert.equal(groups.length,2,'same customer label with distinct IDs stays distinct');
   }
   assert.equal(c.getRequestModalCustomerOptionsForRep('Morgan Smith').length,1);
-  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,2,'the existing tolerant name match remains available');
+  assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,0,'partial names cannot identify an external sales rep');
 });
 test('Request membership rechecks both IDs, names and the current map revision',()=>{
   const c=requestFixture(); const context={customeridentityid:row.customeridentityid,consigneeidentityid:row.consigneeid,customername:row.customername,consigneename:row.consigneename};
@@ -47,6 +47,39 @@ test('Request membership rechecks both IDs, names and the current map revision',
   assert.equal(c.isCurrentRequestCustomerContext({...context,consigneeidentityid:'00008'}),false);
   c.customerRepMapRows=[];c.mappingRevision='2';
   assert.equal(c.isCurrentRequestCustomerContext(context),false);
+});
+
+test('verified mapping metadata survives grouping and permits an exact new folder selection',()=>{
+  const c=requestFixture();
+  const option=c.getRequestModalCustomerOptionsForRep('Rep One')[0];
+  const mapRow={...option,customername:option.customerName,consigneename:option.consigneeName,consigneeid:option.consigneeidentityid,salesrepid:option.request_selected_salesrep_id};
+  assert.equal(c.isActiveRequestCustomerMapping(mapRow),true);
+  c.getSelectedExistingRequestFolderGroups=()=>({customerGroup:{label:option.customerName},consigneeGroup:{mapRows:[mapRow]}});
+  c.getExistingRequestFolderPairLabel=()=>option.label;
+  c.createNewRequestFolderForSelectedExistingPair();
+  assert.equal(c.qtyCalls.length,1);
+  assert.equal(c.qtyCalls[0][1],option.label);
+  assert.equal(c.tempRequestCustomerSelectedContext.request_selected_salesrep_id,'01');
+  assert.equal(c.isCurrentRequestCustomerContext(c.tempRequestCustomerSelectedContext),true);
+});
+
+test('folder grouping cache separates reps and customer identities with identical names',()=>{
+  const c=requestFixture();
+  c.getExistingRequestFolderRepRows=()=>[];
+  c.canUseRequestMappedFoldersForCurrentUser=()=>true;
+  c.getRequestCustomerFolderLabel=customer=>customer;
+  c.requestExistingFolderGroupsCacheKey='';
+  c.requestExistingFolderGroupsCache=[];
+  c.customerRepMapRows=[row];
+  const first=c.buildExistingRequestFolderCustomerGroups('Rep One');
+  assert.equal(first[0].key,'id:00012');
+  assert.equal(c.isActiveRequestCustomerMapping(first[0].consignees[0].mapRows[0]),true);
+  c.customerRepMapRows=[{...row,salesrepid:'02',customeridentityid:'00013',consigneeid:'00008'}];
+  c.mappingRevision='2';
+  const second=c.buildExistingRequestFolderCustomerGroups('Rep One');
+  assert.equal(second[0].key,'id:00013');
+  assert.equal(second[0].consignees[0].key,'id:00008');
+  assert.equal(second[0].consignees[0].mapRows[0].salesrepid,'02');
 });
 test('rejected mapping submissions require review while transport failures remain retryable',()=>{
   const c=requestFixture();

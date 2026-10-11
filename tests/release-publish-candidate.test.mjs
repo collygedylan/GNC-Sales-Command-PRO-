@@ -233,8 +233,15 @@ test('backend success must pass read-only production health before publishing, t
   const health = steps.findIndex(step => step.run === 'node scripts/probe-production-auth-health.mjs');
   const guard = steps.findIndex(step => step.name === 'Recheck current main and release proof before publication');
   const push = steps.findIndex(step => step.name === 'Push the verified static site to gh-pages without force');
+  const pagesBuild = steps.findIndex(step => step.name === 'Request the GitHub Pages build for the published branch');
   const live = steps.findIndex(step => step.run === 'node scripts/wait-for-live-release.mjs');
   assert.ok(health >= 0 && guard > health && push > guard && live > push);
+  assert.ok(pagesBuild > push && live > pagesBuild);
+  assert.match(steps[pagesBuild].run, /gh api --method POST "repos\/\$GITHUB_REPOSITORY\/pages\/builds"/);
+  assert.equal(steps[pagesBuild].env.GH_TOKEN, '${{ github.token }}');
+  assert.equal(publish.permissions.pages, 'write');
+  assert.equal(publish.permissions.actions, 'read');
+  assert.equal(publish.permissions['pull-requests'], 'read');
   assert.equal(steps[health].env.PRODUCTION_PROBE_READ_ONLY, '1');
   assert.equal(steps[health].env.REQUIRE_APPS_SCRIPT_HEALTH, '1');
   assert.equal(steps[health].env.REQUIRE_BOUNDED_MAINTENANCE, '1');

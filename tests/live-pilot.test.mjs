@@ -649,7 +649,7 @@ test('Reclass is an email-only Item Inquiry while legacy quantity and transfer l
 
 test('design pills and Drive metrics use the professional responsive card system', () => {
   assert.match(html, /class="app-data-pill app-data-pill--location\$\{compactClass\}"/);
-  assert.match(html, /<div class="app-drive-card-title-row">[\s\S]*<div class="app-drive-card-quantity-band">\$\{driveQuantityRowHtml\}<\/div>/);
+  assert.match(html, /<div class="app-drive-card-title-row">[\s\S]*<div class="app-drive-card-quantity-band">\$\{options\.metricsHtml \|\| ''\}<\/div>/);
   assert.match(css, /\.app-data-pill[\s\S]*overflow-wrap: anywhere/);
   assert.match(css, /\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(4/);
   assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.app-drive-card-quantity-band \.app-card-qty-row[\s\S]*grid-template-columns: repeat\(2/);

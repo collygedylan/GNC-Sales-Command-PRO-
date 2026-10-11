@@ -15275,6 +15275,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "request_selected_salesrep_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "request_source": {
             "schema": "string"
           },
@@ -15870,6 +15878,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "request_selected_rep_username": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "request_selected_salesrep_id": {
             "schema": {
               "oneOf": [
                 "string",
@@ -16478,6 +16495,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "request_selected_rep_username": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "request_selected_salesrep_id": {
             "schema": {
               "oneOf": [
                 "string",
@@ -76761,6 +76787,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "request_selected_salesrep_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "request_source": {
             "schema": {
               "oneOf": [
@@ -81754,6 +81788,14 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "request_selected_rep_username": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "request_selected_salesrep_id": {
             "schema": {
               "oneOf": [
                 "string",

@@ -4893,6 +4893,7 @@ export type Database = {
           request_selected_rep_display: string | null
           request_selected_rep_email: string | null
           request_selected_rep_username: string | null
+          request_selected_salesrep_id: string | null
           request_source: string
           requested_by: string | null
           row_version: number
@@ -4965,6 +4966,7 @@ export type Database = {
           request_selected_rep_display?: string | null
           request_selected_rep_email?: string | null
           request_selected_rep_username?: string | null
+          request_selected_salesrep_id?: string | null
           request_source?: string
           requested_by?: string | null
           row_version?: number
@@ -5037,6 +5039,7 @@ export type Database = {
           request_selected_rep_display?: string | null
           request_selected_rep_email?: string | null
           request_selected_rep_username?: string | null
+          request_selected_salesrep_id?: string | null
           request_source?: string
           requested_by?: string | null
           row_version?: number
@@ -15107,6 +15110,7 @@ export type Database = {
           request_selected_rep_display: string | null
           request_selected_rep_email: string | null
           request_selected_rep_username: string | null
+          request_selected_salesrep_id: string | null
           request_source: string | null
           requested_by: string | null
           row_version: number | null
@@ -15764,6 +15768,7 @@ export type Database = {
           request_selected_rep_display: string | null
           request_selected_rep_email: string | null
           request_selected_rep_username: string | null
+          request_selected_salesrep_id: string | null
           request_source: string | null
           requested_by: string | null
           row_version: number | null

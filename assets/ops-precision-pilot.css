@@ -8728,7 +8728,7 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
 }
 
 /* Drive Mode uses AV density. Embedded HL and Crop Roll cards keep their layout. */
-#drive-content .app-drive-compact-card {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout {
   --drive-card-photo-width: 88px;
   --drive-card-photo-height: 86px;
   align-items: flex-start;
@@ -8739,57 +8739,57 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
   line-height: 1.4;
 }
 
-#drive-content .app-drive-compact-card .card-checkbox-container {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .card-checkbox-container {
   margin: 0 6px 0 0;
   align-self: flex-start;
 }
 
-#drive-content .app-drive-compact-card .app-drive-card-grid {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-grid {
   grid-template-columns: var(--drive-card-photo-width) minmax(0, 1fr) auto !important;
   grid-template-areas: "photo header reclass" "photo details details" !important;
   gap: 8px 12px !important;
   align-items: start;
 }
 
-#drive-content .app-drive-compact-card:not(.app-drive-card-with-reclass) .app-drive-card-grid {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout:not(.app-drive-card-with-reclass) .app-drive-card-grid {
   grid-template-columns: var(--drive-card-photo-width) minmax(0, 1fr) !important;
   grid-template-areas: "photo header" "photo details" !important;
 }
 
-#drive-content .app-drive-compact-card .app-drive-card-grid--no-photo {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-grid--no-photo {
   grid-template-columns: minmax(0, 1fr) auto !important;
   grid-template-areas: "header reclass" "details details" !important;
 }
 
-#drive-content .app-drive-compact-card:not(.app-drive-card-with-reclass) .app-drive-card-grid--no-photo {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout:not(.app-drive-card-with-reclass) .app-drive-card-grid--no-photo {
   grid-template-columns: minmax(0, 1fr) !important;
   grid-template-areas: "header" "details" !important;
 }
 
 /* Only the heading shares a row with Reclass; quantities and notes use the rest. */
-#drive-content .app-drive-compact-card .app-drive-card-main { display: contents; padding: 0 !important; }
-#drive-content .app-drive-compact-card .app-drive-card-header { grid-area: header; min-width: 0; }
-#drive-content .app-drive-compact-card .app-drive-card-details { grid-area: details; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-#drive-content .app-drive-compact-card .app-drive-card-details > * { margin-top: 0; margin-bottom: 0; }
-#drive-content .app-drive-compact-card .app-drive-card-details .ui-pill { gap: 4px; }
-#drive-content .app-drive-compact-card .app-drive-card-title-row { display: block; margin-top: 3px; }
-#drive-content .app-drive-compact-card .app-drive-card-title { font-size: 20px !important; font-weight: 750 !important; line-height: 1.25 !important; letter-spacing: normal !important; }
-#drive-content .app-drive-compact-card .app-drive-card-title-size { margin-left: 6px; color: var(--ops-text-muted, #526259); font-size: 13px; font-weight: 500; white-space: nowrap; }
-#drive-content .app-drive-compact-card .app-drive-card-itemcode { font-size: 13px !important; font-weight: 500; line-height: 1.3; letter-spacing: normal; }
-#drive-content .app-drive-compact-card .app-drive-card-meta { max-width: none; padding: 0; margin-top: 3px; font-size: 13px !important; font-weight: 500; line-height: 1.4; text-align: left; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-main { display: contents; padding: 0 !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-header { grid-area: header; min-width: 0; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-details { grid-area: details; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-details > * { margin-top: 0; margin-bottom: 0; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-details .ui-pill { gap: 4px; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-title-row { display: block; margin-top: 3px; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-title { font-size: 20px !important; font-weight: 750 !important; line-height: 1.25 !important; letter-spacing: normal !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-title-size { margin-left: 6px; color: var(--ops-text-muted, #526259); font-size: 13px; font-weight: 500; white-space: nowrap; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-itemcode { font-size: 13px !important; font-weight: 500; line-height: 1.3; letter-spacing: normal; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-meta { max-width: none; padding: 0; margin-top: 3px; font-size: 13px !important; font-weight: 500; line-height: 1.4; text-align: left; }
 
-#drive-content .app-drive-compact-card .app-drive-card-photo { display: block !important; align-self: start !important; }
-#drive-content .app-drive-compact-card .app-drive-card-photo :is(.app-smart-thumb, .app-inline-thumb-box) {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-photo { display: block !important; align-self: start !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-photo :is(.app-smart-thumb, .app-inline-thumb-box) {
   width: 100% !important;
   min-width: 0 !important;
   height: var(--drive-card-photo-height) !important;
   aspect-ratio: auto !important;
   border-radius: 10px !important;
 }
-#drive-content .app-drive-compact-card .app-drive-card-photo img { object-fit: contain !important; }
-#drive-content .app-drive-compact-card .app-inline-thumb-date { font-size: 11px; line-height: 1.3; padding: 2px 0; letter-spacing: normal; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-photo img { object-fit: contain !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-inline-thumb-date { font-size: 11px; line-height: 1.3; padding: 2px 0; letter-spacing: normal; }
 
-#drive-content .app-drive-compact-card .app-drive-card-reclass {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-reclass {
   grid-area: reclass;
   position: static !important;
   align-self: start !important;
@@ -8798,7 +8798,7 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
   min-width: 0 !important;
   margin: 0 !important;
 }
-#drive-content .app-drive-compact-card .app-drive-card-reclass .app-card-bottom-btn {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-reclass .app-card-bottom-btn {
   min-width: 44px !important;
   min-height: 44px !important;
   padding: 6px 8px !important;
@@ -8810,15 +8810,15 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
   gap: 4px !important;
 }
 
-#drive-content .app-drive-compact-card .app-drive-card-quantity-band { margin: 0 !important; }
-#drive-content .app-drive-compact-card .app-drive-card-quantity-band :is(.app-card-qty-row, .app-card-qty-grid) {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-quantity-band { margin: 0 !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-quantity-band :is(.app-card-qty-row, .app-card-qty-grid) {
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 1.2fr) minmax(0, 1.25fr) minmax(0, 1.8fr) minmax(0, 1.5fr) !important;
   gap: clamp(2px, .7vw, 6px) !important;
   padding: 6px 0;
   border-top: 1px solid var(--ops-border, #d8e1db);
   border-bottom: 1px solid var(--ops-border, #d8e1db);
 }
-#drive-content .app-drive-compact-card .app-card-qty-chip {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-chip {
   display: flex !important;
   flex-direction: column;
   flex-wrap: nowrap !important;
@@ -8836,41 +8836,41 @@ body.ops-precision-pilot .assigned-filter-clear.compact-filter-clear{white-space
   text-align: left;
   overflow-wrap: anywhere;
 }
-#drive-content .app-drive-compact-card .app-card-qty-label { font-size: 13px; line-height: 1.3; font-weight: 400; color: var(--ops-text-muted, #526259); }
-#drive-content .app-drive-compact-card .app-card-qty-separator { display: none; }
-#drive-content .app-drive-compact-card .app-card-qty-value { color: var(--ops-text, #17251d) !important; font-size: 24px; line-height: 1.15; font-weight: 750; font-variant-numeric: tabular-nums; }
-#drive-content .app-drive-compact-card .app-card-qty-chip > :is(.app-card-qty-label, .app-card-qty-value) {
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-label { font-size: 13px; line-height: 1.3; font-weight: 400; color: var(--ops-text-muted, #526259); }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-separator { display: none; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-value { color: var(--ops-text, #17251d) !important; font-size: 24px; line-height: 1.15; font-weight: 750; font-variant-numeric: tabular-nums; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-chip > :is(.app-card-qty-label, .app-card-qty-value) {
   min-width: 0;
   max-width: 100%;
   flex: 0 1 auto;
   white-space: nowrap !important;
   overflow-wrap: normal;
 }
-#drive-content .app-drive-compact-card .app-card-qty-row > :not(.app-card-qty-chip) { grid-column: 1 / -1; justify-content: flex-start; gap: 4px; min-height: 0; padding: 3px 6px; font-size: 12px; line-height: 1.3; letter-spacing: normal; }
-#drive-content .app-drive-compact-card [data-loc-photo-match-value] { color: var(--ops-text, #17251d) !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-row > :not(.app-card-qty-chip) { grid-column: 1 / -1; justify-content: flex-start; gap: 4px; min-height: 0; padding: 3px 6px; font-size: 12px; line-height: 1.3; letter-spacing: normal; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout [data-loc-photo-match-value] { color: var(--ops-text, #17251d) !important; }
 
-#drive-content .app-drive-compact-card .app-drive-card-chip-row { margin: 0; gap: 4px 6px; }
-#drive-content .app-drive-compact-card :is(.app-data-pill, .app-drive-card-source-chip) { min-height: 0 !important; padding: 3px 6px !important; border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important; line-height: 1.3 !important; letter-spacing: normal !important; text-transform: none !important; }
-#drive-content .app-drive-compact-card :is(.app-drive-card-notes, .app-drive-card-evidence) { margin: 0 !important; gap: 6px; }
-#drive-content .app-drive-compact-card :is(.app-drive-card-chip-row, .app-drive-card-notes, .app-drive-card-evidence):empty { display: none !important; }
-#drive-content .app-drive-compact-card .app-drive-card-note { padding: 6px; box-shadow: none; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-chip-row { margin: 0; gap: 4px 6px; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout :is(.app-data-pill, .app-drive-card-source-chip) { min-height: 0 !important; padding: 3px 6px !important; border-radius: 6px !important; font-size: 12px !important; font-weight: 500 !important; line-height: 1.3 !important; letter-spacing: normal !important; text-transform: none !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout :is(.app-drive-card-notes, .app-drive-card-evidence) { margin: 0 !important; gap: 6px; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout :is(.app-drive-card-chip-row, .app-drive-card-notes, .app-drive-card-evidence):empty { display: none !important; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-note { padding: 6px; box-shadow: none; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
 
-#drive-content .app-drive-compact-card .app-drive-card-bottom { grid-area: auto !important; grid-column: 1 / -1 !important; min-width: 0; }
-#drive-content .app-drive-compact-card .app-card-bottom-rail { margin: 0; padding: 6px 0 0; gap: 6px; }
-#drive-content .app-drive-compact-card .app-card-bottom-rail .app-card-bottom-btn { min-height: 44px; padding: 6px 8px; border-radius: 8px; font-size: 14px; line-height: 1.3; letter-spacing: normal; text-transform: none; box-shadow: none; }
-#drive-content .app-drive-compact-card :is(button, [role="button"]) { min-width: 44px; min-height: 44px; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-bottom { grid-area: auto !important; grid-column: 1 / -1 !important; min-width: 0; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-bottom-rail { margin: 0; padding: 6px 0 0; gap: 6px; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-bottom-rail .app-card-bottom-btn { min-height: 44px; padding: 6px 8px; border-radius: 8px; font-size: 14px; line-height: 1.3; letter-spacing: normal; text-transform: none; box-shadow: none; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout :is(button, [role="button"]) { min-width: 44px; min-height: 44px; }
 
 @media (max-width: 900px) {
-  #drive-content .app-drive-compact-card { --drive-card-photo-width: 64px; --drive-card-photo-height: 62px; padding: 10px !important; }
-  #drive-content .app-drive-compact-card .app-drive-card-grid { grid-template-areas: "photo header reclass" "details details details" !important; gap: 8px !important; }
-  #drive-content .app-drive-compact-card:not(.app-drive-card-with-reclass) .app-drive-card-grid { grid-template-areas: "photo header" "details details" !important; }
-  #drive-content .app-drive-compact-card .app-drive-card-grid--no-photo { grid-template-areas: "header reclass" "details details" !important; }
-  #drive-content .app-drive-compact-card:not(.app-drive-card-with-reclass) .app-drive-card-grid--no-photo { grid-template-areas: "header" "details" !important; }
-  #drive-content .app-drive-compact-card .app-drive-card-title { font-size: 18px !important; }
-  #drive-content .app-drive-compact-card .app-card-qty-value { font-size: 22px; }
-  #drive-content .app-drive-compact-card .app-drive-card-reclass .app-card-bottom-btn { flex-direction: column; width: 68px; padding: 4px 6px !important; gap: 2px !important; font-size: 12px !important; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout { --drive-card-photo-width: 64px; --drive-card-photo-height: 62px; padding: 10px !important; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-grid { grid-template-areas: "photo header reclass" "details details details" !important; gap: 8px !important; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout:not(.app-drive-card-with-reclass) .app-drive-card-grid { grid-template-areas: "photo header" "details details" !important; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-grid--no-photo { grid-template-areas: "header reclass" "details details" !important; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout:not(.app-drive-card-with-reclass) .app-drive-card-grid--no-photo { grid-template-areas: "header" "details" !important; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-title { font-size: 18px !important; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-value { font-size: 22px; }
+  :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-drive-card-reclass .app-card-bottom-btn { flex-direction: column; width: 68px; padding: 4px 6px !important; gap: 2px !important; font-size: 12px !important; }
 }
-#drive-content .app-drive-compact-card .app-card-qty-value--unknown { font-size: 14px; line-height: 1.4; }
+:is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout .app-card-qty-value--unknown { font-size: 14px; line-height: 1.4; }
 
 /* Grower inventory uses the Drive Mode card rhythm with row-specific scouting. */
 .grower-workspace{display:grid;gap:10px;min-width:0}
@@ -9642,9 +9642,11 @@ body.ops-precision-pilot .app-drive-compact-card.app-inventory-card-overhaul .ap
   white-space: nowrap !important;
   overflow-wrap: normal !important;
 }
-body.ops-precision-pilot #drive-content .app-drive-compact-card.app-inventory-card-overhaul .app-card-qty-value--unknown {
+body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .app-shared-drive-layout.app-inventory-card-overhaul .app-card-qty-value--unknown {
   font-size: clamp(7.5px, 2.5cqw, 10px) !important;
   line-height: 1.2 !important;
   white-space: nowrap !important;
   overflow-wrap: normal !important;
 }
+
+.app-shared-drive-layout .app-operational-card-header-fields{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}.app-shared-drive-layout .app-operational-card-header-field{display:flex;flex-direction:column;min-width:60px}.app-shared-drive-layout .app-operational-card-header-field>span{font-size:11px;color:var(--ops-text-muted,#526259)}.app-shared-drive-layout .app-operational-card-header-field>strong{font-size:14px;color:var(--ops-text,#17251d);overflow-wrap:anywhere}

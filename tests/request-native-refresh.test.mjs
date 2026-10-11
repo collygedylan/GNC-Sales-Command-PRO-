@@ -695,6 +695,16 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   assert.equal(desktop.onCompleteDelayMs, 140);
   assert.equal(ctx.getRequestChunkRenderOptions(input).initialRows, undefined, 'other Request subviews keep their existing first batch');
   assert.equal(ctx.getPendingRequestChunkRenderOptions({ initialRows: 3 }).initialRows, 3, 'explicit pacing remains authoritative');
+  ctx.window = { matchMedia: query => { assert.equal(query, '(max-width: 639px)'); return { matches: true }; } };
+  const narrow = ctx.getPendingRequestChunkRenderOptions(input);
+  assert.equal(narrow.initialRows, 4);
+  assert.equal(narrow.chunkSize, 8);
+  assert.equal(narrow.perFrameRows, 8);
+  assert.equal(narrow.onComplete, onComplete);
+  const explicit = ctx.getPendingRequestChunkRenderOptions({ initialRows: 3, chunkSize: 2, perFrameRows: 1 });
+  assert.equal(explicit.initialRows, 3);
+  assert.equal(explicit.chunkSize, 2);
+  assert.equal(explicit.perFrameRows, 1);
   ios = true;
   const phone = ctx.getPendingRequestChunkRenderOptions(input);
   assert.equal(phone.initialRows, 6);

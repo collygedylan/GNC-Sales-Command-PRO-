@@ -5,10 +5,12 @@ export async function checkAuraProviderReadiness(baseUrl, serviceKey, fetcher = 
   const url = new URL(baseUrl);
   assert.equal(url.protocol, 'https:', 'SUPABASE_HTTPS_REQUIRED');
   assert.match(url.hostname, /^[a-z0-9]{20}\.supabase\.co$/, 'SUPABASE_HOST_REQUIRED');
-  assert.ok(serviceKey, 'SUPABASE_SERVICE_ROLE_KEY_REQUIRED');
+  const normalizedServiceKey = String(serviceKey || '').trim();
+  assert.ok(normalizedServiceKey, 'SUPABASE_SERVICE_ROLE_KEY_REQUIRED');
+  if (!/^[\x21-\x7e]+$/.test(normalizedServiceKey)) throw new Error('SUPABASE_SERVICE_ROLE_KEY_INVALID');
   // Two synthetic routing checks exercise the real model/key without reading business data.
   const response = await fetcher(new URL('/functions/v1/aura-llm-router/health', url), {
-    headers: { Authorization: `Bearer ${serviceKey}` }, signal: AbortSignal.timeout(45000),
+    headers: { Authorization: `Bearer ${normalizedServiceKey}` }, signal: AbortSignal.timeout(45000),
   });
   if (response.status !== 200) { await response.body?.cancel(); throw new Error('AURA_PROVIDER_NOT_READY'); }
   const data = await response.json();

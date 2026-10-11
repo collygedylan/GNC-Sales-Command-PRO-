@@ -32,7 +32,7 @@ test('Request choices keep the rep/customer/consignee relationship and reject ty
   await page.addScriptTag({content:requestMappingSetup+'\n'+requestMappingFunctions()});
   const result=await page.evaluate(row=>{
     const w=window as any;
-    w.customerRepMapRows=[row,{...row,unique_id:'other',salesrepname:'Rep Two',consigneeid:'other'}, {...row,unique_id:'inactive',customerstatus:'I'}];
+    w.customerRepMapRows=[row,{...row,unique_id:'other',salesrepid:'02',salesrepname:'Rep Two',consigneeid:'other'}, {...row,unique_id:'inactive',customerstatus:'I'}];
     w.reservesInventory=[{...row,customername:'Not mapped'}];
     const options=w.getRequestModalCustomerOptionsForRep('Rep One');
     w.processCustStep();
