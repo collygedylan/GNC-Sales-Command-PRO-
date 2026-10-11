@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import pg from 'pg';
 // @test-group: @database,@local-e2e
 
 
@@ -66,6 +67,30 @@ async function rpc(name, token, payload) {
   });
 }
 
+async function seedCustomerMappings(users, suffix, customerId, consigneeId, salesrepIds) {
+  // The imported mapping table deliberately denies direct REST writes, even
+  // with a service JWT. Seed only the disposable loopback database as postgres.
+  const connectionString = String(process.env.SUPABASE_LOCAL_DB_URL || '');
+  const target = new URL(connectionString || 'postgresql://invalid');
+  expect(['127.0.0.1', 'localhost', '[::1]']).toContain(target.hostname);
+  expect(target.pathname).toBe('/postgres');
+  const db = new pg.Client({ connectionString, connectionTimeoutMillis: 10000 });
+  await db.connect();
+  try {
+    await db.query('begin');
+    for (const [index, user] of users.entries()) {
+      await db.query(`insert into public.ph_customer_consignee_sales_reps
+        (unique_id,customeridentityid,customername,customerstatus,consigneeid,consigneename,consigneestatus,salesrepid,salesrepname)
+        values($1,$2,'Test Customer','A',$3,'Test Destination','A',$4,$5)`,
+      [`LOCAL-MAP-${index}-${suffix}`, customerId, consigneeId, index === 0 ? salesrepIds.rep : salesrepIds.csr, user.username]);
+    }
+    await db.query('commit');
+  } catch (error) {
+    await db.query('rollback');
+    throw error;
+  } finally { await db.end(); }
+}
+
 test.describe('Drive-canonical request transactions', {"tag":["@database","@local-e2e"]}, () => {
   test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
 
@@ -89,16 +114,7 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     const dylan = await createUser(`dylan_${suffix}@example.com`, password, 'dylan_collyge', 'ADMIN');
     const customerId = `LOCAL-C-${suffix}`, consigneeId = `LOCAL-CN-${suffix}`;
     const salesrepIds = { rep: `LOCAL-REP-${suffix}`, csr: `LOCAL-CSR-${suffix}` };
-    const mapping = await jsonFetch(`${localUrl}/rest/v1/ph_customer_consignee_sales_reps`, {
-      method: 'POST',
-      headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify([rep, csr].map((user, index) => ({
-        unique_id: `LOCAL-MAP-${index}-${suffix}`, customeridentityid: customerId, customername: 'Test Customer', customerstatus: 'A',
-        consigneeid: consigneeId, consigneename: 'Test Destination', consigneestatus: 'A',
-        salesrepid: index === 0 ? salesrepIds.rep : salesrepIds.csr, salesrepname: user.username,
-      }))),
-    });
-    expect(mapping.response.ok, JSON.stringify(mapping.body)).toBeTruthy();
+    await seedCustomerMappings([rep, csr], suffix, customerId, consigneeId, salesrepIds);
 
     const masterId = `MASTER-${suffix}`;
     const itemcode = `ITEM-${suffix}`.toUpperCase();

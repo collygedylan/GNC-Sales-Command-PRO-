@@ -229,6 +229,7 @@ jobs:
           SUPABASE_LOCAL_URL="$API_URL" \
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          SUPABASE_LOCAL_DB_URL="$DB_URL" \
           npx playwright test --config playwright.database.config.ts --project=chromium --workers=1 --max-failures=1
       - name: Run native authentication smoke tests against loopback Supabase
         shell: bash
