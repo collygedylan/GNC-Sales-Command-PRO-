@@ -145514,10 +145514,11 @@ C.14.043 C.15.000
                 firstNonEmptyValue(row && row.REQ_ARCHIVED, row && row.req_archived, false)
             ].join(':')).join('|');
             const mapSignature = mappedRows.map((row) => [
+                row.salesrepid, row.customeridentityid, row.consigneeid,
                 getCustomerRepMapCustomerValue(row),
                 getCustomerRepMapConsigneeValue(row)
             ].join(':')).join('|');
-            const cacheKey = `${normalizeRepMatchToken(canonicalRepName)}|${rowSignature}|${mapSignature}`;
+            const cacheKey = `${getRequestSelectedSalesrepId(repName)}|${requestModalCustomerOptionsCacheKey}|${normalizeRepMatchToken(canonicalRepName)}|${rowSignature}|${mapSignature}`;
             if (cacheKey === requestExistingFolderGroupsCacheKey && Array.isArray(requestExistingFolderGroupsCache)) return requestExistingFolderGroupsCache;
             const ensureCustomerGroup = (customerName = '', consigneeName = '', customerId = '') => {
                 const customerLabel = getRequestCustomerFolderLabel(customerName, consigneeName);
