@@ -565,14 +565,15 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 183);
+  assert.equal(manifest.length, 184);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
-  assert.deepEqual(manifest.slice(-5).map(entry => entry.source), [
+  assert.deepEqual(manifest.slice(-6).map(entry => entry.source), [
     'supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql',
     'supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql',
     'supabase/migrations/20261011193000_historical_requests_price_fallback.sql',
     'supabase/migrations/20261011223000_reclass_concurrent_hold_rows.sql',
     'supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql',
+    'supabase/migrations/20261011230000_normalize_navigation_role_boundaries.sql',
   ]);
   const sources = new Set(manifest.map(entry => entry.source));
   for (const name of ["20261008190038_reclass_sheared_action_v5.sql","20261009053029_reclass_smart_priority_hold_shield_v6.sql","20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {

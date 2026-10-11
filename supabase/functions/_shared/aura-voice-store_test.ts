@@ -68,3 +68,19 @@ Deno.test("SOC-only capability access is explicit and never accepts truthy strin
   assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socReserves: false, socOpenOrders: true } }, id)?.socOpenOrders === true);
   assert(parseAuraAccess({ ok: true, actor, capabilities: { ...capabilities, socOpenOrders: 1 } }, id) === null);
 });
+
+Deno.test("readiness identifies real provider timeouts without revealing exception details", async () => {
+  for (const error of [new DOMException("private-provider-timeout", "TimeoutError"),
+    new DOMException("private-client-cancellation", "AbortError"), new Error("TimeoutError"), new TypeError("private-network-failure")]) {
+    const response = await handleAuraProviderProbe(new Request("https://example.invalid/aura-llm-router/health", { headers: { authorization: "Bearer release-secret" } }), {
+      env: key => key === "SUPABASE_SERVICE_ROLE_KEY" ? "release-secret" : "provider-secret",
+      fetcher: async () => { throw error; },
+    });
+    const body = await response.json();
+    const timedOut = error instanceof DOMException && error.name === "TimeoutError";
+    assert(response.status === 503 && body.code === "AURA_PROVIDER_NOT_READY");
+    assert(body.reason === (timedOut ? "AURA_GEMINI_TIMEOUT" : "AURA_PROVIDER_UNAVAILABLE"));
+    assert(body.providerStatus === undefined);
+    assert(!JSON.stringify(body).includes(error.message) && !JSON.stringify(body).includes("provider-secret"));
+  }
+});

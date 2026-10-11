@@ -58,5 +58,9 @@
   {
     "path": "supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql",
     "gitBlob": "46cb08153f869ad84509b663d2a021c8052dc5b2"
+  },
+  {
+    "path": "supabase/migrations/20261011230000_normalize_navigation_role_boundaries.sql",
+    "gitBlob": "bbba029a19aeb4ec790ab483296f2c4e58f96bb7"
   }
 ]

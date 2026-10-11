@@ -121,7 +121,8 @@ export async function handleAuraProviderProbe(request: Request, options: { env?:
     return json({ ok: true, model: AURA_GEMINI_MODEL, engine: "gemini-tools-v1", checks: { refusal: true, inventoryRouting: true } }, 200);
   } catch (error) {
     const safeReasons = new Set(["AURA_GEMINI_CONFIGURATION_UNAVAILABLE", "AURA_GEMINI_BUSY", "AURA_GEMINI_UNAVAILABLE", "AURA_TOOL_INVALID", "AURA_TOOL_FORBIDDEN"]);
-    const reason = error instanceof Error && safeReasons.has(error.message) ? error.message : "AURA_PROVIDER_UNAVAILABLE";
+    const reason = error instanceof DOMException && error.name === "TimeoutError" ? "AURA_GEMINI_TIMEOUT"
+      : error instanceof Error && safeReasons.has(error.message) ? error.message : "AURA_PROVIDER_UNAVAILABLE";
     return json({ ok: false, code: "AURA_PROVIDER_NOT_READY", reason,
       ...(error instanceof AuraGeminiProviderError ? { providerStatus: error.providerStatus } : {}) }, 503);
   }
