@@ -154,9 +154,11 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   assert.match(modelRouting, /bounded diff or contract under review/);
   assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
   assert.deepEqual([...agentRules.matchAll(/^## \d\. (.+)$/gm)].map(match => match[1]),
-    ['Auto-PR', 'Monitor and Fail Fast', 'Autonomous Remediation', 'File Hygiene']);
+    ['Auto-PR', 'Monitor and Fail Fast', 'Autonomous Remediation', 'Deployment Visibility', 'File Hygiene']);
   assert.match(agentRules, /After pushing a new candidate branch, immediately create its pull request with `gh pr create --fill`/);
   assert.match(agentRules, /gh pr checks <PR> --watch --fail-fast/);
+  assert.match(agentRules, /final production deployment succeeds/);
+  assert.match(agentRules, /The app is now running on Version:/);
   assert.match(agentRules, /first failed check, stop the watcher immediately/);
   assert.match(agentRules, /without waiting for parallel jobs or the entire run/);
   assert.match(agentRules, /initial failed CI validation run as failure one/);

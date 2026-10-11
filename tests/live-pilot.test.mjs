@@ -1,4 +1,6 @@
 import { assertHistoricalMigration } from './helpers/ci-discovery.mjs';
+import { backendTestMatrices } from '../scripts/ci-backend-matrix.mjs';
+import { discoverTests } from '../scripts/test-discovery.mjs';
 // @test-group: module-hubs
 import { readReleaseWorkflowSources } from '../scripts/release-workflow-sources.mjs';
 import assert from 'node:assert/strict';
@@ -1548,7 +1550,8 @@ test('V08 compaction preparation never copies, swaps, truncates, or drops produc
 test('hosted performance monitoring pins CLI and emits bounded anonymous function logs', () => {
   assert.match(performanceWorkflow, /version: 2\.111\.0/);
   assert.match(performanceWorkflow, /supabase(?:\s+--workdir[^\n]+)?\s+test db/);
-  assert.match(performanceWorkflow, /node scripts\/test-discovery\.mjs deno-tests/);
+  assert.match(performanceWorkflow, /node scripts\/ci-backend-matrix\.mjs/);
+  assert.deepEqual(backendTestMatrices().edge.include.flatMap(group => group.tests).sort(), discoverTests({ group: 'deno-tests' }));
   assert.match(performanceWorkflow, /deno test --node-modules-dir=auto --allow-env --allow-net "\$\{tests\[@\]\}"/);
   assert.doesNotMatch(performanceWorkflow, /supabase test functions/);
   assert.match(performanceWorkflow, /Lighthouse/);
