@@ -730,5 +730,9 @@
   {
     "source": "supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql",
     "destination": "20261011224500_normalize_sales_actor_role_boundaries.sql"
+  },
+  {
+    "source": "supabase/migrations/20261011230000_normalize_navigation_role_boundaries.sql",
+    "destination": "20261011230000_normalize_navigation_role_boundaries.sql"
   }
 ]
