@@ -285,6 +285,24 @@ test('rejected and stale V6 replies do not overwrite local inventory or discard 
   expect(f.control.blockedMutations).toEqual([]);
 });
 
+test('Move Up and Hold remain selected together with a row reason and stamped date', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
+  const f = await fixture(page, baseURL!, info.project.name);
+  const row = await f.open();
+  await row.locator('[data-reclass-v3-action="move_up"]').click();
+  await row.getByLabel('Move Up quantity 1', { exact: true }).fill('5');
+  await row.getByLabel('Move Up destination 1', { exact: true }).selectOption('X');
+  await expect(row.locator('[data-reclass-v3-action="hold"]')).toBeEnabled();
+  await row.locator('[data-reclass-v3-action="hold"]').click();
+  await row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Concurrent quality review');
+  await expect(row.locator('[data-reclass-hold-begin-date]')).toHaveValue(/\d{4}-\d{2}-\d{2}/);
+  await expect(row.locator('[data-reclass-v3-action="move_up"]')).toHaveAttribute('aria-pressed', 'true');
+  const draft = await page.evaluate(() => window.eval('collectArgosReclassV3Draft()'));
+  expect(draft.holdStopProposals).toEqual([expect.objectContaining({ action: 'hold', reason: 'concurrent quality review' })]);
+  expect(draft.requestActions).toEqual(expect.arrayContaining(['hold', 'move_up']));
+  expect(draft.rowOverlays[0].proposals).toEqual([expect.objectContaining({ action: 'move_up' })]);
+  expect(f.control.blockedMutations).toEqual([]);
+});
+
 test('Move Up plus Priority submits V6 movement inquiry without any Hold proposal', {"tag":["@reclass-splits"]}, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name); await f.open();
   const row = page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"]');

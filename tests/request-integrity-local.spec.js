@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import pg from 'pg';
 // @test-group: @database,@local-e2e
 
 
@@ -42,7 +43,7 @@ async function createUser(email, password, username, role) {
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates,return=representation'
     },
-    body: JSON.stringify({ id: userId, username, display_name: username, role })
+    body: JSON.stringify({ id: userId, username, display_name: username, role, must_change_password: false })
   });
   expect(profile.response.ok, JSON.stringify(profile.body)).toBeTruthy();
   return { userId, email, password, username, role };
@@ -66,6 +67,30 @@ async function rpc(name, token, payload) {
   });
 }
 
+async function seedCustomerMappings(users, suffix, customerId, consigneeId, salesrepIds) {
+  // The imported mapping table deliberately denies direct REST writes, even
+  // with a service JWT. Seed only the disposable loopback database as postgres.
+  const connectionString = String(process.env.SUPABASE_LOCAL_DB_URL || '');
+  const target = new URL(connectionString || 'postgresql://invalid');
+  expect(['127.0.0.1', 'localhost', '[::1]']).toContain(target.hostname);
+  expect(target.pathname).toBe('/postgres');
+  const db = new pg.Client({ connectionString, connectionTimeoutMillis: 10000 });
+  await db.connect();
+  try {
+    await db.query('begin');
+    for (const [index, user] of users.entries()) {
+      await db.query(`insert into public.ph_customer_consignee_sales_reps
+        (unique_id,customeridentityid,customername,customerstatus,consigneeid,consigneename,consigneestatus,salesrepid,salesrepname)
+        values($1,$2,'Test Customer','A',$3,'Test Destination','A',$4,$5)`,
+      [`LOCAL-MAP-${index}-${suffix}`, customerId, consigneeId, index === 0 ? salesrepIds.rep : salesrepIds.csr, user.username]);
+    }
+    await db.query('commit');
+  } catch (error) {
+    await db.query('rollback');
+    throw error;
+  } finally { await db.end(); }
+}
+
 test.describe('Drive-canonical request transactions', {"tag":["@database","@local-e2e"]}, () => {
   test.skip(!localUrl || !anonKey || !serviceKey, 'Local Supabase environment is required.');
 
@@ -87,6 +112,9 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     });
     expect(evalRoster.response.ok, JSON.stringify(evalRoster.body)).toBeTruthy();
     const dylan = await createUser(`dylan_${suffix}@example.com`, password, 'dylan_collyge', 'ADMIN');
+    const customerId = `LOCAL-C-${suffix}`, consigneeId = `LOCAL-CN-${suffix}`;
+    const salesrepIds = { rep: `LOCAL-REP-${suffix}`, csr: `LOCAL-CSR-${suffix}` };
+    await seedCustomerMappings([rep, csr], suffix, customerId, consigneeId, salesrepIds);
 
     const masterId = `MASTER-${suffix}`;
     const itemcode = `ITEM-${suffix}`.toUpperCase();
@@ -115,6 +143,7 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
         unique_id: legacyRequestId,
         master_id: masterId,
         requested_by: 'legacy_ci',
+        request_source: 'legacy',
         request_folder: `LEGACY-${suffix}`,
         req_status: 'Complete',
         date_completed: new Date().toISOString(),
@@ -139,7 +168,10 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     const repToken = await signIn(rep);
     const repRequestId = `REQ-REP-${suffix}`;
     const repBatchId = crypto.randomUUID();
-    const requestPayload = [{ unique_id: repRequestId, master_id: masterId, requested_by: rep.username, request_folder: `FOLDER-${suffix}`, req_customer: 'Test Customer', req_qty: '2' }];
+    const requestPayload = [{ unique_id: repRequestId, master_id: masterId, requested_by: rep.username, request_folder: `FOLDER-${suffix}`,
+      req_customer: 'Test Customer', customeridentityid: customerId, customername: 'Test Customer',
+      consigneeidentityid: consigneeId, consigneename: 'Test Destination',
+      request_selected_salesrep_id: salesrepIds.rep, request_selected_rep_display: rep.username, req_qty: '2' }];
     const avCreate = await rpc('create_av_request_batch', repToken, { client_batch_id: repBatchId, requests: requestPayload });
     expect(avCreate.response.ok, JSON.stringify(avCreate.body)).toBeTruthy();
     expect(avCreate.body.rows[0].commonname).toBe('Canonical Drive Name');
@@ -158,7 +190,8 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     const csrRequestId = `REQ-CSR-${suffix}`;
     const csrCreate = await rpc('create_request_batch', csrToken, {
       client_batch_id: crypto.randomUUID(),
-      requests: [{ ...requestPayload[0], unique_id: csrRequestId, requested_by: csr.username }]
+      requests: [{ ...requestPayload[0], unique_id: csrRequestId, requested_by: csr.username,
+        request_selected_salesrep_id: salesrepIds.csr, request_selected_rep_display: csr.username }]
     });
     expect(csrCreate.response.ok, JSON.stringify(csrCreate.body)).toBeTruthy();
     const complete = await rpc('save_request_work', csrToken, {

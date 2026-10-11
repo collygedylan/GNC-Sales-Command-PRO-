@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       authorized: ${{ steps.guard.outputs.authorized }}
+      frontend: ${{ steps.guard.outputs.frontend }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -51,9 +52,22 @@ jobs:
           test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo 'SUPABASE_SERVICE_ROLE_KEY_REQUIRED'; exit 1; }
           [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
 
+  production-validation:
+    name: Validate production browsers on exact main
+    needs: authorize-production
+    if: github.ref == 'refs/heads/main' && needs.authorize-production.outputs.authorized == 'true'
+    uses: ./.github/workflows/release-validation.yml
+    with:
+      fast-pr: false
+      run-frontend-tests: ${{ needs.authorize-production.outputs.frontend == 'true' }}
+      # Database and Edge contracts already passed in the immutable PR proof.
+      run-backend-tests: false
+      run-schema-tests: false
+    secrets: inherit
+
   sync-codegs:
     name: Update Apps Script Code.gs
-    needs: authorize-production
+    needs: [authorize-production, production-validation]
     if: needs.authorize-production.outputs.authorized == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25

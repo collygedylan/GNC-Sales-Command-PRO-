@@ -118,7 +118,8 @@ async function mixedImportAcrossActiveWriter(operation, importId, activeId) {
       await admin.query('rollback');
     }
     if (operation === 'begin') {
-      await clients[0].query("insert into public.ph_active_request(unique_id,req_status,requested_by,request_selected_rep_username) values($1,'Pending',$2,$2)", [activeId, repName]);
+      // Internal import-barrier fixture retains its explicit legacy provenance.
+      await clients[0].query("insert into public.ph_active_request(unique_id,req_status,requested_by,request_selected_rep_username,request_source) values($1,'Pending',$2,$2,'legacy')", [activeId, repName]);
     } else {
       await clients[0].query("update public.ph_active_request set request_note='Mixed import lock-order fixture' where unique_id=$1", [activeId]);
     }

@@ -46,5 +46,17 @@
   {
     "path": "supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql",
     "gitBlob": "a034da0aa4235d0f298e9f94733d83c9469c918c"
+  },
+  {
+    "path": "supabase/migrations/20261011193000_historical_requests_price_fallback.sql",
+    "gitBlob": "5186ccf040ff9ae6f70e7b16d7628d4c055e3ebc"
+  },
+  {
+    "path": "supabase/migrations/20261011223000_reclass_concurrent_hold_rows.sql",
+    "gitBlob": "1b2e7eda4619bfd3eaa1b89eb5e86da6b4f350d0"
+  },
+  {
+    "path": "supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql",
+    "gitBlob": "46cb08153f869ad84509b663d2a021c8052dc5b2"
   }
 ]

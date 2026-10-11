@@ -49,7 +49,7 @@ test('a hold names its selected origin without granting caller-controlled fanout
   assert.throws(() => validateReclassSmartShieldProposals(forged), /HOLD_PROPOSAL_INVALID/);
 });
 
-test('Move Up rejects hold instructions anywhere in the same V6 inquiry', () => {
+test('Move Up permits a separately validated Hold/Stop origin in the same V6 inquiry', () => {
   for (const mode of ['global', 'same-row', 'another-row']) {
     const value = payload();
     value.rowOverlays[0].proposals.push({ action: 'move_up', applyHold: false, holdReason: '' });
@@ -58,7 +58,7 @@ test('Move Up rejects hold instructions anywhere in the same V6 inquiry', () => 
     else value.rowOverlays.push({ unique_id: 'another-selected-row', proposals: [
       { action: 'move_down', applyHold: true, holdReason: 'Review moved quantity' },
     ] });
-    assert.throws(() => validateReclassSmartShieldProposals(value), /MOVE_UP_HOLD_CONFLICT/);
+    assert.doesNotThrow(() => validateReclassSmartShieldProposals(value));
   }
 });
 

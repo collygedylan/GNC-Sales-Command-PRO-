@@ -14,6 +14,12 @@ const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
+test('unit contracts can read the immutable performance baseline from Git history', () => {
+  const checkout = validation.jobs.unit.steps.find(step => step.uses === 'actions/checkout@v4');
+  assert.equal(checkout.with['fetch-depth'], 0);
+  assert.equal(validation.jobs.unit.needs, undefined);
+});
+
 test('superseded validation cancels only the matching workflow and PR or branch', () => {
   const names = ['release-validation', 'release-database', 'bloomscapes-pending-tests',
     'live-dataset-revisions', 'suspend-tag-tests', 'codex-mobile-path-policy'];
@@ -90,7 +96,7 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['unit','database','build','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['lint','unit','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -164,7 +170,7 @@ test('browser shards and compiled suites use isolated runners without racing per
 test('every build consumer verifies the original manifest, never rebuilds or reseals', () => {
   for (const name of ['foundation','functional','compiled','timing','performance','lighthouse']) {
     const job = validation.jobs[name];
-    assert.deepEqual(job.needs, ['functional','compiled'].includes(name) ? ['build','foundation'] : 'build');
+    assert.equal(job.needs, 'build');
     assert.equal(job.steps.filter(s => s.uses === './.github/actions/download-release').length, 1);
     assert.doesNotMatch(job.steps.map(s=>s.run||'').join('\n'), /npm run build|artifact\.mjs seal/);
   }
@@ -250,7 +256,7 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
     }}, console: {log() {}}});
   }
   assert.doesNotThrow(() => run(healthy));
-  for (const name of validation.jobs['release-gate'].needs) {
+  for (const name of validation.jobs['release-gate'].needs.filter(name => name !== 'fast-browser')) {
     for (const result of ['failure','cancelled','skipped']) {
       assert.throws(() => run({...healthy, [name]: {...healthy[name], result}}), /RELEASE_GATE_FAILED/);
     }
@@ -263,6 +269,39 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
   assert.doesNotThrow(() => run(benchmark, false));
   benchmark.build.outputs.digest = '';
   assert.throws(() => run(benchmark, false), /RELEASE_DIGEST_MISSING/);
+});
+
+test('PRs require one headless Chromium gate and main requires the complete browser lanes', () => {
+  assert.equal(validation.on.workflow_call.inputs['fast-pr'].default, false);
+  assert.match(performance.jobs.validation.with['fast-pr'], /github.event_name == 'pull_request'/);
+  const fast = validation.jobs['fast-browser'];
+  assert.equal(fast.strategy, undefined);
+  assert.equal(fast.steps.find(step => step.uses === './.github/actions/setup-browser-tests').with.browsers, 'chromium');
+  const command = fast.steps.find(step => step.run?.includes('playwright test')).run;
+  assert.match(command, /--project=chromium/);
+  assert.doesNotMatch(command, /--shard|firefox|webkit|--headed/);
+  for (const name of ['foundation', 'functional', 'compiled', 'timing', 'performance', 'lighthouse']) {
+    assert.match(validation.jobs[name].if, /!inputs.fast-pr/);
+    assert.match(validation.jobs[name].if, /github.ref == 'refs\/heads\/main'/);
+    assert.match(validation.jobs[name].if, /inputs.run-frontend-tests/);
+  }
+  const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
+  const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'skipped' }]));
+  for (const name of ['lint', 'unit', 'build', 'fast-browser']) results[name].result = 'success';
+  results.build.outputs = { digest: 'a'.repeat(64) };
+  const execute = () => vm.runInNewContext(gate, { process: { env: {
+    RELEASE_JOB_RESULTS: JSON.stringify(results), FAST_PR: 'true', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',
+  } }, console: { log() {} } });
+  assert.doesNotThrow(execute);
+  for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
+    results['fast-browser'].result = result;
+    assert.throws(execute, /RELEASE_GATE_FAILED_fast-browser/);
+  }
+  const database = yaml.load(read('.github/workflows/release-database.yml'));
+  for (const name of ['integration', 'schema-contracts', 'database-and-functions', 'suspend-tag-approval']) {
+    assert.equal(database.jobs[name].if, 'inputs.run-schema-tests');
+  }
+  assert.equal(validation.jobs.unit.steps.find(step => step.run === 'npm run test:v2').if, 'inputs.run-frontend-tests');
 });
 
 test('production health recovery follows actual publication and the published build commit', async () => {
@@ -351,14 +390,16 @@ test('PR path filters select affected tests and match the artifact reuse classif
   assert.equal(filter.with['predicate-quantifier'], 'every');
   assert.equal(performance.jobs.changes.permissions['pull-requests'], 'read');
   const cases = [
-    [['supabase/functions/aura-llm-router/index.ts'], { frontend: false, backend: true }],
-    [['supabase/migrations/fixture.sql'], { frontend: false, backend: true }],
-    [['deno.lock', 'deno.jsonc'], { frontend: false, backend: true }],
-    [['v2/src/App.tsx', 'styles/main.css'], { frontend: true, backend: false }],
-    [['supabase/functions/app-api/index.ts', 'index.html'], { frontend: true, backend: true }],
-    [['package-lock.json'], { frontend: true, backend: true }],
-    [['.github/workflows/release-validation.yml'], { frontend: true, backend: true }],
-    [['scripts/ci-test-scope.mjs', 'tests/release-pipeline.test.mjs'], { frontend: true, backend: true }],
+    [['supabase/functions/aura-llm-router/index.ts'], { frontend: false, backend: true, schema: true }],
+    [['supabase/migrations/fixture.sql'], { frontend: false, backend: true, schema: true }],
+    [['deno.lock', 'deno.jsonc'], { frontend: false, backend: true, schema: false }],
+    [['docs/release.md'], { frontend: false, backend: false, schema: false }],
+    [['migrations/fixture.sql'], { frontend: false, backend: true, schema: true }],
+    [['v2/src/App.tsx', 'styles/main.css'], { frontend: true, backend: false, schema: false }],
+    [['supabase/functions/app-api/index.ts', 'index.html'], { frontend: true, backend: true, schema: true }],
+    [['package-lock.json'], { frontend: true, backend: true, schema: false }],
+    [['.github/workflows/release-validation.yml'], { frontend: true, backend: true, schema: false }],
+    [['scripts/ci-test-scope.mjs', 'tests/release-pipeline.test.mjs'], { frontend: true, backend: true, schema: false }],
   ];
   for (const [paths, expected] of cases) {
     const actual = Object.fromEntries(Object.entries(patterns).map(([name, rules]) =>
@@ -375,7 +416,7 @@ test('PR path filters select affected tests and match the artifact reuse classif
 test('the release gate accepts only intentional skips and still requires the immutable build', () => {
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
   const frontend = ['foundation','functional','compiled','timing','performance','lighthouse'];
-  for (const scope of [{ frontend: true, backend: false }, { frontend: false, backend: true }]) {
+  for (const scope of [{ frontend: true, backend: false, schema: false }, { frontend: false, backend: true, schema: true }]) {
     const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'success' }]));
     results.build.outputs = { digest: 'a'.repeat(64) };
     results['production-health'].result = 'skipped';

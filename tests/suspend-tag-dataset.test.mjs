@@ -42,6 +42,15 @@ function actualAccessFunctions() {
   return context;
 }
 
+test('QC Drive baseline can read inventory without gaining sales or account data', () => {
+  const auth = actualAccessFunctions();
+  for (const role of ['QC', 'qc', '\nQC']) {
+    assert.equal(auth.access(role, 'ph_master_inventory', 'diagnostic_qc'), true);
+    assert.equal(auth.access(role, 'ph_customer_consignee_sales_reps', 'diagnostic_qc'), false);
+    assert.equal(auth.access(role, 'ph_hl_po', 'diagnostic_qc'), false);
+  }
+});
+
 test('Suspend Tag has an exact editor allowlist without broadening ordinary SOC permissions', () => {
   const auth = actualAccessFunctions();
   const matrix = [

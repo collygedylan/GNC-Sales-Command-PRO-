@@ -692,7 +692,43 @@
     "destination": "20261007211340_sql_lint_runtime_context.sql"
   },
   {
+    "source": "supabase/migrations/20261008190038_reclass_sheared_action_v5.sql",
+    "destination": "20261008190038_reclass_sheared_action_v5.sql"
+  },
+  {
+    "source": "supabase/migrations/20261009053029_reclass_smart_priority_hold_shield_v6.sql",
+    "destination": "20261009053029_reclass_smart_priority_hold_shield_v6.sql"
+  },
+  {
+    "source": "supabase/migrations/20261010024830_customer_rep_mapping_management.sql",
+    "destination": "20261010024830_customer_rep_mapping_management.sql"
+  },
+  {
     "source": "supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql",
     "destination": "20261010080018_bunch_note_auto_completion_delivery.sql"
+  },
+  {
+    "source": "supabase/migrations/20261010152556_customer_rep_mapping_finalize_timeout_55s.sql",
+    "destination": "20261010152556_customer_rep_mapping_finalize_timeout_55s.sql"
+  },
+  {
+    "source": "supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql",
+    "destination": "20261010165013_historical_requests_financial_dashboard.sql"
+  },
+  {
+    "source": "supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql",
+    "destination": "20261011170000_request_mapping_salesrep_identity.sql"
+  },
+  {
+    "source": "supabase/migrations/20261011193000_historical_requests_price_fallback.sql",
+    "destination": "20261011193000_historical_requests_price_fallback.sql"
+  },
+  {
+    "source": "supabase/migrations/20261011223000_reclass_concurrent_hold_rows.sql",
+    "destination": "20261011223000_reclass_concurrent_hold_rows.sql"
+  },
+  {
+    "source": "supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql",
+    "destination": "20261011224500_normalize_sales_actor_role_boundaries.sql"
   }
 ]

@@ -41,13 +41,16 @@ export const historicalRequestsMigrationName = '20261010165013_historical_reques
 export const auraVoiceRoleAccessMigrationName = '20261010200046_aura_voice_role_access.sql';
 export const auraVoiceSocReadsMigrationName = '20261011032352_aura_voice_soc_reads.sql';
 export const requestMappingIdentityMigrationName = '20261011170000_request_mapping_salesrep_identity.sql';
+export const historicalRequestsPriceFallbackMigrationName = '20261011193000_historical_requests_price_fallback.sql';
+export const reclassConcurrentHoldMigrationName = '20261011223000_reclass_concurrent_hold_rows.sql';
+export const salesActorRoleBoundariesMigrationName = '20261011224500_normalize_sales_actor_role_boundaries.sql';
 export const reclassEvalSubmitGuardsMigrationName = '20261006150745_reclass_split_move_eval_submit_guards.sql';
 export const inventoryRowAssignmentFutureSnapshotsMigrationName = '20261006210000_inventory_row_assignment_future_snapshots.sql';
 export const inventoryRowAssignmentLiveConsumersMigrationName = '20261006210200_inventory_row_assignment_live_consumers.sql';
 export const inventoryRowAssignmentAuthorityMigrationName = '20261006200446_inventory_row_assignment_authority.sql';
 export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_default_owners.sql';
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName]);
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -209,6 +212,19 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === salesActorRoleBoundariesMigrationName) return `select
+    position('[[:space:]]' in pg_get_functiondef('sales_private.actor(uuid)'::regprocedure))>0
+    and position('[[:space:]]' in pg_get_functiondef('sales_private.request_mapping_rep_allowed_v1(uuid,text)'::regprocedure))>0
+    and not has_function_privilege('authenticated','sales_private.actor(uuid)','execute') as installed`;
+  if (name === reclassConcurrentHoldMigrationName) return `select
+    position('DRIVE_RECLASS_V6_MOVE_UP_HOLD_CONFLICT' in pg_get_functiondef('private.validate_reclass_smart_shield_v6(jsonb)'::regprocedure))=0
+    and position('holdstopbegindate = case' in pg_get_functiondef('private.apply_ph_master_inventory_live_edits_v6(jsonb)'::regprocedure))>0
+    and not has_function_privilege('authenticated','private.apply_ph_master_inventory_live_edits_v6(jsonb)','execute') as installed`;
+  if (name === historicalRequestsPriceFallbackMigrationName) return `select
+    (select baseline.installed from (${migrationContractQuery(historicalRequestsMigrationName)}) baseline)
+    and position('fallback_prices' in pg_get_functiondef('public.historical_requests_read_v1(jsonb)'::regprocedure))>0
+    and position('current_master_found' in pg_get_functiondef('public.historical_requests_read_v1(jsonb)'::regprocedure))>0
+    and position('min(price)=max(price)' in pg_get_functiondef('public.historical_requests_read_v1(jsonb)'::regprocedure))>0 as installed`;
   if (name === requestMappingIdentityMigrationName) return "select (exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_active_request' and column_name='request_selected_salesrep_id') and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_active_request_live_rows' and column_name='request_selected_salesrep_id') and exists(select 1 from information_schema.columns where table_schema='public' and table_name='ph_request_queue_live_rows' and column_name='request_selected_salesrep_id') and to_regprocedure('sales_private.request_mapping_rep_allowed_v1(uuid,text)') is not null and exists(select 1 from pg_proc where oid='private.insert_request_batch(uuid,jsonb,text)'::regprocedure and position('request_selected_salesrep_id' in prosrc)>0)) as installed";
   if (name === historicalRequestsMigrationName) return `select
     to_regprocedure('public.historical_requests_read_v1(jsonb)') is not null

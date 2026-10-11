@@ -3,6 +3,13 @@ name: Validate one immutable release
 on:
   workflow_call:
     inputs:
+      fast-pr:
+        description: One headless Chromium gate; full browser coverage runs on main.
+        type: boolean
+        default: false
+      run-schema-tests:
+        type: boolean
+        default: true
       production-health:
         type: boolean
         default: false
@@ -39,7 +46,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  unit:
+  lint:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -51,6 +58,15 @@ jobs:
       - run: npm run check:inline
         if: inputs.run-frontend-tests
       - run: npm run check:tooling
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-node-dependencies
       - run: node scripts/run-release-unit-checks.mjs
       - run: npm run test:v2
         if: inputs.run-frontend-tests
@@ -62,6 +78,8 @@ jobs:
   database:
     if: inputs.run-backend-tests
     uses: ./.github/workflows/release-database.yml
+    with:
+      run-schema-tests: ${{ inputs.run-schema-tests }}
 
   build:
     runs-on: ubuntu-latest
@@ -114,8 +132,34 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  fast-browser:
+    if: inputs.run-frontend-tests && inputs.fast-pr
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: chromium
+      - uses: ./.github/actions/download-release
+        with:
+          digest: ${{ needs.build.outputs.digest }}
+      - name: Single headless Chromium PR gate
+        run: npx playwright test --config playwright.release-functional.config.ts --project=chromium --workers=2 --max-failures=1 --reporter=github
+      - name: Verify the sealed package after the PR gate
+        env:
+          EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
+        run: node scripts/release-artifact.mjs verify
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: pr-chromium-${{ github.run_attempt }}
+          path: test-results
+          if-no-files-found: ignore
+
   foundation:
-    if: inputs.run-frontend-tests
+    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     # Browser dependency installation can consume over eight minutes on a cold runner.
@@ -136,7 +180,7 @@ jobs:
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
-      - name: Shared lifecycle fault injection before feature suites
+      - name: Shared lifecycle fault injection
         run: npm run test:foundation -- --project=${{ matrix.project }} --max-failures=1 --reporter=github
       - name: Verify immutable package after foundation checks
         env:
@@ -150,8 +194,8 @@ jobs:
           if-no-files-found: ignore
 
   functional:
-    if: inputs.run-frontend-tests
-    needs: [build, foundation]
+    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: build
     runs-on: ubuntu-latest
     # A cold browser install can leave too little of a 15-minute job for the shard.
     timeout-minutes: 25
@@ -191,8 +235,8 @@ jobs:
           if-no-files-found: ignore
 
   compiled:
-    if: inputs.run-frontend-tests
-    needs: [build, foundation]
+    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -721,7 +765,7 @@ jobs:
           if-no-files-found: ignore
 
   timing:
-    if: inputs.run-frontend-tests
+    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -762,7 +806,7 @@ jobs:
           if-no-files-found: ignore
 
   performance:
-    if: inputs.run-frontend-tests
+    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -801,7 +845,7 @@ jobs:
           if-no-files-found: error
 
   lighthouse:
-    if: inputs.run-frontend-tests
+    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -846,7 +890,7 @@ jobs:
 
   release-gate:
     if: always()
-    needs: [unit, database, build, foundation, functional, compiled, timing, performance, lighthouse, production-health]
+    needs: [lint, unit, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
     runs-on: ubuntu-latest
     outputs:
       run-id: ${{ github.run_id }}
@@ -859,13 +903,18 @@ jobs:
         env:
           RELEASE_JOB_RESULTS: ${{ toJSON(needs) }}
           REQUIRE_PRODUCTION_HEALTH: ${{ inputs.production-health }}
+          FAST_PR: ${{ inputs.fast-pr }}
+          RUN_SCHEMA_TESTS: ${{ inputs.run-schema-tests }}
           RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
           RUN_BACKEND_TESTS: ${{ inputs.run-backend-tests }}
         run: |
           node --input-type=module <<'NODE'
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
-          const required = ['unit','build'];
-          if (process.env.RUN_FRONTEND_TESTS === 'true') required.push('foundation','functional','compiled','timing','performance','lighthouse');
+          const required = ['lint','unit','build'];
+          if (process.env.RUN_FRONTEND_TESTS === 'true') {
+            if (process.env.FAST_PR === 'true') required.push('fast-browser');
+            else required.push('foundation','functional','compiled','timing','performance','lighthouse');
+          }
           if (process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
           if (process.env.REQUIRE_PRODUCTION_HEALTH === 'true') required.push('production-health');
           for (const name of required) {
@@ -878,6 +927,8 @@ jobs:
         env:
           RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
           RELEASE_SITE_ID: ${{ needs.build.outputs.artifact-id }}
+          FAST_PR: ${{ inputs.fast-pr }}
+          RUN_SCHEMA_TESTS: ${{ inputs.run-schema-tests }}
           RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
           RUN_BACKEND_TESTS: ${{ inputs.run-backend-tests }}
         run: |
@@ -889,7 +940,8 @@ jobs:
             commit:process.env.GITHUB_SHA, runId:Number(process.env.GITHUB_RUN_ID),
             attempt:Number(process.env.GITHUB_RUN_ATTEMPT), siteArtifactId:Number(process.env.RELEASE_SITE_ID),
             digest:process.env.RELEASE_DIGEST,
-            testScope:{frontend:process.env.RUN_FRONTEND_TESTS === 'true', backend:process.env.RUN_BACKEND_TESTS === 'true'}
+            browserMode:process.env.FAST_PR === 'true' ? 'pr-chromium' : 'full',
+            testScope:{frontend:process.env.RUN_FRONTEND_TESTS === 'true', backend:process.env.RUN_BACKEND_TESTS === 'true', schema:process.env.RUN_SCHEMA_TESTS === 'true'}
           }));
           NODE
       - uses: actions/checkout@v4

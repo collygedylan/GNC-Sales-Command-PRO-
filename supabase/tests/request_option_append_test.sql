@@ -35,6 +35,11 @@ values (
   'request_append_csr', 'Request Append CSR', 'CSR'
 ) on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
+-- The imported relationship remains valid even without a REP picker profile.
+insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,customerstatus,
+  consigneeid,consigneename,consigneestatus,salesrepid,salesrepname) values
+  ('APPEND-VALID-MAP','APPEND-C','Persisted Customer','A','APPEND-CN','Persisted Destination','A','APPEND-REP','Persisted Rep Missing From Picker');
+
 insert into public.ph_master_inventory (
   unique_id, itemcode, commonname, contsize, locationcode, lotcode,
   ptravailable, season_supply, priority, qualitycode, field_tag_color,
@@ -200,7 +205,7 @@ select throws_ok(
 select lives_ok(
   $q$select public.create_request_batch(
     '91000000-0000-0000-0000-000000000020',
-    '[{"unique_id":"REQUEST-APPEND-COMPLETE-1","master_id":"REQUEST-APPEND-MASTER-1","requested_by":"Persisted Rep Missing From Picker","request_folder":"REQUEST-APPEND-COMPLETE-FOLDER","req_customer":"Persisted Customer","req_qty":"1"}]'::jsonb
+    '[{"unique_id":"REQUEST-APPEND-COMPLETE-1","master_id":"REQUEST-APPEND-MASTER-1","requested_by":"Persisted Rep Missing From Picker","request_folder":"REQUEST-APPEND-COMPLETE-FOLDER","req_customer":"Persisted Customer","customeridentityid":"APPEND-C","customername":"Persisted Customer","consigneeidentityid":"APPEND-CN","consigneename":"Persisted Destination","req_qty":"1"}]'::jsonb
   )$q$,
   'a second source Request is available for completed-folder rejection'
 );

@@ -73,8 +73,14 @@ select ok(position('update public.ph_master_inventory' in lower(pg_get_functiond
 select ok(position('validate_eval_work_inquiry_legacy_v1' in pg_get_functiondef('private.validate_eval_work_inquiry_v1(jsonb,text,jsonb)'::regprocedure)) > 0,'EvalWork V4 validation preserves existing V2/V3 validation');
 select ok(position('expected,ptronhand' in pg_get_functiondef('private.validate_eval_work_inquiry_v1(jsonb,text,jsonb)'::regprocedure)) > 0,'draft save rejects a stale original OH snapshot');
 select ok(position('private.project_reclass_split_move_v4(p_inquiry,false)' in pg_get_functiondef('private.validate_eval_work_inquiry_v4_strict(jsonb,text,jsonb)'::regprocedure)) > 0,'final submission requires complete split quantities, destinations, and hold reason');
-select ok(position('private.validate_eval_work_inquiry_v4_strict' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure)) > 0,'EvalWork finalization enforces strict V4 validation');
-select ok(position('private.validate_eval_work_inquiry_v4_strict' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure)) > 0,'multi-origin EvalWork finalization enforces strict V4 validation');
+select ok(position('private.validate_eval_work_inquiry_v4_strict' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure)) > 0
+  or (position('private.submit_eval_work_v1_v5_impl' in pg_get_functiondef('public.submit_eval_work_v1(uuid,text,integer,jsonb,jsonb,text)'::regprocedure)) > 0
+    and position('private.validate_eval_work_inquiry_v4_strict' in pg_get_functiondef(to_regprocedure('private.submit_eval_work_v1_v5_impl(uuid,text,integer,jsonb,jsonb,text)'))) > 0),
+  'EvalWork finalization enforces strict V4 validation');
+select ok(position('private.validate_eval_work_inquiry_v4_strict' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure)) > 0
+  or (position('private.submit_eval_work_v2_v5_impl' in pg_get_functiondef('public.submit_eval_work_v2(uuid,text,integer,jsonb,jsonb,text)'::regprocedure)) > 0
+    and position('private.validate_eval_work_inquiry_v4_strict' in pg_get_functiondef(to_regprocedure('private.submit_eval_work_v2_v5_impl(uuid,text,integer,jsonb,jsonb,text)'))) > 0),
+  'multi-origin EvalWork finalization enforces strict V4 validation');
 select lives_ok($$select private.project_reclass_split_move_v4(pg_temp.reclass_v4_inquiry(
   '{"action":"move_up","splits":[{"quantity":"","destinationSeason":""}],"applyHold":true,"holdReason":""}'::jsonb,
   null,'10'),true)$$,'draft projection accepts a blank split row and incomplete hold reason');

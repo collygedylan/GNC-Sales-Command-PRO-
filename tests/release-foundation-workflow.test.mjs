@@ -6,7 +6,7 @@ import yaml from 'js-yaml';
 
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
-test('foundation is a required sealed-artifact gate before functional and feature suites', () => {
+test('foundation is a required sealed-artifact gate alongside functional and feature suites', () => {
   const job = workflow.jobs.foundation;
   assert.equal(job.needs, 'build');
   assert.equal(job['timeout-minutes'], 20);
@@ -15,7 +15,7 @@ test('foundation is a required sealed-artifact gate before functional and featur
   assert.deepEqual(job.strategy.matrix.include.map(row => row.project), ['lifecycle-chromium', 'lifecycle-iphone']);
   assert.equal(job.strategy['fail-fast'], true);
   assert.ok(job.steps.some(step => step.run === 'node scripts/release-artifact.mjs verify'));
-  for (const name of ['functional', 'compiled']) assert.ok(workflow.jobs[name].needs.includes('foundation'));
+  for (const name of ['functional', 'compiled']) assert.equal(workflow.jobs[name].needs, 'build');
   assert.ok(workflow.jobs['release-gate'].needs.includes('foundation'));
   assert.match(workflow.jobs['release-gate'].steps[0].run, /'foundation'/);
   assert.doesNotMatch(job.steps.map(step => step.run || '').join('\n'), /build:|--retries|continue-on-error/);

@@ -12,7 +12,8 @@ select ok(has_function_privilege('service_role', 'public.enqueue_drive_reclass_i
 select ok(not has_function_privilege('authenticated', 'public.get_drive_reclass_inquiry_status_v1(text,text)', 'execute'), 'authenticated browser cannot read Drive Reclass status directly');
 select ok(not has_function_privilege('authenticated', 'public.retry_drive_reclass_inquiry_v1(text,text)', 'execute'), 'authenticated browser cannot retry Drive Reclass directly');
 select is((select count(*)::integer from private.app_access_permissions where permission_key = 'drive.reclass.submit' and active), 1, 'Drive Reclass permission is cataloged');
-select is((select count(*)::integer from private.app_access_legacy_checks where permission_key = 'drive.reclass.submit'), 5, 'client and V3/V4 edge and RPC enforcement surfaces are registered');
+select is((select count(*)::integer from private.app_access_legacy_checks where permission_key = 'drive.reclass.submit'
+  and check_key in ('client.drive.reclass.v3','edge.drive.reclass.v3','rpc.drive.reclass.v3','edge.drive.reclass.v4','rpc.drive.reclass.v4')), 5, 'client and V3/V4 edge and RPC enforcement surfaces are registered');
 select is((select count(*)::integer from private.app_access_role_grants where permission_key = 'drive.reclass.submit' and allowed and role_key in ('ADMIN','ADMINISTRATOR','MANAGER') and access_scope = 'global'), 3 * (select count(*)::integer from private.app_access_policy_versions), 'all manager policy versions receive global scope');
 select is((select count(*)::integer from private.app_access_role_grants where permission_key = 'drive.reclass.submit' and allowed and role_key in ('EVAL','EVALUATOR') and access_scope = 'assigned'), 2 * (select count(*)::integer from private.app_access_policy_versions), 'all evaluator policy versions receive assigned scope');
 select is((

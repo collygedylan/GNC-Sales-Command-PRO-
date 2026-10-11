@@ -115,8 +115,9 @@ begin
   exception when others then if sqlerrm<>'SALES_MODULE_FORBIDDEN' then raise; end if; end;
   perform pg_temp.sales_check(true,'live history revocation enforced by API');
   delete from private.navigation_view_overrides where profile_id=rep and view_key='request-history';
-  insert into public.ph_active_request(unique_id,master_id,commonname,req_status,requested_by,request_selected_rep_username,request_created_by_username)
-  values('CR-COMPLETE',null,'Atomic History','Pending','Credit Rep','credit_rep','credit_csr');
+  -- Seed a pre-mapping legacy record through its existing service-only import path.
+  insert into public.ph_active_request(unique_id,master_id,commonname,req_status,requested_by,request_selected_rep_username,request_created_by_username,request_source)
+  values('CR-COMPLETE',null,'Atomic History','Pending','Credit Rep','credit_rep','credit_csr','legacy');
   select count(*) into old_events from public.ph_request_delivery_outbox;
   update public.ph_active_request set req_status='Complete',date_completed='2026-09-20T12:00:00Z' where unique_id='CR-COMPLETE';
   perform pg_temp.sales_check(exists(select 1 from public.ph_request_history where unique_id='CR-COMPLETE' and assigned_rep_id=rep),'completion transaction writes durable assigned history');

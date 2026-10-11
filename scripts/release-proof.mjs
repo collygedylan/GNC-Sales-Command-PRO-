@@ -36,7 +36,7 @@ export async function selectReleaseProof({ repository, commit, api }) {
   const run = { ...await latest() };
   const jobs = await listComplete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, 'jobs', 'JOBS_INCOMPLETE');
   if (jobs.some(j=>!Number.isSafeInteger(j.id) || j.id < 1 || j.run_id !== run.id || j.head_sha !== commit || j.status !== 'completed'
-    || (j.conclusion !== 'success' && !(j.name === 'validation / production-health' && j.conclusion === 'skipped')))) fail('JOB_NOT_GREEN');
+      || (j.conclusion !== 'success' && !(['validation / production-health', 'validation / fast-browser'].includes(j.name) && j.conclusion === 'skipped')))) fail('JOB_NOT_GREEN');
   const gates = jobs.filter(j=>j.name==='validation / release-gate');
   if (gates.length !== 1 || !gates[0].steps?.some(s=>s.name==='Require every safety lane for this commit' && s.status==='completed' && s.conclusion==='success')) fail('GATE_MISSING');
   const artifacts = await listComplete(api, `${root}/actions/runs/${run.id}/artifacts?per_page=100`, 'artifacts', 'ARTIFACTS_INCOMPLETE');
@@ -57,7 +57,8 @@ export async function selectReleaseProof({ repository, commit, api }) {
 export function verifyReleaseProof(proof, selected, release) {
   for (const k of ['schemaVersion','repository','commit','runId','attempt','siteArtifactId']) if (proof[k] !== selected[k]) fail('RECORD_MISMATCH');
   if (proof.release !== release || !/^[a-f0-9]{64}$/.test(proof.digest || '')) fail('CONTENT_IDENTITY_INVALID');
-  if (selected.testScope && ['frontend', 'backend'].some(name => proof.testScope?.[name] !== selected.testScope[name])) fail('TEST_SCOPE_MISMATCH');
+  if (selected.testScope && ['frontend', 'backend', 'schema'].some(name => proof.testScope?.[name] !== selected.testScope[name])) fail('TEST_SCOPE_MISMATCH');
+  if (selected.browserMode && proof.browserMode !== selected.browserMode) fail('BROWSER_MODE_MISMATCH');
   return proof.digest;
 }
 

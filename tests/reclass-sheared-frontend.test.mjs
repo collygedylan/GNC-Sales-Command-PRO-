@@ -197,53 +197,22 @@ test('V5 sheared quantity validates whole numbers, original OH, and combined mov
   })(), /Combined Move Up, Move Down, and Sheared quantities cannot exceed original OH/);
 });
 
-function loadMoveUpHoldGuard(rows = []) {
-  const start = html.indexOf('function hasArgosReclassMoveUpProposal()');
-  const end = html.indexOf('function cloneArgosReclassProposal(', start);
-  assert.ok(start > 0 && end > start);
-  const rowMaps = new Map(rows.map(row => [row.unique_id, row.proposals || {}]));
-  const context = {
-    argosInventoryTransactionState: { inquiryModel: { locationRows: rows.map(({ unique_id }) => ({ unique_id })) } },
-    argosReclassMultiActionState: { holdStopProposals: { hold: { action: 'hold', reason: 'draft' } } },
-    RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
-    getArgosReclassV3Proposal: (uid, action) => rowMaps.get(uid)?.[action] || null,
-    getArgosReclassRowProposalMap: uid => rowMaps.get(uid) || {},
-  };
-  vm.createContext(context);
-  vm.runInContext(`${html.slice(start, end)}; this.hasMoveUp = hasArgosReclassMoveUpProposal; this.clearHold = clearArgosReclassHoldDraftForMoveUp;`, context);
-  return { context, rowMaps };
-}
-
-test('Move Up clears global and split-move hold drafts without touching saved inventory values', () => {
-  const fixture = loadMoveUpHoldGuard([
-    { unique_id: 'up', proposals: { move_up: { action: 'move_up' } } },
-    { unique_id: 'down', proposals: { move_down: { action: 'move_down', applyHold: true, holdReason: 'draft reason' } } },
-  ]);
-  assert.equal(fixture.context.hasMoveUp(), true);
-  fixture.context.clearHold();
-  assert.deepEqual(JSON.parse(JSON.stringify(fixture.context.argosReclassMultiActionState.holdStopProposals)), {});
-  assert.deepEqual(JSON.parse(JSON.stringify(fixture.rowMaps.get('up').move_up)), { action: 'move_up', applyHold: false, holdReason: '' });
-  assert.deepEqual(JSON.parse(JSON.stringify(fixture.rowMaps.get('down').move_down)), { action: 'move_down', applyHold: false, holdReason: '' });
-  assert.equal(fixture.context.hasMoveUp(), true);
+test('Move Up preserves independent Hold/Stop controls, reason and begin date', () => {
+  assert.doesNotMatch(html, /clearArgosReclassHoldDraftForMoveUp|disabledByMoveUp|holdControlsEnabled/);
+  assert.match(html, /data-reclass-hold-begin-date/);
+  assert.match(html, /<span>holdstopreason<\/span>/);
+  assert.match(html, /<span>holdstopbegindate<\/span>/);
 });
 
-test('Move Up hold controls are unavailable while priority proposals remain available', () => {
-  assert.match(html, /const disabledByMoveUp = moveUpSelected && RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS\.includes\(action\)/);
-  assert.match(html, /const holdControlsEnabled = !hasArgosReclassMoveUpProposal\(\)/);
-  assert.match(html, /Move Up before adding a Hold\/Stop draft/);
-  assert.match(html, /collectArgosReclassMoveProposal\(proposal, entry, rule, !hasArgosReclassMoveUpProposal\(\)\)/);
-  assert.doesNotMatch(html, /if \(normalized === 'move_up'\) clearArgosReclassHoldDraftForMoveUp\(\);[\s\S]{0,180}values\.priority/);
-});
-
-test('Move Up collection omits hold drafts but keeps priority and movement inquiry proposals', () => {
+test('Move Up collection retains Hold/Stop alongside priority and movement proposals', () => {
   const collect = loadDraftCollector({
-    __hold: { action: 'hold', reason: 'draft reason' },
+    __hold: { action: 'hold', reason: 'draft reason', sourceUid: 'row-1' },
     priority_change: { action: 'priority_change', priority: '2' },
-    move_up: { action: 'move_up', splits: [{ quantity: '3', destinationSeason: 'S1' }], applyHold: true, holdReason: 'stale draft' },
+    move_up: { action: 'move_up', splits: [{ quantity: '3', destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
   });
   const draft = collect();
-  assert.deepEqual(JSON.parse(JSON.stringify(draft.requestActions)), ['priority_change', 'move_up']);
-  assert.deepEqual(JSON.parse(JSON.stringify(draft.holdStopProposals)), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.requestActions)), ['hold', 'priority_change', 'move_up']);
+  assert.deepEqual(JSON.parse(JSON.stringify(draft.holdStopProposals)), [{ action: 'hold', reason: 'draft reason', sourceUid: 'row-1' }]);
   assert.deepEqual(JSON.parse(JSON.stringify(draft.rowOverlays[0].proposals)), [
     { action: 'priority_change', priority: '2' },
     { action: 'move_up', splits: [{ quantity: 3, destinationSeason: 'S1' }], applyHold: false, holdReason: '' },
@@ -302,7 +271,7 @@ test('a selected future row can start a hold draft without current-season settin
   vm.runInContext(`${html.slice(start, end)}; this.toggle = toggleArgosReclassV3Action;`, context);
   context.toggle(null, 'hold', entry.unique_id);
   assert.deepEqual(JSON.parse(JSON.stringify(context.argosReclassMultiActionState.holdStopProposals)), {
-    hold: { action: 'hold', reason: '', sourceUid: 'future-1' },
+    hold: { action: 'hold', reason: '', sourceUid: 'future-1', holdstopbegindate: new Date().toLocaleDateString('en-CA') },
   });
 });
 

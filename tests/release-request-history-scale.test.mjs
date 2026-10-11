@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import vm from 'node:vm';
 const sql=fs.readFileSync(new URL('../supabase/archive_migrations/20260924181019_optimize_request_history_read_projection.sql',import.meta.url),'utf8');
 test('History caches actor scope and projects credit only after full filtered paging',()=>{
   assert.equal((sql.match(/credit_allowed:=public.navigation_module_allowed_v1/g)||[]).length,1);
@@ -20,4 +21,27 @@ test('scale fixture rejects hosted databases before connecting',()=>{
     env:{...process.env,CI:'true',REQUEST_HISTORY_TEST_DB_URL:'postgresql://invalid:invalid@hosted.example.invalid/postgres'}});
   assert.notEqual(result.status,0);
   assert.match(result.stderr,/Hosted database fixtures forbidden/);
+});
+
+test('legacy scale seeds restore caller claims before reads even when insertion fails', async () => {
+  const source = fs.readFileSync(new URL('../scripts/test-request-history-scale.mjs', import.meta.url), 'utf8');
+  const helper = source.slice(source.indexOf('async function insertLegacyActiveFixture('), source.indexOf('export async function runRequestHistoryScaleFixture('));
+  assert.match(helper, /finally/);
+  assert.equal((source.match(/await insertLegacyActiveFixture\(db,/g) || []).length, 2);
+  assert.match(source, /generate_series\(1,3512\)/);
+  assert.match(source, /overlappingActiveRows:3512/);
+  for (const fail of [false, true]) {
+    const calls = [];
+    const db = { async query(sql, values) {
+      calls.push({ sql, values });
+      if (calls.length === 1) return { rows: [{ role: 'authenticated', claims: '{"role":"authenticated"}' }] };
+      if (sql === 'fixture insert' && fail) throw Error('synthetic insert failure');
+      return { rows: [] };
+    } };
+    const run = vm.runInNewContext(helper + '\ninsertLegacyActiveFixture', {});
+    if (fail) await assert.rejects(run(db, 'fixture insert', []), /synthetic insert failure/);
+    else await run(db, 'fixture insert', []);
+    assert.deepEqual(JSON.parse(JSON.stringify(calls.at(-1).values)), ['authenticated', '{"role":"authenticated"}']);
+    assert.match(calls[1].sql, /service_role/);
+  }
 });

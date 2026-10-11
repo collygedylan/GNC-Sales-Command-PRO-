@@ -60,7 +60,7 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     const { html, arrows } = reclassPdfV7Fixture();
     await page.setContent(html);
     const report = await page.locator('body').innerText();
-    const expectedHeadings = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
+    const expectedHeadings = ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'H/S Begin Date', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
       'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS'];
     const headings = await page.locator('.location-table thead .column-heading-row th').allTextContents();
     assert.deepEqual(headings, expectedHeadings, 'each editable field is its own main-table column with Lot first');
@@ -142,9 +142,10 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     for (const row of arrows) assert.equal(new Set(row.map(text => pagesByArrow.get(text))).size, 1,
       'each location keeps all movement instructions together in the PDF');
     const normalizedPdfText = allPdfText.replace(/\s+/g, ' ');
+    const compactPdfText = allPdfText.replace(/\s+/g, '');
     for (const value of ['Confirmed location note 0', 'Confirmed PTN1 0', 'Confirmed customer 0',
       'Confirmed designation location 0', 'Confirmed puller 0', '18%', 'Confirmed sales note 0', 'Yes - SR', 'SYN']) {
-      assert.ok(normalizedPdfText.includes(value), `PDF contains confirmed value ${value}`);
+      assert.ok(compactPdfText.includes(value.replace(/\s+/g, '')), `PDF contains confirmed value ${value}`);
     }
     assert.ok(!normalizedPdfText.includes('Confirmed Inventory Fields'));
     assert.ok(normalizedPdfText.includes('By SR') && normalizedPdfText.includes('Eval 10/8/2026') && normalizedPdfText.includes('Updated 10/8/2026'));

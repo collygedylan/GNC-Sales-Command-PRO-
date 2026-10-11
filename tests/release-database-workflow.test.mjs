@@ -123,8 +123,8 @@ test('Edge Function CI resolves pinned npm imports used by the push sender', () 
 test('historical regression fixture uses the explicit migration order manifest and dynamic SQL tests', () => {
   const root = repositoryRoot;
   const manifest = readHistoricalMigrationManifest({ root });
-  assert.equal(manifest.length, 174);
-  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 174);
+  assert.equal(manifest.length, 183);
+  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 183);
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(fs.existsSync(new URL('../' + entry.source, import.meta.url)), entry.source);
   const destinations = new Map(manifest.map((entry, index) => [entry.destination, index]));
@@ -362,6 +362,16 @@ test('native provisioning legacy-table fixture is installed with service-only ac
   assert.match(legacyBaseline, /grant select, insert, update, delete on table public\.ph_app_users to service_role/);
   assert.doesNotMatch(legacyBaseline, /grant[^;]+to\s+(?:public|anon|authenticated)\b/i);
   assert.match(provisioning, /expect\(deniedLegacy\.body\.code\)\.toBe\('42501'\)/);
+});
+
+test('historical sales mapping fixture supplies imported metadata without assuming active status', () => {
+  const fixture = fs.readFileSync(new URL('../supabase/ci/sales_credit_baseline.sql', import.meta.url), 'utf8');
+  for (const field of ['customerstatus','consigneestatus','territorycode','territorydesc','filename','source_file_name','source_row_number','row_hash','imported_at','created_at','updated_at']) {
+    assert.match(fixture, new RegExp(`\\b${field} (?:text|integer|timestamptz)\\b`), field);
+  }
+  assert.doesNotMatch(fixture, /(?:customerstatus|consigneestatus) text\s+[^,]*default/i);
+  const requestFixture = fs.readFileSync(new URL('../supabase/ci/request_workflow_baseline.sql', import.meta.url), 'utf8');
+  assert.match(requestFixture, /\blistprice text\b/);
 });
 
 test('backend matrices retain every discovered integration, entrypoint, and Edge test', () => {

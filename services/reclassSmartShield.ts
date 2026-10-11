@@ -29,8 +29,6 @@ export function validateReclassSmartShieldProposals(payload: Record<string, unkn
       throw new Error('DRIVE_RECLASS_V6_HOLD_SOURCE_INVALID');
     }
   }
-  let moveUp = false;
-  let hasHold = holds.length > 0;
   let hasPriority = false;
   for (const row of rows) {
     if (!record(row) || !Array.isArray(row.proposals)) throw new Error('DRIVE_RECLASS_V6_ROW_INVALID');
@@ -45,8 +43,6 @@ export function validateReclassSmartShieldProposals(payload: Record<string, unkn
     }
     for (const proposal of row.proposals) {
       if (!record(proposal)) throw new Error('DRIVE_RECLASS_V6_PROPOSAL_INVALID');
-      if (proposal.action === 'move_up') moveUp = true;
-      if (proposal.applyHold === true || typeof proposal.holdReason === 'string' && Boolean(proposal.holdReason.trim())) hasHold = true;
       if (proposal.action === 'priority_change') {
         hasPriority = true;
         if (typeof proposal.priority !== 'string' || proposal.priority !== '' && !/^[1-9][0-9]?$/.test(proposal.priority)) {
@@ -55,6 +51,5 @@ export function validateReclassSmartShieldProposals(payload: Record<string, unkn
       }
     }
   }
-  if (moveUp && hasHold) throw new Error('DRIVE_RECLASS_V6_MOVE_UP_HOLD_CONFLICT');
   if (!hasPriority && !holds.length) throw new Error('DRIVE_RECLASS_V6_LIVE_ACTION_REQUIRED');
 }

@@ -51,6 +51,7 @@ test('only exact hits skip installation; clean caches are saved before caller co
   assert.equal(steps[save].if, steps[install].if);
   assert.equal(steps[save].with.key, '${{ steps.dependencies.outputs.cache-primary-key }}');
   assert.equal(steps.find(step => step.uses === 'actions/setup-node@v4').with.cache, 'npm');
+  assert.equal(steps.find(step => step.uses === 'actions/setup-node@v4').with['cache-dependency-path'], 'package-lock.json');
   const run = steps[install].run;
   const bash = process.platform === 'win32' ? 'C:/Program Files/Git/bin/bash.exe' : 'bash';
   for (const mode of ['normal','ignore-scripts']) {
@@ -128,4 +129,17 @@ test('all npm CI installs use shared caching without changing caller Node versio
   assert.equal(photo.jobs.archive.steps.find(s=>s.uses==='./.github/actions/setup-node-dependencies').with['install-mode'],'ignore-scripts');
   const ops = yaml.load(read('.github/workflows/codex-ops.yml'));
   assert.equal(ops.jobs.repair.steps.find(s=>s.uses==='./.github/actions/setup-node-dependencies').if,"${{ steps.repair_gate.outputs.publish_allowed == 'true' }}");
+});
+
+test('lint, unit tests and build start independently with exact dependency caches and a mandatory gate', () => {
+  const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
+  for (const name of ['lint', 'unit', 'build']) {
+    assert.equal(workflow.jobs[name].needs, undefined, name);
+    assert.ok(workflow.jobs[name].steps.some(step => step.uses === './.github/actions/setup-node-dependencies'), name);
+    assert.ok(workflow.jobs['release-gate'].needs.includes(name));
+    assert.ok(workflow.jobs['release-gate'].steps[0].run.includes("'" + name + "'"));
+  }
+  assert.ok(workflow.jobs.lint.steps.some(step => step.run === 'npm run check:tooling'));
+  assert.ok(workflow.jobs.unit.steps.some(step => step.run === 'node scripts/run-release-unit-checks.mjs'));
+  assert.equal(browsers.runs.steps.find(step => step.id === 'browsers').with.path, '~/.cache/ms-playwright');
 });

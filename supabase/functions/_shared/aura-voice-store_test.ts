@@ -47,6 +47,19 @@ Deno.test("release readiness rejects a provider that refuses stock instead of ro
   assert(response.status === 503 && (await response.json()).code === "AURA_PROVIDER_ROUTING_PROBE_FAILED" && calls === 2);
 });
 
+Deno.test("readiness exposes bounded provider diagnostics without reflecting provider bodies", async () => {
+  for (const status of [400, 403, 404, 429, 503]) {
+    const response = await handleAuraProviderProbe(new Request("https://example.invalid/aura-llm-router/health", { headers: { authorization: "Bearer release-secret" } }), {
+      env: key => key === "SUPABASE_SERVICE_ROLE_KEY" ? "release-secret" : "provider-secret",
+      fetcher: async () => new Response("private-provider-message", { status }),
+    });
+    const body = await response.json();
+    assert(response.status === 503 && body.code === "AURA_PROVIDER_NOT_READY" && body.providerStatus === status);
+    assert(body.reason === (status === 429 ? "AURA_GEMINI_BUSY" : "AURA_GEMINI_UNAVAILABLE"));
+    assert(!JSON.stringify(body).includes("private-provider-message") && !JSON.stringify(body).includes("provider-secret"));
+  }
+});
+
 Deno.test("SOC-only capability access is explicit and never accepts truthy strings", () => {
   const actor = { id, username: "rep_one", role: "REP" };
   const capabilities = { inventory: false, history: false, drafts: false, socReserves: true, socOpenOrders: false };

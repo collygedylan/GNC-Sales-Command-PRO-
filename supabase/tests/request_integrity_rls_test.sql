@@ -36,6 +36,15 @@ insert into public.profiles (id, username, display_name, role) values
   ('e2584b32-472c-4888-b592-394235050b5b', 'kayla_knepp', 'Kayla Knepp', E'\nSalesRep')
 on conflict (id) do update set role = excluded.role, disabled_at = null, locked_until = null;
 
+-- Native successful submissions use complete active imported tuples.
+update public.profiles set must_change_password=false where id in
+  ('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000005','e2584b32-472c-4888-b592-394235050b5b');
+insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,customerstatus,
+  consigneeid,consigneename,consigneestatus,salesrepid,salesrepname) values
+  ('INTEGRITY-MAP-REP','INTEGRITY-C','Customer','A','INTEGRITY-CN','Destination','A','01','Rep Test'),
+  ('INTEGRITY-MAP-CHANCE','INTEGRITY-C','Customer','A','INTEGRITY-CN','Destination','A','02','Chance Alldredge'),
+  ('INTEGRITY-MAP-KAYLA','INTEGRITY-C','Customer','A','INTEGRITY-CN','Destination','A','03','Kayla Knepp');
+
 update public.app_dataset_revisions set state='ready',revision=greatest(revision,1) where key='ph_master_inventory';
 insert into public.ph_master_inventory (
   unique_id, itemcode, genusname, commonname, contsize, locationcode, lotcode,
@@ -73,7 +82,7 @@ select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001
 select lives_ok(
   $q$select public.create_av_request_batch(
     '20000000-0000-0000-0000-000000000001',
-    '[{"unique_id":"REQ-REP-AV-1","master_id":"MASTER-TEST-1","requested_by":"Rep Test","request_folder":"REP-FOLDER","req_customer":"Customer","req_qty":"1"}]'::jsonb
+    '[{"unique_id":"REQ-REP-AV-1","master_id":"MASTER-TEST-1","requested_by":"Rep Test","request_folder":"REP-FOLDER","req_customer":"Customer","req_qty":"1","customeridentityid":"INTEGRITY-C","customername":"Customer","consigneeidentityid":"INTEGRITY-CN","consigneename":"Destination","request_selected_salesrep_id":"01","request_selected_rep_display":"Rep Test"}]'::jsonb
   )$q$,
   'sales rep can create an AV request batch'
 );
@@ -94,7 +103,7 @@ select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000002
 select lives_ok(
   $q$select public.create_request_batch(
     '20000000-0000-0000-0000-000000000003',
-    '[{"unique_id":"REQ-CSR-1","master_id":"MASTER-TEST-1","requested_by":"Rep Test","request_folder":"CSR-FOLDER","req_customer":"Customer","req_qty":"2"}]'::jsonb
+    '[{"unique_id":"REQ-CSR-1","master_id":"MASTER-TEST-1","requested_by":"Rep Test","request_folder":"CSR-FOLDER","req_customer":"Customer","req_qty":"2","customeridentityid":"INTEGRITY-C","customername":"Customer","consigneeidentityid":"INTEGRITY-CN","consigneename":"Destination","request_selected_salesrep_id":"01","request_selected_rep_display":"Rep Test"}]'::jsonb
   )$q$,
   'CSR can use general request creation'
 );
@@ -109,7 +118,7 @@ select ok((public.get_request_capabilities()->>'can_create_av')::boolean, 'Chanc
 select lives_ok(
   $q$select public.create_request_batch(
     '20000000-0000-0000-0000-000000000005',
-    '[{"unique_id":"REQ-CHANCE-1","master_id":"MASTER-TEST-1","requested_by":"Chance Alldredge","request_folder":"CHANCE-FOLDER","req_customer":"Customer","req_qty":"1"}]'::jsonb
+    '[{"unique_id":"REQ-CHANCE-1","master_id":"MASTER-TEST-1","requested_by":"Chance Alldredge","request_folder":"CHANCE-FOLDER","req_customer":"Customer","req_qty":"1","customeridentityid":"INTEGRITY-C","customername":"Customer","consigneeidentityid":"INTEGRITY-CN","consigneename":"Destination","request_selected_salesrep_id":"02","request_selected_rep_display":"Chance Alldredge"}]'::jsonb
   )$q$,
   'Chance can create a general request batch'
 );
@@ -135,14 +144,14 @@ select ok((public.get_request_capabilities()->>'can_archive')::boolean, 'Kayla c
 select lives_ok(
   $q$select public.create_request_batch(
     '20000000-0000-0000-0000-000000000006',
-    '[{"unique_id":"REQ-KAYLA-GENERAL-1","master_id":"MASTER-TEST-1","requested_by":"Kayla Knepp","request_folder":"KAYLA-FOLDER","req_customer":"Customer","req_qty":"1"}]'::jsonb
+    '[{"unique_id":"REQ-KAYLA-GENERAL-1","master_id":"MASTER-TEST-1","requested_by":"Kayla Knepp","request_folder":"KAYLA-FOLDER","req_customer":"Customer","req_qty":"1","customeridentityid":"INTEGRITY-C","customername":"Customer","consigneeidentityid":"INTEGRITY-CN","consigneename":"Destination","request_selected_salesrep_id":"03","request_selected_rep_display":"Kayla Knepp"}]'::jsonb
   )$q$,
   'Kayla can create a general request batch'
 );
 select lives_ok(
   $q$select public.create_av_request_batch(
     '20000000-0000-0000-0000-000000000007',
-    '[{"unique_id":"REQ-KAYLA-AV-1","master_id":"MASTER-TEST-1","requested_by":"Kayla Knepp","request_folder":"KAYLA-AV","req_customer":"Customer","req_qty":"1"}]'::jsonb
+    '[{"unique_id":"REQ-KAYLA-AV-1","master_id":"MASTER-TEST-1","requested_by":"Kayla Knepp","request_folder":"KAYLA-AV","req_customer":"Customer","req_qty":"1","customeridentityid":"INTEGRITY-C","customername":"Customer","consigneeidentityid":"INTEGRITY-CN","consigneename":"Destination","request_selected_salesrep_id":"03","request_selected_rep_display":"Kayla Knepp"}]'::jsonb
   )$q$,
   'Kayla can create an AV request batch'
 );
@@ -185,7 +194,7 @@ select throws_ok(
 select lives_ok(
   $q$select public.create_request_batch(
     '20000000-0000-0000-0000-000000000003',
-    '[{"unique_id":"REQ-CSR-1","master_id":"MASTER-TEST-1","requested_by":"Rep Test","request_folder":"CSR-FOLDER","req_customer":"Customer","req_qty":"2"}]'::jsonb
+    '[{"unique_id":"REQ-CSR-1","master_id":"MASTER-TEST-1","requested_by":"Rep Test","request_folder":"CSR-FOLDER","req_customer":"Customer","req_qty":"2","customeridentityid":"INTEGRITY-C","customername":"Customer","consigneeidentityid":"INTEGRITY-CN","consigneename":"Destination","request_selected_salesrep_id":"01","request_selected_rep_display":"Rep Test"}]'::jsonb
   )$q$,
   'idempotent batch retry succeeds'
 );

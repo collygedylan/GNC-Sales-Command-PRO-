@@ -616,7 +616,7 @@ function hasTableReadAccess(role = "", table = "", username = "") {
     return new Set(["ph_master_inventory", "ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   if (access.isQc) {
-    return new Set(["ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
+    return new Set(["ph_master_inventory", "ph_soc_master", "ph_dock_team_status", "ph_dock_item_status"]).has(table);
   }
   return false;
 }

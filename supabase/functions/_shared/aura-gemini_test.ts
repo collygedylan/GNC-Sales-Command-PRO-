@@ -86,3 +86,21 @@ Deno.test("missing key and provider failures are explicit, never empty inventory
   for (const status of [429, 500, 403, 404]) await rejects(() => routeAuraWithGemini({ text: "stock", actor, context: {}, apiKey: "key", signal: new AbortController().signal,
     reserve: async () => {}, fetcher: async () => new Response("sensitive provider error", { status }) }), status === 429 ? "AURA_GEMINI_BUSY" : "AURA_GEMINI_UNAVAILABLE");
 });
+
+Deno.test("no-argument refusal omits an empty parameter schema and accepts only absent or empty args", async () => {
+  for (const args of [undefined, {}]) {
+    const result = await routeAuraWithGemini({ text: "Tell me about ancient Rome", actor, context: {}, apiKey: "key", signal: new AbortController().signal,
+      reserve: async () => {}, fetcher: async (_url, init) => {
+        const body = JSON.parse(String(init?.body));
+        const refusal = body.tools[0].functionDeclarations.find((tool: { name: string }) => tool.name === "refuse");
+        assert(!Object.hasOwn(refusal, "parameters") && !Object.hasOwn(refusal, "parametersJsonSchema"));
+        assert(body.toolConfig.functionCallingConfig.mode === "ANY");
+        return answer("refuse", args);
+      } });
+    assert(result.name === "refuse");
+  }
+  for (const [name, args] of [["refuse", null], ["refuse", { text: "Invented answer" }], ["inventory", undefined]] as const) {
+    await rejects(() => routeAuraWithGemini({ text: "stock", actor, context: {}, apiKey: "key", signal: new AbortController().signal,
+      reserve: async () => {}, fetcher: async () => answer(name, args) }), "AURA_TOOL_INVALID");
+  }
+});

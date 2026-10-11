@@ -565,18 +565,36 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 174);
+  assert.equal(manifest.length, 183);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
-  assert.deepEqual(manifest.slice(-3).map(entry => entry.source), [
-    'supabase/migrations/20261007211325_sql_function_correctness_repairs.sql',
-    'supabase/migrations/20261007211340_sql_lint_runtime_context.sql',
-    'supabase/migrations/20261010080018_bunch_note_auto_completion_delivery.sql',
+  assert.deepEqual(manifest.slice(-5).map(entry => entry.source), [
+    'supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql',
+    'supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql',
+    'supabase/migrations/20261011193000_historical_requests_price_fallback.sql',
+    'supabase/migrations/20261011223000_reclass_concurrent_hold_rows.sql',
+    'supabase/migrations/20261011224500_normalize_sales_actor_role_boundaries.sql',
   ]);
+  const sources = new Set(manifest.map(entry => entry.source));
+  for (const name of ["20261008190038_reclass_sheared_action_v5.sql","20261009053029_reclass_smart_priority_hold_shield_v6.sql","20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {
+    assert.ok(sources.has(`supabase/migrations/${name}`), `${name} and its read dependencies are replayed`);
+  }
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(existsSync(path.join(root, entry.source)), entry.source);
   assert.match(workflow, /node scripts\/historical-database-fixture\.mjs "\$RUNNER_TEMP\/gnc-supabase-ci"/);
   assert.doesNotMatch(workflow, /cp supabase\/(?:ci|archive_migrations|migrations)\/[^\s]+\.sql "\$ci_root\/supabase\/migrations\//);
   assert.doesNotMatch(workflow, /python3 - "\$ci_root"/);
+});
+
+test('historical master rows retain production Hold release approval types for V6 replay', () => {
+  const fixture = readFileSync(path.join(root, 'supabase/ci/request_workflow_baseline.sql'), 'utf8');
+  const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');
+  const fields = ['hold_release_approved_at', 'hold_release_approved_by', 'hold_release_approved_by_display', 'hold_release_approved_holdstopbegindate'];
+  for (const field of fields) {
+    const type = field === 'hold_release_approved_at' ? '(?:timestamptz|timestamp with time zone)' : 'text';
+    const declaration = new RegExp(`\\b${field}\\s+${type}\\s*[,)]`, 'i');
+    assert.match(fixture, declaration);
+    assert.match(baseline, declaration);
+  }
 });
 
 test('historical fixture builder preserves ordered migrations and isolates the scheduled handover', t => {

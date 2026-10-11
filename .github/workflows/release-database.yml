@@ -2,6 +2,11 @@ name: Release isolated database and functions
 
 on:
   workflow_call:
+    inputs:
+      run-schema-tests:
+        description: Schema replay and benchmarks require Supabase or migration changes.
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -26,6 +31,7 @@ jobs:
         run: node scripts/ci-backend-matrix.mjs
 
   integration:
+    if: inputs.run-schema-tests
     needs: discover
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -137,6 +143,7 @@ jobs:
           fi
 
   schema-contracts:
+    if: inputs.run-schema-tests
     runs-on: ubuntu-latest
     # The six serial API benchmark passes can take 31 minutes before typegen;
     # retain time for a bounded registry fallback and the final sandbox checks.
@@ -159,6 +166,7 @@ jobs:
           path: artifacts/performance
           if-no-files-found: ignore
   suspend-tag-approval:
+    if: inputs.run-schema-tests
     runs-on: ubuntu-latest
     timeout-minutes: 10
     services:
@@ -176,6 +184,7 @@ jobs:
       - name: Verify Suspend Tag grants, completion, decisions, and delivery isolation
         run: node scripts/run-discovered-tests.mjs postgres-runtime
   database-and-functions:
+    if: inputs.run-schema-tests
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -220,6 +229,7 @@ jobs:
           SUPABASE_LOCAL_URL="$API_URL" \
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \
+          SUPABASE_LOCAL_DB_URL="$DB_URL" \
           npx playwright test --config playwright.database.config.ts --project=chromium --workers=1 --max-failures=1
       - name: Run native authentication smoke tests against loopback Supabase
         shell: bash

@@ -12,6 +12,11 @@ create table if not exists public.ph_sales_credit_requests (
 );
 create table if not exists public.ph_customer_consignee_sales_reps (
   unique_id text primary key, customeridentityid text, customername text, consigneeid text,
-  consigneename text, salesrepid text, salesrepname text
+  consigneename text, salesrepid text, salesrepname text,
+  -- Production supplies these imported mapping fields. Keep statuses nullable
+  -- so fixtures must explicitly seed active tuples for guarded submissions.
+  customerstatus text, consigneestatus text, territorycode text, territorydesc text,
+  filename text, source_file_name text, source_row_number integer, row_hash text,
+  imported_at timestamptz, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
 );
 alter table public.ph_soc_master add column if not exists salesrepid text, add column if not exists salesrepname text;

@@ -13068,7 +13068,8 @@ const RECLASS_INQUIRY_ROW_FIELDS_ = [
   { key: 'locationptn1', label: 'Loc PTN 1', aliases: ['locationptn1', 'LOCATIONPTN1'], multiline: true },
   { key: 'locationptn2', label: 'Loc PTN 2', aliases: ['locationptn2', 'LOCATIONPTN2'], multiline: true },
   { key: 'holdstopcode', label: 'H/S', aliases: ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'], hold: true },
-  { key: 'holdstopreason', label: 'H/S Reason', aliases: ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], multiline: true }
+  { key: 'holdstopreason', label: 'H/S Reason', aliases: ['holdstopreason', 'HOLDSTOPREASON', 'holstopreason', 'HOLSTOPREASON'], multiline: true },
+  { key: 'holdstopbegindate', label: 'H/S Begin Date', aliases: ['holdstopbegindate', 'HOLDSTOPBEGINDATE'], readOnly: true }
 ];
 
 const RECLASS_INQUIRY_IDENTITY_FIELDS_ = [
@@ -13079,7 +13080,6 @@ const RECLASS_INQUIRY_IDENTITY_FIELDS_ = [
   { key: 'fieldtagcolor', label: 'Tag Color', aliases: ['fieldtagcolor', 'FIELDTAGCOLOR'] },
   { key: 'itemspec', label: 'Item Spec', aliases: ['itemspec', 'ITEMSPEC'] },
   { key: 'pullerresponsibility', label: 'Pull', aliases: ['pullerresponsibility', 'PULLERRESPONSIBILITY', 'specialpuller', 'SPECIALPULLER'] },
-  { key: 'holdstopcode', label: 'HOLDSTOPCODE', aliases: ['holdstopcode', 'HOLDSTOPCODE', 'holstopcode', 'HOLSTOPCODE'] }
 ];
 
 const RECLASS_INQUIRY_SEASON_FIELDS_ = [
@@ -13105,7 +13105,8 @@ const RECLASS_INQUIRY_COMPACT_FIELDS_ = [
 
 const RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_ = Object.freeze([
   { key: 'holdstopcode', label: 'H/S', width: '.55in' },
-  { key: 'holdstopreason', label: 'H/S Reason', width: '1.05in' }
+  { key: 'holdstopreason', label: 'H/S Reason', width: '1.05in' },
+  { key: 'holdstopbegindate', label: 'H/S Begin Date', width: '.65in' }
 ]);
 
 const RECLASS_INQUIRY_ACTION_LABELS_ = Object.freeze({
@@ -13210,13 +13211,6 @@ function getReclassInquiryActionRuleV2_(value) {
 }
 
 function getReclassInquiryCompactFields_(value, requestActions) {
-  const actions = (Array.isArray(requestActions) ? requestActions : [value])
-    .map(function(action) { return String(action || '').trim().toLowerCase(); })
-    .filter(Boolean);
-  const includesHoldAction = actions.some(function(action) {
-    return RECLASS_INQUIRY_HOLD_ACTIONS_V3_.indexOf(action) !== -1;
-  });
-  if (!includesHoldAction) return RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
   const fields = RECLASS_INQUIRY_COMPACT_FIELDS_.slice();
   const reviewedIndex = fields.findIndex(function(field) { return field && field.key === 'ptrreviewed'; });
   fields.splice.apply(fields, [reviewedIndex < 0 ? fields.length : reviewedIndex + 1, 0].concat(RECLASS_INQUIRY_COMPACT_HOLD_FIELDS_));
@@ -14477,6 +14471,10 @@ function buildReclassInquiryReportModel_(sourceRow, authoritativeRows, reportRow
     const normalizedRow = Object.assign({}, row || {});
     normalizedRow.values = Object.assign({}, row && row.values || {});
     normalizedRow.values.holdstopreason = String(normalizedRow.values.holdstopreason || '').trim().toLowerCase();
+    if ((row.changedFields || []).indexOf('holdstopcode') !== -1) {
+      normalizedRow.values.holdstopbegindate = normalizedRow.values.holdstopcode
+        ? Utilities.formatDate(now instanceof Date ? now : new Date(), 'America/Chicago', 'yyyy-MM-dd') : '';
+    }
     normalizedRow.changedFields = Array.isArray(row && row.changedFields) ? row.changedFields.slice() : [];
     normalizedRow.temporaryChanges = Array.isArray(row && row.temporaryChanges)
       ? row.temporaryChanges.map(function(change) { return Object.assign({}, change || {}); }) : [];
@@ -14795,7 +14793,7 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const holdColumns = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
     .some(function(field) { return field.key === 'holdstopcode'; });
   const compactWidths = holdColumns
-    ? { lotcode: '.50in', locationcode: '.60in', source: '.35in', priority: '.45in', ptronhand: '.50in', ptrreviewed: '.40in', locationnotedate: '.85in', locationptn1: '.65in', holdstopcode: '.35in', holdstopreason: '.70in', desigitem: '.50in', desigcust: '.50in', desigloc: '.50in', pullerresponsibility: '.45in', oversellpercentage: '.35in', salesnote: '.75in', suspend: '.32in' }
+    ? { lotcode: '.50in', locationcode: '.60in', source: '.30in', priority: '.40in', ptronhand: '1.10in', ptrreviewed: '.35in', locationnotedate: '.70in', locationptn1: '.55in', holdstopcode: '.30in', holdstopreason: '.65in', holdstopbegindate: '.60in', desigitem: '.45in', desigcust: '.45in', desigloc: '.45in', pullerresponsibility: '.40in', oversellpercentage: '.30in', salesnote: '.60in', suspend: '.30in' }
     : { lotcode: '.55in', locationcode: '.65in', source: '.40in', priority: '.55in', ptronhand: '.70in', ptrreviewed: '.55in', locationnotedate: '.85in', locationptn1: '.85in', desigitem: '.55in', desigcust: '.55in', desigloc: '.55in', pullerresponsibility: '.50in', oversellpercentage: '.35in', salesnote: '.95in', suspend: '.35in' };
   const compactFields = getReclassInquiryCompactFields_(safeModel.requestAction, safeModel.requestActions)
     .map(function(field) { return Object.assign({}, field, { width: compactWidths[field.key] || '' }); });
@@ -14807,21 +14805,6 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
   const scopeNote = String(safeModel.liveEditSummary && safeModel.liveEditSummary.scopeNote || '')
     || formatReclassInquiryScopeNote_(safeModel.transaction && safeModel.transaction.scope);
   const identityCells = RECLASS_INQUIRY_IDENTITY_FIELDS_.map(function(field) {
-    if (field.key === 'holdstopcode') {
-      const identityWasEdited = identityChangedFields.indexOf('holdstopcode') !== -1 || identityChangedFields.indexOf('holdstopreason') !== -1;
-      const holdProposalSummary = safeModel.holdProposalSummary && typeof safeModel.holdProposalSummary === 'object'
-        ? safeModel.holdProposalSummary
-        : null;
-      const usesRequestScopeProposal = !identityWasEdited && !!holdProposalSummary;
-      const code = String(usesRequestScopeProposal ? holdProposalSummary.code : (safeModel.identity && safeModel.identity.holdstopcode || '')).trim().toUpperCase();
-      const reason = String(usesRequestScopeProposal ? holdProposalSummary.reason : (safeModel.identity && safeModel.identity.holdstopreason || '')).trim().toLowerCase();
-      const edited = identityWasEdited || usesRequestScopeProposal;
-      const valueHtml = edited
-        ? '<span class="proposal-box proposal-box-identity"><strong>' + (code ? esc(code) : '[blank]') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '[blank]') + '</strong></span>'
-        : '<strong>' + (code ? esc(code) : '&nbsp;') + '</strong><span class="identity-sub-label">HOLDSTOPREASON</span><strong>' + (reason ? esc(reason) : '&nbsp;') + '</strong>';
-      const proposalContext = usesRequestScopeProposal ? '<small class="scope-note">Request scope proposal; affected rows are marked below.</small>' : '';
-      return '<div class="identity-cell holdstop-identity' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + valueHtml + proposalContext + (scopeNote ? '<small class="scope-note">' + esc(scopeNote) + '</small>' : '') + '</div>';
-    }
     const edited = identityChangedFields.indexOf(field.key) !== -1;
     const rawValue = safeModel.identity && Object.prototype.hasOwnProperty.call(safeModel.identity, field.key) ? safeModel.identity[field.key] : '';
     return '<div class="identity-cell' + (edited ? ' edited-cell' : '') + '"' + (edited ? ' data-edited="true"' : '') + '><span>' + esc(field.label) + '</span>' + (edited ? buildReclassInquiryProposalBoxHtml_(rawValue) : '<strong>' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>') + '</div>';
@@ -14867,6 +14850,9 @@ function buildReclassInquiryCompactReportHtml_(model, printMode) {
         return '<td' + (movementLines.length ? ' class="movement-cell edited-cell" data-edited="true"' : '') + '><strong class="original-oh">' + (String(rawValue == null ? '' : rawValue) ? esc(rawValue) : '&nbsp;') + '</strong>' + movementLines.join('') + '</td>';
       }
       let stampHtml = '';
+      if (field.key === 'holdstopcode' && edited && scopeNote) {
+        stampHtml = '<small class="scope-note">' + esc(scopeNote) + '</small>';
+      }
       if (field.key === 'priority' && row && row.v7ReportStamps) {
         const stamps = row.v7ReportStamps;
         const stampParts = [];

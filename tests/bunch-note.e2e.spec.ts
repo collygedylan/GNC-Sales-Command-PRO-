@@ -137,6 +137,11 @@ test('author includes one location card explicitly, assigns it, and limits plann
  await expect(firstLocation).toBeVisible();
  const inventoryCards=firstLocation.locator('.bn-board-card');
  await expect(inventoryCards).toHaveCount(2);
+ await expect(inventoryCards.nth(0).getByRole('region',{name:'Lot details'})).toBeVisible();
+ await expect(inventoryCards.nth(0).getByText('Lot',{exact:true})).toBeVisible();
+ await expect(inventoryCards.nth(0).getByText('Warehouse',{exact:true})).toBeVisible();
+ await expect(inventoryCards.nth(0).locator('details.bn-board-lots')).toHaveCount(0);
+ await expect(inventoryCards.nth(0).getByText(/Expand all lot details/)).toHaveCount(0);
  await expect(inventoryCards.nth(0)).toContainText('Not included');
  await inventoryCards.nth(0).getByRole('checkbox',{name:'Include in this Bunch Note'}).check();
  await inventoryCards.nth(0).getByRole('button',{name:'Assign Worker Name',exact:true}).click();

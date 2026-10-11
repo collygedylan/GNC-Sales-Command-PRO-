@@ -4,6 +4,7 @@ This file is the authoritative repository workflow for local development, candid
 
 ## Local Development and Early Delivery
 
+- Before every push, run the relevant focused local tests or linter and require a passing result. Validate changed workflow YAML locally; cloud validation must not be used as a syntax checker.
 - Run only targeted unit tests or specific test files directly related to the current changes locally. Leave the full E2E suite and mobile/browser matrices to GitHub Actions.
 - Prefer fast local dev-server verification for affected UI behavior. Do not rebuild full release artifacts or compile heavy production stylesheets merely to support local tests; send tests that require those artifacts to cloud CI.
 - Run a local production build only when strictly necessary to diagnose or verify a potentially build-breaking configuration change. Explain why the build is required and run the smallest build that can verify that change.

@@ -2,6 +2,9 @@
 -- @test-runtime: isolated-acceptance
 -- @test-harness: sales-mobile
 begin;
+-- This suite emulates service import and notification transitions; native
+-- actor submission permissions remain covered by request_integrity_rls_test.
+select set_config('request.jwt.claims','{"role":"service_role"}',true),set_config('request.jwt.claim.role','service_role',true);
 create temporary table request_metadata_notification_checks(description text);
 create function pg_temp.notification_check(ok boolean,description text) returns void language plpgsql as $$
 begin
@@ -41,8 +44,8 @@ select pg_temp.notification_check((select client_batch_id is null from public.ph
     where request_folder='NOTIFY-LEGACY-FOLDER' and event_type='request_completed'),
   'legacy null-batch done/whitespace/date corrections cannot bypass the metadata guard');
 
-insert into public.ph_active_request(unique_id,request_folder,req_status,client_batch_id)
-values('NOTIFY-NEW-ROW','NOTIFY-NEW-FOLDER','Pending','97300000-0000-4000-8000-000000000002');
+insert into public.ph_active_request(unique_id,request_folder,req_status,client_batch_id,request_source)
+values('NOTIFY-NEW-ROW','NOTIFY-NEW-FOLDER','Pending','97300000-0000-4000-8000-000000000002','legacy');
 insert into public.ph_request_delivery_outbox(event_key,event_type,request_folder,payload,status,delivered_at)
 values('NOTIFY-NEW-CREATED','request_created','NOTIFY-NEW-FOLDER','{"request_ids":["NOTIFY-NEW-ROW"]}','delivered',now());
 update public.ph_active_request set req_status='Completed',date_completed='2026-09-24' where unique_id='NOTIFY-NEW-ROW';
@@ -57,8 +60,8 @@ select pg_temp.notification_check((select count(*)=1 and bool_and(status='delive
   where request_folder='NOTIFY-NEW-FOLDER' and event_type='request_completed'),
   'delivered completion receipt remains terminal after metadata/status spelling/date correction');
 
-insert into public.ph_active_request(unique_id,request_folder,req_status,client_batch_id)
-values('NOTIFY-APPEND-ROW','NOTIFY-APPEND-FOLDER','Completed','97300000-0000-4000-8000-000000000003');
+insert into public.ph_active_request(unique_id,request_folder,req_status,client_batch_id,request_source)
+values('NOTIFY-APPEND-ROW','NOTIFY-APPEND-FOLDER','Completed','97300000-0000-4000-8000-000000000003','legacy');
 insert into public.ph_request_delivery_outbox(event_key,event_type,request_folder,payload,status,delivered_at)
 values('NOTIFY-APPEND-COVERAGE','request_options_appended','NOTIFY-APPEND-FOLDER',
   '{"request_ids":["NOTIFY-APPEND-ROW"]}','delivered',now());
@@ -66,8 +69,8 @@ select pg_temp.notification_check((select count(*)=1 from public.ph_request_deli
   where request_folder='NOTIFY-APPEND-FOLDER' and event_type='request_completed' and status='pending'),
   'late appended membership coverage still enqueues completion');
 
-insert into public.ph_active_request(unique_id,request_folder,req_status,client_batch_id)
-values('NOTIFY-PENDING-MEMBER','NOTIFY-NEW-FOLDER','Pending','97300000-0000-4000-8000-000000000004');
+insert into public.ph_active_request(unique_id,request_folder,req_status,client_batch_id,request_source)
+values('NOTIFY-PENDING-MEMBER','NOTIFY-NEW-FOLDER','Pending','97300000-0000-4000-8000-000000000004','legacy');
 update public.ph_active_request set request_folder='NOTIFY-MOVED-FOLDER' where unique_id='NOTIFY-PENDING-MEMBER';
 select pg_temp.notification_check((select active_request_ids=array['NOTIFY-NEW-ROW'] from private.ph_request_folder_delivery_state
   where request_folder='NOTIFY-NEW-FOLDER') and (select active_request_ids=array['NOTIFY-PENDING-MEMBER']

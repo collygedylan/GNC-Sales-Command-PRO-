@@ -1,7 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
-import { AURA_GEMINI_MODEL, AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, type AuraActor } from "./aura-gemini.ts";
+import { AURA_GEMINI_MODEL, AURA_PROVIDER_TIMEOUT_MS, AuraGeminiProviderError, auraObject, routeAuraWithGemini, type AuraActor } from "./aura-gemini.ts";
 import type { AuraVoiceDeps, AuraVoiceStore } from "./aura-voice-handler.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -119,7 +119,10 @@ export async function handleAuraProviderProbe(request: Request, options: { env?:
       return json({ ok: false, code: "AURA_PROVIDER_ROUTING_PROBE_FAILED" }, 503);
     }
     return json({ ok: true, model: AURA_GEMINI_MODEL, engine: "gemini-tools-v1", checks: { refusal: true, inventoryRouting: true } }, 200);
-  } catch {
-    return json({ ok: false, code: "AURA_PROVIDER_NOT_READY" }, 503);
+  } catch (error) {
+    const safeReasons = new Set(["AURA_GEMINI_CONFIGURATION_UNAVAILABLE", "AURA_GEMINI_BUSY", "AURA_GEMINI_UNAVAILABLE", "AURA_TOOL_INVALID", "AURA_TOOL_FORBIDDEN"]);
+    const reason = error instanceof Error && safeReasons.has(error.message) ? error.message : "AURA_PROVIDER_UNAVAILABLE";
+    return json({ ok: false, code: "AURA_PROVIDER_NOT_READY", reason,
+      ...(error instanceof AuraGeminiProviderError ? { providerStatus: error.providerStatus } : {}) }, 503);
   }
 }
