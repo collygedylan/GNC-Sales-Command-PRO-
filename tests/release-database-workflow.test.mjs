@@ -370,6 +370,8 @@ test('historical sales mapping fixture supplies imported metadata without assumi
     assert.match(fixture, new RegExp(`\\b${field} (?:text|integer|timestamptz)\\b`), field);
   }
   assert.doesNotMatch(fixture, /(?:customerstatus|consigneestatus) text\s+[^,]*default/i);
+  const requestFixture = fs.readFileSync(new URL('../supabase/ci/request_workflow_baseline.sql', import.meta.url), 'utf8');
+  assert.match(requestFixture, /\blistprice text\b/);
 });
 
 test('backend matrices retain every discovered integration, entrypoint, and Edge test', () => {
