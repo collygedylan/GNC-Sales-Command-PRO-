@@ -2415,20 +2415,17 @@ test('Desktop Reclass row actions preserve combined requests and disclose author
   const fixture = await installHlOrderFixture(page, 'http://127.0.0.1:43116', { username: 'dylan_collyge', role: 'ADMIN', master: [
     hlMaster('old', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', desigitem: 'Original item designation', lotcode: '26.F1', locationcode: 'old', season: 'F1', saleyear: '26', priority: '5', holdstopcode: 'H', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
     hlMaster('current', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: '2027.F1', locationcode: 'current', season: 'F1', saleyear: '2027', priority: '5', holdstopcode: 'S', holdstopreason: 'existing reason', ptronhand: '0', ptravailable: '0' }),
-    hlMaster('future', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: '28.F1', locationcode: 'future', season: 'F1', saleyear: '28', priority: '5', holdstopcode: '', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
+    hlMaster('future', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', desigitem: 'Original item designation', lotcode: '28.F1', locationcode: 'future', season: 'F1', saleyear: '28', priority: '5', holdstopcode: '', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
     hlMaster('other', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: '27.S1', locationcode: 'other', season: 'S1', saleyear: '27', priority: '5', holdstopcode: '', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
     hlMaster('unknown', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: 'bad27.F1', locationcode: 'unknown', season: 'F1', saleyear: 'bad27', priority: '5', holdstopcode: '', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
   ] });
   page.on('dialog', dialog => dialog.accept());
   await page.setViewportSize({ width: 1440, height: 1000 });
-  await page.evaluate(() => {
-    const rows = [
-      ['old', 'F1', '26', 'H', '10'], ['current', 'F1', '2027', 'S', '0'],
-      ['future', 'F1', '28', '', '10'], ['other', 'S1', '27', '', '10'],
-      ['unknown', 'F1', 'bad27', '', '10'],
-    ].map(([id, season, year, code, oh]) => ({ UNIQUE_ID: id, ITEMCODE: 'RECLASS-VIEW', COMMONNAME: 'Reclass view fixture', CONTSIZE: '3G', DESIGITEM: 'Original item designation',
-      LOTCODE: `${year}.${season}`, LOCATIONCODE: id, SEASON: season, SALEYEAR: year,
-      PRIORITY: '5', HOLDSTOPCODE: code, HOLDSTOPREASON: 'existing reason', PTRONHAND: oh, PTRAVAILABLE: oh, SOURCE_TABLE: 'ph_master_inventory' }));
+  // Login must bind the fixture permission version before the scoped inquiry
+  // read starts; a permission change correctly discards an in-flight read.
+  await page.waitForFunction(() => (window as any).eval('productionLiveSyncReadPermissionVersion === "hl-policy-1"'));
+  await page.evaluate((rawRows) => {
+    const rows = (window as any).formatFetchedRows(rawRows, 'ph_master_inventory');
     (window as any).processAndLoadData({ data: rows, _fromCache: true });
     const masterState = (window as any).getDatasetState('master');
     masterState.initialLoaded = masterState.fullLoaded = true;
@@ -2436,11 +2433,12 @@ test('Desktop Reclass row actions preserve combined requests and disclose author
     masterState.rowCompleteness = 'complete';
     (window as any).writeLocalAppSeasonSettings({ seasonCode: 'F1', salesYear: 27 });
     (window as any).openArgosInventoryTransactionModal('old', 'reclass', '');
-  });
+  }, fixture.master);
   const modal = page.locator('#argos-inventory-transaction-modal');
   const old = modal.locator('[data-reclass-row-card="old"]');
   const current = modal.locator('[data-reclass-row-card="current"]');
   const future = modal.locator('[data-reclass-row-card="future"]');
+  await expect(modal).toBeVisible();
   await expect(modal.locator('#argos-reclass-action-view')).toHaveCount(0);
   await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Editable inventory fields update live inventory after confirmation and remain protected until the legacy import matches.');
   await expect(modal.locator('#argos-inventory-transaction-notice')).toContainText('Quantity, season, and sheared instructions remain requests for keyers.');
