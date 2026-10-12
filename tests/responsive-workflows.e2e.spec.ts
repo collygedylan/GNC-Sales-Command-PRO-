@@ -204,19 +204,22 @@ test('phone login keeps both fields and the submit action visible', {"tag":["@lo
   expect(controls.every((box) => box && box.x >= 0 && box.x + box.width <= 390 && box.y >= 0 && box.y + box.height <= 844), JSON.stringify(controls)).toBe(true);
 });
 
-test('Brandt receives admin access without any Managers entry point or direct view access', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
+test('Brandt receives Admin Managers entry points and direct view access', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   await page.goto('/?e2e=V2026.08.25.10', { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => typeof (window as any).getRoleAccessState === 'function');
   const result = await page.evaluate(() => window.eval(`(() => {
-    const access = getRoleAccessState('Admin', 'brandt_emerson');
-    syncRoleAccessUi(access, 'brandt_emerson');
+    currentUser = 'brandt_emerson';
+    currentRole = 'Admin';
+    safeRole = 'Admin';
+    const access = getRoleAccessState();
+    syncRoleAccessUi(access, currentUser);
     const managerTile = document.getElementById('home-tile-managers');
     const managerDrawer = document.getElementById('drawer-managers-btn');
     return {
       isAdmin: access.isAdmin,
       denied: access.isManagerViewDenied,
       allowedViewsHasManagers: access.allowedViews.has('managers'),
-      canAccessManagers: canAccessView('managers', 'brandt_emerson'),
+      canAccessManagers: canAccessView('managers', currentUser),
       canAccessReports: access.allowedViews.has('reports'),
       managerTileHidden: !!managerTile && managerTile.hidden && managerTile.classList.contains('hidden'),
       managerDrawerHidden: !!managerDrawer && managerDrawer.classList.contains('hidden')
@@ -225,12 +228,12 @@ test('Brandt receives admin access without any Managers entry point or direct vi
 
   expect(result).toEqual({
     isAdmin: true,
-    denied: true,
-    allowedViewsHasManagers: false,
-    canAccessManagers: false,
+    denied: false,
+    allowedViewsHasManagers: true,
+    canAccessManagers: true,
     canAccessReports: true,
-    managerTileHidden: true,
-    managerDrawerHidden: true,
+    managerTileHidden: false,
+    managerDrawerHidden: false,
   });
 });
 
