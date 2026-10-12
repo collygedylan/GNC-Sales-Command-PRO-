@@ -661,3 +661,13 @@ test('enterprise Aura release guards forced RLS, own preferences, normalized rol
   for (const marker of ['aura_domain_glossary', 'user_preferences', 'aura_voice_preferences_v1',
     'aura_domain_context_v1', 'aura_form_matches_v1', '[[:space:]]', 'auth.uid()']) assert.ok(query.includes(marker), marker);
 });
+
+test('enterprise Aura initializes trigram settings before replaying reader definitions', () => {
+  const sql = fs.readFileSync(new URL('../supabase/migrations/' + auraEnterpriseDomainVoiceMigrationName, import.meta.url), 'utf8');
+  const bootstrap = sql.indexOf("perform extensions.word_similarity('aura','aura');");
+  const replay = sql.indexOf('foreach signature in array array[');
+  assert.ok(bootstrap >= 0 && bootstrap < replay);
+  assert.doesNotMatch(sql, /grant\s+(?:set|alter system)\s+on\s+parameter/i);
+  assert.equal(sql.split("old_text:=replace(old_text,E'\\r\\n',E'\\n');").length - 1, 2);
+  assert.ok(sql.includes("new_text:=replace(new_text,E'\\r\\n',E'\\n');"));
+});

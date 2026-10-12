@@ -7,6 +7,9 @@ set local statement_timeout='30s';
 do $$
 declare signature text; definition text; before_text text:='upper(btrim(coalesce(actor.role,'''')))';
 begin
+  -- Register pg_trgm's user-settable GUCs in this migration session before
+  -- replaying a reader definition that carries its similarity threshold.
+  perform extensions.word_similarity('aura','aura');
   foreach signature in array array[
     'public.aura_voice_access_v1()', 'public.aura_voice_context_v1()',
     'public.aura_voice_inventory_read_v1(text,jsonb,jsonb,integer)',
@@ -127,12 +130,14 @@ begin
         when metric='allocated' then null
         when metric='held' then case when upper(btrim(coalesce(m.holdstopcode,''))) in ('H','S') then m.ptronhand else '0' end
         else m.ptravailable end) qty,$new$;
+  new_text:=replace(new_text,E'\r\n',E'\n');
   if length(definition)-length(replace(definition,old_text,''))<>length(old_text) then raise exception 'AURA_ENTERPRISE_METRIC_CONTRACT_MISMATCH'; end if;
   definition:=replace(definition,old_text,new_text);
   old_text:=$old$where not exists(select 1 from unnest(array['cone','tree','espalier']::text[]) variant
       where (coalesce(m.commonname,'')||' '||coalesce(m.desigitem,'')) ~* ('(^|[^[:alnum:]])'||variant||'s?([^[:alnum:]]|$)')
         and not exists(select 1 from jsonb_array_elements_text(coalesce(f->'requestedVariants','[]'::jsonb)) spoken(value) where lower(value)=variant))$old$;
   new_text:=$new$where private.aura_form_matches_v1(coalesce(m.commonname,'')||' '||coalesce(m.desigitem,''),f->'requestedVariants')$new$;
+  old_text:=replace(old_text,E'\r\n',E'\n');
   if length(definition)-length(replace(definition,old_text,''))<>length(old_text) then raise exception 'AURA_ENTERPRISE_FORM_CONTRACT_MISMATCH'; end if;
   execute replace(definition,old_text,new_text);
 
@@ -143,6 +148,7 @@ begin
       where (coalesce(s.commonname,'')||' '||coalesce(s.desigitem,'')) ~* ('(^|[^[:alnum:]])'||variant||'s?([^[:alnum:]]|$)')
         and not variant=any(variants))$old$;
   new_text:=$new$where private.aura_form_matches_v1(coalesce(s.commonname,'')||' '||coalesce(s.desigitem,''),to_jsonb(variants))$new$;
+  old_text:=replace(old_text,E'\r\n',E'\n');
   if length(definition)-length(replace(definition,old_text,''))<>length(old_text) then raise exception 'AURA_ENTERPRISE_SOC_FORM_CONTRACT_MISMATCH'; end if;
   execute replace(definition,old_text,new_text);
 end $$;
