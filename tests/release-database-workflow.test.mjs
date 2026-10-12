@@ -112,6 +112,60 @@ test('database reusable workflow is secret-free and has read-only repository per
   assert.match(setupNode, /node-version: \$\{\{ inputs\.node-version \}\}[\s\S]*?cache: npm/);
 });
 
+test('historical replay and SQL benchmark jobs fail closed unless schema paths changed', () => {
+  assert.equal(workflowConfig.on.workflow_call.inputs['run-schema-tests'].default, false);
+  const scope = workflowConfig.jobs['schema-path-scope'];
+  assert.ok(scope, 'the reusable workflow verifies changed paths independently of its caller');
+  const compare = scope.steps.find(step => step.id === 'scope');
+  assert.ok(compare);
+  assert.match(compare.run, /pull_request\)[\s\S]*PR_BASE_SHA[\s\S]*PR_HEAD_SHA/);
+  assert.match(compare.run, /push\)[\s\S]*PUSH_BEFORE_SHA[\s\S]*PUSH_AFTER_SHA/);
+  assert.match(compare.run, /workflow_dispatch\)[\s\S]*CURRENT_SHA\}\^1/);
+  assert.match(compare.run, /--no-renames[\s\S]*--diff-filter=ACMRD/);
+  assert.match(compare.run, /supabase\/\*\|database\/\*/);
+  for (const name of ['integration', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions']) {
+    const job = workflowConfig.jobs[name];
+    assert.match(job.if, /inputs\.run-schema-tests/);
+    assert.match(job.if, /needs\.schema-path-scope\.outputs\.changed == 'true'/);
+    assert.ok((Array.isArray(job.needs) ? job.needs : [job.needs]).includes('schema-path-scope'));
+  }
+  assert.equal(workflowConfig.jobs['edge-functions'].needs, 'discover',
+    'Edge unit checks remain distinct from historical database replays');
+});
+
+test('disposable live dataset database checks exclude workflow-only and application paths', () => {
+  const live = yaml.load(fs.readFileSync(new URL('../.github/workflows/live-dataset-revisions.yml', import.meta.url), 'utf8'));
+  assert.deepEqual(live.on.pull_request.paths, ['supabase/**', 'database/**']);
+  const scope = live.jobs['database-path-scope'];
+  assert.ok(scope);
+  const compare = scope.steps.find(step => step.id === 'scope');
+  assert.match(compare.run, /pull_request\)[\s\S]*PR_BASE_SHA[\s\S]*PR_HEAD_SHA/);
+  assert.match(compare.run, /workflow_dispatch\)[\s\S]*CURRENT_SHA\}\^1/);
+  assert.match(compare.run, /supabase\/\*\|database\/\*/);
+  assert.match(live.jobs['isolated-native-revisions'].if, /outputs\.changed == 'true'/);
+  assert.deepEqual(live.jobs['isolated-native-revisions'].needs, 'database-path-scope');
+});
+
+test('standalone disposable database workflows require actual database paths, including on manual dispatch', () => {
+  for (const [file, jobName] of [
+    ['suspend-tag-tests.yml', 'suspend-tag-transactions'],
+    ['bloomscapes-pending-tests.yml', 'pending-transactions'],
+  ]) {
+    const config = yaml.load(fs.readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8'));
+    assert.deepEqual(config.on.pull_request.paths, ['supabase/**', 'database/**'], file);
+    assert.ok(!config.on.pull_request.paths.includes(`.github/workflows/${file}`), file);
+    const scope = config.jobs['database-path-scope'];
+    assert.ok(scope, file);
+    const compare = scope.steps.find(step => step.id === 'scope');
+    assert.match(compare.run, /pull_request\)[\s\S]*PR_BASE_SHA[\s\S]*PR_HEAD_SHA/, file);
+    assert.match(compare.run, /workflow_dispatch\)[\s\S]*CURRENT_SHA\}\^1/, file);
+    assert.match(compare.run, /--no-renames[\s\S]*--diff-filter=ACMRD/, file);
+    assert.match(compare.run, /git diff[\s\S]*> "\$diff_file"/, file);
+    assert.match(config.jobs[jobName].if, /outputs\.changed == 'true'/, file);
+    assert.equal(config.jobs[jobName].needs, 'database-path-scope', file);
+  }
+});
+
 test('Edge Function CI resolves pinned npm imports used by the push sender', () => {
   const edge = workflowConfig.jobs['edge-functions'].steps.find(step => step.name === 'Run Edge Function unit tests');
   assert.ok(edge);
@@ -194,7 +248,7 @@ test('database mutation checks stay serialized while independent tests use separ
   assert.equal(databaseJob.strategy, undefined);
   for(const name of ['integration','edge-functions']) {
     assert.equal(workflowConfig.jobs[name].strategy['fail-fast'], true);
-    assert.equal(workflowConfig.jobs[name].needs, 'discover');
+    assert.ok((Array.isArray(workflowConfig.jobs[name].needs) ? workflowConfig.jobs[name].needs : [workflowConfig.jobs[name].needs]).includes('discover'));
   }
 });
 

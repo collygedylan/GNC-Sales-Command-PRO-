@@ -9,14 +9,14 @@ import { readHistoricalMigrationManifest } from '../scripts/historical-database-
 import { auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, auraVoiceRoleAccessMigrationName, releaseDatabaseMigrations, migrationContractQuery } from '../scripts/apply-item-low-stock-migration.mjs';
 const read = name => fs.readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
 
-test('internal Aura deploys after its migration and before Pages, including the compatibility endpoint', () => {
+test('internal Aura deploys after its migration in the independent backend workflow', () => {
   const workflow = yaml.safeLoad(read('.github/workflows/apps-script-sync.yml'));
-  const steps = workflow.jobs['sync-codegs'].steps;
+  const steps = workflow.jobs['deploy-supabase'].steps;
   const migration = steps.findIndex(step => step.run?.includes('apply-item-low-stock-migration'));
   const engine = steps.findIndex(step => step.run?.includes('functions deploy aura-query'));
   assert.ok(migration >= 0 && engine > migration);
   assert.ok(steps[engine].run.includes('functions deploy aura-llm-router'));
-  assert.ok(workflow.jobs['publish-pages'].needs.includes('production-validation'));
+  assert.equal(workflow.jobs['publish-pages'], undefined);
   const auraStart = releaseDatabaseMigrations.indexOf(auraInternalQueryMigrationName);
   assert.ok(auraStart >= 0);
   assert.deepEqual(releaseDatabaseMigrations.slice(auraStart, auraStart + 4), [

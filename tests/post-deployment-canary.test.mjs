@@ -34,11 +34,13 @@ test('deployment fingerprint normalization rejects ambiguous identifiers', () =>
 
 test('Pages workflow publishes and gates the production deployment fingerprint', () => {
   const workflow = readReleaseWorkflowSources('.github/workflows/pages-static.yml').text;
+  const nightly = readReleaseWorkflowSources('.github/workflows/nightly-browser-validation.yml').text;
   const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
   assert.match(workflow, /write-deployment-fingerprint\.mjs/);
-  assert.match(workflow, /post-deployment-canary:\s+needs: \[deploy, exact-live\]/);
+  assert.match(nightly, /post-deployment-canary:[\s\S]{0,120}needs: current-live-release/);
+  assert.match(nightly, /Mutation-blocked live \$\{\{ matrix\.suite \}\} checks/);
   assert.match(workflow, /wait-for-live-release\.mjs/);
-  assert.match(workflow, /playwright test --config playwright\.production\.config\.ts/);
+  assert.match(nightly, /playwright test --config playwright\.production\.config\.ts/);
   assert.ok(discoverTests({ group: 'playwright' }).includes('tests/production-request-canary.spec.ts'));
   assert.match(fs.readFileSync(new URL('../playwright.production.config.ts', import.meta.url), 'utf8'), /grep: \/@production-canary\//);
   assert.match(canary, /["']?tag["']?:.*@production-canary/);

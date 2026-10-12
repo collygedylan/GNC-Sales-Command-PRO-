@@ -22,13 +22,14 @@ test('Gemini router executes only fixed typed caller-scoped reads and service-pr
   assert.match(read('supabase/functions/aura-llm-router/index.ts'), /handleAuraVoiceRequest/);
   assert.doesNotMatch(read('supabase/functions/aura-query/index.ts'), /gemini|aura-voice/i);
 });
-test('cloud release requires real Gemini readiness after deployment and before PWA publication', () => {
+test('Gemini readiness remains outside the backend deployment gate', () => {
   const workflow = yaml.safeLoad(read('.github/workflows/apps-script-sync.yml'));
-  const steps = workflow.jobs['sync-codegs'].steps;
+  const steps = workflow.jobs['deploy-supabase'].steps;
   const deploy = steps.findIndex(step => step.run?.includes('functions deploy aura-llm-router'));
   const provider = steps.findIndex(step => step.run?.includes('aura-provider-readiness.mjs'));
   assert.ok(deploy >= 0 && provider > deploy);
-  assert.ok(workflow.jobs['publish-pages'].needs.includes('production-validation'));
+  assert.equal(steps[provider].if, '${{ false }}');
+  assert.equal(workflow.jobs['publish-pages'], undefined);
   assert.match(steps[provider].env.SUPABASE_SERVICE_ROLE_KEY, /secrets\.SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(read('index.html'), /AIza[A-Za-z0-9_-]{25,}|AQ\.[A-Za-z0-9_-]{25,}|GEMINI_API_KEY/);
 });

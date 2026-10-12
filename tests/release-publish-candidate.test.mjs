@@ -27,13 +27,13 @@ function fixture(options = {}) {
     base: { ref: 'main', repo: { full_name: repository } },
     head: { ref: 'candidate', sha: headSha, repo: { full_name: repository } }, ...options.pr };
   const candidates = options.candidates ?? [pr];
-  const calls = { associated: [], merges: [], dispatches: [], notices: [] };
+  const calls = { associated: [], merges: [], dispatches: [], notices: [], warnings: [], workflowRuns: [] };
   const workflowRuns = options.workflowRuns ?? [];
   const api = {
     actions: {
       getWorkflowRun: async args => ({ data: validatedRun }),
-      listWorkflowRuns: async args => { calls.workflowRuns = args; return { data: workflowRuns }; },
-      createWorkflowDispatch: async args => { calls.dispatches.push(args); return { status: 204 }; },
+      listWorkflowRuns: async args => { calls.workflowRuns.push(args); return { data: Array.isArray(workflowRuns) ? workflowRuns : (workflowRuns[args.workflow_id] || []) }; },
+      createWorkflowDispatch: async args => { calls.dispatches.push(args); if (options.backendError && args.workflow_id === 'apps-script-sync.yml') throw new Error('backend unavailable'); return { status: 204 }; },
     },
     repos: { listPullRequestsAssociatedWithCommit: async args => { calls.associated.push(args); return { data: candidates }; } },
     pulls: {
@@ -49,19 +49,22 @@ function fixture(options = {}) {
   };
   const github = { rest: api, paginate: async (method, args) => (await method(args)).data };
   const context = { repo: { owner: 'example', repo: 'gnc' }, payload: { workflow_run: eventRun } };
-  const core = { notice: message => calls.notices.push(message) };
+  const core = { notice: message => calls.notices.push(message), warning: message => calls.warnings.push(message) };
   return { calls, pr, async execute() {
     await vm.runInNewContext(`(async () => {\n${script}\n})()`, { github, context, core });
     return calls;
   } };
 }
 
-test('trusted completed PR validation dispatches the backend handoff for its confirmed main merge', async () => {
+test('trusted completed PR validation dispatches Pages first and an independent backend for its confirmed main merge', async () => {
   const f = fixture();
   await f.execute();
-  assert.equal(f.calls.dispatches.length, 1);
-  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.dispatches[0])), { owner: 'example', repo: 'gnc', workflow_id: 'apps-script-sync.yml', ref: 'main' });
-  assert.equal(f.calls.workflowRuns.workflow_id, 'apps-script-sync.yml');
+  assert.equal(f.calls.dispatches.length, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(f.calls.dispatches)), [
+    { owner: 'example', repo: 'gnc', workflow_id: 'pages-static.yml', ref: 'main', inputs: { 'expected-commit': mergeSha } },
+    { owner: 'example', repo: 'gnc', workflow_id: 'apps-script-sync.yml', ref: 'main', inputs: { 'expected-commit': mergeSha } },
+  ]);
+  assert.deepEqual(f.calls.workflowRuns.map(run => run.workflow_id), ['pages-static.yml', 'apps-script-sync.yml']);
   assert.deepEqual(f.calls.merges, []);
   assert.deepEqual(JSON.parse(JSON.stringify(f.calls.associated)), [{ owner: 'example', repo: 'gnc', commit_sha: headSha, per_page: 100 }]);
 });
@@ -69,7 +72,7 @@ test('trusted completed PR validation dispatches the backend handoff for its con
 test('empty workflow_run pull_requests are resolved from the validated commit', async () => {
   const f = fixture();
   await f.execute();
-  assert.equal(f.calls.dispatches.length, 1);
+  assert.equal(f.calls.dispatches.length, 2);
   assert.equal(f.calls.associated[0].commit_sha, headSha);
 });
 
@@ -77,14 +80,14 @@ test('an enabled deferred auto-merge uses the validated head as the merge guard'
   const f = fixture({ pr: { state: 'open', merged: false, merge_commit_sha: null, auto_merge: { enabled_by: { login: 'bot' } } } });
   await f.execute();
   assert.deepEqual(JSON.parse(JSON.stringify(f.calls.merges)), [{ owner: 'example', repo: 'gnc', pull_number: 18, sha: headSha, merge_method: 'merge' }]);
-  assert.equal(f.calls.dispatches.length, 1);
+  assert.equal(f.calls.dispatches.length, 2);
 });
 
 test('an open codex candidate without auto-merge is merged only after the exact successful validation run', async () => {
   const f = fixture({ pr: openCodexPr });
   await f.execute();
   assert.deepEqual(JSON.parse(JSON.stringify(f.calls.merges)), [{ owner: 'example', repo: 'gnc', pull_number: 18, sha: headSha, merge_method: 'merge' }]);
-  assert.equal(f.calls.dispatches.length, 1);
+  assert.equal(f.calls.dispatches.length, 2);
 });
 
 test('untrusted, failed, cancelled, superseded, or non-PR validation runs cannot publish', async t => {
@@ -118,19 +121,19 @@ test('untrusted, failed, cancelled, superseded, or non-PR validation runs cannot
   });
 });
 
-test('queued, running, or successful backend handoffs deduplicate dispatch; a failed run can retry', async t => {
+test('queued, running, or successful handoffs deduplicate independently; a failed run can retry', async t => {
   for (const existing of [
     { status: 'queued', conclusion: null },
     { status: 'in_progress', conclusion: null },
     { status: 'completed', conclusion: 'success' },
   ]) await t.test(`${existing.status}/${existing.conclusion || 'pending'}`, async () => {
-    const f = fixture({ workflowRuns: [{ head_branch: 'main', head_sha: mergeSha, ...existing }] });
+    const f = fixture({ workflowRuns: [{ head_branch: 'main', head_sha: mergeSha, event: 'workflow_dispatch', ...existing }] });
     await f.execute();
     assert.deepEqual(f.calls.dispatches, []);
   });
-  const failed = fixture({ workflowRuns: [{ head_branch: 'main', head_sha: mergeSha, status: 'completed', conclusion: 'failure' }] });
+  const failed = fixture({ workflowRuns: [{ head_branch: 'main', head_sha: mergeSha, event: 'workflow_dispatch', status: 'completed', conclusion: 'failure' }] });
   await failed.execute();
-  assert.equal(failed.calls.dispatches.length, 1);
+  assert.equal(failed.calls.dispatches.length, 2);
 });
 
 test('a failed guarded merge cannot dispatch the backend handoff', async () => {
@@ -152,17 +155,18 @@ test('the dispatcher is trusted, least-scoped, and cannot recursively dispatch i
   assert.match(script, /getWorkflowRun/);
   assert.match(script, /run\.head_sha !== event\.head_sha/);
   assert.match(script, /pulls\.merge\([\s\S]*sha: run\.head_sha/);
-  assert.match(script, /workflow_id: 'apps-script-sync\.yml'[\s\S]*ref: 'main'/);
-  assert.doesNotMatch(script, /workflow_id: 'pages-static\.yml'/);
+  assert.match(script, /dispatchOnce\('pages-static\.yml'\)/);
+  assert.match(script, /dispatchOnce\('apps-script-sync\.yml'\)/);
+  assert.match(script, /'expected-commit': pr\.merge_commit_sha/);
   assert.ok(Object.hasOwn(backend.on, 'workflow_dispatch'));
   assert.equal(Object.hasOwn(backend.on, 'push'), false, 'only a validated candidate or guarded recovery starts backend publication');
   assert.equal(diagnostic.name, 'Diagnose low-stock database connection');
   assert.ok(Object.hasOwn(diagnostic.on, 'workflow_dispatch'));
   assert.equal(diagnostic.jobs['diagnose-database'].if, "github.ref == 'refs/heads/main'");
-  assert.match(script, /workflow_id: 'apps-script-sync\.yml'/);
+  assert.match(script, /dispatchOnce\('apps-script-sync\.yml'\)/);
   assert.doesNotMatch(script, /apps-script-database-diagnostic\.yml/);
   assert.ok(Object.hasOwn(pages.on, 'workflow_dispatch'));
-  assert.equal(Object.hasOwn(pages.on, 'push'), false, 'main pushes cannot race the backend-first release');
+  assert.equal(Object.hasOwn(pages.on, 'push'), false, 'only the trusted publisher or guarded manual dispatch starts publication');
   assert.doesNotMatch(workflow.on.workflow_run.workflows.join(' '), /Publish validated candidate|Deploy static app to Pages/);
 });
 
@@ -178,83 +182,54 @@ test('no pull-request workflow can merge early or enable auto-merge before valid
   }
 });
 
-const publish = backend.jobs['publish-pages'];
-
-test.skip('backend schema and functions deploy before guarded Pages publication', () => {
-  assert.deepEqual(publish.needs, ['authorize-production', 'sync-codegs']);
-  assert.match(publish.if, /refs\/heads\/main/);
-  assert.match(publish.if, /authorized == 'true'/);
-  assert.doesNotMatch(publish.if, /always\(|failure\(|cancelled\(/);
-  assert.equal(backend.permissions['pull-requests'], 'read');
-  assert.equal(backend.permissions.actions, 'read');
-  assert.doesNotMatch(JSON.stringify(publish), /APPS_SCRIPT_CLASPRC_JSON/);
-
-  assert.deepEqual(backend.jobs['sync-codegs'].needs, ['authorize-production', 'production-validation']);
-  assert.equal(backend.jobs['production-validation'].uses, './.github/workflows/release-validation.yml');
-  assert.equal(backend.jobs['production-validation'].with['fast-pr'], false);
-  assert.equal(backend.jobs['production-validation'].with['run-backend-tests'], false);
-  const backendSteps = backend.jobs['sync-codegs'].steps;
-  const migration = backendSteps.findIndex(step => step.name === 'Apply backend release migrations and synchronize reminder Vault credentials');
-  const functions = backendSteps.findIndex(step => step.name === 'Configure Production Schedule dispatch and deploy backend functions');
-  assert.ok(migration >= 0 && functions > migration, 'migration and backend deployment precede the Pages dependency');
-  assert.match(backendSteps[functions].run, /supabase functions deploy app-api/);
-  assert.match(backendSteps[functions].run, /supabase functions deploy calendar-reminder-sweep/);
-  const deploys = backendSteps[functions].run.split('\n').filter(line => /supabase functions deploy/.test(line));
-  assert.equal(deploys.length, 9);
-  assert.deepEqual(deploys.map(line => line.match(/deploy ([\w-]+)/)[1]),
-    ['app-api', 'send-push-alert', 'request-delivery-worker', 'calendar-reminder-sweep', 'scheduled-offboarding', 'auth-admin', 'inventory-assistant', 'aura-query', 'aura-llm-router']);
-  for (const line of deploys) {
-    assert.match(line, /--use-api\b/, 'server-side bundling avoids Docker registry throttling');
-    assert.match(line, /--project-ref "\$project_ref"/);
-    assert.doesNotMatch(line, /--no-verify-jwt|--prune/);
-  }
-  assert.equal(backendSteps.some(step => step['continue-on-error']), false);
-  assert.match(read('scripts/sync-codegs-to-apps-script.js'), /await createAppsScriptRecoveryEvidence/);
-  assert.match(read('.github/workflows/pages-static.yml'), /node scripts\/check-compatible-apps-script\.mjs/);
+test('backend dispatch failure cannot fail or delay the queued frontend handoff', async () => {
+  const f = fixture({ backendError: true });
+  await f.execute();
+  assert.deepEqual(f.calls.dispatches.map(run => run.workflow_id), ['pages-static.yml', 'apps-script-sync.yml']);
+  assert.equal(f.calls.warnings.length, 1);
+  assert.match(f.calls.warnings[0], /BACKEND_DISPATCH_FAILED/);
 });
 
-test('Pages publication rebuilds from guarded main without importing workbook data, then pushes without force', () => {
-  const steps = publish.steps;
-  const guardBefore = steps.findIndex(step => step.name === 'Verify current main before building');
-  const build = steps.findIndex(step => step.name === 'Install dependencies and build the complete site');
-  const guardAfter = steps.findIndex(step => step.name === 'Recheck current main and release proof before publication');
-  const push = steps.find(step => step.name === 'Push the verified static site to gh-pages without force');
-  assert.ok(guardBefore >= 0 && build > guardBefore && guardAfter > build);
-  assert.doesNotMatch(JSON.stringify(backend), /seed-production-schedule-release|PRODUCTION_SCHEDULE_IMPORT_TIMEOUT_MS|production_schedule_start_import_v1/);
-  assert.equal(publish['timeout-minutes'], 25);
-  assert.ok(push && steps.indexOf(push) > guardAfter);
-  assert.match(push.run, /git -C .* push .*HEAD:gh-pages/);
-  assert.doesNotMatch(push.run, /--force(?:-with-lease)?/);
-  assert.match(push.run, /test -f "\$pages_dir\/CNAME"/);
-  assert.match(push.run, /test -f "\$pages_dir\/\.nojekyll"/);
-  assert.match(steps[guardAfter].run, /production-release-guard/);
+test('an existing backend run does not prevent a new frontend dispatch', async () => {
+  const f = fixture({ workflowRuns: { 'apps-script-sync.yml': [
+    { head_branch: 'main', head_sha: mergeSha, event: 'workflow_dispatch', status: 'in_progress' },
+  ] } });
+  await f.execute();
+  assert.deepEqual(f.calls.dispatches.map(run => run.workflow_id), ['pages-static.yml']);
+});
+
+test('Pages publishes the same-run verified artifact independently of backend results', () => {
+  const publish = pages.jobs.deploy;
+  assert.deepEqual(publish.needs, ['authorize-main', 'validation']);
+  assert.equal(backend.jobs['publish-pages'], undefined);
+  assert.equal(pages.jobs.validation.with['run-backend-tests'], false);
+  assert.equal(pages.jobs.validation.with['run-schema-tests'], false);
+  assert.equal(pages.jobs.validation.with['production-health'], false);
+  assert.doesNotMatch(JSON.stringify(pages), /SUPABASE_|APPS_SCRIPT_|production-release-guard|pages-release.mjs|check-compatible-apps-script|probe-production-auth-health/);
+  const download = publish.steps.find(step => step.uses === './.github/actions/download-release');
+  assert.equal(download.with.digest, '${{ needs.validation.outputs.digest }}');
+  assert.equal(download.with['run-id'], '${{ github.run_id }}');
+  assert.equal(download.with.commit, '${{ github.sha }}');
+  const push = publish.steps.find(step => step.name === 'Deploy verified artifact to Pages');
+  assert.match(push.run, /HEAD:gh-pages/);
+  assert.doesNotMatch(push.run, /--force/);
+  assert.match(push.run, /CNAME/);
+  assert.match(push.run, /\.nojekyll/);
   assert.equal(publish.permissions.contents, 'write');
-  assert.doesNotMatch(JSON.stringify(publish), /actions\/github-script@v7/);
+  assert.equal(publish.permissions.pages, 'write');
+  const pagesBuild = publish.steps.find(step => step.name === 'Request the GitHub Pages build for the published branch');
+  assert.match(pagesBuild.run, /pages\/builds/);
 });
 
-test('backend success must pass read-only production health before publishing, then verify the exact live descriptor', () => {
-  const steps = publish.steps;
-  const health = steps.findIndex(step => step.run === 'node scripts/probe-production-auth-health.mjs');
-  const guard = steps.findIndex(step => step.name === 'Recheck current main and release proof before publication');
-  const push = steps.findIndex(step => step.name === 'Push the verified static site to gh-pages without force');
-  const pagesBuild = steps.findIndex(step => step.name === 'Request the GitHub Pages build for the published branch');
-  const live = steps.findIndex(step => step.run === 'node scripts/wait-for-live-release.mjs');
-  assert.ok(health >= 0 && guard > health && push > guard && live > push);
-  assert.ok(pagesBuild > push && live > pagesBuild);
-  assert.match(steps[pagesBuild].run, /gh api --method POST "repos\/\$GITHUB_REPOSITORY\/pages\/builds"/);
-  assert.equal(steps[pagesBuild].env.GH_TOKEN, '${{ github.token }}');
-  assert.equal(publish.permissions.pages, 'write');
-  assert.equal(publish.permissions.actions, 'read');
-  assert.equal(publish.permissions['pull-requests'], 'read');
-  assert.equal(steps[health].env.PRODUCTION_PROBE_READ_ONLY, '1');
-  assert.equal(steps[health].env.REQUIRE_APPS_SCRIPT_HEALTH, '1');
-  assert.equal(steps[health].env.REQUIRE_BOUNDED_MAINTENANCE, '1');
-  assert.equal(steps[health].env.APPS_SCRIPT_DEPLOYMENT_ID, '${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}');
-  assert.equal(steps[live].env.EXPECTED_COMMIT, '${{ github.sha }}');
-  assert.equal(steps[live].env.REQUIRE_CURRENT_LIVE_DESCRIPTOR, '1');
-  assert.equal(steps[live].env.CANARY_BASE_URL, 'https://agmetricapp.com');
-  assert.equal(steps[live].env.CANARY_WAIT_TIMEOUT_MS, '600000');
-  assert.equal(steps.some(step => step['continue-on-error']), false);
-  assert.doesNotMatch(JSON.stringify(steps[health]), /REQUIRE_LIVE_RELEASE_MATCH/,
-    'the previous frontend remains live until the backend has passed health');
+test('live notification requires both the current descriptor and immutable commit fingerprint', () => {
+  const live = pages.jobs['exact-live'];
+  assert.equal(live.needs, 'deploy');
+  const wait = live.steps.find(step => step.run === 'node scripts/wait-for-live-release.mjs');
+  assert.equal(wait.env.REQUIRE_CURRENT_LIVE_DESCRIPTOR, '1');
+  assert.equal(wait.env.EXPECTED_COMMIT, '${{ needs.deploy.outputs.build-commit }}');
+  const report = live.steps.find(step => step.name === 'Report the verified live version');
+  assert.ok(live.steps.indexOf(report) > live.steps.indexOf(wait));
+  assert.match(report.run, /package.json/);
+  assert.match(report.run, /is now LIVE/);
+  assert.match(report.run, /GITHUB_STEP_SUMMARY/);
 });

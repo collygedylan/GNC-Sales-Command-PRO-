@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { resolvePagesPublication } from '../scripts/pages-publication.mjs';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import { createRequire } from 'node:module';
+
+const pages = createRequire(import.meta.url)('js-yaml').load(
+  fs.readFileSync(new URL('../.github/workflows/pages-static.yml', import.meta.url), 'utf8'));
 
 const repository = 'example/app', commit = 'a'.repeat(40), buildCommit = 'b'.repeat(40), tree = 'c'.repeat(40);
 function fixture() {
@@ -91,4 +97,36 @@ test('an older successful publication cannot hide a newer pending attempt', asyn
     return { total_count: 0, jobs: [] };
   };
   await assert.rejects(f.resolve(), /NOT_PUBLISHED/);
+});
+
+function executeMainGuard(step, env = {}, mainSha = commit) {
+  const github = { rest: { git: { getRef: async args => {
+    assert.equal(args.ref, 'heads/main');
+    return { data: { object: { sha: mainSha } } };
+  } } } };
+  const context = { repo: { owner: 'example', repo: 'app' }, sha: commit, runId: 12 };
+  return vm.runInNewContext(`(async () => {\n${step.with.script}\n})()`, {
+    github, context, process: { env: { GITHUB_RUN_ATTEMPT: '2', ...env } },
+  });
+}
+
+test('frontend dispatch rejects malformed, mismatched, and stale main commit identities', async () => {
+  const step = pages.jobs['authorize-main'].steps[0];
+  await executeMainGuard(step);
+  await executeMainGuard(step, { EXPECTED_COMMIT: commit });
+  for (const expected of ['bad', buildCommit]) {
+    await assert.rejects(executeMainGuard(step, { EXPECTED_COMMIT: expected }), /EXPECTED_COMMIT_MISMATCH/);
+  }
+  await assert.rejects(executeMainGuard(step, {}, buildCommit), /MAIN_SUPERSEDED/);
+});
+
+test('prepublication guard binds the exact same run, attempt, and current main commit', async () => {
+  const step = pages.jobs.deploy.steps.find(step => step.name?.startsWith('Reject a stale main'));
+  const env = { EXPECTED_COMMIT: commit, VALIDATED_RUN_ID: '12', VALIDATED_ATTEMPT: '2' };
+  await executeMainGuard(step, env);
+  for (const update of [{ EXPECTED_COMMIT: buildCommit }, { VALIDATED_RUN_ID: '13' },
+    { VALIDATED_ATTEMPT: '1' }, { VALIDATED_RUN_ID: '' }]) {
+    await assert.rejects(executeMainGuard(step, { ...env, ...update }), /VALIDATION_IDENTITY_MISMATCH/);
+  }
+  await assert.rejects(executeMainGuard(step, env, buildCommit), /MAIN_SUPERSEDED/);
 });

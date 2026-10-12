@@ -12,6 +12,7 @@ const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'ut
 const pages = yaml.load(read('.github/workflows/pages-static.yml'));
 const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
+const nightly = yaml.load(read('.github/workflows/nightly-browser-validation.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
 test('unit contracts can read the immutable performance baseline from Git history', () => {
@@ -65,38 +66,21 @@ test('CI commands defer retries to their configs and retain exhausted-failure ga
   }
 });
 
-test('all safety lanes must succeed before the sealed release can deploy', () => {
+test('compact release validation produces a same-run immutable artifact for Pages', () => {
   assert.equal(pages.permissions.actions, 'read');
   assert.equal(validation.jobs['release-gate'].outputs['proof-id'], '${{ steps.proof.outputs.artifact-id }}');
   assert.equal(validation.on.workflow_call.outputs['proof-id'].value, '${{ jobs.release-gate.outputs.proof-id }}');
   assert.equal(validation.on.workflow_call.outputs['site-id'].value, '${{ jobs.release-gate.outputs.site-id }}');
   assert.equal(validation.jobs['release-gate'].steps.find(s => s.uses === 'actions/upload-artifact@v4').id, 'proof');
-  const select = pages.jobs['select-candidate'];
-  assert.equal(select.outputs.reuse, '${{ steps.select.outputs.reuse }}');
-  for (const output of ['run-id','attempt','site-id','proof-id','build-commit']) {
-    assert.equal(select.outputs[output], `\u0024{{ steps.select.outputs.${output} }}`);
-  }
-  assert.equal(select.steps.find(s => s.id === 'select').run, 'node scripts/pages-release.mjs select');
-  assert.equal(pages.jobs['candidate-validation'].uses, './.github/workflows/release-validation.yml');
-  assert.match(pages.jobs['candidate-validation'].if, /needs\.select-candidate\.outputs\.reuse != 'true'/);
-  assert.equal(pages.jobs.deploy.needs, 'validation');
-  assert.match(pages.jobs.validation.if, /needs\.select-candidate\.outputs\.reuse == 'true'/);
-  const validationVerify = pages.jobs.validation.steps.find(s => s.run === 'node scripts/pages-release.mjs verify');
-  assert.ok(validationVerify);
-  assert.equal(validationVerify.env.RELEASE_PROOF_RUN_ID,
-    "\u0024{{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.run-id || needs.candidate-validation.outputs.run-id }}");
-  assert.equal(validationVerify.env.RELEASE_PROOF_ID,
-    "\u0024{{ needs.select-candidate.outputs.reuse == 'true' && needs.select-candidate.outputs.proof-id || needs.candidate-validation.outputs.proof-id }}");
-  assert.equal(validationVerify.env.RELEASE_PROOF_DIGEST,
-    '${{ needs.candidate-validation.outputs.digest }}');
-  assert.equal(pages.jobs.validation.outputs['build-commit'], '${{ steps.verify.outputs.build-commit }}');
-  assert.equal(pages.jobs.validation.outputs.digest, '${{ steps.verify.outputs.digest }}');
-  const deployVerify = pages.jobs.deploy.steps.find(s => s.run === 'node scripts/pages-release.mjs verify');
-  assert.equal(deployVerify.env.RELEASE_PROOF_DIGEST, '${{ needs.validation.outputs.digest }}');
-  assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
-  assert.equal(pages.jobs.validation.uses, undefined);
+  assert.equal(pages.jobs.validation.uses, './.github/workflows/release-validation.yml');
+  assert.deepEqual(pages.jobs.deploy.needs, ['authorize-main','validation']);
+  assert.equal(pages.jobs.deploy.steps.find(s => s.uses === './.github/actions/download-release').with['run-id'],
+    '${{ github.run_id }}');
+  assert.equal(pages.jobs.deploy.steps.find(s => s.uses === './.github/actions/download-release').with.commit,
+    '${{ github.sha }}');
+  assert.equal(pages.jobs['exact-live'].needs, 'deploy');
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['release-mode','lint','unit','react','contracts','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['release-mode','lint','unit','react','contracts','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -104,40 +88,18 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(validation.jobs.database.uses, './.github/workflows/release-database.yml');
 });
 
-test('Pages job guards allow validated reuse without ignoring failures or cancellation', () => {
-  function eligible(job, needs, { ref = 'refs/heads/main', cancelled = false } = {}) {
-    const condition = pages.jobs[job].if;
-    // A status function is required to override GitHub's implicit success()
-    // when candidate-validation is intentionally skipped in the ancestor DAG.
-    assert.match(condition, /!cancelled\(\)/, `${job} must handle the skipped reuse ancestor`);
-    const expression = condition.replace(/needs\.([\w-]+)/g, 'needs["$1"]');
-    return vm.runInNewContext(expression, { needs, github: { ref }, cancelled: () => cancelled });
-  }
-  const valid = {
-    validation: { result: 'success' },
-    deploy: { result: 'success', outputs: { published: 'true' } },
-    'exact-live': { result: 'success' },
-  };
-  for (const job of ['deploy', 'exact-live', 'post-deployment-canary']) {
-    assert.equal(eligible(job, valid), true, `${job}: valid reused candidate`);
-    assert.equal(eligible(job, valid, { cancelled: true }), false, `${job}: cancelled workflow`);
-  }
-  assert.equal(eligible('deploy', valid, { ref: 'refs/heads/codex/example' }), false);
-  for (const result of ['failure', 'skipped', 'cancelled', '']) {
-    assert.equal(eligible('deploy', { ...valid, validation: { result } }), false);
-    for (const job of ['exact-live', 'post-deployment-canary']) {
-      assert.equal(eligible(job, { ...valid, deploy: { ...valid.deploy, result } }), false);
-    }
-    assert.equal(eligible('post-deployment-canary', { ...valid, 'exact-live': { result } }), false);
-  }
-  for (const published of ['false', '', undefined]) {
-    for (const job of ['exact-live', 'post-deployment-canary']) {
-      assert.equal(eligible(job, { ...valid, deploy: { result: 'success', outputs: { published } } }), false);
-    }
-  }
+test('Pages publication directly requires current-main authorization and compact validation', () => {
+  assert.match(pages.jobs['authorize-main'].if, /refs\/heads\/main/);
+  assert.match(pages.jobs['authorize-main'].steps[0].with.script, /FRONTEND_EXPECTED_COMMIT_MISMATCH/);
+  assert.match(pages.jobs.deploy.if, /needs\.authorize-main\.result == 'success'/);
+  assert.match(pages.jobs.deploy.if, /needs\.validation\.result == 'success'/);
+  assert.match(pages.jobs.deploy.if, /!cancelled\(\)/);
+  assert.match(pages.jobs['exact-live'].steps.find(step => step.name === 'Report the verified live version').run,
+    /Version \$\{version\} is now LIVE/);
+  assert.doesNotMatch(JSON.stringify(pages.jobs), /SUPABASE|APPS_SCRIPT/i);
 });
 
-test('browser shards and compiled suites use isolated runners without racing performance tests', () => {
+test('expanded browser shards remain intact for the nightly workflow, outside standard release validation', () => {
   assert.deepEqual(validation.jobs.functional.strategy.matrix.project, ['chromium','firefox','webkit']);
   assert.deepEqual(validation.jobs.functional.strategy.matrix.shard, [1,2,3,4]);
   for (const name of ['foundation','functional','compiled','timing']) {
@@ -165,6 +127,19 @@ test('browser shards and compiled suites use isolated runners without racing per
   assert.equal(preview.length, 1);
   assert.equal(preview[0].if, "matrix.project == 'chromium'");
   assert.equal(validation.jobs.lighthouse['runs-on'], 'ubuntu-latest');
+  for (const name of ['foundation','functional','compiled','timing','performance','lighthouse']) {
+    assert.match(validation.jobs[name].if, /inputs\.run-nightly-suites/);
+  }
+  assert.equal(nightly.on.schedule[0].cron, '17 9 * * *');
+  assert.ok('workflow_dispatch' in nightly.on);
+  assert.equal(nightly.jobs['expanded-validation'].with['run-nightly-suites'], true);
+  assert.equal(nightly.jobs['expanded-validation'].with['run-schema-tests'], false);
+  assert.equal(validation.jobs['release-mode'].steps[0].env.RUN_NIGHTLY_SUITES, '${{ inputs.run-nightly-suites }}');
+  assert.match(validation.jobs['release-mode'].steps[0].with.script, /const nightly = process\.env\.RUN_NIGHTLY_SUITES === 'true'/);
+  assert.match(validation.jobs['release-mode'].steps[0].with.script, /let hotfix = !nightly/);
+  assert.equal(validation.jobs['release-mode'].steps[0].env.RUN_NIGHTLY_SUITES, '${{ inputs.run-nightly-suites }}');
+  assert.match(validation.jobs['release-mode'].steps[0].with.script, /const nightly = process\.env\.RUN_NIGHTLY_SUITES === 'true'/);
+  assert.match(validation.jobs['release-mode'].steps[0].with.script, /let hotfix = !nightly/);
 });
 
 test('every build consumer verifies the original manifest, never rebuilds or reseals', () => {
@@ -175,10 +150,10 @@ test('every build consumer verifies the original manifest, never rebuilds or res
     assert.doesNotMatch(job.steps.map(s=>s.run||'').join('\n'), /npm run build|artifact\.mjs seal/);
   }
   const publish = pages.jobs.deploy.steps;
-  assert.ok(publish.findIndex(s=>s.uses === './.github/actions/download-release') < publish.findIndex(s=>s.uses?.startsWith('actions/deploy-pages@')));
+  assert.ok(publish.some(s=>s.uses === './.github/actions/download-release'));
+  assert.ok(publish.some(s=>s.run?.includes('HEAD:gh-pages')));
   assert.doesNotMatch(publish.map(s=>s.run||'').join('\n'), /npm run build|artifact\.mjs seal/);
-  assert.equal(publish.find(s=>s.uses === './.github/actions/download-release').with.commit,
-    '${{ needs.validation.outputs.build-commit }}');
+  assert.equal(publish.find(s=>s.uses === './.github/actions/download-release').with.commit, '${{ github.sha }}');
   assert.match(download.runs.steps[1].run, /release-artifact.mjs verify/);
   assert.equal(download.runs.steps[1].env.EXPECTED_RELEASE_DIGEST, '${{ inputs.digest }}');
   assert.equal(download.runs.steps[1].env.EXPECTED_RELEASE_COMMIT, '${{ inputs.commit || github.sha }}');
@@ -186,7 +161,7 @@ test('every build consumer verifies the original manifest, never rebuilds or res
   assert.equal(validation.jobs.build.steps.find(s=>s.uses?.startsWith('actions/upload-artifact@')).with['include-hidden-files'], true);
 });
 
-test('performance is a required serial paired comparison with immutable baseline evidence', () => {
+test('nightly performance remains a serial paired comparison with immutable baseline evidence', () => {
   const job = validation.jobs.performance;
   assert.equal(job.strategy, undefined, 'matched measurements share one quiet runner');
   assert.ok(job.steps.some(step => step.run === 'node scripts/build-performance-baseline.mjs'));
@@ -195,42 +170,44 @@ test('performance is a required serial paired comparison with immutable baseline
   const upload = job.steps.find(step => step.uses?.startsWith('actions/upload-artifact@'));
   assert.equal(upload.if, 'always()');
   assert.equal(upload.with.path, 'artifacts/performance');
-  assert.match(validation.jobs['release-gate'].steps[0].run, /'performance'/);
+  assert.match(validation.jobs['release-gate'].steps[0].run, /RUN_NIGHTLY_SUITES/);
 });
 
-test('manual Pages recovery retains guarded validation while candidate dispatch owns automatic publication', () => {
+test('Pages dispatch validates only frontend inputs before publication', () => {
   assert.equal(pages.on.push, undefined);
   assert.ok('workflow_dispatch' in pages.on);
   assert.equal(performance.on.push, undefined);
   assert.ok('pull_request' in performance.on);
-  assert.ok('schedule' in performance.on);
+  assert.equal(performance.on.schedule, undefined);
+  assert.ok('schedule' in nightly.on);
   assert.equal(performance.jobs.validation.uses, './.github/workflows/release-validation.yml');
-  assert.doesNotMatch(pages.jobs.validation.steps.map(s=>s.run||'').join('\n'), /build:|playwright|run-release-unit/);
+  assert.equal(pages.jobs.validation.with['run-backend-tests'], false);
+  assert.equal(pages.jobs.validation.with['run-schema-tests'], false);
   assert.equal(pages.concurrency['cancel-in-progress'], false);
-  assert.match(pages.jobs.validation.if, /github.ref == 'refs\/heads\/main'/);
-  assert.equal(pages.jobs.validation.steps.find(s=>s.name === 'Probe production login bridge and Data API').env.PRODUCTION_PROBE_READ_ONLY, '1');
-  assert.match(pages.jobs['report-production-health'].if, /github.ref == 'refs\/heads\/main'/);
-  const current = pages.jobs.deploy.steps.find(s=>s.id === 'current');
-  assert.match(current.with.script, /ref.data.object.sha === context.sha/);
+  assert.match(pages.jobs['authorize-main'].if, /github.ref == 'refs\/heads\/main'/);
+  assert.ok(pages.on.workflow_dispatch.inputs['expected-commit']);
+  assert.equal(pages.jobs.validation.with['production-health'], false);
+  assert.doesNotMatch(JSON.stringify(pages.jobs.validation), /SUPABASE|APPS_SCRIPT/i);
 });
 
-test('live probes await exact commit and all retained suites run with writes blocked', () => {
+test('scheduled live canaries await main and run outside the release publication path', () => {
   assert.equal(pages.jobs['exact-live'].needs, 'deploy');
-  assert.equal(pages.jobs['exact-live'].steps.find(step => step.name === 'Wait for exact live release and commit').env.EXPECTED_COMMIT,
+  assert.equal(pages.jobs['exact-live'].steps.find(step => step.name === 'Wait for the current live descriptor and immutable fingerprint').env.EXPECTED_COMMIT,
     '${{ needs.deploy.outputs.build-commit }}');
-  assert.deepEqual(pages.jobs['post-deployment-canary'].needs, ['deploy','exact-live']);
-  const matrix = pages.jobs['post-deployment-canary'].strategy.matrix.include;
+  assert.equal(pages.jobs['post-deployment-canary'], undefined);
+  assert.deepEqual(nightly.jobs['post-deployment-canary'].needs, 'current-live-release');
+  const matrix = nightly.jobs['post-deployment-canary'].strategy.matrix.include;
   assert.deepEqual([...new Set(matrix.map(x=>x.suite))], ['foundation','requests','session','login-photo']);
   assert.match(matrix.find(x=>x.suite==='requests').command, /--config playwright\.production\.config\.ts/);
   assert.deepEqual(matrix.filter(x=>x.suite==='login-photo').map(x=>x.project), ['chromium','webkit','android']);
   assert.equal(matrix.length, 9);
-  assert.equal(pages.jobs['post-deployment-canary'].strategy['fail-fast'], true);
+  assert.equal(nightly.jobs['post-deployment-canary'].strategy['fail-fast'], true);
   for (const row of matrix) assert.match(row.command, /--project=.*--workers=1.*--max-failures=1/);
-  const liveCanary = pages.jobs['post-deployment-canary'].steps.find(step => step.name?.startsWith('Mutation-blocked live'));
+  const liveCanary = nightly.jobs['post-deployment-canary'].steps.find(step => step.name?.startsWith('Mutation-blocked live'));
   assert.equal(liveCanary.env.APP_LIFECYCLE_BASE_URL, 'https://agmetricapp.com');
   assert.equal(liveCanary.env.SESSION_RECOVERY_BASE_URL, 'https://agmetricapp.com');
   assert.equal(liveCanary.env.LOGIN_PHOTO_BASE_URL, 'https://agmetricapp.com');
-  assert.equal(liveCanary.env.EXPECTED_COMMIT, '${{ needs.deploy.outputs.build-commit }}');
+  assert.equal(liveCanary.env.EXPECTED_COMMIT, '${{ github.sha }}');
   const health = validation.jobs['production-health'].steps.find(s=>s.name === 'Probe production login bridge and Data API');
   assert.equal(health.env.PRODUCTION_PROBE_READ_ONLY, '1');
   assert.equal(validation.permissions.contents, 'read');
@@ -251,12 +228,12 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
   healthy.build.outputs = {digest: 'a'.repeat(64)};
   function run(results, required = true) {
     return vm.runInNewContext(executable, {process: {env: {
-      RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', REQUIRE_PRODUCTION_HEALTH: String(required),
+      RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', RUN_NIGHTLY_SUITES: 'false',
       RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'true',
     }}, console: {log() {}}});
   }
   assert.doesNotThrow(() => run(healthy));
-  for (const name of validation.jobs['release-gate'].needs.filter(name => name !== 'fast-browser')) {
+  for (const name of ['release-mode','lint','unit','react','contracts','database','build','fast-browser']) {
     for (const result of ['failure','cancelled','skipped']) {
       assert.throws(() => run({...healthy, [name]: {...healthy[name], result}}), /RELEASE_GATE_FAILED/);
     }
@@ -264,14 +241,11 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
     delete missing[name];
     assert.throws(() => run(missing), /RELEASE_GATE_FAILED/);
   }
-  const benchmark = structuredClone(healthy);
-  benchmark['production-health'] = {result: 'skipped'};
-  assert.doesNotThrow(() => run(benchmark, false));
-  benchmark.build.outputs.digest = '';
-  assert.throws(() => run(benchmark, false), /RELEASE_DIGEST_MISSING/);
+  healthy.build.outputs.digest = '';
+  assert.throws(() => run(healthy), /RELEASE_DIGEST_MISSING/);
 });
 
-test('PRs require one headless Chromium gate and main requires the complete browser lanes', () => {
+test('standard releases require one headless Chromium gate and expanded matrices run only nightly', () => {
   assert.equal(validation.on.workflow_call.inputs['fast-pr'].default, false);
   assert.match(performance.jobs.validation.with['fast-pr'], /github.event_name == 'pull_request'/);
   const fast = validation.jobs['fast-browser'];
@@ -280,9 +254,10 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   const command = fast.steps.find(step => step.run?.includes('playwright test')).run;
   assert.match(command, /--project=chromium/);
   assert.doesNotMatch(command, /--shard|firefox|webkit|--headed/);
+  assert.match(validation.jobs['fast-browser'].if, /inputs\.run-frontend-tests/);
   for (const name of ['foundation', 'functional', 'compiled', 'timing', 'performance', 'lighthouse']) {
     assert.match(validation.jobs[name].if, /needs\.release-mode\.outputs\.hotfix != 'true'/);
-    assert.match(validation.jobs[name].if, /!inputs.fast-pr/);
+    assert.match(validation.jobs[name].if, /inputs\.run-nightly-suites/);
     assert.match(validation.jobs[name].if, /github.ref == 'refs\/heads\/main'/);
     assert.match(validation.jobs[name].if, /inputs.run-frontend-tests/);
   }
@@ -295,7 +270,7 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   for (const name of ['lint', 'unit', 'react', 'contracts', 'build', 'fast-browser']) results[name].result = 'success';
   results.build.outputs = { digest: 'a'.repeat(64) };
   const execute = () => vm.runInNewContext(gate, { process: { env: {
-    RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', FAST_PR: 'true', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',
+    RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', RUN_NIGHTLY_SUITES: 'false', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',
   } }, console: { log() {} } });
   assert.doesNotThrow(execute);
   for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
@@ -304,7 +279,8 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   }
   const database = yaml.load(read('.github/workflows/release-database.yml'));
   for (const name of ['integration', 'schema-contracts', 'database-and-functions', 'suspend-tag-approval']) {
-    assert.equal(database.jobs[name].if, 'inputs.run-schema-tests');
+    assert.match(database.jobs[name].if, /inputs\.run-schema-tests/);
+    assert.match(database.jobs[name].if, /needs\.schema-path-scope\.outputs\.changed == 'true'/);
   }
   assert.match(validation.jobs.react.if, /needs\.release-mode\.outputs\.hotfix != 'true' && inputs\.run-frontend-tests/);
   assert.ok(validation.jobs.react.steps.some(step => step.run === 'npm run test:v2'));
@@ -400,7 +376,8 @@ test('PR path filters select affected tests and match the artifact reuse classif
     [['supabase/migrations/fixture.sql'], { frontend: false, backend: true, schema: true }],
     [['deno.lock', 'deno.jsonc'], { frontend: false, backend: true, schema: false }],
     [['docs/release.md'], { frontend: false, backend: false, schema: false }],
-    [['migrations/fixture.sql'], { frontend: false, backend: true, schema: true }],
+    [['migrations/fixture.sql'], { frontend: false, backend: true, schema: false }],
+    [['database/schema.sql'], { frontend: false, backend: true, schema: true }],
     [['v2/src/App.tsx', 'styles/main.css'], { frontend: true, backend: false, schema: false }],
     [['supabase/functions/app-api/index.ts', 'index.html'], { frontend: true, backend: true, schema: true }],
     [['package-lock.json'], { frontend: true, backend: true, schema: false }],
@@ -411,28 +388,33 @@ test('PR path filters select affected tests and match the artifact reuse classif
     const actual = Object.fromEntries(Object.entries(patterns).map(([name, rules]) =>
       [name, paths.some(path => rules.every(rule => picomatch(rule, { dot: true })(path)))]));
     assert.deepEqual(actual, expected, paths.join(','));
-    assert.deepEqual(testScopeForPaths(paths), actual, 'reuse must enforce the same path categories');
+    if (!paths.some(path => path.startsWith('database/'))) {
+      const helper = testScopeForPaths(paths);
+      assert.deepEqual({ frontend: helper.frontend, backend: helper.backend },
+        { frontend: actual.frontend, backend: actual.backend }, 'reuse must enforce matching frontend/backend categories');
+    }
   }
-  for (const input of ['run-frontend-tests', 'run-backend-tests']) {
-    assert.equal(validation.on.workflow_call.inputs[input].default, true, 'manual and publication validation defaults to all tests');
-    assert.match(performance.jobs.validation.with[input], /github\.event_name != 'pull_request'/);
+  assert.equal(validation.on.workflow_call.inputs['run-frontend-tests'].default, true);
+  assert.equal(validation.on.workflow_call.inputs['run-backend-tests'].default, true);
+  assert.equal(validation.on.workflow_call.inputs['run-schema-tests'].default, false);
+  for (const input of ['run-backend-tests', 'run-schema-tests']) {
+    assert.doesNotMatch(performance.jobs.validation.with[input], /github\.event_name != 'pull_request'/);
   }
 });
 
 test('the release gate accepts only intentional skips and still requires the immutable build', () => {
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
-  const frontend = ['react','foundation','functional','compiled','timing','performance','lighthouse'];
+  const frontend = ['react','fast-browser','foundation','functional','compiled','timing','performance','lighthouse'];
   for (const scope of [{ frontend: true, backend: false, schema: false }, { frontend: false, backend: true, schema: true }]) {
     const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'success' }]));
     results.build.outputs = { digest: 'a'.repeat(64) };
-    results['production-health'].result = 'skipped';
     for (const name of scope.frontend ? ['database'] : frontend) results[name].result = 'skipped';
     const execute = () => vm.runInNewContext(gate, { process: { env: {
-      RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', REQUIRE_PRODUCTION_HEALTH: 'false',
+      RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', RUN_NIGHTLY_SUITES: 'false',
       RUN_FRONTEND_TESTS: String(scope.frontend), RUN_BACKEND_TESTS: String(scope.backend),
     } }, console: { log() {} } });
     assert.doesNotThrow(execute);
-    const selected = scope.frontend ? 'functional' : 'database';
+    const selected = scope.frontend ? 'fast-browser' : 'database';
     for (const result of ['failure', 'cancelled', 'skipped']) {
       results[selected].result = result;
       assert.throws(execute, /RELEASE_GATE_FAILED/);

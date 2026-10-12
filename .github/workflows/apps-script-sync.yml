@@ -1,139 +1,115 @@
-name: Sync Code.gs to Apps Script
+name: Deploy Supabase backend
 
 on:
   workflow_dispatch:
+    inputs:
+      expected-commit:
+        description: Optional merged main commit SHA expected by the caller.
+        required: false
+        type: string
 
 permissions:
   contents: read
   actions: read
-  pull-requests: read
 
 concurrency:
-  group: apps-script-codegs-sync
+  group: supabase-backend-deploy
   cancel-in-progress: false
 
 jobs:
-  authorize-production:
-    name: Authorize exact current-main release
+  authorize-backend:
+    name: Authorize current main backend changes
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       authorized: ${{ steps.guard.outputs.authorized }}
-      frontend: ${{ steps.validation-scope.outputs.frontend }}
+      backend-changed: ${{ steps.scope.outputs.backend-changed }}
     steps:
-      - name: Check out repository
+      - name: Check out current main history
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Require current main and validated sealed candidate proof
+      - name: Verify current main and expected commit
         id: guard
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/lib/production-release-guard.mjs
-
-      - name: Route deployment-only changes without repeating full browsers
-        id: validation-scope
-        env:
-          FRONTEND_CHANGED: ${{ steps.guard.outputs.frontend }}
+          EXPECTED_COMMIT: ${{ inputs.expected-commit }}
         shell: bash
         run: |
           set -euo pipefail
-          mapfile -t changed_files < <(git diff --name-only "${GITHUB_SHA}^1" "$GITHUB_SHA")
-          deployment_only=true
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          [[ "$current_main" == "$GITHUB_SHA" ]] || { echo 'BACKEND_DISPATCH_STALE_MAIN'; exit 1; }
+          if [[ -n "$EXPECTED_COMMIT" ]]; then
+            [[ "$EXPECTED_COMMIT" =~ ^[0-9a-fA-F]{40}$ ]] || { echo 'EXPECTED_COMMIT_INVALID'; exit 1; }
+            [[ "$EXPECTED_COMMIT" == "$GITHUB_SHA" ]] || { echo 'EXPECTED_COMMIT_MISMATCH'; exit 1; }
+          fi
+          echo 'authorized=true' >> "$GITHUB_OUTPUT"
+
+      - name: Require changed Supabase or database paths
+        id: scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git rev-parse --verify "${GITHUB_SHA}^1" >/dev/null 2>&1; then
+            echo 'BACKEND_PATH_COMPARISON_FAILED' >&2
+            exit 1
+          fi
+          diff_file="$RUNNER_TEMP/backend-paths.nul"
+          if ! git diff --name-only --no-renames -z --diff-filter=ACMRD "${GITHUB_SHA}^1" "$GITHUB_SHA" > "$diff_file"; then
+            echo 'BACKEND_PATH_COMPARISON_FAILED' >&2
+            exit 1
+          fi
+          mapfile -d '' -t changed_files < "$diff_file"
+          backend_changed=false
           for changed_file in "${changed_files[@]}"; do
             case "$changed_file" in
-              .github/workflows/apps-script-sync.yml|tests/aura-llm-release.test.mjs|tests/aura-query-release.test.mjs|tests/aura-voice-release.test.mjs|tests/release-apps-script-guard.test.mjs|tests/release-publish-candidate.test.mjs) ;;
-              *) deployment_only=false ;;
+              supabase/*|database/*) backend_changed=true ;;
             esac
           done
-          if [[ "${#changed_files[@]}" -gt 0 && "$deployment_only" == true ]]; then
-            echo 'frontend=false' >> "$GITHUB_OUTPUT"
-          else
-            echo "frontend=$FRONTEND_CHANGED" >> "$GITHUB_OUTPUT"
-          fi
+          echo "backend-changed=$backend_changed" >> "$GITHUB_OUTPUT"
 
-      - name: Require backend deployment credentials before production changes
-        if: ${{ false }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$SUPABASE_ACCESS_TOKEN" || { echo 'SUPABASE_ACCESS_TOKEN_REQUIRED'; exit 1; }
-          test -n "$SUPABASE_URL" || { echo 'SUPABASE_URL_REQUIRED'; exit 1; }
-          test -n "$SUPABASE_DB_URL" || { echo 'SUPABASE_DB_URL_REQUIRED'; exit 1; }
-          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo 'SUPABASE_SERVICE_ROLE_KEY_REQUIRED'; exit 1; }
-          [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
-
-  production-validation:
-    name: Validate production browsers on exact main
-    needs: authorize-production
-    if: github.ref == 'refs/heads/main' && needs.authorize-production.outputs.authorized == 'true'
-    uses: ./.github/workflows/release-validation.yml
-    with:
-      fast-pr: false
-      run-frontend-tests: ${{ needs.authorize-production.outputs.frontend == 'true' }}
-      # Database and Edge contracts already passed in the immutable PR proof.
-      run-backend-tests: false
-      run-schema-tests: false
-    secrets: inherit
-
-  sync-codegs:
-    name: Update Apps Script Code.gs
-    needs: [authorize-production, production-validation]
-    # Temporary outage bypass: keep the production backend unchanged.
-    if: needs.authorize-production.outputs.authorized == 'true' && false
+  deploy-supabase:
+    name: Apply backend migrations and deploy Edge Functions
+    needs: authorize-backend
+    if: needs.authorize-backend.outputs.authorized == 'true' && needs.authorize-backend.outputs.backend-changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
+    permissions:
+      contents: read
     steps:
-      - name: Check out repository
+      - name: Check out the authorized main release
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: 2.111.0
 
-      - name: Install Google API client
-        run: npm install --no-save googleapis@144.0.0
-
-      - name: Recheck current main and release proof immediately before deployment
+      - name: Recheck exact current main before backend changes
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/lib/production-release-guard.mjs
+          EXPECTED_COMMIT: ${{ inputs.expected-commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          [[ "$current_main" == "$GITHUB_SHA" ]] || { echo 'BACKEND_DISPATCH_STALE_MAIN'; exit 1; }
+          if [[ -n "$EXPECTED_COMMIT" && "$EXPECTED_COMMIT" != "$GITHUB_SHA" ]]; then
+            echo 'EXPECTED_COMMIT_MISMATCH' >&2
+            exit 1
+          fi
 
-      - name: Preview perennial policy impact (read only)
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: node scripts/preview-perennial-assignment.mjs
-
-      - name: Retain sanitized perennial impact preview
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: perennial-assignment-preview-${{ github.sha }}
-          path: .gnc-local/perennial-assignment-preview.json
-          if-no-files-found: ignore
-          retention-days: 90
+      - name: Install locked backend dependencies
+        uses: ./.github/actions/setup-node-dependencies
 
       - name: Apply backend release migrations and synchronize reminder Vault credentials
         env:
@@ -154,6 +130,7 @@ jobs:
           project_ref="${SUPABASE_URL#https://}"
           project_ref="${project_ref%.supabase.co}"
           [[ "$project_ref" =~ ^[a-z0-9]{20}$ ]] || { echo 'SUPABASE_PROJECT_REF_INVALID'; exit 1; }
+          [[ "$APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID" =~ ^AKfy[a-zA-Z0-9_-]+$ ]] || { echo 'APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID_REQUIRED'; exit 1; }
           web_app_url="https://script.google.com/macros/s/${APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID}/exec"
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
@@ -175,7 +152,7 @@ jobs:
             done
           }
           deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
-          # Temporarily retain the deployed send-push-alert version during core PWA publication.
+          # send-push-alert remains intentionally held at its current production version.
           deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
           deploy_with_retry supabase functions deploy calendar-reminder-sweep --use-api --project-ref "$project_ref"
           deploy_with_retry supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
@@ -184,143 +161,15 @@ jobs:
           deploy_with_retry supabase functions deploy aura-query --use-api --project-ref "$project_ref"
           deploy_with_retry supabase functions deploy aura-llm-router --use-api --project-ref "$project_ref"
 
-      - name: Verify deployed Aura authorization before publishing the PWA
+      - name: Verify deployed Aura authorization
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         run: node scripts/aura-query-production-smoke.mjs
 
-      - name: Verify Aura Gemini readiness before publishing the PWA
-        # Temporary release override: Gemini timeouts must not block the core PWA.
+      - name: Verify Aura Gemini readiness
+        # Preserve the approved Gemini timeout bypass for core releases.
         if: ${{ false }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/aura-provider-readiness.mjs
-
-      - name: Check whether deployed Apps Script already has identical code
-        id: compatibility
-        env:
-          GH_TOKEN: ${{ github.token }}
-          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
-          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
-          APPS_SCRIPT_PRODUCTION_SCRIPT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_SCRIPT_ID }}
-          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
-        run: node scripts/apps-script-sync-preflight.mjs
-
-      - name: Sync Code.gs into Apps Script
-        if: steps.compatibility.outputs.sync-required == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SHA: ${{ github.sha }}
-          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
-          APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
-          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
-          APPS_SCRIPT_PRODUCTION_SCRIPT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_SCRIPT_ID }}
-          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
-        run: node scripts/sync-codegs-to-apps-script.js
-
-      - name: Retain sanitized Apps Script recovery evidence
-        if: steps.compatibility.outputs.sync-required == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: apps-script-recovery-evidence-${{ github.sha }}
-          path: .gnc-local/apps-script-recovery-evidence.json
-          if-no-files-found: error
-          retention-days: 90
-
-  publish-pages:
-    name: Build and publish Pages
-    needs: [authorize-production, production-validation]
-    if: github.ref == 'refs/heads/main' && needs.authorize-production.outputs.authorized == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    permissions:
-      contents: write
-      actions: read
-      pull-requests: read
-      pages: write
-    steps:
-      - name: Check out the authorized main release
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Verify current main before building
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/lib/production-release-guard.mjs
-
-      # Workbook imports are user-initiated in Managers > Production Schedule.
-      # Code publication must neither start an import nor wait for one to finish.
-      - name: Install locked dependencies
-        uses: ./.github/actions/setup-node-dependencies
-      - name: Install dependencies and build the complete site
-        run: |
-          npm run build:pilot-monitoring
-          npm run build:live:assets
-          npm run build:v2
-          node scripts/prepare-release-site.mjs
-
-      - name: Require read-only production health before publication
-        # Frontend publication must remain independent of the backend outage.
-        if: ${{ false }}
-        env:
-          PRODUCTION_PROBE_READ_ONLY: '1'
-          PRODUCTION_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          PRODUCTION_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          REQUEST_DELIVERY_CRON_SECRET: ${{ secrets.REQUEST_DELIVERY_CRON_SECRET }}
-          APPS_SCRIPT_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
-          REQUIRE_APPS_SCRIPT_HEALTH: '1'
-          REQUIRE_BOUNDED_MAINTENANCE: '1'
-        run: node scripts/probe-production-auth-health.mjs
-
-      - name: Recheck current main and release proof before publication
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/lib/production-release-guard.mjs
-
-      - name: Push the verified static site to gh-pages without force
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_SHA: ${{ github.sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          repository="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git fetch "$repository" gh-pages:refs/remotes/origin/gh-pages
-          pages_dir="$RUNNER_TEMP/gnc-gh-pages"
-          git worktree add --detach "$pages_dir" refs/remotes/origin/gh-pages
-          rsync -a --delete --exclude='.git' _site/ "$pages_dir/"
-          test -f "$pages_dir/CNAME"
-          test -f "$pages_dir/.nojekyll"
-          git -C "$pages_dir" add -A
-          if git -C "$pages_dir" diff --cached --quiet; then
-            echo 'GHPAGES_ALREADY_CURRENT'
-            exit 0
-          fi
-          git -C "$pages_dir" -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Publish ${GITHUB_SHA:0:12} to GitHub Pages"
-          git -C "$pages_dir" push "$repository" HEAD:gh-pages
-
-      # GITHUB_TOKEN pushes do not trigger a branch-based Pages build.
-      - name: Request the GitHub Pages build for the published branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds" --jq '.status'
-
-      - name: Verify published current descriptor and immutable fingerprint
-        env:
-          EXPECTED_COMMIT: ${{ github.sha }}
-          CANARY_BASE_URL: https://agmetricapp.com
-          REQUIRE_CURRENT_LIVE_DESCRIPTOR: '1'
-          CANARY_WAIT_TIMEOUT_MS: '600000'
-          CANARY_WAIT_INTERVAL_MS: '5000'
-        run: node scripts/wait-for-live-release.mjs

@@ -7,8 +7,6 @@ on:
       - 'docs/**'
       - '**/*.md'
       - 'LICENSE*'
-  schedule:
-    - cron: '17 9 * * *'
   workflow_dispatch:
 
 permissions:
@@ -20,8 +18,8 @@ concurrency:
   group: performance-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# PR checks run the affected lanes; scheduled and manual checks run every lane.
-# Main Pages invokes the same validation workflow in its own publication run.
+# PR checks run only the lanes selected by their changed paths. Expanded browser
+# matrices run from nightly-browser-validation.yml, outside the publication path.
 jobs:
   changes:
     runs-on: ubuntu-latest
@@ -31,9 +29,9 @@ jobs:
       pull-requests: read
     outputs:
       hotfix: ${{ steps.hotfix.outputs.hotfix }}
-      frontend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.frontend == 'true' }}
-      backend: ${{ github.event_name != 'pull_request' || steps.filter.outputs.backend == 'true' }}
-      schema: ${{ github.event_name != 'pull_request' || steps.filter.outputs.schema == 'true' }}
+      frontend: ${{ steps.filter.outputs.frontend == 'true' }}
+      backend: ${{ steps.filter.outputs.backend == 'true' }}
+      schema: ${{ steps.filter.outputs.schema == 'true' }}
     steps:
       - name: Detect exact hotfix marker
         id: hotfix
@@ -58,9 +56,9 @@ jobs:
             frontend:
               - '{index.html,Code.gs,manifest.json,OneSignalSDKWorker.js,CNAME,assets/**,components/**,styles/**,src/**,v2/**,pages/**,services/**,utils/**,live-src/**,scripts/**,tests/**,.github/**,performance/**,Dockerfile*,package.json,package-lock.json,playwright*.config.*,vite*.config.*,tsconfig*.json,lighthouserc.json}'
             backend:
-              - '{supabase/**,migrations/**,database/migrations/**,**/*_migration.sql,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
+              - '{supabase/**,database/**,migrations/**,**/*_migration.sql,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
             schema:
-              - '{supabase/**,migrations/**,database/migrations/**,**/*_migration.sql}'
+              - '{supabase/**,database/**}'
 
   validation:
     needs: changes
@@ -69,8 +67,8 @@ jobs:
     with:
       hotfix: ${{ needs.changes.outputs.hotfix == 'true' }}
       fast-pr: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
-      run-schema-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.schema == 'true' }}
-      production-health: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      run-schema-tests: ${{ needs.changes.outputs.schema == 'true' }}
+      production-health: false
       run-frontend-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' }}
-      run-backend-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.backend == 'true' }}
+      run-backend-tests: ${{ needs.changes.outputs.backend == 'true' }}
     secrets: inherit
