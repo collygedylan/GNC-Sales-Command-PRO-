@@ -1,32 +1,28 @@
 # Engineering Guidance
 
-AGENTS.md is the authoritative workflow for local development, candidate delivery, monitoring, autonomous CI remediation, file hygiene, and the development-to-production flow. Follow its existing rules after every candidate push.
+`AGENTS.md` is the authoritative workflow for local development, candidate delivery, release monitoring, and file hygiene. Its Fast Deployment & Execution Policy applies to all work; this document summarizes the same rules for day-to-day changes.
 
 ## Development
 
-Implement complete, connected solutions and verify the affected behavior. Keep diffs focused and preserve unrelated changes. Prioritize offline synchronization and UI hydration stability.
-
-Check the impact of schema changes on Row Level Security and client queries. The approval rules in AGENTS.md apply to CI failures involving migrations, credentials, or production data.
-
-Before changing schema, RLS, or core UI logic, globally map downstream dependencies, including migrations, pgTAP, generated contracts, and legacy fixtures. Include their necessary repairs in the initial feature commit. Run the full local suite before pushing database security or structural schema changes; this supersedes the focused-only guidance below for those changes. Apply the current queue's explicit remediation authorization recorded in AGENTS.md.
+- Implement the complete requested change, keep the diff focused, and preserve unrelated work.
+- Before changing schema, RLS, or core UI behavior, map downstream dependencies such as migrations, generated contracts, database tests, and legacy fixtures. Update directly affected dependencies with the feature.
+- Do not run historical database replays or migration replay fixtures unless the change introduces a new SQL migration.
 
 ## Local Validation
 
-- Run only targeted unit tests or specific test files directly related to the changed behavior, including focused migration checks when applicable. Leave full E2E suites, mobile/browser matrices, and exhaustive regression testing to GitHub Actions.
-- Prefer fast local dev-server verification for UI changes. Do not rebuild full release artifacts or compile heavy production stylesheets just to run a local test; let cloud CI run tests that require those artifacts.
-- A local production build is allowed only when strictly necessary to diagnose or verify a potentially build-breaking configuration change. Explain the need and use the smallest sufficient build, as required by AGENTS.md.
+- Run only unit, integration, lint, and type checks scoped to modified files. Never run full repository suites locally.
+- Pre-commit hooks check formatting or syntax only for staged files. They must not run tests, type checks, discovery audits, sandbox assertions, database checks, or database replays.
+- Do not stop to repair unrelated legacy tests or missing historical fixtures.
+- Leave full browser matrices and broad regression validation to GitHub Actions.
 - For documentation-only changes, review document consistency and whitespace; application tests and builds are unnecessary.
 
-Once core changes, applicable migration checks, and focused local tests pass, commit and push immediately. Every candidate must still pass all required GitHub Actions release gates. Use fail-fast cloud feedback to diagnose failures and make targeted corrections. Preserve test coverage and assertions; do not quarantine, skip, or bypass failing tests to publish a candidate. Follow the single CI failure counter and approval conditions in AGENTS.md.
+## Release and Delivery
 
-## Release Metadata and Delivery
-
-Keep release markers synchronized with package.json using the repository's release-version tooling when preparing an application release. Use the date-based VYYYY.MM.DD.NNN version scheme for application releases. CI-only and documentation-only changes retain the current application version and must pass its consistency check.
-
-After pushing a candidate, create or reuse its PR and monitor with the fail-fast workflow in AGENTS.md. Same-repository `codex/` candidates merge only after the exact full `PWA and Supabase performance` run succeeds; that guarded publisher then dispatches the backend deployment before Pages. Do not enable GitHub Auto-Merge before validation or patch production directly. See the Development-to-Production Flow in AGENTS.md.
-
-After a merge is handed off for production, follow the Deployment Visibility procedure in AGENTS.md. Monitor the matching `main` commit through backend and final Pages publication, read the deployed version from that commit, and report the requested live-production confirmation only after the final deployment succeeds.
+- Keep application release markers synchronized with `package.json` using the release-version tooling when preparing an application release. CI-only and documentation-only changes retain the current application version.
+- Commit focused functional changes and push the candidate branch promptly so GitHub Actions can perform complete validation.
+- Create or reuse the candidate pull request according to `AGENTS.md`. Do not manually promote changes to `main` or bypass release gates.
+- Monitor CI or production publication only when `AGENTS.md` or the user's current request calls for it. Report a production release as live only after final hosted publication succeeds.
 
 ## Cleanup
 
-Follow AGENTS.md for task-scoped cleanup. Preserve unrelated work, shared resources, and diagnostics needed for unresolved failures. A pre-existing dirty worktree is not authorization to discard someone else's changes.
+Preserve unrelated changes, shared resources, credentials, production data, and diagnostics needed for unresolved failures. Remove only confirmed obsolete artifacts within the task scope.

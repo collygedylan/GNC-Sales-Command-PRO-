@@ -2,7 +2,7 @@
    Optimized for: Instant Load, Offline Stability, Push Notifications, and staged shell updates.
 */
 
-const APP_SHELL_BUILD = 'V2026.10.12.002';
+const APP_SHELL_BUILD = 'V2026.10.12.003';
 const APP_SHELL_RUNTIME_REVISION = 'photo-egress-r1-scope-r1';
 const APP_SHELL_QUERY_PARAM = 'shellv';
 const APP_SHELL_URL = './index.html?shellv=' + encodeURIComponent(APP_SHELL_BUILD);
@@ -449,6 +449,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 self.addEventListener('activate', (event) => {
+  const claimed = self.clients.claim();
   event.waitUntil(
     caches.keys()
       .then((keys) => {
@@ -458,7 +459,7 @@ self.addEventListener('activate', (event) => {
         if (!self.registration || !self.registration.navigationPreload) return Promise.resolve();
         return self.registration.navigationPreload.enable().catch(() => {});
       })
-      .then(() => self.clients.claim())
+      .then(() => claimed)
       .then(() => broadcastShellVersion('GNC_SHELL_ACTIVATED'))
       .then(() => navigateInactiveClientsToCurrentShell('sw-activated'))
   );

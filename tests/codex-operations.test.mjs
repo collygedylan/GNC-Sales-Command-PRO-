@@ -153,19 +153,20 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   assert.match(modelRouting, /GPT-6 Luna \/ low/);
   assert.match(modelRouting, /bounded diff or contract under review/);
   assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
-  assert.deepEqual([...agentRules.matchAll(/^## \d\. (.+)$/gm)].map(match => match[1]),
-    ['Auto-PR', 'Monitor and Fail Fast', 'Autonomous Remediation', 'Deployment Visibility', 'File Hygiene']);
-  assert.match(agentRules, /After pushing a new candidate branch, immediately create its pull request with `gh pr create --fill`/);
-  assert.match(agentRules, /gh pr checks <PR> --watch --fail-fast/);
-  assert.match(agentRules, /final production deployment succeeds/);
-  assert.match(agentRules, /The app is now running on Version:/);
-  assert.match(agentRules, /first failed check, stop the watcher immediately/);
-  assert.match(agentRules, /without waiting for parallel jobs or the entire run/);
-  assert.match(agentRules, /initial failed CI validation run as failure one/);
-  assert.match(agentRules, /at most two repair pushes/);
-  assert.match(agentRules, /Pause for explicit user approval if the third consecutive validation run fails/);
-  assert.match(agentRules, /Pause immediately[\s\S]*database migration, security credential, or production-data risk/);
-  assert.match(agentRules, /Preserve unrelated work, shared resources, and diagnostics/);
+  assert.match(agentRules, /### Fast Deployment & Execution Policy/);
+  assert.deepEqual([...agentRules.matchAll(/^\d\. ([^:]+):/gm)].map(match => match[1]),
+    ['Targeted Local Verification Only', 'No Unprompted Historical Replays', 'Strict Zero-Scope-Creep Rule', 'Lightweight Pre-Commit Hooks', 'Fast Hand-off to CI']);
+  assert.match(agentRules, /Never execute full repository-wide test suites locally/);
+  assert.match(agentRules, /unless a new SQL migration is explicitly introduced/);
+  assert.match(agentRules, /Do not halt execution to fix unrelated legacy tests or missing older fixtures/);
+  assert.match(agentRules, /formatting\/syntax checks against staged files/);
+  assert.match(agentRules, /Never run sandbox assertions or full database validations inside pre-commit hooks/);
+  assert.match(agentRules, /Immediately create a new branch's PR with `gh pr create --fill`/);
+  assert.match(agentRules, /complete verification asynchronously/);
+  assert.match(agentRules, /Do not start unprompted CI\/deployment watchers or repeated verification loops/);
+  assert.match(agentRules, /Monitor only when the user explicitly requests it for the current task/);
+  assert.match(agentRules, /live only after successful final hosted publication is confirmed/);
+  assert.match(agentRules, /preserve unrelated changes, shared resources, credentials, production data, and diagnostics/);
   assert.doesNotMatch(agentRules, /FIRE-AND-FORGET|OVERRIDE:|terminate the session immediately/);
   assert.match(releasePipeline, /single source of progress/);
   assert.match(releasePipeline, /Planning, explanation, diagnosis, status, and review-only requests do not authorize/);

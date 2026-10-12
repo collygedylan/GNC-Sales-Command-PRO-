@@ -1,56 +1,72 @@
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { auditTestDiscovery, discoverTests } from './test-discovery.mjs';
-import { selectAffectedTests } from './select-focused-tests.mjs';
-import { doctor } from './tooling-doctor.mjs';
-import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
-import { gitRepositoryContextEnvironment } from './git-repository-context.mjs';
+import ts from 'typescript';
+import yaml from 'js-yaml';
+import { repoRoot, run } from './tooling-process.mjs';
 
 export function stagedPaths(root = repoRoot, execute = run) {
   return execute('git', ['diff', '--cached', '--name-only', '--no-renames', '--diff-filter=ACMD', '-z'], { root, capture: true })
     .split('\0').filter(Boolean).map(file => file.replaceAll('\\', '/'));
 }
-export function requiredChecks(files) {
-  return {
-    code: files.some(file => /\.(?:[cm]?jsx?|tsx?|html|json|ya?ml)$/.test(file) || /(?:^|\/)\.husky\//.test(file)),
-    edge: files.some(file => file.startsWith('supabase/functions/') || file.startsWith('services/database-contract') || file === 'services/databaseRest.ts' || /^deno\./.test(file) || /^package(?:-lock)?\.json$/.test(file)),
-    database: files.some(file => /\.sql$/.test(file) || /(?:^|\/)(?:sandbox\.)?database\.types\.ts$/.test(file)
-      || /contracts\.generated\.ts$/.test(file)
-      || /^scripts\/(?:database-|sandbox-database-workspace|db-|generate-database|check-database|historical-database-|disposable-supabase-container|run-sql-rollback-tests|run-postgres-fixture-sql-tests|run-discovered-database-tests|prepare-isolated-sql-tests|test-discovery)/.test(file)
-      || file === '.github/workflows/release-database.yml' || file === 'scripts/sql-lint-temp-context.mjs'
-      || file === 'performance/sql-schema-extensions.json'
-      || /^supabase\/(?:config\.toml|schema\/|ci\/.*(?:baseline|fixture))/.test(file)),
-  };
-}
-export function precommit({ root = repoRoot, files = stagedPaths(root), execute = runNode, preflight = doctor } = {}) {
-  if (!files.length) return;
-  const checks = requiredChecks(files);
-  preflight({ root, edge: checks.edge, database: checks.database });
-  auditTestDiscovery({ root });
-  const existing = files.filter(file => existsSync(path.join(root, file)) && statSync(path.join(root, file)).isFile());
-  const code = existing.filter(file => /\.(?:[cm]?jsx?|tsx?)$/.test(file));
-  const testEnvironment = () => ({ ...gitRepositoryContextEnvironment({ root }), CI: '1' });
-  const step = (label, args, isolatedTest = false) => {
-    console.log(`[pre-commit] ${label}`);
-    execute(args, { root, env: isolatedTest ? testEnvironment() : { CI: '1' } });
-  };
-  // Argument arrays avoid shell interpolation; chunks also respect Windows limits.
-  for (let start = 0; start < code.length; start += 30) {
-    step('staged lint', [packageBin('eslint', 'eslint', root), '--no-warn-ignored', '--max-warnings=0', ...code.slice(start, start + 30)]);
+
+const sourceExtensions = /\.(?:[cm]?[jt]sx?)$/i;
+const jsonExtensions = /\.json$/i;
+const yamlExtensions = /\.ya?ml$/i;
+const htmlExtensions = /\.html?$/i;
+
+function assertJavaScriptSyntax(source, fileName) {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+  if (sourceFile.parseDiagnostics.length) {
+    const errors = sourceFile.parseDiagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+    throw new Error(errors.join('\n'));
   }
-  if (existing.includes('index.html')) step('inline syntax', ['scripts/check-inline-scripts.mjs']);
-  if (checks.code || checks.database) step('TypeScript', [packageBin('typescript', 'tsc', root), '--noEmit', '-p', 'tsconfig.json']);
-  if (checks.code || checks.database) step('generated runtime contracts', ['scripts/generate-database-contracts.mjs', '--check']);
-  if (checks.code || checks.database) step('database boundary coverage', ['scripts/check-database-boundaries.mjs']);
-  if (checks.edge) step('Edge TypeScript', [packageBin('deno', 'deno', root), 'check', ...discoverTests({ root, group: 'deno-entrypoints' })]);
-  const affected = selectAffectedTests(files, { root });
-  if (affected.nodeUnit?.length) step('affected unit and mount tests', ['--test', '--test-concurrency=1', ...affected.nodeUnit], true);
-  if (affected.vitest?.length) step('affected React/unit tests', [packageBin('vitest', 'vitest', root), 'run', '--config', 'vite.v2.config.ts', ...affected.vitest], true);
-  if (checks.edge) step('Edge unit tests', [packageBin('deno', 'deno', root), 'test', '--node-modules-dir=auto', '--allow-env', '--allow-net', ...discoverTests({ root, group: 'deno-tests' })], true);
-  for (const file of affected.python || []) run(process.env.PYTHON || 'python', [file], { root, env: testEnvironment() });
-  if (checks.database || affected.requiresLocalDb) step('local database validation', ['scripts/database-check.mjs', '--staged']);
 }
+
+function checkInlineJavaScript(html, fileName) {
+  const scriptPattern = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi;
+  let match;
+  while ((match = scriptPattern.exec(html))) {
+    const attributes = match[1] || '';
+    const source = match[2] || '';
+    if (/\bsrc\s*=/i.test(attributes) || !source.trim()) continue;
+    const id = attributes.match(/\bid\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const type = attributes.match(/\btype\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const scriptId = (id?.[1] ?? id?.[2] ?? id?.[3] ?? '').toLowerCase();
+    const mime = (type?.[1] ?? type?.[2] ?? type?.[3] ?? '').split(';', 1)[0].trim().toLowerCase();
+    const executable = !mime || mime === 'module' || /^(?:text|application)\/(?:java|ecma)script$/.test(mime);
+    if (!executable && scriptId !== 'app-script-source') continue;
+    try {
+      assertJavaScriptSyntax(source, `${fileName} inline script`);
+    } catch (error) {
+      const line = html.slice(0, match.index).split(/\r?\n/).length;
+      throw new Error(`${fileName}:${line} inline script did not parse: ${error.message}`, { cause: error });
+    }
+  }
+}
+
+export function syntaxCheck(files, root = repoRoot) {
+  for (const file of files) {
+    const absolute = path.join(root, file);
+    if (!existsSync(absolute) || !statSync(absolute).isFile()) continue;
+    const source = readFileSync(absolute, 'utf8');
+    if (sourceExtensions.test(file)) {
+      assertJavaScriptSyntax(source, file);
+    } else if (jsonExtensions.test(file)) {
+      JSON.parse(source);
+    } else if (yamlExtensions.test(file)) {
+      yaml.loadAll(source);
+    } else if (htmlExtensions.test(file)) {
+      checkInlineJavaScript(source, file);
+    }
+  }
+}
+
+export function precommit({ root = repoRoot, files = stagedPaths(root) } = {}) {
+  if (!files.length) return;
+  syntaxCheck(files, root);
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     if (process.argv.length !== 3 || process.argv[2] !== '--staged') throw new Error('Usage: node scripts/precommit.mjs --staged');

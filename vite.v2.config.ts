@@ -22,7 +22,7 @@ export default defineConfig({
       workbox: {
         importScripts: ['v2-cache-migration.js'],
         cleanupOutdatedCaches: true,
-        clientsClaim: false,
+        clientsClaim: true,
         skipWaiting: false,
         navigateFallback: 'index.html',
         navigateFallbackDenylist: [/\/partner\//],
