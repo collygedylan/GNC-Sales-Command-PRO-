@@ -224,6 +224,25 @@ async function fixture(page: Page, baseURL: string, options: { username?: string
     const emptyRead = () => route.fulfill({ status: 200, contentType: 'application/json',
       headers: { 'access-control-allow-origin': new URL(baseURL).origin,
         'access-control-allow-credentials': 'true', 'content-range': '*/0' }, body: '[]' });
+    if (request.method() === 'POST' && url.pathname === '/rest/v1/rpc/historical_requests_read_v1') {
+      const payload = request.postDataJSON(), query = payload.p_query;
+      expect(Object.keys(payload), 'history read parameters').toEqual(['p_query']);
+      expect(query && typeof query === 'object' && !Array.isArray(query)).toBe(true);
+      const fields = ['operation', 'view', 'recordKind', 'repKey', 'customerKey', 'consigneeKey', 'dateFrom', 'dateTo', 'page', 'pageSize'];
+      expect(Object.keys(query).filter(key => !fields.includes(key)), 'history read excludes commands').toEqual([]);
+      expect(['reps', 'folders', 'customers', 'consignees', 'requests', 'months', 'summary']).toContain(query.operation);
+      const financials = source.navigation.username === 'dylan_collyge';
+      const ownRepKey = 'rep:' + source.navigation.profileId;
+      const totals = { requestCount: 0, totalValue: financials ? 0 : null, unpricedCount: financials ? 0 : null };
+      const rows = !financials && query.operation === 'reps' ? [{ key: ownRepKey, label: source.navigation.username,
+        ...totals, customerKey: null, consigneeKey: null, consigneeName: null }] : [];
+      return route.fulfill({ status: 200, contentType: 'application/json',
+        headers: { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' },
+        body: JSON.stringify({ scope: financials ? 'all' : 'own', financials,
+          ownRepKey, recordKind: query.recordKind || 'all', revision: 'module-history-v3',
+          generatedAt: '2026-10-11T12:00:00Z', page: query.page || 0, pageSize: query.pageSize || 25,
+          total: rows.length, rows, summary: totals }) });
+    }
     if (request.method() === 'POST' && url.pathname === '/rest/v1/rpc/search_historical_inventory_common_names') {
       const payload = request.postDataJSON();
       expect(Object.keys(payload).sort(), 'historical-name read parameters').toEqual(['result_limit', 'search_text']);
