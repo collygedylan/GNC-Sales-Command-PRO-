@@ -36011,8 +36011,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             };
         }
 
+        const pendingMasterFullHydrations = new Map();
+
         function getProductionCoreLiveProjection(key, viewId, context = {}) {
             if (key !== 'master') return 'browse';
+            if (pendingMasterFullHydrations.has(JSON.stringify([getSupabaseReadIdentityScope(), viewId]))) return 'full';
             const surfaces = Array.isArray(context.surfaces) ? context.surfaces : [];
             // These foreground workflows consume full source rows while open.
             // Keep ordinary list browsing compact; returning to Drive must not
@@ -41646,6 +41649,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (isMasterFullProjectionReady()) return true;
             const owner = getSupabaseReadIdentityScope();
             const view = getCurrentVisibleViewId();
+            const hydrationKey = JSON.stringify([owner, view]);
+            pendingMasterFullHydrations.set(hydrationKey, (pendingMasterFullHydrations.get(hydrationKey) || 0) + 1);
             showToast('Loading Full Row', `Loading complete inventory fields before ${actionLabel}.`);
             try {
                 const loaded = await ensureDatasetLoaded('master', 'full', { force: true });
@@ -41654,6 +41659,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             } catch (error) {
                 if (owner !== getSupabaseReadIdentityScope()) return false;
                 console.warn(`Full inventory hydration failed before ${actionLabel}.`, error);
+            } finally {
+                const remaining = (pendingMasterFullHydrations.get(hydrationKey) || 1) - 1;
+                if (remaining > 0) pendingMasterFullHydrations.set(hydrationKey, remaining);
+                else pendingMasterFullHydrations.delete(hydrationKey);
             }
             showToast('Full Row Unavailable', `Complete inventory details could not be verified. Retry before ${actionLabel}.`, true);
             return false;
