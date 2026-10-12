@@ -101,10 +101,66 @@
     root.addEventListener('online', () => notify('online', 'online'));
     root.addEventListener('offline', () => notify('offline', 'offline'));
 
+    // Filters are disposable UI state. Auth, inventory, drafts and outboxes are not.
+    root.invalidateAppFiltersForVersion = targetBuild => {
+        const target = String(targetBuild || '').trim();
+        if (!/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)) return false;
+        let updated = false;
+        for (const storageName of ['localStorage', 'sessionStorage']) {
+            try {
+                const storage = root[storageName];
+                const previous = storage.getItem('gnc_app_filter_version_v1') || '';
+                const keys = [];
+                for (let index = 0; index < storage.length; index += 1) {
+                    const key = storage.key(index);
+                    if (key === 'gnc_app_filter_state_v1' || key?.startsWith('gnc_app_filter_state_v1:')) keys.push(key);
+                }
+                // Unversioned legacy snapshots are also obsolete on first use.
+                if (previous !== target) for (const key of keys) storage.removeItem(key);
+                storage.setItem('gnc_app_filter_version_v1', target);
+                updated = true;
+            } catch (_) {}
+        }
+        return updated;
+    };
+    // One reload owner per document; the worker's version reply can refine the
+    // target during the short toast, even when its registration URL is older.
+    root.reloadForServiceWorkerUpdate = targetBuild => {
+        const target = String(targetBuild || '').trim();
+        if (/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)) root.__gncPwaTargetBuild = target;
+        if (root.__gncPwaReloadPending) return false;
+        root.__gncPwaReloadPending = true;
+        if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
+            try { root.showToast('Updating', 'New version detected. Updating...', false); } catch (_) {}
+        } else if (!root.__gncShellUpdateToastShown && doc.body) {
+            const toast = doc.createElement('div');
+            toast.setAttribute('role', 'status');
+            toast.textContent = 'New version detected. Updating...';
+            toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 16px;border-radius:12px;background:#16372a;color:#fff;pointer-events:none';
+            doc.body.appendChild(toast);
+        }
+        root.__gncShellUpdateToastShown = true;
+        root.setTimeout(() => {
+            const nextBuild = root.__gncPwaTargetBuild || root.__APP_SHELL_BUILD__ || root.__APP_SHELL_VERSION__;
+            root.invalidateAppFiltersForVersion(nextBuild);
+            if (nextBuild) {
+                try {
+                    const next = new URL(root.location.href);
+                    next.searchParams.set('shellv', nextBuild);
+                    next.searchParams.set('shellts', String(Date.now()));
+                    root.history.replaceState(root.history.state, '', next.toString());
+                } catch (_) {}
+            }
+            root.location.reload();
+        }, 700);
+        return true;
+    };
+
     // Available before the application runtime, including when an old runtime fails.
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
     let shellRecovery = null;
     root.recoverShellVersionMismatch = (currentBuild, targetBuild) => {
+        if (root.__gncPwaReloadPending) return Promise.resolve(false);
         const current = String(currentBuild || '').trim();
         const target = String(targetBuild || '').trim();
         if (!current || current === target || !/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)
