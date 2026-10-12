@@ -40,6 +40,7 @@ try {
   for (const directory of ['services', 'utils', 'components/common']) await mkdir(path.join(site, directory), { recursive: true });
   await copyTree(path.join(root, 'services', 'auraVoiceService.js'), path.join(site, 'services', 'auraVoiceService.js'));
   await copyTree(path.join(root, 'services', 'auraConversation.js'), path.join(site, 'services', 'auraConversation.js'));
+  await copyTree(path.join(root, 'services', 'auraGeminiSpeech.js'), path.join(site, 'services', 'auraGeminiSpeech.js'));
   await copyTree(path.join(root, 'utils', 'auraIntentParser.js'), path.join(site, 'utils', 'auraIntentParser.js'));
   await copyTree(path.join(root, 'utils', 'auraLingo.js'), path.join(site, 'utils', 'auraLingo.js'));
   await copyTree(path.join(root, 'components', 'common', 'auraVoiceWidget.js'), path.join(site, 'components', 'common', 'auraVoiceWidget.js'));
