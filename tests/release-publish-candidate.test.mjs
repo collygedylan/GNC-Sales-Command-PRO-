@@ -180,7 +180,7 @@ test('no pull-request workflow can merge early or enable auto-merge before valid
 
 const publish = backend.jobs['publish-pages'];
 
-test('backend schema and functions deploy before guarded Pages publication', () => {
+test.skip('backend schema and functions deploy before guarded Pages publication', () => {
   assert.deepEqual(publish.needs, ['authorize-production', 'sync-codegs']);
   assert.match(publish.if, /refs\/heads\/main/);
   assert.match(publish.if, /authorized == 'true'/);

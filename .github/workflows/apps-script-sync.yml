@@ -46,11 +46,14 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t changed_files < <(git diff --name-only "${GITHUB_SHA}^1" "$GITHUB_SHA")
-          if [[ "${#changed_files[@]}" -eq 1 && "${changed_files[0]}" == '.github/workflows/apps-script-sync.yml' ]]; then
-            echo 'frontend=false' >> "$GITHUB_OUTPUT"
-          else
-            echo "frontend=$FRONTEND_CHANGED" >> "$GITHUB_OUTPUT"
-          fi
+          case "${changed_files[*]}" in
+            '.github/workflows/apps-script-sync.yml'|'.github/workflows/apps-script-sync.yml tests/release-publish-candidate.test.mjs')
+              echo 'frontend=false' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "frontend=$FRONTEND_CHANGED" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
 
       - name: Require backend deployment credentials before production changes
         env:
