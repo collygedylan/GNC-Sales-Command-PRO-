@@ -149,8 +149,7 @@ jobs:
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
           deploy_with_retry() {
-            local attempt output status argument
-            local -a docker_command=()
+            local attempt output status
             for attempt in 1 2 3; do
               if output=$("$@" 2>&1); then
                 printf '%s\n' "$output"
@@ -159,24 +158,15 @@ jobs:
                 status=$?
                 printf '%s\n' "$output"
               fi
-              if ! grep -Eq 'unexpected deploy status (500|502|503|504)' <<< "$output"; then
+              if [[ "$attempt" -eq 3 ]] || ! grep -Eq 'unexpected deploy status (500|502|503|504)' <<< "$output"; then
                 return "$status"
-              fi
-              if [[ "$attempt" -eq 3 ]]; then
-                echo 'SUPABASE_DEPLOY_DOCKER_FALLBACK'
-                docker info >/dev/null
-                for argument in "$@"; do
-                  [[ "$argument" == '--use-api' ]] || docker_command+=("$argument")
-                done
-                "${docker_command[@]}"
-                return "$?"
               fi
               echo "SUPABASE_DEPLOY_TRANSIENT_RETRY attempt=$attempt"
               sleep "$((attempt * 5))"
             done
           }
           deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
+          # Temporarily retain the deployed send-push-alert version during core PWA publication.
           deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
           deploy_with_retry supabase functions deploy calendar-reminder-sweep --use-api --project-ref "$project_ref"
           deploy_with_retry supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
