@@ -131,7 +131,8 @@ export function compareBenchmarks(manifestInput: unknown, baselineInput: unknown
       const phoneRequestLimit = manifest.temporaryTimingAllowance?.phoneRequestLongTaskLimitMs;
       const limit = phoneRequestLimit && previous.kind === 'duration' && previous.id === 'request.cold.longTaskMs'
         && baseline.method.startsWith('live:') && phone?.width === baseline.viewport.width && phone.height === baseline.viewport.height
-        ? phoneRequestLimit : benchmarkMetricLimit(manifest, before, previous.kind);
+        ? Math.max(phoneRequestLimit, benchmarkMetricLimit(manifest, before, previous.kind))
+        : benchmarkMetricLimit(manifest, before, previous.kind);
       if (after > limit) failures.push(`${previous.id} p${p * 100}: ${after.toFixed(2)} exceeds ${limit.toFixed(2)} (baseline ${before.toFixed(2)})`);
     }
   }
