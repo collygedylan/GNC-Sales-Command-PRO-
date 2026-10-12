@@ -197,7 +197,7 @@ test('live Drive and AV cards show scoped quantities and Drive-only tag color on
         expect(metrics.quantity.map((entry) => entry.label)).toEqual([
           'On Hand', 'Review', 'Available', 'Open Stock', 'Loc Photo Match', 'Loc On Hand',
         ]);
-        expect(metrics.locOnHand, 'sum same item code and normalized location across lots only').toBe('5');
+        expect(metrics.locOnHand, 'sum every item and lot at the normalized physical location').toBe('205');
         expect(metrics.locPhotoMatch).not.toBe('');
         expect(metrics.quantityGridColumns).toBe(sourceView === 'drive' ? 6 : 3);
         if (sourceView === 'drive') expect(Math.max(...metrics.quantity.map(entry => entry.top)) - Math.min(...metrics.quantity.map(entry => entry.top))).toBeLessThanOrEqual(1);
@@ -253,7 +253,7 @@ test('live Drive and AV cards show scoped quantities and Drive-only tag color on
 });
 
 
-test('Drive keeps all six metrics on one row and sums every season at the exact item/location', { tag: ['@local-e2e', '@release-functional'] }, async ({ page, baseURL }, testInfo) => {
+test('Drive keeps all six metrics on one row and sums every item and season at the physical location', { tag: ['@local-e2e', '@release-functional'] }, async ({ page, baseURL }, testInfo) => {
   const fixture = await installDriveCardLayoutFixture(page, baseURL!);
   await settleDriveLayoutShell(page, testInfo.project.name);
   await installRows(page, 'full');
@@ -275,7 +275,7 @@ test('Drive keeps all six metrics on one row and sums every season at the exact 
     for (const theme of ['light', 'dark'] as const) {
       await renderCard(page, 'drive', theme);
       const metrics = await readCardMetrics(page, 'drive');
-      expect(metrics.locOnHand).toBe('1,232');
+      expect(metrics.locOnHand).toBe('10,232');
       expect(metrics.locPhotoMatch).toBe('N/A');
       expect(metrics.price).toBe('');
       expect(metrics.quantity).toHaveLength(6);
