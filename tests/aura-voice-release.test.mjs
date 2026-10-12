@@ -28,7 +28,7 @@ test('cloud release requires real Gemini readiness after deployment and before P
   const deploy = steps.findIndex(step => step.run?.includes('functions deploy aura-llm-router'));
   const provider = steps.findIndex(step => step.run?.includes('aura-provider-readiness.mjs'));
   assert.ok(deploy >= 0 && provider > deploy);
-  assert.ok(workflow.jobs['publish-pages'].needs.includes('sync-codegs'));
+  assert.ok(workflow.jobs['publish-pages'].needs.includes('production-validation'));
   assert.match(steps[provider].env.SUPABASE_SERVICE_ROLE_KEY, /secrets\.SUPABASE_SERVICE_ROLE_KEY/);
   assert.doesNotMatch(read('index.html'), /AIza[A-Za-z0-9_-]{25,}|AQ\.[A-Za-z0-9_-]{25,}|GEMINI_API_KEY/);
 });

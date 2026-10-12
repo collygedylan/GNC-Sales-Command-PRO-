@@ -16,7 +16,7 @@ test('internal Aura deploys after its migration and before Pages, including the 
   const engine = steps.findIndex(step => step.run?.includes('functions deploy aura-query'));
   assert.ok(migration >= 0 && engine > migration);
   assert.ok(steps[engine].run.includes('functions deploy aura-llm-router'));
-  assert.ok(workflow.jobs['publish-pages'].needs.includes('sync-codegs'));
+  assert.ok(workflow.jobs['publish-pages'].needs.includes('production-validation'));
   const auraStart = releaseDatabaseMigrations.indexOf(auraInternalQueryMigrationName);
   assert.ok(auraStart >= 0);
   assert.deepEqual(releaseDatabaseMigrations.slice(auraStart, auraStart + 4), [
