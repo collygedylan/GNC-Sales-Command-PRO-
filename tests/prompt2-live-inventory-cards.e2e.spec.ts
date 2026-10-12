@@ -4,6 +4,49 @@ import { installDriveCardLayoutFixture, settleDriveLayoutShell } from './fixture
 
 // Live-renderer regression with synthetic in-memory rows. App reads use the
 // existing fixture and no business mutation or email is accepted.
+test('inventory back follows Season then Size then Common Name and clear search exits the name filter', { tag: ['@local-e2e', '@release-functional'] }, async ({ page, baseURL }, testInfo) => {
+  const fixture = await installDriveCardLayoutFixture(page, baseURL!);
+  await settleDriveLayoutShell(page, testInfo.project.name);
+  await page.evaluate(() => window.eval("switchView('drive')"));
+  await expect(page.locator('#drive-crumb')).toContainText('Select Common Name');
+  for (const width of [360, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.evaluate(name => window.eval(`selectDriveName(${JSON.stringify(name)})`), fixture.master[0].commonname);
+    await expect(page.locator('#drive-crumb')).toContainText('Select Container Size');
+    await page.evaluate(size => window.eval(`selectDriveSize(${JSON.stringify(size)})`), fixture.master[0].contsize);
+    await expect(page.locator('#drive-crumb')).toContainText('Select Season');
+    await page.evaluate(() => window.eval("selectDriveSeason('__ALL__')"));
+    await page.waitForFunction(() => window.eval('driveViewLevel') === 3);
+    for (const [level, label] of [[2, 'Select Season'], [1, 'Select Container Size'], [0, 'Select Common Name']] as const) {
+      await page.evaluate(() => window.eval('goBackUniversal()'));
+      await page.waitForFunction(level => window.eval('driveViewLevel') === level, level);
+      expect(await page.evaluate(() => window.eval('selectedDriveSeason'))).toBeNull();
+      await expect(page.locator('#drive-crumb')).toContainText(label);
+    }
+    await page.evaluate(() => window.eval(`(() => {
+      selectedDriveName = 'Synthetic Prompt Two Plant'; selectedDriveSize = '#3'; selectedDriveSeason = 'F1';
+      driveViewLevel = 3; selectedDriveCommonNames = new Set(['Synthetic Prompt Two Plant']);
+      document.getElementById('drive-search').value = 'Synthetic'; clearDriveSearch();
+    })()`));
+    expect(await page.evaluate(() => window.eval('driveViewLevel'))).toBe(0);
+    expect(await page.evaluate(() => window.eval('selectedDriveName'))).toBeNull();
+    expect(await page.evaluate(() => window.eval('selectedDriveCommonNames.size'))).toBe(0);
+    await expect(page.locator('#drive-search')).toHaveValue('');
+  }
+  await page.evaluate(() => window.eval(`(() => {
+    switchView('av'); selectedAvOpenName = 'Synthetic Prompt Two Plant';
+    selectedAvOpenSize = '#3'; selectedAvOpenSeason = 'F1'; selectedAvOpenLot = '27.F1'; avOpenLevel = 3;
+    avColumnFilters = { COMMONNAME: ['Synthetic Prompt Two Plant'] };
+    document.getElementById('av-search').value = 'Synthetic'; clearAVSearch();
+  })()`));
+  expect(await page.evaluate(() => window.eval('selectedAvOpenName'))).toBeNull();
+  expect(await page.evaluate(() => window.eval('avOpenLevel'))).toBe(0);
+  expect(await page.evaluate(() => window.eval('Object.keys(avColumnFilters)'))).toEqual([]);
+  await expect(page.locator('#av-search')).toHaveValue('');
+  expect(fixture.blockedMutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
+
 const makeRows = (photoDate: string) => [
   {
     UNIQUE_ID: 'prompt2-card-a', DOM_ID: 'prompt2-card-a', ITEMCODE: 'P2-SHARED',

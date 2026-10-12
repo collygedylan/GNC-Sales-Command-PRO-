@@ -81492,6 +81492,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             if (currentView === 'drive') {
                 if (activeDriveTab === 'name') {
+                    if (driveViewLevel >= 3 && selectedDriveName && selectedDriveSize) {
+                        backToDriveSeasons();
+                        updateGlobalBackButton();
+                        return false;
+                    }
                     if (driveViewLevel >= 2 && selectedDriveName) {
                         backToDriveSizes();
                         updateGlobalBackButton();
@@ -82598,6 +82603,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (input) input.value = "";
             if (clearBtn) clearBtn.classList.add('hidden');
             resetAvSearchDrilldownState();
+            selectedAvOpenName = null;
+            selectedAvOpenSize = null;
+            selectedAvOpenSeason = null;
+            selectedAvOpenLot = null;
+            delete avColumnFilters.COMMONNAME;
+            delete avColumnFilters.commonname;
+            avResolvedBaseStateKey = '';
+            avResolvedBaseStateCache = null;
             scheduleTrackedSearchViewRender('av', 'av', '', { force: true, debounceDelay: 0, typingDelay: isTouchConstrainedDevice() ? 32 : 12 });
         }
 
@@ -149524,6 +149537,15 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (clearButton) clearButton.classList.add('hidden');
             setDriveSearchManualSelectionLock(false);
             restoreDriveStateAfterUniversalSearch();
+            // Clearing text exits the selected common name immediately in
+            // every Drive/AV mode, rather than restoring a hidden drill filter.
+            resetDriveDrillSelectionState();
+            activeDriveTab = 'name';
+            selectedDriveCommonNames = new Set();
+            driveCommonNameSearchTerm = '';
+            driveCommonNameFilterOpen = false;
+            delete driveColumnFilters.COMMONNAME;
+            delete driveColumnFilters.commonname;
             const filtersDiv = document.getElementById('drive-season-filters');
             if (filtersDiv) filtersDiv.removeAttribute('data-drive-search-results');
             syncDriveTabPills();
