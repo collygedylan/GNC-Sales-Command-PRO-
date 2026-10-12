@@ -7,6 +7,13 @@ import { GitHubPaginationError, listGitHubApiItems } from './github-api-paginati
 const workflowPath = '.github/workflows/performance-monitor.yml';
 const fail = code => { throw new Error(`RELEASE_PROOF_${code}`); };
 const sha = value => /^[a-f0-9]{40}$/.test(value || '');
+export const isHotfixSkippedJob = name => /^validation \/ (?:database(?: \/ .+)?|react|contracts|fast-browser|foundation|functional|compiled|timing|performance|lighthouse|production-health)(?: \([^)]*\))?$/.test(name || '');
+export function hasAttestedHotfix(jobs) {
+  const matches = jobs.filter(job => job.name === 'validation / release-mode');
+  return matches.length === 1 && matches[0].status === 'completed' && matches[0].conclusion === 'success'
+    && matches[0].steps?.some(step => step.name === 'Select hotfix validation'
+      && step.status === 'completed' && step.conclusion === 'success') === true;
+}
 async function listComplete(api, endpoint, field, errorCode) {
   try { return await listGitHubApiItems({ api, endpoint, field }); }
   catch (error) {
@@ -35,8 +42,15 @@ export async function selectReleaseProof({ repository, commit, api }) {
   };
   const run = { ...await latest() };
   const jobs = await listComplete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, 'jobs', 'JOBS_INCOMPLETE');
+  const hotfix = hasAttestedHotfix(jobs);
   if (jobs.some(j=>!Number.isSafeInteger(j.id) || j.id < 1 || j.run_id !== run.id || j.head_sha !== commit || j.status !== 'completed'
-      || (j.conclusion !== 'success' && !(['validation / production-health', 'validation / fast-browser'].includes(j.name) && j.conclusion === 'skipped')))) fail('JOB_NOT_GREEN');
+      || (j.conclusion !== 'success' && !(j.conclusion === 'skipped' && (hotfix
+        ? isHotfixSkippedJob(j.name)
+        : ['validation / production-health', 'validation / fast-browser'].includes(j.name)))))) fail('JOB_NOT_GREEN');
+  if (hotfix && ['lint', 'build'].some(name => !jobs.some(job => job.name === `validation / ${name}`
+    && job.status === 'completed' && job.conclusion === 'success'))) fail('HOTFIX_BASELINE_MISSING');
+  if (hotfix && !jobs.some(job => /^validation \/ unit(?: \([^)]*\))?$/.test(job.name || '')
+    && job.status === 'completed' && job.conclusion === 'success')) fail('HOTFIX_BASELINE_MISSING');
   const gates = jobs.filter(j=>j.name==='validation / release-gate');
   if (gates.length !== 1 || !gates[0].steps?.some(s=>s.name==='Require every safety lane for this commit' && s.status==='completed' && s.conclusion==='success')) fail('GATE_MISSING');
   const artifacts = await listComplete(api, `${root}/actions/runs/${run.id}/artifacts?per_page=100`, 'artifacts', 'ARTIFACTS_INCOMPLETE');
@@ -51,24 +65,29 @@ export async function selectReleaseProof({ repository, commit, api }) {
   const proof = artifact(`release-proof-${commit}-${run.run_attempt}`);
   const check = await latest();
   if (check.id !== run.id || check.run_attempt !== run.run_attempt) fail('RUN_CHANGED');
-  return { schemaVersion:'gnc-release-proof-v1', repository, commit, runId:run.id, attempt:run.run_attempt, siteArtifactId:site.id, proofArtifactId:proof.id };
+  return { schemaVersion:'gnc-release-proof-v1', repository, commit, runId:run.id, attempt:run.run_attempt, siteArtifactId:site.id, proofArtifactId:proof.id,
+    ...(hotfix ? { hotfix:true, browserMode:'hotfix-minimal', testScope:{frontend:false,backend:false,schema:false} } : {}) };
 }
 
 export function verifyReleaseProof(proof, selected, release) {
   for (const k of ['schemaVersion','repository','commit','runId','attempt','siteArtifactId']) if (proof[k] !== selected[k]) fail('RECORD_MISMATCH');
   if (proof.release !== release || !/^[a-f0-9]{64}$/.test(proof.digest || '')) fail('CONTENT_IDENTITY_INVALID');
+  if (selected.hotfix === true && (proof.hotfix !== true || proof.browserMode !== 'hotfix-minimal'
+    || ['frontend', 'backend', 'schema'].some(name => proof.testScope?.[name] !== false))) fail('HOTFIX_METADATA_MISMATCH');
+  if (selected.hotfix !== true && proof.hotfix === true) fail('HOTFIX_NOT_ATTESTED');
   if (selected.testScope && ['frontend', 'backend', 'schema'].some(name => proof.testScope?.[name] !== selected.testScope[name])) fail('TEST_SCOPE_MISMATCH');
   if (selected.browserMode && proof.browserMode !== selected.browserMode) fail('BROWSER_MODE_MISMATCH');
   return proof.digest;
 }
 
-export function verifySameRunReleaseProof(proof, { repository, commit, runId, attempt, siteArtifactId, proofArtifactId, digest: expectedDigest }, release) {
+export function verifySameRunReleaseProof(proof, { repository, commit, runId, attempt, siteArtifactId, proofArtifactId, digest: expectedDigest, hotfix = false }, release) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository || '') || !sha(commit)
     || !Number.isSafeInteger(runId) || runId < 1 || !Number.isSafeInteger(attempt) || attempt < 1
     || !Number.isSafeInteger(siteArtifactId) || siteArtifactId < 1
     || !Number.isSafeInteger(proofArtifactId) || proofArtifactId < 1
     || !/^[a-f0-9]{64}$/.test(expectedDigest || '')) fail('IDENTITY_INVALID');
-  const expected = { schemaVersion:'gnc-release-proof-v1', repository, commit, runId, attempt, siteArtifactId };
+  const expected = { schemaVersion:'gnc-release-proof-v1', repository, commit, runId, attempt, siteArtifactId,
+    ...(hotfix === true ? { hotfix:true, browserMode:'hotfix-minimal', testScope:{frontend:false,backend:false,schema:false} } : {}) };
   const digest = verifyReleaseProof(proof, expected, release);
   if (digest !== expectedDigest) fail('DIGEST_MISMATCH');
   return digest;

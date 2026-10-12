@@ -3,6 +3,10 @@ name: Validate one immutable release
 on:
   workflow_call:
     inputs:
+      hotfix:
+        description: Exact [hotfix] marker detected by the caller.
+        type: boolean
+        default: false
       fast-pr:
         description: One headless Chromium gate; full browser coverage runs on main.
         type: boolean
@@ -46,6 +50,42 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  release-mode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      hotfix: ${{ steps.detect.outputs.hotfix }}
+    steps:
+      - name: Detect exact hotfix marker
+        id: detect
+        uses: actions/github-script@v7
+        env:
+          CALLER_HOTFIX: ${{ inputs.hotfix }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            let hotfix = process.env.CALLER_HOTFIX === 'true'
+              || String(pr?.title || '').includes('[hotfix]');
+            if (!hotfix) {
+              const { data: commit } = await github.rest.repos.getCommit({
+                ...context.repo, ref: pr?.head?.sha || context.sha,
+              });
+              hotfix = String(commit.commit?.message || '').includes('[hotfix]');
+            }
+            if (!hotfix && !pr && context.ref === 'refs/heads/main') {
+              const { data: associated } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                ...context.repo, commit_sha: context.sha, per_page: 100,
+              });
+              hotfix = associated.some(pull => pull.merge_commit_sha === context.sha
+                && pull.merged_at && pull.base?.ref === 'main'
+                && pull.base?.repo?.full_name === `${context.repo.owner}/${context.repo.repo}`
+                && String(pull.title || '').includes('[hotfix]'));
+            }
+            core.setOutput('hotfix', String(hotfix));
+      - name: Select hotfix validation
+        if: steps.detect.outputs.hotfix == 'true'
+        run: echo 'HOTFIX_VALIDATION_SELECTED'
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -74,7 +114,8 @@ jobs:
       - run: node scripts/run-release-unit-checks.mjs --shard=${{ matrix.shard }}/4
 
   react:
-    if: inputs.run-frontend-tests
+    needs: release-mode
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -83,6 +124,8 @@ jobs:
       - run: npm run test:v2
 
   contracts:
+    needs: release-mode
+    if: needs.release-mode.outputs.hotfix != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -94,7 +137,8 @@ jobs:
       - run: node scripts/run-discovered-tests.mjs python
 
   database:
-    if: inputs.run-backend-tests
+    needs: release-mode
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-backend-tests
     uses: ./.github/workflows/release-database.yml
     with:
       run-schema-tests: ${{ inputs.run-schema-tests }}
@@ -160,8 +204,8 @@ jobs:
           retention-days: 7
 
   fast-browser:
-    if: inputs.run-frontend-tests && inputs.fast-pr
-    needs: build
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.fast-pr
+    needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -186,8 +230,8 @@ jobs:
           if-no-files-found: ignore
 
   foundation:
-    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: build
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: [build, release-mode]
     runs-on: ubuntu-latest
     # Browser dependency installation can consume over eight minutes on a cold runner.
     timeout-minutes: 20
@@ -221,8 +265,8 @@ jobs:
           if-no-files-found: ignore
 
   functional:
-    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: build
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: [build, release-mode]
     runs-on: ubuntu-latest
     # A cold browser install can leave too little of a 15-minute job for the shard.
     timeout-minutes: 25
@@ -262,8 +306,8 @@ jobs:
           if-no-files-found: ignore
 
   compiled:
-    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: build
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -792,8 +836,8 @@ jobs:
           if-no-files-found: ignore
 
   timing:
-    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: build
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -833,8 +877,8 @@ jobs:
           if-no-files-found: ignore
 
   performance:
-    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: build
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -872,8 +916,8 @@ jobs:
           if-no-files-found: error
 
   lighthouse:
-    if: inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
-    needs: build
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -896,7 +940,8 @@ jobs:
           if-no-files-found: ignore
 
   production-health:
-    if: inputs.production-health
+    needs: release-mode
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.production-health
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -917,7 +962,7 @@ jobs:
 
   release-gate:
     if: always()
-    needs: [lint, unit, react, contracts, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
+    needs: [release-mode, lint, unit, react, contracts, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
     runs-on: ubuntu-latest
     outputs:
       run-id: ${{ github.run_id }}
@@ -928,6 +973,7 @@ jobs:
     steps:
       - name: Require every safety lane for this commit
         env:
+          HOTFIX: ${{ needs.release-mode.outputs.hotfix }}
           RELEASE_JOB_RESULTS: ${{ toJSON(needs) }}
           REQUIRE_PRODUCTION_HEALTH: ${{ inputs.production-health }}
           FAST_PR: ${{ inputs.fast-pr }}
@@ -937,14 +983,15 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
-          const required = ['lint','unit','contracts','build'];
-          if (process.env.RUN_FRONTEND_TESTS === 'true') {
+          const hotfix = process.env.HOTFIX === 'true';
+          const required = hotfix ? ['lint','unit','build'] : ['lint','unit','contracts','build'];
+          if (!hotfix && process.env.RUN_FRONTEND_TESTS === 'true') {
             required.push('react');
             if (process.env.FAST_PR === 'true') required.push('fast-browser');
             else required.push('foundation','functional','compiled','timing','performance','lighthouse');
           }
-          if (process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
-          if (process.env.REQUIRE_PRODUCTION_HEALTH === 'true') required.push('production-health');
+          if (!hotfix && process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
+          if (!hotfix && process.env.REQUIRE_PRODUCTION_HEALTH === 'true') required.push('production-health');
           for (const name of required) {
             if (jobs[name]?.result !== 'success') throw new Error(`RELEASE_GATE_FAILED_${name}`);
           }
@@ -953,6 +1000,7 @@ jobs:
           NODE
       - name: Record the passing immutable candidate
         env:
+          HOTFIX: ${{ needs.release-mode.outputs.hotfix }}
           RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
           RELEASE_SITE_ID: ${{ needs.build.outputs.artifact-id }}
           FAST_PR: ${{ inputs.fast-pr }}
@@ -963,13 +1011,15 @@ jobs:
           mkdir -p proof
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
+          const hotfix = process.env.HOTFIX === 'true';
           fs.writeFileSync('proof/release-proof.json', JSON.stringify({
             schemaVersion:'gnc-release-proof-v1', repository:process.env.GITHUB_REPOSITORY,
             commit:process.env.GITHUB_SHA, runId:Number(process.env.GITHUB_RUN_ID),
             attempt:Number(process.env.GITHUB_RUN_ATTEMPT), siteArtifactId:Number(process.env.RELEASE_SITE_ID),
             digest:process.env.RELEASE_DIGEST,
-            browserMode:process.env.FAST_PR === 'true' ? 'pr-chromium' : 'full',
-            testScope:{frontend:process.env.RUN_FRONTEND_TESTS === 'true', backend:process.env.RUN_BACKEND_TESTS === 'true', schema:process.env.RUN_SCHEMA_TESTS === 'true'}
+            hotfix,
+            browserMode:hotfix ? 'hotfix-minimal' : process.env.FAST_PR === 'true' ? 'pr-chromium' : 'full',
+            testScope:{frontend:!hotfix && process.env.RUN_FRONTEND_TESTS === 'true', backend:!hotfix && process.env.RUN_BACKEND_TESTS === 'true', schema:!hotfix && process.env.RUN_SCHEMA_TESTS === 'true'}
           }));
           NODE
       - uses: actions/checkout@v4

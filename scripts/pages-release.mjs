@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { GitHubPaginationError, listGitHubApiItems } from './github-api-pagination.mjs';
-import { verifyReleaseProof, verifySameRunReleaseProof } from './release-proof.mjs';
+import { hasAttestedHotfix, isHotfixSkippedJob, verifyReleaseProof, verifySameRunReleaseProof } from './release-proof.mjs';
 import { testScopeForPaths, maySkipTestJob } from './ci-test-scope.mjs';
 
 const workflowPath = '.github/workflows/performance-monitor.yml';
@@ -54,10 +54,11 @@ async function matchingProof({ repository, commit, api, now, allowPrBrowserProof
   };
   const run = await latest();
   const jobs = await complete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs`, 'jobs');
+  const hotfix = hasAttestedHotfix(jobs);
   const fastPr = jobs.some(job => job.name === 'validation / fast-browser');
-  if (fastPr && !allowPrBrowserProof) unavailable('PRODUCTION_BROWSER_VALIDATION_REQUIRED');
+  if (fastPr && !allowPrBrowserProof && !hotfix) unavailable('PRODUCTION_BROWSER_VALIDATION_REQUIRED');
   let testScope;
-  if (jobs.some(job => job.conclusion === 'skipped' && job.name !== 'validation / production-health')) {
+  if (!hotfix && jobs.some(job => job.conclusion === 'skipped' && job.name !== 'validation / production-health')) {
     // A skipped test lane is reusable only when the complete PR file list proves
     // that component was unchanged. Build and gate skips are always rejected.
     if (!positive(pr.changed_files) || pr.changed_files > 3000) unavailable('CHANGED_FILES_INCOMPLETE');
@@ -74,8 +75,14 @@ async function matchingProof({ repository, commit, api, now, allowPrBrowserProof
   }
   if (jobs.some(job => !positive(job.id) || job.run_id !== run.id || job.head_sha !== pr.head.sha
     || job.status !== 'completed' || (job.conclusion !== 'success'
-      && !(job.conclusion === 'skipped' && (job.name === 'validation / production-health'
-        || (testScope && maySkipTestJob(job.name, testScope, { fastPr }))))))) unavailable('JOB_NOT_GREEN');
+      && !(job.conclusion === 'skipped' && (hotfix
+        ? isHotfixSkippedJob(job.name)
+        : (job.name === 'validation / production-health'
+          || (testScope && maySkipTestJob(job.name, testScope, { fastPr })))))))) unavailable('JOB_NOT_GREEN');
+  if (hotfix && ['lint', 'build'].some(name => !jobs.some(job => job.name === `validation / ${name}`
+    && job.status === 'completed' && job.conclusion === 'success'))) unavailable('HOTFIX_BASELINE_MISSING');
+  if (hotfix && !jobs.some(job => /^validation \/ unit(?: \([^)]*\))?$/.test(job.name || '')
+    && job.status === 'completed' && job.conclusion === 'success')) unavailable('HOTFIX_BASELINE_MISSING');
   if (fastPr && testScope?.frontend && !jobs.some(job => job.name === 'validation / fast-browser'
     && job.status === 'completed' && job.conclusion === 'success')) unavailable('PR_BROWSER_GATE_MISSING');
   const gates = jobs.filter(job => job.name === 'validation / release-gate');
@@ -105,7 +112,8 @@ async function matchingProof({ repository, commit, api, now, allowPrBrowserProof
   return { reuse: true, schemaVersion: 'gnc-release-proof-v1', repository, commit: buildCommit,
     mergedCommit: commit, tree: merged.tree.sha, runId: run.id, attempt: run.run_attempt,
     siteArtifactId: site.id, proofArtifactId: proof.id, ...(testScope ? { testScope } : {}),
-    ...(fastPr ? { browserMode: 'pr-chromium' } : {}) };
+    ...(hotfix ? { hotfix:true, browserMode:'hotfix-minimal', testScope:{frontend:false,backend:false,schema:false} }
+      : (fastPr ? { browserMode: 'pr-chromium' } : {})) };
 }
 
 export async function selectPagesRelease({ repository, commit, api, now = Date.now(), allowPrBrowserProof = false }) {
@@ -135,7 +143,22 @@ export async function verifyPagesRelease({ proof, selected, repository, commit, 
     if (selected.digest && digest !== selected.digest) fail('DIGEST_CHANGED');
   } else if (selected.reuse === false) {
     if (selected.commit !== commit || selected.runId !== runId || selected.attempt !== attempt) fail('SAME_RUN_REQUIRED');
-    digest = verifySameRunReleaseProof(proof, { ...selected, repository }, release);
+    let hotfix = false;
+    if (proof.hotfix === true) {
+      const jobs = (await complete(api, `repos/${repository}/actions/runs/${runId}/attempts/${attempt}/jobs`, 'jobs'))
+        .filter(job => job.name?.startsWith('candidate-validation / '))
+        .map(job => ({ ...job, name: job.name.replace(/^candidate-validation \/ /, 'validation / ') }));
+      if (!hasAttestedHotfix(jobs) || jobs.some(job => !positive(job.id) || job.run_id !== runId
+        || job.head_sha !== commit || job.status !== 'completed'
+        || (job.conclusion !== 'success' && !(job.conclusion === 'skipped' && isHotfixSkippedJob(job.name))))) fail('HOTFIX_NOT_ATTESTED');
+      if (['lint', 'build', 'release-gate'].some(name => !jobs.some(job => job.name === `validation / ${name}`
+        && job.conclusion === 'success')) || !jobs.some(job => /^validation \/ unit(?: \([^)]*\))?$/.test(job.name)
+        && job.conclusion === 'success')) fail('HOTFIX_BASELINE_MISSING');
+      if (!jobs.find(job => job.name === 'validation / release-gate')?.steps?.some(step => step.name === 'Require every safety lane for this commit'
+        && step.status === 'completed' && step.conclusion === 'success')) fail('GATE_MISSING');
+      hotfix = true;
+    }
+    digest = verifySameRunReleaseProof(proof, { ...selected, repository, hotfix }, release);
   } else fail('REUSE_INVALID');
   return { digest, buildCommit: selected.commit };
 }

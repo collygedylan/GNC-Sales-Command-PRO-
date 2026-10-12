@@ -8,14 +8,14 @@ const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'ut
 const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
 test('foundation is a required sealed-artifact gate alongside functional and feature suites', () => {
   const job = workflow.jobs.foundation;
-  assert.equal(job.needs, 'build');
+  assert.deepEqual(job.needs, ['build', 'release-mode']);
   assert.equal(job['timeout-minutes'], 20);
   assert.ok(job.steps.some(step => step.uses === './.github/actions/download-release'));
   assert.ok(job.steps.some(step => step.run === 'npm run test:foundation -- --project=${{ matrix.project }} --max-failures=1 --reporter=github'));
   assert.deepEqual(job.strategy.matrix.include.map(row => row.project), ['lifecycle-chromium', 'lifecycle-iphone']);
   assert.equal(job.strategy['fail-fast'], true);
   assert.ok(job.steps.some(step => step.run === 'node scripts/release-artifact.mjs verify'));
-  for (const name of ['functional', 'compiled']) assert.equal(workflow.jobs[name].needs, 'build');
+  for (const name of ['functional', 'compiled']) assert.deepEqual(workflow.jobs[name].needs, ['build', 'release-mode']);
   assert.ok(workflow.jobs['release-gate'].needs.includes('foundation'));
   assert.match(workflow.jobs['release-gate'].steps[0].run, /'foundation'/);
   assert.doesNotMatch(job.steps.map(step => step.run || '').join('\n'), /build:|--retries|continue-on-error/);

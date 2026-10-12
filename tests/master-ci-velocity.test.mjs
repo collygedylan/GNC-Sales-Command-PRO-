@@ -16,9 +16,13 @@ test('parallel unit shards execute every discovered file exactly once', () => {
   assert.equal(new Set(all).size, all.length);
   for (const value of ['--shard=0/4', '--shard=5/4', '--shard=1/33']) assert.throws(() => runReleaseUnitChecks({ argv: [value] }), /Usage/);
 });
-test('React, Node, database and immutable build lanes run concurrently', () => {
+test('release-mode gated suites retain independent execution after classification', () => {
   const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
-  for (const lane of ['unit', 'react', 'contracts', 'database', 'build']) assert.equal(workflow.jobs[lane].needs, undefined);
+  for (const lane of ['lint', 'unit', 'build']) assert.equal(workflow.jobs[lane].needs, undefined);
+  for (const lane of ['react', 'contracts', 'database']) assert.equal(workflow.jobs[lane].needs, 'release-mode');
+  for (const lane of ['fast-browser', 'foundation', 'functional', 'compiled', 'timing', 'performance', 'lighthouse']) {
+    assert.deepEqual(workflow.jobs[lane].needs, ['build', 'release-mode']);
+  }
   assert.deepEqual(workflow.jobs.unit.strategy.matrix.shard, [1, 2, 3, 4]);
   const build = workflow.jobs.build.steps.find(step => step.uses === 'docker/build-push-action@v7');
   assert.match(build.with['cache-from'], /type=gha.*version=2/);
