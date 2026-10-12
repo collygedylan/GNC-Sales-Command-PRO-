@@ -46,11 +46,14 @@ jobs:
         run: |
           set -euo pipefail
           mapfile -t changed_files < <(git diff --name-only "${GITHUB_SHA}^1" "$GITHUB_SHA")
-          if [[ "${#changed_files[@]}" -eq 1 && "${changed_files[0]}" == '.github/workflows/apps-script-sync.yml' ]]; then
-            echo 'frontend=false' >> "$GITHUB_OUTPUT"
-          else
-            echo "frontend=$FRONTEND_CHANGED" >> "$GITHUB_OUTPUT"
-          fi
+          case "${changed_files[*]}" in
+            '.github/workflows/apps-script-sync.yml'|'.github/workflows/apps-script-sync.yml tests/release-publish-candidate.test.mjs')
+              echo 'frontend=false' >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "frontend=$FRONTEND_CHANGED" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
 
       - name: Require backend deployment credentials before production changes
         env:
@@ -166,7 +169,7 @@ jobs:
             done
           }
           deploy_with_retry supabase functions deploy app-api --use-api --project-ref "$project_ref"
-          deploy_with_retry supabase functions deploy send-push-alert --use-api --project-ref "$project_ref"
+          # Temporarily retain the deployed send-push-alert version during core PWA publication.
           deploy_with_retry supabase functions deploy request-delivery-worker --use-api --project-ref "$project_ref"
           deploy_with_retry supabase functions deploy calendar-reminder-sweep --use-api --project-ref "$project_ref"
           deploy_with_retry supabase functions deploy scheduled-offboarding --use-api --project-ref "$project_ref"
