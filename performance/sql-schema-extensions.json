@@ -69,6 +69,6 @@
   },
   {
     "path": "supabase/migrations/20261012052500_aura_enterprise_domain_voice.sql",
-    "gitBlob": "31cc16e7cb1d218d93896858573225d1c755807e"
+    "gitBlob": "4287bd19a58fdac12ebe1e78b92150c3cd4aa3fa"
   }
 ]
