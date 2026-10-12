@@ -9346,6 +9346,9 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
         const DEPARTMENT_CALENDAR_EVENTS_TABLE = 'ph_department_calendar_events';
         const PUSH_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/send-push-alert`;
         const APP_API_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/app-api`;
+        // The shell evaluates this runtime in its own lexical scope. External
+        // Request History, Credit, and Bunch Notes scripts need the public URL.
+        window.APP_API_FUNCTION_URL = APP_API_FUNCTION_URL;
         const AURA_QUERY_URL = `${SUPABASE_URL}/functions/v1/aura-query`;
         const AURA_LLM_ROUTER_URL = `${SUPABASE_URL}/functions/v1/aura-llm-router`;
         const LEAF_ASSISTANT_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/inventory-assistant`;

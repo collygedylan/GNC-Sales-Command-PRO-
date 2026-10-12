@@ -176,6 +176,29 @@ test('background refresh preserves expanded drafts and does not detach unchanged
   } finally { dom.window.close(); }
 });
 
+test('evaluated shell exports its public API URL for external Request History and Credit reads', async () => {
+  const { JSDOM } = await import('jsdom');
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('const APP_API_FUNCTION_URL =');
+  const end = html.indexOf('const AURA_QUERY_URL =', start);
+  assert.ok(start > 0 && end > start);
+  const dom = new JSDOM('<div id="request-history-content"></div>', { url: 'https://test.invalid', runScripts: 'outside-only' });
+  const w = dom.window, calls = [];
+  // Match the live bootstrap: eval-local constants do not survive as global
+  // lexical bindings for previously loaded external scripts.
+  w.eval(`const SUPABASE_URL = 'https://example.supabase.co'; ${html.slice(start, end)}`);
+  Object.assign(w, { currentUser: 'rep', getCurrentVisibleViewId: () => 'request-history',
+    postAppFunctionJson: async (url, body) => { calls.push({ url, body }); return { ok: true, data: { rows: [] } }; } });
+  w.eval(readFileSync(new URL('../assets/sales-workspace.js', import.meta.url), 'utf8'));
+  try {
+    await w.SalesWorkspace.open('request-history');
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, 'https://example.supabase.co/functions/v1/app-api');
+    assert.equal(calls[0].body.action, 'request_history');
+    assert.equal(w.document.querySelectorAll('.sw-error').length, 0);
+  } finally { dom.window.close(); }
+});
+
 test('late exact-source lookup respects the shared view lifetime', async () => {
   const { JSDOM } = await import('jsdom');
   const { readFileSync } = await import('node:fs');
