@@ -8,6 +8,8 @@ Implement complete, connected solutions and verify the affected behavior. Keep d
 
 Check the impact of schema changes on Row Level Security and client queries. The approval rules in AGENTS.md apply to CI failures involving migrations, credentials, or production data.
 
+Before changing schema, RLS, or core UI logic, globally map downstream dependencies, including migrations, pgTAP, generated contracts, and legacy fixtures. Include their necessary repairs in the initial feature commit. Run the full local suite before pushing database security or structural schema changes; this supersedes the focused-only guidance below for those changes. Apply the current queue's explicit remediation authorization recorded in AGENTS.md.
+
 ## Local Validation
 
 - Run only targeted unit tests or specific test files directly related to the changed behavior, including focused migration checks when applicable. Leave full E2E suites, mobile/browser matrices, and exhaustive regression testing to GitHub Actions.

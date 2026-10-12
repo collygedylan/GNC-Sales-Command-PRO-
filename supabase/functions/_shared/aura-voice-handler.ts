@@ -1,4 +1,4 @@
-import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraTool, validateInventoryFilters, validateSocFilters, type SocFilters, type SocToolName, type AuraActor, type AuraTool, type InventoryFilters } from "./aura-gemini.ts";
+import { AURA_PROVIDER_TIMEOUT_MS, auraObject, routeAuraWithGemini, validateAuraHistory, validateAuraTool, validateInventoryFilters, validateSocFilters, type SocFilters, type SocToolName, type AuraActor, type AuraTool, type InventoryFilters } from "./aura-gemini.ts";
 import { resolveAuraIntent } from "./aura-query.ts";
 
 import { parseAuraAppContext, requestedAuraVariants, spokenAuraSeason, signedAuraQuantity } from "./aura-voice-scope.ts";
@@ -205,9 +205,9 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     reply = "I found possible matches. Choose the exact plant, size, or location.";
     actions = [{ type: "choices", kind: "entity", items: options }];
   } else if (data.complete !== true) {
-    reply = "Inventory is updating or incomplete. I can’t confirm stock yet. Please try again shortly.";
+    reply = "I can’t find verified stock information while inventory is updating or incomplete. Please try again shortly.";
   } else if (!rows.length) {
-    reply = unresolved ? `No verified inventory matches in ${scope}; ${format(unresolved)} unresolved records were excluded.` : `No matching inventory found in ${scope}.`;
+    reply = unresolved ? `I can’t find verified inventory in ${scope}; ${format(unresolved)} unresolved records were excluded.` : `I can’t find matching inventory in ${scope}.`;
   } else if (tool.name === "draft_request") {
     if (rows.length !== 1 || data.hasMore === true) {
       const options = rows.slice(0, 5).map(row => ({ ...row, id: String(row.selectionId || row.uniqueId || ""), label: label(row) }));
@@ -242,7 +242,7 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     if (data.metric !== expectedMetric) throw new Error("AURA_RESULT_INVALID");
     const total = signedAuraQuantity(data.total);
     const metric = filters.countMode === "physical_rows" ? "physical inventory rows" : filters.countMode === "unique_items" ? "distinct items" : filters.metric === "ptronhand" ? "units on hand" : filters.metric === "s_lts" ? "units open stock" : "units available";
-    reply = `Verified ${format(total)} ${metric} in ${scope}.`;
+    reply = `I found ${format(total)} ${metric} in ${scope}.`;
     actions = recordAction("Inventory", rows);
   } else {
     reply = `Found ${format(rows.length)} matching inventory rows in ${scope}${data.hasMore ? "; more are available" : ""}.`;
@@ -363,7 +363,7 @@ async function memoryResponse(body: ObjectValue, mode: string, actor: AuraActor,
   for (const turn of array(data.turns)) {
     const response = optionalObject(turn.response);
     const visible = optionalObject(response.interpretation).engine === "gemini-tools-v1" && await sourcesCurrent(turn.sources, actor, store, signal);
-    turns.push({ text: String(turn.text || ""), response: visible ? { reply: String(response.reply || ""), actions: array(response.actions).filter(action => action.type === "records") }
+    turns.push({ text: String(turn.text || ""), completed: turn.status === "complete", response: visible ? { reply: String(response.reply || ""), actions: array(response.actions).filter(action => action.type === "records") }
       : { reply: "This saved response needs a fresh query before its data can be displayed.", actions: [] } });
   }
   return { ok: true, conversationId: data.conversationId ?? null, revision: Number(data.revision || 0), conversations: array(data.conversations), turns,
@@ -371,6 +371,7 @@ async function memoryResponse(body: ObjectValue, mode: string, actor: AuraActor,
 }
 async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStore, deps: AuraVoiceDeps, signal: AbortSignal) {
   const question = boundedString(body.text ?? body.question ?? body.prompt);
+  const history = validateAuraHistory(body.history);
   const active = parseAuraAppContext(await store.appContext(signal));
   if (body.appContext !== undefined && !same(parseAuraAppContext(body.appContext), active)) {
     throw Object.assign(new Error("AURA_APP_CONTEXT_STALE"), { appContext: active });
@@ -419,7 +420,7 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values, true); }
       else if (selectionNumber) tool = { name: "clarify", reason: "ambiguous" };
       else if (knownOutsideDomain(question)) tool = { name: "refuse" };
-      else tool = await routeAuraWithGemini({ text: question, actor, context: { ...modelContext(context), appContext: active }, apiKey: deps.apiKey(),
+      else tool = await routeAuraWithGemini({ text: question, history, actor, context: { ...modelContext(context), appContext: active }, apiKey: deps.apiKey(),
         signal: AbortSignal.any([signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
     }
     const follow = more || !!selection || /^(?:and|what about|how about|those|these)\b/i.test(question);

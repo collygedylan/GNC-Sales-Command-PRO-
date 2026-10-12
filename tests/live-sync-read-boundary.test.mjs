@@ -572,7 +572,7 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
 });
 
 test('foreground full-master consumers keep live refreshes full without widening ordinary browse views', () => {
-    const ctx = { Array };
+    const ctx = { Array, JSON, pendingMasterFullHydrations: new Map(), getSupabaseReadIdentityScope: () => 'owner' };
     vm.createContext(ctx);
     vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'production-workflow'), 'full');
@@ -588,6 +588,56 @@ test('foreground full-master consumers keep live refreshes full without widening
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'sales-inventory', { surfaces: ['sales-inventory:counting'] }), 'full');
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'request', { surfaces: ['request:pending'] }), 'browse');
     assert.equal(ctx.getProductionCoreLiveProjection('master', 'request', { surfaces: ['request:eval-work'] }), 'full');
+});
+
+test('full row hydration pins its projection across refreshes and clears after success, failure, and scope changes', async () => {
+    for (const outcome of ['success', 'failure', 'account-change', 'navigation-change']) {
+        const gate = deferred(), map = new Map();
+        const ctx = { Array, JSON, String, console, pendingMasterFullHydrations: map, owner: 'owner-a', view: 'drive', ready: false,
+            isMasterFullProjectionReady: () => ctx.ready,
+            getSupabaseReadIdentityScope: () => ctx.owner, getCurrentVisibleViewId: () => ctx.view, showToast() {},
+            ensureDatasetLoaded: async () => { await gate.promise; if (outcome === 'failure') return false; ctx.ready = true; return true; } };
+        vm.createContext(ctx);
+        vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
+        vm.runInContext(extractAppFunction('ensureMasterFullProjection'), ctx);
+        const pending = ctx.ensureMasterFullProjection('editing Item Inquiry fields');
+        assert.equal(ctx.getProductionCoreLiveProjection('master', 'drive'), 'full');
+        assert.equal(ctx.getProductionCoreLiveProjection('master', 'av'), 'browse');
+        if (outcome === 'account-change') ctx.owner = 'owner-b';
+        if (outcome === 'navigation-change') ctx.view = 'av';
+        assert.equal(ctx.getProductionCoreLiveProjection('master', ctx.view), outcome.includes('change') ? 'browse' : 'full');
+        gate.resolve();
+        assert.equal(await pending, outcome === 'success');
+        assert.equal(map.size, 0);
+        assert.equal(ctx.getProductionCoreLiveProjection('master', 'drive'), 'browse');
+    }
+});
+
+test('a metadata refresh during Reclass hydration cannot replace the full proof with browse rows', async () => {
+    const sandbox = { module: { exports: {} }, setTimeout, clearTimeout, AbortController };
+    vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), sandbox);
+    const { createCoordinator } = sandbox.module.exports;
+    const reads = [], ctx = { Array, JSON, console, pendingMasterFullHydrations: new Map(),
+        getSupabaseReadIdentityScope: () => 'owner', getCurrentVisibleViewId: () => 'drive', showToast() {},
+        isMasterFullProjectionReady: () => ctx.coverage === 'full', coverage: 'browse' };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('getProductionCoreLiveProjection'), ctx);
+    vm.runInContext(extractAppFunction('ensureMasterFullProjection'), ctx);
+    let coordinator, queued = false;
+    const adapter = projection => ({ id: 'core:master', cacheKey: projection, sourceKeys: ['master'],
+        stage: async () => { reads.push(projection); if (projection === 'full' && !queued) {
+            queued = true; void coordinator.check('metadata');
+        } return { projection }; }, commit: value => { ctx.coverage = value.projection; } });
+    coordinator = createCoordinator({ getContext: () => ({ scope: 'owner', viewKey: 'drive', visible: true, online: true,
+        adapters: [adapter(ctx.getProductionCoreLiveProjection('master', 'drive'))] }),
+        readRevisions: async () => ({ contractVersion: 1, permissionVersion: 'p1', sources: [{ key: 'master', revision: '1', state: 'ready' }] }),
+        setTimeout: () => 1, clearTimeout() {} });
+    ctx.ensureDatasetLoaded = async () => coordinator.ensure(adapter('full'), true);
+    assert.equal(await ctx.ensureMasterFullProjection('editing Reclass'), true);
+    assert.deepEqual(reads, ['full']);
+    assert.equal(ctx.coverage, 'full');
+    assert.equal(ctx.pendingMasterFullHydrations.size, 0);
+    assert.equal(ctx.getProductionCoreLiveProjection('master', 'drive'), 'browse');
 });
 
 test('inventory read metadata must exactly match the requested browse or full contract', () => {

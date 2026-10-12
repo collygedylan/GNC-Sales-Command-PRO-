@@ -9,10 +9,11 @@ import { installHlOrderFixture, hlMaster } from '../tests/fixtures/hl-order-stat
 export const diagnosticRoles = ['ADMIN', 'REP', '\nREP', 'CSR', 'DATA ENTRY', 'DATA ENTRY SUPERVISOR',
   'EVAL', 'FOREMAN', 'GROWER', 'QC', 'QC SUPERVISOR', 'TAKE BACKS'];
 export const diagnosticScreens = ['drive', 'sales-inventory', 'request', 'request-history', 'historical-requests'];
-export const diagnosticDriveLoadedSelector = '#drive-content .app-smart-card, #drive-content :text-matches("^No Drive Mode (items match these filters|rows are available for .*\\\\.)$", "i")';
+export const diagnosticDriveLoadedSelector = '#drive-content .app-smart-card, #drive-content :text-matches("^No Drive Mode (items match these filters|rows are available for .*?)\\\\.$", "i")';
 const rolesWithDrive = new Set(diagnosticRoles.filter(role => !['GROWER', 'TAKE BACKS'].includes(role)));
 const readActions = new Set(['inventory_read', 'request_history', 'sales_credit', 'historical_requests',
-  'request_recipient_directory', 'native_session_bridge', 'navigation_preferences', 'dataset_revisions', 'app_access', 'dataset_read']);
+  'request_recipient_directory', 'native_session_bridge', 'navigation_preferences', 'dataset_revisions', 'app_access', 'dataset_read',
+  'av_read', 'get_user_preferences', 'live_pilot_bootstrap']);
 const readOperations = new Set(['get', 'read', 'list', 'summary', 'customers', 'consignees', 'requests', 'reps',
   'compatibility', 'search', 'folders', 'master_page', 'master_delta', 'source_freshness', 'schema_capabilities', 'po_detail',
   'recount_queue', 'ncr_queue', 'not_on_inventory_queue', 'scope', 'settings']);
@@ -49,7 +50,7 @@ export async function openDiagnosticDriveCards(page) {
   const mobileMode = page.locator('#drive-mobile-mode');
   if (await mobileMode.isVisible()) await mobileMode.selectOption('card');
   else await cardMode.click();
-  await page.locator(diagnosticDriveLoadedSelector).first().waitFor({ state: 'visible', timeout: 30000 });
+  await page.locator(diagnosticDriveLoadedSelector).first().waitFor({ state: 'visible', timeout: 90000 });
 }
 
 /** Authenticated sessions are supplied in memory. Reports never contain credentials or row contents. */
@@ -124,12 +125,12 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
         for (const screen of diagnosticScreens) {
           const tile = page.locator(`#home-tile-${screen},#home-sales-open-${screen}`).filter({ visible: true }).first();
           const tileVisible = await tile.isVisible();
-          const allowed = tileVisible || (screen === 'request-history' && await page.evaluate(() => window.eval("canAccessView('request-history')")));
+          const allowed = tileVisible || await page.evaluate(screen => window.eval(`canAccessView(${JSON.stringify(screen)})`), screen);
           const item = { screen, allowed, visible: false, cards: 0 };
           entry.screens.push(item);
           if (!allowed) continue;
           if (tileVisible) await tile.click();
-          else await page.evaluate(() => window.eval("switchView('request-history')"));
+          else await page.evaluate(screen => window.eval(`switchView(${JSON.stringify(screen)})`), screen);
           const view = page.locator(`#view-${screen}`);
           await view.waitFor({ state: 'visible', timeout: 20000 });
           if (screen === 'drive') await openDiagnosticDriveCards(page);
@@ -144,12 +145,12 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
           item.headings = await view.locator('h1,h2,h3').allTextContents();
           item.headings = item.headings.map(text => text.trim().slice(0, 80)).slice(0, 8);
           if (screen === 'drive') {
-            const inquiry = view.locator('.app-drive-card-reclass .app-card-bottom-btn').first();
+            const inquiry = view.locator('.app-card-bottom-btn--argos-reclass').first();
             const available = await inquiry.isVisible();
             entry.screens.push({ screen: 'reclass-item-inquiry', allowed: available, visible: false });
             if (available) {
               await inquiry.click();
-              await page.locator('#argos-inventory-transaction-modal').waitFor({ state: 'visible' });
+              await page.locator('#argos-inventory-transaction-modal').waitFor({ state: 'visible', timeout: 90000 });
               entry.screens.at(-1).visible = true;
               await page.keyboard.press('Escape');
               await page.evaluate(() => window.eval('closeArgosInventoryTransactionModal()'));

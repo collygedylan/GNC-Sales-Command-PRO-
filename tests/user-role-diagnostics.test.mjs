@@ -19,7 +19,7 @@ test('Drive diagnostics wait for real inventory cards before checking Reclass', 
     })};
     await openDiagnosticDriveCards(page);
     assert.deepEqual(calls,[mobile?['#drive-mobile-mode','select','card']:['#tab-drive-card','click'],
-      [diagnosticDriveLoadedSelector,'wait',{state:'visible',timeout:30000}]]);
+      [diagnosticDriveLoadedSelector,'wait',{state:'visible',timeout:90000}]]);
     assert.match(diagnosticDriveLoadedSelector, /items match these filters\|rows are available for/);
     assert.doesNotMatch(diagnosticDriveLoadedSelector, /rows are loading/);
   }
@@ -46,6 +46,11 @@ test('authenticated baseline probes retain status and counts without recording r
   assert.doesNotMatch(JSON.stringify(baseline),/private-token|Private customer|Private consignee|private-id|price/);
 });
 test('diagnostics permit actual inventory reads and deny submissions and auth administration', () => {
+  for (const action of ['av_read','get_user_preferences','live_pilot_bootstrap']) {
+    assert.equal(diagnosticRequestAllowed(api,'POST',{action}),true);
+    assert.equal(diagnosticRequestAllowed(api,'POST',{action,commandId:'write'}),false);
+    assert.equal(diagnosticRequestAllowed(api,'POST',{action,operation:'save'}),false);
+  }
   for (const operation of ['search','folders']) {
     assert.equal(diagnosticRequestAllowed(api,'POST',{action:'request_history',operation}),true);
   }
@@ -53,7 +58,8 @@ test('diagnostics permit actual inventory reads and deny submissions and auth ad
     assert.equal(diagnosticRequestAllowed(api,'POST',{action:'inventory_read',operation}),true);
   }
   for (const body of [{action:'drive_reclass_inquiry',operation:'create'}, {action:'request_history',operation:'complete'},
-    {action:'inventory_read',operation:'master_page',commandId:'write'}, {action:'navigation_preferences',operation:'save'}]) {
+    {action:'inventory_read',operation:'master_page',commandId:'write'}, {action:'navigation_preferences',operation:'save'},
+    {action:'set_user_preferences'}, {action:'live_pilot_preferences_save'}]) {
     assert.equal(diagnosticRequestAllowed(api,'POST',body),false);
   }
   assert.equal(diagnosticRequestAllowed('https://example.supabase.co/auth/v1/admin/users','POST',{}),false);
