@@ -1,44 +1,47 @@
-# Historical Requests and pipeline values
+# Request History and executive reporting
 
-Historical Requests is a primary, read-only view. It is separate from the existing
-Request History operational workflow. The customer → consignee → request hierarchy
-uses server pages, with an account-scoped, memory-only SWR cache. The component and
-its stylesheet load on entry; public chunks are included in release precaching.
-No request rows or financial responses are stored in the service worker.
+Request History and Historical Requests share a read-only React view: Sales Rep →
+mapped Customer/Consignee folder → request cards. Reps default to their own profile
+and cannot query another rep. Exact external customer/consignee IDs preserve
+leading zeros and distinguish duplicate names. Existing legacy records remain readable.
 
-## Authorization
+## Financial authorization
 
-`historical_requests_read_v1` accepts a native Supabase user JWT. PostgreSQL binds
-the actor to `auth.uid()` and rechecks the stored profile. REP and SALESREP users
-see only requests assigned to their authenticated profile UUID. Creator identity
-does not grant access. The exact stored username `dylan_collyge` and explicit
-ADMIN/ADMINISTRATOR roles may read all requests and the rep leaderboard. Other
-Managers do not receive that override. Disabled, locked, password-change-required,
-anonymous and ineligible accounts are denied. Existing operational policies and
-history endpoints retain their current behavior.
+Only the active `dylan_collyge` admin and explicitly designated active financial
+admins can see all reps or dollar values. Other Admin roles receive own scope.
+The private `request_financial_admins_v1` allowlist is inaccessible to clients;
+this release designates no additional accounts. Disabled, locked, password-change
+and scheduled account restrictions remain enforced. Request and historical table
+policies enforce ownership; raw historical snapshots are unavailable to clients.
+Legacy history APIs redact monetary fields recursively. Credit permissions remain
+separate. AURA receives the same redacted data and invalidates old pricing responses.
 
-## Values and source identity
+## Catalog pricing and incoming values
 
-- History wins when the same request identity also exists in the active queue.
-- Price comes from current master inventory using its exact unique ID first. When
-  that ID has no current match, the complete item-code, size, location, and lot
-  tuple supplies one price only when all matching rows have the same valid price.
-  Incomplete tuples, conflicting prices, and invalid prices remain unresolved.
-  Historical request rows are never rewritten by this lookup.
-- Value is `COALESCE(NULLIF(request_qty, 0), 25) * listprice`.
-- Blank/missing quantity has the same 25 fallback. Malformed quantities, missing
-  inventory identities and unavailable prices are reported as unresolved; they
-  are excluded from known dollar totals.
-- Values describe the request pipeline at **current** prices. They are not booked
-  revenue, historical price snapshots or a promise of fulfillment.
-- Customer/consignee keys retain external identity IDs, keeping identical names
-  distinct. Groups, totals and unresolved counts are calculated after access
-  filtering, with bounded pages and deterministic ordering.
+Price comes from the active catalog by exact textual `itemcode` only. Lot, location,
+size, sales year and stale inventory row IDs do not select the price. Repeated
+catalog rows with the same valid price share one base price. Missing or conflicting
+base prices remain unknown. Existing request rules retain 25 units for blank or
+zero quantity; negative or malformed quantities remain unresolved for review.
 
-Account/role changes and logout destroy mounted financial data. Focus, reconnect,
-and visible polling revalidate the RPC. Read failures hide stale results and
-provide a retry action. No mutations are exposed by this module.
+Database triggers calculate incoming request values in private storage immediately.
+Reports calculate values against the current catalog on every read, including legacy
+requests. Historical source rows are not rewritten to repair their pricing. These
+are current-price pipeline values, not booked revenue or a historical selling price.
 
-The temporary performance timing allowance remains governed by
-`performance/baseline.json` and its planned Prompt 7 restoration; this feature
-does not reset measured baselines or change the release gates.
+## Orders and reporting
+
+Requests have a NULL dock. Orders have any non-NULL dock, including `0` or an empty
+string. Current active dock assignments and archived snapshot dock values are
+supported. Photos, requested specs, notes, sent date and delivery state remain visible.
+
+The executive reporting panel provides specific-month, date-range, year-to-date and
+all-date selections; rep/customer filters; and aggregate, monthly, rep and customer
+totals. Chicago calendar boundaries define each date, including the entire through
+date and daylight-saving changes. Missing dates are excluded from bounded periods.
+Directories and grouped results paginate fully on the server after authorization.
+
+Account/role changes, navigation and logout clear private mounted caches. Read
+failures and scope downgrades hide cached results. No financial responses are stored
+in the service worker. Source revisions fence each response and revalidate on focus,
+reconnect and polling. Full local database and regression suites precede publication.

@@ -2,7 +2,17 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions,pg_temp;
-select plan(34);
+select plan(69);
+-- Pricing assertions execute through the sole financial principal, while the original rep isolation assertions remain user-bound.
+create function pg_temp.history_financial(p_query jsonb) returns jsonb language plpgsql as $$
+declare prior text:=current_setting('request.jwt.claim.sub',true); result jsonb;
+begin
+  perform set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000004',true);
+  result:=public.historical_requests_read_v1(p_query||jsonb_build_object('repKey','rep:e7410000-0000-4000-8000-000000000001'));
+  perform set_config('request.jwt.claim.sub',coalesce(prior,''),true); return result;
+exception when others then perform set_config('request.jwt.claim.sub',coalesce(prior,''),true); raise;
+end $$;
+
 
 select has_function('public','historical_requests_read_v1',array['jsonb'],'authenticated historical requests RPC is installed');
 select ok((select prosecdef and proconfig @> array['search_path=""','statement_timeout=10s']
@@ -28,7 +38,7 @@ values
  ('e7410000-0000-4000-8000-000000000001','hist_rep_a','History Rep A','REP',false),
  ('e7410000-0000-4000-8000-000000000002','hist_rep_b','History Rep B','SALESREP',false),
  ('e7410000-0000-4000-8000-000000000003','hist_manager','History Manager','MANAGER',false),
- ('e7410000-0000-4000-8000-000000000004','dylan_collyge','History Dylan','User',false),
+ ('e7410000-0000-4000-8000-000000000004','dylan_collyge','History Dylan','ADMIN',false),
  ('e7410000-0000-4000-8000-000000000005','hist_admin','History Admin','ADMINISTRATOR',false),
  ('e7410000-0000-4000-8000-000000000006','hist_inactive','Inactive Rep','REP',false)
 on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,role=excluded.role,
@@ -81,15 +91,15 @@ select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000001'
 select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{scope}'),'own','REP receives own scope');
 select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{summary,requestCount}')::integer,7,
   'REP sees only history assigned to their UUID and active rows resolved to their profile');
-select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{summary,totalValue}')::numeric,342.5,
+select is((pg_temp.history_financial('{"operation":"customers"}')#>>'{summary,totalValue}')::numeric,342.5,
   'summary uses current exact master price, applies blank/zero quantity fallback, and excludes unresolved value');
-select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{summary,unpricedCount}')::integer,3,
+select is((pg_temp.history_financial('{"operation":"customers"}')#>>'{summary,unpricedCount}')::integer,3,
   'invalid quantity, missing master, and invalid current price are counted as unresolved');
 select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{rows,0,requestCount}')::integer,7,
   'customer groups count all of this rep’s historical and active requests');
 select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{revision}'),
-  (select string_agg(key||':'||revision::text,',' order by key) from public.app_dataset_revisions
-    where key=any(array['ph_active_request','ph_master_inventory','ph_request_history'])),
+  (select 'history-v3:'||md5('hist_rep_a:REP')||':'||string_agg(key||':'||revision::text,',' order by key) from public.app_dataset_revisions
+    where key=any(array['ph_active_request','ph_customer_consignee_sales_reps','ph_master_inventory','ph_request_history'])),
   'revision reports the locked source dataset revisions');
 select is((public.historical_requests_read_v1(jsonb_build_object('operation','requests','customerKey','customer:id:'||md5('cust-1'),
   'consigneeKey','customer:id:'||md5('cust-1')||'|consignee:id:'||md5('cons-1')))#>>'{total}')::integer,6,
@@ -101,15 +111,15 @@ select is((select (entry->>'requestQty')::numeric from jsonb_array_elements(publ
 select is((public.historical_requests_read_v1(jsonb_build_object('operation','requests','customerKey','customer:id:'||md5('cust-1'),
   'consigneeKey','customer:id:'||md5('cust-1')||'|consignee:id:'||md5('cons-2')))#>>'{rows,0,effectiveQty}')::numeric,25::numeric,
   'literal zero quantity follows the 25-unit default');
-select is((select (entry->>'totalValue')::numeric from jsonb_array_elements(public.historical_requests_read_v1(
+select is((select (entry->>'totalValue')::numeric from jsonb_array_elements(pg_temp.history_financial(
   jsonb_build_object('operation','requests','customerKey','customer:id:'||md5('cust-1'),
     'consigneeKey','customer:id:'||md5('cust-1')||'|consignee:id:'||md5('cons-1')))#>'{rows}') entry
   where entry->>'id'='hist-owned-priced'),20::numeric,'request value uses exact current master list price');
-select is((public.historical_requests_read_v1(jsonb_build_object('operation','requests','customerKey','customer:id:'||md5('cust-1'),
+select is((pg_temp.history_financial(jsonb_build_object('operation','requests','customerKey','customer:id:'||md5('cust-1'),
   'consigneeKey','customer:id:'||md5('cust-1')||'|consignee:id:'||md5('cons-2')))#>>'{rows,0,totalValue}')::numeric,62.5,
   'dollar-formatted current list price and zero fallback are parsed exactly');
 select ok((select entry->>'unresolvedReason' is not null and entry->>'requestQty' is null and entry->>'effectiveQty' is null
-  from jsonb_array_elements(public.historical_requests_read_v1(
+  from jsonb_array_elements(pg_temp.history_financial(
     jsonb_build_object('operation','requests','customerKey','customer:id:'||md5('cust-1'),
       'consigneeKey','customer:id:'||md5('cust-1')||'|consignee:id:'||md5('cons-1')))#>'{rows}') entry
   where entry->>'id'='hist-owned-badqty'),
@@ -122,12 +132,12 @@ select throws_ok($$select public.historical_requests_read_v1('{"operation":"cust
 select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000002',true);
 select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{summary,requestCount}')::integer,2,
   'SALESREP scope is limited to the two rows owned by its profile UUID, not creator attribution');
-select throws_ok($$select public.historical_requests_read_v1('{"operation":"reps"}')$$,'42501','HISTORICAL_REQUESTS_REPS_FORBIDDEN',
-  'REP may not access global rep rollups');
+select is((public.historical_requests_read_v1('{"operation":"reps"}')#>>'{scope}'),'own',
+  'REP rep list remains limited to their own identity');
 select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000005',true);
-select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{scope}'),'all','ADMINISTRATOR receives global financial scope');
-select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{summary,requestCount}')::integer,9,
-  'administrator aggregate includes all deduplicated authorized rows');
+select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{scope}'),'own','Other administrators cannot receive Dylan financial scope');
+select is((public.historical_requests_read_v1('{"operation":"customers"}')#>>'{summary,requestCount}')::integer,0,
+  'Other administrator sees only rows assigned to their own identity');
 select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000004',true);
 select is((public.historical_requests_read_v1('{"operation":"summary"}')#>>'{scope}'),'all','exact Dylan username receives global financial scope');
 select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000006',true);
@@ -163,10 +173,123 @@ select 'hist-collision-'||g,'hist-master-a','hist-master-a','e7410000-0000-4000-
   'same-label-customer-'||g,'Same Label Customer','same-label-consignee-'||g,'Same Label Consignee',
   'HIST-A','History Plant A','A','1','Complete','2026-03-01T12:00:00Z'::timestamptz+g*interval '1 second','{}'::jsonb
 from generate_series(1,30) g;
-select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000005',true);
+select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000004',true);
 select is((public.historical_requests_read_v1('{"operation":"customers","page":0,"pageSize":25}')#>>'{total}')::integer,32,
   'different customer IDs remain separate groups even when their display labels match');
 select is(jsonb_array_length(public.historical_requests_read_v1('{"operation":"customers","page":0,"pageSize":25}')->'rows'),25,
   'group listing returns only the requested bounded page');
 select is(jsonb_array_length(public.historical_requests_read_v1('{"operation":"customers","page":1,"pageSize":25}')->'rows'),7,
   'stable pagination returns the remaining groups on the next page');
+
+-- Executive reporting regressions share the disposable fixture above.
+select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000001',true);
+select ok(public.historical_requests_read_v1('{"operation":"summary"}')#>'{summary,totalValue}'='null'::jsonb,
+  'rep aggregate dollars are redacted by the database');
+select ok(not exists(select 1 from jsonb_array_elements(public.historical_requests_read_v1('{"operation":"customers"}')->'rows') r
+  where r->>'totalValue' is not null or r->>'unpricedCount' is not null),'rep group financial values are redacted');
+select is(public.historical_requests_read_v1('{"operation":"reps"}')#>>'{rows,0,key}',
+  'rep:e7410000-0000-4000-8000-000000000001','rep directory defaults to the authenticated identity');
+select throws_ok($$select public.historical_requests_read_v1('{"operation":"folders","repKey":"rep:e7410000-0000-4000-8000-000000000002"}')$$,
+  '42501','HISTORICAL_REQUESTS_REP_FORBIDDEN','forged rep filter cannot expose another rep');
+select throws_ok($$select public.historical_requests_read_v1('{"operation":"months"}')$$,
+  '42501','HISTORICAL_REQUESTS_FINANCIAL_FORBIDDEN','rep cannot query monthly dollar totals');
+select ok(not has_table_privilege('authenticated','public.ph_request_history','select'),
+  'raw historical snapshots cannot bypass financial redaction');
+select ok(not has_table_privilege('authenticated','private.request_financial_values_v1','select')
+  and not has_table_privilege('authenticated','private.request_financial_admins_v1','insert'),
+  'clients cannot read private amounts or designate themselves as financial admins');
+
+insert into public.ph_request_history(unique_id,assigned_rep_id,customeridentityid,customername,consigneeidentityid,consigneename,
+  itemcode,req_qty,req_status,created_at,master_id,locationcode,lotcode,contsize,snapshot)
+values('hist-executive-archived','e7410000-0000-4000-8000-000000000001','cust-1','Acme Customer','cons-1','North Consignee',
+  'HIST-A','3','Complete','2026-03-01T05:59:59Z','obsolete-master','OLD','25.F1','#30',
+  '{"dock":"0","req_spec":"8 feet","req_photo_link":"https://example.invalid/request.jpg","date_completed":"2026-03-01T06:00:00Z"}');
+insert into public.ph_active_request(unique_id,master_id,request_selected_rep_username,request_selected_rep_display,
+  request_created_by_username,customeridentityid,customername,consigneeidentityid,consigneename,itemcode,req_qty,req_status,created_at,dock)
+values('hist-executive-active','hist-master-a','hist_rep_a','History Rep A','hist_rep_a','cust-1','Acme Customer','cons-1','North Consignee',
+  'HIST-A','2','Pending','2026-03-01T06:00:00Z','');
+select is(private.history_catalog_price_v1('HIST-A'),10::numeric,'item-code base price disregards obsolete lot, size and master identity');
+select is((select total_value from private.request_financial_values_v1 where source_table='ph_request_history' and request_id='hist-executive-archived'),
+  30::numeric,'incoming archived request financial value is calculated immediately');
+select is((select total_value from private.request_financial_values_v1 where source_table='ph_active_request' and request_id='hist-executive-active'),
+  20::numeric,'incoming active request financial value is calculated immediately');
+
+select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000004',true);
+select is((public.historical_requests_read_v1('{"operation":"summary","recordKind":"orders"}')#>>'{summary,requestCount}')::integer,
+  2,'zero and empty-string dock assignments both count as Orders');
+select is((public.historical_requests_read_v1('{"operation":"summary","recordKind":"orders","dateFrom":"2026-02-28","dateTo":"2026-02-28"}')#>>'{summary,totalValue}')::numeric,
+  30::numeric,'Chicago through date includes the final second of the local day');
+select is((public.historical_requests_read_v1('{"operation":"summary","recordKind":"orders","dateFrom":"2026-03-01","dateTo":"2026-03-01"}')#>>'{summary,totalValue}')::numeric,
+  20::numeric,'Chicago from date includes midnight and excludes the preceding local day');
+select is((public.historical_requests_read_v1('{"operation":"months","recordKind":"orders"}')#>>'{total}')::integer,
+  2,'monthly totals use Chicago calendar months');
+select is((public.historical_requests_read_v1('{"operation":"months","recordKind":"orders"}')#>>'{summary,totalValue}')::numeric,
+  50::numeric,'grouped and aggregate totals use the same complete filtered rows');
+select is((public.historical_requests_read_v1('{"operation":"summary","recordKind":"orders","repKey":"rep:e7410000-0000-4000-8000-000000000002"}')#>>'{summary,requestCount}')::integer,
+  0,'rep slice excludes all other assigned requests');
+select throws_ok($$select public.historical_requests_read_v1('{"operation":"months","dateFrom":"2026-02-29"}')$$,
+  '22023','HISTORICAL_REQUESTS_QUERY_INVALID','invalid calendar date is rejected');
+select throws_ok($$select public.historical_requests_read_v1('{"operation":"months","dateFrom":"2026-10-02","dateTo":"2026-10-01"}')$$,
+  '22023','HISTORICAL_REQUESTS_QUERY_INVALID','reversed report range is rejected');
+select ok(exists(select 1 from jsonb_array_elements(public.historical_requests_read_v1(jsonb_build_object('operation','requests',
+  'customerKey','customer:id:'||md5('cust-1'),'consigneeKey','customer:id:'||md5('cust-1')||'|consignee:id:'||md5('cons-1'),
+  'recordKind','orders'))->'rows') r where r->>'id'='hist-executive-archived' and r->>'spec'='8 feet'
+  and r#>>'{photoLinks,0}'='https://example.invalid/request.jpg' and r->>'sentAt' is not null),
+  'archived specs, photos and sent metadata survive missing normalized columns');
+
+select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000005',true);
+select ok(not (public.historical_requests_read_v1('{"operation":"summary"}')->>'financials')::boolean,
+  'ordinary administrator is not a financial principal');
+insert into private.request_financial_admins_v1(profile_id) values('e7410000-0000-4000-8000-000000000005');
+select ok((public.historical_requests_read_v1('{"operation":"summary"}')->>'financials')::boolean,
+  'explicitly designated active administrator can see reporting totals');
+update private.request_financial_admins_v1 set active=false where profile_id='e7410000-0000-4000-8000-000000000005';
+select ok(not (public.historical_requests_read_v1('{"operation":"summary"}')->>'financials')::boolean,
+  'revoking designation immediately redacts reporting totals');
+update public.profiles set role='SUPERADMIN' where id='e7410000-0000-4000-8000-000000000005';
+select ok(not private.navigation_module_allowed_v1('e7410000-0000-4000-8000-000000000005','historical-requests'),
+  'a super-admin role alone does not designate financial access');
+update private.request_financial_admins_v1 set active=true where profile_id='e7410000-0000-4000-8000-000000000005';
+select ok((public.historical_requests_read_v1('{"operation":"summary"}')->>'financials')::boolean,
+  'explicitly designated super-admin can use the financial reporting RPC');
+insert into private.navigation_view_overrides(profile_id,view_key,allowed)
+values('e7410000-0000-4000-8000-000000000005','historical-requests',false);
+select throws_ok($$select public.historical_requests_read_v1('{"operation":"summary"}')$$,'42501','HISTORICAL_REQUESTS_FORBIDDEN',
+  'explicit navigation denial remains effective for designated super-admins');
+update public.profiles set role='User' where id='e7410000-0000-4000-8000-000000000004';
+select ok(not private.history_dylan_financial_v1('e7410000-0000-4000-8000-000000000004'),
+  'Dylan username without an admin role cannot receive financial authority');
+update public.profiles set role='ADMIN' where id='e7410000-0000-4000-8000-000000000004';
+select ok(private.history_dylan_financial_v1('e7410000-0000-4000-8000-000000000004'),
+  'verified active Dylan admin retains financial authority');
+
+select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000004',true);
+insert into public.ph_master_inventory(unique_id,itemcode,commonname,listprice)
+values('hist-leading-zero','00012','Leading Zero Plant','7'),('hist-no-leading-zero','12','Different Plant','99');
+select is(private.history_catalog_price_v1('00012'),7::numeric,'textual item codes preserve leading zeroes');
+update public.ph_master_inventory set listprice='12' where unique_id='hist-master-a';
+select is((public.historical_requests_read_v1('{"operation":"summary","recordKind":"orders"}')#>>'{summary,totalValue}')::numeric,
+  60::numeric,'reports immediately use updated current catalog prices');
+update public.ph_active_request set req_qty='4' where unique_id='hist-executive-active';
+select is((select total_value from private.request_financial_values_v1 where source_table='ph_active_request' and request_id='hist-executive-active'),
+  48::numeric,'incoming request edits refresh private calculated values');
+update public.ph_master_inventory set listprice='10' where unique_id='hist-master-a';
+
+insert into public.ph_request_history(unique_id,assigned_rep_id,customeridentityid,customername,consigneeidentityid,consigneename,itemcode,req_qty,created_at,snapshot)
+values('hist-dst-start','e7410000-0000-4000-8000-000000000001','cust-1','Acme Customer','cons-1','North Consignee','HIST-A','1','2026-03-08T06:00:00Z','{"dock":"1"}'),
+  ('hist-dst-end','e7410000-0000-4000-8000-000000000001','cust-1','Acme Customer','cons-1','North Consignee','HIST-A','1','2026-03-09T04:59:59Z','{"dock":"1"}'),
+  ('hist-dst-next','e7410000-0000-4000-8000-000000000001','cust-1','Acme Customer','cons-1','North Consignee','HIST-A','1','2026-03-09T05:00:00Z','{"dock":"1"}');
+select is((public.historical_requests_read_v1('{"operation":"summary","recordKind":"orders","dateFrom":"2026-03-08","dateTo":"2026-03-08"}')#>>'{summary,requestCount}')::integer,
+  2,'Chicago daylight-saving report day includes its actual 23-hour interval');
+select is(private.history_redact_financial_v1('{"snapshot":{"LIST_PRICE":10,"total_value":20,"quantity":2},"rows":[{"unitprice":5,"status":"Pending"}]}'),
+  '{"snapshot":{"quantity":2},"rows":[{"status":"Pending"}]}'::jsonb,'legacy nested snapshots redact monetary fields recursively');
+select ok(not exists(select 1 from jsonb_array_elements(public.historical_requests_read_v1(jsonb_build_object('operation','customers',
+  'customerKey','customer:id:'||md5('cust-1')))->'rows') r where r->>'customerKey'<>'customer:id:'||md5('cust-1')),
+  'customer report slice does not append unrelated mapping directory groups');
+select is((public.historical_requests_read_v1('{"operation":"folders","repKey":"rep:e7410000-0000-4000-8000-000000000001"}')#>>'{rows,0,customerId}'),
+  'cust-1','folder response includes its stable external customer identity');
+select set_config('request.jwt.claim.sub','e7410000-0000-4000-8000-000000000001',true);
+select ok(not exists(select 1 from jsonb_array_elements(public.historical_requests_read_v1(jsonb_build_object('operation','requests',
+  'customerKey','customer:id:'||md5('cust-1'),'consigneeKey','customer:id:'||md5('cust-1')||'|consignee:id:'||md5('cons-1')))->'rows') r
+  where r->>'listPrice' is not null or r->>'totalValue' is not null or r->>'unresolvedReason' is not null),
+  'rep drill-down contains no price, dollar totals or financial explanations');

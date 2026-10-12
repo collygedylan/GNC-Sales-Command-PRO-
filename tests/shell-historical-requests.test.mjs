@@ -48,11 +48,12 @@ test('financial reads reject replaced identities and cancelled responses', async
   await assert.rejects(replaced.historicalRequestsTransport({ operation: 'customers' }), /session changed/);
 });
 
-test('new navigation keeps legacy request history separate and destroys financial memory on logout', () => {
+test('shared history navigation destroys private financial memory on logout and leaving either history view', () => {
   assert.match(html, /id="view-historical-requests"/);
   assert.match(html, /id="view-request-history"/);
   assert.match(html, /view: 'historical-requests', label: 'Historical Requests'/);
-  assert.match(html, /if \(nextViewId !== 'historical-requests'\) destroyHistoricalRequestsIsland\(\)/);
+  assert.match(html, /if \(!\['historical-requests', 'request-history'\]\.includes\(nextViewId\)\) destroyHistoricalRequestsIsland\(\)/);
+  assert.match(html, /window\.ensureHistoricalRequestsIsland = ensureHistoricalRequestsIsland/);
   for (const match of html.matchAll(/nativeAuthProfile = null;/g)) {
     const before = html.slice(match.index - 110, match.index);
     assert.ok(before.endsWith('let ') || before.includes('destroyHistoricalRequestsIsland();'), 'profile resets clear private financial memory');

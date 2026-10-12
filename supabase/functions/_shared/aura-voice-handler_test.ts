@@ -15,7 +15,10 @@ function fixture(options: { actor?: AuraActor | null; tool?: { name: string; arg
   const calls: AuraMemoryArgs[] = [], historyCalls: AuraHistoryQuery[] = [], providerBodies: unknown[] = [];
   const inventoryFilters: unknown[] = [];
   let inventoryRead: () => unknown = inventory;
-  let historyRead: (query: AuraHistoryQuery) => unknown = query => ({ scope: "own", revision: "history1", rows: query.operation === "summary" ? [] : [{ key: "customer1", label: "Customer", requestCount: 2, totalValue: 500, unpricedCount: 0 }], total: query.operation === "summary" ? 0 : 1, summary: { requestCount: 2, totalValue: 500, unpricedCount: 0 } });
+  let historyRead: (query: AuraHistoryQuery) => unknown = query => {
+    const financials = activeActor?.username === 'dylan_collyge' && ['ADMIN','ADMINISTRATOR'].includes(activeActor.role);
+    return { scope: financials ? 'all' : 'own', financials, revision: 'history1', rows: query.operation === 'summary' ? [] : [{ key: 'customer1', label: 'Customer', requestCount: 2, totalValue: financials ? 500 : null, unpricedCount: financials ? 0 : null }], total: query.operation === 'summary' ? 0 : 1, summary: { requestCount: 2, totalValue: financials ? 500 : null, unpricedCount: financials ? 0 : null } };
+  };
   let readTurns: unknown[] = [];
   let replay = false;
   const activeActor = options.actor === undefined ? actor : options.actor;
@@ -125,7 +128,7 @@ Deno.test("confirmed plant choices retain exact identity for follow-ups and stal
 Deno.test("rep history uses its own scoped RPC summary and exact fallback disclosure", async () => {
   const f = fixture({ actor: { ...actor, role: "REP", username: "rep_one", inventory: false, drafts: false }, tool: { name: "history", args: { operation: "summary" } } });
   const response = await f.run({ text: "What is the total value of my historical requests?", turnId: crypto.randomUUID() });
-  assert(response.status === 200 && String(response.body.reply).includes("your assigned requests: $500.00") && String(response.body.reply).includes("25 units"));
+  assert(response.status === 200 && String(response.body.reply).includes("2 of your assigned requests") && !String(response.body.reply).includes("$") && String(response.body.reply).includes("restricted"));
   assert(f.historyCalls.length === 1 && !f.inventoryCalls && !JSON.stringify(f.historyCalls).includes("actor"));
 });
 Deno.test("named historical totals use a filtered drill-down instead of the unfiltered summary RPC", async () => {
@@ -243,9 +246,28 @@ Deno.test("history reload redacts data when permission scope or source revision 
   const f = fixture({ tool: { name: "history", args: { operation: "summary" } } }); await f.run();
   const saved = f.saved;
   f.setReadTurns([{ text: "historical requests", response: saved?.response, sources: saved?.sources }]);
-  f.setHistory(() => ({ scope: "own", revision: "history2", rows: [], total: 0, summary: { totalValue: 0, requestCount: 0, unpricedCount: 0 } }));
+  f.setHistory(() => ({ scope: "all", financials: true, revision: "history2", rows: [], total: 0, summary: { totalValue: 0, requestCount: 0, unpricedCount: 0 } }));
   const response = await f.run({ mode: "read", conversationId: CHAT });
   assert(response.status === 200 && JSON.stringify(response.body.turns).includes("fresh query") && !JSON.stringify(response.body.turns).includes("500"));
+});
+
+Deno.test("history financial scope revocation hides saved money even when source revisions match", async () => {
+  const f = fixture({ tool: { name: "history", args: { operation: "summary" } } });
+  await f.run();
+  const saved = f.saved;
+  f.setReadTurns([{ text: "historical requests", response: saved?.response, sources: saved?.sources }]);
+  f.setHistory(() => ({ scope: "own", financials: false, revision: "history1", rows: [], total: 0,
+    summary: { requestCount: 2, totalValue: null, unpricedCount: null } }));
+  const response = await f.run({ mode: "read", conversationId: CHAT });
+  assert(response.status === 200 && JSON.stringify(response.body.turns).includes("fresh query") && !JSON.stringify(response.body.turns).includes("500"));
+});
+
+Deno.test("malformed own-scope monetary results are rejected before rendering", async () => {
+  const f = fixture({ tool: { name: "history", args: { operation: "summary" } } });
+  f.setHistory(() => ({ scope: "own", financials: false, revision: "history1", rows: [], total: 0,
+    summary: { requestCount: 2, totalValue: 500, unpricedCount: 0 } }));
+  const response = await f.run();
+  assert(response.status === 400 && response.body.code === "AURA_RESULT_INVALID" && !JSON.stringify(response.body).includes("500"));
 });
 Deno.test("client supplied context, roles and chosen filters do not override stored context", async () => {
   const f = fixture(); const response = await f.run({ text: "stock", turnId: crypto.randomUUID(), actorId: "other", role: "ADMIN", context: { tool: { name: "history" }, secret: "injected-context" } });
@@ -265,7 +287,7 @@ Deno.test("cancelled requests cannot commit late data or update active context",
 });
 Deno.test("exact historical customer and consignee selections stay bound to server-provided keys", async () => {
   const f = fixture({ tool: { name: "history", args: { operation: "requests" } } });
-  f.setHistory(query => ({ scope: "own", revision: "h1", total: 1,
+  f.setHistory(query => ({ scope: "all", financials: true, revision: "h1", total: 1,
     rows: query.operation === "customers" ? [{ key: "opaque-customer", label: "Shared Name", requestCount: 1, totalValue: 100, unpricedCount: 0 }]
       : query.operation === "consignees" ? [{ key: "opaque-consignee", label: "Destination", requestCount: 1, totalValue: 100, unpricedCount: 0 }]
       : [{ id: "request-owned", customerName: "Shared Name", consigneeName: "Destination", effectiveQty: 25, listPrice: 4, totalValue: 100 }],

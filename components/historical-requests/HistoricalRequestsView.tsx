@@ -9,11 +9,11 @@ import type {
 } from './contract';
 
 const PAGE_SIZE = 25;
-type Level = 'customers' | 'consignees' | 'requests';
+type Level = 'reps' | 'customers' | 'requests';
 type PageResult = { data?: HistoricalRequestsPage; error?: Error; isLoading: boolean; retry(): void };
 
 function keyFor(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery) {
-  return JSON.stringify([bridge.scopeKey, bridge.revisionKey, query.operation, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
+  return JSON.stringify([bridge.scopeKey, bridge.revisionKey, query.operation, query.repKey, query.recordKind, query.dateFrom, query.dateTo, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
 }
 
 function usePage(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery | null): PageResult {
@@ -58,6 +58,7 @@ function unresolvedValueMessage(reason: string | null) {
     case 'invalid_request_quantity': return 'Request quantity is invalid; value cannot be calculated.';
     case 'current_master_row_unavailable': return 'Current inventory details are unavailable; value cannot be calculated.';
     case 'current_list_price_unavailable_or_invalid': return 'Current master list price is unavailable or invalid.';
+    case 'current_catalog_list_price_unavailable_or_conflicting': return 'The active catalog has no usable base list price for this item code.';
     default: return 'Current request value could not be resolved.';
   }
 }
@@ -82,126 +83,212 @@ function Pager({ page, pageSize, total, onPage }: { page: number; pageSize: numb
 }
 
 function SummaryCards({ page }: { page: HistoricalRequestsPage }) {
+  if (!page.financials || page.scope !== 'all' || page.summary.totalValue === null || page.summary.unpricedCount === null) return null;
   return <section className="historical-requests__summary" aria-label="Historical request totals">
-    <div><span>Requests</span><strong>{page.summary.requestCount.toLocaleString()}</strong></div>
+    <div><span>Records</span><strong>{page.summary.requestCount.toLocaleString()}</strong></div>
     <div><span>Priced value</span><strong>{currency(page.summary.totalValue)}</strong></div>
     <div><span>Unresolved prices</span><strong>{page.summary.unpricedCount.toLocaleString()}</strong></div>
   </section>;
 }
 
-function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge }) {
-  const [level, setLevel] = useState<Level>('customers');
-  const [customer, setCustomer] = useState<HistoricalRequestGroup | null>(null);
-  const [consignee, setConsignee] = useState<HistoricalRequestGroup | null>(null);
-  const [establishedScope, setEstablishedScope] = useState<HistoricalRequestsPage['scope'] | null>(null);
-  const [customerPage, setCustomerPage] = useState(0);
-  const [detailPage, setDetailPage] = useState(0);
-  const [repPage, setRepPage] = useState(0);
-  const customers = usePage(bridge, level === 'customers' ? { operation: 'customers', page: customerPage, pageSize: PAGE_SIZE } : null);
-  const currentCustomerScope = level === 'customers' && customers.data && !customers.error
-    ? customers.data.scope
-    : establishedScope;
+export function historicalPhotoUrls(values: Array<string | null>): string[] {
+  const urls = new Set<string>();
+  const add = (value: unknown, depth = 0) => {
+    if (depth > 3 || urls.size >= 20) return;
+    if (Array.isArray(value)) { value.slice(0, 20).forEach(item => add(item, depth + 1)); return; }
+    if (typeof value !== 'string') return;
+    const text = value.trim();
+    if (text.startsWith('[')) { try { add(JSON.parse(text), depth + 1); } catch {} return; }
+    if (/^https:\/\/[^\s]+$/i.test(text) || /^\/[^/\s][^\s]*$/.test(text)) urls.add(text);
+  };
+  values.forEach(value => add(value));
+  return [...urls];
+}
+
+function ExecutiveReports({ bridge, recordKind, repKey, customerKey, dateFrom, dateTo, onDates, onScopeInvalid }:
+  { bridge: HistoricalRequestsBridge; recordKind: 'requests' | 'orders'; repKey?: string; customerKey?: string;
+    dateFrom: string; dateTo: string; onDates(from: string, to: string): void; onScopeInvalid(): void }) {
+  const [grouping, setGrouping] = useState<'summary' | 'months' | 'reps' | 'customers'>('summary');
+  const [reportRep, setReportRep] = useState('');
+  const [reportCustomer, setReportCustomer] = useState('');
+  const [directory, setDirectory] = useState<{ reps: HistoricalRequestGroup[]; customers: HistoricalRequestGroup[] }>({ reps: [], customers: [] });
+  const [directoryError, setDirectoryError] = useState('');
+  const [reportPage, setReportPage] = useState(0);
+  const [preset, setPreset] = useState('all');
+  const [month, setMonth] = useState('');
+  const validDates = !dateFrom || !dateTo || dateFrom <= dateTo;
+  const selectedRep = reportRep === '__all__' ? undefined : reportRep || repKey;
+  const selectedCustomer = reportCustomer === '__all__' ? undefined : reportCustomer || customerKey;
+  const filters = { ...(dateFrom ? { dateFrom } : {}), ...(dateTo ? { dateTo } : {}),
+    ...(selectedRep ? { repKey: selectedRep } : {}),
+    ...(selectedCustomer ? { customerKey: selectedCustomer } : {}) };
+  const report = usePage(bridge, validDates ? { operation: grouping, recordKind, ...filters, page: reportPage, pageSize: PAGE_SIZE } : null);
   useEffect(() => {
-    if (level === 'customers' && customers.data && !customers.error) setEstablishedScope(customers.data.scope);
-  }, [level, customers.data?.scope, customers.error]);
-  const showDashboard = currentCustomerScope === 'all';
-  // Keep the all-scope authorization probe alive while drilling into customer
-  // details. Its scope can change after the customer page has been cached.
-  const reps = usePage(bridge, showDashboard ? { operation: 'reps', page: repPage, pageSize: PAGE_SIZE } : null);
-  const consignees = usePage(bridge, level === 'consignees' && customer ? {
-    operation: 'consignees', customerKey: customer.key, page: detailPage, pageSize: PAGE_SIZE,
-  } : null);
-  const requests = usePage(bridge, level === 'requests' && customer && consignee ? {
-    operation: 'requests', customerKey: customer.key, consigneeKey: consignee.key, page: detailPage, pageSize: PAGE_SIZE,
-  } : null);
-  const current = level === 'customers' ? customers : level === 'consignees' ? consignees : requests;
-  const currentScopeMismatch = Boolean(current.data && currentCustomerScope && current.data.scope !== currentCustomerScope);
-  const repsScopeMismatch = showDashboard && !!reps.data && reps.data.scope !== 'all';
-  const allScopeProbeFailed = showDashboard && (Boolean(reps.error) || repsScopeMismatch);
-  const scopeGuardFailed = allScopeProbeFailed || currentScopeMismatch;
-  const currentCanDisplay = !current.error && !scopeGuardFailed
-    && (!currentCustomerScope || current.data?.scope === currentCustomerScope);
-  const currentRows = currentCanDisplay ? current.data?.rows || [] : [];
-  const groups = currentRows.filter(isGroup);
-  const requestRows = currentRows.filter((row): row is HistoricalRequestRow => !isGroup(row));
-  const dashboardReady = showDashboard && reps.data?.scope === 'all';
-  const displayedSummary = level === 'customers' && !customers.error && showDashboard && !scopeGuardFailed ? customers.data : null;
-  const displayedReps = !reps.error && reps.data?.scope === 'all' ? reps.data : null;
-  const currentTotal = currentCanDisplay ? current.data?.total.toLocaleString() : undefined;
-
-  const recoverScope = () => {
-    if (level !== 'customers') {
-      setLevel('customers');
-      setCustomer(null);
-      setConsignee(null);
-      setDetailPage(0);
+    const controller = new AbortController();
+    setDirectory({ reps: [], customers: [] }); setDirectoryError('');
+    async function readAll(operation: 'reps' | 'customers', selectedRep?: string) {
+      const result: HistoricalRequestGroup[] = []; let revision = '';
+      for (let page = 0; ; page++) {
+        const data = await bridge.read({ operation, recordKind: 'all', ...(selectedRep ? { repKey: selectedRep } : {}), page, pageSize: 100 }, controller.signal);
+        if (data.scope !== 'all' || !data.financials) { onScopeInvalid(); throw new Error('Reporting scope changed. Refresh the report.'); }
+        if (revision && revision !== data.revision) throw new Error('Reporting source data changed. Refresh the report.');
+        revision = data.revision;
+        result.push(...data.rows.filter(isGroup));
+        if (result.length >= data.total) return result;
+        if (!data.rows.length || page >= 10000) throw new Error('The complete reporting directory could not be read.');
+      }
     }
-    customers.retry();
-    if (showDashboard) reps.retry();
+    void Promise.all([readAll('reps'), readAll('customers', selectedRep)]).then(([reps, customers]) => {
+      if (!controller.signal.aborted) setDirectory({ reps, customers });
+    }).catch(error => { if (!controller.signal.aborted) setDirectoryError(error.message); });
+    return () => controller.abort();
+  }, [bridge.scopeKey, bridge.revisionKey, selectedRep]);
+  useEffect(() => { setReportPage(0); }, [grouping, recordKind, reportRep, reportCustomer, repKey, customerKey, dateFrom, dateTo]);
+  useEffect(() => { setReportCustomer(''); }, [reportRep, repKey]);
+  const ready = !report.error && report.data?.scope === 'all' && report.data.financials === true;
+  useEffect(() => {
+    if (report.data && (report.data.scope !== 'all' || !report.data.financials)) onScopeInvalid();
+  }, [report.data?.scope, report.data?.financials]);
+  const setPresetDates = (value: string) => {
+    setPreset(value);
+    if (value === 'all') onDates('', '');
+    if (value === 'ytd') {
+      const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const part = (type: string) => parts.find(value => value.type === type)?.value || '';
+      const today = `${part('year')}-${part('month')}-${part('day')}`;
+      onDates(part('year') + '-01-01', today);
+    }
   };
+  const selectMonth = (value: string) => {
+    setMonth(value);
+    if (!/^\d{4}-\d{2}$/.test(value)) { onDates('', ''); return; }
+    const [year, month] = value.split('-').map(Number);
+    const last = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    onDates(value + '-01', value + '-' + String(last).padStart(2, '0'));
+  };
+  return <section className="historical-requests__panel" aria-labelledby="executive-report-title">
+    <h2 id="executive-report-title">Executive reporting</h2>
+    <div className="historical-requests__report-filters">
+      <label>Period<select value={preset} onChange={event => setPresetDates(event.target.value)}><option value="all">All dates</option><option value="month">Specific month</option><option value="range">Date range</option><option value="ytd">Year to date</option></select></label>
+      {preset === 'month' && <label>Month<input type="month" value={month} onChange={event => selectMonth(event.target.value)} /></label>}
+      {preset === 'range' && <><label>From date<input type="date" value={dateFrom} onChange={event => onDates(event.target.value, dateTo)} /></label><label>Through date<input type="date" value={dateTo} onChange={event => onDates(dateFrom, event.target.value)} /></label></>}
+      <label>Reporting rep<select value={reportRep} onChange={event => setReportRep(event.target.value)}><option value="">{repKey ? 'Current rep' : 'All reps'}</option>{repKey && <option value="__all__">All reps</option>}{directory.reps.map(row => <option key={row.key} value={row.key}>{row.label}</option>)}</select></label>
+      <label>Reporting customer<select value={reportCustomer} onChange={event => setReportCustomer(event.target.value)}><option value="">{customerKey ? 'Current customer' : 'All customers'}</option>{customerKey && <option value="__all__">All customers</option>}{directory.customers.map(row => <option key={row.key} value={row.key}>{row.label}</option>)}</select></label>
+      <label>Group totals<select value={grouping} onChange={event => setGrouping(event.target.value as typeof grouping)}><option value="summary">Aggregate total</option><option value="months">Per month</option><option value="reps">Per rep</option><option value="customers">Per customer</option></select></label>
+    </div>
+    {!validDates && <p role="alert">The through date must be on or after the from date.</p>}
+    {directoryError && <p role="alert">{directoryError}</p>}
+    {report.isLoading && !report.data && <p role="status">Loading financial report…</p>}
+    {report.error && <PageStatus state={report} empty="" onRetry={report.retry} />}
+    {report.data && !report.error && !ready && <p role="alert">Financial reporting scope could not be confirmed.</p>}
+    {ready && report.data && <SummaryCards page={report.data} />}
+    {ready && grouping !== 'summary' && <div className="historical-requests__report-table"><table><caption>Filtered financial totals</caption><thead><tr><th>Group</th><th>Records</th><th>Priced value</th><th>Unresolved</th></tr></thead>
+      <tbody>{report.data!.rows.filter(isGroup).map(row => <tr key={row.key}><th scope="row">{row.label}</th><td>{row.requestCount}</td><td>{row.totalValue === null ? 'Unavailable' : currency(row.totalValue)}</td><td>{row.unpricedCount ?? 'Unavailable'}</td></tr>)}</tbody></table></div>}
+    {ready && report.data && report.data.total > report.data.pageSize && <Pager page={reportPage} pageSize={report.data.pageSize} total={report.data.total} onPage={setReportPage} />}
+    <p className="historical-requests__pricing-note">Dates use the nursery’s Chicago calendar; the through date is inclusive. Value uses the active catalog item-code list price. Blank or zero quantity follows the existing 25-unit default.</p>
+  </section>;
+}
 
+function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge }) {
+  const [level, setLevel] = useState<Level>('reps');
+  const [rep, setRep] = useState<HistoricalRequestGroup | null>(null);
+  const [folder, setFolder] = useState<HistoricalRequestGroup | null>(null);
+  const [recordKind, setRecordKind] = useState<'requests' | 'orders'>('requests');
+  const [page, setPage] = useState(0);
+  const [repPage, setRepPage] = useState(0);
+  const [establishedScope, setEstablishedScope] = useState<HistoricalRequestsPage['scope'] | null>(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [reportScopeInvalid, setReportScopeInvalid] = useState(false);
+  const dateFilters = { ...(dateFrom ? { dateFrom } : {}), ...(dateTo ? { dateTo } : {}) };
+  const validDates = !dateFrom || !dateTo || dateFrom <= dateTo;
+  // Keep the authorization probe active throughout the drill-down and revalidation.
+  const reps = usePage(bridge, { operation: 'reps', recordKind, page: repPage, pageSize: PAGE_SIZE });
+  const scope = reps.data?.scope;
+  useEffect(() => {
+    if (!reps.data || reps.error) return;
+    if (establishedScope === null) setEstablishedScope(reps.data.scope);
+    if (reps.data.scope === 'own' && (level === 'reps' || rep?.key !== reps.data.ownRepKey)) {
+      const own = reps.data.rows.filter(isGroup).find(row => row.key === reps.data!.ownRepKey);
+      if (own) { setRep(own); setFolder(null); setLevel('customers'); setPage(0); }
+    }
+  }, [reps.data, reps.error, level, rep?.key, establishedScope]);
+  const folders = usePage(bridge, validDates && level === 'customers' && rep ? { operation: 'folders', repKey: rep.key, recordKind, ...dateFilters, page, pageSize: PAGE_SIZE } : null);
+  const requests = usePage(bridge, validDates && level === 'requests' && rep && folder?.customerKey && folder?.consigneeKey ? {
+    operation: 'requests', repKey: rep.key, customerKey: folder.customerKey, consigneeKey: folder.consigneeKey, recordKind, ...dateFilters, page, pageSize: PAGE_SIZE,
+  } : null);
+  const current = level === 'reps' ? reps : level === 'customers' ? folders : requests;
+  const scopeGuardFailed = Boolean(reportScopeInvalid || reps.error || (scope && establishedScope && scope !== establishedScope)
+    || (current.data && scope && (current.data.scope !== scope || current.data.financials !== reps.data?.financials))
+    || (scope === 'own' && rep && rep.key !== reps.data?.ownRepKey));
+  const currentCanDisplay = validDates && !scopeGuardFailed && !current.error && Boolean(reps.data)
+    && current.data?.recordKind === recordKind;
+  const rows = currentCanDisplay ? current.data?.rows || [] : [];
+  const groups = rows.filter(isGroup);
+  const requestRows = rows.filter((row): row is HistoricalRequestRow => !isGroup(row));
+  const ownerMismatch = requestRows.some(row => rep?.key !== 'rep:' + (row.salesrepUserId || 'unassigned'));
+  const financials = !scopeGuardFailed && !ownerMismatch && reps.data?.scope === 'all' && reps.data.financials === true;
+  const recoverScope = () => {
+    setReportScopeInvalid(false); setEstablishedScope(null); setRep(null); setFolder(null); setLevel('reps'); setPage(0); setRepPage(0); reps.retry();
+  };
   const goBack = () => {
-    if (level === 'requests') { setLevel('consignees'); setConsignee(null); setDetailPage(0); }
-    else if (level === 'consignees') { setLevel('customers'); setCustomer(null); setDetailPage(0); }
+    setPage(0);
+    if (level === 'requests') { setFolder(null); setLevel('customers'); }
+    else if (scope === 'all') { setRep(null); setLevel('reps'); }
   };
-  const selectCustomer = (group: HistoricalRequestGroup) => {
-    if (customers.data) setEstablishedScope(customers.data.scope);
-    setCustomer(group); setConsignee(null); setLevel('consignees'); setDetailPage(0);
+  const selectKind = (kind: 'requests' | 'orders') => {
+    setRecordKind(kind); setFolder(null); setPage(0); setRepPage(0); setLevel(rep ? 'customers' : 'reps');
   };
-  const selectConsignee = (group: HistoricalRequestGroup) => { setConsignee(group); setLevel('requests'); setDetailPage(0); };
+  const selectGroup = (group: HistoricalRequestGroup) => {
+    setPage(0);
+    if (level === 'reps') { setRep(group); setFolder(null); setLevel('customers'); }
+    else if (group.customerKey && group.consigneeKey) { setFolder(group); setLevel('requests'); }
+  };
+  const noun = recordKind === 'orders' ? 'orders' : 'requests';
 
   return <main className="historical-requests" aria-labelledby="historical-requests-title">
-    <header className="historical-requests__header">
-      <div>
-        <p className="historical-requests__eyebrow">Sales workspace</p>
-        <h1 id="historical-requests-title">Historical Requests</h1>
-        <p className="historical-requests__description">Browse customer requests and their recorded status.</p>
-      </div>
-      {level !== 'customers' && <button className="historical-requests__back" type="button" onClick={goBack}>Back</button>}
-    </header>
-
-    {scopeGuardFailed && <div className="historical-requests__state historical-requests__state--error" role="alert">
-      {level === 'customers' ? 'Dashboard scope could not be confirmed.' : 'Data scope could not be confirmed.'}
-      <button type="button" onClick={recoverScope}>{level === 'customers' ? 'Refresh dashboard' : 'Return to customers and refresh'}</button>
+    <header className="historical-requests__header"><div>
+      <p className="historical-requests__eyebrow">Sales workspace</p><h1 id="historical-requests-title">Request History</h1>
+      <p className="historical-requests__description">{rep ? rep.label + ' · ' : ''}Browse customer and consignee folders.</p>
+    </div>{(level === 'requests' || level === 'customers' && scope === 'all') && <button className="historical-requests__back" type="button" onClick={goBack}>Back</button>}</header>
+    <nav className="historical-requests__tabs" aria-label="History record type">
+      <button type="button" aria-pressed={recordKind === 'requests'} onClick={() => selectKind('requests')}>Requests</button>
+      <button type="button" aria-pressed={recordKind === 'orders'} onClick={() => selectKind('orders')}>Orders</button>
+    </nav>
+    {(scopeGuardFailed || ownerMismatch) && <div className="historical-requests__state historical-requests__state--error" role="alert">
+      {level === 'reps' ? 'Dashboard scope could not be confirmed.' : 'Data scope could not be confirmed.'}
+      <button type="button" onClick={recoverScope}>{level === 'reps' ? 'Refresh dashboard' : 'Return to customers and refresh'}</button>
     </div>}
-    {level === 'customers' && showDashboard && !allScopeProbeFailed && !dashboardReady && <div className="historical-requests__state" role="status">Loading dashboard…</div>}
-    {level === 'customers' && displayedSummary && <SummaryCards page={displayedSummary} />}
-    {level === 'customers' && dashboardReady && !scopeGuardFailed && displayedReps && <>
-      <section className="historical-requests__panel" aria-labelledby="historical-reps-title">
-        <div className="historical-requests__section-heading"><h2 id="historical-reps-title">Requests by sales rep</h2>
-          {displayedReps && <span>{displayedReps.total.toLocaleString()} reps</span>}</div>
-        {displayedReps.rows.length === 0
-          ? <div className="historical-requests__state" role="status">No sales rep totals are available.</div>
-          : <div className="historical-requests__groups">{displayedReps.rows.filter(isGroup).map(row => <div className="historical-requests__group" key={row.key}>
-            <span className="historical-requests__group-name">{row.label}</span><span>{row.requestCount.toLocaleString()} requests</span>
-            <strong>{currency(row.totalValue)}</strong>{row.unpricedCount > 0 && <small>{row.unpricedCount} unresolved price{row.unpricedCount === 1 ? '' : 's'}</small>}
-          </div>)}</div>}
-        {displayedReps && <Pager page={repPage} pageSize={displayedReps.pageSize} total={displayedReps.total} onPage={setRepPage} />}
-      </section>
-    </>}
-
+    {financials && <ExecutiveReports bridge={bridge} recordKind={recordKind} repKey={rep?.key} customerKey={folder?.customerKey || undefined}
+      dateFrom={dateFrom} dateTo={dateTo} onDates={(from, to) => { setDateFrom(from); setDateTo(to); setPage(0); }}
+      onScopeInvalid={() => { setReportScopeInvalid(true); reps.retry(); }} />}
     <section className="historical-requests__panel" aria-labelledby="historical-browse-title">
       <div className="historical-requests__section-heading"><h2 id="historical-browse-title">
-        {level === 'customers' ? 'Customers' : level === 'consignees' ? `${customer?.label || 'Customer'} · Consignees` : `${consignee?.label || 'Consignee'} · Requests`}
-      </h2><span>{currentTotal || '—'} {level === 'customers' ? 'customers' : level === 'consignees' ? 'consignees' : 'requests'}</span>
-        {current.data && <button className="historical-requests__refresh" type="button" onClick={current.retry}>Refresh</button>}</div>
-      {level === 'customers' && <p className="historical-requests__pricing-note">Value uses current master list price × request quantity. Blank or zero quantity defaults to 25. Unavailable or invalid prices are shown as unresolved and excluded from value totals.</p>}
-      {!scopeGuardFailed && <PageStatus state={current} empty={level === 'customers' ? 'No customers found.' : level === 'consignees' ? 'No consignees found for this customer.' : 'No requests found for this consignee.'} onRetry={current.retry} />}
-      {currentCanDisplay && groups.length > 0 && <div className="historical-requests__groups">{groups.map(group => <button className="historical-requests__group historical-requests__group-button" type="button" key={group.key}
-        onClick={() => level === 'customers' ? selectCustomer(group) : selectConsignee(group)}>
-        <span className="historical-requests__group-name">{group.label}</span><span>{group.requestCount.toLocaleString()} requests</span>
-        <strong>{currency(group.totalValue)}</strong>{group.unpricedCount > 0 && <small>{group.unpricedCount} unresolved price{group.unpricedCount === 1 ? '' : 's'}</small>}
+        {level === 'reps' ? 'Sales Reps' : level === 'customers' ? 'Customers' : `${folder?.label || 'Customer'} · ${folder?.consigneeName || 'Consignee'} · ${recordKind === 'orders' ? 'Orders' : 'Requests'}`}
+      </h2><span>{currentCanDisplay ? current.data?.total.toLocaleString() : '—'} {level === 'reps' ? 'reps' : level === 'customers' ? 'folders' : noun}</span>
+        {current.data && <button className="historical-requests__refresh" type="button" onClick={() => { reps.retry(); current.retry(); }}>Refresh</button>}</div>
+      {financials && <p className="historical-requests__pricing-note">Value uses the active catalog item-code list price × request quantity. Blank or zero quantity defaults to 25. Unavailable prices are excluded from totals.</p>}
+      {!scopeGuardFailed && !ownerMismatch && <PageStatus state={current} empty={level === 'reps' ? 'No sales reps found.' : level === 'customers' ? 'No customer folders found.' : `No ${noun} found for this customer and consignee.`} onRetry={current.retry} />}
+      {currentCanDisplay && !ownerMismatch && groups.length > 0 && <div className="historical-requests__groups">{groups.map(group => <button className="historical-requests__group historical-requests__group-button" type="button" key={group.key} onClick={() => selectGroup(group)}>
+        <span className="historical-requests__group-name">{group.label}</span><span>{group.requestCount.toLocaleString()} {noun}</span>
+        {group.consigneeName && <small>{group.consigneeName}</small>}
+        {(group.customerId || group.consigneeId) && <small>{group.customerId ? 'Customer ID ' + group.customerId : ''}{group.customerId && group.consigneeId ? ' · ' : ''}{group.consigneeId ? 'Consignee ID ' + group.consigneeId : ''}</small>}
+        {financials && group.totalValue !== null && <strong>{currency(group.totalValue)}</strong>}
+        {financials && group.unpricedCount !== null && group.unpricedCount > 0 && <small>{group.unpricedCount} unresolved price{group.unpricedCount === 1 ? '' : 's'}</small>}
         <span className="historical-requests__chevron" aria-hidden="true">›</span>
       </button>)}</div>}
-      {currentCanDisplay && requestRows.length > 0 && <div className="historical-requests__request-list">{requestRows.map(row => <article className="historical-requests__request" key={row.id}>
+      {currentCanDisplay && !ownerMismatch && requestRows.length > 0 && <div className="historical-requests__request-list">{requestRows.map(row => <article className="historical-requests__request" key={row.id}>
         <div className="historical-requests__request-heading"><strong>{row.commonname || row.itemcode || 'Request'}</strong><span>{row.status}</span></div>
         <div className="historical-requests__request-meta">{row.itemcode || '—'}{row.location ? ` · ${row.location}` : ''}{row.requestedAt ? ` · ${new Date(row.requestedAt).toLocaleDateString()}` : ''}</div>
-        <div className="historical-requests__request-meta">{row.salesrepName || 'Unassigned'} · Qty {row.requestQty === null ? 'Unknown' : row.requestQty.toLocaleString()} (value qty {row.effectiveQty === null ? '—' : row.effectiveQty.toLocaleString()})</div>
-        {row.totalValue === null ? <p className="historical-requests__unpriced">Unresolved value: {unresolvedValueMessage(row.unresolvedReason)}</p>
-          : <p className="historical-requests__request-value">{currency(row.totalValue)} <span>at current price {row.listPrice === null ? '—' : currency(row.listPrice)}</span></p>}
+        <div className="historical-requests__request-meta">{row.salesrepName || 'Unassigned'} · Qty {row.requestQty === null ? 'Unknown' : row.requestQty.toLocaleString()}{row.dock !== null ? ` · Dock ${row.dock || '(blank value)'}` : ''}</div>
+        <dl className="historical-requests__facts"><div><dt>Spec</dt><dd>{row.spec || 'Not recorded'}</dd></div><div><dt>Caliper</dt><dd>{row.caliper || 'Not recorded'}</dd></div>
+          <div><dt>Sent</dt><dd>{row.sentAt ? new Date(row.sentAt).toLocaleString() : 'Not recorded'}</dd></div><div><dt>Delivery</dt><dd>{row.deliveryState}</dd></div></dl>
+        {row.comments && <p className="historical-requests__request-meta">{row.comments}</p>}{row.photoNotes && <p className="historical-requests__request-meta">{row.photoNotes}</p>}
+        <div className="historical-requests__photos">{historicalPhotoUrls(row.photoLinks).map((url, index) => <a key={url} href={url} target="_blank" rel="noopener noreferrer"><img src={url} loading="lazy" alt={`Request photo ${index + 1}`} /></a>)}</div>
+        {financials && (row.totalValue === null ? <p className="historical-requests__unpriced">Unresolved value: {unresolvedValueMessage(row.unresolvedReason)}</p>
+          : <p className="historical-requests__request-value">{currency(row.totalValue)} <span>at current price {row.listPrice === null ? '—' : currency(row.listPrice)}</span></p>)}
       </article>)}</div>}
-      {currentCanDisplay && current.data && current.data.total > current.data.pageSize && <Pager page={current.data.page} pageSize={current.data.pageSize} total={current.data.total} onPage={level === 'customers' ? setCustomerPage : setDetailPage} />}
-      {dashboardReady && level !== 'customers' && !scopeGuardFailed && <div className="historical-requests__scope-note">Dashboard totals are available to authorized administrators only.</div>}
+      {currentCanDisplay && !ownerMismatch && current.data && current.data.total > current.data.pageSize && <Pager page={current.data.page} pageSize={current.data.pageSize} total={current.data.total} onPage={level === 'reps' ? setRepPage : setPage} />}
     </section>
   </main>;
 }

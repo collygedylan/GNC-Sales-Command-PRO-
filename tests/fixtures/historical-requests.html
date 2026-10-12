@@ -2,18 +2,21 @@
 <button id="open" type="button">Open Historical Requests</button><div id="root"></div>
 <script>
 const own = new URLSearchParams(location.search).get('scope') !== 'all';
-const group = (key,label,requestCount,totalValue,unpricedCount=0) => ({key,label,requestCount,totalValue,unpricedCount});
-const summary = {requestCount:10,totalValue:4375,unpricedCount:2};
-const base = (query,rows,total=rows.length) => ({scope:own?'own':'all',revision:'history-r1',generatedAt:'2026-10-10T12:00:00Z',page:query.page||0,pageSize:25,total,rows,summary});
+const repId = '50000000-0000-4000-8000-000000000001';
+const repKey = 'rep:' + repId;
+const group = (key,label,requestCount,totalValue,unpricedCount=0,extra={}) => ({key,label,requestCount,totalValue:own?null:totalValue,unpricedCount:own?null:unpricedCount,customerKey:null,consigneeKey:null,consigneeName:null,...extra});
+const summary = {requestCount:10,totalValue:own?null:4375,unpricedCount:own?null:2};
+const base = (query,rows,total=rows.length) => ({scope:own?'own':'all',financials:!own,ownRepKey:repKey,recordKind:query.recordKind||'all',revision:'history-v3:fixture',generatedAt:'2026-10-10T12:00:00Z',page:query.page||0,pageSize:query.pageSize||25,total,rows,summary});
 window.historyFixture={calls:[],async read(query,signal){this.calls.push({query,aborted:signal?.aborted||false});
- if(query.operation==='customers') return base(query,query.page? [group('customer:002','South Nursery',8,875,1)] : [group('customer:001','North Nursery',2,3500,1),group('customer:002','South Nursery',8,875,1)],26);
- if(query.operation==='reps') return base(query,[group('rep:molly','Molly Dixon',5,1875,1),group('rep:kim','Kim Lee',5,2500,1)],2);
- if(query.operation==='consignees') return base(query,[group('consignee:east','East Yard',2,3500,1)],1);
+ if(query.operation==='customers') return base(query,query.page? [group('customer:002','South Nursery',8,875,1)] : [group('customer:001','North Nursery',2,3500,1),group('customer:002','South Nursery',8,875,1)],query.pageSize===100?2:26);
+ if(query.operation==='reps') return base(query,own?[group(repKey,'Molly Dixon',5,1875,1)]:[group(repKey,'Molly Dixon',5,1875,1),group('rep:50000000-0000-4000-8000-000000000002','Kim Lee',5,2500,1)]);
+ if(query.operation==='folders'||query.operation==='consignees') return base(query,[group('folder:north-east','North Nursery',2,3500,1,{customerKey:'customer:001',consigneeKey:'consignee:east',consigneeName:'East Yard'})]);
+ if(query.operation==='months') return base(query,[group('month:2026-10','October 2026',10,4375,2)]);
  if(query.operation==='requests') return base(query,[
-  {id:'40000000-0000-4000-8000-000000000001',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:'50000000-0000-4000-8000-000000000001',salesrepName:'Molly Dixon',itemcode:'00012',commonname:'Red Maple ®',location:'A.01',requestedAt:'2026-10-09T12:00:00Z',status:'Completed',requestQty:0,effectiveQty:25,listPrice:140,totalValue:3500,unresolvedReason:null},
-  {id:'40000000-0000-4000-8000-000000000002',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:null,salesrepName:'Unassigned',itemcode:'00123',commonname:'White Spruce',location:'B.02',requestedAt:null,status:'Pending',requestQty:null,effectiveQty:25,listPrice:null,totalValue:null,unresolvedReason:'current_list_price_unavailable_or_invalid'}
+  {id:'40000000-0000-4000-8000-000000000001',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:repId,salesrepName:'Molly Dixon',itemcode:'00012',commonname:'Red Maple ®',location:'A.01',requestedAt:'2026-10-09T12:00:00Z',status:'Completed',requestQty:0,effectiveQty:25,listPrice:own?null:140,totalValue:own?null:3500,unresolvedReason:null,dock:query.recordKind==='orders'?'0':null,spec:'8 feet',caliper:'2 inches',comments:'Keep the paired folder',photoNotes:'Photo verified',photoLinks:['/assets/branding/ag-data-solutions-icon-v2026080925-192.png'],sentAt:'2026-10-09T13:00:00Z',deliveryState:'Sent'},
+  {id:'40000000-0000-4000-8000-000000000002',customerName:'North Nursery',consigneeName:'East Yard',salesrepUserId:repId,salesrepName:'Molly Dixon',itemcode:'00123',commonname:'White Spruce',location:'B.02',requestedAt:null,status:'Pending',requestQty:null,effectiveQty:25,listPrice:null,totalValue:null,unresolvedReason:own?null:'current_catalog_list_price_unavailable_or_conflicting',dock:query.recordKind==='orders'?'':null,spec:'',caliper:'',comments:'',photoNotes:'',photoLinks:[],sentAt:null,deliveryState:'Not recorded'}
  ],2);
- return base(query,[],10);
+ return base(query,[],0);
 }};
 document.getElementById('open').addEventListener('click',async()=>{const module=await import('/assets/historical-requests.js');document.getElementById('open').hidden=true;
  const bridge=module.createHistoricalRequestsBridge({scopeKey:own?'fixture-rep:own':'fixture-admin:all',revisionKey:'r1',transport:(query,signal)=>window.historyFixture.read(query,signal)});

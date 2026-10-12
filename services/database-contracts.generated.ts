@@ -14896,6 +14896,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "dock": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "est_ship": {
             "schema": {
               "oneOf": [
@@ -15451,6 +15459,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "desired_spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "dock": {
             "schema": {
               "oneOf": [
                 "string",
@@ -16068,6 +16085,15 @@ export const contracts: RuntimeContracts<Database> = {
             "optional": true
           },
           "desired_spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "dock": {
             "schema": {
               "oneOf": [
                 "string",
@@ -76315,6 +76341,14 @@ export const contracts: RuntimeContracts<Database> = {
               ]
             }
           },
+          "dock": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
           "drive_assignedto": {
             "schema": {
               "oneOf": [
@@ -77564,6 +77598,126 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "warehouseid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "insert": "never",
+      "update": "never"
+    },
+    "ph_historical_orders": {
+      "row": {
+        "object": {
+          "assigned_rep_id": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "commonname": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneeidentityid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "consigneename": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "customeridentityid": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "customername": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "date_completed": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "delivery_state": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "itemcode": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "req_photo_link": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "req_qty": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "req_spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "unique_id": {
             "schema": {
               "oneOf": [
                 "string",
@@ -81316,6 +81470,14 @@ export const contracts: RuntimeContracts<Database> = {
             }
           },
           "desired_spec": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "dock": {
             "schema": {
               "oneOf": [
                 "string",

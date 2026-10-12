@@ -4,17 +4,17 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chromium } from 'playwright';
 import { createReleaseTestServer } from './serve-release-tests.mjs';
-import { installHlOrderFixture, hlMaster } from '../tests/fixtures/hl-order-state.mjs';
+import { installHlOrderFixture, hlMaster, hlUserId } from '../tests/fixtures/hl-order-state.mjs';
 
 export const diagnosticRoles = ['ADMIN', 'REP', '\nREP', 'CSR', 'DATA ENTRY', 'DATA ENTRY SUPERVISOR',
   'EVAL', 'FOREMAN', 'GROWER', 'QC', 'QC SUPERVISOR', 'TAKE BACKS'];
 export const diagnosticScreens = ['drive', 'sales-inventory', 'request', 'request-history', 'historical-requests'];
-export const diagnosticDriveLoadedSelector = '#drive-content .app-smart-card, #drive-content :text-matches("^No Drive Mode (items match these filters|rows are available for .*?)\\\\.$", "i")';
+export const diagnosticDriveLoadedSelector = '#drive-content .app-smart-card, #drive-content .drive-grid-row[data-dom-id], #drive-content :text-matches("^No Drive Mode (items match these filters|rows are available for .*?)\\\\.$", "i")';
 const rolesWithDrive = new Set(diagnosticRoles.filter(role => !['GROWER', 'TAKE BACKS'].includes(role)));
 const readActions = new Set(['inventory_read', 'request_history', 'sales_credit', 'historical_requests',
   'request_recipient_directory', 'native_session_bridge', 'navigation_preferences', 'dataset_revisions', 'app_access', 'dataset_read',
   'av_read', 'get_user_preferences', 'live_pilot_bootstrap']);
-const readOperations = new Set(['get', 'read', 'list', 'summary', 'customers', 'consignees', 'requests', 'reps',
+const readOperations = new Set(['get', 'read', 'list', 'summary', 'customers', 'consignees', 'requests', 'reps', 'months',
   'compatibility', 'search', 'folders', 'master_page', 'master_delta', 'source_freshness', 'schema_capabilities', 'po_detail',
   'recount_queue', 'ncr_queue', 'not_on_inventory_queue', 'scope', 'settings']);
 export function diagnosticRequestAllowed(url, method, body) {
@@ -51,6 +51,15 @@ export async function openDiagnosticDriveCards(page) {
   if (await mobileMode.isVisible()) await mobileMode.selectOption('card');
   else await cardMode.click();
   await page.locator(diagnosticDriveLoadedSelector).first().waitFor({ state: 'visible', timeout: 90000 });
+}
+
+export async function waitForDiagnosticHistory(page, view, screen) {
+  await view.locator('.historical-requests').waitFor({ state: 'visible', timeout: 30000 });
+  await page.waitForFunction(id => {
+    const host = document.getElementById(id);
+    return host && ![...host.querySelectorAll('[role="status"]')].some(element => /^Loading|^Saving/i.test(element.textContent.trim()));
+  }, 'view-' + screen, { timeout: 90000 });
+  assert.equal(await view.locator('[role="alert"]').count(), 0, 'Authorized Request History could not load');
 }
 
 /** Authenticated sessions are supplied in memory. Reports never contain credentials or row contents. */
@@ -90,6 +99,18 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
               && !request.headers()['idempotency-key'];
             if (!historyRead) return route.fallback();
             return route.fulfill({ json: { ok: true, data: { rows: [], nextCursor: null } } });
+          });
+          await page.route('**/rest/v1/rpc/historical_requests_read_v1', async route => {
+            const query = route.request().postDataJSON()?.p_query;
+            if (route.request().method() !== 'POST' || !route.request().headers().authorization?.startsWith('Bearer ')
+              || !['reps','customers','consignees','folders','requests','summary','months'].includes(query?.operation)) return route.fallback();
+            const financials = account.role === 'ADMIN' && account.username === 'dylan_collyge';
+            const rows = query.operation === 'reps' && !financials ? [{ key: 'rep:' + hlUserId, label: account.username,
+              requestCount: 0, totalValue: null, unpricedCount: null, customerKey: null, consigneeKey: null, consigneeName: null }] : [];
+            return route.fulfill({ json: { ok: true, scope: financials ? 'all' : 'own', financials,
+              recordKind: query.recordKind || 'all', ownRepKey: 'rep:' + hlUserId, revision: 'diagnostic-history-v3',
+              generatedAt: new Date().toISOString(), page: query.page || 0, pageSize: query.pageSize || 25, total: rows.length, rows,
+              summary: { requestCount: 0, totalValue: financials ? 0 : null, unpricedCount: financials ? 0 : null } } });
           });
         } else {
           assert.ok(account.session?.access_token && account.session?.user?.id === account.id, 'Verified account session required');
@@ -134,13 +155,12 @@ export async function runRoleDiagnostics({ accounts, baseURL, fixture = false,
           const view = page.locator(`#view-${screen}`);
           await view.waitFor({ state: 'visible', timeout: 20000 });
           if (screen === 'drive') await openDiagnosticDriveCards(page);
-          if (screen === 'request-history') {
-            await view.locator('.sales-workspace').waitFor({ state: 'visible', timeout: 30000 });
-            await view.locator('[role="status"]').waitFor({ state: 'hidden', timeout: 30000 });
-            assert.equal(await view.locator('.sw-error').count(), 0, 'Authorized Request History could not load');
+          if (['request-history','historical-requests'].includes(screen)) {
+            await waitForDiagnosticHistory(page, view, screen);
           }
           item.visible = true;
           item.cards = await view.locator('.app-smart-card,[data-request-id],[data-inventory-card]').count();
+          item.gridRows = await view.locator('.drive-grid-row[data-dom-id]').count();
           if (fixture && screen === 'drive') assert.ok(item.cards > 0, 'Assigned fixture inventory was not visible');
           item.headings = await view.locator('h1,h2,h3').allTextContents();
           item.headings = item.headings.map(text => text.trim().slice(0, 80)).slice(0, 8);
