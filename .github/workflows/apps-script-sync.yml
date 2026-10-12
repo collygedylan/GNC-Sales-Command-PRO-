@@ -149,7 +149,8 @@ jobs:
           supabase login --token "$SUPABASE_ACCESS_TOKEN"
           supabase secrets set "APPS_SCRIPT_WEB_APP_URL=$web_app_url" --project-ref "$project_ref"
           deploy_with_retry() {
-            local attempt output status
+            local attempt output status argument
+            local -a docker_command=()
             for attempt in 1 2 3; do
               if output=$("$@" 2>&1); then
                 printf '%s\n' "$output"
@@ -158,8 +159,17 @@ jobs:
                 status=$?
                 printf '%s\n' "$output"
               fi
-              if [[ "$attempt" -eq 3 ]] || ! grep -Eq 'unexpected deploy status (500|502|503|504)' <<< "$output"; then
+              if ! grep -Eq 'unexpected deploy status (500|502|503|504)' <<< "$output"; then
                 return "$status"
+              fi
+              if [[ "$attempt" -eq 3 ]]; then
+                echo 'SUPABASE_DEPLOY_DOCKER_FALLBACK'
+                docker info >/dev/null
+                for argument in "$@"; do
+                  [[ "$argument" == '--use-api' ]] || docker_command+=("$argument")
+                done
+                "${docker_command[@]}"
+                return 0
               fi
               echo "SUPABASE_DEPLOY_TRANSIENT_RETRY attempt=$attempt"
               sleep "$((attempt * 5))"
