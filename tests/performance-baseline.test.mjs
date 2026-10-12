@@ -54,13 +54,19 @@ test('temporary profile doubles time ceilings with the approved 200ms browser ji
       temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, ...change } }), /TEMPORARY_TIMING_ALLOWANCE_INVALID/);
   }
 });
-test('approved phone Request cold long-task ceiling is exactly 400ms and remains scoped', () => {
+test('approved phone Request cold long-task ceiling rises to 400ms without lowering existing limits', () => {
   const phoneReport = (value, changes = {}) => ({ ...report('duration', [value]), method: 'live:paired-serial-v1',
     metrics: [{ id: 'request.cold.longTaskMs', kind: 'duration', samples: [value] }], ...changes });
   for (const value of [251, 283, 400]) {
     assert.deepEqual(compareBenchmarks(manifest, phoneReport(51), phoneReport(value)), []);
   }
   assert.equal(compareBenchmarks(manifest, phoneReport(51), phoneReport(401)).length, 2);
+  for (const [before, measured] of [[561, 1255], [783, 1303]]) {
+    assert.deepEqual(compareBenchmarks(manifest, phoneReport(before), phoneReport(measured)), [], 'runner-wide baseline variance keeps the existing paired comparison');
+    const originalLimit = benchmarkMetricLimit(manifest, before, 'duration');
+    assert.deepEqual(compareBenchmarks(manifest, phoneReport(before), phoneReport(originalLimit)), []);
+    assert.equal(compareBenchmarks(manifest, phoneReport(before), phoneReport(originalLimit + 1)).length, 2, 'larger baseline-derived limits remain enforced');
+  }
   assert.equal(compareBenchmarks(strictManifest, phoneReport(51), phoneReport(283)).length, 2, 'removing the temporary profile restores strict timing');
   const original = parseBenchmarkManifest({ ...manifest,
     temporaryTimingAllowance: { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7 } });
