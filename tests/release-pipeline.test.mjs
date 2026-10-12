@@ -96,7 +96,7 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['lint','unit','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['lint','unit','react','contracts','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -287,7 +287,7 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   }
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
   const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'skipped' }]));
-  for (const name of ['lint', 'unit', 'build', 'fast-browser']) results[name].result = 'success';
+  for (const name of ['lint', 'unit', 'react', 'contracts', 'build', 'fast-browser']) results[name].result = 'success';
   results.build.outputs = { digest: 'a'.repeat(64) };
   const execute = () => vm.runInNewContext(gate, { process: { env: {
     RELEASE_JOB_RESULTS: JSON.stringify(results), FAST_PR: 'true', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',
@@ -301,7 +301,8 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   for (const name of ['integration', 'schema-contracts', 'database-and-functions', 'suspend-tag-approval']) {
     assert.equal(database.jobs[name].if, 'inputs.run-schema-tests');
   }
-  assert.equal(validation.jobs.unit.steps.find(step => step.run === 'npm run test:v2').if, 'inputs.run-frontend-tests');
+  assert.equal(validation.jobs.react.if, 'inputs.run-frontend-tests');
+  assert.ok(validation.jobs.react.steps.some(step => step.run === 'npm run test:v2'));
 });
 
 test('production health recovery follows actual publication and the published build commit', async () => {
@@ -415,7 +416,7 @@ test('PR path filters select affected tests and match the artifact reuse classif
 
 test('the release gate accepts only intentional skips and still requires the immutable build', () => {
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
-  const frontend = ['foundation','functional','compiled','timing','performance','lighthouse'];
+  const frontend = ['react','foundation','functional','compiled','timing','performance','lighthouse'];
   for (const scope of [{ frontend: true, backend: false, schema: false }, { frontend: false, backend: true, schema: true }]) {
     const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'success' }]));
     results.build.outputs = { digest: 'a'.repeat(64) };

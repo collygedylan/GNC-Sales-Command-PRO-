@@ -2,6 +2,10 @@ name: PWA and Supabase performance
 
 on:
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'LICENSE*'
   schedule:
     - cron: '17 9 * * *'
   workflow_dispatch:
@@ -35,7 +39,7 @@ jobs:
           predicate-quantifier: every
           filters: |
             frontend:
-              - '{index.html,Code.gs,manifest.json,OneSignalSDKWorker.js,CNAME,assets/**,components/**,styles/**,src/**,v2/**,pages/**,services/**,utils/**,live-src/**,scripts/**,tests/**,.github/**,performance/**,package.json,package-lock.json,playwright*.config.*,vite*.config.*,tsconfig*.json,lighthouserc.json}'
+              - '{index.html,Code.gs,manifest.json,OneSignalSDKWorker.js,CNAME,assets/**,components/**,styles/**,src/**,v2/**,pages/**,services/**,utils/**,live-src/**,scripts/**,tests/**,.github/**,performance/**,Dockerfile*,package.json,package-lock.json,playwright*.config.*,vite*.config.*,tsconfig*.json,lighthouserc.json}'
             backend:
               - '{supabase/**,migrations/**,database/migrations/**,**/*_migration.sql,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
             schema:

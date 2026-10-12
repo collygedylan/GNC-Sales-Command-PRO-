@@ -15,10 +15,13 @@ export function runReleaseUnitChecks({
   spawn = spawnSync,
   print = console.log,
 } = {}) {
-  if (argv.length && (argv.length !== 1 || argv[0] !== '--list')) {
-    throw new Error('Usage: node scripts/run-release-unit-checks.mjs [--list]');
+  const shard = argv.length === 1 && /^--shard=([1-9]\d*)\/([1-9]\d*)$/.exec(argv[0]);
+  if (argv.length && !shard && (argv.length !== 1 || argv[0] !== '--list')) {
+    throw new Error('Usage: node scripts/run-release-unit-checks.mjs [--list|--shard=N/TOTAL]');
   }
-  const files = collectReleaseUnitTestFiles(rootDir);
+  if (shard && (Number(shard[1]) > Number(shard[2]) || Number(shard[2]) > 32)) throw new Error('Usage: invalid unit shard');
+  const files = collectReleaseUnitTestFiles(rootDir).filter((_file, index) => !shard || index % Number(shard[2]) === Number(shard[1]) - 1);
+  if (!files.length) throw new Error('UNIT_TEST_SHARD_EMPTY');
   if (argv[0] === '--list') {
     print(JSON.stringify(files, null, 2));
     return 0;
