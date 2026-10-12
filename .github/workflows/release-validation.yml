@@ -984,6 +984,7 @@ jobs:
           node --input-type=module <<'NODE'
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
           const hotfix = process.env.HOTFIX === 'true';
+          if (jobs['release-mode']?.result !== 'success') throw new Error('RELEASE_GATE_FAILED_release-mode');
           const required = hotfix ? ['lint','unit','build'] : ['lint','unit','contracts','build'];
           if (!hotfix && process.env.RUN_FRONTEND_TESTS === 'true') {
             required.push('react');

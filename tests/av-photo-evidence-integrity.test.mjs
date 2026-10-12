@@ -5,6 +5,10 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
+const evalSecurityEnd = html.indexOf('        function runDedupeSupabaseRead(', evalSecurityStart);
+assert.ok(evalSecurityStart >= 0 && evalSecurityEnd > evalSecurityStart, 'Eval security helpers should exist');
+const evalSecurityHelpers = html.slice(evalSecurityStart, evalSecurityEnd);
 const NOW = Date.parse('2026-09-07T18:00:00Z');
 const DAY = 86_400_000;
 const PHOTO = 'https://kzrnyjsosryejjejliii.supabase.co/storage/v1/object/public/request_photos/v2/crop.webp';
@@ -25,7 +29,7 @@ function runtime(extraNames = [], extra = {}) {
   const context = vm.createContext({ Date: FixedDate, URL,
     shouldPreferFlyerOwnedFields: (row, view) => view === 'flyer' || (view === 'tasks' && row?.selectedFlyer === true),
     ...extra });
-  vm.runInContext([...coreNames, ...extraNames].map(source).join('\n'), context);
+  vm.runInContext(`${evalSecurityHelpers}\n${[...coreNames, ...extraNames].map(source).join('\n')}`, context);
   return context;
 }
 const row = (changes = {}) => ({ SOURCE_TABLE: 'ph_master_inventory', MATCH: '50', INITIAL_PTR: '347',

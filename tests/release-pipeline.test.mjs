@@ -291,6 +291,7 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   }
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
   const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'skipped' }]));
+  results['release-mode'].result = 'success';
   for (const name of ['lint', 'unit', 'react', 'contracts', 'build', 'fast-browser']) results[name].result = 'success';
   results.build.outputs = { digest: 'a'.repeat(64) };
   const execute = () => vm.runInNewContext(gate, { process: { env: {
