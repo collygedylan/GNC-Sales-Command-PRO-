@@ -24,6 +24,9 @@ for (const theme of ['light','dark','outdoor'] as const) {
    })()`),source);
    const card=page.locator('#drive-content .app-shared-drive-layout');
    await expect(card).toBeVisible();
+   // The premium shell decorates inserted cards on an animation frame. Its
+   // ui-card border changes the available grid width, so compare settled cards.
+   await expect(card).toHaveClass(/\bui-card\b/);
    await expect(card.locator('[data-inventory-card-metric]')).toHaveCount(6);
    await expect(card.locator('[data-inventory-card-metric="on-hand"] .app-card-qty-value')).toHaveText('15');
    if(source!=='drive') {
