@@ -23,7 +23,7 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
   const sources = [source(1, 'Blue Hydrangea'), source(2, 'Red Hydrangea')];
   const history = Array.from({ length: 63 }, (_, index) => {
     const at = new Date(Date.UTC(2026, 8, 20, 12, -index)).toISOString();
-    const snapshot = { ...sources[0].snapshot, unique_id: `history-${index}`, itemcode: `HIST.${index}`,
+    const snapshot = { ...sources[0].snapshot, dock: null, unique_id: `history-${index}`, itemcode: `HIST.${index}`,
       commonname: index === 62 ? 'Rare Orchid' : `Cedar ${String(index).padStart(2, '0')}`,
       date_completed: at, created_at: '2026-08-01T12:00:00Z', req_status: 'COMPLETED', req_note: `Completed instruction ${index}` };
     return { id: id(100 + index), source_kind: 'request_history', source_id: snapshot.unique_id,
@@ -82,6 +82,48 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
   const requireRevision = (body: any, revision: number) => {
     if (body.expectedRevision !== revision) fail('REVISION_CONFLICT');
     if (!/^[a-f\d-]{36}$/i.test(body.commandId || '')) fail('COMMAND_ID_REQUIRED', 400);
+  };
+  const historicalRead = (query: any) => {
+    if (control.denyHistory) fail('SALES_ACCESS_DENIED', 403);
+    const financials = navigation.username === 'dylan_collyge' && navigation.role.trim().toUpperCase() === 'ADMIN';
+    const ownRepKey = 'rep:' + hlUserId;
+    if (query.repKey && query.repKey !== ownRepKey) fail('HISTORICAL_REQUESTS_REP_FORBIDDEN', 403);
+    const visible = history.filter(row => query.recordKind !== 'orders'
+      && (!query.customerKey || row.customerKey === query.customerKey)
+      && (!query.consigneeKey || (row.snapshot.consigneename ? 'consignee:north' : 'consignee:unknown') === query.consigneeKey))
+      .sort((a, b) => b.sort_at.localeCompare(a.sort_at) || b.id.localeCompare(a.id));
+    const totals = (rows: typeof history) => ({ requestCount: rows.length,
+      totalValue: financials ? rows.reduce((sum, row) => sum + Number(row.snapshot.quantityordered) * 5, 0) : null,
+      unpricedCount: financials ? 0 : null });
+    const summary = totals(visible);
+    let rows: any[] = [];
+    if (query.operation === 'reps') rows = [{ key: ownRepKey, label: 'Dylan fixture', ...summary,
+      customerKey: null, consigneeKey: null, consigneeName: null }];
+    else if (['folders', 'customers', 'consignees'].includes(query.operation)) {
+      const folders = new Map<string, typeof history>();
+      for (const row of visible) {
+        const key = row.customerKey;
+        folders.set(key, [...(folders.get(key) || []), row]);
+      }
+      rows = [...folders].map(([key, entries]) => ({ key: 'folder:' + key, label: entries[0].snapshot.customername,
+        ...totals(entries), customerKey: key, consigneeKey: entries[0].snapshot.consigneename ? 'consignee:north' : 'consignee:unknown',
+        consigneeName: entries[0].snapshot.consigneename || 'Unknown consignee', customerId: '0001',
+        consigneeId: entries[0].snapshot.consigneename ? '0002' : null }));
+    } else if (query.operation === 'requests') rows = visible.map(row => ({ id: row.source_id,
+      customerName: row.snapshot.customername, consigneeName: row.snapshot.consigneename || 'Unknown consignee',
+      salesrepUserId: hlUserId, salesrepName: 'Dylan fixture', itemcode: row.snapshot.itemcode,
+      commonname: row.snapshot.commonname, location: row.snapshot.locationcode, requestedAt: row.sort_at,
+      status: row.status, requestQty: Number(row.snapshot.quantityordered), effectiveQty: Number(row.snapshot.quantityordered),
+      listPrice: financials ? 5 : null, totalValue: financials ? Number(row.snapshot.quantityordered) * 5 : null,
+      unresolvedReason: null, dock: null, spec: '', caliper: '', comments: row.snapshot.req_note,
+      photoNotes: '', photoLinks: [], sentAt: null, deliveryState: 'Not sent' }));
+    else if (query.operation === 'months' && financials && visible.length) rows = [{ key: 'month:2026-09', label: 'September 2026',
+      ...summary, customerKey: null, consigneeKey: null, consigneeName: null }];
+    else if (query.operation !== 'summary') fail('HISTORICAL_REQUESTS_OPERATION_INVALID', 400);
+    const page = query.page || 0, pageSize = query.pageSize || 25;
+    return { scope: financials ? 'all' : 'own', financials, ownRepKey, recordKind: query.recordKind || 'all',
+      revision: 'sales-mobile-history-v3', generatedAt: '2026-10-11T12:00:00Z',
+      page, pageSize, total: rows.length, rows: rows.slice(page * pageSize, (page + 1) * pageSize), summary };
   };
   const contract = (body: any) => {
     const p = body.payload || {}, op = body.operation;
@@ -239,6 +281,20 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
     master: [hlMaster('production-source', { blockalpha: 'D', locationcode: 'D.08.001',
       itemcode: 'PROP.001', commonname: 'Propagation Holly', ptronhand: '20', ptravailable: '15' })],
     beforeNavigate: async () => {
+      await page.route('**/rest/v1/rpc/historical_requests_read_v1', async route => {
+        const request = route.request();
+        if (request.method() !== 'POST') return route.fallback();
+        const body = request.postDataJSON(), query = body?.p_query;
+        const fields = ['operation', 'view', 'recordKind', 'repKey', 'customerKey', 'consigneeKey', 'dateFrom', 'dateTo', 'page', 'pageSize'];
+        if (!query || typeof query !== 'object' || Array.isArray(query) || Object.keys(body).some(key => key !== 'p_query')
+          || Object.keys(query).some(key => !fields.includes(key))
+          || !['reps', 'folders', 'customers', 'consignees', 'requests', 'months', 'summary'].includes(query.operation)) return route.fallback();
+        commands.push({ action: 'historical_requests', operation: query.operation, payload: copy(query) });
+        const headers = { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' };
+        try { return route.fulfill({ status: 200, headers, contentType: 'application/json', body: JSON.stringify(historicalRead(query)) }); }
+        catch (error: any) { return route.fulfill({ status: error.status || 400, headers, contentType: 'application/json',
+          body: JSON.stringify({ code: error.message, message: error.message }) }); }
+      });
       await options.beforeNavigate?.(control);
       await page.route('**/functions/v1/app-api', handle);
     },
