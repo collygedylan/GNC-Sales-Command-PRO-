@@ -34,7 +34,6 @@ create table public.aura_domain_glossary(
   ,false))
 );
 alter table public.aura_domain_glossary enable row level security;
-alter table public.aura_domain_glossary force row level security;
 revoke all on public.aura_domain_glossary from public,anon,authenticated;
 grant select on public.aura_domain_glossary to authenticated;
 grant all on public.aura_domain_glossary to service_role;
@@ -53,6 +52,7 @@ insert into public.aura_domain_glossary(term,canonical_entity,target_filter,note
   ('on-hand','metric_type','{"metric":"loc_on_hand"}',null),
   ('allocated','metric_type','{"metric":"allocated"}','Unknown when no verified allocation source exists.'),
   ('held','metric_type','{"metric":"held"}',null), ('on hold','metric_type','{"metric":"held"}',null);
+alter table public.aura_domain_glossary force row level security;
 
 -- Separate preferences avoid granting browser writes to profiles or to the
 -- server-managed appearance/navigation preference table.
