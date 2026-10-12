@@ -167,7 +167,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       status.textContent = checkedAt ? `Checked ${new Date(checkedAt).toLocaleString()}` : 'Ready for a follow-up.';
       onAssistantState('idle');
       input.value = '';
-      if (source === 'voice') speak(String(response.speech || response.reply || ''));
+      if (source === 'voice') speak(String(response.speech || response.reply || ''), { conversationId, turnId });
       content.scrollTop = content.scrollHeight;
     } catch (error) {
       if (current() && ticket === epoch && !controller.signal.aborted) {
