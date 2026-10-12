@@ -20181,9 +20181,26 @@ function handlePhotoArchiveRequest_(payload) {
   }
 }
 
+function verifyManualInventoryImportActor_(payload) {
+  try {
+    const actor = verifyInventoryWorkflowActor_(payload);
+    const username = String(actor && actor.username || '').trim().toLowerCase();
+    if (!actor || !actor.id || ['dylan_collyge', 'jd_jones'].indexOf(username) < 0) throw new Error('forbidden');
+    return { id: actor.id, username: username };
+  } catch (_) {
+    const error = new Error('Permission Denied');
+    error.manualImportForbidden = true;
+    throw error;
+  }
+}
+
 function doPost(e) {
   try {
     const payload = JSON.parse(e.postData.contents);
+    if (['manual_run', 'manual_clear_status', 'manual_clear_stale_status'].indexOf(payload.type) >= 0) {
+      const importActor = verifyManualInventoryImportActor_(payload);
+      payload.requested_by = importActor.username;
+    }
 
     if (payload.type === 'production_schedule_import_v1') {
       return jsonOutput_(acceptProductionScheduleImportCommand_(payload));
@@ -20263,7 +20280,7 @@ function doPost(e) {
       const result = queueManualSyncRequest_({
         job: payload.job || 'all',
         source: payload.trigger || 'webhook',
-        requestedBy: payload.requested_by || payload.requestedBy || 'Unknown',
+        requestedBy: payload.requested_by,
         forceIfStale: payload.force_if_stale === true || payload.forceIfStale === true,
         deferStart: !runInline
       });
@@ -20459,7 +20476,10 @@ function doPost(e) {
       
       return ContentService.createTextOutput(JSON.stringify({ status: "success", url: file.getUrl(), filename: uploadFileName })).setMimeType(ContentService.MimeType.JSON);
     }
-  } catch (err) { 
+  } catch (err) {
+    if (err && err.manualImportForbidden === true) return jsonOutput_({
+      ok: false, status: 403, code: 'INVENTORY_IMPORT_FORBIDDEN', message: 'Permission Denied'
+    });
     return ContentService.createTextOutput(JSON.stringify({
       ok: false,
       status: "error",

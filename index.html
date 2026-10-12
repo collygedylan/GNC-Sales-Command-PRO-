@@ -35335,11 +35335,22 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
         }
 
+        function canRunManualInventoryImport() {
+            const profile = nativeAuthProfile;
+            const username = String(profile?.username || '').trim().toLowerCase();
+            const lock = profile?.locked_until ? Date.parse(profile.locked_until) : 0;
+            return nativeAuthSessionActive === true && !!profile?.id
+                && !profile.disabled_at && profile.must_change_password === false
+                && Number.isFinite(lock) && lock <= Date.now()
+                && ['dylan_collyge', 'jd_jones'].includes(username)
+                && String(currentUser || '').trim().toLowerCase() === username;
+        }
+
         function syncGoogleScriptButton() {
             const button = document.getElementById('run-google-script-btn');
             if (!button) return;
             const label = button.querySelector('[data-run-script-label]');
-            const isVisible = isDylanCollygeUser();
+            const isVisible = canRunManualInventoryImport();
             // Manual recovery must remain reachable before any data read succeeds.
             const syncPanel = document.getElementById('dashboard-sync-accordion');
             if (syncPanel) syncPanel.classList.toggle('hidden', !canViewDashboardSyncStatus());
@@ -35360,13 +35371,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         async function runGoogleAppsScriptTrigger() {
             releaseStaleManualSyncClientStateIfNeeded();
-            if (!isDylanCollygeUser() || window.googleScriptRunInFlight || hasActiveManualSync()) return false;
+            if (!canRunManualInventoryImport() || window.googleScriptRunInFlight || hasActiveManualSync()) return false;
             window.googleScriptRunInFlight = true;
             syncGoogleScriptButton();
             showToast('Processing...', 'Starting full manual sync...', false);
             try {
+                const importScope = getSupabaseReadIdentityScope();
+                const authHeaders = await getNativeAuthRequestHeaders();
+                const importToken = String(authHeaders?.Authorization || '').replace(/^Bearer\s+/i, '').trim();
+                if (!canRunManualInventoryImport() || !importToken || importScope !== getSupabaseReadIdentityScope()) throw new Error('Permission Denied');
                 const payload = {
                     type: 'manual_run',
+                    nativeAuthAccessToken: importToken,
                     job: 'all',
                     trigger: 'header_button',
                     run_inline: false,

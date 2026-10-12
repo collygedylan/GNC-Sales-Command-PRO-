@@ -206,6 +206,7 @@ async function harness(page: Page, baseURL: string) {
 test('authorized manual import control is reachable before imported metadata loads', {"tag":["@session-recovery"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.seed('dylan_collyge', 'ADMIN');
+  await page.evaluate(() => window.eval(`nativeAuthSessionActive = true; nativeAuthProfile = { id:'synthetic-import-dylan', username:'dylan_collyge', disabled_at:null, locked_until:null, must_change_password:false }; syncGoogleScriptButton();`));
   const button = page.locator('#run-google-script-btn');
   await expect(button).toBeVisible();
   await expect(button).toBeEnabled();
@@ -214,6 +215,11 @@ test('authorized manual import control is reachable before imported metadata loa
   await expect(button).toBeVisible();
   await expect(button).toBeDisabled();
   await page.evaluate(() => window.eval(`manualSyncStatusState = null; syncGoogleScriptButton();`));
+  await app.seed('jd_jones', 'ADMIN');
+  await page.evaluate(() => window.eval(`nativeAuthSessionActive = true; nativeAuthProfile = { id:'synthetic-import-jd', username:'jd_jones', disabled_at:null, locked_until:null, must_change_password:false }; syncGoogleScriptButton();`));
+  await expect(button).toBeVisible();
+  await expect(button).toBeEnabled();
+  await button.click({ trial:true });
   await app.seed('tony_bono', 'REP');
   await expect(button).toBeHidden();
   await expect(page.locator('#dashboard-sync-accordion')).toBeHidden();
