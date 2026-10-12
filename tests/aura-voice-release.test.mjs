@@ -35,7 +35,7 @@ test('cloud release requires real Gemini readiness after deployment and before P
 test('production provider probe requires expected engine/model and fails closed without readiness', async () => {
   let sent;
   assert.deepEqual(await checkAuraProviderReadiness('https://abcdefghijklmnopqrst.supabase.co', 'secret', async (url, options) => {
-    sent = { url, options }; return new Response(JSON.stringify({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true } }));
+    sent = { url, options }; return new Response(JSON.stringify({ ok: true, model: 'gemini-3.8-flash', speechModel: 'gemini-3.8-flash-tts', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true, speech: true } }));
   }), { ok: true, model: 'gemini-3.8-flash' });
   assert.equal(sent.url.pathname, '/functions/v1/aura-llm-router/health');
   assert.equal(sent.options.headers.Authorization, 'Bearer secret');

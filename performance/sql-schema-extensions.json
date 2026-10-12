@@ -66,5 +66,9 @@
   {
     "path": "supabase/migrations/20261012011000_request_history_drilldown_isolation.sql",
     "gitBlob": "d87069f8b4611dde4ab6f00e458f8ed2a619f564"
+  },
+  {
+    "path": "supabase/migrations/20261012052500_aura_enterprise_domain_voice.sql",
+    "gitBlob": "31cc16e7cb1d218d93896858573225d1c755807e"
   }
 ]

@@ -68,6 +68,48 @@ summary operation.
 
 ## Voice
 
+Authenticated Aura accounts can choose Aoede, Charon, Fenrir, Kore or Puck in
+Settings or the chat header. Kore is the default. The account-owned
+`user_preferences` table uses forced RLS; `aura_voice_preferences_v1` checks
+current Aura access before reading or changing the caller's preference. The
+Gemini speech endpoint accepts a conversation ID and completed turn ID, rechecks
+ownership and current source facts, and speaks only that stored verified answer.
+Client text and client actor IDs cannot supply speech facts or another account's
+voice. Audio is returned as bounded 24 kHz PCM and played in the existing
+gesture-enabled audio context. Cancel, navigation and account teardown release
+only Aura's own playback.
+
+The root `WakeWordProvider` supplies a global **Standby Mode** toggle. Recognition
+starts only after an explicit gesture. It recognizes "hey Aura", "hey, Aura" and
+"hey Ora", suspends standby, and opens the voice panel. Interim speech never
+submits a partial command. Recognition restarts with bounded backoff after
+unexpected ends; denied permission, hidden pages, active panel capture, playback
+and account changes stop or suspend it. Browsers without Web Speech keep typed
+commands available and show standby as unsupported.
+
+## Nursery terminology and current facts
+
+`aura_domain_glossary` holds normalized, unique aliases and bounded catalog
+filters. Baseline sizes include 3DP, 1G through 15G and B&B; gallon aliases map
+to the actual `#N` catalog codes. Open Stock, On Hand, Allocated and Held map to
+explicit metrics. Authenticated Aura users can read entries; only the service
+role can edit them. Each query loads the glossary anew. Its revision is part of
+saved-source validation, so changed aliases invalidate remembered facts without
+redeploying code. Notes never become model instructions.
+
+Before an inventory read, Aura resolves the structured size, base cultivar,
+explicit form and metric. Fresh ordinary plant queries exclude cone, spiral,
+pom pom, topiary, tree form and espalier rows. Explicit form queries include
+only those forms. Open Stock reads verified S_LTS; Held uses verified hold/stop
+rows. Allocated remains unavailable until a verified allocation source exists,
+and Aura says so instead of inventing a count. Replies lead with the verified
+quantity and use at most two location lines. Follow-ups fetch current facts;
+remembered messages cannot authorize access or provide inventory data.
+
+Boundary whitespace in profile roles is normalized consistently across existing
+Aura authorization, inventory, SOC and conversation routines. The role allowlist,
+navigation restrictions, actor identity and ownership checks remain in force.
+
 The shared browser voice service owns microphone capture across navigation and
 panel closure. It supports one-shot tap-to-talk and optional foreground hands-free
 recognition, wake phrases, bounded capture and Leaf audio coordination. Only
@@ -91,7 +133,8 @@ GitHub Actions deploys database changes and both Aura functions before Pages.
 Its authorization smoke requires 403 for missing/invalid bearer tokens. The
 release-only `/aura-llm-router/health` probe requires the exact service credential
 and performs synthetic refusal and inventory-routing checks against Gemini using
-the full tool schema. Neither returned tool executes. The probe cannot query
+the full tool schema, plus synthetic Kore speech through Gemini 3.8 Flash TTS.
+Neither returned tool executes. The probe cannot query
 inventory, history or conversations, and returns only readiness metadata. PWA publication
 fails if the real model/key is unavailable. The probe never logs keys or payloads.
 

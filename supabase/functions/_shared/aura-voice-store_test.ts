@@ -20,6 +20,10 @@ Deno.test("release readiness requires service principal and verifies refusal plu
     fetcher: async (_url: string | URL | Request, init?: RequestInit) => {
       calls++;
       const body = JSON.parse(String(init?.body));
+      if (body.generationConfig.responseModalities?.includes("AUDIO")) {
+        assert(body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName === "Kore");
+        return Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ inlineData: { mimeType: "audio/L16;codec=pcm;rate=24000", data: "AAAAAA==" } }] } }] });
+      }
       assert(!JSON.stringify(body).includes(id));
       assert(body.tools[0].functionDeclarations.length === 7);
       const question = JSON.parse(body.contents[0].parts[0].text).question;
@@ -35,8 +39,8 @@ Deno.test("release readiness requires service principal and verifies refusal plu
   assert(calls === 0);
   const ready = await handleAuraProviderProbe(new Request("https://example.invalid/aura-llm-router/health", { headers: { authorization: "Bearer release-secret" } }), options);
   const data = await ready.json();
-  assert(ready.status === 200 && data.model === "gemini-3.8-flash" && calls === 2);
-  assert(data.checks.refusal && data.checks.inventoryRouting);
+  assert(ready.status === 200 && data.model === "gemini-3.8-flash" && data.speechModel === "gemini-3.8-flash-tts" && calls === 3);
+  assert(data.checks.refusal && data.checks.inventoryRouting && data.checks.speech);
 });
 Deno.test("release readiness rejects a provider that refuses stock instead of routing it", async () => {
   let calls = 0;

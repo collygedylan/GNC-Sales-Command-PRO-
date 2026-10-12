@@ -3,6 +3,9 @@ import { parseAuraIntent } from "../../utils/auraIntentParser.js";
 import { canonicalAuraSize } from "../../utils/auraLingo.js";
 import { createAuraConversation, acceptsAuraFollowUp, reduceAuraConversation } from "../../services/auraConversation.js";
 import { mountAuraQueryPanel } from "./auraQueryPanel.js";
+import { createAuraGeminiSpeech } from "../../services/auraGeminiSpeech.js";
+
+const GEMINI_VOICES = ["Aoede", "Charon", "Fenrir", "Kore", "Puck"];
 
 const STYLE_ID = "aura-voice-widget-styles";
 
@@ -20,6 +23,7 @@ function make(tag, className, text) {
 }
 
 const CSS = `
+[data-aura-root] .aura-head>div{min-width:0;flex:1}[data-aura-root] .aura-head>label{display:flex;flex-direction:column;gap:3px;font-size:11px;flex-shrink:0}[data-aura-root] .aura-head select{max-width:90px;min-height:30px;background:var(--aura-bg);color:var(--aura-text);border:1px solid var(--aura-border);border-radius:7px}
 [data-aura-root]{--aura-bg:var(--bg-surface,#0a120e);--aura-text:var(--text-main,#f0fdf4);--aura-muted:var(--text-muted,#b7c8bd);--aura-accent:var(--accent,#22c55e);--aura-border:var(--border-subtle,rgba(34,197,94,.2));color:var(--aura-text);font:500 14px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif}
 [data-aura-root] *{box-sizing:border-box}
 [data-aura-root] .aura-fab{position:fixed;z-index:10040;right:max(16px,env(safe-area-inset-right));bottom:calc(94px + env(safe-area-inset-bottom));width:56px;height:56px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.28);border-radius:50%;color:#f0fdf4;background:linear-gradient(145deg,rgba(16,43,29,.94),rgba(5,14,9,.96));box-shadow:0 0 0 1px rgba(255,255,255,.1) inset,0 8px 28px rgba(0,0,0,.38),0 0 20px -4px rgba(34,197,94,.3);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);cursor:pointer;transition:transform 150ms cubic-bezier(.4,0,.2,1),opacity 150ms cubic-bezier(.4,0,.2,1)}
@@ -65,9 +69,11 @@ const CSS = `
 `;
 
 /** Mount after the shell has verified the active native session; this module never authenticates users itself. */
-export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, requestAssistant, openAssistantAction, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false, userId = "", handsFreeAutostart = false, onHandsFreePreferenceChange = () => {}, onAssistantState = () => {} } = {}) {
+export function mountAuraWidget({ host = document.body, requestInventory, requestV2, requestLlm, requestAssistant, openAssistantAction, bindParty, resolveOrderParty, openDraft, saveScout, openOrder, sendMessage, isAuthorized = () => false, userId = "", handsFreeAutostart = false, initialVoiceName = "Kore", voiceEngine = "browser", onVoicePreferenceChange = () => {}, onVoiceActivity = () => {}, onPanelOpenChange = () => {}, onHandsFreePreferenceChange = () => {}, onAssistantState = () => {} } = {}) {
   if (typeof document === "undefined" || !host || !isAuthorized()) return { destroy() {} };
   let destroyed = false;
+  let voiceName = GEMINI_VOICES.includes(initialVoiceName) ? initialVoiceName : "Kore";
+  let voicePreferenceController = null;
   let panelOpen = false;
   let commandController = null;
   let pendingIntent = null;
@@ -133,6 +139,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   const session = createAuraVoiceSession({
     onState: (next) => {
+      onVoiceActivity(["listening", "hearing", "speaking", "starting"].includes(next?.status));
       voiceStatus = next;
       if (Object.prototype.hasOwnProperty.call(next || {}, "recognitionMode")) {
         if (next.recognitionMode === "local" || next.recognitionMode === "browser") {
@@ -170,6 +177,16 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   voiceMode.setAttribute("aria-atomic", "true");
   heading.append(voiceMode);
   head.append(heading);
+  const voiceLabel = make("label", "", "AURA Voice ");
+  const voiceSelector = make("select");
+  voiceSelector.setAttribute("aria-label", "AURA Voice");
+  for (const name of GEMINI_VOICES) { const option = make("option", "", name); option.value = name; voiceSelector.append(option); }
+  voiceSelector.value = voiceName;
+  voiceSelector.addEventListener("change", () => { void setVoicePreference(voiceSelector.value).catch(() => { voiceSelector.value = voiceName; }); });
+  voiceLabel.append(voiceSelector); head.append(voiceLabel);
+  const speechNote = make("span", "aura-note");
+  speechNote.setAttribute("aria-live", "polite");
+  heading.append(speechNote);
   const closeButton = make("button", "aura-close", "×");
   closeButton.type = "button";
   closeButton.setAttribute("aria-label", "Close AURA");
@@ -215,7 +232,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   const queryPanel = typeof requestAssistant === "function" ? mountAuraQueryPanel({
     panel, content, input, request: requestAssistant, isAuthorized: current,
     onAssistantState: value => { assistantState = value; renderStatus(); onAssistantState(value); },
-    speak: text => speakReply(text),
+    speak: (text, identity) => speakReply(text, identity),
     cancelSpeech: () => cancelAuraSpeech(),
     setBusy: value => { busy = value; setRecognitionBusy(value); renderStatus(); },
     openAction: async action => {
@@ -378,8 +395,20 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     }, 800);
   }
 
-  function speakReply(text) {
+  const geminiSpeech = voiceEngine === "gemini-tts-v1" && typeof requestAssistant === "function" ? createAuraGeminiSpeech({ request: requestAssistant, isCurrent: current,
+    getAudioContext: () => wakeAudioContext, claimAudio: owner => {
+      const release = audioCoordinator.claim(owner);
+      assistantState = "responding"; renderStatus(); onAssistantState(assistantState); onVoiceActivity(true);
+      return () => {
+        if (current()) { assistantState = "idle"; renderStatus(); onAssistantState(assistantState); onVoiceActivity(false); }
+        release();
+      };
+    },
+    onError: text => { if (current()) speechNote.textContent = text; },
+  }) : null;
+  function speakReply(text, identity) {
     if (audioOwners.size || !voiceReplyMode || !handsFreeEnabled && !panelOpen) return false;
+    if (geminiSpeech && identity) { speechNote.textContent = ""; void geminiSpeech.speak(identity); return true; }
     return session.speak(String(text || ""));
   }
 
@@ -393,7 +422,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     try { if (wakeAudioContext?.state === "suspended") void wakeAudioContext.resume().catch(() => {}); } catch { /* Optional audio resource. */ }
   }
 
-  function cancelAuraSpeech() { session.cancelSpeech({ resume: audioOwners.size === 0 }); }
+  function cancelAuraSpeech() { geminiSpeech?.cancel(); session.cancelSpeech({ resume: audioOwners.size === 0 }); }
 
   function armInactivityPause() {
     if (inactivityTimer != null) clearTimeout(inactivityTimer);
@@ -1310,6 +1339,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   function togglePanel(force) {
     panelOpen = typeof force === "boolean" ? force : !panelOpen;
+    onPanelOpenChange(panelOpen);
     panel.hidden = !panelOpen;
     fab.setAttribute("aria-expanded", String(panelOpen));
     fab.setAttribute("aria-label", panelOpen ? "Close AURA assistant" : "Open AURA voice assistant");
@@ -1339,6 +1369,29 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
     if (!wasHandsFree && session.enabled) session.stop();
     void session.startHandsFree();
     return true;
+  }
+
+  function openVoice(text = "") {
+    if (destroyed || !current() || busy || audioOwners.size || document.visibilityState !== "visible") return false;
+    togglePanel(true); voiceReplyMode = true; prepareWakeAudio();
+    if (String(text).trim()) { input.value = String(text).trim(); void submitCommand(input.value, { source: "voice" }); }
+    else void session.startTapToTalk();
+    return true;
+  }
+
+  async function setVoicePreference(value) {
+    if (!current() || !GEMINI_VOICES.includes(value) || typeof requestAssistant !== "function") throw new Error("AURA voice is unavailable.");
+    voicePreferenceController?.abort();
+    const controller = new AbortController(); voicePreferenceController = controller;
+    try {
+      const response = await requestAssistant({ mode: "voice_preferences", voiceName: value }, { signal: controller.signal });
+      if (controller.signal.aborted || !current()) throw new DOMException("Cancelled", "AbortError");
+      if (!response?.ok || !GEMINI_VOICES.includes(response.voiceName)) throw new Error("AURA voice could not be saved.");
+      voiceName = response.voiceName; voiceSelector.value = voiceName; speechNote.textContent = ""; onVoicePreferenceChange(); return voiceName;
+    } catch (error) {
+      if (current() && !controller.signal.aborted) speechNote.textContent = "Voice preference could not be saved. Please try again.";
+      throw error;
+    } finally { if (voicePreferenceController === controller) voicePreferenceController = null; }
   }
 
   function setHandsFreeAutoStart(enabled) {
@@ -1381,6 +1434,7 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
   }
   function onMicClick() {
     if (!current() || busy || audioOwners.size) return;
+    prepareWakeAudio();
     if (session.enabled && handsFreeEnabled) {
       handsFreeEnabled = false; clearHandsFreeTimers(); session.stop();
       void session.startTapToTalk(); armInactivityPause();
@@ -1428,8 +1482,9 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   function destroy() {
     if (destroyed) return;
+    destroyed = true; session.stop();
+    geminiSpeech?.destroy(); voicePreferenceController?.abort();
     queryPanel?.destroy();
-    destroyed = true;
     commandController?.abort();
     commandController = null;
     operationEpoch += 1;
@@ -1459,6 +1514,9 @@ export function mountAuraWidget({ host = document.body, requestInventory, reques
 
   return {
     destroy,
+    openVoice,
+    getVoicePreference: () => voiceName,
+    setVoicePreference,
     // Starts listening only if microphone permission is already granted; it never prompts.
     startIfAllowed: () => session.startIfAllowed(),
     startHandsFreeFromGesture,

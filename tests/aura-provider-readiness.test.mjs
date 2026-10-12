@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { checkAuraProviderReadiness } from '../scripts/aura-provider-readiness.mjs';
 
 const url = 'https://abcdefghijklmnopqrst.supabase.co';
-const ready = () => Response.json({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true } });
+const ready = () => Response.json({ ok: true, model: 'gemini-3.8-flash', speechModel: 'gemini-3.8-flash-tts', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true, speech: true } });
 test('readiness retries confirmed transient provider errors with bounded exponential backoff', async () => {
   const delays = []; let attempts = 0;
   const result = await checkAuraProviderReadiness(url, 'test-key', async () => ++attempts < 4
@@ -29,7 +29,9 @@ test('authentication, malformed responses and failed confinement are never retri
     Response.json({ reason: 'AURA_GEMINI_TIMEOUT' }, { status: 503 }),
     Response.json({ code: 'AURA_PROVIDER_NOT_READY', reason: 'AURA_GEMINI_TIMEOUT', providerStatus: 403 }, { status: 503 }),
     Response.json({ message: 'private-message' }, { status: 503 }),
-    Response.json({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: false, inventoryRouting: true } })]) {
+    Response.json({ ok: true, model: 'gemini-3.8-flash', speechModel: 'gemini-3.8-flash-tts', engine: 'gemini-tools-v1', checks: { refusal: false, inventoryRouting: true, speech: true } }),
+    Response.json({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true } }),
+    Response.json({ ok: true, model: 'gemini-3.8-flash', speechModel: 'gemini-3.8-flash-tts', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true, speech: false } })]) {
     let attempts = 0;
     await assert.rejects(checkAuraProviderReadiness(url, 'test-key', async () => { attempts++; return response; },
       { wait: async () => { throw new Error('WAIT_MUST_NOT_RUN'); } }));
@@ -53,7 +55,7 @@ test('verified provider timeouts recover with bounded backoff and still require 
 test('readiness trims BOM and surrounding whitespace without changing the token', async () => {
   await checkAuraProviderReadiness(url, '\uFEFF test-key\r\n', async (_url, options) => {
     assert.equal(new Headers(options.headers).get('authorization'), 'Bearer test-key');
-    return Response.json({ ok: true, model: 'gemini-3.8-flash', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true } });
+    return Response.json({ ok: true, model: 'gemini-3.8-flash', speechModel: 'gemini-3.8-flash-tts', engine: 'gemini-tools-v1', checks: { refusal: true, inventoryRouting: true, speech: true } });
   });
 });
 test('readiness rejects malformed or empty input before fetching', async () => {

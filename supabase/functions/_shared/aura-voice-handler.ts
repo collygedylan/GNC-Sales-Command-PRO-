@@ -3,11 +3,15 @@ import { resolveAuraIntent } from "./aura-query.ts";
 
 import { parseAuraAppContext, requestedAuraVariants, spokenAuraSeason, signedAuraQuantity } from "./aura-voice-scope.ts";
 import { socData, socOutcome, socStamp, socFingerprint } from "./aura-voice-soc.ts";
+import { auraVoice, extractAuraEntity, auraInventorySummary, type AuraGlossaryEntry, type AuraVoice } from "./aura-domain.ts";
+import { synthesizeAuraSpeech } from "./aura-speech.ts";
 
 type ObjectValue = Record<string, unknown>;
 export type AuraMemoryArgs = { operation: string; conversationId?: string; turnId?: string; expectedRevision?: number; payload?: ObjectValue };
 export type AuraHistoryQuery = { operation: "customers" | "consignees" | "requests" | "reps" | "summary"; customerKey?: string; consigneeKey?: string; page?: number; pageSize?: number };
 export interface AuraVoiceStore {
+  domain(signal: AbortSignal): Promise<{ glossary: AuraGlossaryEntry[]; revision: string }>;
+  voicePreference(voice: AuraVoice | undefined, signal: AbortSignal): Promise<AuraVoice>;
   appContext(signal: AbortSignal): Promise<unknown>;
   soc(kind: SocToolName, filters: SocFilters, cursor: unknown, signal: AbortSignal): Promise<unknown>;
   authorize(signal: AbortSignal): Promise<AuraActor | null>;
@@ -152,7 +156,10 @@ function explicitFilters(question: string, proposed: InventoryFilters): Inventor
   return validateInventoryFilters(filters);
 }
 function recordAction(title: string, rows: ObjectValue[]): ObjectValue[] {
-  return rows.length ? [{ type: "records", title, rows, columns: Object.keys(rows[0]) }] : [];
+  const labels: Record<string, string> = { commonName: "Common Name", commonname: "Common Name", itemcode: "Item Code", contSize: "Size", contsize: "Size",
+    locationCode: "Location", locationcode: "Location", lotCode: "Lot", lotcode: "Lot", ptravailable: "Available", ptronhand: "On Hand", s_lts: "Open Stock", quantity: "Quantity",
+    assignedTo: "Assigned To", assignedDisplayName: "Assigned To", ownerStatus: "Ownership", customerName: "Customer", consigneeName: "Consignee" };
+  return rows.length ? [{ type: "records", title, rows, columns: Object.keys(rows[0]).filter(key => labels[key]).map(key => ({ key, label: labels[key] })) }] : [];
 }
 function label(row: ObjectValue) { return [row.commonName || row.commonname || row.itemcode || row.label || row.username, row.contSize || row.contsize, row.locationCode || row.locationcode, row.lotCode || row.lotcode].filter(Boolean).join(" · "); }
 async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "draft_request" }>, context: ObjectValue, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal, more: boolean, selection?: ObjectValue, expectedDraft?: DraftConfirmationTuple | null): Promise<Outcome> {
@@ -205,7 +212,8 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     reply = "I found possible matches. Choose the exact plant, size, or location.";
     actions = [{ type: "choices", kind: "entity", items: options }];
   } else if (data.complete !== true) {
-    reply = "I can’t find verified stock information while inventory is updating or incomplete. Please try again shortly.";
+    reply = filters.metric === "allocated" ? "I can’t find verified allocated quantities in the current inventory data."
+      : "I can’t find verified stock information while inventory is updating or incomplete. Please try again shortly.";
   } else if (!rows.length) {
     reply = unresolved ? `I can’t find verified inventory in ${scope}; ${format(unresolved)} unresolved records were excluded.` : `I can’t find matching inventory in ${scope}.`;
   } else if (tool.name === "draft_request") {
@@ -242,7 +250,8 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
     if (data.metric !== expectedMetric) throw new Error("AURA_RESULT_INVALID");
     const total = signedAuraQuantity(data.total);
     const metric = filters.countMode === "physical_rows" ? "physical inventory rows" : filters.countMode === "unique_items" ? "distinct items" : filters.metric === "ptronhand" ? "units on hand" : filters.metric === "s_lts" ? "units open stock" : "units available";
-    reply = `I found ${format(total)} ${metric} in ${scope}.`;
+    reply = filters.countMode && filters.countMode !== "quantity" ? `I found ${format(total)} ${metric} in ${scope}.`
+      : auraInventorySummary(total, String(data.metric), rows, data.hasMore === true);
     actions = recordAction("Inventory", rows);
   } else {
     reply = `Found ${format(rows.length)} matching inventory rows in ${scope}${data.hasMore ? "; more are available" : ""}.`;
@@ -252,8 +261,11 @@ async function inventoryOutcome(tool: Extract<AuraTool, { name: "inventory" | "d
           : row.ownerStatus === "unassigned" ? "explicitly unassigned" : row.ownerStatus === "ambiguous" ? "ownership is ambiguous" : "ownership is unresolved";
         return `${label(row)}: ${owner}`;
       }
-      const quantity = filters.metric === "ptronhand" ? row.ptronhand : filters.metric === "s_lts" ? row.s_lts : row.ptravailable;
-      return `${label(row)}${typeof quantity === "number" && Number.isFinite(quantity) ? `: ${format(quantity)} ${filters.metric === "ptronhand" ? "on hand" : filters.metric === "s_lts" ? "open stock" : "available"}` : ""}`;
+      const quantity = ["loc_on_hand", "allocated", "held"].includes(String(filters.metric)) ? row.quantity
+        : filters.metric === "ptronhand" ? row.ptronhand : filters.metric === "s_lts" ? row.s_lts : row.ptravailable;
+      const metricLabel = filters.metric === "held" ? "on hold" : filters.metric === "allocated" ? "allocated"
+        : filters.metric === "ptronhand" || filters.metric === "loc_on_hand" ? "on hand" : filters.metric === "s_lts" ? "open stock" : "available";
+      return `${label(row)}${typeof quantity === "number" && Number.isFinite(quantity) ? `: ${format(quantity)} ${metricLabel}` : ""}`;
     });
     reply += ` ${details.join("; ")}.`;
     if (rows.length > 3) reply += " See the result table for the remaining rows.";
@@ -331,14 +343,16 @@ async function historyOutcome(tool: Extract<AuraTool, { name: "history" }>, cont
   }
   return { reply, actions, sources, context: nextContext, hasMore: (Number(query.page) + 1) * pageSize < number(data.total), metadata: { scope: data.scope, datasetRevision: data.revision, unpricedCount: summary.unpricedCount } };
 }
-async function sourcesCurrent(sources: unknown, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal): Promise<boolean> {
+async function sourcesCurrent(sources: unknown, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal, allowIncomplete = false): Promise<boolean> {
   if (!Array.isArray(sources)) return false;
   if (sources.length > 3) return false;
   try { for (const source of array(sources)) {
     if (!same(source.policy, policy(actor))) return false;
-    if (source.kind === "inventory" && actor.inventory) {
+    if (source.kind === "domain") {
+      if ((await store.domain(signal)).revision !== source.revision) return false;
+    } else if (source.kind === "inventory" && actor.inventory) {
       const data = auraObject(await store.inventory(String(source.operation), validateInventoryFilters(source.filters), source.cursor, signal));
-      if (data.ok !== true || data.complete !== true || !same(inventoryStamp(data), source.stamp)
+      if (data.ok !== true || data.complete !== true && !(allowIncomplete && data.complete === false) || !same(inventoryStamp(data), source.stamp)
         || source.fingerprint !== await inventoryFingerprint(data)) return false;
     } else if (source.kind === "soc" && ((source.tool === "soc_reserves" && actor.socReserves) || (source.tool === "soc_open_orders" && actor.socOpenOrders))) {
       const kind = source.tool === "soc_reserves" ? "soc_reserves" : "soc_open_orders";
@@ -377,6 +391,7 @@ async function memoryResponse(body: ObjectValue, mode: string, actor: AuraActor,
 async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStore, deps: AuraVoiceDeps, signal: AbortSignal) {
   const question = boundedString(body.text ?? body.question ?? body.prompt);
   const history = validateAuraHistory(body.history);
+  const domain = await store.domain(signal);
   const active = parseAuraAppContext(await store.appContext(signal));
   if (body.appContext !== undefined && !same(parseAuraAppContext(body.appContext), active)) {
     throw Object.assign(new Error("AURA_APP_CONTEXT_STALE"), { appContext: active });
@@ -425,18 +440,27 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       if ((more || selection) && oldTool.name) { const { name, ...values } = oldTool; tool = validateAuraTool(name, values, true); }
       else if (selectionNumber) tool = { name: "clarify", reason: "ambiguous" };
       else if (knownOutsideDomain(question)) tool = { name: "refuse" };
-      else tool = await routeAuraWithGemini({ text: question, history, actor, context: { ...modelContext(context), appContext: active }, apiKey: deps.apiKey(),
+      else tool = await routeAuraWithGemini({ text: question, history, actor, context: { ...modelContext(context), appContext: active,
+        glossary: domain.glossary.filter(entry => question.toLowerCase().includes(entry.term)).slice(0, 30) }, apiKey: deps.apiKey(),
         signal: AbortSignal.any([signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
     }
-    const follow = more || !!selection || /^(?:and|what about|how about|those|these)\b/i.test(question);
+    const follow = more || !!selection || /^(?:and|what about|how about|those|these|are there any)\b/i.test(question) || /\b(?:those|these|them|there)\b/i.test(question);
     const spokenVariants = requestedAuraVariants(question);
     const previousVariants = optionalObject(oldTool.filters).requestedVariants ?? context.requestedVariants;
-    const variants = spokenVariants.length || !follow ? spokenVariants
+    const variants = spokenVariants.length || !(more || selection) ? spokenVariants
       : validateInventoryFilters({ requestedVariants: previousVariants ?? [] }).requestedVariants || [];
     if (tool.name === "inventory" || tool.name === "draft_request") {
       if (confirmingDraft && tool.name === "draft_request") tool.filters = validateInventoryFilters(tool.filters);
       else if (!(more || selection)) tool.filters = explicitFilters(question, tool.filters);
       if (!selection) delete tool.filters.selectionId;
+      if (follow && !tool.filters.commonName && !tool.filters.productText && !tool.filters.itemcode) {
+        const previous = optionalObject(oldTool.filters);
+        for (const key of ["commonName", "productText", "itemcode", "genus", "contSize"] as const) {
+          if (typeof previous[key] === "string" && !tool.filters[key]) Object.assign(tool.filters, { [key]: previous[key] });
+        }
+      }
+      const proposedEntity = extractAuraEntity(question, { ...tool.filters,
+        ...(follow && typeof optionalObject(oldTool.filters).metric === "string" ? { metric: optionalObject(oldTool.filters).metric } : {}) }, domain.glossary);
       tool.filters.requestedVariants = confirmingDraft ? tool.filters.requestedVariants || [] : variants;
       tool.filters.expectedSettingRevision = active.settingRevision;
       const questionSyntax = question.replace(/["“][^"”]*["”]/g, " ");
@@ -451,6 +475,18 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
           tool.filters.season = active.season; tool.filters.salesYear = active.salesyear;
           delete tool.filters.seasonReference; tool.filters.openStockOnly = false;
         }
+      }
+      if (!confirmingDraft && !(more || selection)) {
+        const entity = proposedEntity;
+        if (entity.size_spec) tool.filters.contSize = entity.size_spec;
+        if (tool.name === "inventory" && (!tool.filters.countMode || tool.filters.countMode === "quantity")
+          && (tool.operation === "stock" || /\b(?:open stock|on[ -]hand|allocated|held|on hold)\b/i.test(question))) {
+          tool.filters.metric = ({ open_stock: "s_lts", loc_on_hand: "loc_on_hand", allocated: "allocated", held: "held" } as const)[entity.target_metric];
+          if (entity.target_metric === "open_stock") {
+            tool.filters.season = active.season; tool.filters.salesYear = active.salesyear; delete tool.filters.seasonReference; tool.filters.openStockOnly = false;
+          }
+        }
+        context.entity = entity;
       }
     } else if (tool.name === "soc_reserves" || tool.name === "soc_open_orders") {
       if (!(more || selection)) {
@@ -474,7 +510,8 @@ async function command(body: ObjectValue, actor: AuraActor, store: AuraVoiceStor
       const next = more || selection || inherit ? context : { ...context, customerKey: undefined, consigneeKey: undefined, page: 0 };
       outcome = await historyOutcome(tool, next, actor, store, signal, more, selection);
     } else outcome = await inventoryOutcome(tool, context, actor, store, signal, more, selection, expectedDraft);
-    const completedContext = { ...outcome.context, appContext: active, version: 1, policy: policy(actor) };
+    if (outcome.sources.length) outcome.sources.push({ kind: "domain", revision: domain.revision, policy: policy(actor) });
+    const completedContext = { ...outcome.context, entity: context.entity, domainRevision: domain.revision, appContext: active, version: 1, policy: policy(actor) };
     const response = { ok: true, requestId: turnId, conversationId, revision, reply: outcome.reply, speech: outcome.reply, actions: outcome.actions,
       interpretation: { engine: "gemini-tools-v1", intent: tool.name, ...outcome.metadata },
       source: { kind: source, checkedAt: new Date().toISOString(), ...outcome.metadata }, hasMore: outcome.hasMore === true, nextCursor: null };
@@ -500,7 +537,26 @@ export async function handleAuraVoiceRequest(request: Request, deps: AuraVoiceDe
     // Authentication and account/capability checks must finish before reading body or history.
     const body = await requestBody(request, signal);
     const mode = String(body.mode || "command");
-    if (mode === "capabilities") return result({ ok: true, capabilities: policy(actor), configured: Boolean(deps.apiKey()) });
+    if (mode === "capabilities") return result({ ok: true, capabilities: policy(actor), configured: Boolean(deps.apiKey()), voiceName: await store.voicePreference(undefined, signal), voiceEngine: "gemini-tts-v1" });
+    if (mode === "voice_preferences") return result({ ok: true, voiceName: await store.voicePreference(body.voiceName === undefined ? undefined : auraVoice(body.voiceName), signal) });
+    if (mode === "speech") {
+      const args = memoryArgs(body, "read");
+      if (!args.conversationId || !args.turnId) throw new Error("AURA_SPEECH_INVALID");
+      args.payload = { limit: 30 };
+      const conversation = auraObject(await store.memory(actor.id, args, signal));
+      const turn = array(conversation.turns).find(turn => turn.id === args.turnId && turn.status === "complete");
+      if (!turn) throw new Error("AURA_SAVED_RESULT_STALE");
+      const response = auraObject(turn.response);
+      if (optionalObject(response.interpretation).engine !== "gemini-tools-v1") throw new Error("AURA_SAVED_RESULT_STALE");
+      const missingInventory = optionalObject(response.interpretation).complete === false
+        && /^I can’t find verified (?:stock information|allocated quantities)/.test(String(response.reply))
+        && Array.isArray(response.actions) && response.actions.length === 0;
+      if (!await sourcesCurrent(turn.sources, actor, store, signal, missingInventory)) throw new Error("AURA_SAVED_RESULT_STALE");
+      const voice = await store.voicePreference(undefined, signal);
+      const audio = await synthesizeAuraSpeech({ text: boundedString(response.reply), voice, apiKey: deps.apiKey(), signal,
+        fetcher: deps.fetcher, reserve: bytes => store.reserve(bytes, signal) });
+      return result({ ok: true, audio, conversationId: args.conversationId, turnId: args.turnId });
+    }
     if (["list", "create", "read", "delete", "cancel"].includes(mode)) return result(await withinSignal(memoryResponse(body, mode, actor, store, signal), signal));
     if (mode !== "command") throw new Error("AURA_QUERY_REQUEST_INVALID");
     return result(await withinSignal(command(body, actor, store, deps, signal), signal));
@@ -510,9 +566,10 @@ export async function handleAuraVoiceRequest(request: Request, deps: AuraVoiceDe
     const code = signal.aborted ? "AURA_QUERY_TIMEOUT" : failure.code === "42501" ? "AURA_FORBIDDEN"
       : failure.code === "40001" || failure.code === "55P03" ? "AURA_REVISION_CONFLICT"
       : /^AURA_[A-Z0-9_]+$/.test(raw) ? raw : "AURA_UNAVAILABLE";
-    const status = /FORBIDDEN/.test(code) ? 403 : /INVALID|SEASON_AMBIGUOUS/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
+    const status = /FORBIDDEN/.test(code) ? 403 : /INVALID|SEASON_AMBIGUOUS|SIZE_AMBIGUOUS/.test(code) ? 400 : /STALE|CONFLICT|CANCELLED|IN_PROGRESS|LEASE/.test(code) ? 409 : /BUSY|QUOTA/.test(code) ? 429 : /TIMEOUT/.test(code) ? 504 : 503;
     const errorMessage = code === "AURA_GEMINI_CONFIGURATION_UNAVAILABLE" ? "Aura’s connection is not configured. Ask your administrator to configure the Edge Function secret."
       : code === "AURA_SEASON_AMBIGUOUS" ? "Please choose one season for this SOC lookup."
+      : code === "AURA_SIZE_AMBIGUOUS" ? "Please choose one plant size for this lookup."
       : /SEASON|APP_CONTEXT_(?:INVALID|UNAVAILABLE)/.test(code) ? "The Managers current season setting is unavailable or invalid. Ask a manager to save it."
       : status === 403 ? "Your active app permissions do not allow this Aura request."
       : status === 409 ? "The conversation or source data changed. Refresh the conversation and ask again."
