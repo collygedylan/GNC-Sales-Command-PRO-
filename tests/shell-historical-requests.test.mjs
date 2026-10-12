@@ -23,6 +23,9 @@ test('financial navigation uses native stored roles and never grants broad manag
   for (const role of ['Manager', 'CSR', 'ADMIN ASSISTANT', 'Foreman']) assert.equal(harness({ role }).canUseHistoricalRequests(), false);
   assert.equal(harness({ username: 'dylan_collyge', role: 'Manager' }).canUseHistoricalRequests(), true);
   assert.equal(harness({ username: 'Dylan_Collyge', role: 'Manager' }).canUseHistoricalRequests(), false);
+  for (const username of ['dylan_collyge', 'rep_a']) {
+    for (const role of ['Eval', 'Evaluator', 'Eval Admin']) assert.equal(harness({ username, role }).canUseHistoricalRequests(), false);
+  }
   for (const fields of [{ disabled_at: '2026-01-01' }, { must_change_password: true }, { locked_until: '2999-01-01' }, { locked_until: 'invalid' }]) {
     assert.equal(harness(fields).canUseHistoricalRequests(), false);
   }
@@ -35,6 +38,29 @@ test('financial cache ownership changes for account, role, lock and password req
   for (const fields of [{ id: 'other-id' }, { role: 'ADMIN' }, { disabled_at: 'today' }, { locked_until: 'tomorrow' }, { must_change_password: true }]) {
     assert.notEqual(runtime.getHistoricalRequestsOwnerKey({ ...runtime.nativeAuthProfile, ...fields }), initial);
   }
+});
+
+test('Eval cannot inherit administrator privileges from usernames or role substrings', () => {
+  const roles = html.slice(html.indexOf('        function normalizeRoleAccessToken('), html.indexOf('        function canUseHistoricalRequests('));
+  const context = vm.createContext({ currentRole: '', safeRole: '', currentUser: 'privileged_user',
+    firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
+    isPrivilegedManagerUser: () => true, canUseRequestRepScopedAccess: () => false,
+    getRequestCapabilities: () => ({ canViewQueue: true }), canSeeEvalWorkRequestTab: () => false,
+    isStrictDylanCollygeUser: () => false, ROLE_ACCESS_VIEWS: ['managers', 'reports', 'request-history', 'drive'],
+  });
+  vm.runInContext(roles, context);
+  for (const role of ['Eval', 'Evaluator', 'Eval Admin']) {
+    const access = context.getRoleAccessState(role);
+    assert.equal(access.isAdmin, false); assert.equal(access.isPrivilegedManager, false);
+    for (const view of ['managers', 'reports', 'request-history']) assert.equal(access.allowedViews.has(view), false);
+    assert.equal(access.allowedViews.has('drive'), true);
+  }
+  const admin = context.getRoleAccessState('Admin');
+  assert.equal(admin.isAdmin, true);
+  for (const view of context.ROLE_ACCESS_VIEWS) assert.equal(admin.allowedViews.has(view), true);
+  context.isPrivilegedManagerUser = () => false;
+  assert.equal(context.getRoleAccessState('Unknown').isAdmin, false);
+  assert.equal(context.getRoleAccessState('Admin Assistant').isAdmin, false);
 });
 
 test('financial reads reject replaced identities and cancelled responses', async () => {

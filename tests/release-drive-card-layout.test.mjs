@@ -73,7 +73,7 @@ test('Drive card compaction preserves quantity source, labels, and action handle
   assert.match(driveCard, /data-inventory-card-field="fieldtagcolor"/);
   assert.doesNotMatch(driveCard, /LOC MATCH %/);
   assert.match(html, /\['Loc Photo Match', \(sourceView === 'drive' \|\| sourceView === 'request'\) && locationPhotoMatch === 'Not verified' \? 'N\/A' : locationPhotoMatch\],\s*\['Loc On Hand', getCardLocationOnHandValue\(locationMetricRow\) \?\? 'Unknown'\]/);
-  assert.match(driveCard, /const driveListPriceHtml = sourceView !== 'drive' && displayListPrice !== '-'/);
+  assert.match(driveCard, /const driveListPriceHtml = !isEvalSensitiveDataRestricted\(\) && sourceView !== 'drive' && displayListPrice !== '-'/);
   assert.match(html, /'Loc Photo Match': 'loc-photo-match',[\s\S]*?'Loc On Hand': 'loc-on-hand'/);
   assert.match(driveCard, /metricsHtml: driveQuantityRowHtml/);
   assert.match(driveCard, /buildArgosInventoryTransactionRailHtml\(item, 'drive'\)/);

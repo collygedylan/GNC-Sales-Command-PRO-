@@ -4,6 +4,10 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
+const evalSecurityEnd = html.indexOf('        function runDedupeSupabaseRead(', evalSecurityStart);
+assert.ok(evalSecurityStart >= 0 && evalSecurityEnd > evalSecurityStart, 'Eval security helpers should exist');
+const evalSecurityHelpers = html.slice(evalSecurityStart, evalSecurityEnd);
 function source(name) {
   const marker = new RegExp(`        (?:async )?function ${name}\\(`);
   const start = html.search(marker);
@@ -31,7 +35,7 @@ test('SOC PATCH denial preserves the write contract, reports safe diagnostics, a
     createSupabaseReadResponseError: async () => denied,
     reportSemanticHealthEvent: (...args) => { health.push(args); return Promise.resolve(true); },
   });
-  vm.runInContext(['getSupabaseReadErrorCode', 'buildSocWriteFailureDiagnostic', 'supabaseFetch'].map(source).join('\n'), ctx);
+  vm.runInContext([evalSecurityHelpers, ...['getSupabaseReadErrorCode', 'buildSocWriteFailureDiagnostic', 'supabaseFetch'].map(source)].join('\n'), ctx);
   const patch = { suspend: 'SUSPEND', suspend_to: 'DC' };
   await assert.rejects(ctx.supabaseFetch('ph_soc_master', 'PATCH', patch, 'unique_id=eq.private-row'), error => error === denied);
   assert.equal(calls.length, 1);

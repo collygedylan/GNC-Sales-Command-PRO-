@@ -7,6 +7,10 @@ import { installDatabaseBridge } from './helpers/database-bridge.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const lifecycle = readFileSync(new URL('../assets/app-lifecycle.js', import.meta.url), 'utf8');
+const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
+const evalSecurityEnd = html.indexOf('        function runDedupeSupabaseRead(', evalSecurityStart);
+assert.ok(evalSecurityStart >= 0 && evalSecurityEnd > evalSecurityStart, 'Eval security helpers should exist');
+const evalSecurityHelpers = html.slice(evalSecurityStart, evalSecurityEnd);
 const inventoryContractContext = {};
 vm.runInNewContext(readFileSync(new URL('../assets/inventory-list-contract.js', import.meta.url), 'utf8'), inventoryContractContext);
 const inventoryContract = inventoryContractContext.AgMetricInventoryList;
@@ -229,6 +233,7 @@ test('health telemetry cancels across navigation during authentication and in fl
     vm.runInContext(html.slice(signalStart, html.indexOf('function ', signalStart + 15)).trim(), ctx);
     installDatabaseBridge(ctx);
     const rpcStart = html.indexOf('async function supabaseRpc(');
+    vm.runInContext(evalSecurityHelpers, ctx);
     vm.runInContext(html.slice(rpcStart, html.indexOf('const SECURE_DRIVE_EVIDENCE_PREFIXES', rpcStart)), ctx);
     const healthStart = html.indexOf('function reportSemanticHealthEvent(');
     vm.runInContext(html.slice(healthStart, html.indexOf('window.reportSemanticHealthEvent', healthStart)), ctx);
@@ -262,6 +267,7 @@ test('a revision read cancelled during auth preparation never starts its RPC', a
     };
     installDatabaseBridge(ctx);
     vm.createContext(ctx);
+    vm.runInContext(evalSecurityHelpers, ctx);
     vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx);
     vm.runInContext(html.slice(from, to), ctx);
     const pending = ctx.supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: [] }, { signal: controller.signal });
@@ -422,7 +428,7 @@ function fixture(concurrency = 3) {
         nativeAuthSessionActive: true, nativeAuthProfile: { id: 'user-a' }, incrementInternalPerfCounter() {}, getCurrentLoginCacheScopeKey: () => 'scope'
     };
     vm.createContext(ctx);
-    vm.runInContext(html.slice(start, end) + '\nthis.generation = () => { productionLiveSyncReadGeneration++; abortSupabaseReadsBeforeGeneration(productionLiveSyncReadGeneration); }; this.permission = value => { productionLiveSyncReadPermissionVersion = value; }; this.resetAuth = () => { productionLiveSyncReadAuthEpoch++; }; this.reads = supabaseReadInFlight;', ctx);
+    vm.runInContext(evalSecurityHelpers + html.slice(start, end) + '\nthis.generation = () => { productionLiveSyncReadGeneration++; abortSupabaseReadsBeforeGeneration(productionLiveSyncReadGeneration); }; this.permission = value => { productionLiveSyncReadPermissionVersion = value; }; this.resetAuth = () => { productionLiveSyncReadAuthEpoch++; }; this.reads = supabaseReadInFlight;', ctx);
     return ctx;
 }
 

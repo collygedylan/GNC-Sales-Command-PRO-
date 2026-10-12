@@ -7,6 +7,10 @@ import { appApiDatabaseBridge, installDatabaseBridge } from './helpers/database-
 import { hlOrderFixtureRpcResult, hlProfileRow, hlSeasonSettingsRows } from './fixtures/hl-order-state.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
+const evalSecurityEnd = html.indexOf('        function runDedupeSupabaseRead(', evalSecurityStart);
+assert.ok(evalSecurityStart >= 0 && evalSecurityEnd > evalSecurityStart, 'Eval security helpers should exist');
+const evalSecurityHelpers = html.slice(evalSecurityStart, evalSecurityEnd);
 const blockStart = html.indexOf('        // HL selections mirror');
 const blockEnd = html.indexOf('        function getCartSelectedItems()', blockStart);
 assert.ok(blockStart >= 0 && blockEnd > blockStart, 'the HL implementation block must be present');
@@ -293,7 +297,7 @@ test('supabaseRpc distinguishes pre-dispatch failures, structured server rejects
   const rpcStart=html.indexOf('        async function supabaseRpc(');
   const rpcSource=html.slice(rpcStart,html.indexOf('\n        }',rpcStart)+10);
   assert.ok(rpcStart>=0);
-  vm.runInContext(`${rpcSource}\n${source('isHlOrderCommandDefinitelyRejected')}`,ctx);
+  vm.runInContext(`${evalSecurityHelpers}\n${rpcSource}\n${source('isHlOrderCommandDefinitelyRejected')}`,ctx);
   await assert.rejects(ctx.supabaseRpc('hl_order_command',rpcArgs),error=>{
     assert.equal(error.hlOrderCommandDispatch,'not_sent');
     assert.equal(ctx.isHlOrderCommandDefinitelyRejected(error),true);

@@ -70,6 +70,14 @@ export type HistoricalRequestsPage = {
 export type HistoricalRequestsBridge = {
   /** Must change on identity, role, account, or server-visible-scope changes. */
   scopeKey: string;
+  /** Authenticated profile role; financial access is granted only to explicit admin roles. */
+  role: string;
   revisionKey: string;
   read(query: HistoricalRequestsQuery, signal?: AbortSignal): Promise<HistoricalRequestsPage>;
 };
+
+export function historicalRequestsRoleCanViewFinancials(role: unknown): boolean {
+  if (typeof role !== 'string') return false;
+  const normalizedRole = role.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return ['ADMIN', 'ADMINISTRATOR', 'SUPERADMIN'].includes(normalizedRole);
+}

@@ -7,13 +7,25 @@ import type {
   HistoricalRequestsPage,
   HistoricalRequestsQuery,
 } from './contract';
+import { historicalRequestsRoleCanViewFinancials } from './contract';
 
 const PAGE_SIZE = 25;
 type Level = 'reps' | 'customers' | 'requests';
 type PageResult = { data?: HistoricalRequestsPage; error?: Error; isLoading: boolean; retry(): void };
 
 function keyFor(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery) {
-  return JSON.stringify([bridge.scopeKey, bridge.revisionKey, query.operation, query.repKey, query.recordKind, query.dateFrom, query.dateTo, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
+  return JSON.stringify([bridge.scopeKey, bridge.role, bridge.revisionKey, query.operation, query.repKey, query.recordKind, query.dateFrom, query.dateTo, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
+}
+
+function redactFinancials(page: HistoricalRequestsPage): HistoricalRequestsPage {
+  return {
+    ...page,
+    financials: false,
+    summary: { ...page.summary, totalValue: null, unpricedCount: null },
+    rows: page.rows.map(row => 'requestCount' in row
+      ? { ...row, totalValue: null, unpricedCount: null }
+      : { ...row, listPrice: null, totalValue: null, unresolvedReason: null }),
+  };
 }
 
 function usePage(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery | null): PageResult {
@@ -27,7 +39,8 @@ function usePage(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuer
       controllers.current.set(key, controller);
     }
     try {
-      return await bridge.read(query, controller.signal);
+      const page = await bridge.read(query, controller.signal);
+      return historicalRequestsRoleCanViewFinancials(bridge.role) ? page : redactFinancials(page);
     } finally {
       if (key && controllers.current.get(key) === controller) controllers.current.delete(key);
     }
@@ -145,7 +158,7 @@ function ExecutiveReports({ bridge, recordKind, repKey, customerKey, dateFrom, d
   }, [bridge.scopeKey, bridge.revisionKey, selectedRep]);
   useEffect(() => { setReportPage(0); }, [grouping, recordKind, reportRep, reportCustomer, repKey, customerKey, dateFrom, dateTo]);
   useEffect(() => { setReportCustomer(''); }, [reportRep, repKey]);
-  const ready = !report.error && report.data?.scope === 'all' && report.data.financials === true;
+  const ready = historicalRequestsRoleCanViewFinancials(bridge.role) && !report.error && report.data?.scope === 'all' && report.data.financials === true;
   useEffect(() => {
     if (report.data && (report.data.scope !== 'all' || !report.data.financials)) onScopeInvalid();
   }, [report.data?.scope, report.data?.financials]);
@@ -227,7 +240,7 @@ function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge })
   const groups = rows.filter(isGroup);
   const requestRows = rows.filter((row): row is HistoricalRequestRow => !isGroup(row));
   const ownerMismatch = requestRows.some(row => rep?.key !== 'rep:' + (row.salesrepUserId || 'unassigned'));
-  const financials = !scopeGuardFailed && !ownerMismatch && reps.data?.scope === 'all' && reps.data.financials === true;
+  const financials = historicalRequestsRoleCanViewFinancials(bridge.role) && !scopeGuardFailed && !ownerMismatch && reps.data?.scope === 'all' && reps.data.financials === true;
   const recoverScope = () => {
     setReportScopeInvalid(false); setEstablishedScope(null); setRep(null); setFolder(null); setLevel('reps'); setPage(0); setRepPage(0); reps.retry();
   };
@@ -294,8 +307,9 @@ function HistoricalRequestsApp({ bridge }: { bridge: HistoricalRequestsBridge })
 }
 
 export function HistoricalRequestsView({ bridge }: { bridge: HistoricalRequestsBridge }) {
-  const cache = useMemo(() => new Map<string, State<unknown, Error>>(), [bridge.scopeKey]);
-  return <SWRConfig key={bridge.scopeKey} value={{ provider: () => cache as Cache<State<unknown, Error>> }}>
-    <HistoricalRequestsApp key={bridge.scopeKey} bridge={bridge} />
+  const identityKey = JSON.stringify([bridge.scopeKey, bridge.role]);
+  const cache = useMemo(() => new Map<string, State<unknown, Error>>(), [identityKey]);
+  return <SWRConfig key={identityKey} value={{ provider: () => cache as Cache<State<unknown, Error>> }}>
+    <HistoricalRequestsApp key={identityKey} bridge={bridge} />
   </SWRConfig>;
 }

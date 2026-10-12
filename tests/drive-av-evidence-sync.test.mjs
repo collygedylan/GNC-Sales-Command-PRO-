@@ -8,6 +8,10 @@ import test from 'node:test';
 import { buildSync } from 'esbuild';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
+const evalSecurityEnd = html.indexOf('        function runDedupeSupabaseRead(', evalSecurityStart);
+assert.ok(evalSecurityStart >= 0 && evalSecurityEnd > evalSecurityStart, 'Eval security helpers should exist');
+const evalSecurityHelpers = html.slice(evalSecurityStart, evalSecurityEnd);
 const compiled = buildSync({ entryPoints: [fileURLToPath(new URL('../services/driveEvidence.ts', import.meta.url))], bundle: true, platform: 'node', format: 'cjs', write: false, logLevel: 'silent' });
 const module = { exports: {} };
 new Function('module', 'exports', 'require', compiled.outputFiles[0].text)(module, module.exports, createRequire(import.meta.url));
@@ -58,7 +62,7 @@ function runtime() {
     'getPhotoAliasFieldsForPrefix', 'setPhotoAliasFieldsForPrefix', 'syncSharedFlyerPhotoFields',
     'syncMasterFieldsToRow', 'syncRowDataAcrossViews', 'propagateCommittedEdit', 'formatFetchedRows',
     'buildConfirmedDriveEvidenceState', 'preserveConfirmedDriveEvidence', 'reconcileConfirmedDriveEvidence'];
-  vm.runInContext(constants + '\n' + names.map(source).join('\n'), c);
+  vm.runInContext(evalSecurityHelpers + '\n' + constants + '\n' + names.map(source).join('\n'), c);
   const [master] = c.formatFetchedRows([row({ last_updated: '2026-10-06T18:00:00Z', photo_link: null, photo_name: null, spec: 'old', av_rule_photo_updated_at: '2026-08-01T18:00:00Z' })], 'ph_master_inventory');
   master.DOM_ID = 'fi_0';
   c.fullInventory = [master]; c.avOpenInventory = [{ ...master, DOM_ID: 'avo_drive-one' }];

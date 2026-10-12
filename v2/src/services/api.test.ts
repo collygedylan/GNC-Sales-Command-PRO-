@@ -13,7 +13,7 @@ vi.mock('@supabase/supabase-js', () => ({
     from: (table: string) => {
       harness.calls.push(['from', table]);
       const builder: Record<string, unknown> = {};
-      for (const method of ['select', 'order', 'range', 'or', 'abortSignal', 'update', 'insert', 'eq']) {
+      for (const method of ['select', 'order', 'range', 'or', 'abortSignal', 'update', 'insert', 'eq', 'limit']) {
         builder[method] = (...args: unknown[]) => {
           harness.calls.push([method, ...args]);
           return builder;
@@ -35,7 +35,42 @@ vi.mock('./cache', () => ({
   savePreference: vi.fn()
 }));
 
-import { fetchInventoryPage, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession, patchRow, REQUEST_TABLE } from './api';
+import { dbRows, fetchInventoryPage, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession, patchRow, REQUEST_TABLE, isAdminSession, isEvalSession } from './api';
+
+describe('Eval data access boundary', () => {
+  it('recognizes Eval role variants while leaving explicit Admin roles distinct', () => {
+    expect(isEvalSession({ username: 'eval-user', token: 'eval-token', role: 'Evaluator' })).toBe(true);
+    expect(isEvalSession({ username: 'eval-user', token: 'eval-token', role: 'Eval Admin' })).toBe(true);
+    expect(isAdminSession({ username: 'admin-user', token: 'admin-token', role: 'Admin' })).toBe(true);
+    expect(isEvalSession({ username: 'admin-user', token: 'admin-token', role: 'Admin' })).toBe(false);
+  });
+
+  it('uses a safe projection and removes nested pricing or administrative fields', async () => {
+    harness.response = { data: [{ unique_id: 'cav-1', itemcode: '100.1', unitprice: 19, source_payload: { listprice: 22, available: 4 }, available: 4, amountMoved: 3, amountThrownAway: 1 }], error: null };
+
+    const rows = await dbRows({ username: 'eval-user', token: 'eval-token', role: 'Evaluator' }, 'ph_cav_import', 'limit=10');
+
+    const select = harness.calls.find(([method]) => method === 'select');
+    expect(select?.[1]).toContain('available');
+    expect(select?.[1]).not.toContain('unitprice');
+    expect(select?.[1]).not.toContain('source_payload');
+    expect(rows).toEqual([{ unique_id: 'cav-1', itemcode: '100.1', available: 4, amountMoved: 3, amountThrownAway: 1 }]);
+    await expect(patchRow({ username: 'eval-user', token: 'eval-token', role: 'Eval' }, 'ph_cav_import', 'cav-1', { unitprice: 25 }))
+      .rejects.toThrow(/cannot be changed by Eval/i);
+    expect(harness.calls.some(([method]) => method === 'update')).toBe(false);
+  });
+
+  it('blocks Eval access to administrative tables and leaves explicit Admin data unrestricted', async () => {
+    await expect(dbRows({ username: 'eval-user', token: 'eval-token', role: 'Eval' }, 'sandbox_profiles', ''))
+      .rejects.toThrow(/administrative data is not available/i);
+    harness.response = { data: [{ unitprice: 19, source_payload: { listprice: 22 } }], error: null };
+
+    const rows = await dbRows({ username: 'admin-user', token: 'admin-token', role: 'Admin' }, 'ph_cav_import', '');
+
+    expect(harness.calls).toContainEqual(['select', '*']);
+    expect(rows).toEqual([{ unitprice: 19, source_payload: { listprice: 22 } }]);
+  });
+});
 
 describe('schema-checked request updates', () => {
   it('converts input quantities and blanks to native database values', async () => {

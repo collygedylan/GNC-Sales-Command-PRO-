@@ -14,7 +14,7 @@ import type {
   WorkflowRow
 } from '../types';
 
-export const APP_VERSION = 'V2026.10.12.003';
+export const APP_VERSION = 'V2026.10.12.004';
 export const REQUEST_TABLE = 'ph_active_request';
 export const REQUEST_LIVE_TABLE = REQUEST_TABLE;
 export const INVENTORY_TABLE = 'ph_master_inventory';
@@ -70,6 +70,58 @@ const ALLOWED_TABLE_NAMES = [
 ] as const satisfies readonly (keyof Database['public']['Tables'])[];
 type AllowedTable = typeof ALLOWED_TABLE_NAMES[number];
 const ALLOWED_TABLES: ReadonlySet<string> = new Set(ALLOWED_TABLE_NAMES);
+
+const EVAL_RESTRICTED_TABLES: ReadonlySet<AllowedTable> = new Set([
+  'sandbox_profiles', 'sandbox_event_log', 'sandbox_upload_jobs'
+]);
+const EVAL_SAFE_PROJECTIONS: Partial<Record<AllowedTable, string>> = {
+  [REQUEST_TABLE]: 'unique_id,created_at,requested_by,request_created_by_display,request_folder,req_status,req_archived,req_qty,req_reserve,req_match,req_customer,itemcode,commonname,contsize,locationcode,lotcode,priority,qualitycode,plantgroupcode,season_supply,ptravailable,req_spec,desired_spec,req_caliper,desired_caliper,est_ship,field_tag_color,req_comments,req_sales_note,request_note,req_pic_note,av_note,req_photo_link,req_photo_name,req_photo_mode,request_selected_rep_display',
+  [INVENTORY_TABLE]: INVENTORY_CARD_COLUMNS,
+  ph_cav_import: 'unique_id,created_at,last_updated,itemcode,commonname,contsize,brand,hz,season,product_description,spec,available,ptravailable,reserved_qty,order_qty,holdstopreason',
+  ph_27f1_hl_po: 'id,created_at,report_date,row_index,run_id,item_code,common_name,genus,size,lot,lot_pend_rec,po_ordered,po_received,po_remain,seas_on_hand,po_comments',
+  ph_dock_team_status: 'dock_num,checker,inspector,mistake,status,updated_at',
+  sandbox_workflow_records: 'id,module_key,title,subtitle,assigned_to,status,count_value,source_row_id,updated_at',
+  sandbox_message_threads: 'id,last_message_at,last_message_preview,participant_usernames,status,subject',
+  sandbox_messages: 'id,thread_id,sender_username,body,created_at',
+};
+
+const EVAL_SENSITIVE_KEYS = /(?:price|cost|financial|revenue|margin|profit|dollar|amount|invoice|valuation|accounting|admin|secret|credential|sourcepayload|rawpayload|metadata)/i;
+const EVAL_OPERATIONAL_AMOUNT_KEYS = new Set(['amountmoved', 'amountthrownaway']);
+
+function isEvalSensitiveKey(key: string): boolean {
+  const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return !EVAL_OPERATIONAL_AMOUNT_KEYS.has(normalized) && EVAL_SENSITIVE_KEYS.test(key);
+}
+
+export function isEvalSession(session: Session | null | undefined): boolean {
+  return String(session?.role ?? '').trim().toLowerCase().replace(/[^a-z0-9]/g, '').startsWith('eval');
+}
+
+export function isAdminSession(session: Session | null | undefined): boolean {
+  return ['admin', 'administrator', 'superadmin'].includes(
+    String(session?.role ?? '').trim().toLowerCase().replace(/[\s_-]+/g, '')
+  );
+}
+
+function evalSafeProjection(table: AllowedTable): string {
+  if (EVAL_RESTRICTED_TABLES.has(table)) {
+    throw new Error('This administrative data is not available to Eval accounts.');
+  }
+  const projection = EVAL_SAFE_PROJECTIONS[table];
+  if (!projection) throw new Error(`No Eval-safe projection is configured for ${table}.`);
+  return projection;
+}
+
+function redactEvalData<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(item => redactEvalData(item)) as T;
+  if (!value || typeof value !== 'object') return value;
+  const safe: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (isEvalSensitiveKey(key) || key.toLowerCase() === 'source_payload') continue;
+    safe[key] = redactEvalData(item);
+  }
+  return safe as T;
+}
 
 let clientPromise: Promise<SupabaseClient<Database>> | null = null;
 let sandboxSessionRevision = 0;
@@ -157,14 +209,16 @@ export async function recordSandboxEvent(session: Session | null, eventType: str
   if (error) console.warn('[v2 sandbox event]', error.message);
 }
 
-export async function dbRows(_session: Session, table: string, query: string): Promise<RequestRow[]> {
+export async function dbRows(session: Session, table: string, query: string): Promise<RequestRow[]> {
   assertAllowedTable(table);
+  const projection = isEvalSession(session) ? evalSafeProjection(table) : '*';
   const client = await sandboxClient();
   const limitMatch = query.match(/(?:^|&)limit=(\d+)/i);
   const limit = Math.min(1000, Math.max(1, Number(limitMatch?.[1] || 400)));
-  const { data, error } = await client.from(table).select('*').limit(limit);
+  const { data, error } = await client.from(table).select(projection).limit(limit);
   if (error) throw error;
-  return data || [];
+  const rows = (data || []) as unknown as RequestRow[];
+  return isEvalSession(session) ? redactEvalData(rows) : rows;
 }
 
 const REQUEST_PATCH_KEYS: Record<string, string> = {
@@ -213,6 +267,9 @@ function normalizedPatch(table: string, body: Record<string, unknown>) {
 export async function patchRow(session: Session, table: string, uniqueId: string | number, body: Record<string, unknown>) {
   assertAllowedTable(table);
   if (uniqueId === '' || uniqueId === null || uniqueId === undefined) throw new Error('Exact row id is required.');
+  if (isEvalSession(session) && (EVAL_RESTRICTED_TABLES.has(table) || Object.keys(body).some(isEvalSensitiveKey))) {
+    throw new Error('This administrative data cannot be changed by Eval accounts.');
+  }
   const patch = normalizedPatch(table, body);
   if (!Object.keys(patch).length) return;
   const client = await sandboxClient();
@@ -233,13 +290,13 @@ export async function patchRow(session: Session, table: string, uniqueId: string
   });
 }
 
-export async function fetchRequestRows(_session: Session, options: PageOptions = {}): Promise<RequestRow[]> {
+export async function fetchRequestRows(session: Session, options: PageOptions = {}): Promise<RequestRow[]> {
   const client = await sandboxClient();
   const page = Math.max(0, options.page || 0);
   const pageSize = Math.min(1000, Math.max(25, options.pageSize || 400));
   let query = client
     .from(REQUEST_TABLE)
-    .select('*')
+    .select(isEvalSession(session) ? evalSafeProjection(REQUEST_TABLE) : '*')
     .order('created_at', { ascending: false })
     .range(page * pageSize, page * pageSize + pageSize - 1);
   if (options.search?.trim()) {
@@ -250,7 +307,8 @@ export async function fetchRequestRows(_session: Session, options: PageOptions =
   if (options.signal) query = query.abortSignal(options.signal);
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  const rows = (data || []) as unknown as RequestRow[];
+  return isEvalSession(session) ? redactEvalData(rows) : rows;
 }
 
 export async function fetchInventoryPage(options: PageOptions = {}): Promise<PageResult<InventoryRow>> {
@@ -291,7 +349,7 @@ export async function fetchInventoryPage(options: PageOptions = {}): Promise<Pag
     const { data, error, count } = await query;
     if (error) throw error;
     if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
-    const rows: InventoryRow[] = data || [];
+    const rows: InventoryRow[] = isEvalSession(session) ? redactEvalData(data || []) : data || [];
     if (cacheKey) await cacheInventoryPage(cacheKey, scopeKey, rows);
     if (!isCurrentScope()) throw new Error('Sandbox account changed during inventory load. Retry in the active account.');
     return { rows, page, pageSize, total: count ?? rows.length, source: 'sandbox' };
@@ -335,18 +393,20 @@ export async function fetchAvOptions(itemcode: unknown, selectedYear = 27, signa
 }
 
 export async function fetchWorkflowRows(moduleKey: string, signal?: AbortSignal): Promise<WorkflowRow[]> {
+  const session = readStoredSession();
   const client = await sandboxClient();
   let query = client
     .from('sandbox_workflow_records')
-    .select('*')
+    .select(session && isEvalSession(session) ? evalSafeProjection('sandbox_workflow_records') : '*')
     .eq('module_key', moduleKey)
     .order('updated_at', { ascending: false })
     .limit(500);
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []).map(row => {
-    const payload = jsonObject(row.payload || {});
+  const records = (data || []) as unknown as Database['public']['Tables']['sandbox_workflow_records']['Row'][];
+  return records.map(row => {
+    const payload = session && isEvalSession(session) ? {} : jsonObject(row.payload || {});
     return {
     id: String(row.id),
     moduleKey: row.module_key,
@@ -363,21 +423,27 @@ export async function fetchWorkflowRows(moduleKey: string, signal?: AbortSignal)
 }
 
 export async function fetchMessageThreads(signal?: AbortSignal) {
+  const session = readStoredSession();
   const client = await sandboxClient();
-  let query = client.from('sandbox_message_threads').select('*').order('last_message_at', { ascending: false }).limit(100);
+  let query = client.from('sandbox_message_threads')
+    .select(session && isEvalSession(session) ? evalSafeProjection('sandbox_message_threads') : '*')
+    .order('last_message_at', { ascending: false }).limit(100);
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return session && isEvalSession(session) ? redactEvalData(data || []) : data || [];
 }
 
 export async function fetchMessages(threadId: string, signal?: AbortSignal) {
+  const session = readStoredSession();
   const client = await sandboxClient();
-  let query = client.from('sandbox_messages').select('*').eq('thread_id', threadId).order('created_at', { ascending: true }).limit(500);
+  let query = client.from('sandbox_messages')
+    .select(session && isEvalSession(session) ? evalSafeProjection('sandbox_messages') : '*')
+    .eq('thread_id', threadId).order('created_at', { ascending: true }).limit(500);
   if (signal) query = query.abortSignal(signal);
   const { data, error } = await query;
   if (error) throw error;
-  return data || [];
+  return session && isEvalSession(session) ? redactEvalData(data || []) : data || [];
 }
 
 export async function saveUserPreferences(session: Session, preferences: UserPreferences) {
