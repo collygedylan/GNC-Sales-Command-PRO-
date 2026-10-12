@@ -35,7 +35,7 @@ test('timing budgets use the larger relative or noise allowance, never add both'
 });
 
 test('temporary profile doubles time ceilings with the approved 200ms browser jitter floor', () => {
-  assert.deepEqual(manifest.temporaryTimingAllowance, { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7 });
+  assert.deepEqual(manifest.temporaryTimingAllowance, { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7, phoneRequestLongTaskLimitMs: 400 });
   for (const [kind, before, limit] of [
     ['duration', 0, 200], ['duration', 17.8, 217.8], ['duration', 56, 256], ['duration', 100, 300], ['duration', 1000, 2300],
     ['database-duration', 0, 10], ['database-duration', 100, 230],
@@ -47,11 +47,39 @@ test('temporary profile doubles time ceilings with the approved 200ms browser ji
   assert.equal(benchmarkMetricLimit(strictManifest, 0, 'duration'), 25, 'Prompt 7 restores the original browser allowance');
   assert.equal(benchmarkMetricLimit(strictManifest, 0, 'database-duration'), 5, 'Prompt 7 restores the original SQL allowance');
   const previousProfile = parseBenchmarkManifest({ ...manifest,
-    temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, minimumBrowserAllowanceMs: 100 } });
+    temporaryTimingAllowance: { multiplier: 2, minimumBrowserAllowanceMs: 100, restoreAtPrompt: 7 } });
   assert.equal(benchmarkMetricLimit(previousProfile, 56, 'duration'), 162, 'the prior profile remains readable for review');
   for (const change of [{ multiplier: 3 }, { minimumBrowserAllowanceMs: 150 }, { restoreAtPrompt: 8 }, { extra: true }]) {
     assert.throws(() => parseBenchmarkManifest({ ...manifest,
       temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, ...change } }), /TEMPORARY_TIMING_ALLOWANCE_INVALID/);
+  }
+});
+test('approved phone Request cold long-task ceiling is exactly 400ms and remains scoped', () => {
+  const phoneReport = (value, changes = {}) => ({ ...report('duration', [value]), method: 'live:paired-serial-v1',
+    metrics: [{ id: 'request.cold.longTaskMs', kind: 'duration', samples: [value] }], ...changes });
+  for (const value of [251, 283, 400]) {
+    assert.deepEqual(compareBenchmarks(manifest, phoneReport(51), phoneReport(value)), []);
+  }
+  assert.equal(compareBenchmarks(manifest, phoneReport(51), phoneReport(401)).length, 2);
+  assert.equal(compareBenchmarks(strictManifest, phoneReport(51), phoneReport(283)).length, 2, 'removing the temporary profile restores strict timing');
+  const original = parseBenchmarkManifest({ ...manifest,
+    temporaryTimingAllowance: { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7 } });
+  assert.equal(compareBenchmarks(original, phoneReport(51), phoneReport(283)).length, 2, 'the prior ceiling is 251ms');
+  for (const changes of [
+    { method: 'v2:paired-serial-v1' },
+    { viewport: { width: 820, height: 1180 } },
+    { viewport: { width: 1440, height: 900 } },
+    { metrics: [{ id: 'request.warm.longTaskMs', kind: 'duration', samples: [51] }] },
+    { metrics: [{ id: 'drive.cold.longTaskMs', kind: 'duration', samples: [51] }] },
+    { metrics: [{ id: 'request.cold.longTaskMs', kind: 'database-duration', samples: [51] }] },
+  ]) {
+    const previous = phoneReport(51, changes);
+    const next = { ...previous, metrics: previous.metrics.map(metric => ({ ...metric, samples: [283] })) };
+    assert.equal(compareBenchmarks(manifest, previous, next).length, 2, 'unapproved metrics retain their original limits');
+  }
+  for (const value of [251, 399, 401, '400', null]) {
+    assert.throws(() => parseBenchmarkManifest({ ...manifest,
+      temporaryTimingAllowance: { ...manifest.temporaryTimingAllowance, phoneRequestLongTaskLimitMs: value } }), /TEMPORARY_TIMING_ALLOWANCE_INVALID/);
   }
 });
 test('bytes, duplicate reads and unchanged-row renders cannot regress', () => {

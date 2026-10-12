@@ -45,3 +45,20 @@ test('baseline updates require current human collaborator approval, retaining di
   assert.equal(hasCurrentHumanApproval([approval, { ...approval, state: 'CHANGES_REQUESTED' }], 'head'), false);
   assert.equal(hasCurrentHumanApproval([approval, { ...approval, state: 'DISMISSED' }], 'head'), false);
 });
+test('owner approval covers only the exact Phase 3 phone Request 400ms ceiling', () => {
+  const previous = { ...manifest, temporaryTimingAllowance: { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7 } };
+  const approved = { ...previous, temporaryTimingAllowance: { ...previous.temporaryTimingAllowance, phoneRequestLongTaskLimitMs: 400 } };
+  assert.equal(isApprovedRoadmapTimingChange(previous, approved, 370), true);
+  assert.equal(isApprovedRoadmapTimingChange(approved, approved, 370), false);
+  assert.equal(isApprovedRoadmapTimingChange(approved, previous, 370), false);
+  for (const changed of [{ baselineCommit: 'f'.repeat(40) }, { sqlSchemaCommit: 'f'.repeat(40) },
+    { fixtureVersion: 'changed' }, { coldSamples: 10 }, { warmSamples: 20 },
+    { profiles: manifest.profiles.map(profile => ({ ...profile, width: profile.width + 1 })) }]) {
+    assert.equal(isApprovedRoadmapTimingChange(previous, { ...approved, ...changed }, 370), false);
+  }
+  for (const key of ['baselineCommit', 'sqlSchemaCommit']) {
+    assert.equal(isApprovedRoadmapTimingChange({ ...previous, [key]: 'f'.repeat(40) }, { ...approved, [key]: 'f'.repeat(40) }, 370), false);
+  }
+  assert.throws(() => isApprovedRoadmapTimingChange(previous, { ...approved,
+    temporaryTimingAllowance: { ...approved.temporaryTimingAllowance, phoneRequestLongTaskLimitMs: 401 } }, 370), /TEMPORARY_TIMING_ALLOWANCE_INVALID/);
+});

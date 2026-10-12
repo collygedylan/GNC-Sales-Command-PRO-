@@ -11,8 +11,10 @@ export function baselineChanged(previous, current) {
 // The Oct 9 owner instruction allowed PR #349 to add the initial profile only.
 // On Oct 10, the owner authorized temporary timing relaxation for the three-phase
 // execution; PR #357 records that instruction as the exact 100-to-200 ms browser
-// floor change. Prompt 7 removes the temporary profile. No baseline, fixture,
-// sample, or other budget change is covered by these exceptions.
+// floor change. On Oct 11, the owner explicitly approved a 400ms ceiling only for
+// live/phone request.cold.longTaskMs after main e5163795 measured 283ms > 251ms.
+// Prompt 7 removes the temporary profile. No baseline, fixture, sample, or other
+// budget change is covered by these exceptions.
 export function isApprovedRoadmapTimingChange(previous, current, pullRequestNumber) {
   if (!previous) return false;
   const before = parseBenchmarkManifest(previous), after = parseBenchmarkManifest(current);
@@ -25,9 +27,14 @@ export function isApprovedRoadmapTimingChange(previous, current, pullRequestNumb
   const allowanceKey = allowance => JSON.stringify(allowance);
   const initialProfile = { multiplier: 2, minimumBrowserAllowanceMs: 100, restoreAtPrompt: 7 };
   const currentProfile = { multiplier: 2, minimumBrowserAllowanceMs: 200, restoreAtPrompt: 7 };
+  const approvedPhoneProfile = { ...currentProfile, phoneRequestLongTaskLimitMs: 400 };
   return (!before.temporaryTimingAllowance && allowanceKey(after.temporaryTimingAllowance) === allowanceKey(initialProfile) && pullRequestNumber === 349)
     || (allowanceKey(before.temporaryTimingAllowance) === allowanceKey(initialProfile)
       && allowanceKey(after.temporaryTimingAllowance) === allowanceKey(currentProfile) && pullRequestNumber === 357)
+    || (before.baselineCommit === '3763b8270b9af1c573b64c29d70556b0adbd7e8d'
+      && before.sqlSchemaCommit === '9f143a57b50c6206cdcba08650aa0560b4c07fcd'
+      && allowanceKey(before.temporaryTimingAllowance) === allowanceKey(currentProfile)
+      && allowanceKey(after.temporaryTimingAllowance) === allowanceKey(approvedPhoneProfile))
     || (!!before.temporaryTimingAllowance && !after.temporaryTimingAllowance);
 }
 

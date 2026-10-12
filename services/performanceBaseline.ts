@@ -10,7 +10,7 @@ export type BenchmarkManifest = {
   warmSamples: number;
   profiles: { id: string; width: number; height: number }[];
   budgets: { relative: number; browserNoiseMs: number; databaseNoiseMs: number };
-  temporaryTimingAllowance?: { multiplier: 2; minimumBrowserAllowanceMs: 100 | 200; restoreAtPrompt: 7 };
+  temporaryTimingAllowance?: { multiplier: 2; minimumBrowserAllowanceMs: 100 | 200; restoreAtPrompt: 7; phoneRequestLongTaskLimitMs?: 400 };
 };
 export type BenchmarkReport = {
   schemaVersion: 1;
@@ -56,12 +56,15 @@ export function parseBenchmarkManifest(input: unknown): BenchmarkManifest {
   let temporaryTimingAllowance: BenchmarkManifest['temporaryTimingAllowance'];
   if (raw.temporaryTimingAllowance !== undefined) {
     const allowance = object(raw.temporaryTimingAllowance);
-    if (Object.keys(allowance).length !== 3 || allowance.multiplier !== 2
+    const hasPhoneRequestLimit = allowance.phoneRequestLongTaskLimitMs !== undefined;
+    if (Object.keys(allowance).length !== (hasPhoneRequestLimit ? 4 : 3) || allowance.multiplier !== 2
         || (allowance.minimumBrowserAllowanceMs !== 100 && allowance.minimumBrowserAllowanceMs !== 200)
-        || allowance.restoreAtPrompt !== 7) {
+        || allowance.restoreAtPrompt !== 7
+        || (hasPhoneRequestLimit && (allowance.minimumBrowserAllowanceMs !== 200 || allowance.phoneRequestLongTaskLimitMs !== 400))) {
       throw new Error('PERFORMANCE_TEMPORARY_TIMING_ALLOWANCE_INVALID');
     }
-    temporaryTimingAllowance = { multiplier: 2, minimumBrowserAllowanceMs: allowance.minimumBrowserAllowanceMs, restoreAtPrompt: 7 };
+    temporaryTimingAllowance = { multiplier: 2, minimumBrowserAllowanceMs: allowance.minimumBrowserAllowanceMs, restoreAtPrompt: 7,
+      ...(hasPhoneRequestLimit ? { phoneRequestLongTaskLimitMs: 400 as const } : {}) };
   }
   return { schemaVersion: 1, baselineCommit: sha(raw.baselineCommit, 40), sqlSchemaCommit: sha(raw.sqlSchemaCommit, 40), fixtureVersion: string(raw.fixtureVersion),
     coldSamples, warmSamples, profiles,
@@ -124,7 +127,11 @@ export function compareBenchmarks(manifestInput: unknown, baselineInput: unknown
     if (!next || next.kind !== previous.kind || next.samples.length !== previous.samples.length) throw new Error('PERFORMANCE_METRIC_COVERAGE_MISMATCH');
     for (const p of [0.5, 0.95]) {
       const before = percentile(previous.samples, p), after = percentile(next.samples, p);
-      const limit = benchmarkMetricLimit(manifest, before, previous.kind);
+      const phone = manifest.profiles.find(profile => profile.id === 'phone');
+      const phoneRequestLimit = manifest.temporaryTimingAllowance?.phoneRequestLongTaskLimitMs;
+      const limit = phoneRequestLimit && previous.kind === 'duration' && previous.id === 'request.cold.longTaskMs'
+        && baseline.method.startsWith('live:') && phone?.width === baseline.viewport.width && phone.height === baseline.viewport.height
+        ? phoneRequestLimit : benchmarkMetricLimit(manifest, before, previous.kind);
       if (after > limit) failures.push(`${previous.id} p${p * 100}: ${after.toFixed(2)} exceeds ${limit.toFixed(2)} (baseline ${before.toFixed(2)})`);
     }
   }
