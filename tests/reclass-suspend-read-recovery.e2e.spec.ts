@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+// @test-group: @suspend-tag,suspend
 
 import { renderDriveLayoutCard } from './fixtures/drive-card-layout';
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
