@@ -2412,7 +2412,13 @@ test('Phone Reclass inquiry fits narrow screens and preserves optional location 
 
 test('Desktop Reclass row actions preserve combined requests and disclose authorized Hold / Stop propagation scope', {"tag":["@local-e2e","@release-functional"]}, async ({ page }) => {
   test.setTimeout(90_000);
-  const fixture = await installHlOrderFixture(page, 'http://127.0.0.1:43116', { username: 'dylan_collyge', role: 'ADMIN' });
+  const fixture = await installHlOrderFixture(page, 'http://127.0.0.1:43116', { username: 'dylan_collyge', role: 'ADMIN', master: [
+    hlMaster('old', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', desigitem: 'Original item designation', lotcode: '26.F1', locationcode: 'old', season: 'F1', saleyear: '26', priority: '5', holdstopcode: 'H', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
+    hlMaster('current', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: '2027.F1', locationcode: 'current', season: 'F1', saleyear: '2027', priority: '5', holdstopcode: 'S', holdstopreason: 'existing reason', ptronhand: '0', ptravailable: '0' }),
+    hlMaster('future', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: '28.F1', locationcode: 'future', season: 'F1', saleyear: '28', priority: '5', holdstopcode: '', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
+    hlMaster('other', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: '27.S1', locationcode: 'other', season: 'S1', saleyear: '27', priority: '5', holdstopcode: '', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
+    hlMaster('unknown', { itemcode: 'RECLASS-VIEW', commonname: 'Reclass view fixture', contsize: '3G', lotcode: 'bad27.F1', locationcode: 'unknown', season: 'F1', saleyear: 'bad27', priority: '5', holdstopcode: '', holdstopreason: 'existing reason', ptronhand: '10', ptravailable: '10' }),
+  ] });
   page.on('dialog', dialog => dialog.accept());
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.evaluate(() => {
