@@ -180,7 +180,8 @@ for (const role of ['ADMIN', 'SALES']) {
     await activate(history);
     const area = page.locator('#request-history-content');
     await expect(area.getByRole('heading', { name: 'Request History', level: 1, exact: true })).toBeVisible();
-    await expect(area.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(area.getByRole('button', { name: 'Requests', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(area.getByRole('button', { name: 'Orders', exact: true })).toHaveAttribute('aria-pressed', 'false');
     await activate(page.locator('#global-header-inline-back'));
     await expect(history).toBeVisible();
     await expectHubContrast(page);
@@ -201,55 +202,66 @@ for (const role of ['ADMIN', 'SALES']) {
   });
 }
 
-test('history searches the complete permitted result set, pages newest first, and preserves detail Back', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
+test('history drills through the complete permitted result set, pages newest first, and preserves folder Back', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
   const area = await openSales(page, 'Request History', 'request-history');
-  await expect(area.getByRole('button', { name: 'All', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  const cards = area.locator('button.sw-card');
-  await expect(cards).toHaveCount(50);
-  await expect(cards.first()).toContainText('Pending Magnolia');
-  await expect(cards.nth(1)).toContainText('2026-09-20T12:00:00.000Z');
-  await expect(area.locator('.sw-history-card').filter({ hasText: 'Cedar 01' }).getByRole('button', { name: 'Request Credit', exact: true })).toHaveCount(0);
-  await area.getByRole('button', { name: 'Load more', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(cards).toHaveCount(64);
+  const activate = async (locator: Locator) => locator[test.info().project.use.isMobile ? 'tap' : 'click']();
+  const browse = area.locator('section[aria-labelledby="historical-browse-title"]');
+  await expect(area.getByRole('button', { name: 'Requests', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await activate(browse.getByRole('button', { name: /Dylan fixture/ }));
+  const north = browse.locator('.historical-requests__group').filter({ hasText: 'North Farm' });
+  const unknown = browse.locator('.historical-requests__group').filter({ hasText: 'Unknown consignee' });
+  await expect(north).toContainText('63 requests');
+  await expect(unknown).toContainText('1 requests');
+  await activate(north);
+  const cards = browse.locator('article.historical-requests__request');
+  await expect(cards).toHaveCount(25);
+  await expect(cards.first()).toContainText('Cedar 00');
+  await expect(cards.first()).toContainText('completed');
+  await expect(cards.first()).toContainText('Qty 10');
+  await expect(cards.filter({ hasText: 'Cedar 01' }).getByRole('button', { name: 'Request Credit', exact: true })).toHaveCount(0);
+  await expect(browse.locator('.historical-requests__pager')).toContainText('Page 1 of 3 · 63 total');
+  await activate(browse.getByRole('button', { name: 'Next', exact: true }));
+  await expect(cards).toHaveCount(25);
+  await expect(cards.first()).toContainText('Cedar 25');
+  await activate(browse.getByRole('button', { name: 'Next', exact: true }));
+  await expect(cards).toHaveCount(13);
   await expect(cards.last()).toContainText('Rare Orchid');
-  await expect(area.getByRole('button', { name: 'Load more', exact: true })).toHaveCount(0);
-  const search = area.getByLabel('Search customer, consignee, item, common name, or folder', { exact: true });
-  await search.fill('  ORCHID  ');
-  await expect(cards).toHaveCount(1);
-  expect(f.commands.some(call => call.action === 'request_history' && call.operation === 'search' && call.payload.query === '  ORCHID  ')).toBe(true);
-  await search.fill('HIST.62');
-  await expect(cards).toHaveCount(1);
-  await search.fill(folderName);
-  await expect(cards).toHaveCount(50);
-  await search.fill('Rare Orchid');
-  await expect(cards).toHaveCount(1);
+  await expect(cards.last()).toContainText('HIST.62');
+  await expect(cards.last()).toContainText('Completed instruction 62');
+  await expect(browse.getByRole('button', { name: 'Next', exact: true })).toBeDisabled();
+  expect(f.commands.some(call => call.action === 'historical_requests' && call.operation === 'requests'
+    && call.payload.page === 2 && call.payload.customerKey === 'customer-acme-north'
+    && call.payload.consigneeKey === 'consignee:north')).toBe(true);
   await expectPhoneLayout(page, area);
-  await cards.first()[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(area.getByRole('heading', { name: 'Rare Orchid', level: 2 })).toBeVisible();
-  await expect(area).toContainText('Completed instruction 62');
   await expect(page.locator('button[aria-label="Back"]:visible')).toHaveCount(1);
-  await page.locator('#global-header-inline-back')[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(search).toHaveValue('Rare Orchid');
-  await expect(cards).toHaveCount(1);
-  await search.fill('');
-  await expect(cards).toHaveCount(50);
-  await area.getByRole('button', { name: 'Pending', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await activate(area.locator('.historical-requests__back'));
+  await expect(north).toBeVisible();
+  await activate(unknown);
   await expect(cards).toHaveCount(1);
   await expect(cards.first()).toContainText('Pending Magnolia');
-  await area.getByRole('button', { name: 'All', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(cards.first()).toContainText('Pending Magnolia');
-  await area.getByRole('button', { name: 'Browse customer / consignee', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(area.getByText('Saving or loading…', { exact: true })).toHaveCount(0);
-  const folder = area.getByRole('button', { name: `${folderName} 63 records`, exact: true });
-  await expect(folder).toHaveCount(1);
-  await expect(area.getByRole('button', { name: 'Acme Nursery — Unknown consignee 1 records', exact: true })).toHaveCount(1);
-  await folder[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await expect(cards.first()).toContainText('pending');
+  await activate(area.locator('.historical-requests__back'));
+  await activate(north);
   await expect(cards.first()).toContainText('Cedar 00');
   // A denied scoped response must be reported instead of appearing as a successful empty search.
   f.denyHistory = true;
-  await area.getByRole('button', { name: 'Refresh records', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
-  await expect(area.getByRole('alert')).toContainText('SALES_ACCESS_DENIED');
+  await activate(browse.getByRole('button', { name: 'Refresh', exact: true }));
+  await expect(area.getByRole('alert')).toContainText('scope could not be confirmed');
+  await expect(cards).toHaveCount(0);
+  f.denyHistory = false;
+  // Deep item search remains available in the completed-request Credit workflow.
+  const credit = await openSales(page, 'Credit', 'sales-credit');
+  await activate(credit.getByRole('button', { name: 'Completed Requests', exact: true }));
+  await activate(credit.getByRole('button', { name: `${folderName} 63 records`, exact: true }));
+  const search = credit.getByLabel('Search item code or common name', { exact: true });
+  await search.fill('  ORCHID  ');
+  await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toHaveCount(1);
+  expect(f.commands.some(call => call.action === 'sales_credit' && call.operation === 'sources' && call.payload.query === '  ORCHID  ')).toBe(true);
+  await search.fill('HIST.62');
+  await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toHaveCount(1);
+  await search.fill('Rare Orchid');
+  await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toHaveCount(1);
   expectIsolated(f);
 });
 
@@ -282,11 +294,12 @@ test('Credit tabs keep source lists and selections separate', {"tag":["@sales-mo
 
 test('history Request Credit resolves the exact archive and a denied source shows an alert', {"tag":["@sales-mobile"]}, async ({ page, baseURL }) => {
   const f = await installSalesMobileFixture(page, baseURL!);
-  const history = await openSales(page, 'Request History', 'request-history');
-  await history.getByLabel('Search customer, consignee, item, common name, or folder', { exact: true }).fill('Rare Orchid');
-  await expect(history.locator('.sw-history-card')).toHaveCount(1);
-  await history.getByRole('button', { name: 'Request Credit', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
-  const credit = page.locator('#sales-credit-content');
+  const credit = await openSales(page, 'Credit', 'sales-credit');
+  await credit.getByRole('button', { name: 'Completed Requests', exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await credit.getByRole('button', { name: `${folderName} 63 records`, exact: true })[test.info().project.use.isMobile ? 'tap' : 'click']();
+  await credit.getByLabel('Search item code or common name', { exact: true }).fill('Rare Orchid');
+  await expect(credit.getByRole('checkbox', { name: 'Rare Orchid', exact: true })).toHaveCount(1);
+  await page.evaluate(() => (window as any).SalesWorkspace.openSource('request_history', 'history-62'));
   await expect(credit.getByRole('heading', { name: 'Credit draft', exact: true })).toBeVisible();
   await expect(credit.getByRole('heading', { name: 'Rare Orchid', exact: true })).toBeVisible();
   expect(f.commands.some(call => call.action === 'sales_credit' && call.operation === 'source' &&
