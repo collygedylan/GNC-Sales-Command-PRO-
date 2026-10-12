@@ -69,18 +69,18 @@ describe('historical requests typed API boundary', () => {
 
   it('forwards only sanitized queries and abort signals; scope is separated by bridge key', async () => {
     const transport = vi.fn().mockResolvedValue(customerPage);
-    const bridge = createHistoricalRequestsBridge({ scopeKey: 'profile-a:admin:all', revisionKey: 'r7', transport });
+    const bridge = createHistoricalRequestsBridge({ scopeKey: 'profile-a:admin:all', role: 'Admin', revisionKey: 'r7', transport });
     const signal = new AbortController().signal;
     await bridge.read({ operation: 'customers', page: 0, pageSize: 25, actorId: 'forged' } as never, signal);
     expect(transport).toHaveBeenCalledWith({ operation: 'customers', page: 0, pageSize: 25 }, signal);
-    const own = createHistoricalRequestsBridge({ scopeKey: 'profile-a:rep:own', revisionKey: 'r7', transport });
+    const own = createHistoricalRequestsBridge({ scopeKey: 'profile-a:rep:own', role: 'Sales Rep', revisionKey: 'r7', transport });
     expect(own.scopeKey).not.toBe(bridge.scopeKey);
   });
 
   it('rejects RPC failures and malformed envelopes instead of rendering cached financial data', async () => {
     const transport = vi.fn().mockRejectedValueOnce(new Error('HISTORY_FORBIDDEN'))
       .mockResolvedValueOnce({ ...customerPage, rows: 'not-an-array' });
-    const bridge = createHistoricalRequestsBridge({ scopeKey: 'actor-own', revisionKey: 'r1', transport });
+    const bridge = createHistoricalRequestsBridge({ scopeKey: 'actor-own', role: 'Sales Rep', revisionKey: 'r1', transport });
     await expect(bridge.read({ operation: 'customers' })).rejects.toThrow('HISTORY_FORBIDDEN');
     await expect(bridge.read({ operation: 'customers' })).rejects.toThrow(/page rows/);
   });
@@ -88,8 +88,36 @@ describe('historical requests typed API boundary', () => {
   it('explains authorization and import-in-progress failures without presenting an empty result', async () => {
     const transport = vi.fn().mockRejectedValueOnce(new Error('HISTORICAL_REQUESTS_FORBIDDEN'))
       .mockRejectedValueOnce(new Error('HISTORICAL_REQUESTS_SOURCE_REFRESH_REQUIRED'));
-    const bridge = createHistoricalRequestsBridge({ scopeKey: 'actor-own', revisionKey: 'r1', transport });
+    const bridge = createHistoricalRequestsBridge({ scopeKey: 'actor-own', role: 'Sales Rep', revisionKey: 'r1', transport });
     await expect(bridge.read({ operation: 'customers' })).rejects.toThrow(/not available to this account/);
     await expect(bridge.read({ operation: 'customers' })).rejects.toThrow(/data is updating/);
+  });
+
+  it('redacts server-supplied financial fields for Eval and unknown roles before returning data to the cache', async () => {
+    const transport = vi.fn().mockImplementation(async (query: { operation: string }) => query.operation === 'requests'
+      ? { ...customerPage, rows: [{ ...requestRow, listPrice: 75, totalValue: 1875, unresolvedReason: null }], total: 1 }
+      : { ...customerPage, rows: [{ ...customerPage.rows[0], totalValue: 1875, unpricedCount: 1 }] });
+    const evalBridge = createHistoricalRequestsBridge({ scopeKey: 'eval-scope', role: 'Eval', revisionKey: 'r7', transport });
+    const page = await evalBridge.read({ operation: 'customers' });
+    expect(page.financials).toBe(false);
+    expect(page.summary).toEqual({ requestCount: 3, totalValue: null, unpricedCount: null });
+    expect(page.rows[0]).toMatchObject({ totalValue: null, unpricedCount: null });
+    const requestPage = await evalBridge.read({ operation: 'requests', customerKey: 'cust:0001', consigneeKey: 'consignee:east' });
+    expect(requestPage.rows[0]).toMatchObject({ requestQty: 0, totalValue: null, listPrice: null, unresolvedReason: null });
+
+    const unknown = createHistoricalRequestsBridge({ scopeKey: 'unknown-scope', role: 'Auditor', revisionKey: 'r7', transport });
+    expect((await unknown.read({ operation: 'customers' })).financials).toBe(false);
+    expect(() => createHistoricalRequestsBridge({ scopeKey: 'missing-role', role: '', revisionKey: 'r7', transport })).toThrow(/signed-in/);
+  });
+
+  it('preserves all financial fields for explicit Admin, Administrator, and Super Admin roles', async () => {
+    const transport = vi.fn().mockResolvedValue({ ...customerPage, rows: [{ ...customerPage.rows[0], totalValue: 1875, unpricedCount: 1 }] });
+    for (const role of ['Admin', 'Administrator', 'Super Admin']) {
+      const bridge = createHistoricalRequestsBridge({ scopeKey: `profile:${role}`, role, revisionKey: 'r7', transport });
+      const page = await bridge.read({ operation: 'customers' });
+      expect(bridge.role).toBe(role);
+      expect(page.financials).toBe(true);
+      expect(page.rows[0]).toMatchObject({ totalValue: 1875, unpricedCount: 1 });
+    }
   });
 });

@@ -4,6 +4,10 @@ import test from 'node:test';
 import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+const evalSecurityStart = html.indexOf('        function isEvalSensitiveDataRestricted(');
+const evalSecurityEnd = html.indexOf('        function runDedupeSupabaseRead(', evalSecurityStart);
+assert.ok(evalSecurityStart >= 0 && evalSecurityEnd > evalSecurityStart, 'Eval security helpers should exist');
+const evalSecurityHelpers = html.slice(evalSecurityStart, evalSecurityEnd);
 function between(start, end) {
   const from = html.indexOf(start);
   const to = html.indexOf(end, from + start.length);
@@ -107,7 +111,7 @@ function harness(options = {}) {
     showToast() {},
   };
   vm.createContext(ctx);
-  vm.runInContext(`${photoOwnedValueSource}\n${normalizePhotoSource}\n${masterEvidenceSyncKeysSource}\n${masterSyncSource}\n${preserveDriveEvidenceSource}\n${ownedStateSource}\n${adoptionSource}\n${formatterSource}\n${displaySource}\n${seasonListSource}\n${exportContextSource}\n${remoteSource}\n${realtimeDetailSource}\n${clearPayloadSource}\n${explicitClearSource}\n${officeHydrationSource}\n${fieldDisplaySource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
+  vm.runInContext(`${evalSecurityHelpers}\n${photoOwnedValueSource}\n${normalizePhotoSource}\n${masterEvidenceSyncKeysSource}\n${masterSyncSource}\n${preserveDriveEvidenceSource}\n${ownedStateSource}\n${adoptionSource}\n${formatterSource}\n${displaySource}\n${seasonListSource}\n${exportContextSource}\n${remoteSource}\n${realtimeDetailSource}\n${clearPayloadSource}\n${explicitClearSource}\n${officeHydrationSource}\n${fieldDisplaySource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
   return { ctx, calls, master, writes, rendered };
 }
 

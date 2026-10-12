@@ -69,6 +69,21 @@ test('permission and PT409 responses are terminal and are never automatically re
   assert.equal(ctx.isSupabaseReadRetryable({ code: 'PT409', status: 409 }), false);
 });
 
+test('Eval read results redact nested pricing before caching while Admin keeps all metrics', async () => {
+  const payload = { rows: [{ unique_id: 'U3', ptravailable: 0, LISTPRICE: 12,
+    source_payload: { unit_price: 18, totalValue: 36, loc_on_hand: 2 }, _search: 'plant $12' }] };
+  for (const role of ['Eval', 'Evaluator', 'Eval Admin']) {
+    const ctx = makeGuardHarness(); ctx.currentRole = role;
+    const result = JSON.parse(JSON.stringify(await ctx.runDedupeSupabaseRead('inventory', async () => payload)));
+    assert.deepEqual(result, { rows: [{ unique_id: 'U3', ptravailable: 0, source_payload: { loc_on_hand: 2 } }] });
+    assert.throws(() => ctx.assertEvalDataSourceAllowed('get_access_control_matrix_v2'), /not available to Eval/);
+    assert.equal(payload.rows[0].LISTPRICE, 12, 'Redaction never mutates shared Admin results');
+  }
+  const admin = makeGuardHarness(); admin.currentRole = 'Admin';
+  assert.equal(await admin.runDedupeSupabaseRead('inventory', async () => payload), payload);
+  assert.doesNotThrow(() => admin.assertEvalDataSourceAllowed('get_access_control_matrix_v2'));
+});
+
 test('identical reads share one in-flight request in a session and account scopes stay separate', async () => {
   const ctx = makeGuardHarness();
   const gate = deferred();

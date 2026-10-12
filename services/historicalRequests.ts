@@ -7,6 +7,7 @@ import type {
   HistoricalRequestsQuery,
   HistoricalRecordKind,
 } from '../components/historical-requests/contract';
+import { historicalRequestsRoleCanViewFinancials } from '../components/historical-requests/contract';
 
 export type HistoricalRequestsTransport = (query: HistoricalRequestsQuery, signal?: AbortSignal) => Promise<unknown>;
 
@@ -69,31 +70,32 @@ function money(value: unknown, label: string): number {
   }
   return value;
 }
-function privateMoney(value: unknown, label: string, financials: boolean): number | null {
+function privateMoney(value: unknown, label: string, financials: boolean, redactUnauthorized = false): number | null {
   if (!financials) {
+    if (redactUnauthorized) return null;
     if (value !== null) throw new Error('Historical requests financial data is not authorized.');
     return null;
   }
   return money(value, label);
 }
-function summary(value: unknown, financials: boolean): HistoricalRequestsPage['summary'] {
+function summary(value: unknown, financials: boolean, redactUnauthorized = false): HistoricalRequestsPage['summary'] {
   const row = object(value, 'summary');
   const result = {
     requestCount: natural(row.requestCount, 'summary count'),
-    totalValue: privateMoney(row.totalValue, 'summary value', financials),
-    unpricedCount: financials ? natural(row.unpricedCount, 'unpriced count') : privateMoney(row.unpricedCount, 'unpriced count', false),
+    totalValue: privateMoney(row.totalValue, 'summary value', financials, redactUnauthorized),
+    unpricedCount: financials ? natural(row.unpricedCount, 'unpriced count') : privateMoney(row.unpricedCount, 'unpriced count', false, redactUnauthorized),
   };
   if (result.unpricedCount !== null && result.unpricedCount > result.requestCount) throw new Error('Invalid historical requests summary counts.');
   return result;
 }
-function group(value: unknown, financials: boolean): HistoricalRequestGroup {
+function group(value: unknown, financials: boolean, redactUnauthorized = false): HistoricalRequestGroup {
   const row = object(value, 'group');
   const result = {
     key: string(row.key, 'group key', 300),
     label: string(row.label, 'group label'),
     requestCount: natural(row.requestCount, 'group count'),
-    totalValue: privateMoney(row.totalValue, 'group value', financials),
-    unpricedCount: financials ? natural(row.unpricedCount, 'group unpriced count') : privateMoney(row.unpricedCount, 'group unpriced count', false),
+    totalValue: privateMoney(row.totalValue, 'group value', financials, redactUnauthorized),
+    unpricedCount: financials ? natural(row.unpricedCount, 'group unpriced count') : privateMoney(row.unpricedCount, 'group unpriced count', false, redactUnauthorized),
     customerKey: nullableString(row.customerKey, 'customer key', 300),
     consigneeKey: nullableString(row.consigneeKey, 'consignee key', 300),
     consigneeName: nullableString(row.consigneeName, 'consignee name'),
@@ -103,17 +105,16 @@ function group(value: unknown, financials: boolean): HistoricalRequestGroup {
   if (result.unpricedCount !== null && result.unpricedCount > result.requestCount) throw new Error('Invalid historical requests group counts.');
   return result;
 }
-function request(value: unknown, financials: boolean): HistoricalRequestRow {
+function request(value: unknown, financials: boolean, redactUnauthorized = false): HistoricalRequestRow {
   const row = object(value, 'request');
   const requestedAt = nullableString(row.requestedAt, 'request date', 80);
   if (requestedAt !== null && !Number.isFinite(Date.parse(requestedAt))) throw new Error('Invalid historical requests request date.');
   const salesrepUserId = nullableString(row.salesrepUserId, 'sales rep ID', 80);
   const requestQty = row.requestQty === null ? null : money(row.requestQty, 'requested quantity');
   const effectiveQty = row.effectiveQty === null ? null : money(row.effectiveQty, 'effective quantity');
-  const listPrice = row.listPrice === null ? null : money(row.listPrice, 'list price');
-  const totalValue = row.totalValue === null ? null : money(row.totalValue, 'request value');
-  const unresolvedReason = nullableString(row.unresolvedReason, 'unresolved reason', 1000);
-  if (!financials && (listPrice !== null || totalValue !== null || unresolvedReason !== null)) throw new Error('Historical requests financial data is not authorized.');
+  const listPrice = financials ? (row.listPrice === null ? null : money(row.listPrice, 'list price')) : privateMoney(row.listPrice, 'list price', false, redactUnauthorized);
+  const totalValue = financials ? (row.totalValue === null ? null : money(row.totalValue, 'request value')) : privateMoney(row.totalValue, 'request value', false, redactUnauthorized);
+  const unresolvedReason = financials ? nullableString(row.unresolvedReason, 'unresolved reason', 1000) : privateMoney(row.unresolvedReason, 'unresolved reason', false, redactUnauthorized) as null;
   if (financials && totalValue === null && !unresolvedReason?.trim()) throw new Error('Unpriced historical request must explain the unresolved value.');
   if (totalValue !== null && requestQty !== null && requestQty > 0 && effectiveQty !== requestQty) {
     throw new Error('Historical request effective quantity does not match its requested quantity.');
@@ -155,11 +156,12 @@ function request(value: unknown, financials: boolean): HistoricalRequestRow {
   };
 }
 
-export function parseHistoricalRequestsPage(value: unknown, operation?: HistoricalRequestsOperation): HistoricalRequestsPage {
+export function parseHistoricalRequestsPage(value: unknown, operation?: HistoricalRequestsOperation, options?: { canViewFinancials?: boolean }): HistoricalRequestsPage {
   const data = object(value, 'response');
   if (data.scope !== 'all' && data.scope !== 'own') throw new Error('Invalid historical requests scope.');
   if (typeof data.financials !== 'boolean' || data.financials !== (data.scope === 'all')) throw new Error('Invalid historical requests financial scope.');
-  const financials = data.financials;
+  const redactUnauthorized = options?.canViewFinancials === false;
+  const financials = data.financials && options?.canViewFinancials !== false;
   if (!['all', 'requests', 'orders'].includes(String(data.recordKind))) throw new Error('Invalid historical requests record kind.');
   const ownRepKey = string(data.ownRepKey, 'own rep key', 80);
   if (!/^rep:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ownRepKey)) throw new Error('Invalid historical requests own rep key.');
@@ -177,17 +179,17 @@ export function parseHistoricalRequestsPage(value: unknown, operation?: Historic
     const candidate = object(row, 'row');
     if ('requestCount' in candidate) {
       if (operation === 'requests') throw new Error('Request page contains a group row.');
-      return group(candidate, financials);
+      return group(candidate, financials, redactUnauthorized);
     }
     if (operation && operation !== 'requests') throw new Error('Group page contains a request row.');
-    return request(candidate, financials);
+    return request(candidate, financials, redactUnauthorized);
   });
   const identities = rows.map(row => isGroupValue(row) ? `group:${row.key}` : `request:${row.id}`);
   if (new Set(identities).size !== identities.length) throw new Error('Historical requests page contains duplicate identities.');
   if (operation === 'summary' && rows.length) throw new Error('Summary response unexpectedly contains rows.');
   return {
     scope: data.scope,
-    financials: data.financials,
+    financials,
     recordKind: data.recordKind as HistoricalRecordKind,
     ownRepKey,
     revision,
@@ -196,7 +198,7 @@ export function parseHistoricalRequestsPage(value: unknown, operation?: Historic
     pageSize,
     total,
     rows,
-    summary: summary(data.summary, data.financials),
+    summary: summary(data.summary, financials, redactUnauthorized),
   };
 }
 
@@ -205,11 +207,13 @@ function isGroupValue(row: HistoricalRequestGroup | HistoricalRequestRow): row i
 }
 
 export function createHistoricalRequestsBridge({
-  scopeKey, revisionKey, transport,
-}: { scopeKey: string; revisionKey: string; transport: HistoricalRequestsTransport }): HistoricalRequestsBridge {
-  if (!scopeKey || !revisionKey || typeof transport !== 'function') throw new Error('A signed-in historical requests scope is required.');
+  scopeKey, revisionKey, role, transport,
+}: { scopeKey: string; revisionKey: string; role: string; transport: HistoricalRequestsTransport }): HistoricalRequestsBridge {
+  if (!scopeKey || !revisionKey || typeof role !== 'string' || !role.trim() || typeof transport !== 'function') throw new Error('A signed-in historical requests scope is required.');
+  const canViewFinancials = historicalRequestsRoleCanViewFinancials(role);
   return {
     scopeKey,
+    role,
     revisionKey,
     async read(query, signal) {
       const safeQuery = historicalRequestsQuery(query);
@@ -224,7 +228,7 @@ export function createHistoricalRequestsBridge({
         }
         throw error;
       }
-      return parseHistoricalRequestsPage(raw, safeQuery.operation);
+      return parseHistoricalRequestsPage(raw, safeQuery.operation, { canViewFinancials });
     },
   };
 }

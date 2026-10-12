@@ -19,6 +19,6 @@ window.historyFixture={calls:[],async read(query,signal){this.calls.push({query,
  return base(query,[],0);
 }};
 document.getElementById('open').addEventListener('click',async()=>{const module=await import('/assets/historical-requests.js');document.getElementById('open').hidden=true;
- const bridge=module.createHistoricalRequestsBridge({scopeKey:own?'fixture-rep:own':'fixture-admin:all',revisionKey:'r1',transport:(query,signal)=>window.historyFixture.read(query,signal)});
+ const bridge=module.createHistoricalRequestsBridge({scopeKey:own?'fixture-rep:own':'fixture-admin:all',role:own?'Sales Rep':'Admin',revisionKey:'r1',transport:(query,signal)=>window.historyFixture.read(query,signal)});
  module.mountHistoricalRequests(document.getElementById('root'),bridge);});
 </script></body></html>

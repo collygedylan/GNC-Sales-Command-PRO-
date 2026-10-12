@@ -37,7 +37,7 @@ function RecoverableHistoricalRequestsView({ bridge }: { bridge: HistoricalReque
   };
   return <HistoricalRequestsLoadBoundary key={generation} onRetry={retry}>
     <Suspense fallback={<div className="historical-requests__state" role="status">Loading Historical Requests…</div>}>
-      <View key={bridge.scopeKey} bridge={bridge} />
+      <View key={JSON.stringify([bridge.scopeKey, bridge.role])} bridge={bridge} />
     </Suspense>
   </HistoricalRequestsLoadBoundary>;
 }
@@ -49,7 +49,7 @@ export function mountHistoricalRequests(host: HTMLElement, bridge: HistoricalReq
   let destroyed = false;
   const render = (nextBridge: HistoricalRequestsBridge) => {
     if (!root || destroyed) return;
-    root.render(<RecoverableHistoricalRequestsView key={nextBridge.scopeKey} bridge={nextBridge} />);
+    root.render(<RecoverableHistoricalRequestsView key={JSON.stringify([nextBridge.scopeKey, nextBridge.role])} bridge={nextBridge} />);
   };
   render(bridge);
   return {

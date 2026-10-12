@@ -38,7 +38,7 @@ function pageFor(query,scope,rows,total=rows.length){return {scope,financials:sc
  revision:'rev1',generatedAt:'2026-10-10T12:00:00Z',page:query.page||0,pageSize:25,total,
  rows:rows.map(row=>scope==='own'?{...row,totalValue:null,unpricedCount:null,listPrice:'listPrice' in row?null:undefined,unresolvedReason:'unresolvedReason' in row?null:undefined}:row),
  summary:{requestCount:10,totalValue:scope==='all'?2500:null,unpricedCount:scope==='all'?2:null}};}
-function makeBridge(scopeKey,overrides={}){const calls=[];return {calls,bridge:{scopeKey,revisionKey:overrides.revisionKey||'rev1',read:async(query,signal)=>{
+function makeBridge(scopeKey,overrides={}){const calls=[];return {calls,bridge:{scopeKey,role:scopeKey.startsWith('dylan:')?'Admin':scopeKey.startsWith('eval:')?'Eval':'Sales Rep',revisionKey:overrides.revisionKey||'rev1',read:async(query,signal)=>{
  calls.push({query,signal});if(overrides.read){const data=await overrides.read(query,signal);return query.operation==='summary'?{...data,rows:[],total:0}:data;}const scope=overrides.scope||'own';
  return pageFor(query,scope,query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:query.operation==='requests'?[requestRow()]:[]);
 }}};}
@@ -55,6 +55,11 @@ test('defaults a rep to their own folders and renders financials only after serv
  assert.equal(screen.queryByRole('heading',{name:'Sales Reps'}),null);assert.equal(document.body.textContent.includes('$'),false);
  assert.equal(own.calls.filter(call=>call.query.operation==='folders').every(call=>call.query.repKey===REP),true);
  cleanup();const all=makeBridge('dylan:all',{scope:'all'});render(React.createElement(HistoricalRequestsView,{bridge:all.bridge}));await screen.findByRole('heading',{name:'Sales Reps'});await screen.findByText('$2,500.00');
+});
+test('hides server-claimed financials from Eval and redacts the page before it enters the view cache',async()=>{
+ const fixture=makeBridge('eval:all',{scope:'all',read:async query=>pageFor(query,'all',query.operation==='reps'?[{...group(REP,'Molly Dixon',2500)}]:[])});
+ render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await screen.findByRole('heading',{name:'Sales Reps'});
+ assert.equal(document.body.textContent.includes('$'),false);assert.equal(screen.queryByRole('heading',{name:'Executive reporting'}),null);
 });
 test('fails closed on all-scope customer values when the rep endpoint returns own scope',async()=>{
  const fixture=makeBridge('actor:own',{read:async query=>query.operation==='reps'?pageFor(query,'own',[group(REP,'Own Rep')]):pageFor(query,'all',[{...folder(),label:'Confidential Customer',totalValue:7777}])});
@@ -74,6 +79,17 @@ test('account change replaces private SWR cache and aborts the previous account 
  let oldSignal;const first=makeBridge('actor-a',{read:(query,signal)=>{oldSignal=signal;return new Promise(()=>{});}});const view=render(React.createElement(HistoricalRequestsView,{bridge:first.bridge}));
  await waitFor(()=>assert.ok(oldSignal));const second=makeBridge('actor-b');view.rerender(React.createElement(HistoricalRequestsView,{bridge:second.bridge}));await screen.findByRole('button',{name:/Customer 001/});assert.equal(oldSignal.aborted,true);
  assert.equal(document.body.textContent.includes('$'),false);
+});
+test('role change with a reused scope key replaces the finance cache and aborts an in-flight Admin read',async()=>{
+ let adminSignal,finishAdminRead;const scopeKey='shared-session';const admin=makeBridge(scopeKey,{read:(query,signal)=>{
+  if(query.operation==='requests')return new Promise(resolve=>{adminSignal=signal;finishAdminRead=()=>resolve(pageFor(query,'all',[{...requestRow(),requestQty:1,effectiveQty:1,listPrice:6000,totalValue:6000,unresolvedReason:null}]))});
+  return pageFor(query,'all',query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:[]);
+ }});admin.bridge.role='Admin';
+ const view=render(React.createElement(HistoricalRequestsView,{bridge:admin.bridge}));await openFolder(true);await waitFor(()=>assert.ok(adminSignal));
+ const evalBridge=makeBridge(scopeKey,{scope:'all'}).bridge;evalBridge.role='Eval';
+ view.rerender(React.createElement(HistoricalRequestsView,{bridge:evalBridge}));await screen.findByRole('heading',{name:'Sales Reps'});
+ assert.equal(adminSignal.aborted,true);assert.equal(document.body.textContent.includes('$'),false);assert.equal(screen.queryByRole('heading',{name:'Executive reporting'}),null);
+ finishAdminRead();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(document.body.textContent.includes('$'),false);
 });
 test('hides prior rows and exposes retry when the current request read fails',async()=>{
  let attempt=0;const fixture=makeBridge('actor:own',{read:async query=>{if(query.operation==='reps')return pageFor(query,'own',[group(REP,'Molly Dixon')]);

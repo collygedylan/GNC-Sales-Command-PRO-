@@ -96,7 +96,7 @@ test('all safety lanes must succeed before the sealed release can deploy', () =>
   assert.equal(deployVerify.env.RELEASE_BUILD_COMMIT, '${{ needs.validation.outputs.build-commit }}');
   assert.equal(pages.jobs.validation.uses, undefined);
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['lint','unit','react','contracts','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
+  assert.deepEqual(validation.jobs['release-gate'].needs, ['release-mode','lint','unit','react','contracts','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse','production-health']);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -170,7 +170,7 @@ test('browser shards and compiled suites use isolated runners without racing per
 test('every build consumer verifies the original manifest, never rebuilds or reseals', () => {
   for (const name of ['foundation','functional','compiled','timing','performance','lighthouse']) {
     const job = validation.jobs[name];
-    assert.equal(job.needs, 'build');
+    assert.deepEqual(job.needs, ['build', 'release-mode']);
     assert.equal(job.steps.filter(s => s.uses === './.github/actions/download-release').length, 1);
     assert.doesNotMatch(job.steps.map(s=>s.run||'').join('\n'), /npm run build|artifact\.mjs seal/);
   }
@@ -251,7 +251,7 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
   healthy.build.outputs = {digest: 'a'.repeat(64)};
   function run(results, required = true) {
     return vm.runInNewContext(executable, {process: {env: {
-      RELEASE_JOB_RESULTS: JSON.stringify(results), REQUIRE_PRODUCTION_HEALTH: String(required),
+      RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', REQUIRE_PRODUCTION_HEALTH: String(required),
       RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'true',
     }}, console: {log() {}}});
   }
@@ -281,16 +281,21 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   assert.match(command, /--project=chromium/);
   assert.doesNotMatch(command, /--shard|firefox|webkit|--headed/);
   for (const name of ['foundation', 'functional', 'compiled', 'timing', 'performance', 'lighthouse']) {
+    assert.match(validation.jobs[name].if, /needs\.release-mode\.outputs\.hotfix != 'true'/);
     assert.match(validation.jobs[name].if, /!inputs.fast-pr/);
     assert.match(validation.jobs[name].if, /github.ref == 'refs\/heads\/main'/);
     assert.match(validation.jobs[name].if, /inputs.run-frontend-tests/);
   }
+  for (const name of ['contracts', 'database', 'production-health']) {
+    assert.match(validation.jobs[name].if, /needs\.release-mode\.outputs\.hotfix != 'true'/);
+  }
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
   const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'skipped' }]));
+  results['release-mode'].result = 'success';
   for (const name of ['lint', 'unit', 'react', 'contracts', 'build', 'fast-browser']) results[name].result = 'success';
   results.build.outputs = { digest: 'a'.repeat(64) };
   const execute = () => vm.runInNewContext(gate, { process: { env: {
-    RELEASE_JOB_RESULTS: JSON.stringify(results), FAST_PR: 'true', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',
+    RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', FAST_PR: 'true', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',
   } }, console: { log() {} } });
   assert.doesNotThrow(execute);
   for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
@@ -301,7 +306,7 @@ test('PRs require one headless Chromium gate and main requires the complete brow
   for (const name of ['integration', 'schema-contracts', 'database-and-functions', 'suspend-tag-approval']) {
     assert.equal(database.jobs[name].if, 'inputs.run-schema-tests');
   }
-  assert.equal(validation.jobs.react.if, 'inputs.run-frontend-tests');
+  assert.match(validation.jobs.react.if, /needs\.release-mode\.outputs\.hotfix != 'true' && inputs\.run-frontend-tests/);
   assert.ok(validation.jobs.react.steps.some(step => step.run === 'npm run test:v2'));
 });
 
@@ -423,7 +428,7 @@ test('the release gate accepts only intentional skips and still requires the imm
     results['production-health'].result = 'skipped';
     for (const name of scope.frontend ? ['database'] : frontend) results[name].result = 'skipped';
     const execute = () => vm.runInNewContext(gate, { process: { env: {
-      RELEASE_JOB_RESULTS: JSON.stringify(results), REQUIRE_PRODUCTION_HEALTH: 'false',
+      RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', REQUIRE_PRODUCTION_HEALTH: 'false',
       RUN_FRONTEND_TESTS: String(scope.frontend), RUN_BACKEND_TESTS: String(scope.backend),
     } }, console: { log() {} } });
     assert.doesNotThrow(execute);
