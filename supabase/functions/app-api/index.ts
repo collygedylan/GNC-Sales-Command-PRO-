@@ -3549,13 +3549,9 @@ function inventoryActorQueueAssignments(username: string) {
 function inventoryReadQuery(actor: Record<string, unknown>, fields: string, includeCount = true) {
   let query = supabase.from("ph_master_inventory").select(fields, includeCount ? { count: "exact" } : {});
   const role = String(actor.role || "").trim();
-  const access = getRoleAccessState(role);
   const compactRole = role.toUpperCase().replace(/[^A-Z0-9]+/g, "");
   if (compactRole.includes("FOREMAN")) {
     query = query.not("priority", "is", null).not("priority", "in", "(,-,--,---,N/A,NA,NULL,NONE)");
-  }
-  if (access.isRepLike && !access.isAdmin) {
-    query = query.or("season.is.null,season.not.ilike.U3").or("lotcode.is.null,lotcode.not.ilike.%.U3");
   }
   return query;
 }

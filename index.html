@@ -18885,18 +18885,16 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             return '';
         }
 
-        function shouldHideU3InventoryRowForRep(row = null, access = getRoleAccessState()) {
-            return !!(row && access && access.isRepLike && !access.isAdmin && getRepRestrictedInventorySeasonValue(row) === 'U3');
+        function shouldHideU3InventoryRowForRep() {
+            return false;
         }
 
-        function applyRepU3VisibilityScope(items = [], access = getRoleAccessState()) {
-            const rows = Array.isArray(items) ? items : [];
-            if (!(access && access.isRepLike && !access.isAdmin)) return rows;
-            return rows.filter((row) => !shouldHideU3InventoryRowForRep(row, access));
+        function applyRepU3VisibilityScope(items = []) {
+            return Array.isArray(items) ? items : [];
         }
 
-        function getRepU3VisibilityScopeKey(access = getRoleAccessState()) {
-            return access && access.isRepLike && !access.isAdmin ? 'rep-no-u3' : 'all-seasons';
+        function getRepU3VisibilityScopeKey() {
+            return 'all-seasons';
         }
 
         const FLYER_SHADOW_FIELD_MAP = Object.freeze({
@@ -47837,10 +47835,19 @@ let avTopControlsRenderToken = 0;
             return !!(itemCode && lotCode && locationCode);
         }
 
+        function canCurrentUserSubmitRepInventoryOperations() {
+            const profile = nativeAuthProfile;
+            return nativeAuthSessionActive === true && !!profile && !!profile.id && profile.disabled_at == null
+                && profile.must_change_password === false
+                && (!profile.locked_until || Date.parse(profile.locked_until) <= Date.now())
+                && String(profile.username || '').trim().toLowerCase() === String(currentUser || '').trim().toLowerCase()
+                && ['REP', 'SALESREP', 'SALES'].includes(String(profile.role || '').trim().toUpperCase());
+        }
+
         function buildArgosInventoryTransactionRailHtml(item = null, sourceView = '') {
             const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
             if (safeSourceView !== 'drive') return '';
-            if (!canCurrentUserUseDriveCardOptions(item, 'drive')) return '';
+            if (!canCurrentUserUseDriveCardOptions(item, 'drive') && !canCurrentUserSubmitRepInventoryOperations()) return '';
             if (!isArgosInventoryTransactionEligible(item)) return '';
             const safeUid = escJsAttrValue(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, ''));
             const safeSource = escJsAttrValue(sourceView || activeDetailSourceView || lastView || '');
@@ -48785,6 +48792,7 @@ let avTopControlsRenderToken = 0;
 
         function toggleArgosReclassV3Action(button = null, action = '', sourceUid = '') {
             const normalized = String(action || '').trim().toLowerCase();
+            if (canCurrentUserSubmitRepInventoryOperations() && !['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(normalized)) return false;
             const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
             const uid = String(card && card.getAttribute('data-reclass-row-card') || sourceUid || '').trim();
             const entry = getArgosReclassRowEditorEntry(uid);
@@ -48934,7 +48942,8 @@ let avTopControlsRenderToken = 0;
             if (!RECLASS_ACTION_WORKFLOW_V3_ENABLED) return '';
             const originalOh = Number(String(values.ptronhand == null ? '' : values.ptronhand).replace(/,/g, ''));
             const globalHoldProposal = getArgosReclassV3HoldProposal();
-            const buttons = RECLASS_ACTION_WORKFLOW_V5_ORDER.map((action) => {
+            const repOperations = canCurrentUserSubmitRepInventoryOperations();
+            const buttons = RECLASS_ACTION_WORKFLOW_V5_ORDER.filter((action) => !repOperations || ['priority_change', 'hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'].includes(action)).map((action) => {
                 const rule = getReclassActionWorkflowV5Config(action);
                 const scopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldTargetEntries(action, uid) : [];
                 const proposalScopeEntries = RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS.includes(action) ? getArgosReclassHoldProposalTargetEntries(action) : [];
@@ -48970,7 +48979,7 @@ let avTopControlsRenderToken = 0;
             const resolutionHtml = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
                 ? `<section class="eval-work-row-resolution"><div><strong>Finish this row</strong><small>Use Mark Done after choosing an action or changing a location detail, or No Action when nothing needs to change. The final row automatically sends the PDF.</small></div><div class="eval-work-row-resolution-actions"><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="done" aria-pressed="${resolution === 'done' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'done')"><i class="ph-bold ph-check-circle"></i> Mark Done</button><button type="button" class="eval-work-row-resolution-btn" data-eval-row-resolution-action="no_action" aria-pressed="${resolution === 'no_action' ? 'true' : 'false'}" onclick="return setEvalWorkInquiryRowResolution(this,'no_action')"><i class="ph-bold ph-minus-circle"></i> No Action</button></div></section>`
                 : '';
-            return `<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span>${mobileEditor ? '' : `<small>Choose an action to show its request fields. Hold / Stop starts from the selected row; the server determines any authorized matching-row scope (${escapeHtml(scopeCopy)}).</small>`}</div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${locationDetailsHtml}${resolutionHtml}`;
+            return `<section class="argos-reclass-action-panel"><div class="argos-reclass-action-panel-title"><span>Actions for this row</span>${mobileEditor ? '' : `<small>Choose an action to show its request fields. Hold / Stop starts from the selected row; the server determines any authorized matching-row scope (${escapeHtml(scopeCopy)}).</small>`}</div><div class="argos-reclass-action-grid">${buttons}</div>${scopeHtml}${proposalsHtml ? `<div class="argos-reclass-action-proposal-grid">${proposalsHtml}</div>` : ''}</section>${repOperations ? '' : locationDetailsHtml}${resolutionHtml}`;
         }
 
         function buildArgosReclassRowFieldsHtml(entry = null) {
@@ -49264,7 +49273,7 @@ let avTopControlsRenderToken = 0;
                 return false;
             }
             const safeSourceView = String(sourceView || activeDetailSourceView || lastView || '').trim().toLowerCase();
-            if (safeSourceView === 'drive' && !canCurrentUserUseDriveCardOptions(item, 'drive')) {
+            if (safeSourceView === 'drive' && !canCurrentUserUseDriveCardOptions(item, 'drive') && !canCurrentUserSubmitRepInventoryOperations()) {
                 showToast('View Only', 'Drive Mode actions are only available on rows assigned to you.', true);
                 return false;
             }
@@ -49708,6 +49717,10 @@ let avTopControlsRenderToken = 0;
 
         function applyArgosInventoryTransactionSourceContext(payload = null) {
             const safePayload = payload && typeof payload === 'object' ? payload : {};
+            if (canCurrentUserSubmitRepInventoryOperations()) {
+                safePayload.sourceContext = { sourceMode: 'drive' };
+                return safePayload;
+            }
             if (!isArgosEvalReport2Inquiry()) {
                 const sourceView = String(argosInventoryTransactionState && argosInventoryTransactionState.sourceView || '').trim().toLowerCase();
                 if (sourceView === 'drive') safePayload.sourceContext = { sourceMode: 'drive' };
@@ -70357,6 +70370,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function canSubmitLiveHoldRemoval(item = null) {
             const permission = getAuditedAppPermission('drive.reclass.submit');
             const role = normalizeRoleAccessToken(getCurrentRoleAccessValue());
+            if (canCurrentUserSubmitRepInventoryOperations()) return !!item && isArgosInventoryTransactionEligible(item);
             return !!item && !!nativeAuthProfile && permission && permission.allowed === true
                 && (['ADMIN', 'ADMINISTRATOR', 'MANAGER', 'EVAL', 'EVALUATOR'].includes(role) || role.includes('EVAL'))
                 && canCurrentUserUseDriveCardOptions(item, 'drive');

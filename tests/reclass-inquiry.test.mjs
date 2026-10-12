@@ -1045,7 +1045,8 @@ test('every live Reclass row shows direct actions and progressively disclosed re
   const builder = html.slice(start, end);
   assert.match(builder, /data-reclass-v3-action/);
   assert.match(builder, /toggleArgosReclassV3Action/);
-  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.map/);
+  assert.match(builder, /RECLASS_ACTION_WORKFLOW_V5_ORDER\.filter\(\(action\) => !repOperations/);
+  assert.match(builder, /\.map\(\(action\) =>/);
   assert.match(html, /<span>Hold code<\/span>/);
   assert.match(html, /<span>holdstopreason<\/span>/);
   assert.match(html, /function renderArgosReclassHoldScopeNotice/);

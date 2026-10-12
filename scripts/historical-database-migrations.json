@@ -700,6 +700,14 @@
     "destination": "20261009053029_reclass_smart_priority_hold_shield_v6.sql"
   },
   {
+    "source": "supabase/ci/reclass_v7_baseline.sql",
+    "destination": "20261009202506_reclass_v7_baseline.sql"
+  },
+  {
+    "source": "supabase/migrations/20261009202507_prompt25_editable_field_shield_and_hold_clear.sql",
+    "destination": "20261009202507_prompt25_editable_field_shield_and_hold_clear.sql"
+  },
+  {
     "source": "supabase/migrations/20261010024830_customer_rep_mapping_management.sql",
     "destination": "20261010024830_customer_rep_mapping_management.sql"
   },
@@ -754,5 +762,9 @@
   {
     "source": "supabase/migrations/20261012153000_aura_account_rollout.sql",
     "destination": "20261012153000_aura_account_rollout.sql"
+  },
+  {
+    "source": "supabase/migrations/20261012180000_sales_rep_inventory_operations.sql",
+    "destination": "20261012180000_sales_rep_inventory_operations.sql"
   }
 ]

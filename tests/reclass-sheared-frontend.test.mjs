@@ -258,6 +258,7 @@ test('a selected future row can start a hold draft without current-season settin
       return rowMap.get(uid) || null;
     },
     getArgosReclassV3Proposal: () => null,
+    canCurrentUserSubmitRepInventoryOperations: () => false,
     getArgosReclassV3HoldProposal: () => null,
     getArgosReclassScopeSettings: () => ({ season: '', salesYear: null }),
     getReclassActionWorkflowV5Config: action => ({ kind: action === 'hold' || action === 'stop_ship' ? 'hold_on' : 'hold_off', label: action }),

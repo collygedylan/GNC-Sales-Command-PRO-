@@ -126,7 +126,7 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
         'Content-Type': 'application/json',
         Prefer: 'return=representation'
       },
-      body: JSON.stringify({ unique_id: masterId, itemcode, genusname: 'Test Genus', commonname: 'Canonical Drive Name', locationcode: 'A.01.001', ptravailable: '20', app_tab_assignment: 'location' })
+      body: JSON.stringify({ unique_id: masterId, itemcode, genusname: 'Test Genus', commonname: 'Canonical Drive Name', locationcode: 'A.01.001', ptravailable: '20', app_tab_assignment: 'location', lotcode: '27.U3', season: 'U3', spec: 'Verified field specification', photo_link: 'https://example.invalid/rep-field-photo.jpg' })
     });
     expect(master.response.ok, JSON.stringify(master.body)).toBeTruthy();
 
@@ -166,6 +166,11 @@ test.describe('Drive-canonical request transactions', {"tag":["@database","@loca
     ]));
 
     const repToken = await signIn(rep);
+    const repInventory = await jsonFetch(`${localUrl}/rest/v1/ph_master_inventory?select=unique_id,spec,photo_link,lotcode&unique_id=eq.${encodeURIComponent(masterId)}`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${repToken}` }
+    });
+    expect(repInventory.response.ok, JSON.stringify(repInventory.body)).toBeTruthy();
+    expect(repInventory.body).toEqual([expect.objectContaining({ unique_id: masterId, lotcode: '27.U3', spec: 'Verified field specification', photo_link: 'https://example.invalid/rep-field-photo.jpg' })]);
     const repRequestId = `REQ-REP-${suffix}`;
     const repBatchId = crypto.randomUUID();
     const requestPayload = [{ unique_id: repRequestId, master_id: masterId, requested_by: rep.username, request_folder: `FOLDER-${suffix}`,

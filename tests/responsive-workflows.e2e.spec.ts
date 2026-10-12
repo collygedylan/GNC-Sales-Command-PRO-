@@ -7,7 +7,7 @@ import { installHlOrderFixture, hlMaster } from './fixtures/hl-order-state.mjs';
 
 const fixtureUrl = '/tests/fixtures/ops-precision-browser.html';
 
-test('Drive search stays inside the selected location and preserves it when cleared', {"tag":["@local-e2e","@release-functional"]}, async ({ page, baseURL }) => {
+test('Drive search stays inside the selected location and resets to Common Names when cleared', {"tag":["@local-e2e","@release-functional"]}, async ({ page, baseURL }) => {
   test.setTimeout(90_000);
   const fixture = await installHlOrderFixture(page, baseURL!, { role: 'ADMIN', username: 'dylan_collyge', master: [
     hlMaster('scope-c', { itemcode: 'SCOPE.C', commonname: 'Scoped Rose', blockalpha: 'C', locationcode: 'C.06.001' }),
@@ -38,10 +38,10 @@ test('Drive search stays inside the selected location and preserves it when clea
   await page.locator('#drive-search').fill('No matching plant');
   await expect(page.locator('#drive-content')).toContainText('No matching inventory');
   await page.locator('#drive-search-clear').click();
-  await expect.poll(() => page.evaluate(() => window.eval('activeDriveTab'))).toBe('loc');
-  await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc'))).toBe('C.06.001');
-  await expect(page.locator('#drive-content')).toContainText('SCOPE.C');
-  await expect(page.locator('#drive-content')).not.toContainText('SCOPE.D');
+  await expect.poll(() => page.evaluate(() => window.eval('activeDriveTab'))).toBe('name');
+  await expect.poll(() => page.evaluate(() => window.eval('selectedDriveLoc'))).toBeNull();
+  await expect(page.locator('#drive-crumb')).toContainText('Common Name');
+  await expect(page.locator('#drive-content')).toContainText('Scoped Rose');
   await chooseLocation('D', 'D.04', 'D.04.001');
   await page.locator('#drive-search').fill('Scoped Rose');
   await expect(page.locator('#drive-content')).toContainText('SCOPE.D');

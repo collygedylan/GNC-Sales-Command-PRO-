@@ -565,9 +565,9 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 189);
+  assert.equal(manifest.length, 192);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
-  assert.deepEqual(manifest.slice(-11).map(entry => entry.source), [
+  assert.deepEqual(manifest.slice(-12).map(entry => entry.source), [
     'supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql',
     'supabase/migrations/20261010200046_aura_voice_role_access.sql',
     'supabase/migrations/20261011032352_aura_voice_soc_reads.sql',
@@ -579,12 +579,16 @@ test('historical migration order manifest preserves original inputs and appends 
     'supabase/migrations/20261012011000_request_history_drilldown_isolation.sql',
     'supabase/migrations/20261012052500_aura_enterprise_domain_voice.sql',
     'supabase/migrations/20261012153000_aura_account_rollout.sql',
+    'supabase/migrations/20261012180000_sales_rep_inventory_operations.sql',
   ]);
   const sources = new Set(manifest.map(entry => entry.source));
-  for (const name of ["20261008190038_reclass_sheared_action_v5.sql","20261009053029_reclass_smart_priority_hold_shield_v6.sql","20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {
+  for (const name of ["20261008190038_reclass_sheared_action_v5.sql","20261009053029_reclass_smart_priority_hold_shield_v6.sql","20261009202507_prompt25_editable_field_shield_and_hold_clear.sql","20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {
     assert.ok(sources.has(`supabase/migrations/${name}`), `${name} and its read dependencies are replayed`);
   }
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
+  const coverageShape = readFileSync(path.join(root, 'supabase/ci/reclass_v7_baseline.sql'), 'utf8');
+  assert.match(coverageShape, /sharon_away boolean default false not null/);
+  assert.ok(manifest.findIndex(entry => entry.source === 'supabase/ci/reclass_v7_baseline.sql') < manifest.findIndex(entry => entry.destination === '20261009202507_prompt25_editable_field_shield_and_hold_clear.sql'));
   const socShape = readFileSync(path.join(root, 'supabase/ci/suspend_tag_approval_baseline.sql'), 'utf8');
   assert.match(socShape, /alter table public\.ph_soc_master[\s\S]*add column if not exists desigitem text/);
   assert.match(socShape, /alter table public\.ph_reserves add column if not exists desigitem text/);
