@@ -118,8 +118,21 @@ values('HD-UPPER','history_ben_brown','Pending','{"CUSTOMERIDENTITYID":"UP-C","C
 select pg_temp.history_check((select customeridentityid='UP-C' and consigneeidentityid='UP-S' and consigneename='Upper Store' from public.ph_request_history where unique_id='HD-UPPER'),'older uppercase snapshots retain exact context');
 insert into public.ph_request_history(unique_id,request_created_by_username,request_selected_rep_username,req_status,request_folder)
 values('HD-CREATED-FOR-OTHER','history_ben_brown','history_other_rep','Complete','HD-CREATOR-FOLDER');
-select pg_temp.history_check(jsonb_array_length(public.request_history_command_v1('97100000-0000-4000-8000-000000000001','search','{"query":"HD-CREATOR-FOLDER"}')->'rows')=1,'creator can see their request assigned to another rep');
-select pg_temp.history_check(public.request_history_command_v1('97100000-0000-4000-8000-000000000001','search','{"query":"HD-CREATOR-FOLDER"}')#>>'{rows,0,canRequestCredit}'='false','creator-only history does not advertise another rep credit eligibility');
+-- The secondary WASM fixture intentionally replays the September contract.
+-- Native current-chain replay must enforce the new owner-only contract.
+do $creator_contract$
+declare current_chain boolean:=position('history_redact_financial_v1' in pg_get_functiondef(
+  'public.request_history_command_v1(uuid,text,jsonb,uuid,bigint)'::regprocedure))>0;
+  result jsonb:=public.request_history_command_v1('97100000-0000-4000-8000-000000000001','search','{"query":"HD-CREATOR-FOLDER"}');
+begin
+  if current_chain then
+    perform pg_temp.history_check(jsonb_array_length(result->'rows')=0,'creator cannot read a request assigned to another rep');
+    perform pg_temp.history_check(result#>'{rows,0}' is null,'creator-only history returns no other-rep data or credit eligibility');
+  else
+    perform pg_temp.history_check(jsonb_array_length(result->'rows')=1,'September history contract includes creator-attributed rows');
+    perform pg_temp.history_check(result#>>'{rows,0,canRequestCredit}'='false','September creator attribution never grants credit ownership');
+  end if;
+end $creator_contract$;
 do $$ begin
   begin
     perform public.sales_credit_command_v1('97100000-0000-4000-8000-000000000001','source','{"sourceKind":"request_history","sourceUniqueId":"HD-CREATED-FOR-OTHER"}');

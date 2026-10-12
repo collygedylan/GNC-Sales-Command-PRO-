@@ -1,11 +1,19 @@
 -- @test-runtime: isolated-supabase
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(78);
+select plan(82);
 -- This rollback-only suite exercises Kayla's legacy capabilities before the
 -- cutoff. The separate handover suite tests the real scheduled denial.
 create or replace function private.scheduled_handover_cutoff_reached_v1(p_username text,p_at timestamptz)
 returns boolean language sql stable security definer set search_path='' as $$ select false $$;
+alter function private.app_account_active_at_v1(uuid,text,timestamptz) rename to integrity_actual_account_active_at_v1;
+create function private.app_account_active_at_v1(p_profile_id uuid,p_username text,p_at timestamptz)
+returns boolean language sql stable security definer set search_path='' as $$
+  select private.integrity_actual_account_active_at_v1(p_profile_id,p_username,
+    case when lower(btrim(p_username))='kayla_knepp' then '2026-10-03 03:59:59.999999+00'::timestamptz else p_at end)
+$$;
+revoke all on function private.app_account_active_at_v1(uuid,text,timestamptz) from public,anon,authenticated;
+grant execute on function private.app_account_active_at_v1(uuid,text,timestamptz) to service_role;
 
 select has_function('private', 'can_read_all_request_rows_v1', array[]::text[], 'Request queue has a statement-cached global-read helper');
 select has_function('private', 'current_restricted_request_identity_v1', array[]::text[], 'Request queue has a statement-cached restricted identity helper');
@@ -39,6 +47,8 @@ on conflict (id) do update set role = excluded.role, disabled_at = null, locked_
 -- Native successful submissions use complete active imported tuples.
 update public.profiles set must_change_password=false where id in
   ('10000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000005','e2584b32-472c-4888-b592-394235050b5b');
+select ok(not private.integrity_actual_account_active_at_v1('e2584b32-472c-4888-b592-394235050b5b','kayla_knepp','2026-10-03 04:00:00+00'),
+  'the unchanged real account guard still denies Kayla at the scheduled cutoff');
 insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid,customername,customerstatus,
   consigneeid,consigneename,consigneestatus,salesrepid,salesrepname) values
   ('INTEGRITY-MAP-REP','INTEGRITY-C','Customer','A','INTEGRITY-CN','Destination','A','01','Rep Test'),
@@ -109,7 +119,17 @@ select lives_ok(
 );
 
 select is((select count(*)::integer from public.ph_active_request where unique_id = 'REQ-CSR-1'), 1, 'batch retry key created exactly one request row');
+select throws_ok($q$select snapshot from public.ph_request_history where unique_id='REQ-CSR-1'$q$,
+  '42501','permission denied for table ph_request_history','authenticated clients cannot read raw historical financial snapshots');
+set local role postgres;
 select is((select count(*)::integer from public.ph_request_history where unique_id = 'REQ-CSR-1'), 1, 'creation transaction persisted History snapshot');
+set local role authenticated;
+select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
+select ok(exists(select 1 from jsonb_array_elements(public.historical_requests_read_v1(jsonb_build_object(
+  'operation','requests','customerKey','customer:id:'||md5('INTEGRITY-C'),
+  'consigneeKey','customer:id:'||md5('INTEGRITY-C')||'|consignee:id:'||md5('INTEGRITY-CN')))->'rows') r
+  where r->>'id'='REQ-CSR-1' and (r->>'requestQty')::numeric=2 and r->>'totalValue' is null and r->>'listPrice' is null),
+  'assigned rep reads the created history quantity through the protected redacted RPC');
 
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000005', true);
 select is((public.get_request_capabilities()->>'scope'), 'own', 'Chance receives create-and-own Request scope');
@@ -216,7 +236,11 @@ select lives_ok(
 );
 select is((select req_status from public.ph_active_request where unique_id = 'REQ-CSR-1'), 'Complete', 'completion persisted request state');
 select is((select match from public.ph_master_inventory where unique_id = 'MASTER-TEST-1'), '50', 'completion updated shared Drive AV data');
+select throws_ok($q$select snapshot from public.ph_request_history where unique_id='REQ-CSR-1'$q$,
+  '42501','permission denied for table ph_request_history','completion never reopens raw historical snapshot access');
+set local role postgres;
 select is((select last_event from public.ph_request_history where unique_id = 'REQ-CSR-1'), 'completed', 'completion froze final History');
+set local role authenticated;
 select is(
   (public.save_request_work('REQ-CSR-1', 1, '{}'::jsonb, false)->>'delivery_state'),
   'suppressed',

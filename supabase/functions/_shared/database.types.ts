@@ -4845,6 +4845,7 @@ export type Database = {
           date_completed: string | null
           desired_caliper: string | null
           desired_spec: string | null
+          dock: string | null
           est_ship: string | null
           field_tag_color: string | null
           id: number
@@ -4918,6 +4919,7 @@ export type Database = {
           date_completed?: string | null
           desired_caliper?: string | null
           desired_spec?: string | null
+          dock?: string | null
           est_ship?: string | null
           field_tag_color?: string | null
           id?: number
@@ -4991,6 +4993,7 @@ export type Database = {
           date_completed?: string | null
           desired_caliper?: string | null
           desired_spec?: string | null
+          dock?: string | null
           est_ship?: string | null
           field_tag_color?: string | null
           id?: number
@@ -15051,6 +15054,7 @@ export type Database = {
           date_completed: string | null
           desired_caliper: string | null
           desired_spec: string | null
+          dock: string | null
           drive_assignedto: string | null
           drive_av_note: string | null
           drive_caliper: string | null
@@ -15224,6 +15228,25 @@ export type Database = {
           unique_id: string | null
           updated_at: string | null
           warehouseid: string | null
+        }
+        Relationships: []
+      }
+      ph_historical_orders: {
+        Row: {
+          assigned_rep_id: string | null
+          commonname: string | null
+          consigneeidentityid: string | null
+          consigneename: string | null
+          customeridentityid: string | null
+          customername: string | null
+          date_completed: string | null
+          delivery_state: string | null
+          dock: string | null
+          itemcode: string | null
+          req_photo_link: string | null
+          req_qty: string | null
+          req_spec: string | null
+          unique_id: string | null
         }
         Relationships: []
       }
@@ -15709,6 +15732,7 @@ export type Database = {
           delivery_status: string | null
           desired_caliper: string | null
           desired_spec: string | null
+          dock: string | null
           drive_assignedto: string | null
           drive_av_note: string | null
           drive_caliper: string | null

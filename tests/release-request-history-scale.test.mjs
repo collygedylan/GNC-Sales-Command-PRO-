@@ -23,6 +23,16 @@ test('scale fixture rejects hosted databases before connecting',()=>{
   assert.match(result.stderr,/Hosted database fixtures forbidden/);
 });
 
+test('current scale fixture enforces owner-only counts and blocks creator-attributed data without changing the read budget',()=>{
+  const source=fs.readFileSync(new URL('../scripts/test-request-history-scale.mjs',import.meta.url),'utf8');
+  assert.match(source,/history_redact_financial_v1/);
+  assert.match(source,/assigned_rep_id=\$2 or not \$4 and request_created_by_username=\$3/);
+  assert.match(source,/Current history hides creator-only evidence assigned to another rep/);
+  assert.match(source,/Creator-only detail exposes no other-rep data or credit eligibility/);
+  assert.match(source,/durationMs<8000/);
+  assert.match(source,/notificationsUnchanged:true/);
+});
+
 test('legacy scale seeds restore caller claims before reads even when insertion fails', async () => {
   const source = fs.readFileSync(new URL('../scripts/test-request-history-scale.mjs', import.meta.url), 'utf8');
   const helper = source.slice(source.indexOf('async function insertLegacyActiveFixture('), source.indexOf('export async function runRequestHistoryScaleFixture('));

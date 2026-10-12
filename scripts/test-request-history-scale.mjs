@@ -23,6 +23,8 @@ export async function runRequestHistoryScaleFixture(db) {
   const names=[`${prefix.toLowerCase()}_rep`,`${prefix.toLowerCase()}_other`];
   await db.query('begin');
   try {
+    const ownerOnly=(await db.query(`select position('history_redact_financial_v1' in pg_get_functiondef(
+      'public.request_history_command_v1(uuid,text,jsonb,uuid,bigint)'::regprocedure))>0 as owner_only`)).rows[0].owner_only;
     const outboxBefore=(await db.query('select count(*) n from public.ph_request_delivery_outbox')).rows[0].n;
     for(let i=0;i<2;i++) {
       await db.query("insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values($1,$2,'{}','{}')",[actors[i],`${names[i]}@example.invalid`]);
@@ -67,7 +69,7 @@ export async function runRequestHistoryScaleFixture(db) {
     assert.equal(first.rows.length,10);
     assert.ok(first.nextCursor);
     assert.ok(first.rows.some(row=>row.status==='pending')&&first.rows.some(row=>row.status==='completed'),'Default All retains both states');
-    assert.ok(first.rows.every(row=>row.assigned_rep_id===actors[0]||row.request_created_by_username===names[0]));
+    assert.ok(first.rows.every(row=>row.assigned_rep_id===actors[0]||!ownerOnly&&row.request_created_by_username===names[0]));
     const second=await read('search',{limit:10,cursor:first.nextCursor});
     assert.equal(second.rows.length,10);
     assert.ok(second.rows.every(row=>!first.rows.some(prior=>prior.unique_id===row.unique_id)),'Timestamp ties page without overlap');
@@ -76,12 +78,17 @@ export async function runRequestHistoryScaleFixture(db) {
       assert.deepEqual(result.rows.map(row=>row.unique_id),[`${prefix}-3651`],'All five fields search beyond the first page');
     }
     const expected=(await db.query(`select count(*)::int n from public.ph_request_history
-      where unique_id like $1 and (assigned_rep_id=$2 or request_created_by_username=$3)`,[`${prefix}-%`,actors[0],names[0]])).rows[0].n;
+      where unique_id like $1 and (assigned_rep_id=$2 or not $4 and request_created_by_username=$3)`,[`${prefix}-%`,actors[0],names[0],ownerOnly])).rows[0].n;
     const folders=await read('folders',{limit:100});
     assert.equal(folders.folders.reduce((total,folder)=>total+Number(folder.count),0),expected,'Folder counts cover the full permitted history');
     const creator=await read('detail',{id:`${prefix}-20`});
-    assert.equal(creator.rows.length,1);
-    assert.equal(creator.rows[0].canRequestCredit,false,'Creator-only visibility grants no credit ownership');
+    if(ownerOnly) {
+      assert.equal(creator.rows.length,0,'Current history hides creator-only evidence assigned to another rep');
+      assert.equal(creator.rows[0],undefined,'Creator-only detail exposes no other-rep data or credit eligibility');
+    } else {
+      assert.equal(creator.rows.length,1,'September fixture preserves its legacy creator-attribution contract');
+      assert.equal(creator.rows[0].canRequestCredit,false,'Creator-only visibility grants no credit ownership');
+    }
     assert.equal((await read('detail',{id:`${prefix}-2`})).rows[0].canRequestCredit,true,'Owned completed evidence still permits credit');
     assert.ok((await read('search',{status:'pending',limit:10})).rows.every(row=>row.status==='pending'),'Pending filter remains exact');
     await db.query(`update public.ph_credit_sources owned set canonical_source_id=other.id
@@ -96,7 +103,7 @@ export async function runRequestHistoryScaleFixture(db) {
     assert.equal((await db.query('select count(*) n from public.ph_request_delivery_outbox')).rows[0].n,outboxBefore,
       'Fixtures and read-only history calls must not enqueue emails');
     console.log(JSON.stringify({ok:true,fixture:'request-history-production-scale',historyRows:3651,
-      overlappingActiveRows:3512,readBudgetMs:8000,timings,ownership:true,pagination:true,deepSearch:true,notificationsUnchanged:true}));
+      overlappingActiveRows:3512,readBudgetMs:8000,timings,ownerOnly,ownership:true,pagination:true,deepSearch:true,notificationsUnchanged:true}));
   } finally { await db.query('rollback'); }
 }
 

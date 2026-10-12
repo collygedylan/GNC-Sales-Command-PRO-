@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { diagnosticRoles, diagnosticScreens, diagnosticDriveLoadedSelector, diagnosticRequestAllowed, probeRoleBaseline, openDiagnosticDriveCards } from '../scripts/diagnose-user-roles.mjs';
+import { diagnosticRoles, diagnosticScreens, diagnosticDriveLoadedSelector, diagnosticRequestAllowed, probeRoleBaseline, openDiagnosticDriveCards, waitForDiagnosticHistory } from '../scripts/diagnose-user-roles.mjs';
 const api = 'https://example.supabase.co/functions/v1/app-api';
 
 test('diagnostics cover both nested Request History and Historical Requests routes', () => {
@@ -22,12 +22,28 @@ test('Drive diagnostics wait for real inventory cards before checking Reclass', 
       [diagnosticDriveLoadedSelector,'wait',{state:'visible',timeout:90000}]]);
     assert.match(diagnosticDriveLoadedSelector, /items match these filters\|rows are available for/);
     assert.doesNotMatch(diagnosticDriveLoadedSelector, /rows are loading/);
+    assert.match(diagnosticDriveLoadedSelector, /\.drive-grid-row\[data-dom-id\]/);
   }
 });
 test('diagnostic coverage includes sales, nursery and supervisory roles, including whitespace aliases', () => {
   for (const role of ['ADMIN','REP','CSR','DATA ENTRY','DATA ENTRY SUPERVISOR','EVAL','FOREMAN','GROWER','QC','QC SUPERVISOR','TAKE BACKS','\nREP']) {
     assert.ok(diagnosticRoles.includes(role));
   }
+});
+
+test('history diagnostics accept ready empty folders and reject visible read errors', async () => {
+  const calls = [];
+  const page = { waitForFunction: async (fn, id, options) => calls.push([id, options, fn.toString()]) };
+  const view = { locator: selector => ({
+    waitFor: async options => calls.push([selector, options]),
+    count: async () => 0,
+  }) };
+  await waitForDiagnosticHistory(page, view, 'request-history');
+  assert.equal(calls[0][0], '.historical-requests');
+  assert.equal(calls[1][0], 'view-request-history');
+  assert.match(calls[1][2], /Loading\|\^Saving/);
+  await assert.rejects(waitForDiagnosticHistory(page, { locator: () => ({ waitFor: async () => {}, count: async () => 1 }) }, 'historical-requests'), /could not load/);
+  assert.equal(diagnosticRequestAllowed('https://example.supabase.co/rest/v1/rpc/historical_requests_read_v1','POST',{p_query:{operation:'months'}}), true);
 });
 
 test('authenticated baseline probes retain status and counts without recording rows or credentials', async () => {

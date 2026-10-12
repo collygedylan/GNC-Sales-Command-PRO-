@@ -34,7 +34,7 @@ function identifier(value: unknown): string { if (typeof value !== "string" || !
 function boundedString(value: unknown, max = 2000): string { if (typeof value !== "string" || !value.trim() || value.length > max) throw new Error("AURA_QUERY_REQUEST_INVALID"); return value.trim(); }
 function result(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json; charset=utf-8" } }); }
 function same(left: unknown, right: unknown) { return JSON.stringify(left) === JSON.stringify(right); }
-function policy(actor: AuraActor) { return { id: actor.id, username: actor.username, role: actor.role, inventory: actor.inventory, history: actor.history, drafts: actor.drafts, socReserves: actor.socReserves === true, socOpenOrders: actor.socOpenOrders === true }; }
+function policy(actor: AuraActor) { return { version: 2, id: actor.id, username: actor.username, role: actor.role, inventory: actor.inventory, history: actor.history, drafts: actor.drafts, socReserves: actor.socReserves === true, socOpenOrders: actor.socOpenOrders === true }; }
 async function withinSignal<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) throw signal.reason;
   let onAbort: () => void = () => {};
@@ -267,7 +267,11 @@ function normalizeName(value: unknown) { return String(value ?? "").normalize("N
 function historyData(value: unknown): ObjectValue {
   const data = auraObject(value);
   if (!["own", "all"].includes(String(data.scope)) || typeof data.revision !== "string" || !Array.isArray(data.rows) || data.rows.length > 100) throw new Error("AURA_RESULT_INVALID");
-  const summary = auraObject(data.summary); number(summary.totalValue); number(summary.requestCount); number(summary.unpricedCount); number(data.total);
+  const summary = auraObject(data.summary); number(summary.requestCount); number(data.total);
+  if (typeof data.financials !== 'boolean' || data.financials !== (data.scope === 'all')) throw new Error('AURA_RESULT_INVALID');
+  if (data.financials) { number(summary.totalValue); number(summary.unpricedCount); }
+  else if (summary.totalValue !== null || summary.unpricedCount !== null
+    || array(data.rows).some(row => row.totalValue != null || row.listPrice != null || row.unpricedCount != null)) throw new Error('AURA_RESULT_INVALID');
   return data;
 }
 async function historyOutcome(tool: Extract<AuraTool, { name: "history" }>, context: ObjectValue, actor: AuraActor, store: AuraVoiceStore, signal: AbortSignal, more: boolean, selection?: ObjectValue): Promise<Outcome> {
@@ -312,11 +316,12 @@ async function historyOutcome(tool: Extract<AuraTool, { name: "history" }>, cont
   const nextContext: ObjectValue = { version: 1, tool, customerKey, consigneeKey, page: query.page, historyRevision: data.revision, choices: [], choiceStage: "" };
   let reply: string, actions = recordAction("Historical Requests", rows);
   const summaryReady = wantsSummary && (operation === "summary" || Boolean(customerKey) && (!tool.consigneeName || Boolean(consigneeKey)));
-  if (summaryReady) reply = `Current-price value for ${scope}${consigneeKey ? " within the selected consignee" : customerKey ? " within the selected customer" : ""}: ${money(number(summary.totalValue))} across ${format(number(summary.requestCount))} requests. Missing or zero request quantity uses 25 units. ${format(number(summary.unpricedCount))} requests lack a resolved value.`;
+  if (summaryReady && data.financials) reply = `Current-price value for ${scope}${consigneeKey ? " within the selected consignee" : customerKey ? " within the selected customer" : ""}: ${money(number(summary.totalValue))} across ${format(number(summary.requestCount))} requests. Missing or zero request quantity uses 25 units. ${format(number(summary.unpricedCount))} requests lack a resolved value.`;
+  else if (summaryReady) reply = `I found ${format(number(summary.requestCount))} of your assigned requests${consigneeKey ? ' within the selected consignee' : customerKey ? ' within the selected customer' : ''}. Financial totals are restricted to designated financial admins.`;
   else {
-    reply = `Showing ${format(rows.length)} of ${format(number(data.total))} ${operation} within ${scope}. Values use current list prices; missing or zero request quantity uses 25.`;
+    reply = `Showing ${format(rows.length)} of ${format(number(data.total))} ${operation} within ${scope}.${data.financials ? ' Values use current list prices; missing or zero request quantity uses 25.' : ''}`;
     if (operation === "customers" || operation === "consignees") {
-      const options = rows.slice(0, 5).map(row => ({ id: String(row.key), label: `${String(row.label)} · ${format(number(row.requestCount))} requests · ${money(number(row.totalValue))}` }));
+      const options = rows.slice(0, 5).map(row => ({ id: String(row.key), label: `${String(row.label)} · ${format(number(row.requestCount))} requests${data.financials ? ' · ' + money(number(row.totalValue)) : ''}` }));
       nextContext.choices = options; nextContext.choiceStage = operation === "customers" ? "customer" : "consignee";
       // A chosen customer/consignee advances to its request drill-down.
       nextContext.tool = { ...tool, operation: wantsSummary ? "summary" : "requests" };

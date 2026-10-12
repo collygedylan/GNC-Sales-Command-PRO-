@@ -2,17 +2,43 @@ import { describe, expect, it, vi } from 'vitest';
 import { createHistoricalRequestsBridge, historicalRequestsQuery, parseHistoricalRequestsPage } from '../services/historicalRequests';
 
 const customerPage = {
-  scope: 'all', revision: 'history-r7', generatedAt: '2026-10-10T12:00:00Z', page: 0, pageSize: 25, total: 1,
-  rows: [{ key: 'cust:0001', label: 'North Nursery', requestCount: 3, totalValue: 1875, unpricedCount: 1 }],
+  scope: 'all', financials: true, recordKind: 'all', ownRepKey: 'rep:50000000-0000-4000-8000-000000000001', revision: 'history-r7', generatedAt: '2026-10-10T12:00:00Z', page: 0, pageSize: 25, total: 1,
+  rows: [{ key: 'cust:0001', label: 'North Nursery', requestCount: 3, totalValue: 1875, unpricedCount: 1, customerKey: 'cust:0001', consigneeKey: null, consigneeName: null, customerId: '0001', consigneeId: null }],
   summary: { requestCount: 3, totalValue: 1875, unpricedCount: 1 },
 };
 const requestRow = {
   id: 'request-001', customerName: 'North Nursery', consigneeName: 'East Yard', salesrepUserId: null, salesrepName: 'Molly Dixon',
   itemcode: '00123', commonname: 'Red Maple ®', location: 'A.01', requestedAt: null, status: 'Completed', requestQty: 0,
   effectiveQty: 25, listPrice: null, totalValue: null, unresolvedReason: 'Current master list price is unavailable.',
+  dock: null, spec: '', caliper: '', comments: '', photoNotes: '', photoLinks: [], sentAt: null, deliveryState: 'unknown',
 };
 
 describe('historical requests typed API boundary', () => {
+  it('accepts exact rep identities and Orders without accepting malformed identity or kind filters', () => {
+    expect(historicalRequestsQuery({ operation: 'folders', repKey: customerPage.ownRepKey, recordKind: 'orders', view: 'request-history' }))
+      .toEqual({ operation: 'folders', repKey: customerPage.ownRepKey, recordKind: 'orders', view: 'request-history' });
+    for (const value of [{ repKey: 'Rep One' }, { repKey: '' }, { recordKind: 'pending' }, { view: 'sales-credit' }]) {
+      expect(() => historicalRequestsQuery({ operation: 'folders', ...value })).toThrow();
+    }
+  });
+  it('validates calendar dates, preserves inclusive range filters and rejects rolled-over or reversed dates', () => {
+    expect(historicalRequestsQuery({ operation: 'months', dateFrom: '2024-02-29', dateTo: '2024-03-01' }))
+      .toEqual({ operation: 'months', dateFrom: '2024-02-29', dateTo: '2024-03-01' });
+    for (const value of [{ dateFrom: '2026-02-29' }, { dateTo: '2026-13-01' }, { dateFrom: '2026-1-01' }, { dateFrom: '2026-10-02', dateTo: '2026-10-01' }]) {
+      expect(() => historicalRequestsQuery({ operation: 'months', ...value })).toThrow(/date/);
+    }
+  });
+  it('requires redacted monetary fields for own scope and rejects forged scope/capability combinations', () => {
+    const own = { ...customerPage, scope: 'own', financials: false,
+      rows: customerPage.rows.map(row => ({ ...row, totalValue: null, unpricedCount: null })),
+      summary: { requestCount: 3, totalValue: null, unpricedCount: null } };
+    expect(parseHistoricalRequestsPage(own)).toEqual(own);
+    expect(() => parseHistoricalRequestsPage({ ...own, summary: customerPage.summary })).toThrow(/not authorized/);
+    expect(() => parseHistoricalRequestsPage({ ...own, rows: customerPage.rows })).toThrow(/not authorized/);
+    expect(() => parseHistoricalRequestsPage({ ...own, financials: true })).toThrow(/financial scope/);
+    expect(() => parseHistoricalRequestsPage({ ...customerPage, financials: false })).toThrow(/financial scope/);
+    expect(() => parseHistoricalRequestsPage({ ...own, rows: [{ ...requestRow, listPrice: 4, totalValue: 100, unresolvedReason: null }] })).toThrow(/not authorized/);
+  });
   it('sanitizes operations and bounded pagination into the fixed RPC query shape', () => {
     const signal = new AbortController().signal;
     expect(historicalRequestsQuery({ operation: 'requests', customerKey: 'c', consigneeKey: 'g', page: 2, pageSize: 50, signal, actorId: 'forged' }))
@@ -32,6 +58,13 @@ describe('historical requests typed API boundary', () => {
     expect(() => parseHistoricalRequestsPage({ ...customerPage, rows: 'not-an-array' })).toThrow(/page rows/);
     expect(() => parseHistoricalRequestsPage({ ...customerPage, rows: [{ ...requestRow, totalValue: null, unresolvedReason: null }] })).toThrow(/explain/);
     expect(() => parseHistoricalRequestsPage({ ...customerPage, summary: { ...customerPage.summary, totalValue: '1875' } })).toThrow(/summary value/);
+  });
+
+  it('retains external IDs for duplicate names and rejects malformed own identities', () => {
+    const rows = [customerPage.rows[0], { ...customerPage.rows[0], key: 'cust:1', customerKey: 'cust:1', customerId: '1' }];
+    const page = parseHistoricalRequestsPage({ ...customerPage, rows, total: 2 });
+    expect(page.rows).toMatchObject([{ label: 'North Nursery', customerId: '0001' }, { label: 'North Nursery', customerId: '1' }]);
+    expect(() => parseHistoricalRequestsPage({ ...customerPage, ownRepKey: 'rep:' + '-'.repeat(36) })).toThrow(/own rep key/);
   });
 
   it('forwards only sanitized queries and abort signals; scope is separated by bridge key', async () => {

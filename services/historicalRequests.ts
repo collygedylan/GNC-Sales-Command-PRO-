@@ -5,6 +5,7 @@ import type {
   HistoricalRequestsOperation,
   HistoricalRequestsPage,
   HistoricalRequestsQuery,
+  HistoricalRecordKind,
 } from '../components/historical-requests/contract';
 
 export type HistoricalRequestsTransport = (query: HistoricalRequestsQuery, signal?: AbortSignal) => Promise<unknown>;
@@ -12,10 +13,31 @@ export type HistoricalRequestsTransport = (query: HistoricalRequestsQuery, signa
 export function historicalRequestsQuery(value: unknown): HistoricalRequestsQuery {
   const input = object(value, 'query');
   const operation = input.operation;
-  if (typeof operation !== 'string' || !['customers', 'consignees', 'requests', 'reps', 'summary'].includes(operation)) throw new Error('Invalid historical requests operation.');
+  if (typeof operation !== 'string' || !['customers', 'consignees', 'requests', 'reps', 'folders', 'months', 'summary'].includes(operation)) throw new Error('Invalid historical requests operation.');
   const result: HistoricalRequestsQuery = { operation: operation as HistoricalRequestsOperation };
   if ('customerKey' in input) result.customerKey = string(input.customerKey, 'customer key', 300);
   if ('consigneeKey' in input) result.consigneeKey = string(input.consigneeKey, 'consignee key', 300);
+  if ('repKey' in input) {
+    result.repKey = string(input.repKey, 'rep key', 80);
+    if (!/^rep:(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|unassigned)$/.test(result.repKey)) throw new Error('Invalid historical requests rep key.');
+  }
+  if ('recordKind' in input) {
+    if (!['all', 'requests', 'orders'].includes(String(input.recordKind)) || typeof input.recordKind !== 'string') throw new Error('Invalid historical requests record kind.');
+    result.recordKind = input.recordKind as HistoricalRecordKind;
+  }
+  if ('view' in input) {
+    if (input.view !== 'historical-requests' && input.view !== 'request-history') throw new Error('Invalid historical requests view.');
+    result.view = input.view;
+  }
+  for (const key of ['dateFrom', 'dateTo'] as const) {
+    if (key in input) {
+      const date = string(input[key], key, 10);
+      const parsed = new Date(date + 'T00:00:00Z');
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) throw new Error('Invalid historical requests date.');
+      result[key] = date;
+    }
+  }
+  if (result.dateFrom && result.dateTo && result.dateFrom > result.dateTo) throw new Error('Invalid historical requests date range.');
   if ('page' in input) result.page = natural(input.page, 'page number');
   if ('pageSize' in input) {
     result.pageSize = natural(input.pageSize, 'page size');
@@ -47,29 +69,41 @@ function money(value: unknown, label: string): number {
   }
   return value;
 }
-function summary(value: unknown): HistoricalRequestsPage['summary'] {
+function privateMoney(value: unknown, label: string, financials: boolean): number | null {
+  if (!financials) {
+    if (value !== null) throw new Error('Historical requests financial data is not authorized.');
+    return null;
+  }
+  return money(value, label);
+}
+function summary(value: unknown, financials: boolean): HistoricalRequestsPage['summary'] {
   const row = object(value, 'summary');
   const result = {
     requestCount: natural(row.requestCount, 'summary count'),
-    totalValue: money(row.totalValue, 'summary value'),
-    unpricedCount: natural(row.unpricedCount, 'unpriced count'),
+    totalValue: privateMoney(row.totalValue, 'summary value', financials),
+    unpricedCount: financials ? natural(row.unpricedCount, 'unpriced count') : privateMoney(row.unpricedCount, 'unpriced count', false),
   };
-  if (result.unpricedCount > result.requestCount) throw new Error('Invalid historical requests summary counts.');
+  if (result.unpricedCount !== null && result.unpricedCount > result.requestCount) throw new Error('Invalid historical requests summary counts.');
   return result;
 }
-function group(value: unknown): HistoricalRequestGroup {
+function group(value: unknown, financials: boolean): HistoricalRequestGroup {
   const row = object(value, 'group');
   const result = {
     key: string(row.key, 'group key', 300),
     label: string(row.label, 'group label'),
     requestCount: natural(row.requestCount, 'group count'),
-    totalValue: money(row.totalValue, 'group value'),
-    unpricedCount: natural(row.unpricedCount, 'group unpriced count'),
+    totalValue: privateMoney(row.totalValue, 'group value', financials),
+    unpricedCount: financials ? natural(row.unpricedCount, 'group unpriced count') : privateMoney(row.unpricedCount, 'group unpriced count', false),
+    customerKey: nullableString(row.customerKey, 'customer key', 300),
+    consigneeKey: nullableString(row.consigneeKey, 'consignee key', 300),
+    consigneeName: nullableString(row.consigneeName, 'consignee name'),
+    customerId: row.customerId === undefined ? null : nullableString(row.customerId, 'customer ID', 200),
+    consigneeId: row.consigneeId === undefined ? null : nullableString(row.consigneeId, 'consignee ID', 200),
   };
-  if (result.unpricedCount > result.requestCount) throw new Error('Invalid historical requests group counts.');
+  if (result.unpricedCount !== null && result.unpricedCount > result.requestCount) throw new Error('Invalid historical requests group counts.');
   return result;
 }
-function request(value: unknown): HistoricalRequestRow {
+function request(value: unknown, financials: boolean): HistoricalRequestRow {
   const row = object(value, 'request');
   const requestedAt = nullableString(row.requestedAt, 'request date', 80);
   if (requestedAt !== null && !Number.isFinite(Date.parse(requestedAt))) throw new Error('Invalid historical requests request date.');
@@ -79,7 +113,8 @@ function request(value: unknown): HistoricalRequestRow {
   const listPrice = row.listPrice === null ? null : money(row.listPrice, 'list price');
   const totalValue = row.totalValue === null ? null : money(row.totalValue, 'request value');
   const unresolvedReason = nullableString(row.unresolvedReason, 'unresolved reason', 1000);
-  if (totalValue === null && !unresolvedReason?.trim()) throw new Error('Unpriced historical request must explain the unresolved value.');
+  if (!financials && (listPrice !== null || totalValue !== null || unresolvedReason !== null)) throw new Error('Historical requests financial data is not authorized.');
+  if (financials && totalValue === null && !unresolvedReason?.trim()) throw new Error('Unpriced historical request must explain the unresolved value.');
   if (totalValue !== null && requestQty !== null && requestQty > 0 && effectiveQty !== requestQty) {
     throw new Error('Historical request effective quantity does not match its requested quantity.');
   }
@@ -90,6 +125,9 @@ function request(value: unknown): HistoricalRequestRow {
       || Math.abs(totalValue - effectiveQty * listPrice) > Math.max(0.01, totalValue * 1e-10))) {
     throw new Error('Historical request value does not match its effective quantity and current list price.');
   }
+  if (!Array.isArray(row.photoLinks) || row.photoLinks.length > 20) throw new Error('Invalid historical requests photos.');
+  const sentAt = nullableString(row.sentAt, 'sent date', 80);
+  if (sentAt !== null && !Number.isFinite(Date.parse(sentAt))) throw new Error('Invalid historical requests sent date.');
   return {
     id: string(row.id, 'request ID', 200),
     customerName: string(row.customerName, 'customer name'),
@@ -106,13 +144,26 @@ function request(value: unknown): HistoricalRequestRow {
     listPrice,
     totalValue,
     unresolvedReason,
+    dock: nullableString(row.dock, 'dock', 200),
+    spec: string(row.spec, 'spec', 10000),
+    caliper: string(row.caliper, 'caliper', 1000),
+    comments: string(row.comments, 'comments', 10000),
+    photoNotes: string(row.photoNotes, 'photo notes', 10000),
+    photoLinks: row.photoLinks.map(value => nullableString(value, 'photo link', 20000)),
+    sentAt,
+    deliveryState: string(row.deliveryState, 'delivery state', 100),
   };
 }
 
 export function parseHistoricalRequestsPage(value: unknown, operation?: HistoricalRequestsOperation): HistoricalRequestsPage {
   const data = object(value, 'response');
   if (data.scope !== 'all' && data.scope !== 'own') throw new Error('Invalid historical requests scope.');
-  const revision = string(data.revision, 'revision', 200);
+  if (typeof data.financials !== 'boolean' || data.financials !== (data.scope === 'all')) throw new Error('Invalid historical requests financial scope.');
+  const financials = data.financials;
+  if (!['all', 'requests', 'orders'].includes(String(data.recordKind))) throw new Error('Invalid historical requests record kind.');
+  const ownRepKey = string(data.ownRepKey, 'own rep key', 80);
+  if (!/^rep:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ownRepKey)) throw new Error('Invalid historical requests own rep key.');
+  const revision = string(data.revision, 'revision', 500);
   if (!revision) throw new Error('Missing historical requests revision.');
   const generatedAt = string(data.generatedAt, 'generated time', 80);
   if (!Number.isFinite(Date.parse(generatedAt))) throw new Error('Invalid historical requests generated time.');
@@ -126,23 +177,26 @@ export function parseHistoricalRequestsPage(value: unknown, operation?: Historic
     const candidate = object(row, 'row');
     if ('requestCount' in candidate) {
       if (operation === 'requests') throw new Error('Request page contains a group row.');
-      return group(candidate);
+      return group(candidate, financials);
     }
     if (operation && operation !== 'requests') throw new Error('Group page contains a request row.');
-    return request(candidate);
+    return request(candidate, financials);
   });
   const identities = rows.map(row => isGroupValue(row) ? `group:${row.key}` : `request:${row.id}`);
   if (new Set(identities).size !== identities.length) throw new Error('Historical requests page contains duplicate identities.');
   if (operation === 'summary' && rows.length) throw new Error('Summary response unexpectedly contains rows.');
   return {
     scope: data.scope,
+    financials: data.financials,
+    recordKind: data.recordKind as HistoricalRecordKind,
+    ownRepKey,
     revision,
     generatedAt,
     page,
     pageSize,
     total,
     rows,
-    summary: summary(data.summary),
+    summary: summary(data.summary, data.financials),
   };
 }
 
@@ -162,7 +216,7 @@ export function createHistoricalRequestsBridge({
       let raw: unknown;
       try { raw = await transport(safeQuery, signal); }
       catch (error) {
-        if (error instanceof Error && /HISTORICAL_REQUESTS_(?:AUTH_REQUIRED|FORBIDDEN|REPS_FORBIDDEN)/.test(error.message)) {
+        if (error instanceof Error && /HISTORICAL_REQUESTS_(?:AUTH_REQUIRED|FORBIDDEN|REP_FORBIDDEN|REPS_FORBIDDEN|FINANCIAL_FORBIDDEN)/.test(error.message)) {
           error.message = 'Historical Requests is not available to this account. Refresh your access or sign in again.';
         }
         if (error instanceof Error && error.message.includes('HISTORICAL_REQUESTS_SOURCE_REFRESH_REQUIRED')) {

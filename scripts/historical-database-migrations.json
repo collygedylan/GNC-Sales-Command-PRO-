@@ -734,5 +734,9 @@
   {
     "source": "supabase/migrations/20261011230000_normalize_navigation_role_boundaries.sql",
     "destination": "20261011230000_normalize_navigation_role_boundaries.sql"
+  },
+  {
+    "source": "supabase/migrations/20261012011000_request_history_drilldown_isolation.sql",
+    "destination": "20261012011000_request_history_drilldown_isolation.sql"
   }
 ]

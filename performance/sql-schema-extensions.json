@@ -62,5 +62,9 @@
   {
     "path": "supabase/migrations/20261011230000_normalize_navigation_role_boundaries.sql",
     "gitBlob": "bbba029a19aeb4ec790ab483296f2c4e58f96bb7"
+  },
+  {
+    "path": "supabase/migrations/20261012011000_request_history_drilldown_isolation.sql",
+    "gitBlob": "d87069f8b4611dde4ab6f00e458f8ed2a619f564"
   }
 ]

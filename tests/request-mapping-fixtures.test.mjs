@@ -16,7 +16,11 @@ test('successful native Request fixtures use mapped IDs while retaining authenti
     checked++;
   }
   assert.equal(checked, 6);
-  assert.match(source, /select plan\(78\)/);
+  assert.match(source, /select plan\(82\)/);
+  assert.match(source, /authenticated clients cannot read raw historical financial snapshots/);
+  assert.match(source, /assigned rep reads the created history quantity through the protected redacted RPC/);
+  assert.match(source, /completion never reopens raw historical snapshot access/);
+  assert.match(source, /the unchanged real account guard still denies Kayla at the scheduled cutoff/);
   assert.match(source, /set local role authenticated/);
   assert.doesNotMatch(source, /set_config\('request\.jwt\.claim\.role','service_role'/);
   const retries = batches.flat().filter(row => row.unique_id === 'REQ-CSR-1');

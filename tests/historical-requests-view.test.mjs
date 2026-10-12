@@ -26,144 +26,102 @@ const { HistoricalRequestsView } = componentModule.exports;
 const { render, screen, fireEvent, waitFor, cleanup } = require('@testing-library/react');
 afterEach(() => cleanup());
 
-const group = (key, label, totalValue = 0, unpricedCount = 0) => ({ key, label, requestCount: 1, totalValue, unpricedCount });
-const base = { scope: 'own', revision: 'rev1', generatedAt: '2026-10-10T12:00:00Z', page: 0, pageSize: 25, total: 1,
-  rows: [group('c:001', 'Customer 001')], summary: { requestCount: 1, totalValue: 0, unpricedCount: 1 } };
-function makeBridge(scopeKey, overrides = {}) {
-  const calls = [];
-  return { calls, bridge: { scopeKey, revisionKey: overrides.revisionKey || 'rev1', read: async (query, signal) => {
-    calls.push({ query, signal });
-    if (overrides.read) return overrides.read(query, signal);
-    if (query.operation === 'reps') return { ...base, scope: 'all', rows: [group('rep:molly', 'Molly Dixon', 900, 1)] };
-    if (query.operation === 'consignees') return { ...base, rows: [group('g:east', 'East Yard', 250, 1)] };
-    if (query.operation === 'requests') return { ...base, rows: [{ id: 'req-1', customerName: 'Customer 001', consigneeName: 'East Yard', salesrepUserId: null,
-      salesrepName: 'Molly Dixon', itemcode: '00012', commonname: 'Red Maple', location: 'A.01', requestedAt: null, status: 'Completed', requestQty: 0,
-      effectiveQty: 25, listPrice: null, totalValue: null, unresolvedReason: 'current_list_price_unavailable_or_invalid' }] };
-    return { ...base, scope: overrides.scope || 'own', summary: overrides.scope === 'all' ? { requestCount: 10, totalValue: 2500, unpricedCount: 2 } : base.summary };
-  } } };
-}
+const REP='rep:50000000-0000-4000-8000-000000000001';
+const OTHER='rep:50000000-0000-4000-8000-000000000002';
+const group=(key,label,value=900)=>({key,label,requestCount:1,totalValue:value,unpricedCount:1,customerKey:null,consigneeKey:null,consigneeName:null});
+const folder=()=>({...group('g:east','Customer 001'),customerKey:'c:001',consigneeKey:'g:east',consigneeName:'East Yard'});
+const requestRow=()=>({id:'req-1',customerName:'Customer 001',consigneeName:'East Yard',salesrepUserId:REP.slice(4),salesrepName:'Molly Dixon',
+ itemcode:'00012',commonname:'Red Maple',location:'A.01',requestedAt:null,status:'Completed',requestQty:0,effectiveQty:25,listPrice:null,totalValue:null,
+ unresolvedReason:'current_list_price_unavailable_or_invalid',dock:null,spec:'6–8 feet',caliper:'2 inches',comments:'Keep the tag',photoNotes:'Front view',
+ photoLinks:['https://example.invalid/photo.jpg'],sentAt:'2026-10-10T12:00:00Z',deliveryState:'delivered'});
+function pageFor(query,scope,rows,total=rows.length){return {scope,financials:scope==='all',recordKind:query.recordKind||'requests',ownRepKey:REP,
+ revision:'rev1',generatedAt:'2026-10-10T12:00:00Z',page:query.page||0,pageSize:25,total,
+ rows:rows.map(row=>scope==='own'?{...row,totalValue:null,unpricedCount:null,listPrice:'listPrice' in row?null:undefined,unresolvedReason:'unresolvedReason' in row?null:undefined}:row),
+ summary:{requestCount:10,totalValue:scope==='all'?2500:null,unpricedCount:scope==='all'?2:null}};}
+function makeBridge(scopeKey,overrides={}){const calls=[];return {calls,bridge:{scopeKey,revisionKey:overrides.revisionKey||'rev1',read:async(query,signal)=>{
+ calls.push({query,signal});if(overrides.read){const data=await overrides.read(query,signal);return query.operation==='summary'?{...data,rows:[],total:0}:data;}const scope=overrides.scope||'own';
+ return pageFor(query,scope,query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:query.operation==='requests'?[requestRow()]:[]);
+}}};}
+async function openFolder(all=false){if(all)fireEvent.click(await screen.findByRole('button',{name:/Molly Dixon/}));fireEvent.click(await screen.findByRole('button',{name:/Customer 001/}));}
 
-test('drills customer to consignee to paginated requests and shows unresolved pricing explicitly', async () => {
-  const fixture = makeBridge('rep:molly:own');
-  render(React.createElement(HistoricalRequestsView, { bridge: fixture.bridge }));
-  await screen.findByRole('button', { name: /Customer 001/ });
-  fireEvent.click(screen.getByRole('button', { name: /Customer 001/ }));
-  await screen.findByRole('button', { name: /East Yard/ });
-  fireEvent.click(screen.getByRole('button', { name: /East Yard/ }));
-  await screen.findByText('Unresolved value: Current master list price is unavailable or invalid.');
-  assert.equal(fixture.calls.map(call => call.query.operation).includes('requests'), true);
-  assert.equal(fixture.calls.find(call => call.query.operation === 'requests').query.customerKey, 'c:001');
-  assert.equal(fixture.calls.find(call => call.query.operation === 'requests').query.consigneeKey, 'g:east');
-  assert.equal(screen.queryByRole('heading', { name: 'Requests by sales rep' }), null);
+test('drills rep to exact customer/consignee folder and renders specs, photos, sent data and unresolved pricing for Dylan',async()=>{
+ const fixture=makeBridge('dylan:all',{scope:'all'});render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await openFolder(true);
+ await screen.findByText('Unresolved value: Current master list price is unavailable or invalid.');await screen.findByText('6–8 feet');
+ assert.equal(screen.getByRole('img',{name:'Request photo 1'}).getAttribute('src'),'https://example.invalid/photo.jpg');await screen.findByText('delivered');
+ const q=fixture.calls.find(call=>call.query.operation==='requests').query;assert.equal(q.repKey,REP);assert.equal(q.customerKey,'c:001');assert.equal(q.consigneeKey,'g:east');
 });
-
-test('only renders the all-scope dashboard after server confirms all scope for totals and rep pages', async () => {
-  const own = makeBridge('actor:rep:own');
-  render(React.createElement(HistoricalRequestsView, { bridge: own.bridge }));
-  await screen.findByRole('button', { name: /Customer 001/ });
-  assert.equal(screen.queryByRole('heading', { name: 'Requests by sales rep' }), null);
-  assert.equal(own.calls.some(call => call.query.operation === 'reps'), false);
-
-  cleanup();
-  const all = makeBridge('actor:admin:all', { scope: 'all' });
-  render(React.createElement(HistoricalRequestsView, { bridge: all.bridge }));
-  await screen.findByText('Molly Dixon');
-  await screen.findByText('$2,500.00');
-  assert.equal(all.calls.some(call => call.query.operation === 'reps'), true);
+test('defaults a rep to their own folders and renders financials only after server confirms Dylan all scope',async()=>{
+ const own=makeBridge('rep:own');render(React.createElement(HistoricalRequestsView,{bridge:own.bridge}));await screen.findByRole('button',{name:/Customer 001/});
+ assert.equal(screen.queryByRole('heading',{name:'Sales Reps'}),null);assert.equal(document.body.textContent.includes('$'),false);
+ assert.equal(own.calls.filter(call=>call.query.operation==='folders').every(call=>call.query.repKey===REP),true);
+ cleanup();const all=makeBridge('dylan:all',{scope:'all'});render(React.createElement(HistoricalRequestsView,{bridge:all.bridge}));await screen.findByRole('heading',{name:'Sales Reps'});await screen.findByText('$2,500.00');
 });
-
-test('fails closed on all-scope customer values when the rep endpoint returns own scope', async () => {
-  const fixture = makeBridge('actor:admin:all', { read: async query => {
-    if (query.operation === 'customers') return { ...base, scope: 'all', rows: [group('c:secret', 'Confidential Customer', 7777)] };
-    if (query.operation === 'reps') return { ...base, scope: 'own', rows: [group('rep:own', 'Own Rep', 10)] };
-    return { ...base, scope: 'all', rows: [] };
-  } });
-  render(React.createElement(HistoricalRequestsView, { bridge: fixture.bridge }));
-  await screen.findByText('Dashboard scope could not be confirmed.');
-  assert.equal(screen.queryByRole('button', { name: /Confidential Customer/ }), null);
-  assert.equal(screen.queryByText('$7,777.00'), null);
+test('fails closed on all-scope customer values when the rep endpoint returns own scope',async()=>{
+ const fixture=makeBridge('actor:own',{read:async query=>query.operation==='reps'?pageFor(query,'own',[group(REP,'Own Rep')]):pageFor(query,'all',[{...folder(),label:'Confidential Customer',totalValue:7777}])});
+ render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await screen.findByText('Data scope could not be confirmed.');
+ assert.equal(screen.queryByRole('button',{name:/Confidential Customer/}),null);assert.equal(screen.queryByText('$7,777.00'),null);
 });
-
-test('keeps the all-scope probe active through drilldown and hides cached details after its error or scope downgrade', async () => {
-  for (const repOutcome of ['error', 'own']) {
-    cleanup();
-    let repMode = 'all';
-    const bridge = {
-      scopeKey: `actor:admin:${repOutcome}`,
-      revisionKey: 'rev1',
-      read: async query => {
-        if (query.operation === 'customers') return { ...base, scope: 'all', rows: [group('c:secret', 'Confidential Customer', 7777)] };
-        if (query.operation === 'reps') {
-          if (repMode === 'error') throw new Error('Rep scope unavailable.');
-          return { ...base, scope: repMode, rows: [group('rep:admin', 'Admin View', 100)] };
-        }
-        if (query.operation === 'consignees') return { ...base, scope: 'all', rows: [group('g:secret', 'Confidential Consignee', 6000)] };
-        if (query.operation === 'requests') return { ...base, scope: 'all', rows: [{ id: 'req-secret', customerName: 'Confidential Customer',
-          consigneeName: 'Confidential Consignee', salesrepUserId: null, salesrepName: 'Secret Rep', itemcode: 'SECRET-1', commonname: 'Confidential Plant',
-          location: 'Secret Location', requestedAt: null, status: 'Pending', requestQty: 1, effectiveQty: 1, listPrice: 6000, totalValue: 6000, unresolvedReason: null }] };
-        return { ...base, scope: 'all', rows: [] };
-      },
-    };
-    const view = render(React.createElement(HistoricalRequestsView, { bridge }));
-    await screen.findByRole('button', { name: /Confidential Customer/ });
-    await screen.findByText('Admin View');
-    fireEvent.click(screen.getByRole('button', { name: /Confidential Customer/ }));
-    await screen.findByRole('button', { name: /Confidential Consignee/ });
-    fireEvent.click(screen.getByRole('button', { name: /Confidential Consignee/ }));
-    await screen.findByText('Confidential Plant');
-
-    repMode = repOutcome;
-    view.rerender(React.createElement(HistoricalRequestsView, { bridge: { ...bridge, revisionKey: 'rev2' } }));
-    await screen.findByText('Data scope could not be confirmed.');
-    assert.equal(screen.queryByText('Confidential Plant'), null, `${repOutcome}: request rows are suppressed`);
-    assert.equal(screen.queryByText('$6,000.00'), null, `${repOutcome}: cached detail totals are suppressed`);
-    assert.equal(screen.queryByRole('button', { name: /Confidential Consignee/ }), null, `${repOutcome}: cached consignee groups are suppressed`);
-    assert.ok(screen.getByRole('button', { name: 'Return to customers and refresh' }));
-  }
+test('keeps authorization probe active through drilldown and hides cached details after error or scope downgrade',async()=>{
+ for(const outcome of ['error','own']){cleanup();let mode='all';const fixture=makeBridge('dylan:'+outcome,{read:async query=>{
+  if(query.operation==='reps'){if(mode==='error')throw new Error('Rep scope unavailable.');return pageFor(query,mode,[group(REP,'Molly Dixon')]);}
+  return pageFor(query,'all',query.operation==='folders'?[folder()]:[{...requestRow(),commonname:'Confidential Plant',requestQty:1,effectiveQty:1,listPrice:6000,totalValue:6000,unresolvedReason:null}]);
+ }});const view=render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await openFolder(true);await screen.findByText('Confidential Plant');
+ mode=outcome;view.rerender(React.createElement(HistoricalRequestsView,{bridge:{...fixture.bridge,revisionKey:'rev2'}}));await screen.findByText('Data scope could not be confirmed.');
+ assert.equal(screen.queryByText('Confidential Plant'),null);assert.equal(screen.queryByText('$6,000.00'),null);assert.equal(screen.queryByRole('button',{name:/Customer 001/}),null);
+ assert.ok(screen.getByRole('button',{name:'Return to customers and refresh'}));}
 });
-
-test('scope change replaces the private SWR cache and aborts the previous account read', async () => {
-  let oldSignal;
-  const first = makeBridge('actor-a:all', { read: (query, signal) => {
-    if (query.operation === 'customers') { oldSignal = signal; return new Promise(() => {}); }
-    return Promise.resolve({ ...base, scope: 'all', rows: [] });
-  } });
-  const view = render(React.createElement(HistoricalRequestsView, { bridge: first.bridge }));
-  await waitFor(() => assert.ok(oldSignal));
-  const second = makeBridge('actor-b:own');
-  view.rerender(React.createElement(HistoricalRequestsView, { bridge: second.bridge }));
-  await screen.findByRole('button', { name: /Customer 001/ });
-  assert.equal(oldSignal.aborted, true);
-  assert.equal(screen.queryByText('Molly Dixon'), null);
+test('account change replaces private SWR cache and aborts the previous account read',async()=>{
+ let oldSignal;const first=makeBridge('actor-a',{read:(query,signal)=>{oldSignal=signal;return new Promise(()=>{});}});const view=render(React.createElement(HistoricalRequestsView,{bridge:first.bridge}));
+ await waitFor(()=>assert.ok(oldSignal));const second=makeBridge('actor-b');view.rerender(React.createElement(HistoricalRequestsView,{bridge:second.bridge}));await screen.findByRole('button',{name:/Customer 001/});assert.equal(oldSignal.aborted,true);
+ assert.equal(document.body.textContent.includes('$'),false);
 });
-
-test('hides prior rows and exposes retry when the current request read fails', async () => {
-  let attempt = 0;
-  const fixture = makeBridge('actor:own', { read: async query => {
-    if (query.operation !== 'customers') return { ...base, rows: [] };
-    attempt += 1;
-    if (attempt === 1) return base;
-    throw new Error('History service unavailable.');
-  } });
-  render(React.createElement(HistoricalRequestsView, { bridge: fixture.bridge }));
-  await screen.findByRole('button', { name: /Customer 001/ });
-  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
-  await screen.findByRole('alert');
-  assert.equal(screen.queryByRole('button', { name: /Customer 001/ }), null);
-  assert.ok(screen.getByText('History service unavailable.'));
+test('hides prior rows and exposes retry when the current request read fails',async()=>{
+ let attempt=0;const fixture=makeBridge('actor:own',{read:async query=>{if(query.operation==='reps')return pageFor(query,'own',[group(REP,'Molly Dixon')]);
+  if(++attempt===1)return pageFor(query,'own',[folder()]);throw new Error('History service unavailable.');}});
+ render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await screen.findByRole('button',{name:/Customer 001/});fireEvent.click(screen.getByRole('button',{name:'Refresh'}));await screen.findByRole('alert');
+ assert.equal(screen.queryByRole('button',{name:/Customer 001/}),null);assert.ok(screen.getByText('History service unavailable.'));
 });
-
-test('requests the next server page instead of aggregating only the initial customer page', async () => {
-  const fixture = makeBridge('actor:admin:all', { read: async query => {
-    if (query.operation === 'customers') return { ...base, scope: 'all', page: query.page || 0, pageSize: 1, total: 2,
-      rows: [group(query.page ? 'c:002' : 'c:001', query.page ? 'South Nursery' : 'North Nursery')] };
-    if (query.operation === 'summary') return { ...base, scope: 'all', rows: [] };
-    if (query.operation === 'reps') return { ...base, scope: 'all', rows: [] };
-    return { ...base, scope: 'all', rows: [] };
-  } });
-  render(React.createElement(HistoricalRequestsView, { bridge: fixture.bridge }));
-  await screen.findByRole('button', { name: /North Nursery/ });
-  fireEvent.click(screen.getAllByRole('button', { name: 'Next' }).at(-1));
-  await screen.findByRole('button', { name: /South Nursery/ });
-  assert.ok(fixture.calls.some(call => call.query.operation === 'customers' && call.query.page === 1));
+test('requests next server folder page instead of aggregating only the initial page',async()=>{
+ const fixture=makeBridge('dylan:all',{read:async query=>query.operation==='reps'?pageFor(query,'all',[group(REP,'Molly Dixon')]):
+  {...pageFor(query,'all',[{...folder(),key:query.page?'g:south':'g:north',label:query.page?'South Nursery':'North Nursery'}],2),pageSize:1}});
+ render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));fireEvent.click(await screen.findByRole('button',{name:/Molly Dixon/}));await screen.findByRole('button',{name:/North Nursery/});fireEvent.click(screen.getByRole('button',{name:'Next'}));await screen.findByRole('button',{name:/South Nursery/});
+ assert.ok(fixture.calls.some(call=>call.query.operation==='folders'&&call.query.page===1));
+});
+test('Orders toggle keeps rep identity, distinguishes zero and blank dock values and excludes prior Requests cache',async()=>{
+ const fixture=makeBridge('rep:own',{read:async query=>pageFor(query,'own',query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:[{...requestRow(),dock:query.recordKind==='orders'?'0':null}])});
+ render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await openFolder();await screen.findByText('Red Maple');fireEvent.click(screen.getByRole('button',{name:'Orders',exact:true}));
+ await screen.findByRole('button',{name:/Customer 001/});assert.equal(screen.queryByText('Red Maple'),null);await openFolder();await screen.findByText(/Dock 0/);assert.equal(document.body.textContent.includes('$'),false);
+ assert.ok(fixture.calls.some(call=>call.query.recordKind==='orders'&&call.query.repKey===REP));
+});
+test('rejects foreign-owner detail rows and unsafe photo links without weakening displayed ownership checks',async()=>{
+ const fixture=makeBridge('rep:own',{read:async query=>pageFor(query,'own',query.operation==='reps'?[group(REP,'Molly Dixon')]:query.operation==='folders'?[folder()]:[{...requestRow(),salesrepUserId:OTHER.slice(4),commonname:'Other Rep Secret'}])});
+ render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await openFolder();await screen.findByText('Data scope could not be confirmed.');assert.equal(screen.queryByText('Other Rep Secret'),null);
+ const {historicalPhotoUrls}=componentModule.exports;assert.deepEqual(Array.from(historicalPhotoUrls(['javascript:alert(1)','//untrusted.invalid/photo','https://example.invalid/photo.jpg','["https://example.invalid/photo.jpg"]'])),['https://example.invalid/photo.jpg']);
+});
+test('executive month, rep and customer filters query complete server totals and monthly grouping',async()=>{
+ const fixture=makeBridge('dylan:reports',{scope:'all'});render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));
+ await screen.findByRole('heading',{name:'Executive reporting'});
+ fireEvent.change(screen.getByLabelText('Period'),{target:{value:'month'}});
+ fireEvent.change(screen.getByLabelText('Month'),{target:{value:'2026-02'}});
+ fireEvent.change(screen.getByLabelText('Group totals'),{target:{value:'months'}});
+ await waitFor(()=>assert.ok(fixture.calls.some(call=>call.query.operation==='months'&&call.query.dateFrom==='2026-02-01'&&call.query.dateTo==='2026-02-28')));
+ fireEvent.change(screen.getByLabelText('Reporting rep'),{target:{value:REP}});
+ await waitFor(()=>assert.ok(fixture.calls.some(call=>call.query.operation==='months'&&call.query.repKey===REP)));
+ assert.ok(fixture.calls.some(call=>call.query.operation==='customers'&&call.query.pageSize===100));
+ cleanup();const own=makeBridge('rep:no-finance');render(React.createElement(HistoricalRequestsView,{bridge:own.bridge}));await screen.findByRole('button',{name:/Customer 001/});
+ assert.equal(screen.queryByRole('heading',{name:'Executive reporting'}),null);assert.equal(document.body.textContent.includes('$'),false);
+});
+test('invalid reporting range retains inputs, hides values and does not query a reversed range',async()=>{
+ const fixture=makeBridge('dylan:range',{scope:'all'});render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await screen.findByRole('heading',{name:'Executive reporting'});
+ fireEvent.change(screen.getByLabelText('Period'),{target:{value:'range'}});fireEvent.change(screen.getByLabelText('From date'),{target:{value:'2026-10-02'}});
+ fireEvent.change(screen.getByLabelText('Through date'),{target:{value:'2026-10-01'}});await screen.findByText('The through date must be on or after the from date.');
+ assert.equal(screen.getByLabelText('From date').value,'2026-10-02');assert.equal(document.body.textContent.includes('$'),false);
+ assert.equal(fixture.calls.some(call=>call.query.dateFrom==='2026-10-02'&&call.query.dateTo==='2026-10-01'),false);
+});
+test('an executive report scope downgrade hides all cached dollar values immediately',async()=>{
+ const fixture=makeBridge('dylan:downgrade',{read:async query=>pageFor(query,query.operation==='months'?'own':'all',
+  query.operation==='summary'?[]:query.operation==='reps'?[group(REP,'Molly Dixon')]:[folder()])});
+ render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await screen.findByRole('heading',{name:'Executive reporting'});
+ fireEvent.change(screen.getByLabelText('Group totals'),{target:{value:'months'}});await screen.findByText('Dashboard scope could not be confirmed.');
+ assert.equal(document.body.textContent.includes('$'),false);
 });
