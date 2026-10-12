@@ -15,7 +15,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
     <title>Ag Data Solutions</title>
     <meta name="theme-color" content="#f4fbf7">
-    <link rel="stylesheet" href="./assets/theme-tokens.css?v=V2026.10.12.002">
+    <link rel="stylesheet" href="./assets/theme-tokens.css?v=V2026.10.12.003">
     <link rel="icon" type="image/png" sizes="32x32" href="./assets/branding/ag-data-solutions-icon-v2026080925-32.png">
     <link rel="icon" type="image/png" sizes="192x192" href="./assets/branding/ag-data-solutions-icon-v2026080925-192.png">
     <link rel="apple-touch-icon" sizes="180x180" href="./assets/branding/ag-data-solutions-icon-v2026080925-180.png">
@@ -53,8 +53,8 @@
         if (themeColorMeta) themeColorMeta.setAttribute('content', prepaintTheme === 'dark' ? '#050806' : '#f4fbf7');
       })();
     </script>
-    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.12.002" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.12.002"></noscript>
+    <link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.12.003" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/live-tailwind-v2026082010.min.css?v=V2026.10.12.003"></noscript>
     <link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
     <noscript><link rel="stylesheet" href="./assets/vendor/phosphor/regular/style.css?v=2.1.2"></noscript>
     <link rel="stylesheet" href="./assets/vendor/phosphor/bold/style.css?v=2.1.2" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
@@ -168,10 +168,66 @@
     root.addEventListener('online', () => notify('online', 'online'));
     root.addEventListener('offline', () => notify('offline', 'offline'));
 
+    // Filters are disposable UI state. Auth, inventory, drafts and outboxes are not.
+    root.invalidateAppFiltersForVersion = targetBuild => {
+        const target = String(targetBuild || '').trim();
+        if (!/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)) return false;
+        let updated = false;
+        for (const storageName of ['localStorage', 'sessionStorage']) {
+            try {
+                const storage = root[storageName];
+                const previous = storage.getItem('gnc_app_filter_version_v1') || '';
+                const keys = [];
+                for (let index = 0; index < storage.length; index += 1) {
+                    const key = storage.key(index);
+                    if (key === 'gnc_app_filter_state_v1' || key?.startsWith('gnc_app_filter_state_v1:')) keys.push(key);
+                }
+                // Unversioned legacy snapshots are also obsolete on first use.
+                if (previous !== target) for (const key of keys) storage.removeItem(key);
+                storage.setItem('gnc_app_filter_version_v1', target);
+                updated = true;
+            } catch (_) {}
+        }
+        return updated;
+    };
+    // One reload owner per document; the worker's version reply can refine the
+    // target during the short toast, even when its registration URL is older.
+    root.reloadForServiceWorkerUpdate = targetBuild => {
+        const target = String(targetBuild || '').trim();
+        if (/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)) root.__gncPwaTargetBuild = target;
+        if (root.__gncPwaReloadPending) return false;
+        root.__gncPwaReloadPending = true;
+        if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
+            try { root.showToast('Updating', 'New version detected. Updating...', false); } catch (_) {}
+        } else if (!root.__gncShellUpdateToastShown && doc.body) {
+            const toast = doc.createElement('div');
+            toast.setAttribute('role', 'status');
+            toast.textContent = 'New version detected. Updating...';
+            toast.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;padding:12px 16px;border-radius:12px;background:#16372a;color:#fff;pointer-events:none';
+            doc.body.appendChild(toast);
+        }
+        root.__gncShellUpdateToastShown = true;
+        root.setTimeout(() => {
+            const nextBuild = root.__gncPwaTargetBuild || root.__APP_SHELL_BUILD__ || root.__APP_SHELL_VERSION__;
+            root.invalidateAppFiltersForVersion(nextBuild);
+            if (nextBuild) {
+                try {
+                    const next = new URL(root.location.href);
+                    next.searchParams.set('shellv', nextBuild);
+                    next.searchParams.set('shellts', String(Date.now()));
+                    root.history.replaceState(root.history.state, '', next.toString());
+                } catch (_) {}
+            }
+            root.location.reload();
+        }, 700);
+        return true;
+    };
+
     // Available before the application runtime, including when an old runtime fails.
     // CacheStorage contains downloaded assets; IndexedDB contains unsent field work.
     let shellRecovery = null;
     root.recoverShellVersionMismatch = (currentBuild, targetBuild) => {
+        if (root.__gncPwaReloadPending) return Promise.resolve(false);
         const current = String(currentBuild || '').trim();
         const target = String(targetBuild || '').trim();
         if (!current || current === target || !/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)
@@ -212,7 +268,7 @@
     <script>
       // Public release label; increment independently of the shell cache/build ID.
       window.__APP_RELEASE_VERSION__ = 'GNC.001';
-      window.__APP_SHELL_VERSION__ = 'V2026.10.12.002';
+      window.__APP_SHELL_VERSION__ = 'V2026.10.12.003';
         window.__APP_SHELL_BUILD__ = window.__APP_SHELL_VERSION__;
         (function() {
             const manifestLink = document.createElement('link');
@@ -332,8 +388,8 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=V2026.10.12.002" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=V2026.10.12.002"></noscript>
+    <link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=V2026.10.12.003" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/live-app-styles-base-v2026090503.css?v=V2026.10.12.003"></noscript>
     
     
     
@@ -632,11 +688,11 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
   outline: 3px solid color-mix(in srgb, var(--login-focus) 38%, transparent) !important;
   outline-offset: 2px !important;
 }</style>
-    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.12.002" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.12.002"></noscript>
-    <link rel="stylesheet" href="./assets/production-schedule.css?v=V2026.10.12.002">
-    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=V2026.10.12.002" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
-    <noscript><link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=V2026.10.12.002"></noscript>
+    <link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.12.003" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/ops-precision-pilot.css?v=V2026.10.12.003"></noscript>
+    <link rel="stylesheet" href="./assets/production-schedule.css?v=V2026.10.12.003">
+    <link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=V2026.10.12.003" media="print" fetchpriority="low" onload="this.onload=null;this.media='all'">
+    <noscript><link rel="stylesheet" href="./assets/live-app-styles-authority-v2026090503.css?v=V2026.10.12.003"></noscript>
     
     
 </head>
@@ -753,16 +809,16 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
         </div>
     </div>
     <script src="./assets/vendor/supabase-browser-2.112.3.min.js?v=2.112.3"></script>
-    <script src="./assets/drive-demand-detail.js?v=V2026.10.12.002"></script>
-    <script src="./assets/inventory-list-contract.js?v=V2026.10.12.002"></script>
-    <script src="./assets/login-network-trace.js?v=V2026.10.12.002"></script>
-    <script src="./assets/live-sync-registry.js?v=V2026.10.12.002"></script>
-    <script src="./assets/live-sync-adapters.js?v=V2026.10.12.002"></script>
-    <script src="./assets/live-sync-coordinator.js?v=V2026.10.12.002"></script>
-    <script src="./assets/ops-precision-pilot.js?v=V2026.10.12.002"></script>
-    <script src="./assets/production-schedule.js?v=V2026.10.12.002"></script>
-    <script src="./assets/eval-reports-engine.js?v=V2026.10.12.002"></script>
-    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.10.12.002"></script>
+    <script src="./assets/drive-demand-detail.js?v=V2026.10.12.003"></script>
+    <script src="./assets/inventory-list-contract.js?v=V2026.10.12.003"></script>
+    <script src="./assets/login-network-trace.js?v=V2026.10.12.003"></script>
+    <script src="./assets/live-sync-registry.js?v=V2026.10.12.003"></script>
+    <script src="./assets/live-sync-adapters.js?v=V2026.10.12.003"></script>
+    <script src="./assets/live-sync-coordinator.js?v=V2026.10.12.003"></script>
+    <script src="./assets/ops-precision-pilot.js?v=V2026.10.12.003"></script>
+    <script src="./assets/production-schedule.js?v=V2026.10.12.003"></script>
+    <script src="./assets/eval-reports-engine.js?v=V2026.10.12.003"></script>
+    <script defer src="./assets/photo-history-v2026090401.js?v=V2026.10.12.003"></script>
     <div id="tab-select-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-[10000] flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm text-center">
             <h3 class="font-bold text-lg mb-4 text-[#007a4d]">Which data to use?</h3>
@@ -1531,7 +1587,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                         <div class="nav-header-meta-row">
  <div id="aura-standby-control"></div>
  <div id="header-version" class="nav-version-pill"></div>
-    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.10.12.002').trim() || 'V2026.10.12.002';</script>
+    <script>document.getElementById('header-version').innerText = String(window.__APP_SHELL_VERSION__ || 'V2026.10.12.003').trim() || 'V2026.10.12.003';</script>
                             <button id="outdoor-mode-toggle" type="button" class="nav-outdoor-toggle" onclick="return toggleOutdoorMode()" aria-label="Outdoor Mode" aria-pressed="false" title="Outdoor Mode"><i class="ph-bold ph-sun"></i><span class="nav-outdoor-label">Outdoor</span></button>
                             <div id="sync-diagnostics-badge" class="hidden px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-white/20 bg-white/10 text-white whitespace-nowrap">IDLE</div>
                         </div>
@@ -3009,7 +3065,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
     bootTiming.state = 'loading';
     bootTiming.scriptLoadStartMs = Math.round((performance.now() - bootStartedAt) * 10) / 10;
     const runtime = document.createElement('script');
-    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=V2026.10.12.002';
+    runtime.src = './assets/live-app-runtime-v2026082010.min.js?v=V2026.10.12.003';
     runtime.defer = true;
     runtime.onerror = failed;
     runtime.onload = () => {
@@ -3159,6 +3215,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                 }
             };
             const reloadToShellBuild = (targetBuild = shellBuild, reason = 'shell-update') => {
+                if (window.__gncPwaReloadPending) return false;
                 const safeTargetBuild = String(targetBuild || shellBuild || '').trim();
                 if (!safeTargetBuild) return false;
                 if (shouldDeferShellReload(safeTargetBuild, reason)) return false;
@@ -3205,7 +3262,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
             };
             const updateShellRegistration = async (reason = '') => {
                 const signal = window.getShellMaintenanceSignal();
-                if (signal.aborted) return null;
+                if (signal.aborted || navigator.onLine === false) return null;
                 let registration = window.__swReg || null;
                 if (!registration) {
                     try { registration = await navigator.serviceWorker.getRegistration('./'); } catch (error) {}
@@ -3216,6 +3273,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                 }
                 if (signal.aborted || !registration) return null;
                 window.__swReg = registration;
+                if (registration.waiting) markShellUpdateReady(registration);
                 try { await registration.update(); } catch (error) {
                     if (typeof window.logShellDiagnostics === 'function') {
                         try {
@@ -3237,11 +3295,15 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                 requestWaitingShellActivation(reg, targetBuild);
                 if (typeof window.showToast === 'function' && !document.hidden && !window.__gncShellUpdateToastShown) {
                     window.__gncShellUpdateToastShown = true;
-                    try { window.showToast('Updating', 'New code is being applied...', false); } catch (e) {}
+                    try { window.showToast('Updating', 'New version detected. Updating...', false); } catch (e) {}
                 }
-                setTimeout(() => tryApplyShellUpdateSilently(true, targetBuild), 220);
             };
             const tryApplyShellUpdateSilently = (allowVisible = false, targetBuild = shellBuild) => {
+                if (window.__gncPwaReloadPending) return;
+                if (window.__swReg && (window.__swReg.waiting || window.__swReg.installing)) {
+                    requestWaitingShellActivation(window.__swReg, targetBuild);
+                    return;
+                }
                 let storedTargetBuild = '';
                 try { storedTargetBuild = String(sessionStorage.getItem(shellTargetReloadStorageKey) || '').trim(); } catch (e) {}
                 const safeTargetBuild = String(storedTargetBuild || targetBuild || shellBuild || '').trim() || shellBuild;
@@ -3291,6 +3353,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                         const reg = await updateShellRegistration(`${reason}:manifest`);
                         if (signal.aborted) return false;
                         requestWaitingShellActivation(reg, targetBuild);
+                        if (reg && (reg.waiting || reg.installing)) return false;
                         return reloadToShellBuild(targetBuild, `${reason}:manifest`);
                     } catch (e) {
                         return false;
@@ -3325,9 +3388,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
             };
             navigator.serviceWorker.register('./sw.js?v=' + encodeURIComponent(shellBuild), { scope: './', updateViaCache: 'none' }).then(async (reg) => {
                 console.log('Service Worker Registered');
-                try { await updateShellRegistration('startup-register'); } catch (error) {}
-                if (reg.waiting) markShellUpdateReady(reg);
-                checkLatestShellAndReload('startup', true).catch(() => {});
+                window.__swReg = reg;
                 reg.addEventListener('updatefound', () => {
                     const installing = reg.installing;
                     if (!installing) return;
@@ -3335,7 +3396,9 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                         if (installing.state === 'installed' && navigator.serviceWorker.controller) markShellUpdateReady(reg);
                     });
                 });
-                window.__swReg = reg;
+                if (reg.waiting) markShellUpdateReady(reg);
+                try { await updateShellRegistration('startup-register'); } catch (error) {}
+                checkLatestShellAndReload('startup', true).catch(() => {});
                 if (typeof window.scheduleCellularPushEnrollment === 'function') window.scheduleCellularPushEnrollment('sw-register', 500);
                 window.__swUpdateIntervalId = setInterval(() => {
                     updateShellRegistration('interval').catch(() => {});
@@ -3355,8 +3418,9 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                     if (typeof window.scheduleCellularPushEnrollment === 'function') window.scheduleCellularPushEnrollment('subscriptionchange', 0);
                     else if (typeof window.subscribeCurrentDeviceForPush === 'function') window.subscribeCurrentDeviceForPush({ prompt: false, force: true }).catch(() => {});
                 } else if (data.type === 'GNC_SHELL_ACTIVATED' || data.type === 'GNC_SHELL_VERSION') {
+                    if (event.source !== navigator.serviceWorker.controller) return;
                     const targetBuild = String(data.build || data.version || '').trim();
-                    if (targetBuild && targetBuild !== shellBuild) reloadToShellBuild(targetBuild, 'sw-message');
+                    if (targetBuild && targetBuild !== shellBuild) window.reloadForServiceWorkerUpdate(targetBuild);
                 }
             });
             navigator.serviceWorker.addEventListener('controllerchange', () => {
@@ -3368,15 +3432,8 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                     window.__gncShellUpdateToastShown = false;
                     return;
                 }
-                if (hasReloadedCurrentShell()) return;
-                markShellUpdateReady(window.__swReg);
-                if (document.hidden) setTimeout(tryApplyShellUpdateSilently, 80);
-                updateShellRegistration('controllerchange').catch(() => {});
-                if (!document.hidden && typeof window.maybeForceLatestStandaloneShell === 'function') {
-                    setTimeout(() => {
-                        window.maybeForceLatestStandaloneShell('controllerchange', { forceManifest: true, silentToast: true }).catch(() => {});
-                    }, 120);
-                }
+                window.reloadForServiceWorkerUpdate();
+                try { navigator.serviceWorker.controller.postMessage({ type: 'GNC_GET_SHELL_VERSION' }); } catch (e) {}
             });
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
