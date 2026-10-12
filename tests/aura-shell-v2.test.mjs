@@ -470,8 +470,29 @@ test('AURA cancellation during a stale-context response cannot apply settings or
 
 test('release packaging ships both V2 modules and versions all relative widget imports', () => {
   const packager = fs.readFileSync(new URL('../scripts/prepare-release-site.mjs', import.meta.url), 'utf8');
-  for (const module of ['auraConversation.js', 'auraLingo.js']) assert.ok(packager.includes(module));
+  for (const module of ['auraConversation.js', 'auraLingo.js', 'auraGeminiSpeech.js']) assert.ok(packager.includes(module));
   assert.match(packager, /auraRelease = `V\$\{JSON\.parse/);
   assert.match(packager, /specifier\}\?v=\$\{encodeURIComponent\(auraRelease\)/);
   assert.match(packager, /\['components\/common\/auraVoiceWidget\.js', 'utils\/auraIntentParser\.js'\]/);
+});
+
+test('release packaging includes every relative dependency of the standalone Aura widget', () => {
+  const packager = fs.readFileSync(new URL('../scripts/prepare-release-site.mjs', import.meta.url), 'utf8');
+  const copied = new Set([...packager.matchAll(/await copyTree\(path\.join\(root, ([^)]+)\),/g)]
+    .map(match => [...match[1].matchAll(/'([^']+)'/g)].map(part => part[1]).join('/')));
+  const visited = new Set();
+  const repositoryURL = new URL('../', import.meta.url);
+  const check = file => {
+    if (visited.has(file)) return;
+    visited.add(file);
+    assert.ok(copied.has(file), `Public artifact must contain ${file}`);
+    const source = fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
+    for (const match of source.matchAll(/from\s+["'](\.\.?\/[^"']+\.js)["']/g)) {
+      const dependency = new URL(match[1], new URL('../' + file, import.meta.url));
+      assert.ok(dependency.href.startsWith(repositoryURL.href), 'Aura modules must stay in the repository');
+      const relative = decodeURIComponent(dependency.href.slice(repositoryURL.href.length));
+      check(relative);
+    }
+  };
+  check('components/common/auraVoiceWidget.js');
 });
