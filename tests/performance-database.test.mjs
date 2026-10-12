@@ -265,6 +265,27 @@ test('identical pinned readers and migration snapshots are required for shared S
   /PERFORMANCE_PINNED_SQL_MIGRATION_CONTENT_CHANGED/);
 });
 
+test('pinned reader permits exactly the approved all-season rep scope expansion', () => {
+  const query = 'function inventoryReadQuery(actor, fields) {\n'
+    + '  const role = String(actor.role || "").trim();\n'
+    + '  const access = getRoleAccessState(role);\n'
+    + '  if (role === "FOREMAN") query = query.not("priority", "is", null);\n'
+    + '  if (access.isRepLike && !access.isAdmin) {\n'
+    + '    query = query.or("season.is.null,season.not.ilike.U3").or("lotcode.is.null,lotcode.not.ilike.%.U3");\n'
+    + '  }\n  return query;\n}\nasync function handleInventoryRead() {}\n';
+  const projector = 'function projectInventoryRows(rows: unknown, fields: string): Json[] {\n  return rows;\n}\n';
+  const baselineAppApi = 'function inventoryReadParams() {}\n' + projector + query + 'const AURA_V2_OPERATIONS = new Set([]);';
+  const currentAppApi = baselineAppApi.replace(projector, '').replace('  const access = getRoleAccessState(role);\n', '')
+    .replace('  if (access.isRepLike && !access.isAdmin) {\n    query = query.or("season.is.null,season.not.ilike.U3").or("lotcode.is.null,lotcode.not.ilike.%.U3");\n  }\n', '');
+  const beta = "export const APP_VERSION = 'same';\nexport function readRows() { return []; }";
+  const input = { baselineAppApi, currentAppApi, baselineBetaApi: beta, currentBetaApi: beta };
+  assert.match(assertPinnedReaderTextContract(input).inventoryReaderDigest, /^[a-f0-9]{64}$/);
+  for (const changed of [currentAppApi.replace('FOREMAN', 'REP'), currentAppApi.replace('return query', 'return null'),
+    currentAppApi.replace('priority', 'spec'), currentAppApi.replace('function inventoryReadParams() {}', 'function inventoryReadParams() { return "unbounded"; }')]) {
+    assert.throws(() => assertPinnedReaderTextContract({ ...input, currentAppApi: changed }), /PERFORMANCE_PINNED_SQL_INVENTORY_READER_CHANGED/);
+  }
+});
+
 test('SQL schema pin permits the reviewed additive migration while locking old blobs and full current schema', () => {
   const old = ['supabase/migrations/001_old.sql'];
   const pinned = [...old, 'supabase/migrations/002_reviewed.sql'];

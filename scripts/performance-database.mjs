@@ -173,19 +173,36 @@ export function assertSamePinnedMigrationSnapshot(baselinePaths, currentPaths, b
   return true;
 }
 
+function approvedRepInventoryReaderSource(source) {
+  const start = source.indexOf('function inventoryReadQuery(');
+  const end = source.indexOf('\nasync function handleInventoryRead(', start);
+  if (start < 0 || end < 0) return source;
+  const query = source.slice(start, end);
+  const access = '  const access = getRoleAccessState(role);\n';
+  const restriction = '  if (access.isRepLike && !access.isAdmin) {\n'
+    + '    query = query.or("season.is.null,season.not.ilike.U3").or("lotcode.is.null,lotcode.not.ilike.%.U3");\n'
+    + '  }\n';
+  if (!query.includes(access) || !query.includes(restriction)) return source;
+  // Task 6 explicitly expands rep reads to all seasons. Compare every other
+  // byte against the immutable reader; preserve authorization and projections.
+  return source.slice(0, start) + query.replace(access, '').replace(restriction, '') + source.slice(end);
+}
+
 export function assertPinnedReaderTextContract({ baselineAppApi, currentAppApi, baselineBetaApi, currentBetaApi }) {
   const readerStart = 'function inventoryReadParams(';
   const readerEnd = 'const AURA_V2_OPERATIONS =';
   const baselineReader = removeOldProjectorDefinition(sqlSourceSlice(normalizeSourceText(baselineAppApi), readerStart, readerEnd));
   const currentReader = removeOldProjectorDefinition(sqlSourceSlice(normalizeSourceText(currentAppApi), readerStart, readerEnd));
-  if (baselineReader.removed !== 1 || currentReader.removed !== 0 || baselineReader.source !== currentReader.source) {
+  const approvedBaselineReader = approvedRepInventoryReaderSource(baselineReader.source);
+  if (baselineReader.removed !== 1 || currentReader.removed !== 0
+      || baselineReader.source !== currentReader.source && approvedBaselineReader !== currentReader.source) {
     throw errorCode('PERFORMANCE_PINNED_SQL_INVENTORY_READER_CHANGED');
   }
   const normalizedBaselineBetaApi = stripAppVersionLine(normalizeSourceText(baselineBetaApi));
   const normalizedCurrentBetaApi = stripAppVersionLine(normalizeSourceText(currentBetaApi));
   if (normalizedBaselineBetaApi !== normalizedCurrentBetaApi) throw errorCode('PERFORMANCE_PINNED_SQL_BETA_READER_CHANGED');
   return {
-    inventoryReaderDigest: createHash('sha256').update(baselineReader.source).digest('hex'),
+    inventoryReaderDigest: createHash('sha256').update(currentReader.source).digest('hex'),
     betaReaderDigest: createHash('sha256').update(normalizedBaselineBetaApi).digest('hex'),
   };
 }
