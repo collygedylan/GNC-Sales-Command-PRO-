@@ -60,7 +60,7 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
   const control = {
     sources, requestSources, history, drafts, submissions, attachments, commands, navigation, productionRows, inventoryRows,
     failUploads: false, loseSubmitAcknowledgement: false, rejectShortcutSave: false,
-    denyHistory: false, denySource: false, contractErrors: [] as string[], native: null as any,
+    denyHistory: false, denySource: false, contractErrors: [] as string[], native: null as any, auraCapabilityReads: 0,
     seedReview() {
       const submissionId = id(300);
       const lines = sources.map((row, index) => ({ id: id(310 + index), submission_id: submissionId,
@@ -281,6 +281,21 @@ export async function installSalesMobileFixture(page: Page, baseURL: string, opt
     master: [hlMaster('production-source', { blockalpha: 'D', locationcode: 'D.08.001',
       itemcode: 'PROP.001', commonname: 'Propagation Holly', ptronhand: '20', ptravailable: '15' })],
     beforeNavigate: async () => {
+      // The compiled shell verifies its DB rollout flag before enabling Dylan's
+      // replacement Communications view. Only this read-only handshake is mocked.
+      await page.route('**/functions/v1/aura-llm-router', async route => {
+        const request = route.request();
+        if (request.method() !== 'POST' || request.postDataJSON()?.mode !== 'capabilities') return route.fallback();
+        if (!request.headers().authorization?.startsWith('Bearer ')) return route.fallback();
+        control.auraCapabilityReads++;
+        const enabled = navigation.username === 'dylan_collyge';
+        const headers = { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' };
+        return route.fulfill({ status: enabled ? 200 : 403, headers, contentType: 'application/json',
+          body: JSON.stringify(enabled ? { ok: true, configured: true, voiceName: 'Kore', voiceEngine: 'gemini-tts-v1',
+            capabilities: { id: navigation.profileId, username: navigation.username, role: navigation.role,
+              auraEnabled: true, inventory: true, history: true, drafts: true, socReserves: true, socOpenOrders: true } }
+            : { ok: false, code: 'AURA_ACTOR_FORBIDDEN', error: 'AURA is not enabled for this account.' }) });
+      });
       await page.route('**/rest/v1/rpc/historical_requests_read_v1', async route => {
         const request = route.request();
         if (request.method() !== 'POST') return route.fallback();

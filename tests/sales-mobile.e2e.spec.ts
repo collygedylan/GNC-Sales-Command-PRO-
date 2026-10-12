@@ -153,6 +153,7 @@ for (const role of ['ADMIN', 'SALES']) {
       }
     }
     if (role === 'ADMIN') {
+      await expect.poll(() => f.auraCapabilityReads).toBeGreaterThan(0);
       await page.evaluate(() => (window as any).switchView('communication'));
       // Dylan's command center replaces the legacy communication tiles.
       await expect(page.locator('#communication-hub-grid')).toBeHidden();
