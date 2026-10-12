@@ -4,6 +4,22 @@ import assert from "node:assert/strict";
 import { JSDOM } from "jsdom";
 import { mountAuraWidget } from "../components/common/auraVoiceWidget.js";
 
+test('mobile launcher clearance exists only during an authorized widget lifetime', async () => {
+  const env = browserEnvironment();
+  let widget;
+  try {
+    mountAuraWidget({ isAuthorized: () => false }).destroy();
+    assert.equal(document.getElementById('aura-voice-widget-styles'), null);
+    widget = mountAuraWidget({ isAuthorized: () => true });
+    const css = document.getElementById('aura-voice-widget-styles')?.textContent || '';
+    assert.match(css, /@media\(max-width:640px\)/);
+    assert.match(css, /#main-scroll-area\{scroll-padding-bottom:80px\}/);
+    assert.match(css, /#main-scroll-area::after\{content:"";display:block;height:80px;flex:0 0 80px;pointer-events:none\}/);
+    widget.destroy();
+    assert.equal(document.getElementById('aura-voice-widget-styles'), null, 'Sign-out removes the clearance stylesheet');
+  } finally { widget?.destroy(); await env.restore(); }
+});
+
 function browserEnvironment({ available = "available", includeRecognition = true } = {}) {
   const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", {
     url: "https://field.example.test/",

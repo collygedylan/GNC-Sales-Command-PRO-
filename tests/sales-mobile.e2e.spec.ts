@@ -222,6 +222,15 @@ test('history drills through the complete permitted result set, pages newest fir
   await expect(cards.first()).toContainText('Qty 10');
   await expect(cards.filter({ hasText: 'Cedar 01' }).getByRole('button', { name: 'Request Credit', exact: true })).toHaveCount(0);
   await expect(browse.locator('.historical-requests__pager')).toContainText('Page 1 of 3 · 63 total');
+  if (test.info().project.use.isMobile) {
+    const next = browse.getByRole('button', { name: 'Next', exact: true });
+    await next.scrollIntoViewIfNeeded();
+    await expect.poll(() => next.evaluate(node => {
+      const rect = node.getBoundingClientRect();
+      const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return hit === node || node.contains(hit);
+    })).toBe(true);
+  }
   await activate(browse.getByRole('button', { name: 'Next', exact: true }));
   await expect(cards).toHaveCount(25);
   await expect(cards.first()).toContainText('Cedar 25');
