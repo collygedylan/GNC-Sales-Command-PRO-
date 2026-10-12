@@ -716,6 +716,14 @@
     "destination": "20261010165013_historical_requests_financial_dashboard.sql"
   },
   {
+    "source": "supabase/migrations/20261010200046_aura_voice_role_access.sql",
+    "destination": "20261010200046_aura_voice_role_access.sql"
+  },
+  {
+    "source": "supabase/migrations/20261011032352_aura_voice_soc_reads.sql",
+    "destination": "20261011032352_aura_voice_soc_reads.sql"
+  },
+  {
     "source": "supabase/migrations/20261011170000_request_mapping_salesrep_identity.sql",
     "destination": "20261011170000_request_mapping_salesrep_identity.sql"
   },
@@ -738,5 +746,9 @@
   {
     "source": "supabase/migrations/20261012011000_request_history_drilldown_isolation.sql",
     "destination": "20261012011000_request_history_drilldown_isolation.sql"
+  },
+  {
+    "source": "supabase/migrations/20261012052500_aura_enterprise_domain_voice.sql",
+    "destination": "20261012052500_aura_enterprise_domain_voice.sql"
   }
 ]

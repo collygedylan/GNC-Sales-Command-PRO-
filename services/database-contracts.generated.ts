@@ -60,6 +60,87 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
+    "aura_domain_glossary": {
+      "row": {
+        "object": {
+          "canonical_entity": {
+            "schema": "string"
+          },
+          "id": {
+            "schema": "string"
+          },
+          "notes": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "target_filter": {
+            "schema": "json"
+          },
+          "term": {
+            "schema": "string"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "canonical_entity": {
+            "schema": "string"
+          },
+          "id": {
+            "schema": "string",
+            "optional": true
+          },
+          "notes": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "target_filter": {
+            "schema": "json"
+          },
+          "term": {
+            "schema": "string"
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "canonical_entity": {
+            "schema": "string",
+            "optional": true
+          },
+          "id": {
+            "schema": "string",
+            "optional": true
+          },
+          "notes": {
+            "schema": {
+              "oneOf": [
+                "string",
+                "null"
+              ]
+            },
+            "optional": true
+          },
+          "target_filter": {
+            "schema": "json",
+            "optional": true
+          },
+          "term": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      }
+    },
     "core_employees": {
       "row": {
         "object": {
@@ -76130,6 +76211,41 @@ export const contracts: RuntimeContracts<Database> = {
         }
       }
     },
+    "user_preferences": {
+      "row": {
+        "object": {
+          "aura_voice_preference": {
+            "schema": "string"
+          },
+          "user_id": {
+            "schema": "string"
+          }
+        }
+      },
+      "insert": {
+        "object": {
+          "aura_voice_preference": {
+            "schema": "string",
+            "optional": true
+          },
+          "user_id": {
+            "schema": "string"
+          }
+        }
+      },
+      "update": {
+        "object": {
+          "aura_voice_preference": {
+            "schema": "string",
+            "optional": true
+          },
+          "user_id": {
+            "schema": "string",
+            "optional": true
+          }
+        }
+      }
+    },
     "ph_active_request_live_rows": {
       "row": {
         "object": {
@@ -85050,6 +85166,13 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "aura_domain_context_v1": {
+      "oneOf": [
+        {
+          "object": {}
+        }
+      ]
+    },
     "aura_inventory_lot_lookup_v1": {
       "oneOf": [
         {
@@ -85871,6 +85994,23 @@ export const contracts: RuntimeContracts<Database> = {
                   "null"
                 ]
               }
+            }
+          }
+        }
+      ]
+    },
+    "aura_voice_preferences_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_voice": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
             }
           }
         }
@@ -92571,6 +92711,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "aura_domain_context_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "aura_inventory_lot_lookup_v1": {
       "oneOf": [
         "json"
@@ -92712,6 +92857,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "aura_voice_inventory_read_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "aura_voice_preferences_v1": {
       "oneOf": [
         "json"
       ]

@@ -1,13 +1,98 @@
+// @test-group: @local-e2e,@release-functional,aura
 import { test, expect } from '@playwright/test';
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-// @test-group: @local-e2e,@release-functional,aura
+
+test('global standby hands off to the verified voice panel and preferences stay account-owned', { tag: ['@local-e2e', '@release-functional'] }, async ({ browser }) => {
+  for (const width of [320, 390, 820, 1440]) {
+    const context = await browser.newContext({ viewport: { width, height: 900 }, serviceWorkers: 'block' });
+    const calls: any[] = [];
+    try {
+      await context.addInitScript(() => {
+        const state = (window as any).__auraEnterprise = { engines: [] as any[], played: 0, stopped: 0, authorized: true };
+        class Recognition {
+          static async available() { return 'unavailable'; }
+          onstart?: () => void; onresult?: (value: any) => void; onend?: () => void;
+          constructor() { state.engines.push(this); }
+          start() { this.onstart?.(); } abort() {} stop() {}
+        }
+        (window as any).SpeechRecognition = Recognition;
+        Object.defineProperty(navigator, 'permissions', { configurable: true, value: { query: async () => ({ state: 'granted' }) } });
+        class AudioContext {
+          state = 'running'; currentTime = 0; destination = {};
+          resume() { return Promise.resolve(); } suspend() { return Promise.resolve(); } close() { return Promise.resolve(); }
+          decodeAudioData() { return Promise.resolve({ duration: .01 }); }
+          createGain() { return { gain: { value: 0, setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {}, disconnect() {} }; }
+          createOscillator() { return { frequency: { setValueAtTime() {} }, connect() {}, start() {}, stop() {} }; }
+          createBufferSource() { return { buffer: null, onended: null, connect() {}, disconnect() {}, start() { state.played++; }, stop() { state.stopped++; } }; }
+        }
+        (window as any).AudioContext = AudioContext;
+      });
+      await context.exposeFunction('auraEnterpriseRequest', async (body: any) => {
+        calls.push(body);
+        if (body.mode === 'voice_preferences') return { ok: true, voiceName: body.voiceName };
+        if (body.mode === 'create') return { ok: true, conversationId: 'f7120000-0000-4000-8000-000000000001', revision: 0 };
+        if (body.mode === 'command') return { ok: true, conversationId: body.conversationId, revision: 2, reply: 'We currently have 420 3DP Baby Gem Boxwood in Open Stock.' };
+        if (body.mode === 'speech') return { ok: true, audio: { voiceName: 'Fenrir', mimeType: 'audio/L16;codec=pcm;rate=24000', base64: 'AAAAAA==' } };
+        return { ok: true, conversations: [], revision: 0 };
+      });
+      const page = await context.newPage();
+      await page.route('**/*', async route => {
+        const url = new URL(route.request().url());
+        if (url.origin !== 'https://aura-enterprise.test') return route.abort();
+        if (url.pathname === '/') return route.fulfill({ contentType: 'text/html', body: '<!doctype html><html><body><header><div id="aura-standby-control"></div></header><div id="aura-react-root"></div></body></html>' });
+        if (url.pathname !== '/assets/aura-voice.js') return route.abort();
+        return route.fulfill({ contentType: 'text/javascript', body: await fs.readFile(path.join(process.cwd(), 'assets/aura-voice.js'), 'utf8') });
+      });
+      await page.goto('https://aura-enterprise.test');
+      await page.evaluate(async () => {
+        const module = await import('/assets/aura-voice.js');
+        (window as any).__auraHandle = module.mountAuraWidgetReact(document.getElementById('aura-react-root'), {
+          userId: 'f7120000-0000-4000-8000-000000000001', initialVoiceName: 'Kore', voiceEngine: 'gemini-tts-v1',
+          isAuthorized: () => (window as any).__auraEnterprise.authorized,
+          requestAssistant: (body: any) => (window as any).auraEnterpriseRequest(body),
+        });
+      });
+      const standby = page.getByRole('button', { name: 'Standby Mode: Off', exact: true });
+      await expect(standby).toBeVisible();
+      expect(await page.evaluate(() => (window as any).__auraEnterprise.engines.length)).toBe(0);
+      await standby.click();
+      await expect.poll(() => page.evaluate(() => (window as any).__auraEnterprise.engines.length)).toBe(1);
+      await page.evaluate(() => {
+        const engine = (window as any).__auraEnterprise.engines[0];
+        if (!engine.continuous || !engine.interimResults) throw new Error('Global standby must use continuous interim recognition');
+        const result = [{ transcript: 'hey, aura' }]; (result as any).isFinal = false;
+        engine.onresult({ resultIndex: 0, results: [result] });
+      });
+      await expect(page.locator('.aura-panel')).toBeVisible();
+      await expect.poll(() => page.evaluate(() => (window as any).__auraEnterprise.engines.length)).toBe(2);
+      await page.getByRole('combobox', { name: 'AURA Voice', exact: true }).selectOption('Fenrir');
+      await expect.poll(() => page.evaluate(() => (window as any).__auraHandle.getVoicePreference())).toBe('Fenrir');
+      await page.evaluate(() => {
+        const engine = (window as any).__auraEnterprise.engines[1];
+        const result = [{ transcript: 'How many 3DP Baby Gem Boxwoods?' }]; (result as any).isFinal = true;
+        engine.onresult({ resultIndex: 0, results: [result] }); engine.onend?.();
+      });
+      await expect(page.getByRole('log')).toContainText('420 3DP Baby Gem');
+      await expect.poll(() => page.evaluate(() => (window as any).__auraEnterprise.played)).toBe(1);
+      const speech = calls.find(call => call.mode === 'speech');
+      expect(speech.conversationId).toBe('f7120000-0000-4000-8000-000000000001');
+      expect(speech.turnId).toMatch(/^[a-f0-9-]{36}$/);
+      expect(speech.text).toBeUndefined();
+      const bounds = await page.locator('.aura-panel').boundingBox();
+      expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width + 1);
+      await page.evaluate(() => { (window as any).__auraEnterprise.authorized = false; (window as any).__auraHandle.destroy(); });
+      await expect(page.locator('[data-aura-root]')).toHaveCount(0); await expect(page.locator('#aura-standby-control button')).toHaveCount(0);
+      expect(await page.evaluate(() => (window as any).__auraEnterprise.stopped)).toBe(1);
+    } finally { await context.close(); }
+  }
+});
 
 
 test('Aura restores private conversations across pages and hands changes to review', {"tag":["@local-e2e","@release-functional"]}, async ({ browser }) => {
   const files = new Set(['components/common/auraVoiceWidget.js', 'components/common/auraQueryPanel.js',
-    'services/auraVoiceService.js', 'services/auraConversation.js', 'utils/auraIntentParser.js', 'utils/auraLingo.js']);
+    'services/auraVoiceService.js', 'services/auraConversation.js', 'services/auraGeminiSpeech.js', 'utils/auraIntentParser.js', 'utils/auraLingo.js']);
   const turns: any[] = [];
   const calls: any[] = [];
   let revision = 0, deleted = false;
@@ -79,7 +164,7 @@ test('Aura restores private conversations across pages and hands changes to revi
 
 test('Aura hands-free wakes globally, waits for final speech, and resumes after audio ownership', {"tag":["@local-e2e","@release-functional"]}, async ({ browser }) => {
   const files = new Set(['components/common/auraVoiceWidget.js', 'components/common/auraQueryPanel.js',
-    'services/auraVoiceService.js', 'services/auraConversation.js', 'utils/auraIntentParser.js', 'utils/auraLingo.js']);
+    'services/auraVoiceService.js', 'services/auraConversation.js', 'services/auraGeminiSpeech.js', 'utils/auraIntentParser.js', 'utils/auraLingo.js']);
   const sent: any[] = [];
   const context = await browser.newContext({ viewport: { width: 390, height: 900 }, serviceWorkers: 'block' });
   const page = await context.newPage();

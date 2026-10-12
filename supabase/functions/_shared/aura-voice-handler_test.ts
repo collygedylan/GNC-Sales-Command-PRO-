@@ -23,6 +23,8 @@ function fixture(options: { actor?: AuraActor | null; tool?: { name: string; arg
   let replay = false;
   const activeActor = options.actor === undefined ? actor : options.actor;
   const store: AuraVoiceStore = {
+    domain: async () => ({ glossary: [], revision: "0".repeat(32) }),
+    voicePreference: async voice => voice || "Kore",
     appContext: async () => ({ season: "F1", salesyear: 27, settingRevision: 1 }),
     soc: async () => { throw new Error("Unexpected SOC query"); },
     authorize: async () => activeActor,
@@ -46,14 +48,14 @@ function fixture(options: { actor?: AuraActor | null; tool?: { name: string; arg
     const response = await handleAuraVoiceRequest(new Request("https://example.invalid/aura-llm-router", { method: "POST", headers: { ...(token ? { authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" }, body: JSON.stringify(body), signal }), deps);
     return { status: response.status, body: record(await response.json()) };
   };
-  return { run, store, calls, historyCalls, providerBodies, inventoryFilters, get saved() { return saved; },
+  return { run, store, deps, calls, historyCalls, providerBodies, inventoryFilters, get saved() { return saved; },
     get providerCalls() { return providerCalls; }, get inventoryCalls() { return inventoryCalls; },
     setInventory(read: () => unknown) { inventoryRead = read; }, setHistory(read: (query: AuraHistoryQuery) => unknown) { historyRead = read; },
     setContext(value: Record<string, unknown>) { context = value; }, setReadTurns(turns: unknown[]) { readTurns = turns; }, setReplay() { replay = true; },
     setTool(value: { name: string; args: unknown }) { selectedTool = value; } };
 }
 Deno.test("Aura voice denies unauthenticated/unauthorized command, history and deletion before provider or memory", async () => {
-  for (const mode of ["command", "capabilities", "create", "list", "read", "delete", "cancel"]) {
+  for (const mode of ["command", "capabilities", "create", "list", "read", "delete", "cancel", "speech", "voice_preferences"]) {
     const denied = fixture({ actor: null });
     assert((await denied.run({ mode, text: "stock" })).status === 403);
     assert((await denied.run({ mode }, "")).status === 403);
@@ -62,7 +64,7 @@ Deno.test("Aura voice denies unauthenticated/unauthorized command, history and d
 });
 Deno.test("tool result and current season metadata come exclusively from verified reads", async () => {
   const f = fixture(); const response = await f.run();
-  assert(response.status === 200 && String(response.body.reply).includes("35 units open stock"));
+  assert(response.status === 200 && String(response.body.reply).includes("35 #5 Maple in Open Stock"));
   assert(record(response.body.source).settingRevision === 1 && record(response.body.interpretation).engine === "gemini-tools-v1");
   assert(f.calls.at(-1)?.operation === "complete" && f.inventoryCalls === 1);
   assert(!JSON.stringify(f.providerBodies).includes('"uniqueId":"row1"'), "results never sent to provider");
@@ -311,12 +313,81 @@ Deno.test("open-stock selection carries exact s_lts, signed totals and server sc
   f.setInventory(() => ({ ...inventory(), total: -7, metric: "s_lts", rows: [inventoryRow, { ...inventoryRow, uniqueId: "row2" }] }));
   const result = await f.run({ text: "How many Baby Gem Boxwood are available?", source: "voice", appContext: { season: "F1", salesyear: 27, settingRevision: 1 } });
   const filters = record(f.inventoryFilters[0]);
-  assert(result.status === 200 && String(result.body.reply).includes("-7 units open stock") && result.body.reply === result.body.speech);
+  assert(result.status === 200 && String(result.body.reply).includes("-7 #5 Maple in Open Stock") && result.body.reply === result.body.speech);
   assert(filters.metric === "s_lts" && filters.season === "F1" && filters.salesYear === 27 && filters.openStockOnly === false);
   assert(JSON.stringify(filters.requestedVariants) === "[]" && !record(result.body).choices);
 });
+Deno.test("speech reads only a current authorized stored reply and the server-owned voice", async () => {
+  const f = fixture(), turnId = crypto.randomUUID();
+  await f.run({ text: "How many maples?", turnId });
+  f.setReadTurns([{ id: turnId, status: "complete", response: f.saved?.response, sources: f.saved?.sources }]);
+  let reservations = 0, audioCalls = 0;
+  f.store.reserve = async () => { reservations++; };
+  f.store.voicePreference = async voice => { assert(voice === undefined); return "Fenrir"; };
+  f.deps.fetcher = async (_url, init) => {
+    audioCalls++;
+    const body = JSON.parse(String(init?.body));
+    assert(body.contents[0].parts[0].text === record(f.saved?.response).reply);
+    assert(!JSON.stringify(body).includes("invented 999"));
+    assert(body.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName === "Fenrir");
+    return Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ inlineData: { mimeType: "audio/L16;codec=pcm;rate=24000", data: "AAAAAA==" } }] } }] });
+  };
+  const spoken = await f.run({ mode: "speech", conversationId: CHAT, turnId, text: "invented 999", voiceName: "Puck" });
+  assert(spoken.status === 200 && record(spoken.body.audio).voiceName === "Fenrir" && reservations === 1 && audioCalls === 1);
+  f.store.domain = async () => ({ glossary: [], revision: "1".repeat(32) });
+  assert((await f.run({ mode: "speech", conversationId: CHAT, turnId })).status === 409);
+  assert(reservations === 1 && audioCalls === 1, "stale glossary never reaches quota or speech provider");
+});
+Deno.test("voice preferences validate official choices after authorization and never accept a client actor", async () => {
+  const f = fixture();
+  assert((await f.run({ mode: "voice_preferences", voiceName: "Unknown", actorId: CHAT })).status === 400);
+  const selected = await f.run({ mode: "voice_preferences", voiceName: "Aoede", actorId: CHAT });
+  assert(selected.status === 200 && selected.body.voiceName === "Aoede" && f.calls.length === 0 && f.providerCalls === 0);
+});
+Deno.test("speech can explain missing stock only while the same incomplete facts remain current", async () => {
+  const f = fixture(), turnId = crypto.randomUUID();
+  f.setInventory(() => ({ ...inventory(), complete: false, total: null, rows: [] }));
+  await f.run({ text: "How many maples?", turnId });
+  f.setReadTurns([{ id: turnId, status: "complete", response: f.saved?.response, sources: f.saved?.sources }]);
+  let audioCalls = 0;
+  f.deps.fetcher = async (_url, init) => {
+    audioCalls++;
+    const body = JSON.parse(String(init?.body));
+    assert(body.contents[0].parts[0].text.startsWith("I can’t find verified stock information"));
+    return Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ inlineData: { mimeType: "audio/L16;codec=pcm;rate=24000", data: "AAAAAA==" } }] } }] });
+  };
+  assert((await f.run({ mode: "speech", conversationId: CHAT, turnId })).status === 200 && audioCalls === 1);
+  f.setInventory(inventory);
+  assert((await f.run({ mode: "speech", conversationId: CHAT, turnId })).status === 409 && audioCalls === 1);
+});
+Deno.test("conflicting glossary sizes request clarification before an inventory read", async () => {
+  const f = fixture();
+  f.store.domain = async () => ({ revision: "0".repeat(32), glossary: [
+    { term: "3dp", canonical_entity: "container_size", target_filter: { size: "3DP" } },
+    { term: "7g", canonical_entity: "container_size", target_filter: { size: "#7" } },
+  ] });
+  const response = await f.run({ text: "3DP or 7G maples?" });
+  assert(response.status === 400 && response.body.code === "AURA_SIZE_AMBIGUOUS" && !f.inventoryCalls);
+});
+Deno.test("dynamic glossary resolves a spec before reads and clear follow-ups retain the verified plant", async () => {
+  const f = fixture();
+  f.store.domain = async () => ({ revision: "0".repeat(32), glossary: [
+    { term: "3dp", canonical_entity: "container_size", target_filter: { size: "3DP" } },
+    { term: "7g", canonical_entity: "container_size", target_filter: { size: "#7" } },
+    { term: "on hold", canonical_entity: "metric_type", target_filter: { metric: "held" } },
+  ] });
+  await f.run({ text: "How many 3DP maples in open stock?" });
+  assert(record(f.inventoryFilters[0]).contSize === "3DP");
+  f.setTool({ name: "inventory", args: { operation: "stock", filters: {} } });
+  await f.run({ text: "What about in 7g?" });
+  assert(record(f.inventoryFilters[1]).contSize === "#7" && record(f.inventoryFilters[1]).commonName === "Maple");
+  await f.run({ text: "Are any of those on hold in Block D?" });
+  assert(record(f.inventoryFilters[2]).metric === "held" && record(f.inventoryFilters[2]).commonName === "Maple" && record(f.inventoryFilters[2]).contSize === "#7");
+  await f.run({ text: "Are there any on hold in Block D?" });
+  assert(record(f.inventoryFilters[3]).metric === "held" && record(f.inventoryFilters[3]).commonName === "Maple" && record(f.inventoryFilters[3]).contSize === "#7");
+});
 Deno.test("explicit on-hand and physical counts preserve their requested metrics", async () => {
-  for (const [text, key, value] of [["How many on hand?", "metric", "ptronhand"], ["How many physical rows?", "countMode", "physical_rows"], ["How many distinct items?", "countMode", "unique_items"]]) {
+  for (const [text, key, value] of [["How many on hand?", "metric", "loc_on_hand"], ["How many physical rows?", "countMode", "physical_rows"], ["How many distinct items?", "countMode", "unique_items"]]) {
     const f = fixture(); await f.run({ text }); assert(record(f.inventoryFilters[0])[key] === value);
   }
 });
@@ -339,7 +410,7 @@ Deno.test("history follow-ups read fresh facts and never repeat remembered stock
   const f = fixture({ tool: { name: "inventory", args: { operation: "stock", filters: { itemcode: "000123" } } } });
   const history = [{ role: "user", content: "How many itemcode 000123?" }, { role: "assistant", content: "999 plants in invented block X, lot 99.X" }];
   const result = await f.run({ text: "How many of those now?", history });
-  assert(result.status === 200 && String(result.body.reply).includes("35 units open stock"));
+  assert(result.status === 200 && String(result.body.reply).includes("35 #5 Maple in Open Stock"));
   assert(!/999|invented block|99\.X/.test(String(result.body.reply)) && f.inventoryCalls === 1);
   const body = record(f.providerBodies[0]);
   assert(Array.isArray(body.contents) && body.contents.length === 3 && record(body.contents[1]).role === "model");
@@ -378,7 +449,7 @@ Deno.test("missing stock counts remain unknown while verified zero counts stay z
   }
   const f = fixture(); f.setInventory(() => ({ ...inventory(), total: 0 }));
   const result = await f.run();
-  assert(result.status === 200 && String(result.body.reply).includes("0 units open stock"));
+  assert(result.status === 200 && String(result.body.reply).includes("0 #5 Maple in Open Stock"));
 });
 Deno.test("SOC permission loss blocks tools and prevents private history replay", async () => {
   const f = fixture({ actor: { ...actor, socReserves: false }, tool: { name: "soc_reserves", args: { commonname: "Maple", contsize: "#5", customername: "Acme" } } });
@@ -429,6 +500,6 @@ Deno.test("multiple spoken SOC seasons ask for one scope without reading the fee
 Deno.test("how-many inventory questions deterministically aggregate despite a locations tool proposal", async () => {
   const f = fixture({ tool: { name: "inventory", args: { operation: "locations", filters: { commonName: "Baby Gem Boxwood" } } } });
   const result = await f.run({ text: "How many Baby Gem Boxwood do we have?" });
-  assert(result.status === 200 && String(result.body.reply).includes("35 units open stock"));
+  assert(result.status === 200 && String(result.body.reply).includes("35 #5 Maple in Open Stock"));
   assert(record(f.inventoryFilters[0]).metric === "s_lts");
 });

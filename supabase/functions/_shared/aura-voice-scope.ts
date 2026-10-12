@@ -1,4 +1,5 @@
 import { auraObject } from "./aura-gemini.ts";
+import { auraForms, type AuraForm } from "./aura-domain.ts";
 
 export type AuraAppContext = { season: string; salesyear: number; settingRevision: number };
 export function parseAuraAppContext(value: unknown): AuraAppContext {
@@ -11,8 +12,8 @@ export function parseAuraAppContext(value: unknown): AuraAppContext {
   }
   return { season: row.season, salesyear: row.salesyear, settingRevision: row.settingRevision };
 }
-export function requestedAuraVariants(text: string): ("cone" | "tree" | "espalier")[] {
-  return (["cone", "tree", "espalier"] as const).filter(value => new RegExp(`\\b${value}s?\\b`, "i").test(text));
+export function requestedAuraVariants(text: string): AuraForm[] {
+  return auraForms(text);
 }
 export function spokenAuraSeason(text: string): string | undefined {
   const syntax = text.replace(/["“][^"”]*["”]/g, " ");

@@ -20,6 +20,7 @@ alter table public.ph_soc_master
   -- earlier HL fixture creates a reduced SOC table, so restore these existing
   -- production columns here before migrations that define the seasonal RPC.
   add column if not exists season text,
+  add column if not exists desigitem text,
   add column if not exists warehouseid text,
   add column if not exists warehousename text,
   add column if not exists assignedto text,
@@ -27,3 +28,7 @@ alter table public.ph_soc_master
   add column if not exists quantityshipped text,
   add column if not exists requestdate text,
   add column if not exists stagename text;
+
+-- The authenticated Aura SOC reader uses the existing production form label
+-- in both feeds. The reduced historical reserves shape must preserve it too.
+alter table public.ph_reserves add column if not exists desigitem text;

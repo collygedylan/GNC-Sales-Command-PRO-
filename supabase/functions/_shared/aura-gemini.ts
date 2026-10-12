@@ -1,3 +1,4 @@
+import { type AuraForm } from "./aura-domain.ts";
 /** Gemini proposes one bounded nursery tool call. It never grants access or supplies facts. */
 export const AURA_GEMINI_MODEL = "gemini-3.8-flash";
 export const AURA_PROVIDER_TIMEOUT_MS = 20000;
@@ -7,14 +8,14 @@ export type InventoryFilters = {
   productText?: string; commonName?: string; itemcode?: string; genus?: string; contSize?: string;
   locationCode?: string; locationMode?: "exact" | "prefix" | "contains"; lotcode?: string;
   season?: string; seasonReference?: "current" | "next"; salesYear?: number;
-  metric?: "ptravailable" | "ptronhand" | "s_lts";
-  requestedVariants?: ("cone" | "tree" | "espalier")[]; expectedSettingRevision?: number; countMode?: "quantity" | "physical_rows" | "unique_items";
+  metric?: "ptravailable" | "ptronhand" | "s_lts" | "loc_on_hand" | "allocated" | "held";
+  requestedVariants?: AuraForm[]; expectedSettingRevision?: number; countMode?: "quantity" | "physical_rows" | "unique_items";
   openStockOnly?: boolean; zone?: string; assignee?: string; assigneeText?: string; selectionId?: string;
 };
 export type InventoryOperation = "stock" | "locations" | "ownership" | "unassigned" | "lot" | "maximum";
 export type SocToolName = "soc_reserves" | "soc_open_orders";
 export type SocFilters = { commonname: string; contsize: string; customername: string; consigneename?: string; season?: string;
-  customerId?: string; consigneeId?: string; requestedVariants?: ("cone" | "tree" | "espalier")[]; expectedSettingRevision?: number };
+  customerId?: string; consigneeId?: string; requestedVariants?: AuraForm[]; expectedSettingRevision?: number };
 export type AuraTool =
   | (({ name: "soc_reserves" } | { name: "soc_open_orders" }) & Pick<SocFilters, "commonname" | "contsize" | "customername" | "consigneename" | "season">)
   | { name: "inventory"; operation: InventoryOperation; filters: InventoryFilters }
@@ -26,7 +27,7 @@ export type AuraTool =
 const FILTER_STRINGS = new Set(["productText", "commonName", "itemcode", "genus", "contSize", "locationCode", "lotcode", "season", "zone", "assignee", "assigneeText", "selectionId"]);
 const ENUMS: Record<string, readonly string[]> = {
   locationMode: ["exact", "prefix", "contains"], seasonReference: ["current", "next"],
-  metric: ["ptravailable", "ptronhand", "s_lts"], countMode: ["quantity", "physical_rows", "unique_items"],
+  metric: ["ptravailable", "ptronhand", "s_lts", "loc_on_hand", "allocated", "held"], countMode: ["quantity", "physical_rows", "unique_items"],
 };
 export function auraObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("AURA_TOOL_INVALID");
@@ -48,7 +49,7 @@ function member<T extends string>(value: unknown, values: readonly T[]): T {
 export function validateInventoryFilters(value: unknown): InventoryFilters {
   const input = auraObject(value), output: Record<string, unknown> = {};
   for (const [key, entry] of Object.entries(input)) {
-    if (key === "requestedVariants" && Array.isArray(entry) && entry.length <= 3 && entry.every(v => ["cone", "tree", "espalier"].includes(v))) output[key] = [...new Set(entry)];
+    if (key === "requestedVariants" && Array.isArray(entry) && entry.length <= 6 && entry.every(v => ["cone", "tree", "espalier", "spiral", "pompom", "topiary"].includes(v))) output[key] = [...new Set(entry)];
     else if (key === "expectedSettingRevision" && typeof entry === "number" && Number.isSafeInteger(entry) && entry >= 0) output[key] = entry;
     else if (FILTER_STRINGS.has(key)) output[key] = boundedText(entry, key === "selectionId" ? 180 : 160);
     else if (ENUMS[key]) output[key] = member(entry, ENUMS[key]);
@@ -136,6 +137,10 @@ export const AURA_TOOL_DECLARATIONS = [
 
 export const AURA_BRAND_SYSTEM_PROMPT = `You are AURA, the intelligent and conversational inventory assistant for Green Leaf Nursery. You are speaking to nursery staff and managers. Keep your tone natural, helpful, and concise.
 You are strictly forbidden from guessing inventory counts, block locations, or lot codes. If you do not have the exact data from a database tool call, you must state that you cannot find the information. Never invent numbers or plant names.
+You are an elite, conversational nursery operations intelligence assistant, fluent in commercial growing, concise and direct.
+Never output database column headers, snake_case keys, SQL, or JSON unless the user explicitly asks to show raw data. The server synthesizes verified results; answer the requested quantity in the first sentence and use at most two or three concise operational lines for locations.
+Resolve container aliases using the database glossary in the trusted query context. Interpret size_spec as a catalog size, base_cultivar as the user-named plant, form_modifier as an explicitly requested specialty form, and target_metric as open_stock, loc_on_hand, allocated or held. An ordinary plant query excludes cones, spirals, pom poms, topiary, tree forms, and espalier; an explicit form query includes only that form. Open stock is verified S_LTS, never an inferred allocation or guessed count.
+Golden calibration: "How many 3DP Baby Gem Boxwood are in open stock?" means base shrub, 3DP container, verified open stock, excluding cones and spirals. "What do we have in Baby Gem cones?" explicitly means cone forms. "Are there any on hold in Block D?" refers to the active cultivar and current held stock in Block D. "What about in 7 gallon?" keeps the active cultivar and changes only the catalog size. Fetch current database facts on every follow-up; these examples contain no inventory facts.
 1. OPEN STOCK: If asked 'how many do we have', use the Inventory Tool to return the exact s_lts count based on the active season/salesyear context.
 2. RESERVES: If asked 'how many does [customer] have on reserve?', use the SOC Reserves tool (Ordered minus Shipped).
 3. OPEN ORDERS: If asked 'how many does [customer] have on order?', use the SOC Open Orders tool (Total Ordered).

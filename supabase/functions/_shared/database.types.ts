@@ -30,6 +30,30 @@ export type Database = {
         }
         Relationships: []
       }
+      aura_domain_glossary: {
+        Row: {
+          canonical_entity: string
+          id: string
+          notes: string | null
+          target_filter: Json
+          term: string
+        }
+        Insert: {
+          canonical_entity: string
+          id?: string
+          notes?: string | null
+          target_filter: Json
+          term: string
+        }
+        Update: {
+          canonical_entity?: string
+          id?: string
+          notes?: string | null
+          target_filter?: Json
+          term?: string
+        }
+        Relationships: []
+      }
       core_employees: {
         Row: {
           active: boolean
@@ -15024,6 +15048,29 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          aura_voice_preference: string
+          user_id: string
+        }
+        Insert: {
+          aura_voice_preference?: string
+          user_id: string
+        }
+        Update: {
+          aura_voice_preference?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       ph_active_request_live_rows: {
@@ -16428,6 +16475,7 @@ export type Database = {
         }
         Returns: Json
       }
+      aura_domain_context_v1: { Args: never; Returns: Json }
       aura_inventory_lot_lookup_v1: {
         Args: { p_after_uid?: string; p_limit?: number; p_lotcode: string }
         Returns: Json
@@ -16570,6 +16618,7 @@ export type Database = {
         }
         Returns: Json
       }
+      aura_voice_preferences_v1: { Args: { p_voice?: string }; Returns: Json }
       aura_voice_soc_read_v1: {
         Args: {
           p_cursor?: Json

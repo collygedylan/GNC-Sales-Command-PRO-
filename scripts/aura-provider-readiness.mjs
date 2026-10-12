@@ -43,6 +43,8 @@ export async function checkAuraProviderReadiness(baseUrl, serviceKey, fetcher = 
     assert.equal(data.engine, 'gemini-tools-v1', 'AURA_PROVIDER_ENGINE_MISMATCH');
     assert.equal(data.checks?.refusal, true, 'AURA_PROVIDER_CONFINEMENT_UNVERIFIED');
     assert.equal(data.checks?.inventoryRouting, true, 'AURA_PROVIDER_ROUTING_UNVERIFIED');
+    assert.equal(data.checks?.speech, true, 'AURA_PROVIDER_SPEECH_UNVERIFIED');
+    assert.equal(data.speechModel, 'gemini-3.8-flash-tts', 'AURA_PROVIDER_SPEECH_MODEL_MISMATCH');
     return { ok: true, model: data.model };
   }
 }

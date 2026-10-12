@@ -1,10 +1,18 @@
 export interface AuraWidgetHandle {
+  getVoicePreference(): string;
+  setVoicePreference(value: string): Promise<string>;
+  openVoice(text?: string): boolean;
   destroy(): void;
   getHandsFreeAutoStart(): boolean;
   setHandsFreeAutoStart(enabled: boolean): boolean;
 }
 
 export interface AuraWidgetOptions {
+  initialVoiceName?: string;
+  voiceEngine?: string;
+  onVoicePreferenceChange?: () => void;
+  onVoiceActivity?: (active: boolean) => void;
+  onPanelOpenChange?: (open: boolean) => void;
   host?: HTMLElement;
   userId?: string;
   handsFreeAutostart?: boolean;

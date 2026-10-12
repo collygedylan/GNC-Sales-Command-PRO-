@@ -3,6 +3,8 @@ import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
 import { AURA_GEMINI_MODEL, AURA_PROVIDER_TIMEOUT_MS, AuraGeminiProviderError, auraObject, routeAuraWithGemini, type AuraActor } from "./aura-gemini.ts";
 import type { AuraVoiceDeps, AuraVoiceStore } from "./aura-voice-handler.ts";
+import { auraVoice, parseAuraGlossary } from "./aura-domain.ts";
+import { synthesizeAuraSpeech, AURA_TTS_MODEL } from "./aura-speech.ts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const allowedRoles = new Set(["ADMIN", "ADMINISTRATOR", "MANAGER", "REP", "SALESREP", "CSR"]);
@@ -15,7 +17,7 @@ export function parseAuraAccess(value: unknown, expectedId: string): AuraActor |
   for (const key of ["inventory", "history", "drafts"]) if (typeof capabilities[key] !== "boolean") return null;
   for (const key of ["socReserves", "socOpenOrders"]) if (capabilities[key] !== undefined && typeof capabilities[key] !== "boolean") return null;
   if (!capabilities.inventory && !capabilities.history && !capabilities.socReserves && !capabilities.socOpenOrders) return null;
-  return { id: expectedId, username: actor.username, role: actor.role, inventory: capabilities.inventory === true,
+  return { id: expectedId, username: actor.username, role: actor.role.trim().toUpperCase(), inventory: capabilities.inventory === true,
     history: capabilities.history === true, drafts: capabilities.drafts === true, socReserves: capabilities.socReserves === true, socOpenOrders: capabilities.socOpenOrders === true };
 }
 function env(name: string) { return String(Deno.env.get(name) || "").trim(); }
@@ -29,6 +31,20 @@ export function createAuraVoiceStore(bearer: string): AuraVoiceStore {
   let verifiedId = "";
   const verifyActor = (actorId: string) => { if (!verifiedId || actorId !== verifiedId) throw new Error("AURA_FORBIDDEN"); };
   return {
+    async domain(signal) {
+      verifyActor(verifiedId);
+      const { data, error } = await user.rpc("aura_domain_context_v1").abortSignal(signal);
+      if (error) throw error;
+      const context = auraObject(data);
+      if (typeof context.revision !== "string" || !/^[0-9a-f]{32}$/.test(context.revision)) throw new Error("AURA_GLOSSARY_INVALID");
+      return { glossary: parseAuraGlossary(context.glossary), revision: context.revision };
+    },
+    async voicePreference(voice, signal) {
+      verifyActor(verifiedId);
+      const { data, error } = await user.rpc("aura_voice_preferences_v1", voice ? { p_voice: auraVoice(voice) } : {}).abortSignal(signal);
+      if (error) throw error;
+      return auraVoice(auraObject(data).voiceName);
+    },
     async authorize(signal) {
       const authenticated = await user.auth.getUser(bearer);
       const id = authenticated.data.user?.id;
@@ -118,9 +134,11 @@ export async function handleAuraProviderProbe(request: Request, options: { env?:
     if (stock.name !== "inventory" || stock.operation !== "stock" || stock.filters.itemcode !== "000123") {
       return json({ ok: false, code: "AURA_PROVIDER_ROUTING_PROBE_FAILED" }, 503);
     }
-    return json({ ok: true, model: AURA_GEMINI_MODEL, engine: "gemini-tools-v1", checks: { refusal: true, inventoryRouting: true } }, 200);
+    await synthesizeAuraSpeech({ text: "Aura is ready.", voice: "Kore", apiKey: readEnv("GEMINI_API_KEY"),
+      signal: AbortSignal.any([request.signal, AbortSignal.timeout(AURA_PROVIDER_TIMEOUT_MS)]), fetcher: options.fetcher, reserve: async () => {} });
+    return json({ ok: true, model: AURA_GEMINI_MODEL, speechModel: AURA_TTS_MODEL, engine: "gemini-tools-v1", checks: { refusal: true, inventoryRouting: true, speech: true } }, 200);
   } catch (error) {
-    const safeReasons = new Set(["AURA_GEMINI_CONFIGURATION_UNAVAILABLE", "AURA_GEMINI_BUSY", "AURA_GEMINI_UNAVAILABLE", "AURA_TOOL_INVALID", "AURA_TOOL_FORBIDDEN"]);
+    const safeReasons = new Set(["AURA_GEMINI_CONFIGURATION_UNAVAILABLE", "AURA_GEMINI_BUSY", "AURA_GEMINI_UNAVAILABLE", "AURA_TOOL_INVALID", "AURA_TOOL_FORBIDDEN", "AURA_SPEECH_INVALID"]);
     const reason = error instanceof DOMException && error.name === "TimeoutError" ? "AURA_GEMINI_TIMEOUT"
       : error instanceof Error && safeReasons.has(error.message) ? error.message : "AURA_PROVIDER_UNAVAILABLE";
     return json({ ok: false, code: "AURA_PROVIDER_NOT_READY", reason,
