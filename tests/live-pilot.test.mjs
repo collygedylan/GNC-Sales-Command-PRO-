@@ -519,7 +519,8 @@ test('Drive universal search remains available outside the Common Name drill', (
   const driveBackHandler = backHandler.slice(backHandler.indexOf("if (currentView === 'drive')"), backHandler.indexOf("if (currentView === 'crop-roll')"));
   assert.match(driveBackHandler, /activeDriveTab === 'name'[\s\S]*driveViewLevel >= 2 && selectedDriveName[\s\S]*backToDriveSizes\(\)/);
   assert.ok(driveBackHandler.indexOf('backToDriveSizes()') < driveBackHandler.indexOf('hasActiveDriveSearchTerm()'), 'Drive drill Back must return to Container Size before clearing the Common Name search');
-  assert.doesNotMatch(driveBackHandler, /backToDriveSeasons\(\)/);
+  assert.match(driveBackHandler, /driveViewLevel >= 3 && selectedDriveName && selectedDriveSize[\s\S]*backToDriveSeasons\(\)/);
+  assert.ok(driveBackHandler.indexOf('backToDriveSeasons()') < driveBackHandler.indexOf('backToDriveSizes()'), 'Item cards return through Season before Container Size');
   assert.match(driveBackHandler, /hasActiveDriveSearchTerm\(\)[\s\S]*clearDriveSearch\(\)/);
   assert.match(html, /function clearDriveSearch\(\)[\s\S]*restoreDriveStateAfterUniversalSearch\(\)/);
   assert.match(html, /oncompositionstart="beginDriveSearchComposition\(\)"/);
