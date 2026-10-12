@@ -141,5 +141,7 @@ test('lint, unit tests and build start independently with exact dependency cache
   }
   assert.ok(workflow.jobs.lint.steps.some(step => step.run === 'npm run check:tooling'));
   assert.ok(workflow.jobs.unit.steps.some(step => step.run === 'node scripts/run-release-unit-checks.mjs --shard=${{ matrix.shard }}/4'));
+  assert.match(workflow.jobs['release-gate'].steps[0].run, /required\.push\('fast-browser'\)/);
+  assert.match(workflow.jobs['release-gate'].steps[0].run, /RUN_NIGHTLY_SUITES/);
   assert.equal(browsers.runs.steps.find(step => step.id === 'browsers').with.path, '~/.cache/ms-playwright');
 });

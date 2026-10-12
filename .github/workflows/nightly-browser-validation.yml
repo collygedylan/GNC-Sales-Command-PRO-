@@ -1,0 +1,114 @@
+name: Nightly browser validation
+
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: nightly-browser-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  expanded-validation:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/release-validation.yml
+    with:
+      hotfix: false
+      fast-pr: false
+      run-nightly-suites: true
+      run-schema-tests: false
+      production-health: false
+      run-frontend-tests: true
+      run-backend-tests: false
+    secrets: inherit
+
+  current-live-release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Wait for the current main commit to be live
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+          CANARY_BASE_URL: https://agmetricapp.com
+          REQUIRE_CURRENT_LIVE_DESCRIPTOR: '1'
+          CANARY_WAIT_TIMEOUT_MS: '600000'
+          CANARY_WAIT_INTERVAL_MS: '5000'
+        run: node scripts/wait-for-live-release.mjs
+
+  post-deployment-canary:
+    if: github.ref == 'refs/heads/main'
+    needs: current-live-release
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - suite: foundation
+            project: lifecycle-chromium
+            browsers: chromium
+            command: 'npm run test:foundation -- --reporter=github --project=lifecycle-chromium --workers=1 --max-failures=1'
+          - suite: foundation
+            project: lifecycle-iphone
+            browsers: webkit
+            command: 'npm run test:foundation -- --reporter=github --project=lifecycle-iphone --workers=1 --max-failures=1'
+          - suite: requests
+            project: production-chromium
+            browsers: chromium
+            command: npx playwright test --config playwright.production.config.ts --project=production-chromium --workers=1 --max-failures=1
+          - suite: requests
+            project: production-iphone-webkit
+            browsers: webkit
+            command: npx playwright test --config playwright.production.config.ts --project=production-iphone-webkit --workers=1 --max-failures=1
+          - suite: session
+            project: session-chromium
+            browsers: chromium
+            command: 'npm run test:session-recovery -- --project=session-chromium --workers=1 --max-failures=1'
+          - suite: session
+            project: session-iphone
+            browsers: webkit
+            command: 'npm run test:session-recovery -- --project=session-iphone --workers=1 --max-failures=1'
+          - suite: login-photo
+            project: chromium
+            browsers: chromium
+            command: npx playwright test --config playwright.login-photo.config.ts --project=chromium --workers=1 --max-failures=1
+          - suite: login-photo
+            project: webkit
+            browsers: webkit
+            command: npx playwright test --config playwright.login-photo.config.ts --project=webkit --workers=1 --max-failures=1
+          - suite: login-photo
+            project: android
+            browsers: chromium
+            command: npx playwright test --config playwright.login-photo.config.ts --project=android --workers=1 --max-failures=1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-browser-tests
+        with:
+          browsers: ${{ matrix.browsers }}
+      - name: Mutation-blocked live ${{ matrix.suite }} checks
+        env:
+          CANARY_BASE_URL: https://agmetricapp.com
+          EXPECTED_COMMIT: ${{ github.sha }}
+          APP_LIFECYCLE_BASE_URL: https://agmetricapp.com
+          SESSION_RECOVERY_BASE_URL: https://agmetricapp.com
+          LOGIN_PHOTO_BASE_URL: https://agmetricapp.com
+        run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: live-${{ matrix.suite }}-${{ matrix.project }}-${{ github.run_attempt }}
+          path: |
+            playwright-report
+            test-results
+            artifacts
+          if-no-files-found: ignore
+          retention-days: 7

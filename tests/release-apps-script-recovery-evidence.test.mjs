@@ -51,10 +51,10 @@ test('recovery evidence rejects a mismatched commit and a deployment version rac
   }), /DEPLOYMENT_ADVANCED/);
 });
 
-test('sync workflow retains only the sanitized recovery evidence artifact', () => {
+test('Apps Script recovery code remains tested while publishing stays paused', () => {
   const workflow = fs.readFileSync(new URL('../.github/workflows/apps-script-sync.yml', import.meta.url), 'utf8');
   const sync = fs.readFileSync(new URL('../scripts/sync-codegs-to-apps-script.js', import.meta.url), 'utf8');
-  assert.match(workflow, /path: \.gnc-local\/apps-script-recovery-evidence\.json/);
+  assert.doesNotMatch(workflow, /Sync Code\.gs into Apps Script|apps-script-recovery-evidence\.json/);
   assert.ok(!workflow.includes('sandbox.json'));
   assert.match(sync, /createAppsScriptRecoveryEvidence/);
   assert.match(sync, /expectedVersionNumber: result.versionNumber/);

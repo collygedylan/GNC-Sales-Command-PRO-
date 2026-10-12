@@ -55,10 +55,10 @@ test('frontend compatibility succeeds after the Apps Script workflow catches up'
   assert.equal(sleeps, 1);
 });
 
-test('Pages validation runs the bounded compatibility gate before its production probe', () => {
+test('Pages publication is independent of Apps Script compatibility and production backend probes', () => {
   const workflow = fs.readFileSync(new URL('../.github/workflows/pages-static.yml', import.meta.url), 'utf8');
-  const compatible = workflow.indexOf('node scripts/check-compatible-apps-script.mjs');
-  const probe = workflow.indexOf('node scripts/probe-production-auth-health.mjs');
-  assert.ok(compatible > 0 && probe > compatible);
-  assert.match(workflow, /APPS_SCRIPT_COMPATIBILITY_TIMEOUT_MS: '240000'/);
+  assert.doesNotMatch(workflow, /check-compatible-apps-script|probe-production-auth-health|APPS_SCRIPT_COMPATIBILITY/);
+  assert.match(workflow, /run-backend-tests: false/);
+  assert.match(workflow, /run-schema-tests: false/);
+  assert.match(workflow, /REQUIRE_CURRENT_LIVE_DESCRIPTOR: '1'/);
 });

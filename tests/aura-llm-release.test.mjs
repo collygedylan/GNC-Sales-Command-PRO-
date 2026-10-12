@@ -25,13 +25,13 @@ test('AURA quota migration is atomic, private, and checked before release', () =
   assert.match(contract, /statement_timeout=4s/);
 });
 
-test('AURA router deploy follows migration and remains a prerequisite of Pages', () => {
+test('AURA router deploy follows its migration in the independent backend workflow', () => {
   const workflow = yaml.safeLoad(read('.github/workflows/apps-script-sync.yml'));
-  const steps = workflow.jobs['sync-codegs'].steps;
+  const steps = workflow.jobs['deploy-supabase'].steps;
   const schema = steps.findIndex(step => step.name?.includes('Apply backend release migrations'));
   const router = steps.findIndex(step => step.run?.includes('supabase functions deploy aura-llm-router'));
   assert.ok(schema >= 0 && router > schema);
-  assert.ok(workflow.jobs['publish-pages'].needs.includes('production-validation'));
+  assert.equal(workflow.jobs['publish-pages'], undefined);
   assert.match(steps[router].run, /deploy aura-llm-router --use-api --project-ref/);
   assert.doesNotMatch(steps[router].run, /GEMINI_API_KEY\s*=/);
   assert.match(read('supabase/config.toml'), /\[functions\.aura-llm-router\][\s\S]*?verify_jwt = false/);

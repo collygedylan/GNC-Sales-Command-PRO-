@@ -6,9 +6,11 @@ import yaml from 'js-yaml';
 
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
-test('foundation is a required sealed-artifact gate alongside functional and feature suites', () => {
+test('foundation remains a sealed-artifact diagnostic in the scheduled nightly suite', () => {
+  const nightly = yaml.load(read('.github/workflows/nightly-browser-validation.yml'));
   const job = workflow.jobs.foundation;
   assert.deepEqual(job.needs, ['build', 'release-mode']);
+  assert.match(job.if, /inputs\.run-nightly-suites/);
   assert.equal(job['timeout-minutes'], 20);
   assert.ok(job.steps.some(step => step.uses === './.github/actions/download-release'));
   assert.ok(job.steps.some(step => step.run === 'npm run test:foundation -- --project=${{ matrix.project }} --max-failures=1 --reporter=github'));
@@ -17,7 +19,10 @@ test('foundation is a required sealed-artifact gate alongside functional and fea
   assert.ok(job.steps.some(step => step.run === 'node scripts/release-artifact.mjs verify'));
   for (const name of ['functional', 'compiled']) assert.deepEqual(workflow.jobs[name].needs, ['build', 'release-mode']);
   assert.ok(workflow.jobs['release-gate'].needs.includes('foundation'));
-  assert.match(workflow.jobs['release-gate'].steps[0].run, /'foundation'/);
+  assert.match(workflow.jobs['release-gate'].steps[0].run, /RUN_NIGHTLY_SUITES/);
+  assert.equal(nightly.on.schedule[0].cron, '17 9 * * *');
+  assert.equal(nightly.jobs['expanded-validation'].with['run-nightly-suites'], true);
+  assert.equal(nightly.jobs['expanded-validation'].with['run-schema-tests'], false);
   assert.doesNotMatch(job.steps.map(step => step.run || '').join('\n'), /build:|--retries|continue-on-error/);
   const manifest = JSON.parse(read('package.json'));
   assert.doesNotMatch(manifest.scripts['test:foundation'], /--retries/);

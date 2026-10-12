@@ -529,23 +529,19 @@ test('failed migration rollback preserves the original SQL error', async()=>{
   }};
   await assert.rejects(applyItemLowStockMigration({client,source:'begin;\nselect broken;\ncommit;'}),error=>error===original);
 });
-test('cloud rollout verifies the existing release proof before schema and importer publication',()=>{
+test('backend rollout verifies current main and applies migrations before deploying functions',()=>{
   const workflow=fs.readFileSync('.github/workflows/apps-script-sync.yml','utf8');
-  assert.ok(workflow.indexOf('Recheck current main and release proof')<workflow.indexOf('Preview perennial policy impact (read only)'));
-  assert.ok(workflow.indexOf('apply-item-low-stock-migration.mjs\n')<workflow.indexOf('Sync Code.gs into Apps Script'));
-  assert.ok(workflow.indexOf('Preview perennial policy impact (read only)')<workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials'));
-  assert.ok(workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  assert.ok(workflow.indexOf('Recheck exact current main before backend changes')<workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials'));
   assert.ok(workflow.indexOf('Apply backend release migrations and synchronize reminder Vault credentials')<workflow.indexOf('Configure Production Schedule dispatch and deploy backend functions'));
-  assert.ok(workflow.indexOf('Configure Production Schedule dispatch and deploy backend functions')<workflow.indexOf('Sync Code.gs into Apps Script'));
+  assert.doesNotMatch(workflow,/Sync Code\.gs into Apps Script|Preview perennial policy impact|build the complete site|Push the verified static site/);
+  assert.match(workflow,/EXPECTED_COMMIT: \$\{\{ inputs\.expected-commit \}\}/);
+  assert.match(workflow,/supabase\/\*\|database\/\*/);
   assert.doesNotMatch(workflow, /seed-production-schedule-release|Queue the initial signed workbook import/);
-  assert.ok(workflow.indexOf('Install dependencies and build the complete site')<workflow.indexOf('Push the verified static site to gh-pages without force'));
-  const steps = yaml.load(workflow).jobs['sync-codegs'].steps;
-  const previewStep = steps.find(step => step.name === 'Preview perennial policy impact (read only)');
-  const artifactStep = steps.find(step => step.name === 'Retain sanitized perennial impact preview');
+  const steps = yaml.load(workflow).jobs['deploy-supabase'].steps;
   const migrationStep = steps.find(step => step.name === 'Apply backend release migrations and synchronize reminder Vault credentials');
-  assert.equal(previewStep.run,'node scripts/preview-perennial-assignment.mjs');
-  assert.equal(artifactStep.if,'always()','retain the written preview artifact after a fail-closed preflight');
-  assert.equal(migrationStep.if,undefined,'failed preview must prevent schema and importer deployment');
+  const deployStep = steps.find(step => step.name === 'Configure Production Schedule dispatch and deploy backend functions');
+  assert.equal(migrationStep.run,'node scripts/apply-item-low-stock-migration.mjs');
+  assert.ok(steps.indexOf(migrationStep)<steps.indexOf(deployStep));
   for (const name of releaseDatabaseMigrations) {
     const directory = [migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName].includes(name) ? 'archive_migrations' : 'migrations';
     assert.ok(fs.existsSync(new URL(`../supabase/${directory}/${name}`, import.meta.url)), `${name} is tracked in its canonical migration directory`);

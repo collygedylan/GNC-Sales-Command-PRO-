@@ -8,12 +8,16 @@ on:
         type: boolean
         default: false
       fast-pr:
-        description: One headless Chromium gate; full browser coverage runs on main.
+        description: Retained for callers; standard releases always run one Chromium gate.
+        type: boolean
+        default: false
+      run-nightly-suites:
+        description: Run the expanded browser and performance matrices for the scheduled diagnostic workflow.
         type: boolean
         default: false
       run-schema-tests:
         type: boolean
-        default: true
+        default: false
       production-health:
         type: boolean
         default: false
@@ -61,18 +65,20 @@ jobs:
         uses: actions/github-script@v7
         env:
           CALLER_HOTFIX: ${{ inputs.hotfix }}
+          RUN_NIGHTLY_SUITES: ${{ inputs.run-nightly-suites }}
         with:
           script: |
             const pr = context.payload.pull_request;
-            let hotfix = process.env.CALLER_HOTFIX === 'true'
-              || String(pr?.title || '').includes('[hotfix]');
-            if (!hotfix) {
+            const nightly = process.env.RUN_NIGHTLY_SUITES === 'true';
+            let hotfix = !nightly && (process.env.CALLER_HOTFIX === 'true'
+              || String(pr?.title || '').includes('[hotfix]'));
+            if (!hotfix && !nightly) {
               const { data: commit } = await github.rest.repos.getCommit({
                 ...context.repo, ref: pr?.head?.sha || context.sha,
               });
               hotfix = String(commit.commit?.message || '').includes('[hotfix]');
             }
-            if (!hotfix && !pr && context.ref === 'refs/heads/main') {
+            if (!hotfix && !nightly && !pr && context.ref === 'refs/heads/main') {
               const { data: associated } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
                 ...context.repo, commit_sha: context.sha, per_page: 100,
               });
@@ -204,7 +210,7 @@ jobs:
           retention-days: 7
 
   fast-browser:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.fast-pr
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -230,7 +236,7 @@ jobs:
           if-no-files-found: ignore
 
   foundation:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     # Browser dependency installation can consume over eight minutes on a cold runner.
@@ -265,7 +271,7 @@ jobs:
           if-no-files-found: ignore
 
   functional:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     # A cold browser install can leave too little of a 15-minute job for the shard.
@@ -306,7 +312,7 @@ jobs:
           if-no-files-found: ignore
 
   compiled:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -836,7 +842,7 @@ jobs:
           if-no-files-found: ignore
 
   timing:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -877,7 +883,7 @@ jobs:
           if-no-files-found: ignore
 
   performance:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -916,7 +922,7 @@ jobs:
           if-no-files-found: error
 
   lighthouse:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && !inputs.fast-pr && github.ref == 'refs/heads/main'
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -962,7 +968,7 @@ jobs:
 
   release-gate:
     if: always()
-    needs: [release-mode, lint, unit, react, contracts, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
+    needs: [release-mode, lint, unit, react, contracts, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse]
     runs-on: ubuntu-latest
     outputs:
       run-id: ${{ github.run_id }}
@@ -975,8 +981,7 @@ jobs:
         env:
           HOTFIX: ${{ needs.release-mode.outputs.hotfix }}
           RELEASE_JOB_RESULTS: ${{ toJSON(needs) }}
-          REQUIRE_PRODUCTION_HEALTH: ${{ inputs.production-health }}
-          FAST_PR: ${{ inputs.fast-pr }}
+          RUN_NIGHTLY_SUITES: ${{ inputs.run-nightly-suites }}
           RUN_SCHEMA_TESTS: ${{ inputs.run-schema-tests }}
           RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
           RUN_BACKEND_TESTS: ${{ inputs.run-backend-tests }}
@@ -988,11 +993,10 @@ jobs:
           const required = hotfix ? ['lint','unit','build'] : ['lint','unit','contracts','build'];
           if (!hotfix && process.env.RUN_FRONTEND_TESTS === 'true') {
             required.push('react');
-            if (process.env.FAST_PR === 'true') required.push('fast-browser');
-            else required.push('foundation','functional','compiled','timing','performance','lighthouse');
+            required.push('fast-browser');
+            if (process.env.RUN_NIGHTLY_SUITES === 'true') required.push('foundation','functional','compiled','timing','performance','lighthouse');
           }
           if (!hotfix && process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
-          if (!hotfix && process.env.REQUIRE_PRODUCTION_HEALTH === 'true') required.push('production-health');
           for (const name of required) {
             if (jobs[name]?.result !== 'success') throw new Error(`RELEASE_GATE_FAILED_${name}`);
           }
@@ -1004,7 +1008,7 @@ jobs:
           HOTFIX: ${{ needs.release-mode.outputs.hotfix }}
           RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
           RELEASE_SITE_ID: ${{ needs.build.outputs.artifact-id }}
-          FAST_PR: ${{ inputs.fast-pr }}
+          RUN_NIGHTLY_SUITES: ${{ inputs.run-nightly-suites }}
           RUN_SCHEMA_TESTS: ${{ inputs.run-schema-tests }}
           RUN_FRONTEND_TESTS: ${{ inputs.run-frontend-tests }}
           RUN_BACKEND_TESTS: ${{ inputs.run-backend-tests }}
@@ -1019,7 +1023,7 @@ jobs:
             attempt:Number(process.env.GITHUB_RUN_ATTEMPT), siteArtifactId:Number(process.env.RELEASE_SITE_ID),
             digest:process.env.RELEASE_DIGEST,
             hotfix,
-            browserMode:hotfix ? 'hotfix-minimal' : process.env.FAST_PR === 'true' ? 'pr-chromium' : 'full',
+            browserMode:hotfix ? 'hotfix-minimal' : process.env.RUN_NIGHTLY_SUITES === 'true' ? 'full' : 'pr-chromium',
             testScope:{frontend:!hotfix && process.env.RUN_FRONTEND_TESTS === 'true', backend:!hotfix && process.env.RUN_BACKEND_TESTS === 'true', schema:!hotfix && process.env.RUN_SCHEMA_TESTS === 'true'}
           }));
           NODE

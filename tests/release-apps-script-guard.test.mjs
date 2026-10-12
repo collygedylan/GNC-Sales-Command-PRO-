@@ -298,23 +298,22 @@ test('Google must confirm that the configured script owns the production deploym
   );
 });
 
-test('workflow keeps production credentials inside the guarded deploy step', () => {
+test('backend workflow guards current-main Supabase deployment without Apps Script publishing credentials', () => {
   const source = fs.readFileSync(new URL('../.github/workflows/apps-script-sync.yml', import.meta.url), 'utf8');
   const workflow = yaml.load(source);
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
-  assert.match(workflow.jobs['authorize-production'].if, /refs\/heads\/main/);
-  assert.deepEqual(workflow.jobs['sync-codegs'].needs, ['authorize-production', 'production-validation']);
-  assert.match(workflow.jobs['sync-codegs'].if, /authorized == 'true'/);
-  const authorizeSource = JSON.stringify(workflow.jobs['authorize-production']);
-  assert.doesNotMatch(authorizeSource, /APPS_SCRIPT_(?:SCRIPT_ID|CLASPRC_JSON|DEPLOYMENT_ID)/);
-  const syncSteps = workflow.jobs['sync-codegs'].steps;
-  const deploy = syncSteps.find((step) => step.run === 'node scripts/sync-codegs-to-apps-script.js');
-  assert.ok(deploy);
-  assert.equal(deploy.env.APPS_SCRIPT_SCRIPT_ID, '${{ secrets.APPS_SCRIPT_SCRIPT_ID }}');
-  assert.equal(deploy.env.APPS_SCRIPT_DEPLOYMENT_ID, '${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}');
-  assert.equal(deploy.env.GH_TOKEN, '${{ github.token }}');
-  assert.equal(deploy.env.GITHUB_REF, '${{ github.ref }}');
-  assert.equal(syncSteps.filter((step) => step.env?.APPS_SCRIPT_CLASPRC_JSON).length, 1);
+  assert.match(workflow.jobs['authorize-backend'].if, /refs\/heads\/main/);
+  assert.equal(workflow.jobs['deploy-supabase'].needs, 'authorize-backend');
+  assert.match(workflow.jobs['deploy-supabase'].if, /backend-changed == 'true'/);
+  const authorizeSource = JSON.stringify(workflow.jobs['authorize-backend']);
+  assert.match(authorizeSource, /EXPECTED_COMMIT/);
+  assert.match(authorizeSource, /supabase\/\*\|database\/\*/);
+  assert.match(workflow.jobs['authorize-backend'].steps.find(step => step.id === 'scope').run,
+    /--no-renames[\s\S]*--diff-filter=ACMRD[\s\S]*> "\$diff_file"/);
+  assert.doesNotMatch(authorizeSource, /<\(/, 'path comparison errors must propagate instead of hiding in process substitution');
+  assert.doesNotMatch(JSON.stringify(workflow.jobs['deploy-supabase']), /APPS_SCRIPT_(?:SCRIPT_ID|CLASPRC_JSON|DEPLOYMENT_ID|SCRIPT_ID)/);
+  assert.doesNotMatch(JSON.stringify(workflow.jobs), /sync-codegs-to-apps-script\.js|apps-script-recovery-evidence\.json/);
+  assert.equal(workflow.jobs['publish-pages'], undefined);
 });
 
 test('deploy script reauthorizes exact main and proof before creating OAuth credentials', () => {
@@ -345,9 +344,9 @@ test('database diagnosis is isolated, read-only, and cannot authorize a release'
   assert.deepEqual(Object.keys(probe.env).sort(), ['GITHUB_EVENT_NAME', 'GITHUB_REF', 'GITHUB_REPOSITORY', 'GITHUB_SHA', 'GITHUB_WORKFLOW_REF', 'SUPABASE_DB_URL', 'SUPABASE_URL']);
   assert.doesNotMatch(JSON.stringify(diagnostic), /APPS_SCRIPT_|GH_TOKEN|pages-static|sync-codegs/);
   assert.deepEqual(workflow.on.workflow_dispatch, null);
-  assert.equal(releaseWorkflow.on.workflow_dispatch, null);
+  assert.ok(releaseWorkflow.on.workflow_dispatch.inputs['expected-commit']);
   assert.equal(releaseWorkflow.jobs['diagnose-database'], undefined);
-  assert.match(releaseWorkflow.jobs['authorize-production'].if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(releaseWorkflow.jobs['sync-codegs'].needs, ['authorize-production', 'production-validation']);
-  assert.deepEqual(releaseWorkflow.jobs['publish-pages'].needs, ['authorize-production', 'production-validation']);
+  assert.match(releaseWorkflow.jobs['authorize-backend'].if, /github.ref == 'refs\/heads\/main'/);
+  assert.equal(releaseWorkflow.jobs['deploy-supabase'].needs, 'authorize-backend');
+  assert.equal(releaseWorkflow.jobs['publish-pages'], undefined);
 });
