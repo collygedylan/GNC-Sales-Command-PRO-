@@ -937,11 +937,11 @@ test('Home keeps an authorization-backed registry with Sales Office and relocate
   assert.match(html, /renderedModuleCount/);
 });
 
-test('Brandt is an admin everywhere except the completely hidden Managers view', () => {
+test('Admin access overrides Brandt Managers restrictions while non-admin access remains bounded', () => {
   assert.match(html, /function isManagerViewDeniedUser\(userOverride = ''\)[\s\S]*userKey === 'brandt_emerson'/);
-  assert.match(html, /const isManagerViewDenied = isManagerViewDeniedUser\(userOverride\);[\s\S]*allowedViews\.delete\('managers'\)/);
+  assert.match(html, /const isManagerViewDenied = !isAdmin && isManagerViewDeniedUser\(userOverride\);[\s\S]*allowedViews\.delete\('managers'\)/);
   assert.match(html, /function canAccessView\(viewId, userOverride = ''\)/);
-  assert.match(html, /targetView === 'managers' && isManagerViewDeniedUser\(userOverride\)/);
+  assert.match(html, /targetView === 'managers' && isManagerViewDeniedUser\(userOverride\) && !getRoleAccessState\('', userOverride\)\.isAdmin/);
   assert.match(html, /const isAllowed = canAccessView\(module\.view, userOverride\)/);
   assert.match(html, /const nextViewId = canAccessView\(requestedViewId\) \? requestedViewId : 'home'/);
 });
