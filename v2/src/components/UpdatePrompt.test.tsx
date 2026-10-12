@@ -23,7 +23,7 @@ import { UpdatePrompt } from './UpdatePrompt';
 
 let controller: ServiceWorker | null;
 let serviceWorkerListeners: Map<string, EventListener>;
-let reload: ReturnType<typeof vi.fn>;
+let reload: () => void;
 
 beforeEach(() => {
   vi.useFakeTimers();
