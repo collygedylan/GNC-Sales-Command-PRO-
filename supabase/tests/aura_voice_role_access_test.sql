@@ -53,6 +53,17 @@ values ('f7010000-0000-4000-8000-000000000001','voice_rep','Voice Rep','REP',fal
  ('f7010000-0000-4000-8000-000000000008','dylan_collyge','Voice Dylan','FOREMAN',false,null,null)
 on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,role=excluded.role,
   must_change_password=excluded.must_change_password,disabled_at=excluded.disabled_at,locked_until=excluded.locked_until;
+-- Explicit opt-in fixture accounts exercise future rollout without changing live defaults.
+insert into private.aura_account_rollout(profile_id,enabled) values
+ ('f7010000-0000-4000-8000-000000000001',true),
+ ('f7010000-0000-4000-8000-000000000002',true),
+ ('f7010000-0000-4000-8000-000000000003',true),
+ ('f7010000-0000-4000-8000-000000000004',true),
+ ('f7010000-0000-4000-8000-000000000005',true),
+ ('f7010000-0000-4000-8000-000000000006',true),
+ ('f7010000-0000-4000-8000-000000000007',true),
+ ('f7010000-0000-4000-8000-000000000008',true)
+on conflict(profile_id) do update set enabled=excluded.enabled;
 -- The production schema baseline excludes catalog data; seed only this fixture's modules.
 insert into private.navigation_view_catalog(view_key,label,selectable)
 values ('drive','Drive',true),('av','AV',true),('request','Request',true)

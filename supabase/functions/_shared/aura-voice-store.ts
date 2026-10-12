@@ -12,6 +12,7 @@ export function parseAuraAccess(value: unknown, expectedId: string): AuraActor |
   const access = auraObject(value);
   if (access.ok !== true) return null;
   const actor = auraObject(access.actor), capabilities = auraObject(access.capabilities);
+  if (capabilities.auraEnabled !== true) return null;
   if (actor.id !== expectedId || !UUID.test(expectedId) || typeof actor.username !== "string" || !actor.username
     || typeof actor.role !== "string" || (actor.username !== "dylan_collyge" && !allowedRoles.has(actor.role.trim().toUpperCase()))) return null;
   for (const key of ["inventory", "history", "drafts"]) if (typeof capabilities[key] !== "boolean") return null;

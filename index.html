@@ -9512,32 +9512,28 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             }
         }
         function isAuraProfileCandidate() {
-            return nativeAuthSessionActive === true
-                && !!nativeAuthProfile?.id
-                && !nativeAuthProfile.disabled_at
-                && nativeAuthProfile.must_change_password !== true
+            // Legacy command-center operations retain their owner-only gate.
+            return isAuraRouterWidgetAuthorized()
                 && String(nativeAuthProfile.username || '').trim().toLowerCase() === 'dylan_collyge'
                 && String(currentUser || '').trim().toLowerCase() === 'dylan_collyge';
         }
         function isAuraWidgetAuthorized() {
             return isAuraProfileCandidate() && auraVerifiedProfileId === String(nativeAuthProfile.id);
         }
-        const AURA_ROUTER_ACTIVE_ROLES = new Set(['ADMIN', 'ADMINISTRATOR', 'MANAGER', 'REP', 'SALESREP', 'CSR']);
         function isAuraRouterProfileCandidate() {
             const username = String(nativeAuthProfile?.username || '').trim().toLowerCase();
-            const role = String(nativeAuthProfile?.role || '').trim().toUpperCase();
             return nativeAuthSessionActive === true
                 && !!nativeAuthProfile?.id
                 && !nativeAuthProfile.disabled_at
                 && nativeAuthProfile.must_change_password !== true
                 && username !== ''
-                && String(currentUser || '').trim().toLowerCase() === username
-                && (username === 'dylan_collyge' || AURA_ROUTER_ACTIVE_ROLES.has(role));
+                && String(currentUser || '').trim().toLowerCase() === username;
         }
         function isAuraRouterWidgetAuthorized() {
             const profile = nativeAuthProfile;
             const capabilities = auraRouterCapabilities;
             return isAuraRouterProfileCandidate()
+                && capabilities?.auraEnabled === true
                 && auraRouterVerifiedProfileId === String(profile?.id || '')
                 && String(capabilities?.id || '') === String(profile?.id || '')
                 && String(capabilities?.username || '').trim().toLowerCase() === String(profile?.username || '').trim().toLowerCase()
@@ -9959,7 +9955,6 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 disposeAuraWidget();
                 return;
             }
-            if (isAuraProfileCandidate()) auraVerifiedProfileId = String(session.user.id);
             try {
                 const access = await callAuraLlmRouter({ mode: 'capabilities' }, { requestId: crypto.randomUUID() });
                 if (ticket !== auraLoadSequence || !isAuraRouterProfileCandidate()) return;
@@ -9971,6 +9966,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 }
                 auraRouterCapabilities = { ...capabilities, configured: access.configured === true };
                 auraRouterVerifiedProfileId = String(session.user.id);
+                if (isAuraProfileCandidate()) auraVerifiedProfileId = String(session.user.id);
                 const hasCapability = capabilities.inventory === true || capabilities.history === true || capabilities.drafts === true
                     || capabilities.socReserves === true || capabilities.socOpenOrders === true;
                 if (!access.configured || !hasCapability) {
@@ -10013,6 +10009,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
             } catch (error) {
                 if (ticket === auraLoadSequence && isAuraRouterProfileCandidate()) {
                     disposeAuraRouterVoiceWidget();
+                    if (error?.status === 403 || error?.code === 'AURA_FORBIDDEN') return;
                     showToast('AURA unavailable', 'Could not verify or load AURA for this account. Retry after reconnecting.', true);
                 }
             }

@@ -750,5 +750,9 @@
   {
     "source": "supabase/migrations/20261012052500_aura_enterprise_domain_voice.sql",
     "destination": "20261012052500_aura_enterprise_domain_voice.sql"
+  },
+  {
+    "source": "supabase/migrations/20261012153000_aura_account_rollout.sql",
+    "destination": "20261012153000_aura_account_rollout.sql"
   }
 ]

@@ -38,7 +38,7 @@ function identifier(value: unknown): string { if (typeof value !== "string" || !
 function boundedString(value: unknown, max = 2000): string { if (typeof value !== "string" || !value.trim() || value.length > max) throw new Error("AURA_QUERY_REQUEST_INVALID"); return value.trim(); }
 function result(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json; charset=utf-8" } }); }
 function same(left: unknown, right: unknown) { return JSON.stringify(left) === JSON.stringify(right); }
-function policy(actor: AuraActor) { return { version: 2, id: actor.id, username: actor.username, role: actor.role, inventory: actor.inventory, history: actor.history, drafts: actor.drafts, socReserves: actor.socReserves === true, socOpenOrders: actor.socOpenOrders === true }; }
+function policy(actor: AuraActor) { return { version: 2, auraEnabled: true, id: actor.id, username: actor.username, role: actor.role, inventory: actor.inventory, history: actor.history, drafts: actor.drafts, socReserves: actor.socReserves === true, socOpenOrders: actor.socOpenOrders === true }; }
 async function withinSignal<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
   if (signal.aborted) throw signal.reason;
   let onAbort: () => void = () => {};
