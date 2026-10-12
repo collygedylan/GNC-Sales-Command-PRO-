@@ -173,7 +173,7 @@ export function assertSamePinnedMigrationSnapshot(baselinePaths, currentPaths, b
   return true;
 }
 
-function approvedRepInventoryReaderSource(source) {
+export function approvedRepInventoryReaderSource(source) {
   const start = source.indexOf('function inventoryReadQuery(');
   const end = source.indexOf('\nasync function handleInventoryRead(', start);
   if (start < 0 || end < 0) return source;
@@ -217,7 +217,7 @@ export function validateLocalBenchmarkUrl(value, protocols, pathname = undefined
 
 export function inventoryScopeSql(role) {
   if (role === 'admin') return '';
-  if (role === 'rep') return "(season IS NULL OR season NOT ILIKE 'U3') AND (lotcode IS NULL OR lotcode NOT ILIKE '%.U3')";
+  if (role === 'rep') return '';
   if (role === 'foreman') return "priority IS NOT NULL AND priority NOT IN ('', '-', '--', '---', 'N/A', 'NA', 'NULL', 'NONE')";
   throw errorCode('PERFORMANCE_ROLE_UNSUPPORTED');
 }

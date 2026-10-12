@@ -14,6 +14,7 @@ import { assertPerformanceFunctionPolicy, PERFORMANCE_API_FUNCTION_POLICY, setPe
 import { inspectDisposableSupabaseWorkspace } from './disposable-supabase-container.mjs';
 import { assertPerformanceApiPath, assertPerformanceApiTree, PERFORMANCE_API_SOURCE_DIRECTORIES, clearPerformanceApiSources, restorePerformanceApiSources, stagePerformanceApiSources, validatePerformanceApiRoots } from './performance-api-source-snapshots.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
+import { approvedRepInventoryReaderSource } from './performance-database.mjs';
 
 // Run before the existing Auth smoke starts its own function server.
 // Only source directories in the verified disposable project are switched; the
@@ -226,6 +227,13 @@ try {
   const archive = path.join(temp, 'source.tar');
   run('git', ['archive', '--format=tar', '--output', archive, manifest.baselineCommit, '--', ...files]);
   run('tar', ['-xf', archive, '-C', sources]);
+  // Compare identical approved permissions on both sides. Keep the pinned
+  // baseline implementation (including its projector) and all parity gates.
+  const baselineReaderPath = path.join(sources, 'supabase/functions/app-api/index.ts');
+  const originalBaselineReader = readFileSync(baselineReaderPath, 'utf8');
+  const matchedBaselineReader = approvedRepInventoryReaderSource(originalBaselineReader);
+  if (matchedBaselineReader === originalBaselineReader) throw new Error('PERFORMANCE_BASELINE_REP_SCOPE_NORMALIZATION_REQUIRED');
+  writeFileSync(baselineReaderPath, matchedBaselineReader);
   candidateSnapshot = stagePerformanceApiSources({ workspaceRoot: workspace, repositoryRoot: repoRoot, candidateRoot: backup });
   writeFileSync(envFile, `SUPABASE_URL=${api.origin}\nSUPABASE_SERVICE_ROLE_KEY=${values.SERVICE_ROLE_KEY}\nAPP_SESSION_SECRET=${randomBytes(32).toString('hex')}\n`, { flag: 'wx', mode: 0o600 });
   const candidateCommit = run('git', ['rev-parse', 'HEAD'], { capture: true }).trim();
@@ -242,6 +250,7 @@ try {
   });
   const failures = compareBenchmarks(manifest, baseline, candidate);
   writeFileSync(path.join(output, 'database-api-comparison.json'), `${JSON.stringify({ manifest,
+    readerScopeCompatibility: 'Pinned baseline REP U3 filter removed in the isolated source copy; both revisions read all seasons. All row/count parity gates remain enabled.',
     passSchedule: API_PAIR_SCHEDULE, passFiles: reports.map((entry, index) => ({
       pass: index + 1, revision: entry.revision,
       file: path.relative(output, path.join(passOutput, `pass-${String(index + 1).padStart(2, '0')}-${entry.revision}.json`)).replaceAll(path.sep, '/'),

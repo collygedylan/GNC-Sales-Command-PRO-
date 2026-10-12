@@ -7,6 +7,7 @@ import {
   assertPairedSqlPerformance,
   assertApprovedSqlSchemaExtension,
   assertPinnedReaderTextContract,
+  approvedRepInventoryReaderSource,
   assertSamePinnedMigrationSnapshot,
   assertSqlControlCoverage,
   BETA_DRIVE_CARD_FIELDS,
@@ -196,8 +197,7 @@ test('authenticated API diagnostics include only a sanitized application code', 
 
 test('SQL scenarios mirror the active fixed role scopes and exact projections', () => {
   assert.equal(inventoryScopeSql('admin'), '');
-  assert.match(inventoryScopeSql('rep'), /season IS NULL OR season NOT ILIKE 'U3'/);
-  assert.match(inventoryScopeSql('rep'), /lotcode IS NULL OR lotcode NOT ILIKE '%\.U3'/);
+  assert.equal(inventoryScopeSql('rep'), '', 'Rep oracle includes every season and lot');
   assert.match(inventoryScopeSql('foreman'), /priority IS NOT NULL/);
   assert.throws(() => inventoryScopeSql('unknown'), /PERFORMANCE_ROLE_UNSUPPORTED/);
 
@@ -205,8 +205,7 @@ test('SQL scenarios mirror the active fixed role scopes and exact projections', 
     offset: 9000, limit: 500 });
   assert.equal(query.values[0], 'A-1');
   assert.match(query.page, /^SELECT unique_id,/);
-  assert.match(query.page, /season IS NULL OR season NOT ILIKE 'U3'/);
-  assert.match(query.page, /lotcode IS NULL OR lotcode NOT ILIKE '%\.U3'/);
+  assert.doesNotMatch(query.page, /NOT ILIKE|season IS NULL|lotcode IS NULL/, 'Rep page has no hidden season/lot filter');
   assert.match(query.page, /itemcode = \$1 ORDER BY unique_id ASC OFFSET 9000 LIMIT 500$/);
   assert.match(query.count, /^SELECT count\(\*\)::bigint AS total FROM public\.ph_master_inventory/);
   assert.doesNotMatch(query.page, /SELECT \*/);
@@ -278,6 +277,12 @@ test('pinned reader permits exactly the approved all-season rep scope expansion'
   const currentAppApi = baselineAppApi.replace(projector, '').replace('  const access = getRoleAccessState(role);\n', '')
     .replace('  if (access.isRepLike && !access.isAdmin) {\n    query = query.or("season.is.null,season.not.ilike.U3").or("lotcode.is.null,lotcode.not.ilike.%.U3");\n  }\n', '');
   const beta = "export const APP_VERSION = 'same';\nexport function readRows() { return []; }";
+  const matchedBaseline = approvedRepInventoryReaderSource(baselineAppApi);
+  assert.equal(matchedBaseline, currentAppApi.replace('function inventoryReadParams() {}\n', 'function inventoryReadParams() {}\n' + projector));
+  assert.match(matchedBaseline, /function projectInventoryRows/, 'Baseline projector remains unchanged');
+  assert.match(matchedBaseline, /role === "FOREMAN"/, 'Other role restrictions remain unchanged');
+  assert.doesNotMatch(matchedBaseline, /getRoleAccessState|season\.not\.ilike\.U3|lotcode\.not\.ilike/);
+  assert.equal(approvedRepInventoryReaderSource(currentAppApi), currentAppApi, 'Current reader is not rewritten');
   const input = { baselineAppApi, currentAppApi, baselineBetaApi: beta, currentBetaApi: beta };
   assert.match(assertPinnedReaderTextContract(input).inventoryReaderDigest, /^[a-f0-9]{64}$/);
   for (const changed of [currentAppApi.replace('FOREMAN', 'REP'), currentAppApi.replace('return query', 'return null'),
