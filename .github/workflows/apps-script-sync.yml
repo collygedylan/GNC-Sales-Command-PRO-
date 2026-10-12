@@ -169,7 +169,7 @@ jobs:
                   [[ "$argument" == '--use-api' ]] || docker_command+=("$argument")
                 done
                 "${docker_command[@]}"
-                return 0
+                return "$?"
               fi
               echo "SUPABASE_DEPLOY_TRANSIENT_RETRY attempt=$attempt"
               sleep "$((attempt * 5))"
