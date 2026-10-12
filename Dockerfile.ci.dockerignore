@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/.env*
+_site
+artifacts
+test-results
+playwright-report
+blob-report
+.gnc-local
+*.log

@@ -205,7 +205,7 @@ test('browse inventory preserves filters and readouts with explicit field covera
     assert.ok(fields.includes(field), field);
   }
   assert.ok(!fields.includes('shiptotelephone_1'));
-  assert.ok(queries[0].calls.some(([method, value]) => method === 'or' && value === 'season.is.null,season.not.ilike.U3'));
+  assert.ok(queries[0].calls.every(([method]) => method !== 'or'), 'Rep inventory reads include all lot codes and seasons');
   assert.ok(queries[0].calls.some(([method, from, to]) => method === 'range' && from === 0 && to === 499));
   const full = await handler(actor, { operation: 'master_page', params: { dataset: 'lookup', projection: 'full', uniqueId: 'row-1' } });
   assert.equal(full.body.data.fieldCoverage, 'full');

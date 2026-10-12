@@ -1,0 +1,16 @@
+# Public mirror avoids Docker Hub pull quotas on cold GitHub runners.
+FROM public.ecr.aws/docker/library/node:22-bookworm-slim AS dependencies
+WORKDIR /app
+COPY package.json package-lock.json ./
+ENV HUSKY=0
+RUN npm ci --no-audit --no-fund
+
+FROM dependencies AS build
+COPY . .
+RUN npm run build:pilot-monitoring && npm run build:live:assets && npm run build:v2
+# The immutable commit is bound only after reusable compilation layers.
+ARG RELEASE_COMMIT
+RUN GITHUB_SHA="$RELEASE_COMMIT" node scripts/prepare-release-site.mjs
+
+FROM scratch AS release
+COPY --from=build /app/_site/ /_site/

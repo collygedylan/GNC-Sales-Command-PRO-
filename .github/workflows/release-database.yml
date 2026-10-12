@@ -153,12 +153,16 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
+      - uses: ./.github/actions/setup-supabase-images
+        id: images
       - name: Replay canonical schema and verify database contracts
         env:
           # Starts local Auth, REST and gateway services for the canonical API pair.
           # Ordinary SQL and sandbox checks keep the database-only service profile.
           PERFORMANCE_API_BENCHMARK: 'true'
         run: node scripts/database-check.mjs --all
+      - run: node scripts/ci-supabase-image-cache.mjs save
+        if: steps.images.outputs.cache-hit != 'true'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -200,12 +204,16 @@ jobs:
         id: registry
         shell: bash
         run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/setup-supabase-images
+        id: images
       - name: Prepare isolated migration project
         id: prepare
         run: node scripts/historical-database-fixture.mjs "$RUNNER_TEMP/gnc-supabase-ci"
       - name: Start isolated Supabase stack
         id: stack
         run: node scripts/release-database-startup.mjs start
+      - run: node scripts/ci-supabase-image-cache.mjs save
+        if: steps.images.outputs.cache-hit != 'true'
       - name: Apply migrations and strictly lint the isolated database
         id: migrations
         run: node scripts/sql-lint-temp-context.mjs --historical-reset "$SUPABASE_CI_ROOT"

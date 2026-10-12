@@ -70,5 +70,13 @@
   {
     "path": "supabase/migrations/20261012052500_aura_enterprise_domain_voice.sql",
     "gitBlob": "4c3c20b32052bd0995cc1e6bbfcc0748a89f6f1b"
+  },
+  {
+    "path": "supabase/migrations/20261012153000_aura_account_rollout.sql",
+    "gitBlob": "8cbd88e7174c1e35cdd47d16bb56eb2d8e3a9a74"
+  },
+  {
+    "path": "supabase/migrations/20261012180000_sales_rep_inventory_operations.sql",
+    "gitBlob": "6378bd355ec7448ba5184aee8cf858cfdc875eb4"
   }
 ]

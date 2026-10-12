@@ -60,6 +60,10 @@ jobs:
       - run: npm run check:tooling
 
   unit:
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -67,9 +71,23 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-node-dependencies
-      - run: node scripts/run-release-unit-checks.mjs
+      - run: node scripts/run-release-unit-checks.mjs --shard=${{ matrix.shard }}/4
+
+  react:
+    if: inputs.run-frontend-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
       - run: npm run test:v2
-        if: inputs.run-frontend-tests
+
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-dependencies
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -117,10 +135,19 @@ jobs:
           driver: cloud
           endpoint: agmetricapp/greenleaf-ci-builder
       - uses: ./.github/actions/setup-node-dependencies
-      - run: npm run build:pilot-monitoring
-      - run: npm run build:live:assets
-      - run: npm run build:v2
-      - run: node scripts/prepare-release-site.mjs
+      - name: Set up local Buildx fallback
+        if: steps.docker-cloud.outputs.enabled != 'true'
+        uses: docker/setup-buildx-action@v4
+      - name: Build release with remote dependency and compilation layers
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: Dockerfile.ci
+          target: release
+          build-args: RELEASE_COMMIT=${{ github.sha }}
+          cache-from: type=gha,scope=gnc-release-build,version=2
+          cache-to: type=gha,scope=gnc-release-build,mode=max,version=2
+          outputs: type=local,dest=.
       - id: seal
         run: node scripts/release-artifact.mjs seal
       - id: site
@@ -890,7 +917,7 @@ jobs:
 
   release-gate:
     if: always()
-    needs: [lint, unit, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
+    needs: [lint, unit, react, contracts, database, build, fast-browser, foundation, functional, compiled, timing, performance, lighthouse, production-health]
     runs-on: ubuntu-latest
     outputs:
       run-id: ${{ github.run_id }}
@@ -910,8 +937,9 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           const jobs = JSON.parse(process.env.RELEASE_JOB_RESULTS);
-          const required = ['lint','unit','build'];
+          const required = ['lint','unit','contracts','build'];
           if (process.env.RUN_FRONTEND_TESTS === 'true') {
+            required.push('react');
             if (process.env.FAST_PR === 'true') required.push('fast-browser');
             else required.push('foundation','functional','compiled','timing','performance','lighthouse');
           }

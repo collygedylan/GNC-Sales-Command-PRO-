@@ -32,6 +32,10 @@ export function readReleaseWorkflowSources(entry, { root = repositoryRoot } = {}
       for (const match of source.matchAll(/^\s*(?:-\s*)?uses:\s*(['"]?)(\.\/\.github\/[^\s'"#]+)\1\s*(?:#.*)?$/gm)) {
         read(match[2]);
       }
+      // A reachable Buildx step delegates compilation to its Dockerfile.
+      if (/uses:\s*docker\/build-push-action@/.test(source)) {
+        for (const match of source.matchAll(/^\s*file:\s*(Dockerfile[\w./-]*)\s*$/gm)) read(match[1]);
+      }
       // The build now delegates static packaging/fingerprinting to this script.
       // Follow it only when an actual reachable run command invokes it.
       if (/(?:^\s*(?:-\s*)?run:\s*|^\s+)node\s+scripts\/prepare-release-site\.mjs(?:\s|$)/m.test(source)) {
@@ -44,6 +48,8 @@ export function readReleaseWorkflowSources(entry, { root = repositoryRoot } = {}
         read('.github/workflows/performance-monitor.yml');
       }
     }
+    if (/^Dockerfile[\w.-]*$/i.test(path.basename(resolved))
+      && /^RUN\s+[^\n]*\bnode scripts\/prepare-release-site\.mjs(?:\s|$)/m.test(source)) read('scripts/prepare-release-site.mjs');
   }
   read(entry instanceof URL ? path.relative(base, fileURLToPath(entry)) : entry);
   return { files, text: files.map(file => `\n# source: ${file.path}\n${file.source}`).join('\n') };

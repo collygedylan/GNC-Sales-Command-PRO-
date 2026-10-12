@@ -61,13 +61,24 @@ const rows = () => [
   { UNIQUE_ID: 'd', ITEMCODE: '001', LOCATIONCODE: 'B.01.001', LOTCODE: '27.F1', CONTSIZE: '#3', SOURCE: 'MASTER', PTRONHAND: '600' },
 ];
 
-test('location On Hand sums exact item code and normalized location across lots and sizes', () => {
+test('location On Hand sums only by physical location across items, lots and sizes', () => {
   const fixture = setup(rows());
   const { context } = fixture;
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5,000');
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[1]), '5,000');
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[2]), '900', 'leading-zero item codes remain distinct');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5,900');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[1]), '5,900');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[2]), '5,900', 'every item at the same physical location contributes');
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[3]), '600', 'other locations remain isolated');
+});
+
+test('location aggregation ignores sales year and preserves zero without an item code', () => {
+  const { context } = setup([
+    { UNIQUE_ID: 'prior', ITEMCODE: '0001', LOCATIONCODE: 'A.01.001', LOTCODE: '26.F1', PTRONHAND: 10, SOURCE: 'MASTER' },
+    { UNIQUE_ID: 'current', ITEMCODE: 'OTHER', LOCATIONCODE: 'a.01.001', LOTCODE: '27.F1', PTRONHAND: 20, SOURCE: 'MASTER' },
+    { UNIQUE_ID: 'zero', ITEMCODE: '0001', LOCATIONCODE: 'Z.01.001', LOTCODE: '27.F1', PTRONHAND: 0, SOURCE: 'MASTER' },
+  ]);
+  assert.equal(context.getCardLocationOnHandValue({ location_code: ' A.01.001 ' }), '30');
+  assert.equal(context.getCardLocationOnHandValue({ LOCATIONCODE: 'Z.01.001' }), '0');
+  assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '0001' }), null);
 });
 
 test('comma quantities parse, while a blank or invalid member makes the scope Unknown', () => {
@@ -76,7 +87,7 @@ test('comma quantities parse, while a blank or invalid member makes the scope Un
   context.fullInventory[0].PTRONHAND = '1,250.5';
   context.fullInventory[1].PTRONHAND = '3,749.5';
   context.rebuildMasterInventoryIndexes();
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5,000');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '5,900');
   for (const invalid of ['', 'not-a-number']) {
     context.fullInventory[1].PTRONHAND = invalid;
     context.rebuildMasterInventoryIndexes();
@@ -93,11 +104,11 @@ test('location total uses complete browse rows and their own authorized master r
   state.rowCompleteness = 'complete';
   state.fullLoaded = false;
   state.fieldCoverage = 'browse';
-  assert.equal(context.getCardLocationOnHandValue(target), '5,000', 'complete browse projection has every quantity needed');
+  assert.equal(context.getCardLocationOnHandValue(target), '5,900', 'complete browse projection has every quantity needed');
   context.nativeAuthSessionActive = true;
   context.nativeAuthProfile = { id: 'fixture-profile' };
   context.hasCurrentProductionLiveSyncProof = () => false;
-  assert.equal(context.getCardLocationOnHandValue(target), '5,000', 'unrelated side adapters do not hide a verified master aggregate');
+  assert.equal(context.getCardLocationOnHandValue(target), '5,900', 'unrelated side adapters do not hide a verified master aggregate');
   state.liveVerifiedScope = 'another-actor';
   assert.equal(context.getCardLocationOnHandValue(target), null, 'another account receipt cannot be reused');
   state.liveVerifiedScope = 'actor-a';
@@ -120,7 +131,7 @@ test('D.29.000 totals 1,232 across F1, S1, U2 and Y, independently of selected s
   state.fullLoaded = false;
   state.fieldCoverage = 'browse';
   for (const row of inventory) assert.equal(context.getCardLocationOnHandValue(row), '1,232');
-  assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '124', LOCATIONCODE: 'D.29.000' }), null);
+  assert.equal(context.getCardLocationOnHandValue({ ITEMCODE: '124', LOCATIONCODE: 'D.29.000' }), '1,232');
 });
 
 test('rebuilding the real master indexes reflects confirmed quantity changes', () => {
@@ -128,7 +139,7 @@ test('rebuilding the real master indexes reflects confirmed quantity changes', (
   const { context } = fixture;
   context.fullInventory[1].PTRONHAND = '5,000';
   context.rebuildMasterInventoryIndexes();
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '6,250');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '7,150');
   context.fullInventory[0].PTRONHAND = null;
   context.rebuildMasterInventoryIndexes();
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), null);
@@ -142,12 +153,12 @@ test('cross-tab master row snapshot rebuilds the location index only when its ag
   const snapshot = data => ({ uniqueId: target.UNIQUE_ID, masterUniqueId: target.UNIQUE_ID, sourceTable: 'ph_master_inventory', data });
 
   assert.equal(context.applyRowSyncSnapshot(snapshot({ PTRONHAND: '5,000' })), true);
-  assert.equal(context.getCardLocationOnHandValue(target), '6,250');
+  assert.equal(context.getCardLocationOnHandValue(target), '7,150');
   assert.equal(indexInvalidations.count, beforeRebuilds + 1, 'quantity changes refresh the aggregate index');
 
   const afterQuantityRebuilds = indexInvalidations.count;
   assert.equal(context.applyRowSyncSnapshot(snapshot({ LOCATIONCODE: 'B.01.001' })), true);
-  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '1,250', 'moving the row changes the old location total');
+  assert.equal(context.getCardLocationOnHandValue(context.fullInventory[0]), '2,150', 'moving the row changes the old location total');
   assert.equal(context.getCardLocationOnHandValue(context.fullInventory[3]), '5,600', 'moving the row changes the new location total');
   assert.equal(indexInvalidations.count, afterQuantityRebuilds + 1, 'item/location key changes refresh the aggregate index');
 

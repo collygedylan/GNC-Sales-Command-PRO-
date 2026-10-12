@@ -140,7 +140,10 @@ begin
   update public.ph_master_inventory set av_note='Note while on hold',spec='3-4 ft',photo_link='hold-photo' where unique_id='RESET-HOLD';
   update public.ph_season_sales_office_state set retained_av_note='Note while on hold' where itemcode_normalized='RESET-HOLD';
   update public.ph_master_inventory set holdstopcode='' where unique_id='RESET-HOLD';
-  perform pg_temp.av_reset_check((select retained_av_note is null from public.ph_season_sales_office_state where itemcode_normalized='RESET-HOLD'), 'losing H/S also clears retained note');
+  perform pg_temp.av_reset_check((select retained_av_note='Note while on hold' from public.ph_season_sales_office_state where itemcode_normalized='RESET-HOLD'), 'strict H/S removal preserves the retained note');
+  perform pg_temp.av_reset_check((select av_note='Note while on hold' and spec='3-4 ft' and photo_link='hold-photo' from public.ph_master_inventory where unique_id='RESET-HOLD'), 'strict H/S removal preserves verified inventory evidence');
+  update public.ph_master_inventory set holdstopcode='S' where unique_id='RESET-HOLD';
+  perform pg_temp.av_reset_check((select retained_av_note is null from public.ph_season_sales_office_state where itemcode_normalized='RESET-HOLD'), 'adding a new Stop token still clears the retained note');
 
   update public.ph_master_inventory set priority='2' where unique_id='RESET-OTHER-WINNER';
   perform pg_temp.av_reset_check((select retained_av_note='RESET-WINNER user note' and winner_unique_id='RESET-WINNER' from public.ph_season_sales_office_state where itemcode_normalized='RESET-WINNER'), 'resetting another inventory row does not clear the selected winner note');

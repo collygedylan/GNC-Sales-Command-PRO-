@@ -123,8 +123,8 @@ test('Edge Function CI resolves pinned npm imports used by the push sender', () 
 test('historical regression fixture uses the explicit migration order manifest and dynamic SQL tests', () => {
   const root = repositoryRoot;
   const manifest = readHistoricalMigrationManifest({ root });
-  assert.equal(manifest.length, 188);
-  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 188);
+  assert.equal(manifest.length, 192);
+  assert.equal(new Set(manifest.map(entry => entry.destination)).size, 192);
   assert.deepEqual(manifest.map(entry => entry.destination), [...manifest.map(entry => entry.destination)].sort());
   for (const entry of manifest) assert.ok(fs.existsSync(new URL('../' + entry.source, import.meta.url)), entry.source);
   const destinations = new Map(manifest.map((entry, index) => [entry.destination, index]));
@@ -226,7 +226,7 @@ test('canonical schema contracts run as an isolated database-check gate', () => 
   assert.ok(job, 'schema contracts have their own disposable runner');
   assert.equal(job['timeout-minutes'], 45);
   assert.deepEqual(job.steps.map(step => step.uses).filter(Boolean), [
-    'actions/checkout@v4', './.github/actions/setup-node-dependencies', 'actions/upload-artifact@v4',
+    'actions/checkout@v4', './.github/actions/setup-node-dependencies', './.github/actions/setup-supabase-images', 'actions/upload-artifact@v4',
   ]);
   assert.ok(job.steps.some(step => step.run === 'node scripts/database-check.mjs --all'));
   const replay = job.steps.find(step => step.run === 'node scripts/database-check.mjs --all');

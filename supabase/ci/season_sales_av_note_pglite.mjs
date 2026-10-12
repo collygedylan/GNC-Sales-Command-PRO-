@@ -75,6 +75,15 @@ try {
     throw new Error('Installed note capture does not lock the source master row FOR SHARE.');
   }
   console.log('PASS installed capture function locks source master FOR SHARE');
+  // The shared reset fixture now exercises the deployed V7 strict-release
+  // behavior. Install its exact reset functions after the legacy backfill
+  // assertions, retaining the complete historic migration coverage above.
+  const holdClearMigration = 'supabase/migrations/20261009202507_prompt25_editable_field_shield_and_hold_clear.sql';
+  const holdClearSource = read(holdClearMigration);
+  const editorStart = holdClearSource.indexOf('create or replace function private.project_reclass_editable_fields_v7(');
+  if (editorStart < 0 || !/^begin;/i.test(holdClearSource.trimStart())) throw new Error('V7 reset migration boundary was not found.');
+  await db.exec(`${holdClearSource.slice(0, editorStart)}\ncommit;`);
+  console.log(`PASS deployed V7 Hold/Stop reset functions from ${holdClearMigration}`);
   for (const test of discoverTests({ group: 'sql-secondary-harness', harness: 'season-av' })) {
     const results = await db.exec(read(test));
     console.log(`PASS ${test}`);

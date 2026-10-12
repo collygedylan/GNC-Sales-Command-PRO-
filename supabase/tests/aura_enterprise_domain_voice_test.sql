@@ -28,6 +28,11 @@ insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
 insert into public.profiles(id,username,display_name,role,must_change_password) values
  ('f7120000-0000-4000-8000-000000000001','aura_master_a','Aura Master A',E'\n REP \t',false),
  ('f7120000-0000-4000-8000-000000000002','aura_master_b','Aura Master B','REP',false);
+-- Explicit opt-in fixture accounts exercise future rollout without changing live defaults.
+insert into private.aura_account_rollout(profile_id,enabled) values
+ ('f7120000-0000-4000-8000-000000000001',true),
+ ('f7120000-0000-4000-8000-000000000002',true)
+on conflict(profile_id) do update set enabled=excluded.enabled;
 insert into private.navigation_view_catalog(view_key,label,selectable) values('drive','Drive',true) on conflict(view_key) do nothing;
 insert into private.navigation_view_overrides(profile_id,view_key,allowed) values
  ('f7120000-0000-4000-8000-000000000001','drive',true),

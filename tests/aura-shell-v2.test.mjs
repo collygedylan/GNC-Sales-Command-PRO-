@@ -147,7 +147,7 @@ test('AURA reads enter the shared read boundary and retain error status metadata
 });
 
 test('AURA router calls use the verified native session, 35-second deadline, and request idempotency', async () => {
-  const authStart = html.indexOf('        const AURA_ROUTER_ACTIVE_ROLES =');
+  const authStart = html.indexOf('        function isAuraRouterProfileCandidate()');
   const authEnd = html.indexOf('        function disposeAuraWidget()', authStart + 1);
   const start = html.indexOf('        function awaitAuraRead(');
   const end = html.indexOf('        async function resolveAuraOrderParty(', start + 1);
@@ -160,7 +160,7 @@ test('AURA router calls use the verified native session, 35-second deadline, and
     nativeAuthSessionActive: true,
     nativeAuthProfile: { id: 'profile', username: 'manager', role: 'MANAGER' },
     currentUser: 'manager', auraVerifiedProfileId: '', auraRouterVerifiedProfileId: 'profile',
-    auraRouterCapabilities: { id: 'profile', username: 'manager', role: 'MANAGER', inventory: true, history: true, drafts: true },
+    auraRouterCapabilities: { auraEnabled: true, id: 'profile', username: 'manager', role: 'MANAGER', inventory: true, history: true, drafts: true },
     auraPendingRequests: new Set(), AURA_QUERY_URL: 'https://api.example.test/functions/v1/aura-llm-router',
     AURA_LLM_ROUTER_URL: 'https://api.example.test/functions/v1/aura-llm-router',
     SUPABASE_KEY: 'project-anon-key',
@@ -305,7 +305,7 @@ test('the shell checks router role eligibility and native identity before import
   for (const { account, role, expectedSessionChecks } of [
     { account: 'sales_rep', role: 'REP', expectedSessionChecks: 1 },
     { account: 'nelly_aguilar', role: 'CSR', expectedSessionChecks: 1 },
-    { account: 'unapproved_user', role: 'INTERN', expectedSessionChecks: 0 },
+    { account: 'unapproved_user', role: 'INTERN', expectedSessionChecks: 1 },
     { account: 'dylan_collyge', role: 'LEGACY', expectedSessionChecks: 1 },
   ]) {
     let imports = 0, disposed = 0, verified = 0;

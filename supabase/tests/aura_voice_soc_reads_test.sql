@@ -24,6 +24,12 @@ insert into public.profiles(id,username,display_name,role,must_change_password,d
  ('f7110000-0000-4000-8000-000000000003','dylan_collyge','SOC Dylan','FOREMAN',false,null,null)
 on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,role=excluded.role,
   must_change_password=false,disabled_at=null,locked_until=null;
+-- Explicit opt-in fixture accounts exercise future rollout without changing live defaults.
+insert into private.aura_account_rollout(profile_id,enabled) values
+ ('f7110000-0000-4000-8000-000000000001',true),
+ ('f7110000-0000-4000-8000-000000000002',true),
+ ('f7110000-0000-4000-8000-000000000003',true)
+on conflict(profile_id) do update set enabled=excluded.enabled;
 insert into private.navigation_view_catalog(view_key,label,selectable)
 values ('reserves','Reserves',true),('docks','Docks',true)
 on conflict(view_key) do nothing;
