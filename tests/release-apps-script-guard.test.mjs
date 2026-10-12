@@ -349,5 +349,5 @@ test('database diagnosis is isolated, read-only, and cannot authorize a release'
   assert.equal(releaseWorkflow.jobs['diagnose-database'], undefined);
   assert.match(releaseWorkflow.jobs['authorize-production'].if, /github.ref == 'refs\/heads\/main'/);
   assert.deepEqual(releaseWorkflow.jobs['sync-codegs'].needs, ['authorize-production', 'production-validation']);
-  assert.deepEqual(releaseWorkflow.jobs['publish-pages'].needs, ['authorize-production', 'sync-codegs']);
+  assert.deepEqual(releaseWorkflow.jobs['publish-pages'].needs, ['authorize-production', 'production-validation']);
 });
