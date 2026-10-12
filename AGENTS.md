@@ -4,6 +4,8 @@ This file is the authoritative repository workflow for local development, candid
 
 ## Local Development and Early Delivery
 
+- Before changing database schema, RLS, or core UI logic, globally search the repository and map downstream consumers, migrations, pgTAP tests, legacy fixtures, and generated contracts. Update all affected dependencies and assertions in the initial feature commit.
+- Run the full local test suite before pushing changes to database security or structural schemas. This requirement takes precedence over the focused-only guidance below for those changes.
 - Before every push, run the relevant focused local tests or linter and require a passing result. Validate changed workflow YAML locally; cloud validation must not be used as a syntax checker.
 - Run only targeted unit tests or specific test files directly related to the current changes locally. Leave the full E2E suite and mobile/browser matrices to GitHub Actions.
 - Prefer fast local dev-server verification for affected UI behavior. Do not rebuild full release artifacts or compile heavy production stylesheets merely to support local tests; send tests that require those artifacts to cloud CI.
@@ -35,6 +37,7 @@ This file is the authoritative repository workflow for local development, candid
 
 ## 3. Autonomous Remediation
 
+- For the currently approved Phase 1 through Over Wintering release queue, the user has explicitly authorized automatic diagnosis, repair, local verification, commits, and pushes, including migration and credential remediation. The limits and approval pauses below resume after that authorized queue is completed. Never weaken assertions or release gates.
 - Count the initial failed CI validation run as failure one. Autonomously diagnose and repair ordinary CI, browser, or unit-test failures, then push the repair to the same PR and restart monitoring.
 - Allow at most two repair pushes after that initial failure. Pause for explicit user approval if the third consecutive validation run fails. Count each validation run once, even when multiple checks fail; sibling cancellations do not add failures. Reset the consecutive count after successful validation.
 - Pause immediately for explicit user approval when a failure involves a database migration, security credential, or production-data risk.

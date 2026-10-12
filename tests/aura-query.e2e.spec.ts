@@ -20,6 +20,7 @@ test('Aura restores private conversations across pages and hands changes to revi
     if (body.mode === 'delete') { deleted = true; turns.length = 0; return base; }
     if (body.mode === 'command') {
       expect(body.expectedRevision).toBe(revision);
+      expect(body.history).toEqual(turns.slice(-6).flatMap(turn => [{ role: 'user', content: turn.text }, { role: 'assistant', content: turn.response.reply }]));
       const response = { ...base, revision: ++revision, reply: 'There are 25 available in C.06.', actions: [
         { type: 'review', view: 'tasks', proposal: { text: 'Assign item 00123 to Zoe. Nothing has been saved.' } },
       ] };

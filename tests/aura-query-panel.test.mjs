@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { mountAuraQueryPanel } from '../components/common/auraQueryPanel.js';
+import { mountAuraQueryPanel, boundedAuraChatHistory } from '../components/common/auraQueryPanel.js';
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function fixture(handler = async () => ({})) {
@@ -21,7 +21,7 @@ function fixture(handler = async () => ({})) {
     close() { ui.destroy(); if (prior) Object.defineProperty(globalThis, 'document', prior); else delete globalThis.document; dom.window.close(); } };
 }
 
-test('internal commands create private history and carry only the conversation reference on follow-up', async () => {
+test('internal commands carry bounded completed history and private conversation references on follow-up', async () => {
   const f = fixture(async body => body.mode === 'command' ? { reply: 'Verified 12 available.', revision: body.expectedRevision + 1, actions: [] } : {});
   try {
     await f.ui.submit('How many roses in C.06?');
@@ -31,6 +31,9 @@ test('internal commands create private history and carry only the conversation r
     assert.equal(f.calls[2].expectedRevision, 2);
     assert.deepEqual(f.calls[2].context, {});
     assert.equal(f.calls[2].text, 'only Zoe’s');
+    assert.deepEqual(f.calls[1].history, []);
+    assert.deepEqual(f.calls[2].history, [{ role: 'user', content: 'How many roses in C.06?' },
+      { role: 'assistant', content: 'Verified 12 available.' }]);
     assert.equal(f.panel.querySelectorAll('.aura-chat-assistant').length, 2);
   } finally { f.close(); }
 });
@@ -109,6 +112,46 @@ test('a revoked identity cannot restore a late sensitive response', async () => 
     const pending = f.ui.submit('Read my latest messages'); await flush();
     f.revoke(); resolveTurn({ reply: 'Private message contents' }); await pending;
     assert.doesNotMatch(f.panel.textContent, /Private message contents/);
+  } finally { f.close(); }
+});
+
+test('history retains six completed exchanges, truncates messages, and respects UTF-8 bytes', () => {
+  const messages = Array.from({ length: 20 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content: `message ${index}` }));
+  assert.deepEqual(boundedAuraChatHistory(messages), messages.slice(-12));
+  const unicode = Array.from({ length: 12 }, (_, index) => ({ role: index % 2 ? 'assistant' : 'user', content: '🌳'.repeat(1500) }));
+  const bounded = boundedAuraChatHistory(unicode);
+  assert.ok(bounded.length > 0 && bounded.length % 2 === 0 && bounded.length <= 12);
+  assert.ok(bounded.every(message => message.content.length <= 2000));
+  assert.ok(new TextEncoder().encode(JSON.stringify(bounded)).byteLength <= 8192);
+});
+
+test('restored conversations supply their latest completed exchanges and New chat clears memory', async () => {
+  const f = fixture(async body => {
+    if (body.mode === 'list') return { conversations: [{ id: 'saved', title: 'Saved plants' }] };
+    if (body.mode === 'read') return { conversationId: 'saved', turns: [
+      { text: 'Where is itemcode 000123?', response: { reply: 'Previous location A.01.' }, completed: true },
+      { text: 'Cancelled question', response: { reply: 'Refresh this response' }, completed: false },
+    ] };
+    return { reply: 'Current verified facts.' };
+  });
+  try {
+    f.click('Conversations'); await flush(); f.click('Saved plants'); await flush();
+    await f.ui.submit('How many of those?');
+    assert.deepEqual(f.calls.at(-1).history, [{ role: 'user', content: 'Where is itemcode 000123?' },
+      { role: 'assistant', content: 'Previous location A.01.' }]);
+    f.click('New chat'); await flush(); await f.ui.submit('A new question');
+    assert.deepEqual(f.calls.at(-1).history, []);
+  } finally { f.close(); }
+});
+
+test('failed and cancelled turns never enter subsequent model history', async () => {
+  let fail = true;
+  const f = fixture(async body => { if (body.mode === 'command' && fail) { fail = false; throw new Error('Unavailable'); } return { reply: 'Verified answer' }; });
+  try {
+    await f.ui.submit('Failed question'); await f.ui.submit('Fresh question');
+    assert.deepEqual(f.calls.at(-1).history, []);
+    await f.ui.submit('Follow-up');
+    assert.deepEqual(f.calls.at(-1).history, [{ role: 'user', content: 'Fresh question' }, { role: 'assistant', content: 'Verified answer' }]);
   } finally { f.close(); }
 });
 

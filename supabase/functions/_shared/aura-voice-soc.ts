@@ -57,10 +57,14 @@ export async function socOutcome(tool: SocTool, context: ObjectValue, actor: Aur
     reply = `Choose the exact ${data.choiceKind === "consignee" ? "consignee" : "customer"} for this SOC lookup.`;
     if (data.candidateChoicesTruncated === true) reply += " More than five identities match; narrow the name if yours is not listed.";
     actions.push({ type: "choices", kind: "entity", items: choices.map((choice, index) => ({ ...choice, id: String(index + 1) })) });
-  } else if (!data.complete) reply = "The SOC feed or its quantities are incomplete. I can’t confirm a total yet.";
+  } else if (!data.complete) reply = "I can’t find a verified total while the SOC feed or its quantities are incomplete.";
+  else if (!rows.length) reply = "I can’t find matching customer inventory in the current SOC feed.";
   else {
+    const row = auraObject(rows[0]);
     const total = new Intl.NumberFormat("en-US").format(signedAuraQuantity(data.total));
-    reply = `${tool.customername}${tool.consigneename ? ` / ${tool.consigneename}` : ""}: ${total} ${name === "soc_reserves" ? "remaining on reserve (ordered minus shipped)" : "ordered on open orders"} for ${tool.commonname} ${tool.contsize}, season ${data.season}.`;
+    const names = [row.customerName, row.commonname, row.contsize];
+    if (names.some(value => typeof value !== "string" || !value.trim())) throw new Error("AURA_RESULT_INVALID");
+    reply = `${row.customerName}${tool.consigneename && typeof row.consigneeName === "string" ? ` / ${row.consigneeName}` : ""}: ${total} ${name === "soc_reserves" ? "remaining on reserve (ordered minus shipped)" : "ordered on open orders"} for ${row.commonname} ${row.contsize}, season ${data.season}.`;
     if (rows.length) actions.push({ type: "records", title: name === "soc_reserves" ? "SOC Reserves" : "SOC Open Orders", rows, columns: Object.keys(auraObject(rows[0])) });
   }
   reply += " Sales-year filtering does not apply to this SOC feed.";

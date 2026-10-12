@@ -1,6 +1,18 @@
 /** Private conversation UI. All data and actions are re-authorized by the server. */
+export function boundedAuraChatHistory(messages) {
+  const history = [];
+  for (let index = 0; index + 1 < messages.length; index += 2) {
+    const user = messages[index], assistant = messages[index + 1];
+    if (user?.role !== 'user' || assistant?.role !== 'assistant' || !user.content?.trim() || !assistant.content?.trim()) continue;
+    history.push({ role: 'user', content: user.content.slice(0, 2000) }, { role: 'assistant', content: assistant.content.slice(0, 2000) });
+  }
+  while (history.length > 12 || new TextEncoder().encode(JSON.stringify(history)).byteLength > 8192) history.splice(0, 2);
+  return history;
+}
+
 export function mountAuraQueryPanel({ panel, content, input, request, isAuthorized, speak, setBusy, openAction, cancelSpeech = () => {}, onAssistantState = () => {} }) {
   let conversationId = null, revision = null, active = null, epoch = 0, destroyed = false;
+  let completedMessages = [], restoring = false;
   let historyCursor = null, listCursor = null, cancelling = Promise.resolve();
   const node = (tag, text, className = '') => {
     const value = document.createElement(tag);
@@ -96,6 +108,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
   }
   function cancel() {
     cancelSpeech();
+    restoring = false;
     const pending = active;
     epoch += 1;
     active = null;
@@ -114,7 +127,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
   }
   async function submit(raw, source = 'typed', retry = null) {
     const text = String(raw || '').trim();
-    if (!current() || !text) return;
+    if (!current() || !text || restoring) return;
     cancelSpeech();
     if (/^(?:stop|cancel(?: that)?|never\s?mind)$/i.test(text)) {
       await cancel();
@@ -142,10 +155,12 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       submittedConversationId = conversationId;
       active = { controller, conversationId, turnId };
       const response = await call({ mode: 'command', text, source: source === 'voice' ? 'voice' : 'typed',
-        turnId, conversationId, expectedRevision: revision, context: {} }, controller.signal);
+        turnId, conversationId, expectedRevision: revision, context: {}, history: boundedAuraChatHistory(completedMessages) }, controller.signal);
       if (ticket !== epoch) return;
       onAssistantState('responding');
       updateIdentity(response);
+      completedMessages = boundedAuraChatHistory([...completedMessages, { role: 'user', content: text },
+        { role: 'assistant', content: String(response.reply || '') }]);
       const entry = addMessage('assistant', response.reply);
       renderActions(response, entry);
       const checkedAt = response.source?.checkedAt || response.checkedAt?.at;
@@ -178,9 +193,11 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     const ticket = ++epoch;
     if (!cursor) {
       conversationId = id; revision = null;
+      completedMessages = [];
       timeline.replaceChildren(); title.textContent = 'Selected conversation'; deleteButton.disabled = false;
     }
     status.textContent = 'Loading conversation…';
+    restoring = true;
     try {
       const response = await call({ mode: 'read', conversationId: id, cursor, limit: 30 });
       if (ticket !== epoch) return;
@@ -188,6 +205,11 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       if (!cursor) timeline.replaceChildren();
       const section = node('section', '');
       const turns = response.turns || [];
+      if (!cursor) completedMessages = boundedAuraChatHistory(turns.flatMap(turn => {
+        const text = turn.text || turn.userText || turn.user_text, reply = turn.response?.reply;
+        return turn.completed !== false && typeof text === 'string' && typeof reply === 'string' && text.trim() && reply.trim()
+          ? [{ role: 'user', content: text }, { role: 'assistant', content: reply }] : [];
+      }));
       for (const turn of turns) {
         if (turn.text || turn.userText || turn.user_text) addMessage('user', turn.text || turn.userText || turn.user_text, section);
         const answer = turn.response || {};
@@ -199,11 +221,13 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       if (response.hasMore && historyCursor) button('Load older messages', eventlessLoadOlder, section).classList.add('aura-history-more');
       status.textContent = 'Conversation restored. Current questions will refresh live data.';
     } catch (error) { if (current() && ticket === epoch) status.textContent = error.message; }
+    finally { if (ticket === epoch) restoring = false; }
   }
   async function eventlessLoadOlder() { if (conversationId && historyCursor) await readHistory(conversationId, historyCursor); }
   async function listChats(cursor = null) {
     await cancel();
     const ticket = ++epoch;
+    restoring = false;
     status.textContent = 'Loading conversations…';
     try {
       const response = await call({ mode: 'list', cursor, limit: 30 });
@@ -221,6 +245,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
     cancelSpeech();
     await cancel();
     conversationId = null; revision = null;
+    completedMessages = []; restoring = false;
     timeline.replaceChildren(); title.textContent = 'New conversation'; deleteButton.disabled = true;
     status.textContent = 'Ask a new question. Your other conversations are saved.';
   });
@@ -236,7 +261,7 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
       try {
         await call({ mode: 'delete', conversationId: id });
         if (!current() || ticket !== epoch) return;
-        if (conversationId === id) { conversationId = null; revision = null; title.textContent = 'New conversation'; }
+        if (conversationId === id) { conversationId = null; revision = null; completedMessages = []; restoring = false; title.textContent = 'New conversation'; }
         timeline.replaceChildren(); deleteButton.disabled = !conversationId;
         status.textContent = 'Conversation deleted.';
       } catch (error) { if (current()) status.textContent = error.message; }
@@ -247,5 +272,5 @@ export function mountAuraQueryPanel({ panel, content, input, request, isAuthoriz
   deleteButton.disabled = true;
   button('Stop', () => cancel().then(() => { if (current()) status.textContent = 'Stopped. Nothing was saved.'; }));
   toolbar.append(title);
-  return { submit, cancel, destroy() { void cancel(); destroyed = true; toolbar.remove(); timeline.replaceChildren(); } };
+  return { submit, cancel, destroy() { void cancel(); destroyed = true; completedMessages = []; conversationId = null; revision = null; toolbar.remove(); timeline.replaceChildren(); } };
 }
