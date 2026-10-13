@@ -1,3 +1,9 @@
+# 🛑 STRICT SCOPE AND PIPELINE BOUNDARIES
+1. **Zero Scope Creep:** You are strictly forbidden from modifying CI/CD pipelines, `.github/workflows/`, deployment scripts, or baseline helpers unless the user explicitly commands you to "update the deployment pipeline."
+2. **Report, Don't React:** If you discover a pre-existing bug, race condition, or deployment gap that is outside the exact scope of the user's prompt, DO NOT fix it. Report the blocker to the user, wait for instructions, and halt execution.
+3. **Surgical Precision:** Only modify the specific files required to complete the user's explicit feature request or bug fix. Do not refactor unrelated code or architecture you happen to pass through.
+4. **Credit Protection:** If a seemingly simple task requires modifying more than 5 files, pause and ask the user for authorization before writing the code to prevent burning through workspace credits on incorrect assumptions.
+
 # Repository Agent Workflow
 
 This file is the authoritative repository workflow. The permanent CI/CD override below governs automatic merging, deployment monitoring, and completion reporting. The Fast Deployment & Execution Policy governs testing, replays, and hooks and supersedes conflicting guidance in supporting documents.
