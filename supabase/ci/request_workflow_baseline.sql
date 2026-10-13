@@ -23,6 +23,8 @@ create table if not exists public.ph_master_inventory (
   plantgroupcode text,
   last_updated timestamptz,
   assignedto text,
+  eval_task_type text,
+  eval_task_status text,
   match text,
   loc_match_qty text,
   spec text,

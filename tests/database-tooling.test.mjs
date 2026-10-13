@@ -609,6 +609,16 @@ test('historical migration order manifest preserves original inputs and appends 
   assert.doesNotMatch(workflow, /python3 - "\$ci_root"/);
 });
 
+test('historical report fixture retains production task columns required by the existing index', () => {
+  const fixture = readFileSync(path.join(root, 'supabase/ci/request_workflow_baseline.sql'), 'utf8');
+  const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');
+  for (const field of ['eval_task_type', 'eval_task_status']) {
+    const declaration = new RegExp(`\\b${field}\\s+text\\s*[,)]`, 'i');
+    assert.match(fixture, declaration);
+    assert.match(baseline, declaration);
+  }
+});
+
 test('historical master rows retain production Hold release approval types for V6 replay', () => {
   const fixture = readFileSync(path.join(root, 'supabase/ci/request_workflow_baseline.sql'), 'utf8');
   const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');
