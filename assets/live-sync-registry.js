@@ -49,6 +49,7 @@
         reportAssigned: ['ph_master_inventory', 'ph_inventory_row_assignments', 'private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'],
         reportSeason: ['ph_master_inventory', 'ph_inventory_row_assignments', 'ph_cav_import', 'ph_app_settings'],
         reportApproval: ['ph_master_inventory', 'ph_ncr_completions', 'ph_shear_list', 'ph_inventory_edit_requests'],
+        homeSyncMetadata: ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import'],
         itemLowStockTargets: ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'],
         ncr: ['ph_ncr_completions'],
         productivity: ['ph_productivity_history'],
@@ -102,6 +103,7 @@
     };
     // A surface is a data-bearing subview, badge or dialog. These are not separate routes.
     const surfaces = {
+        'home:sync-metadata': data([], ['homeSyncMetadata']),
         'dialog:av-notes': data(['avNotes']),
         'detail:reserves': data([], ['driveReserves']),
         'detail:open-orders': data([], ['driveOpenOrders']),
