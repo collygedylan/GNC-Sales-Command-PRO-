@@ -9650,3 +9650,18 @@ body.ops-precision-pilot :is(#drive-content, #request-content, #docks-content) .
 }
 
 .app-shared-drive-layout .app-operational-card-header-fields{display:flex;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}.app-shared-drive-layout .app-operational-card-header-field{display:flex;flex-direction:column;min-width:60px}.app-shared-drive-layout .app-operational-card-header-field>span{font-size:11px;color:var(--ops-text-muted,#526259)}.app-shared-drive-layout .app-operational-card-header-field>strong{font-size:14px;color:var(--ops-text,#17251d);overflow-wrap:anywhere}
+
+/* Suspend Tag keeps the shared Drive frame and touch targets, with compact order data. */
+#request-content .app-suspend-tag-compact-card .app-operational-card-header-fields { gap: 4px 6px; margin-bottom: 4px; }
+#request-content .app-suspend-tag-compact-card .app-operational-card-header-field { flex-direction: row; align-items: baseline; gap: 4px; min-width: 0; }
+#request-content .app-suspend-tag-compact-card .app-drive-card-details { gap: 4px; }
+#request-content .app-suspend-tag-compact-card .app-request-card-meta { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0; }
+#request-content .app-suspend-tag-compact-card .app-request-card-meta-chip { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px; min-width: 0; max-width: 100%; padding: 2px 6px; border-radius: 6px; font-size: 12px; line-height: 1.3; color: var(--ops-text-muted, #526259); }
+#request-content .app-suspend-tag-compact-card .app-request-card-meta-chip strong { min-width: 0; overflow-wrap: anywhere; color: var(--ops-text, #17251d); }
+#request-content .app-suspend-tag-compact-card :is(.app-card-note, .app-suspend-tag-data-note) { margin: 0; padding: 6px; box-shadow: none; overflow-wrap: anywhere; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-data-chips { margin: 0; gap: 4px; }
+#request-content .app-suspend-tag-compact-card .app-request-card-bottom { margin: 0; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-status { margin: 0; padding-top: 6px; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-status-label { margin: 0 0 4px; font-size: 12px; line-height: 1.3; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+#request-content .app-suspend-tag-compact-card .app-suspend-tag-action { min-width: 44px; min-height: 44px; padding: 6px 8px; line-height: 1.3; }

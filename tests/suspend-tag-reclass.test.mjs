@@ -36,7 +36,7 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
     findDockSuspendDcRequestSourceRow: () => source,
   });
   vm.runInContext(['getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
-    'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildSuspendTagActions'].map(extract).join('\n'), context);
+    'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildSuspendTagReclassActionHtml', 'buildSuspendTagActions'].map(extract).join('\n'), context);
   return { context, item, source, master };
 }
 
@@ -44,7 +44,7 @@ test('Suspend Tag card renders shared Reclass button and its activation does not
   const { context, item, master } = actionHarness();
   let opened = null;
   context.openArgosInventoryTransactionModal = (...args) => { opened = args; return false; };
-  const dom = new JSDOM(`<article id="card">${context.buildSuspendTagActions(item, 'onpointerdown="event.stopPropagation()"')}</article>`, { runScripts: 'dangerously' });
+  const dom = new JSDOM(`<article id="card">${context.buildSuspendTagReclassActionHtml(item, 'onpointerdown="event.stopPropagation()"')}${context.buildSuspendTagActions(item)}</article>`, { runScripts: 'dangerously' });
   dom.window.openArgosInventoryTransactionModal = context.openArgosInventoryTransactionModal;
   let cardClicks = 0;
   dom.window.document.querySelector('#card').addEventListener('click', () => { cardClicks += 1; });
@@ -60,7 +60,8 @@ test('Suspend Tag card renders shared Reclass button and its activation does not
   dom.window.document.querySelector('#card').addEventListener('pointerdown', () => { cardPresses += 1; });
   button.dispatchEvent(new dom.window.Event('pointerdown', { bubbles: true }));
   assert.equal(cardPresses, 0);
-  assert.ok(button.closest('[data-suspend-tag-status]'));
+  assert.ok(button.closest('.app-drive-card-reclass'));
+  assert.equal(button.closest('[data-suspend-tag-status]'), null);
   button.click();
   assert.equal(cardClicks, 0);
   assert.deepEqual(opened, ['master-row', 'reclass', 'suspend-tag']);
@@ -72,21 +73,21 @@ test('Suspend Tag card renders shared Reclass button and its activation does not
 
 test('Suspend Tag Reclass resolves the explicit linked master or exact source match', () => {
   const { context, item, master } = actionHarness();
-  assert.match(context.buildSuspendTagActions(item), /openArgosInventoryTransactionModal\('master-row', 'reclass', 'suspend-tag'\)/);
+  assert.match(context.buildSuspendTagReclassActionHtml(item), /openArgosInventoryTransactionModal\('master-row', 'reclass', 'suspend-tag'\)/);
   const exactItem = { ...item, MASTER_ID: '' };
-  assert.match(context.buildSuspendTagActions(exactItem), /openArgosInventoryTransactionModal\('master-row', 'reclass', 'suspend-tag'\)/);
+  assert.match(context.buildSuspendTagReclassActionHtml(exactItem), /openArgosInventoryTransactionModal\('master-row', 'reclass', 'suspend-tag'\)/);
   assert.notEqual(exactItem.UNIQUE_ID, master.UNIQUE_ID);
 });
 
 test('Suspend Tag Reclass is hidden for absent, ineligible, or unauthorized linked rows', () => {
   const denied = actionHarness({ allowed: false });
-  assert.doesNotMatch(denied.context.buildSuspendTagActions(denied.item), /app-card-bottom-btn--argos-reclass/);
+  assert.doesNotMatch(denied.context.buildSuspendTagReclassActionHtml(denied.item), /app-card-bottom-btn--argos-reclass/);
   const invalid = actionHarness({ eligible: false });
-  assert.doesNotMatch(invalid.context.buildSuspendTagActions(invalid.item), /app-card-bottom-btn--argos-reclass/);
+  assert.doesNotMatch(invalid.context.buildSuspendTagReclassActionHtml(invalid.item), /app-card-bottom-btn--argos-reclass/);
   const missing = actionHarness();
   missing.context.masterInventoryById = new Map([['unrelated', {}]]);
   missing.context.masterInventoryByExactKey.clear();
-  assert.doesNotMatch(missing.context.buildSuspendTagActions(missing.item), /app-card-bottom-btn--argos-reclass/);
+  assert.doesNotMatch(missing.context.buildSuspendTagReclassActionHtml(missing.item), /app-card-bottom-btn--argos-reclass/);
 });
 
 test('shared rail honors both access gates and preserves existing Drive behavior', () => {
