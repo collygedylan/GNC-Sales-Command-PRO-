@@ -103,6 +103,45 @@ test('completion publishes canonical specs and explicit clears while AV is visib
   assert.deepEqual(r.rendered, ['av']);
 });
 
+test('shared evidence propagation invalidates report pages and preserves an open Suspend editor', () => {
+  const r = runtime();
+  let reportInvalidations = 0;
+  r.c.managerReportPageController = { invalidateInventory() { reportInvalidations += 1; } };
+  r.c.visibleView = 'detail';
+  r.c.activeItem = { UNIQUE_ID: 'dock_suspend_dc_soc-one', SOURCE_TABLE: 'ph_soc_master', REQ_SPEC: 'draft' };
+  r.c.reconcileConfirmedDriveEvidence(receipt({ spec: 'saved size' }), r.master, 'req-', { preserveDetailDraft: true });
+  assert.equal(r.master.SPEC, 'saved size');
+  assert.equal(r.c.avOpenInventory[0].SPEC, 'saved size');
+  assert.equal(r.c.activeItem.REQ_SPEC, 'draft');
+  assert.equal(reportInvalidations, 1);
+  assert.equal(r.broadcasts.length, 1);
+  assert.deepEqual(r.rendered, [], 'background acknowledgement does not remount the editor');
+});
+
+test('Suspend Tag source acknowledgement cannot publish incomplete inventory evidence', () => {
+  const r = runtime();
+  const before = JSON.stringify(r.master);
+  r.c.findLinkedMasterRow = () => r.master;
+  r.c.propagateCommittedEdit('ph_soc_master', { UNIQUE_ID: 'soc-one', SOURCE_TABLE: 'ph_soc_master', SPEC: 'source-only' }, ['soc'], [], { sourceRowOnly: true });
+  assert.equal(JSON.stringify(r.master), before);
+  assert.equal(r.broadcasts.length, 0);
+  assert.equal(r.c.invalidations, 1);
+});
+
+test('canonical exact read populates missing inventory without using an inferred duplicate link', () => {
+  const r = runtime();
+  const other = r.master;
+  const before = JSON.stringify(other);
+  const server = row({ unique_id: 'drive-two', spec: 'confirmed second row' });
+  const [canonical] = r.c.formatFetchedRows([server], 'ph_master_inventory');
+  r.c.findLinkedMasterRow = () => other;
+  r.c.reconcileConfirmedDriveEvidence({ ok: true, canonicalConfirmed: true, row: server }, canonical, 'req-', { preserveDetailDraft: true });
+  assert.equal(r.c.fullInventory.length, 2);
+  assert.equal(r.c.fullInventory[1].UNIQUE_ID, 'drive-two');
+  assert.equal(r.c.fullInventory[1].SPEC, 'confirmed second row');
+  assert.equal(JSON.stringify(other), before);
+});
+
 test('later evidence clears replace lowercase aliases in a previously created AV cache row', () => {
   const { c, master } = runtime();
   c.avOpenInventory = [];

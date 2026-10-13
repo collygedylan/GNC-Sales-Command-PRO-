@@ -64,4 +64,24 @@ describe('report page sessions', () => {
     expect(started).toBe(2);
     expect(settled.every(error => error?.name === 'AbortError')).toBe(true);
   });
+
+  it('invalidates all inventory pages and rejects responses started before invalidation', async () => {
+    clearReportSessions();
+    let finish!: (value: unknown) => void;
+    let call = 0;
+    const session = createReportSession({ scopeKey: 'inventory-refresh', permissionVersion: 'p1', transport: async () => {
+      call += 1;
+      if (call === 1) return await new Promise(resolve => { finish = resolve; });
+      return { rows: [{ fresh: true }], total: 1, hasMore: false, sourceRevision: 'r2' };
+    } });
+    const stale = session.refresh(query()).catch(error => error);
+    await Promise.resolve();
+    session.swrCache.set('swr', {});
+    session.invalidateInventory();
+    finish({ rows: [{ stale: true }], total: 1, hasMore: false, sourceRevision: 'r1' });
+    expect((await stale).name).toBe('AbortError');
+    expect(session.peek(query())).toBeUndefined();
+    expect(session.swrCache.size).toBe(0);
+    await expect(session.read(query())).resolves.toMatchObject({ rows: [{ fresh: true }], sourceRevision: 'r2' });
+  });
 });

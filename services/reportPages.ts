@@ -34,6 +34,7 @@ type SessionState = {
   controllers: Map<string, AbortController>;
   queue: Array<() => void>;
   active: number;
+  generation: number;
 };
 
 function stable(value: unknown): string {
@@ -71,7 +72,7 @@ function normalize(value: unknown, query: ReportPageQuery): ReportPage {
 function stateFor(identityKey: string): SessionState {
   let state = sessions.get(identityKey);
   if (!state) {
-    state = { scopeKey: '', cache: new Map(), pages: new Map(), pinned: new Set(), inflight: new Map(), controllers: new Map(), queue: [], active: 0 };
+    state = { scopeKey: '', cache: new Map(), pages: new Map(), pinned: new Set(), inflight: new Map(), controllers: new Map(), queue: [], active: 0, generation: 0 };
     sessions.set(identityKey, state);
   }
   return state;
@@ -135,6 +136,7 @@ export function createReportSession(config: ReportSessionConfig): ReportSession 
     const pending = state.inflight.get(queryKey);
     if (pending) return pending;
     const controller = new AbortController();
+    const requestGeneration = state.generation;
     const abortFromCaller = () => controller.abort();
     signal?.addEventListener('abort', abortFromCaller, { once: true });
     state.controllers.set(queryKey, controller);
@@ -142,13 +144,13 @@ export function createReportSession(config: ReportSessionConfig): ReportSession 
       if (controller.signal.aborted) throw Object.assign(new Error('Report read cancelled.'), { name: 'AbortError' });
       return normalize(await config.transport(query, controller.signal), query);
     }, controller.signal).then(page => {
-      if (controller.signal.aborted || sessions.get(identityKey) !== state) throw Object.assign(new Error('Report read cancelled.'), { name: 'AbortError' });
+      if (controller.signal.aborted || sessions.get(identityKey) !== state || state.generation !== requestGeneration) throw Object.assign(new Error('Report read cancelled.'), { name: 'AbortError' });
       state.pages.set(queryKey, { surface: query.surface, queryKey, page, savedAt: Date.now() });
       trimPages(state, query.surface, queryKey);
       return page;
     }).finally(() => {
       signal?.removeEventListener('abort', abortFromCaller);
-      state.controllers.delete(queryKey);
+      if (state.controllers.get(queryKey) === controller) state.controllers.delete(queryKey);
       if (state.inflight.get(queryKey) === request) state.inflight.delete(queryKey);
     });
     state.inflight.set(queryKey, request);
@@ -188,9 +190,15 @@ export function createReportSession(config: ReportSessionConfig): ReportSession 
         state.pages.delete(queryKey); state.cache.delete(queryKey); state.inflight.delete(queryKey); state.pinned.delete(queryKey);
         state.controllers.get(queryKey)?.abort(); state.controllers.delete(queryKey);
       } else {
+        state.generation += 1;
         state.pages.clear(); state.cache.clear(); state.inflight.clear(); state.pinned.clear();
         state.controllers.forEach(controller => controller.abort()); state.controllers.clear();
       }
+    },
+    invalidateInventory() {
+      state.generation += 1;
+      state.pages.clear(); state.cache.clear(); state.inflight.clear(); state.pinned.clear();
+      state.controllers.forEach(controller => controller.abort()); state.controllers.clear();
     },
     clear() {
       state.pages.clear(); state.cache.clear(); state.inflight.clear(); state.pinned.clear();

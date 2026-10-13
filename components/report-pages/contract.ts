@@ -94,6 +94,8 @@ export type ReportSession = {
   read(query: ReportPageQuery, signal?: AbortSignal): Promise<ReportPage>;
   refresh(query: ReportPageQuery, signal?: AbortSignal): Promise<ReportPage>;
   invalidate(query?: ReportPageQuery): void;
+  /** Drop inventory-derived pages and SWR state. */
+  invalidateInventory(): void;
   clear(): void;
 };
 

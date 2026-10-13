@@ -46,6 +46,9 @@ function harness(options = {}) {
     getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() {},
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
+    queueSuspendTagInventoryReconciliation() {},
+    getSupabaseReadIdentityScope: () => ctx.currentUser,
+    mergePhotoCsvList: values => [...new Set(values.flatMap(value => String(value || '').split(',').filter(Boolean)))].join(','),
     dockSuspendDcRequestMirrorRowsCacheKey: 'stale', requestScopedItemsCacheKey: 'stale',
     requestsInventory: [mirror], currentSource: row,
   };
@@ -177,3 +180,31 @@ test('recount completion shares the protected persistence path', async () => {
 
  test('incomplete cards cannot bypass detail photo validation', async () => { const h=harness({ready:false}); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); assert.equal(h.calls.length,0); assert.equal(h.row.DATE_COMPLETED,''); });
 test('new denial state supersedes a cached completion without dropping photos', async () => { const h=harness(); await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID,button()); const denied={...source(),suspend_tag_status:'denied',suspend_tag_version:2,DOCK_PHOTO_LINK:'saved.jpg'}; assert.equal(h.ctx.getSuspendTagStatus(denied),'denied'); assert.equal(h.ctx.overlaySuspendTagReceipt(denied).DOCK_PHOTO_LINK,'saved.jpg'); });
+
+test('queued evidence saves use the latest version and retain photos and the newest unsaved draft', async () => {
+  let release;
+  const wait = new Promise(resolve => { release = resolve; });
+  let writes = 0;
+  const h = harness({ api: async body => {
+    writes += 1;
+    if (writes === 1) await wait;
+    return acknowledgement({ ...body.payload.patch, suspend_tag_status: 'pending', suspend_tag_version: writes });
+  } });
+  let reconciled = 0;
+  h.ctx.queueSuspendTagInventoryReconciliation = () => { reconciled += 1; };
+  h.ctx.draftRow = h.mirror;
+  vm.runInContext("suspendTagFormDrafts.set(getSuspendTagFormDraftKey(draftRow), { 'req-spec': 'still typing' });", h.ctx);
+  const first = h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'first', dock_photo_link: 'new.jpg', dock_photo_name: 'new.jpg' });
+  const second = h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'second', dock_photo_link: '', dock_photo_name: '' });
+  await new Promise(setImmediate);
+  assert.equal(h.calls.length, 1);
+  release();
+  assert.equal(await first, true);
+  assert.equal(await second, true);
+  assert.deepEqual(h.calls.map(call => call.body.expectedVersion), [0, 1]);
+  assert.equal(h.calls[1].body.payload.patch.dock_photo_link, 'new.jpg');
+  assert.equal(h.mirror.REQ_SPEC, 'second');
+  assert.equal(h.mirror.REQ_PHOTO_LINK, 'new.jpg');
+  assert.equal(vm.runInContext("suspendTagFormDrafts.get(getSuspendTagFormDraftKey(draftRow))['req-spec']", h.ctx), 'still typing');
+  assert.equal(reconciled, 2);
+});
