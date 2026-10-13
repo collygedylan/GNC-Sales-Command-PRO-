@@ -37,6 +37,10 @@ function transportHarness({ sourceView = 'suspend-tag', failCreate = false } = {
     RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION: 'v7',
     argosInventoryTransactionState: { sourceView, item: sourceRow },
     canCurrentUserSubmitRepInventoryOperations: () => false,
+    // This transport fixture has no loaded inventory/status patches. The shared
+    // handler must preserve its request-only routing and idempotency assertions.
+    getInventoryStatusSync: () => null,
+    buildInventoryStatusPatches: () => [],
     firstNonEmptyValue: (...values) => values.find(value => value !== '' && value != null),
     isArgosEvalReport2Inquiry: () => false,
     dedupeRequestEmailRecipients: values => [...new Set(values)],
@@ -61,6 +65,7 @@ function transportHarness({ sourceView = 'suspend-tag', failCreate = false } = {
     extract('applyArgosInventoryTransactionSourceContext'),
     extract('applyArgosInventoryTransactionEmailRecipients'),
     extract('isProtectedDriveReclassPayload'),
+    extract('runInventoryStatusMutation'),
     extract('postArgosInventoryTransactionPayload'),
     extract('pollReclassDeliveryJobs'),
     extract('retryReclassDeliveryJob'),

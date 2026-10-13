@@ -84,6 +84,8 @@ function createPendingSubmitHarness() {
     getEvalWorkCompletionRecipientCopy: () => 'reviewers',
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') || '',
     persistEvalWorkLocalDraft: () => {},
+    getInventoryStatusSync: () => null,
+    buildInventoryStatusPatches: () => [],
     evalWorkApi: () => new Promise((resolve, reject) => requests.push({ resolve, reject })),
     showToast: (...args) => toasts.push(args),
     clearEvalWorkLocalDraft: () => {},
@@ -91,6 +93,7 @@ function createPendingSubmitHarness() {
     window: {},
   };
   vm.createContext(context);
+  vm.runInContext(extract('async function runInventoryStatusMutation(', 'function buildManagerPriorityStatusPatches('), context);
   vm.runInContext(`${extract('async function submitEvalWork(', 'async function reassignEvalWork(')}; this.submit = submitEvalWork;`, context);
   return { context, requests, toasts, work };
 }
