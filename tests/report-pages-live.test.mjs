@@ -8,16 +8,16 @@ const source = readFileSync(new URL('../assets/report-pages-live.js', import.met
 function setup(read) {
     const context = { AbortController }; vm.createContext(context); vm.runInContext(source, context);
     let scope = 'account-a', permission = 'p1', cleared = 0;
-    const calls = [], metadata = [], mounts = [];
-    const session = { read, refresh:read, clear:() => { cleared += 1; }, invalidate() {} };
+    const calls = [], metadata = [], mounts = [], externalStates = [];
+    const session = { read, refresh:read, clear:() => { cleared += 1; }, invalidate() {}, invalidateInventory() { this.invalidations = (this.invalidations || 0) + 1; } };
     const controller = context.GncReportPagesLive.createController({
         scope:() => scope, permission:() => permission, allowed:() => true,
         loadModule:async () => ({ createReportSession:() => session,
-            mountReportRows:(_host,config) => { const mount={config,destroyed:false,update(next){this.config=next;},destroy(){this.destroyed=true;},refresh(){}}; mounts.push(mount);return mount; } }),
+            mountReportRows:(_host,config) => { const mount={destroyed:false,update(next){this.config=next;this.callback=next.onState;},destroy(){this.destroyed=true;},refresh(){this.callback?.({refreshing:true});}}; mount.config=config; mount.callback=config.onState; mounts.push(mount);return mount; } }),
         transport:async () => ({ surfaces:['eval2'] }), onMetadata:(surface,state) => metadata.push([surface,state.revision]),
         onState:(surface,state) => calls.push([surface,state.error])
     });
-    return { controller, calls, metadata, mounts, scope:(value) => { scope = value; }, permission:(value) => { permission = value; }, cleared:() => cleared };
+    return { controller, calls, metadata, mounts, externalStates, session, scope:(value) => { scope = value; }, permission:(value) => { permission = value; }, cleared:() => cleared };
 }
 const query = { surface:'eval2', operation:'rows', filters:{}, offset:0, limit:100 };
 const page = (rows,total,hasMore = false,revision = 'r1') => ({ rows,total,hasMore,sourceRevision:revision,metadata:{ counts:{ u1:total } } });
@@ -167,4 +167,52 @@ test('metadata refresh leaves the mounted group query able to adopt its new revi
     assert.equal(state.expectedRevision, '');
     assert.equal(state.rows[0].unique_id, 'new');
     assert.equal(state.metadata.counts.u1, 2);
+});
+
+test('inventory invalidation rejects prior mounted callbacks and accepts refreshed data', async () => {
+    let finish, calls=0;
+    const fixture=setup(() => { calls+=1; return calls===1 ? Promise.resolve(page([{unique_id:'old'}],1,false,'r1')) : new Promise(resolve => { finish=resolve; }); });
+    const host={isConnected:true};
+    const external=[];
+    await fixture.controller.mount(host,query,{ onState: value => external.push(value) });
+    const oldNotify=fixture.mounts[0].callback;
+    oldNotify({page:page([{unique_id:'old'}],1),rows:[{unique_id:'old'}]});
+    fixture.controller.invalidateInventory();
+    assert.equal(fixture.session.invalidations,1);
+    assert.notEqual(fixture.mounts[0].callback,oldNotify);
+    oldNotify({page:page([{unique_id:'stale'}],1),rows:[{unique_id:'stale'}]});
+    assert.equal(fixture.controller.state('eval2').rows.length,0);
+    assert.equal(external.length,2);
+    const freshNotify=fixture.mounts[0].callback;
+    freshNotify({page:page([{unique_id:'fresh'}],1,false,'r2'),rows:[{unique_id:'fresh'}]});
+    assert.equal(fixture.controller.state('eval2').rows[0].unique_id,'fresh');
+    assert.equal(external.length,3);
+});
+
+test('reopening a hidden report after inventory invalidation fetches current data', async () => {
+    let revision='r1';
+    const fixture=setup(async () => page([{unique_id:revision}],1,false,revision));
+    const host={isConnected:true};
+    await fixture.controller.mount(host,query,{});
+    fixture.controller.suspendMounts();
+    revision='r2';
+    fixture.controller.invalidateInventory();
+    await fixture.controller.mount(host,query,{});
+    assert.equal(fixture.mounts.length,2);
+    assert.equal(fixture.controller.state('eval2').page,null);
+    await fixture.controller.load(query);
+    assert.equal(fixture.controller.state('eval2').rows[0].unique_id,'r2');
+});
+
+test('mounting an existing host replaces its caller config for future invalidation refreshes', async () => {
+    const fixture=setup(async () => page([{unique_id:'row'}],1));
+    const host={isConnected:true}, first=[], second=[];
+    await fixture.controller.mount(host,query,{onState:value=>first.push(value)});
+    const firstCallback=fixture.mounts[0].callback;
+    await fixture.controller.mount(host,query,{onState:value=>second.push(value)});
+    fixture.controller.invalidateInventory();
+    firstCallback({page:page([{unique_id:'stale'}],1),rows:[{unique_id:'stale'}]});
+    fixture.mounts[0].callback({page:page([{unique_id:'fresh'}],1,false,'r2'),rows:[{unique_id:'fresh'}]});
+    assert.equal(first.length,0);
+    assert.equal(second.length,2);
 });

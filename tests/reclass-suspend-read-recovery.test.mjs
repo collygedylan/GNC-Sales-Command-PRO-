@@ -252,7 +252,8 @@ function suspendTagPhotoFixture(options = {}) {
     runSuspendTagRowCommand: async (...args) => { ctx.persistCalls.push(args); return { acknowledged: true, applied: true }; },
   };
   vm.createContext(ctx);
-  vm.runInContext('const suspendTagPhotoProofs = new WeakSet();', ctx);
+  vm.runInContext('const suspendTagPhotoProofs = new WeakSet(); const suspendTagRowWrites = new Map();', ctx);
+  vm.runInContext(extractAppFunction('serializeSuspendTagRowWrite'), ctx);
   vm.runInContext(extractAppFunction('loadCurrentSuspendTagPhotoRow'), ctx);
   vm.runInContext(extractAppFunction('isCurrentSuspendTagPhotoProof'), ctx);
   vm.runInContext(extractAppFunction('persistSuspendTagUploadedPhoto'), ctx);

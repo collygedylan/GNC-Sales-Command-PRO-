@@ -6,9 +6,9 @@
     'use strict';
     const abortError = () => Object.assign(new Error('Report session changed.'), { name: 'AbortError' });
     function createController(options) {
-        let owner = '', permission = '', session = null, module = null, ready = null, generation = 0, mountGeneration = 0;
+        let owner = '', permission = '', session = null, module = null, ready = null, generation = 0, mountGeneration = 0, inventoryGeneration = 0;
         let capabilities = null;
-        const states = new Map(), mounts = new Map(), controllers = new Set();
+        const states = new Map(), mounts = new Map(), mountConfigs = new Map(), controllers = new Set();
         function current() {
             const scope = String(options.scope() || '');
             const version = String(options.permission() || '');
@@ -21,7 +21,7 @@
             generation += 1;
             mountGeneration += 1;
             controllers.forEach(controller => controller.abort()); controllers.clear();
-            mounts.forEach(mount => mount.destroy()); mounts.clear();
+            mounts.forEach(mount => mount.destroy()); mounts.clear(); mountConfigs.clear();
             session?.clear(); session = null; states.clear(); capabilities = null; ready = null;
             if (owner) options.onClear?.();
         }
@@ -79,6 +79,14 @@
             target.error = result.error ? String(result.error.message || result.error) : '';
             options.onState?.(surface, target);
         }
+        function bindMount(host, query, config) {
+            const scope = owner, token = generation, mountToken = mountGeneration, inventoryToken = inventoryGeneration;
+            return { ...config, session, query, onState: result => {
+                if (token !== generation || mountToken !== mountGeneration || inventoryToken !== inventoryGeneration || scope !== options.scope()) return;
+                if (!config.isolated) apply(query.surface, query, result);
+                config.onState?.(result);
+            } };
+        }
         async function mount(host, query, config) {
             const scope = current(), token = generation, mountToken = mountGeneration;
             const target = state(query.surface);
@@ -90,12 +98,9 @@
             try {
                 await initialize();
                 if (token !== generation || mountToken !== mountGeneration || scope !== options.scope() || !host.isConnected || !enabled(query.surface)) return null;
-                for (const [element, instance] of mounts) if (!element.isConnected) { instance.destroy(); mounts.delete(element); }
-                const next = { ...config, session, query, onState: result => {
-                    if (token !== generation || mountToken !== mountGeneration || scope !== options.scope()) return;
-                    if (!config.isolated) apply(query.surface, query, result);
-                    config.onState?.(result);
-                } };
+                for (const [element, instance] of mounts) if (!element.isConnected) { instance.destroy(); mounts.delete(element); mountConfigs.delete(element); }
+                mountConfigs.set(host, { query, config });
+                const next = bindMount(host, query, config);
                 let instance = mounts.get(host);
                 if (instance) instance.update(next);
                 else { instance = module.mountReportRows(host, next); mounts.set(host, instance); }
@@ -108,7 +113,7 @@
             }
         }
         async function load(query, fresh = false) {
-            const scope = current(), token = generation, target = state(query.surface);
+            const scope = current(), token = generation, inventoryToken = inventoryGeneration, target = state(query.surface);
             const key = JSON.stringify(query);
             if (target.pendingKey === key) return target.promise;
             target.pendingKey = key; target.loading = true;
@@ -117,10 +122,11 @@
             if (query.operation !== 'metadata') target.queryKey = key;
             options.onState?.(query.surface, target);
             target.promise = initialize().then(() => {
+                if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
                 if (!enabled(query.surface) || !session) throw new Error('Paged reports are unavailable.');
                 return fresh ? session.refresh(query) : session.read(query);
             }).then(page => {
-                if (token !== generation || scope !== options.scope()) throw abortError();
+                if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
                 if (query.operation === 'metadata') {
                     acceptMetadata(query.surface, page);
                     target.loading = false; target.error = '';
@@ -128,17 +134,19 @@
                 } else apply(query.surface, query, { page, rows:page.rows, initialLoading:false, refreshing:false });
                 return page;
             }).catch(error => {
-                if (token === generation && error.name !== 'AbortError') {
+                if (token === generation && inventoryToken === inventoryGeneration && error.name !== 'AbortError') {
                     target.error = enabled(query.surface) ? String(error.message || error) : ''; target.loading = false;
                     options.onState?.(query.surface, target);
                 }
                 return null;
-            }).finally(() => { if (token === generation && target.pendingKey === key) target.pendingKey = ''; });
-            return target.promise;
+            }).finally(() => { if (token === generation && inventoryToken === inventoryGeneration && target.pendingKey === key) { target.pendingKey = ''; target.promise = null; } });
+            const pending = target.promise;
+            return pending;
         }
         async function readComplete(query, fresh = true) {
-            const scope = current(), token = generation;
+            const scope = current(), token = generation, inventoryToken = inventoryGeneration;
             await initialize();
+            if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
             if (!enabled(query.surface)) throw new Error('Paged reports are unavailable.');
             const controller = new AbortController(); controllers.add(controller);
             try {
@@ -146,7 +154,7 @@
                 do {
                     const request = { ...query, offset, limit: query.operation === 'groups' ? 25 : 100, ...(revision ? { sourceRevision: revision } : {}) };
                     const page = await (fresh ? session.refresh(request, controller.signal) : session.read(request, controller.signal));
-                    if (token !== generation || scope !== options.scope()) throw abortError();
+                    if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
                     if (revision && page.sourceRevision !== revision) throw new Error('Report source changed. Refresh and retry.');
                     revision = page.sourceRevision; total = page.total;
                     for (const row of page.rows) {
@@ -165,14 +173,41 @@
         function refresh(surface) {
             current(); const target = state(surface);
             target.completeItems.clear();
-            mounts.forEach((instance, host) => { if (!host.isConnected) { instance.destroy(); mounts.delete(host); } else instance.refresh?.(); });
+            mounts.forEach((instance, host) => {
+                if (!host.isConnected) { instance.destroy(); mounts.delete(host); mountConfigs.delete(host); return; }
+                const saved = mountConfigs.get(host);
+                if (saved) {
+                    instance.update(bindMount(host, saved.query, saved.config));
+                    instance.refresh?.();
+                }
+                else instance.refresh?.();
+            });
+        }
+        function invalidateInventory() {
+            current();
+            inventoryGeneration += 1;
+            if (session) session.invalidateInventory ? session.invalidateInventory() : session.invalidate();
+            states.forEach((target, surface) => {
+                target.completeItems?.clear(); target.itemRows?.clear();
+                target.pendingKey = ''; target.promise = null;
+                target.page = null; target.rows = []; target.revision = ''; target.expectedRevision = '';
+                target.metadata = {}; target.loading = false; target.error = '';
+                options.onState?.(surface, target);
+            });
+            mounts.forEach((instance, host) => {
+                if (!host.isConnected) { instance.destroy(); mounts.delete(host); mountConfigs.delete(host); return; }
+                const saved = mountConfigs.get(host);
+                if (saved) instance.update(bindMount(host, saved.query, saved.config));
+                instance.refresh?.();
+            });
         }
         async function readPage(query, signal) {
-            const scope = current(), token = generation;
+            const scope = current(), token = generation, inventoryToken = inventoryGeneration;
             await initialize();
+            if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
             if (!enabled(query.surface) || !session) throw new Error('Paged reports are unavailable.');
             const page = await session.refresh(query, signal);
-            if (token !== generation || scope !== options.scope()) throw abortError();
+            if (token !== generation || inventoryToken !== inventoryGeneration || scope !== options.scope()) throw abortError();
             return page;
         }
         function acceptMetadata(surface, page) {
@@ -192,10 +227,10 @@
         }
         function suspendMounts() {
             mountGeneration += 1;
-            mounts.forEach(instance => instance.destroy()); mounts.clear();
+            mounts.forEach(instance => instance.destroy()); mounts.clear(); mountConfigs.clear();
             options.onSuspend?.();
         }
-        return { state, enabled, initialize, mount, load, readPage, acceptMetadata, readComplete, refresh, clear, suspendMounts, getSession:() => { current(); return session; } };
+        return { state, enabled, initialize, mount, load, readPage, acceptMetadata, readComplete, refresh, invalidateInventory, clear, suspendMounts, getSession:() => { current(); return session; } };
     }
     return { createController };
 });
