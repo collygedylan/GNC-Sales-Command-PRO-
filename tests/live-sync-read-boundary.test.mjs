@@ -562,6 +562,7 @@ test('settings-only updates rebuild current-season collections from verified inv
         getSupabaseReadIdentityScope: () => context.scope,
         getProductionLiveSyncContext: () => ({ adapters: [{ id: 'side:settings' }] }),
         getDatasetState: () => state, TRACKED_VIEW_IDS: [], invalidateResolvedViewStateCaches() {}, markViewDirty() {}, persistCurrentCache() {}, scheduleProductionLiveSyncRender() {},
+        refreshLiveLocMatchQuantityPreviews() {},
         processAndLoadData: (payload) => { calls.push(payload); ctx.visibleRows = payload.data.filter((row) => row.SEASON === ctx.season); }
     };
     vm.createContext(ctx); vm.runInContext(`this.commit = ${callback}`, ctx);
