@@ -7,7 +7,7 @@ const yaml = createRequire(import.meta.url)('js-yaml');
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const workflow = file => yaml.load(read('.github/workflows/' + file));
 
-test('root agent instructions persist the pipeline policy and explicit monitoring rule', () => {
+test('root agent instructions persist the pipeline policy and automatic deployment protocol', () => {
   const policy = read('AGENTS.md');
   for (const rule of [
     /frontend publication and Supabase\/Apps Script backend deployment are decoupled/,
@@ -16,7 +16,10 @@ test('root agent instructions persist the pipeline policy and explicit monitorin
     /Do not fix unrelated legacy phone layout tests, layout snapshots/,
     /final GitHub Pages workflow succeeds[\s\S]*immutable fingerprint check pass/,
     /job timeout is a safety limit, not an expected deployment duration/,
-    /Monitor only when the user explicitly requests it for the current task/,
+    /## PERMANENT OVERRIDE: Fully Automated CI\/CD Deployment Protocol/,
+    /automatically create the PR and immediately merge it into the `main` branch/,
+    /Monitor the GitHub Actions workflows until completion/,
+    /frontend and backend publication processes are 100% complete/,
   ]) assert.match(policy, rule);
   assert.doesNotMatch(policy, /FIRE-AND-FORGET|STAY AWAKE|gh pr checks --watch/);
 });
