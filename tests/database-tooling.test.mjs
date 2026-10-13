@@ -619,6 +619,14 @@ test('historical report fixture retains production task columns required by the 
   }
 });
 
+test('bounded report RPC types follow the generated public function order', () => {
+  const types = readFileSync(path.join(root, 'supabase/functions/_shared/database.types.ts'), 'utf8');
+  const outbox = types.indexOf('      manager_ncr_outbox_metadata_v1: {');
+  const reports = types.indexOf('      manager_report_read_v2: {');
+  const season = types.indexOf('      manager_season_priority_list_v1: {');
+  assert.ok(outbox >= 0 && reports > outbox && season > reports);
+});
+
 test('historical master rows retain production Hold release approval types for V6 replay', () => {
   const fixture = readFileSync(path.join(root, 'supabase/ci/request_workflow_baseline.sql'), 'utf8');
   const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');
