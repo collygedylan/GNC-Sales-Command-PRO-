@@ -21,6 +21,7 @@ const photoOwnedValueSource = between('function getLocPhotoOwnedValue(', 'functi
 const normalizePhotoSource = between('function normalizeRowPhotoFields(', 'function getSharedAppPhotoName(');
 const masterEvidenceSyncKeysSource = between('const MASTER_EVIDENCE_SYNC_KEYS = [', 'const EXACT_ROW_SYNC_KEYS');
 const masterSyncSource = between('function syncMasterFieldsToRow(', 'const REQUEST_ROW_OWNED_SYNC_KEYS');
+const itemLocationKeySource = between('function getInventoryCardItemLocationKey(', 'function addInventoryCardLocationOnHand(');
 const preserveDriveEvidenceSource = between('function preserveConfirmedDriveEvidence(', 'function reconcileConfirmedDriveEvidence(');
 const clearPayloadSource = between('function buildMasterAvRuleClearPayload(', 'function getDetailPhotoUrls(');
 const explicitClearSource = between('async function clearCurrentSectionData(', 'function movePhotoInSet(');
@@ -45,6 +46,7 @@ function harness(options = {}) {
     navigator: { onLine: true },
     crypto: { randomUUID: () => `test-${calls.length}` },
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim() !== '') ?? '',
+    normalizeNcrInheritanceKeyPart: value => String(value ?? '').trim().toUpperCase(),
     normalizeAppTableName: (value) => value,
     normalizeFlyerShadowFields: (row) => row,
     sortPhotoCsvPairByCaptureOrder: (photoCsv, photoNameCsv) => ({ photoCsv: String(photoCsv ?? ''), photoNameCsv: String(photoNameCsv ?? '') }),
@@ -111,6 +113,7 @@ function harness(options = {}) {
     showToast() {},
   };
   vm.createContext(ctx);
+  vm.runInContext(itemLocationKeySource, ctx);
   vm.runInContext(`${evalSecurityHelpers}\n${photoOwnedValueSource}\n${normalizePhotoSource}\n${masterEvidenceSyncKeysSource}\n${masterSyncSource}\n${preserveDriveEvidenceSource}\n${ownedStateSource}\n${adoptionSource}\n${formatterSource}\n${displaySource}\n${seasonListSource}\n${exportContextSource}\n${remoteSource}\n${realtimeDetailSource}\n${clearPayloadSource}\n${explicitClearSource}\n${officeHydrationSource}\n${fieldDisplaySource}\nfunction completionRefresh(artifacts, itemToSave, trackedChangeFlags, hasProtectedSeasonArtifacts = true) { ${completionRefreshSource}\nreturn refreshProtectedSeasonOffice; }`, ctx);
   return { ctx, calls, master, writes, rendered };
 }

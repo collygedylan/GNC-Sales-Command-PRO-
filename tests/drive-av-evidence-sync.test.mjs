@@ -42,6 +42,12 @@ function runtime() {
     getSupabaseReadIdentityScope: () => c.scope, getFlyerShadowKeys: () => [],
     getDatasetKeysForTable: () => ['master', 'avOpen'], touchDatasetLoadStateForLocalChange() {},
     rebuildMasterInventoryIndexes() {}, normalizeAppTableName: value => value,
+    normalizeNcrInheritanceKeyPart: value => String(value ?? '').trim().toUpperCase(),
+    getInventoryCardItemLocationKey: item => {
+      const itemCode = String(item?.ITEMCODE ?? item?.itemcode ?? '').trim().toUpperCase();
+      const locationCode = String(item?.LOCATIONCODE ?? item?.locationcode ?? item?.location_code ?? '').trim().toUpperCase();
+      return itemCode && locationCode ? JSON.stringify([itemCode, locationCode]) : '';
+    },
     repairDisplayFieldsOnRow: value => value, buildSearchIndex: value => value,
     isFlyerFolderRow: () => false, findLinkedMasterRow: item => c.fullInventory.find(row => row.UNIQUE_ID === item.UNIQUE_ID),
     shouldIncludeMasterItemInAvSeasonView: item => item.SEASON !== 'X',
@@ -54,15 +60,16 @@ function runtime() {
     shouldDeferInteractiveBackgroundWork: () => false,
     queueInteractiveViewRender: id => rendered.push(id),
   });
-  const constants = ['ROW_SCOPED_DESIGNATION_SYNC_KEYS', 'MASTER_EVIDENCE_SYNC_KEYS', 'LINKED_ROW_SYNC_KEYS', 'EVAL_TASK_ROW_SYNC_KEYS', 'EXACT_ROW_SYNC_KEYS']
+  const constants = ['ROW_SCOPED_DESIGNATION_SYNC_KEYS', 'MASTER_EVIDENCE_SYNC_KEYS', 'LINKED_ROW_SYNC_KEYS', 'EVAL_TASK_ROW_SYNC_KEYS', 'LOC_ON_HAND_SYNC_KEYS', 'EXACT_ROW_SYNC_KEYS']
     .map(name => html.match(new RegExp(`        const ${name} = [^\\n]+`))?.[0]).join('\n');
   const names = ['firstNonEmptyValue', 'parseAppNumber', 'parsePhotoCsvValues', 'mergePhotoCsvList', 'getLocPhotoOwnedValue',
+    'invalidateLocOnHandAggregateRows', 'clearAcceptedLocOnHandAggregates',
     'normalizeFlyerShadowFields', 'getSharedAppPhotoName', 'normalizeRowPhotoFields', 'clonePhotoFields',
     'sortPhotoCsvPairByCaptureOrder', 'getPhotoCaptureOrderKey', 'getPhotoCaptureOrderParts', 'decodePhotoOrderText',
     'getPhotoAliasFieldsForPrefix', 'setPhotoAliasFieldsForPrefix', 'syncSharedFlyerPhotoFields',
     'syncMasterFieldsToRow', 'syncRowDataAcrossViews', 'propagateCommittedEdit', 'formatFetchedRows',
     'buildConfirmedDriveEvidenceState', 'preserveConfirmedDriveEvidence', 'reconcileConfirmedDriveEvidence'];
-  vm.runInContext(evalSecurityHelpers + '\n' + constants + '\n' + names.map(source).join('\n'), c);
+  vm.runInContext('let acceptedLocOnHandAggregateReceipt = { scope:"", permission:"", revision:"", valid:false };\n' + evalSecurityHelpers + '\n' + constants + '\n' + names.map(source).join('\n'), c);
   const [master] = c.formatFetchedRows([row({ last_updated: '2026-10-06T18:00:00Z', photo_link: null, photo_name: null, spec: 'old', av_rule_photo_updated_at: '2026-08-01T18:00:00Z' })], 'ph_master_inventory');
   master.DOM_ID = 'fi_0';
   c.fullInventory = [master]; c.avOpenInventory = [{ ...master, DOM_ID: 'avo_drive-one' }];

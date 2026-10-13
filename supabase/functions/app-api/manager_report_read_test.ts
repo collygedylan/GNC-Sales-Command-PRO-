@@ -35,9 +35,20 @@ async function mockDatabase<T>(options: {
     if (url.pathname === "/rest/v1/profiles") return json(options.profile === undefined ? activeProfile : options.profile);
     if (url.pathname === "/rest/v1/rpc/app_account_active_v1") return json(options.accountActive !== false);
     if (url.pathname === "/rest/v1/app_dataset_revisions") return json({ revision: 9, state: "ready" });
-    if (url.pathname === "/rest/v1/ph_master_inventory") return Promise.resolve(new Response("[]", {
+    if (url.pathname === "/rest/v1/ph_master_inventory") return Promise.resolve(new Response(JSON.stringify([{
+      unique_id: "ncr-row-1", itemcode: "001973.030.1", locationcode: "I.12.000",
+      app_tab_assignment: "ncr_outbox_new_crop", priority: 2,
+      ncr_approval_message: '[[GNC_NCR_ITEM_INQUIRY:{"activeRows":[{}]}]]',
+    }]), {
       status: 200, headers: { "content-type": "application/json", "content-range": "0-0/3" },
     }));
+    if (url.pathname === "/rest/v1/rpc/inventory_location_on_hand_read_v1") {
+      const args = body as { p_pairs?: Array<{ itemcode: string; locationcode: string }>; p_expected_revision?: string };
+      const pairs = Array.isArray(args.p_pairs) ? args.p_pairs : [];
+      return json({ inventoryRevision: "12", rows: pairs.map(pair => ({
+        itemcode: pair.itemcode, locationcode: pair.locationcode, loc_on_hand: 2000, loc_on_hand_revision: "12",
+      })) });
+    }
     if (url.pathname === "/rest/v1/rpc/manager_report_read_v2") {
       if (options.rpcError) return json({ message: options.rpcError.message, code: options.rpcError.code || "40001" }, options.rpcError.status || 409);
       return json(options.rpcData ?? { ok: true, version: "manager-report-read-v2", surfaces: ["eval1", "eval2", "ncr"] });
@@ -111,6 +122,9 @@ Deno.test("NCR approval outbox uses an authorized exact-assignment bounded page 
     assertEquals(body.data.hasMore, true);
     assertEquals(body.data.metadata.activeLineCount, 7);
     assertEquals(body.data.metadata.assignments, ["ncr_outbox_new_crop"]);
+    assertEquals(body.data.inventoryRevision, "12");
+    assertEquals(body.data.rows[0].loc_on_hand, 2000);
+    assertEquals(body.data.rows[0].loc_on_hand_revision, "12");
     const inventory = calls.find(call => call.path === "/rest/v1/ph_master_inventory");
     assertEquals(inventory?.query.get("app_tab_assignment"), "in.(ncr_outbox_new_crop)");
     assertEquals(inventory?.query.getAll("ncr_approval_message"), ["like.%[[GNC_NCR_ITEM_INQUIRY:%", "like.%\"activeRows\":[{%"]);
@@ -118,6 +132,11 @@ Deno.test("NCR approval outbox uses an authorized exact-assignment bounded page 
     assertEquals(inventory?.query.get("limit"), "100");
     assertEquals(inventory?.query.get("select")?.includes("ncr_approval_message"), true);
     assertEquals(inventory?.query.get("priority"), "not.is.null");
+    const locationReads = calls.filter(call => call.path.endsWith("inventory_location_on_hand_read_v1"));
+    assertEquals(locationReads.length, 2, "outbox pagination captures then fences the inventory aggregate revision");
+    assertEquals((locationReads[0].body as Record<string, unknown>).p_pairs, []);
+    assertEquals((locationReads[1].body as Record<string, unknown>).p_pairs, [{ itemcode: "001973.030.1", locationcode: "I.12.000" }]);
+    assertEquals((locationReads[1].body as Record<string, unknown>).p_expected_revision, "12");
     assertEquals(calls.filter(call => call.path.endsWith("manager_ncr_outbox_metadata_v1")).length, 2);
   });
 });
