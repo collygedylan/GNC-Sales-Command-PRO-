@@ -3826,7 +3826,10 @@ async function handleInventoryRead(
       const source = String(params.source || "").trim();
       const season = String(params.season || "").trim();
       if (dataset === "lookup" && !uniqueId && !itemCode) throw new Error("INVENTORY_READ_FILTER_REQUIRED");
-      if (dataset === "lookup" && !uniqueId && (locationCode || lotCode || source) && !(locationCode && lotCode && source)) throw new Error("INVENTORY_READ_FILTER_INVALID");
+      const hasLookupScope = Boolean(locationCode || lotCode || source);
+      const pairLookup = Boolean(itemCode && locationCode && !lotCode && !source);
+      const exactRowLookup = Boolean(locationCode && lotCode && source);
+      if (dataset === "lookup" && !uniqueId && hasLookupScope && !pairLookup && !exactRowLookup) throw new Error("INVENTORY_READ_FILTER_INVALID");
       if (dataset !== "lookup" && (uniqueId || itemCode || locationCode || lotCode || source || season)) throw new Error("INVENTORY_READ_FILTER_INVALID");
       if (dataset === "avOpen" && projection === "initial") throw new Error("INVENTORY_READ_PROJECTION_INVALID");
       if (dataset === "avOpen" && season) throw new Error("INVENTORY_READ_FILTER_INVALID");
@@ -3840,7 +3843,8 @@ async function handleInventoryRead(
         if (uniqueId) response.eq("unique_id", uniqueId);
         else {
           response.eq("itemcode", itemCode);
-          if (locationCode && lotCode && source) response.eq("locationcode", locationCode).eq("lotcode", lotCode).eq("source", source);
+          if (locationCode) response.eq("locationcode", locationCode);
+          if (exactRowLookup) response.eq("lotcode", lotCode).eq("source", source);
         }
       }
       if (season) response.eq("season", season);

@@ -37324,10 +37324,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 subscribe: (changed, reconnected) => {
                     const client = getSupabaseBrowserClient();
+                    const statusSync = getInventoryStatusSync();
+                    const statusScope = getSupabaseReadIdentityScope();
                     const channel = client.channel(`dataset-revisions:${nativeAuthProfile.id}`)
                         .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' }, changed)
-                        .subscribe((state) => { if (state === 'SUBSCRIBED') reconnected(); });
-                    return () => { client.removeChannel(channel).catch(() => {}); };
+                        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ph_master_inventory' }, payload => {
+                            if (statusScope === getSupabaseReadIdentityScope()) statusSync?.handleUpdate(payload);
+                        })
+                        .subscribe((state) => {
+                            if (state === 'SUBSCRIBED' && statusScope === getSupabaseReadIdentityScope()) { statusSync?.resume(); reconnected(); }
+                        });
+                    return () => { statusSync?.suspend(); client.removeChannel(channel).catch(() => {}); };
                 }
             });
             return productionLiveSyncCoordinator;
@@ -37366,6 +37373,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function resetProductionLiveSync() {
+            inventoryStatusSync?.reset();
+            inventoryStatusRenderedCards.clear();
+            inventoryStatusPendingSaves.forEach(entry => clearTimeout(entry.timer));
+            inventoryStatusPendingSaves.clear();
             resetDashboardSyncMetadataForPermissionChange();
             managerReportPageController?.clear();
             managerReportScopedRows.clear();
@@ -37421,6 +37432,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (type !== 'session') invalidateProductionLiveSyncProofForSuspend();
             } else if (['resume', 'visibility', 'online', 'offline'].includes(type)) {
                 signalProductionLiveSync(reason, 0);
+                if (!document.hidden && navigator.onLine !== false) {
+                    inventoryStatusPendingSaves.forEach(entry => { void entry.run?.().catch(() => {}); });
+                }
             }
         });
         document.addEventListener('focusout', () => {
@@ -39851,7 +39865,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (button) button.disabled = true;
                 persistEvalWorkLocalDraft(work.id, inquiry, evidenceByOrigin || evidence, work.version);
                 const submissionToken = `eval-submit-${work.id}-v${work.version}`;
-                const result = await evalWorkApi('submit', { workId: work.id, expectedVersion: work.version, inquiry, ...(evidenceByOrigin ? { evidenceByOrigin } : { evidence }), submissionToken }, { timeoutMs: 45000, idempotencyKey: submissionToken });
+                const result = await runInventoryStatusMutation({ ...inquiry, submissionToken }, () =>
+                    evalWorkApi('submit', { workId: work.id, expectedVersion: work.version, inquiry, ...(evidenceByOrigin ? { evidenceByOrigin } : { evidence }), submissionToken }, { timeoutMs: 45000, idempotencyKey: submissionToken }),
+                    { recovered: () => { void loadEvalWorkAssignments(true); } });
                 if (!submitIdentityIsCurrent()) return false;
                 const liveEditRequested = [RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION, RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION].includes(inquiry.workflowPolicyVersion);
                 const liveEditsRefreshed = !liveEditRequested || await refreshEvalWorkLiveEditsAfterSubmit(submitIdentityKey);
@@ -39876,6 +39892,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 if (!submitContextIsCurrent()) return false;
                 const code = String(error && error.payload && error.payload.code || '');
                 const rawError = String(error && error.message ? error.message : 'Eval Work could not be sent.');
+                if (error.inventoryStatusPending) {
+                    showToast('Saving Changes', 'Confirmation is delayed. This save will retry automatically.');
+                    return false;
+                }
                 const fallback = /eval_work_report2_completion_recipient_unavailable/i.test(`${code} ${rawError}`)
                     ? 'A required Item Inquiry reviewer does not currently have an active verified email. No completion was sent; review the account and retry.'
                     : (code.includes('conflict') ? 'Current inventory or settings changed. Refresh and reopen this Eval Work.' : rawError);
@@ -51128,13 +51148,248 @@ let avTopControlsRenderToken = 0;
             if (!document.hidden) void pollReclassDeliveryJobs();
         }, { passive: true });
 
+        let inventoryStatusSync = null;
+        const inventoryStatusRenderedCards = new Map();
+        const inventoryStatusPendingSaves = new Map();
+
+        function getInventoryStatusSync() {
+            if (inventoryStatusSync) return inventoryStatusSync;
+            if (!window.GncDatabase?.createInventoryStatusSync) return null;
+            inventoryStatusSync = window.GncDatabase.createInventoryStatusSync({
+                getScope: () => nativeAuthProfile?.id ? getSupabaseReadIdentityScope() : '',
+                fetchPair: async (pair, { signal }) => {
+                    const rows = [];
+                    let offset = 0, revision = '';
+                    do {
+                        const page = await requestInventoryRead('master_page', {
+                            dataset: 'lookup', projection: 'full', itemCode: pair.itemcode,
+                            locationCode: pair.locationcode, limit: 500, offset
+                        }, { signal });
+                        validateInventoryReadProjection(page, { projection: 'full' });
+                        if (!isConfirmedInventoryReadRevisionCurrent(page.inventoryRevision)
+                            || revision && revision !== String(page.inventoryRevision)) {
+                            throw new Error('Inventory changed during the status refresh. Retrying.');
+                        }
+                        revision = String(page.inventoryRevision || '');
+                        rows.push(...page.rows);
+                        if (!page.hasMore) break;
+                        if (!page.rows.length) throw new Error('The inventory status page was incomplete.');
+                        offset += page.rows.length;
+                    } while (!signal.aborted);
+                    if (signal.aborted) throw new DOMException('Status refresh cancelled', 'AbortError');
+                    return rows;
+                },
+                onRows: (rows) => {
+                    rows.forEach((raw) => {
+                        const uid = String(raw.unique_id || raw.UNIQUE_ID || '');
+                        const current = findItemByUniqueId(uid);
+                        const incomingRevision = window.GncDatabase.driveEvidenceRevision(raw.last_updated || raw.LAST_UPDATED);
+                        const currentRevision = window.GncDatabase.driveEvidenceRevision(current?.last_updated || current?.LAST_UPDATED);
+                        if (currentRevision > incomingRevision || !incomingRevision) return;
+                        const status = {};
+                        ['priority', 'holdstopcode', 'holdstopreason'].forEach(key => { status[key] = status[key.toUpperCase()] = raw[key] ?? raw[key.toUpperCase()] ?? ''; });
+                        const evidence = Object.fromEntries(window.GncDatabase.driveEvidenceColumns.map(key => [key, raw[key] ?? null]));
+                        applyArgosInventoryTransactionReturnedRow({ ...raw, ...status }, uid, { confirmedEvidence: evidence });
+                    });
+                    const revision = String(rows[0]?.loc_on_hand_revision || rows[0]?.LOC_ON_HAND_REVISION || '');
+                    const identity = getArgosReclassLiveEditIdentityKey();
+                    if (/^[1-9]\d*$/.test(revision) && BigInt(revision) > BigInt(confirmedArgosReclassLiveEditRevisions.get(identity) || '0')) {
+                        confirmedArgosReclassLiveEditRevisions.set(identity, revision);
+                    }
+                    persistCurrentCache();
+                    paintInventoryStatusCards();
+                },
+                onDisplayChange: () => paintInventoryStatusCards(),
+                onError: () => { /* Keep current display while the pair reader retries. */ }
+            });
+            return inventoryStatusSync;
+        }
+
+        // Only replace individual display cards. Draft dialogs, search inputs,
+        // selection state and canonical inventory objects never receive optimism.
+        function paintInventoryStatusCards() {
+            if (!inventoryStatusSync || document.hidden) return;
+            const scroller = document.getElementById('main-scroll-area');
+            const scrollTop = scroller?.scrollTop;
+            document.querySelectorAll('[data-dom-id]').forEach((node) => {
+                const entry = inventoryStatusRenderedCards.get(node.getAttribute('data-dom-id'));
+                if (!entry || node.contains(document.activeElement) && document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')) return;
+                const current = findItemByUniqueId(entry.uid) || entry.row;
+                const display = inventoryStatusSync.getDisplayRow(current);
+                const signature = inventoryStatusCardSignature(display);
+                if (signature === entry.signature) return;
+                const template = document.createElement('template');
+                template.innerHTML = generateCard(current, entry.sourceView, entry.colorClass, entry.renderMeta);
+                if (template.content.firstElementChild) node.replaceWith(template.content.firstElementChild);
+            });
+            document.querySelectorAll('[data-season-priority-card]').forEach(node => {
+                const uid = node.getAttribute('data-season-priority-card');
+                const row = managerSeasonPriorityState?.rows?.find(row => row.sourceUid === uid);
+                if (!row) return;
+                const display = inventoryStatusSync.getDisplayRow({ ...row, unique_id: uid });
+                const value = node.querySelector('[data-inventory-priority-value]');
+                if (value) value.textContent = String(display.priority ?? display.PRIORITY ?? '—');
+            });
+            if (scroller && scrollTop !== undefined) scroller.scrollTop = scrollTop;
+        }
+
+        function inventoryStatusCardSignature(row) {
+            return JSON.stringify(['priority', 'holdstopcode', 'holdstopreason', 'last_updated'].map(key => row[key.toUpperCase()] ?? row[key] ?? ''));
+        }
+
+        function buildInventoryStatusPatches(payload) {
+            if (![RECLASS_ACTION_WORKFLOW_V6_POLICY_VERSION, RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION].includes(payload?.workflowPolicyVersion)) return [];
+            const patches = new Map();
+            const modelRows = argosInventoryTransactionState?.inquiryModel?.locationRows || [];
+            const sourceRow = uid => findItemByUniqueId(uid) || modelRows.find(entry => entry.unique_id === uid)?.sourceRow;
+            const patchFor = uid => {
+                if (patches.has(uid)) return patches.get(uid);
+                const row = sourceRow(uid);
+                if (!row) return null;
+                getInventoryStatusSync()?.seed([row]);
+                const patch = { unique_id: uid, itemcode: row.ITEMCODE ?? row.itemcode, locationcode: row.LOCATIONCODE ?? row.locationcode };
+                patches.set(uid, patch);
+                return patch;
+            };
+            (payload.rowOverlays || []).forEach(overlay => {
+                const proposal = (overlay.proposals || []).find(value => value.action === 'priority_change');
+                if (proposal) { const patch = patchFor(overlay.unique_id); if (patch) patch.priority = proposal.priority ?? ''; }
+            });
+            (payload.transaction?.holdStopProposals || []).forEach(proposal => {
+                const targets = getArgosReclassHoldTargetEntries(proposal.action, proposal.sourceUid);
+                const source = sourceRow(proposal.sourceUid);
+                const inferredTargets = !targets.length && source && isArgosReclassHoldScopeEntry({ sourceRow: source })
+                    ? fullInventory.filter(row => getItemInquiryItemCode(row) === getItemInquiryItemCode(source)
+                        && isArgosReclassHoldScopeEntry({ sourceRow: row })).map(row => row.UNIQUE_ID || row.unique_id) : [];
+                const ids = targets.length ? targets.map(entry => entry.unique_id) : inferredTargets.length ? inferredTargets : [proposal.sourceUid];
+                ids.forEach(uid => {
+                    const patch = patchFor(uid);
+                    if (!patch) return;
+                    const display = getInventoryStatusSync()?.getDisplayRow(sourceRow(uid)) || sourceRow(uid);
+                    let code = String(patch.holdstopcode ?? display.HOLDSTOPCODE ?? display.holdstopcode ?? '').trim().toUpperCase();
+                    if (proposal.action === 'hold' && !code.includes('H')) code += 'H';
+                    if (proposal.action === 'stop_ship' && !code.includes('S')) code += 'S';
+                    if (proposal.action === 'take_off_hold') code = code.replaceAll('H', '');
+                    if (proposal.action === 'off_stop_ship') code = code.replaceAll('S', '');
+                    patch.holdstopcode = code;
+                    if (['hold', 'stop_ship'].includes(proposal.action)) patch.holdstopreason = String(proposal.reason || '').trim();
+                    else if (!code) patch.holdstopreason = '';
+                });
+            });
+            return [...patches.values()];
+        }
+
+        function isInventoryStatusOutcomeUncertain(error) {
+            const status = Number(error?.status || error?.httpStatus || error?.payload?.status || 0);
+            return [408, 429, 500, 502, 503, 504].includes(status)
+                || !status && /network|fetch|timeout|timed out|connection|abort/i.test(String(error?.message || ''));
+        }
+
+        async function runInventoryStatusMutation(payload, send, options = {}) {
+            const sync = getInventoryStatusSync();
+            const patches = options.patches || buildInventoryStatusPatches(payload);
+            if (!sync || !patches.length) return await send();
+            const identity = getArgosReclassLiveEditIdentityKey();
+            const scope = getSupabaseReadIdentityScope();
+            const identityIsCurrent = () => identity === getArgosReclassLiveEditIdentityKey() && scope === getSupabaseReadIdentityScope();
+            const key = String(payload.idempotencyToken || payload.submissionToken || '');
+            const existing = key && inventoryStatusPendingSaves.get(key);
+            if (existing) {
+                const error = new Error('This save is still being confirmed automatically.');
+                error.inventoryStatusPending = true;
+                throw error;
+            }
+            const token = sync.begin(patches);
+            const entry = { token, timer: null, identity, run: null, inFlight: false };
+            if (key) inventoryStatusPendingSaves.set(key, entry);
+            const finish = () => { clearTimeout(entry.timer); if (inventoryStatusPendingSaves.get(key) === entry) inventoryStatusPendingSaves.delete(key); };
+            const attempt = async (background = false) => {
+                if (!identityIsCurrent()) { finish(); return null; }
+                if (entry.inFlight) return null;
+                entry.inFlight = true;
+                try {
+                    const result = await send();
+                    if (result?.ok === false || !result) {
+                        throw Object.assign(new Error(result?.message || result?.error || 'The status change was rejected.'), {
+                            status: result?.httpStatus || result?.status || 400, payload: result
+                        });
+                    }
+                    if (!identityIsCurrent()) { finish(); return result; }
+                    let confirmedRows;
+                    const receiptPairs = new Map();
+                    if (Array.isArray(result.liveEdits)) {
+                        applyConfirmedArgosReclassLiveEdits(result, identity);
+                        try {
+                            const receipt = window.GncDatabase.confirmedReclassLiveEditsFromResult(result);
+                            confirmedRows = [];
+                            receipt.liveEdits.forEach(edit => {
+                                const row = findItemByUniqueId(edit.unique_id);
+                                if (row && window.GncDatabase.driveEvidenceRevision(row.last_updated || row.LAST_UPDATED)
+                                    >= window.GncDatabase.driveEvidenceRevision(edit.last_updated)) confirmedRows.push(row);
+                                else if (edit.evidence.itemcode && edit.evidence.locationcode) {
+                                    const pair = { itemcode: edit.evidence.itemcode, locationcode: edit.evidence.locationcode };
+                                    receiptPairs.set(JSON.stringify(pair), pair);
+                                }
+                            });
+                        } catch { /* Invalid receipts are repaired by authenticated pair reads. */ }
+                    }
+                    // Validated receipts retire only confirmed rows; missing rows retry by pair.
+                    void sync.confirm(token, confirmedRows).catch(() => {});
+                    receiptPairs.forEach(pair => { void sync.revalidate(pair); });
+                    finish();
+                    if (background) {
+                        if (!options.recovered) rememberQueuedReclassDelivery(payload, result, getCurrentReclassDeliveryActor(), payload.sourceContext?.sourceMode || 'drive');
+                        else options.recovered(result);
+                        showToast('Changes Saved', 'Inventory is updating automatically.');
+                        void pollReclassDeliveryJobs();
+                    }
+                    return result;
+                } catch (error) {
+                    if (!identityIsCurrent()) { finish(); throw error; }
+                    if (key && isInventoryStatusOutcomeUncertain(error)) {
+                        error.inventoryStatusPending = true;
+                        entry.timer = setTimeout(() => {
+                            if (!document.hidden && navigator.onLine !== false) void attempt(true).catch(() => {});
+                        }, 5000);
+                    } else {
+                        await sync.rollback(token);
+                        finish();
+                        if (background) showToast('Save Not Applied', error.message, true);
+                    }
+                    throw error;
+                } finally { entry.inFlight = false; }
+            };
+            entry.run = () => { clearTimeout(entry.timer); return attempt(true); };
+            const toast = document.getElementById('toast-notification');
+            if (toast?.querySelector('.toast-title')?.textContent === 'Inquiry Queued') dismissToast('inventory-status-save');
+            return await attempt();
+        }
+
+        function buildManagerPriorityStatusPatches(row, expectedPriority) {
+            const rows = new Map();
+            fullInventory.filter(item => getItemInquiryItemCode(item) === String(row.itemcode || '').trim().toUpperCase())
+                .forEach(item => rows.set(String(item.UNIQUE_ID || item.unique_id), item));
+            (managerSeasonPriorityState?.rows || []).filter(item => item.itemcode === row.itemcode).forEach(item => {
+                if (!rows.has(item.sourceUid)) rows.set(item.sourceUid, { ...item, unique_id: item.sourceUid });
+            });
+            rows.set(row.sourceUid, rows.get(row.sourceUid) || { ...row, unique_id: row.sourceUid });
+            getInventoryStatusSync()?.seed([...rows.values()]);
+            return [...rows.entries()].flatMap(([uid, item]) => {
+                const priority = String(item.PRIORITY ?? item.priority ?? '').trim();
+                const target = uid === row.sourceUid ? '1'
+                    : /^[1-4]$/.test(priority) && Number(priority) < Number(expectedPriority) ? String(Number(priority) + 1) : priority;
+                return target === priority ? [] : [{ unique_id: uid, itemcode: item.ITEMCODE ?? item.itemcode,
+                    locationcode: item.LOCATIONCODE ?? item.locationcode, priority: target }];
+            });
+        }
+
         async function postArgosInventoryTransactionPayload(payload) {
             if (payload && payload.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION || isProtectedDriveReclassPayload(payload)) {
                 if (payload && payload.workflowPolicyVersion === RECLASS_ACTION_WORKFLOW_V7_POLICY_VERSION) window.GncDatabase.validateReclassEditableFieldProposals(payload);
-                return await driveReclassApi('create', payload, {
+                return await runInventoryStatusMutation(payload, () => driveReclassApi('create', payload, {
                     timeoutMs: 18000,
                     idempotencyKey: String(payload && payload.idempotencyToken || '').trim()
-                });
+                }));
             }
             const transactionHeaders = await getNativeAuthRequestHeaders();
             const transactionToken = String(transactionHeaders?.Authorization || '').replace(/^Bearer\s+/i, '');
@@ -51451,9 +51706,9 @@ let avTopControlsRenderToken = 0;
                     if (unavailableUsers.length) {
                         showToast('Recipient Notice', `Sent to available recipients. Unavailable: ${unavailableUsers.join(', ')}.`);
                     } else if (liveEditRequested && liveEditResult && (liveEditResult.stale || liveEditResult.applied === 0)) {
-                        showToast('Inquiry Queued', 'The inquiry was queued, but live inventory needs a refresh before it can be confirmed.', true);
+                        showToast('Updating Inventory', 'Your inquiry was accepted. The latest inventory status is being refreshed automatically.');
                     } else if (liveEditRequested && liveEditResult && liveEditResult.applied > 0) {
-                        showToast('Inquiry Queued', 'Live edits are confirmed. The inquiry is queued for delivery.');
+                        showToast('Changes Saved', 'Live edits are confirmed. The inquiry is queued for delivery.');
                     }
                     void pollReclassDeliveryJobs();
                     return false;
@@ -51496,6 +51751,10 @@ let avTopControlsRenderToken = 0;
                 if (currentViewId) queueInteractiveViewRender(currentViewId, false, false, 0, 120);
             } catch (error) {
                 if (!submitContextIsCurrent()) return false;
+                if (error.inventoryStatusPending) {
+                    showToast('Saving Changes', 'Confirmation is delayed. This save will retry automatically.');
+                    return false;
+                }
                 if (window.__gncOpsPilot && typeof window.__gncOpsPilot.captureFailure === 'function') {
                     window.__gncOpsPilot.captureFailure('commit', error);
                 }
@@ -71043,11 +71302,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 liveHoldRemovalAttempts.delete(key);
                 if (identity !== getArgosReclassLiveEditIdentityKey()) return false;
                 const applied = applyConfirmedArgosReclassLiveEdits(result, identity);
-                showToast('Inquiry Queued', applied.stale || !applied.applied
-                    ? 'The inquiry is queued. Refresh inventory to see the confirmed Hold removal.'
-                    : 'Hold removed. Photos and specs are preserved; the Item Inquiry is queued for keyers.', applied.stale);
+                showToast(applied.stale || !applied.applied ? 'Updating Inventory' : 'Hold Removed', applied.stale || !applied.applied
+                    ? 'The inquiry is accepted. Hold status is being refreshed automatically.'
+                    : 'Hold removed. Photos and specs are preserved; the Item Inquiry is queued for keyers.');
                 void pollReclassDeliveryJobs();
                 return true;
+            } catch (error) {
+                if (!error.inventoryStatusPending) throw error;
+                showToast('Saving Changes', 'Confirmation is delayed. This Hold removal will retry automatically.');
+                return false;
             } finally { attempt.pending = false; }
         }
 
@@ -139865,7 +140128,7 @@ C.14.043 C.15.000
                 const notes = Object.values(row.noteContext || {}).filter(Boolean);
                 const status = awaiting ? `Requested — awaiting import · Delivery: ${request.deliveryStatus || 'queued'}` : request?.lifecycleStatus === 'conflict' ? 'Import differs — review current priorities before requesting again.' : '';
                 const disabled = busy || state.loading || !!state.error || (awaiting && !request.canRetry);
-                return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${escapeHtml(row.sourceUid)}" data-itemcode="${escapeHtml(row.itemcode)}"><h3 class="break-words text-lg font-black text-slate-900">${escapeHtml(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${escapeHtml(row.locationcode)} / ${escapeHtml(row.lotcode || '—')} / ${escapeHtml(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${escapeHtml(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black">${escapeHtml(row.priority)} → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${escapeHtml(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${escapeHtml(notes.join('\n'))}</p>` : ''}<p class="mt-3 text-xs text-slate-500">All other ${escapeHtml(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Inventory is unchanged until imported.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${escapeHtml(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${escJsAttrValue(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
+                return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${escapeHtml(row.sourceUid)}" data-itemcode="${escapeHtml(row.itemcode)}"><h3 class="break-words text-lg font-black text-slate-900">${escapeHtml(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${escapeHtml(row.itemcode)} · ${escapeHtml(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${escapeHtml(row.locationcode)} / ${escapeHtml(row.lotcode || '—')} / ${escapeHtml(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${escapeHtml(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black"><span data-inventory-priority-value>${escapeHtml(getInventoryStatusSync()?.getDisplayRow({ ...row, unique_id: row.sourceUid }).priority ?? row.priority)}</span> → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${escapeHtml(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${escapeHtml(notes.join('\n'))}</p>` : ''}<p class="mt-3 text-xs text-slate-500">All other ${escapeHtml(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Inventory is unchanged until imported.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${escapeHtml(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${escJsAttrValue(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
             }, { estimateSize:grouped ? 100 : 310, layout:'grid', emptyHtml:'<div class="rounded-2xl border border-dashed border-emerald-200 bg-white p-8 text-center text-sm text-slate-600">No selected Season Sales Notes at priority 2, 3, or 4 match these filters.</div>', getKey:value => String(value?.key || value?.sourceUid || ''), onState:result => {
                 if (result.sourceRevision && state.pageRevision && result.sourceRevision !== state.pageRevision) return;
                 if (!grouped) {
@@ -140036,7 +140299,9 @@ C.14.043 C.15.000
             state.pending.add(uid);
             scheduleManagersRender(true);
             try {
-                const result = await driveReclassApi('season_priority_submit', { ...request, idempotencyToken: state.tokens.get(key) }, { timeoutMs: 25000 });
+                const result = await runInventoryStatusMutation({ ...request, idempotencyToken: state.tokens.get(key) },
+                    () => driveReclassApi('season_priority_submit', { ...request, idempotencyToken: state.tokens.get(key) }, { timeoutMs: 25000 }),
+                    { patches: buildManagerPriorityStatusPatches(row, request.expectedPriority), recovered: () => { void loadManagerSeasonPriority(true); } });
                 if (!submitIdentityIsCurrent()) return false;
                 if (!result?.ok) throw new Error(result?.error || 'The request was not accepted. Refresh and review the current priorities.');
                 const liveEditResult = applyConfirmedArgosReclassLiveEdits(result, submitIdentityKey);
@@ -140045,13 +140310,14 @@ C.14.043 C.15.000
                 state.tokens.delete(key);
                 state.requests = [result, ...state.requests.filter(item => item.eventId !== result.eventId)];
                 if (liveEditResult.stale || liveEditResult.applied === 0) {
-                    state.error = 'The priority request was accepted, but live inventory needs a refresh before it can be confirmed.';
+                    showToast('Updating Inventory', 'Your priority change was accepted. Inventory is refreshing automatically.');
                 }
                 if (isManagerSeasonPriorityVisible(state)) loadManagerSeasonPriority(true);
                 else state.needsRefresh = true;
             } catch (error) {
                 if (submitContextIsCurrent()) {
-                    state.error = `${String(error?.message || 'The request could not be confirmed.')} Refresh status before retrying; an accepted request will not be duplicated.`;
+                    if (error.inventoryStatusPending) showToast('Saving Changes', 'Confirmation is delayed. This save will retry automatically.');
+                    else state.error = String(error?.message || 'The request could not be confirmed.');
                 }
             } finally {
                 state.pending.delete(uid);
@@ -140092,7 +140358,7 @@ C.14.043 C.15.000
                     const notes = Object.values(row.noteContext || {}).filter(Boolean);
                     const status = awaiting ? `Requested — awaiting import · Delivery: ${request.deliveryStatus || 'queued'}` : request?.lifecycleStatus === 'conflict' ? 'Import differs — review current priorities before requesting again.' : '';
                     const disabled = busy || state.loading || !!state.error || (awaiting && !request.canRetry);
-                    return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${esc(row.sourceUid)}"><h3 class="break-words text-lg font-black text-slate-900">${esc(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${esc(row.itemcode)} · ${esc(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${esc(row.locationcode)} / ${esc(row.lotcode || '—')} / ${esc(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${esc(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black">${esc(row.priority)} → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${esc(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${esc(notes.join('\n'))}</p>` : ''}<p class="mt-3 text-xs text-slate-500">All other ${esc(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Inventory is unchanged until imported.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${esc(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${js(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
+                    return `<article class="rounded-2xl border border-emerald-200 bg-white p-4 shadow-sm" data-season-priority-card="${esc(row.sourceUid)}"><h3 class="break-words text-lg font-black text-slate-900">${esc(row.commonname || row.itemcode)}</h3><p class="mt-1 break-words text-sm font-bold text-emerald-700">${esc(row.itemcode)} · ${esc(row.contsize)}</p><dl class="mt-3 grid grid-cols-2 gap-3 text-sm text-slate-700"><div><dt class="text-xs text-slate-500">Location / lot / source</dt><dd class="break-words font-bold">${esc(row.locationcode)} / ${esc(row.lotcode || '—')} / ${esc(row.source || '—')}</dd></div><div><dt class="text-xs text-slate-500">Assigned To</dt><dd class="break-words font-bold">${esc(assigned)}</dd></div><div><dt class="text-xs text-slate-500">Current priority</dt><dd class="font-black"><span data-inventory-priority-value>${esc(getInventoryStatusSync()?.getDisplayRow({ ...row, unique_id: row.sourceUid }).priority ?? row.priority)}</span> → requested 1</dd></div><div><dt class="text-xs text-slate-500">PTRAVAILABLE</dt><dd class="font-bold">${esc(row.ptravailable ?? '—')}</dd></div></dl>${notes.length ? `<p class="mt-3 whitespace-pre-wrap break-words text-sm text-slate-600">${esc(notes.join('\n'))}</p>` : ''}<p class="mt-3 text-xs text-slate-500">All other ${esc(row.itemcode)} rows with priorities 1–${Number(row.priority) - 1} move up one number, across all locations and seasons. Inventory is unchanged until imported.</p>${status ? `<p role="status" class="mt-3 break-words text-sm font-bold text-emerald-800">${esc(status)}</p>` : ''}<button type="button" class="mt-4 min-h-[44px] w-full rounded-xl bg-[#007a4d] px-4 py-3 text-sm font-black text-white disabled:opacity-50" onclick="submitManagerSeasonPriority('${js(row.sourceUid)}',${awaiting && request.canRetry ? 'true' : 'false'})" ${disabled ? 'disabled' : ''}>${busy ? 'Submitting…' : awaiting && request.canRetry ? 'Retry delivery' : awaiting ? 'Requested — awaiting import' : 'Make Priority 1'}</button></article>`;
                 }).join('') + '</div>';
             }
             return html + '</section>';
@@ -146009,6 +146275,18 @@ C.14.043 C.15.000
         }
 
         function generateCard(item,sourceView,colorClass='status-green', renderMeta={}) {
+            const canonicalStatusRow = item;
+            const statusSync = getInventoryStatusSync();
+            if (statusSync && item && String(item.SOURCE_TABLE || item.source_table || 'ph_master_inventory') === 'ph_master_inventory') {
+                statusSync.seed([item]);
+                item = statusSync.getDisplayRow(item);
+                if (item.DOM_ID) {
+                    inventoryStatusRenderedCards.set(String(item.DOM_ID), { row: canonicalStatusRow,
+                        uid: String(item.UNIQUE_ID || item.unique_id || ''), sourceView, colorClass, renderMeta,
+                        signature: inventoryStatusCardSignature(item) });
+                    if (inventoryStatusRenderedCards.size > 5000) inventoryStatusRenderedCards.delete(inventoryStatusRenderedCards.keys().next().value);
+                }
+            }
             item = buildDockSuspendDcRequestCardDisplayItem(item, sourceView);
             normalizeRowPhotoFields(item);
             const resolvedCardUniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, item && item.ID, item && item.id, '') || '').trim();

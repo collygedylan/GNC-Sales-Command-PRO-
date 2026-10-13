@@ -778,5 +778,9 @@
   {
     "source": "supabase/migrations/20261013160000_inventory_location_item_on_hand.sql",
     "destination": "20261013160000_inventory_location_item_on_hand.sql"
+  },
+  {
+    "source": "supabase/migrations/20261013170000_master_inventory_realtime_publication.sql",
+    "destination": "20261013170000_master_inventory_realtime_publication.sql"
   }
 ]

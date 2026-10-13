@@ -236,6 +236,26 @@ test('inventory freshness does not count all matching rows', async () => {
   assert.ok(queries[0].calls.some(([method, size]) => method === 'limit' && size === 1));
 });
 
+test('master lookup reads all rows for one exact item and location pair', async () => {
+  const { handler, queries, context } = appApiHarness();
+  context.inventoryReadRows = [
+    { unique_id: 'row-a', itemcode: 'ABC', locationcode: 'C.16.000', lotcode: 'LOT-1', priority: '1', holdstopcode: 'H', holdstopreason: 'Check' },
+    { unique_id: 'row-b', itemcode: 'ABC', locationcode: 'C.16.000', lotcode: 'LOT-2', priority: null, holdstopcode: null, holdstopreason: null },
+  ];
+  const response = await handler({ actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
+    operation: 'master_page', params: { dataset: 'lookup', projection: 'full', itemCode: 'ABC', locationCode: 'C.16.000', limit: 100 },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.fieldCoverage, 'full');
+  assert.deepEqual(response.body.data.rows.map(row => row.unique_id), ['row-a', 'row-b']);
+  assert.ok(response.body.data.columns.includes('priority'));
+  assert.ok(response.body.data.columns.includes('holdstopcode'));
+  assert.ok(response.body.data.columns.includes('holdstopreason'));
+  assert.ok(queries[0].calls.some(([method, field, value]) => method === 'eq' && field === 'itemcode' && value === 'ABC'));
+  assert.ok(queries[0].calls.some(([method, field, value]) => method === 'eq' && field === 'locationcode' && value === 'C.16.000'));
+  assert.ok(queries[0].calls.some(([method]) => method === 'range'));
+});
+
 test('master pages and deltas append full pair totals after the physical projection and fence source changes', async () => {
   const { handler, context } = appApiHarness();
   context.inventoryReadRows = [{ unique_id: 'C-1', itemcode: '001973.030.1', locationcode: 'C.16.000', ptronhand: '2,000', loc_on_hand: 37492 }];
