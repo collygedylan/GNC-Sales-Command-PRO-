@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(11);
+select plan(13);
 select ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime'
   and schemaname='public' and tablename='ph_master_inventory'), 'inventory UPDATE publication is present');
 select ok((select pubupdate from pg_publication where pubname='supabase_realtime'), 'publication emits UPDATE events');
@@ -32,6 +32,14 @@ reset role;
 update public.profiles set role='EVAL' where id='9f8b0000-0000-4000-8000-000000000291';
 set local role authenticated;
 select is((select count(*) from public.ph_master_inventory where itemcode='STATUS.SYNC'),2::bigint,'active Eval receives both pair identifiers');
+reset role;
+update public.profiles set role='REP' where id='9f8b0000-0000-4000-8000-000000000291';
+set local role authenticated;
+select is((select count(*) from public.ph_master_inventory where itemcode='STATUS.SYNC'),2::bigint,'active Rep receives both pair identifiers');
+reset role;
+update public.profiles set role='QC' where id='9f8b0000-0000-4000-8000-000000000291';
+set local role authenticated;
+select is((select count(*) from public.ph_master_inventory where itemcode='STATUS.SYNC'),2::bigint,'active QC receives both pair identifiers');
 reset role;
 update public.profiles set role='FOREMAN' where id='9f8b0000-0000-4000-8000-000000000291';
 set local role authenticated;
