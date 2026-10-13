@@ -5,6 +5,9 @@ set local search_path = public, extensions, pg_temp;
 select plan(15);
 -- The historical CI table predates native-auth RLS. Reproduce the existing
 -- production session boundary inside this rollback-only fixture.
+-- Its sales-only policy is also absent from production and reads profiles
+-- directly. Production uses current_active_profile through the session policy.
+drop policy if exists sales_rep_inventory_read_v1 on public.ph_master_inventory;
 alter table public.ph_master_inventory enable row level security;
 do $fixture$
 begin
