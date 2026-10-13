@@ -10,6 +10,17 @@ context.globalThis = context;
 vm.runInContext(engineSource, context, { filename: 'eval-reports-engine.js' });
 const engine = context.GncEvalReports;
 
+test('SQL location-base fixture qualifies for the configured Eval1 priority report', () => {
+  const fixture = readFileSync(new URL('../supabase/tests/manager_report_read_v2_test.sql', import.meta.url), 'utf8');
+  const currentSeason = fixture.match(/"seasonCode":"([A-Z0-9]+)"/)[1];
+  const rows = [...fixture.matchAll(/'MRV2-BASE-[12]','MRV2-BASE','Location Base Fixture','#2','([^']+)','([^']+)','10','8','([^']+)','([^']+)'/g)]
+    .map(match => ({ ITEMCODE: 'MRV2-BASE', LOCATIONCODE: match[1], LOTCODE: match[2], PRIORITY: match[3], SEASON: match[4], SALEYEAR: '27' }));
+  assert.equal(rows.length, 2);
+  const classified = engine.classifyRows(rows, { currentSeason, currentSalesYear: 2027 });
+  assert.equal(classified.reports['s1-with-pri'].length, 2);
+  assert.deepEqual(Array.from(classified.reports['s1-with-pri'], row => row.LOCATIONCODE).sort(), ['E.01.001', 'E.01.002']);
+});
+
 test('multi-report selection preserves union, exact row deduplication and server-owned Queue membership', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const api = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');

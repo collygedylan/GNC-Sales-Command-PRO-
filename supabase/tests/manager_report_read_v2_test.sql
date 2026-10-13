@@ -64,8 +64,8 @@ values
  ('MRV2-GOLD-LOW-S1','MRV2-GOLD-LOW','Golden Low Stock','#2','D.05.003','27.S1','10','8','','S1','27','20','','','','','PH'),
  ('MRV2-GOLD-CULL','MRV2-GOLD-CULL','Golden Cull','#2','D.06.001','27.X','10','8','','X','27','20','','','','','PH'),
  ('MRV2-GOLD-FUTURE','MRV2-GOLD-FUTURE','Golden Future F1','#2','D.07.001','28.F1','10','8','','F1','28','20','','','','','PH'),
- ('MRV2-BASE-1','MRV2-BASE','Location Base Fixture','#2','E.01.001','27.S1','10','8','1','S1','27','20','','','','','PH'),
- ('MRV2-BASE-2','MRV2-BASE','Location Base Fixture','#2','E.01.002','27.S1','10','8','1','S1','27','20','','','','','PH'),
+ ('MRV2-BASE-1','MRV2-BASE','Location Base Fixture','#2','E.01.001','27.F1','10','8','1','F1','27','20','','','','','PH'),
+ ('MRV2-BASE-2','MRV2-BASE','Location Base Fixture','#2','E.01.002','27.F1','10','8','1','F1','27','20','','','','','PH'),
  ('MRV2-GOLD-BOUNDARY','MRV2-GOLD-BOUNDARY','Golden Date Boundary','#2','D.08.001','27.F1','10','8','','F1','27','20','', 'H',
    to_char((now() at time zone 'America/Chicago')::date-5,'YYYY-MM-DD'),
    to_char((now() at time zone 'America/Chicago')::date-10,'YYYY-MM-DD'),'PH');
