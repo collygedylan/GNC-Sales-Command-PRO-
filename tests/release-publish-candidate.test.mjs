@@ -8,6 +8,7 @@ const yaml = createRequire(import.meta.url)('js-yaml');
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const workflow = yaml.load(read('.github/workflows/publish-candidate.yml'));
 const pages = yaml.load(read('.github/workflows/pages-static.yml'));
+const prValidation = yaml.load(read('.github/workflows/pr-validation.yml'));
 const backend = yaml.load(read('.github/workflows/apps-script-sync.yml'));
 const diagnostic = yaml.load(read('.github/workflows/apps-script-database-diagnostic.yml'));
 const script = workflow.jobs.publish.steps.find(step => step.uses === 'actions/github-script@v7').with.script;
@@ -203,6 +204,7 @@ test('Pages publishes the same-run verified artifact independently of backend re
   assert.deepEqual(publish.needs, ['authorize-main', 'validation']);
   assert.equal(backend.jobs['publish-pages'], undefined);
   assert.equal(pages.jobs.validation.with['run-backend-tests'], false);
+  assert.equal(pages.jobs.validation.with['run-nightly-suites'], false);
   assert.equal(pages.jobs.validation.with['run-schema-tests'], false);
   assert.equal(pages.jobs.validation.with['production-health'], false);
   assert.doesNotMatch(JSON.stringify(pages), /SUPABASE_|APPS_SCRIPT_|production-release-guard|pages-release.mjs|check-compatible-apps-script|probe-production-auth-health/);
@@ -219,6 +221,17 @@ test('Pages publishes the same-run verified artifact independently of backend re
   assert.equal(publish.permissions.pages, 'write');
   const pagesBuild = publish.steps.find(step => step.name === 'Request the GitHub Pages build for the published branch');
   assert.match(pagesBuild.run, /pages\/builds/);
+});
+
+test('PR validation emits no publication proof and has conditional frontend/backend lanes', () => {
+  assert.ok(prValidation.on.workflow_call);
+  assert.equal(prValidation.on.workflow_call.inputs['run-frontend-tests'].default, true);
+  assert.equal(prValidation.on.workflow_call.inputs['run-backend-tests'].default, true);
+  assert.deepEqual(prValidation.on.workflow_call.outputs, undefined);
+  assert.deepEqual(prValidation.jobs['pr-gate'].needs, ['lint', 'unit', 'react', 'contracts', 'backend-unit']);
+  assert.match(prValidation.jobs.react.if, /inputs\.run-frontend-tests/);
+  assert.match(prValidation.jobs['backend-unit'].if, /inputs\.run-backend-tests/);
+  assert.doesNotMatch(JSON.stringify(prValidation.jobs['pr-gate'].steps), /artifact|proof|playwright|chromium|lighthouse|performance/i);
 });
 
 test('live notification requires both the current descriptor and immutable commit fingerprint', () => {

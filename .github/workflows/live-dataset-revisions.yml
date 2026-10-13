@@ -1,9 +1,6 @@
 name: Live dataset revision transactions and native Realtime
 on:
-  pull_request:
-    paths:
-      - 'supabase/**'
-      - 'database/**'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

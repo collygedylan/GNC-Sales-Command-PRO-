@@ -303,7 +303,14 @@ test('backend workflow guards current-main Supabase deployment without Apps Scri
   const workflow = yaml.load(source);
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
   assert.match(workflow.jobs['authorize-backend'].if, /refs\/heads\/main/);
-  assert.equal(workflow.jobs['deploy-supabase'].needs, 'authorize-backend');
+  assert.deepEqual(workflow.jobs['deploy-supabase'].needs,
+    ['authorize-backend', 'backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']);
+  for (const name of ['backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
+    assert.match(workflow.jobs['deploy-supabase'].if, new RegExp(`needs\\.${name}\\.result == 'success'`));
+  }
+  assert.equal(workflow.jobs['backend-validation'].with['run-schema-tests'], true);
+  assert.equal(workflow.jobs['backend-validation'].with['run-browser-tests'], false);
+  assert.equal(workflow.jobs['backend-validation'].with['run-performance-tests'], false);
   assert.match(workflow.jobs['deploy-supabase'].if, /backend-changed == 'true'/);
   const authorizeSource = JSON.stringify(workflow.jobs['authorize-backend']);
   assert.match(authorizeSource, /EXPECTED_COMMIT/);
@@ -347,6 +354,8 @@ test('database diagnosis is isolated, read-only, and cannot authorize a release'
   assert.ok(releaseWorkflow.on.workflow_dispatch.inputs['expected-commit']);
   assert.equal(releaseWorkflow.jobs['diagnose-database'], undefined);
   assert.match(releaseWorkflow.jobs['authorize-backend'].if, /github.ref == 'refs\/heads\/main'/);
-  assert.equal(releaseWorkflow.jobs['deploy-supabase'].needs, 'authorize-backend');
+  assert.ok(releaseWorkflow.jobs['deploy-supabase'].needs.includes('authorize-backend'));
+  assert.ok(releaseWorkflow.jobs['deploy-supabase'].needs.includes('backend-validation'));
+  assert.ok(!releaseWorkflow.jobs['deploy-supabase'].needs.includes('diagnose-database'));
   assert.equal(releaseWorkflow.jobs['publish-pages'], undefined);
 });

@@ -2,19 +2,29 @@
 
 This file is the authoritative repository workflow. The Fast Deployment & Execution Policy supersedes conflicting testing, replay, hook, monitoring, and execution guidance in supporting documents.
 
+## Pipeline Architecture and Deployment Policy
+
+1. Independent Deployments: GitHub Pages frontend publication and Supabase/Apps Script backend deployment are decoupled. Backend validation or deployment failures must not gate frontend publication.
+2. Fast Standard PRs: Standard PR validation runs unit tests and lint/type checks only. Do not launch or wait for browser emulators, performance checks, release builds, or disposable database integration environments during standard PR delivery.
+3. Nightly Validation: All browser checks, phone emulators, layout snapshots, timing checks, and performance benchmarks belong to Nightly Validation, scheduled daily at 09:17 UTC. Run its manual trigger only when explicitly requested. A job timeout is a safety limit, not an expected deployment duration.
+4. Targeted Repairs: Do not fix unrelated legacy phone layout tests, layout snapshots, or missing historical fixtures during a targeted UI repair. Preserve their assertions and report unrelated failures separately.
+5. LIVE Confirmation: A deployment is not fully live until the final GitHub Pages workflow succeeds and its hosted current-release descriptor and immutable fingerprint check pass for the published main commit. A push, passing PR, merge, or Pages branch publication alone is insufficient.
+
+Pages builds and seals the merged main artifact, validates it without browsers, publishes the frontend, and verifies the hosted fingerprint. Standard PR checks emit no publication proof. Database integration validation runs in the independent backend workflow before production changes; browser and performance diagnostics remain nightly-only.
+
 ### Fast Deployment & Execution Policy
 
-1. Targeted Local Verification Only: Run unit, integration, and lint/type checks strictly scoped to modified files. Never execute full repository-wide test suites locally.
+1. Targeted Local Verification Only: Run unit and lint/type checks strictly scoped to modified files. Never execute full repository-wide test suites, browser emulators, performance benchmarks, or disposable database integrations locally during standard delivery.
 2. No Unprompted Historical Replays: Do not run historical database replays or migration replay fixtures unless a new SQL migration is explicitly introduced.
 3. Strict Zero-Scope-Creep Rule: Do not halt execution to fix unrelated legacy tests or missing older fixtures.
 4. Lightweight Pre-Commit Hooks: Pre-commit hooks must only run formatting/syntax checks against staged files. Never run sandbox assertions or full database validations inside pre-commit hooks.
-5. Fast Hand-off to CI: Commit functional changes rapidly and push to the remote branch; let GitHub Actions handle complete verification asynchronously.
+5. Fast Hand-off to CI: Commit functional changes rapidly and push to the remote branch. GitHub Actions runs unit/lint PR checks, independent publication and backend validation, and scheduled nightly diagnostics.
 
 ## Implementation and Delivery
 
 - Map the direct consumers of changed schema, security rules, or core UI behavior before editing. Include necessary dependent changes in the feature commit; preserve unrelated work.
 - Use an isolated `codex/` candidate branch targeting `main`. Keep application release markers synchronized with `package.json` using the release-version tooling.
-- Run focused local checks for the changed behavior, commit, and push immediately. Leave full browser matrices, regression suites, and exhaustive database validation to GitHub Actions.
+- Run focused local unit/lint checks for the changed behavior, commit, and push immediately. Leave browser and performance suites to Nightly Validation and database integration checks to backend predeployment validation.
 - Immediately create a new branch's PR with `gh pr create --fill`. Reuse an existing open PR for subsequent pushes to that branch.
 - GitHub Actions owns complete validation, validated merging, production publication, and hosted verification. Do not manually promote commits to `main`, run exact-commit candidate proofs manually, or bypass release gates.
 - After pushing and creating the PR, hand off to cloud CI and report the PR and targeted verification. Do not start unprompted CI/deployment watchers or repeated verification loops. Monitor only when the user explicitly requests it for the current task.

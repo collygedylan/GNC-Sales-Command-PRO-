@@ -43,6 +43,7 @@ jobs:
     uses: ./.github/workflows/release-validation.yml
     with:
       fast-pr: true
+      run-nightly-suites: false
       run-frontend-tests: true
       run-backend-tests: false
       run-schema-tests: false

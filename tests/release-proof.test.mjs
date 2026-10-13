@@ -33,6 +33,27 @@ test('same-run Pages proof binds reusable gate outputs to the exact caller run a
   }
   assert.throws(()=>verifySameRunReleaseProof(proof,{...selected,digest:'c'.repeat(64)},proof.release),/RELEASE_PROOF_DIGEST_MISMATCH/);
 });
+
+test('nonbrowser publication proof retains immutable identity and explicitly records omitted browser coverage',()=>{
+  const selected={repository,commit,runId:88,attempt:2,siteArtifactId:30,proofArtifactId:31,digest:'b'.repeat(64),browserMode:'none'};
+  const proof={schemaVersion:'gnc-release-proof-v1',repository,commit,runId:88,attempt:2,siteArtifactId:30,release:'V2026.09.14.02',digest:'b'.repeat(64),browserMode:'none'};
+  assert.equal(verifySameRunReleaseProof(proof,selected,proof.release),proof.digest);
+  for (const browserMode of [undefined,'full','pr-chromium']) {
+    assert.throws(()=>verifySameRunReleaseProof({...proof,browserMode},selected,proof.release),/BROWSER_MODE_MISMATCH/);
+  }
+  assert.throws(()=>verifySameRunReleaseProof(proof,{...selected,digest:'c'.repeat(64)},proof.release),/DIGEST_MISMATCH/);
+});
+
+test('manual publication diagnostics accept skipped nightly lanes but retain failed-lane rejection',async()=>{
+  const f=fixture();
+  for (const name of ['database','fast-browser','foundation','functional','compiled','timing','performance','lighthouse']) {
+    f.jobs.push({...f.jobs[0],id:f.jobs.length+3,name:`diagnostic-validation / ${name}`,conclusion:'skipped'});
+  }
+  f.jobs[0].name='diagnostic-validation / release-gate';
+  assert.equal((await f.select()).runId,12);
+  f.jobs[1].conclusion='failure';
+  await assert.rejects(f.select(),/JOB_NOT_GREEN/);
+});
 for(const [name,change] of [
   ['wrong SHA',f=>f.runs[0].head_sha='c'.repeat(40)],
   ['wrong repository',f=>f.runs[0].head_repository.full_name='fork/app'],

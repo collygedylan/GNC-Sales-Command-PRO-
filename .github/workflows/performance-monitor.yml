@@ -18,8 +18,8 @@ concurrency:
   group: performance-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# PR checks run only the lanes selected by their changed paths. Expanded browser
-# matrices run from nightly-browser-validation.yml, outside the publication path.
+# PRs run selected unit/lint checks without builds or publication proofs.
+# Browser and performance checks belong to Nightly browser validation.
 jobs:
   changes:
     runs-on: ubuntu-latest
@@ -62,13 +62,21 @@ jobs:
 
   validation:
     needs: changes
-    if: ${{ !cancelled() && needs.changes.result == 'success' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.result == 'success' }}
+    uses: ./.github/workflows/pr-validation.yml
+    with:
+      run-frontend-tests: ${{ needs.changes.outputs.frontend == 'true' }}
+      run-backend-tests: ${{ needs.changes.outputs.backend == 'true' }}
+
+  diagnostic-validation:
+    needs: changes
+    if: ${{ !cancelled() && github.event_name == 'workflow_dispatch' && needs.changes.result == 'success' }}
     uses: ./.github/workflows/release-validation.yml
     with:
       hotfix: ${{ needs.changes.outputs.hotfix == 'true' }}
-      fast-pr: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
-      run-schema-tests: ${{ needs.changes.outputs.schema == 'true' }}
+      run-nightly-suites: false
+      run-schema-tests: false
       production-health: false
-      run-frontend-tests: ${{ github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true' }}
-      run-backend-tests: ${{ needs.changes.outputs.backend == 'true' }}
+      run-frontend-tests: true
+      run-backend-tests: false
     secrets: inherit

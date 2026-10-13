@@ -41,12 +41,13 @@ export async function selectReleaseProof({ repository, commit, api }) {
     return r;
   };
   const run = { ...await latest() };
-  const jobs = await listComplete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, 'jobs', 'JOBS_INCOMPLETE');
+  const jobs = (await listComplete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs?per_page=100`, 'jobs', 'JOBS_INCOMPLETE'))
+    .map(job => ({ ...job, name: job.name?.replace(/^diagnostic-validation \/ /, 'validation / ') }));
   const hotfix = hasAttestedHotfix(jobs);
   if (jobs.some(j=>!Number.isSafeInteger(j.id) || j.id < 1 || j.run_id !== run.id || j.head_sha !== commit || j.status !== 'completed'
       || (j.conclusion !== 'success' && !(j.conclusion === 'skipped' && (hotfix
         ? isHotfixSkippedJob(j.name)
-        : ['validation / production-health', 'validation / fast-browser'].includes(j.name)))))) fail('JOB_NOT_GREEN');
+        : /^validation \/ (?:production-health|database|fast-browser|foundation|functional|compiled|timing|performance|lighthouse)$/.test(j.name)))))) fail('JOB_NOT_GREEN');
   if (hotfix && ['lint', 'build'].some(name => !jobs.some(job => job.name === `validation / ${name}`
     && job.status === 'completed' && job.conclusion === 'success'))) fail('HOTFIX_BASELINE_MISSING');
   if (hotfix && !jobs.some(job => /^validation \/ unit(?: \([^)]*\))?$/.test(job.name || '')
@@ -80,13 +81,15 @@ export function verifyReleaseProof(proof, selected, release) {
   return proof.digest;
 }
 
-export function verifySameRunReleaseProof(proof, { repository, commit, runId, attempt, siteArtifactId, proofArtifactId, digest: expectedDigest, hotfix = false }, release) {
+export function verifySameRunReleaseProof(proof, { repository, commit, runId, attempt, siteArtifactId, proofArtifactId, digest: expectedDigest, hotfix = false, browserMode }, release) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository || '') || !sha(commit)
     || !Number.isSafeInteger(runId) || runId < 1 || !Number.isSafeInteger(attempt) || attempt < 1
     || !Number.isSafeInteger(siteArtifactId) || siteArtifactId < 1
     || !Number.isSafeInteger(proofArtifactId) || proofArtifactId < 1
     || !/^[a-f0-9]{64}$/.test(expectedDigest || '')) fail('IDENTITY_INVALID');
+  if (browserMode !== undefined && !['none', 'full', 'hotfix-minimal'].includes(browserMode)) fail('BROWSER_MODE_INVALID');
   const expected = { schemaVersion:'gnc-release-proof-v1', repository, commit, runId, attempt, siteArtifactId,
+    ...(browserMode === undefined ? {} : { browserMode }),
     ...(hotfix === true ? { hotfix:true, browserMode:'hotfix-minimal', testScope:{frontend:false,backend:false,schema:false} } : {}) };
   const digest = verifyReleaseProof(proof, expected, release);
   if (digest !== expectedDigest) fail('DIGEST_MISMATCH');
@@ -125,6 +128,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
           runId:expectedRunId, attempt:expectedAttempt,
           siteArtifactId:number('RELEASE_PROOF_SITE_ID'), proofArtifactId:number('RELEASE_PROOF_ID'),
           digest:process.env.RELEASE_PROOF_DIGEST,
+          ...(process.env.RELEASE_BROWSER_MODE ? { browserMode:process.env.RELEASE_BROWSER_MODE } : {}),
         };
         digest = verifySameRunReleaseProof(proof, selected, release);
       } else {

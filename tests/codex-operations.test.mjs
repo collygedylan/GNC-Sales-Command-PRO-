@@ -154,15 +154,16 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   assert.match(modelRouting, /bounded diff or contract under review/);
   assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
   assert.match(agentRules, /### Fast Deployment & Execution Policy/);
-  assert.deepEqual([...agentRules.matchAll(/^\d\. ([^:]+):/gm)].map(match => match[1]),
+  const executionRules = agentRules.split('### Fast Deployment & Execution Policy')[1].split('## Implementation and Delivery')[0];
+  assert.deepEqual([...executionRules.matchAll(/^\d\. ([^:]+):/gm)].map(match => match[1]),
     ['Targeted Local Verification Only', 'No Unprompted Historical Replays', 'Strict Zero-Scope-Creep Rule', 'Lightweight Pre-Commit Hooks', 'Fast Hand-off to CI']);
-  assert.match(agentRules, /Never execute full repository-wide test suites locally/);
+  assert.match(executionRules, /Never execute full repository-wide test suites, browser emulators, performance benchmarks, or disposable database integrations locally during standard delivery/);
   assert.match(agentRules, /unless a new SQL migration is explicitly introduced/);
   assert.match(agentRules, /Do not halt execution to fix unrelated legacy tests or missing older fixtures/);
   assert.match(agentRules, /formatting\/syntax checks against staged files/);
   assert.match(agentRules, /Never run sandbox assertions or full database validations inside pre-commit hooks/);
   assert.match(agentRules, /Immediately create a new branch's PR with `gh pr create --fill`/);
-  assert.match(agentRules, /complete verification asynchronously/);
+  assert.match(agentRules, /GitHub Actions owns complete validation, validated merging, production publication, and hosted verification/);
   assert.match(agentRules, /Do not start unprompted CI\/deployment watchers or repeated verification loops/);
   assert.match(agentRules, /Monitor only when the user explicitly requests it for the current task/);
   assert.match(agentRules, /live only after successful final hosted publication is confirmed/);

@@ -60,6 +60,14 @@ test('optional PR production-health skip is allowed; fresh production health is 
   assert.equal((await f.select()).reuse, true);
 });
 
+test('unit and lint PR checks never authorize reuse of a publication artifact', async () => {
+  const f = fixture();
+  f.jobs.push({ ...f.jobs[0], id: 3, name: 'validation / pr-gate' });
+  assert.deepEqual(await f.select(), { reuse: false, reason: 'PR_CHECKS_NOT_PUBLICATION_PROOF' });
+  assert.deepEqual(await selectPagesRelease({ repository, commit, api: f.api, allowPrBrowserProof: true }),
+    { reuse: false, reason: 'PR_CHECKS_NOT_PUBLICATION_PROOF' });
+});
+
 test('Chromium PR proof authorizes only the backend handoff and cannot bypass full main browser validation', async () => {
   const f = fixture();
   f.files = [{ filename: 'index.html' }]; f.pr.changed_files = 1;

@@ -4,7 +4,19 @@ on:
   workflow_call:
     inputs:
       run-schema-tests:
-        description: Schema replay and benchmarks require Supabase or migration changes.
+        description: Run schema, migration, SQL, authentication, and Realtime integration checks.
+        type: boolean
+        default: false
+      run-browser-tests:
+        description: Run database browser transaction checks.
+        type: boolean
+        default: false
+      run-performance-tests:
+        description: Run SQL and API performance benchmarks.
+        type: boolean
+        default: false
+      run-all-schema-tests:
+        description: Run full schema diagnostics even when the caller's diff is empty.
         type: boolean
         default: false
 
@@ -51,6 +63,10 @@ jobs:
               base="${CURRENT_SHA}^1"
               head="$CURRENT_SHA"
               ;;
+            schedule)
+              base="${CURRENT_SHA}^1"
+              head="$CURRENT_SHA"
+              ;;
             *)
               echo "Unsupported event for database path comparison: $EVENT_NAME" >&2
               exit 1
@@ -77,6 +93,7 @@ jobs:
               supabase/*|database/*) changed=true ;;
             esac
           done
+          if [[ "${{ inputs.run-all-schema-tests }}" == 'true' ]]; then changed=true; fi
           echo "changed=$changed" >> "$GITHUB_OUTPUT"
 
   discover:
@@ -205,12 +222,39 @@ jobs:
             deno test --node-modules-dir=auto --allow-env --allow-net "${tests[@]}"
           fi
 
+  schema-gate:
+    if: always() && inputs.run-schema-tests
+    needs: [schema-path-scope, discover, integration, edge-functions, schema-contracts, suspend-tag-approval, database-and-functions]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Require every selected backend integration check
+        env:
+          SCOPE: ${{ needs.schema-path-scope.outputs.changed }}
+          REQUIRE_SCHEMA_SCOPE: ${{ inputs.run-all-schema-tests }}
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node --input-type=module <<'NODE'
+          const scope = process.env.SCOPE;
+          const jobs = JSON.parse(process.env.RESULTS);
+          const required = ['schema-path-scope', 'discover', 'edge-functions'];
+          if (scope !== 'true') {
+            if (scope !== 'false' || process.env.REQUIRE_SCHEMA_SCOPE === 'true') throw new Error('BACKEND_SCHEMA_SCOPE_REQUIRED');
+            console.log('No database paths changed; schema integration jobs were intentionally skipped.');
+          } else {
+            required.push('integration', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions');
+          }
+          for (const name of required) {
+            if (jobs[name]?.result !== 'success') throw new Error(`BACKEND_SCHEMA_GATE_FAILED_${name}`);
+          }
+          NODE
+
   schema-contracts:
     if: inputs.run-schema-tests && needs.schema-path-scope.outputs.changed == 'true'
     needs: schema-path-scope
     runs-on: ubuntu-latest
-    # The six serial API benchmark passes can take 31 minutes before typegen;
-    # retain time for a bounded registry fallback and the final sandbox checks.
+    # The timeout is a safety bound for full schema diagnostics, including the
+    # opt-in performance suite; it is not the expected duration of a standard deployment.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -223,7 +267,8 @@ jobs:
         env:
           # Starts local Auth, REST and gateway services for the canonical API pair.
           # Ordinary SQL and sandbox checks keep the database-only service profile.
-          PERFORMANCE_API_BENCHMARK: 'true'
+          DATABASE_PERFORMANCE_BENCHMARK: ${{ inputs.run-performance-tests && 'true' || 'false' }}
+          PERFORMANCE_API_BENCHMARK: ${{ inputs.run-performance-tests && 'true' || 'false' }}
         run: node scripts/database-check.mjs --all
       - run: node scripts/ci-supabase-image-cache.mjs save
         if: steps.images.outputs.cache-hit != 'true'
@@ -286,12 +331,8 @@ jobs:
       - name: Run pgTAP and RLS tests
         id: sql
         run: supabase --workdir "$SUPABASE_CI_ROOT" test db
-      - id: browser_setup
-        uses: ./.github/actions/setup-playwright
-        with:
-          browsers: chromium
-      - name: Run browser request transactions against local Supabase
-        id: transactions
+      - name: Run PostgreSQL concurrency transactions
+        if: inputs.run-schema-tests
         shell: bash
         run: |
           set -euo pipefail
@@ -300,6 +341,21 @@ jobs:
           source "$RUNNER_TEMP/supabase-status.env"
           set +a
           node scripts/run-discovered-database-tests.mjs postgres-concurrency "$DB_URL"
+      - id: browser_setup
+        if: inputs.run-browser-tests
+        uses: ./.github/actions/setup-playwright
+        with:
+          browsers: chromium
+      - name: Run browser request transactions against local Supabase
+        id: transactions
+        if: inputs.run-browser-tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase --workdir "$SUPABASE_CI_ROOT" status -o env > "$RUNNER_TEMP/supabase-status.env"
+          set -a
+          source "$RUNNER_TEMP/supabase-status.env"
+          set +a
           SUPABASE_LOCAL_URL="$API_URL" \
           SUPABASE_LOCAL_ANON_KEY="$ANON_KEY" \
           SUPABASE_LOCAL_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY" \

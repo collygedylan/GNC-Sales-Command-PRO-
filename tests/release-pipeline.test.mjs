@@ -13,6 +13,7 @@ const pages = yaml.load(read('.github/workflows/pages-static.yml'));
 const validation = yaml.load(read('.github/workflows/release-validation.yml'));
 const performance = yaml.load(read('.github/workflows/performance-monitor.yml'));
 const nightly = yaml.load(read('.github/workflows/nightly-browser-validation.yml'));
+const prValidation = yaml.load(read('.github/workflows/pr-validation.yml'));
 const download = yaml.load(read('.github/actions/download-release/action.yml'));
 
 test('unit contracts can read the immutable performance baseline from Git history', () => {
@@ -66,7 +67,7 @@ test('CI commands defer retries to their configs and retain exhausted-failure ga
   }
 });
 
-test('compact release validation produces a same-run immutable artifact for Pages', () => {
+test('Pages validation builds a same-run immutable artifact without blocking on browsers', () => {
   assert.equal(pages.permissions.actions, 'read');
   assert.equal(validation.jobs['release-gate'].outputs['proof-id'], '${{ steps.proof.outputs.artifact-id }}');
   assert.equal(validation.on.workflow_call.outputs['proof-id'].value, '${{ jobs.release-gate.outputs.proof-id }}');
@@ -80,7 +81,8 @@ test('compact release validation produces a same-run immutable artifact for Page
     '${{ github.sha }}');
   assert.equal(pages.jobs['exact-live'].needs, 'deploy');
   assert.match(pages.jobs.deploy.if, /github.ref == 'refs\/heads\/main'/);
-  assert.deepEqual(validation.jobs['release-gate'].needs, ['release-mode','lint','unit','react','contracts','database','build','fast-browser','foundation','functional','compiled','timing','performance','lighthouse']);
+  assert.equal(pages.jobs.validation.with['run-nightly-suites'], false);
+  assert.doesNotMatch(JSON.stringify(pages.jobs.validation), /fast-browser/);
   const gate = validation.jobs['release-gate'].steps[0].run;
   assert.match(gate, /jobs\[name\]\?\.result !== 'success'/);
   assert.match(gate, /RELEASE_DIGEST_MISSING/);
@@ -180,7 +182,8 @@ test('Pages dispatch validates only frontend inputs before publication', () => {
   assert.ok('pull_request' in performance.on);
   assert.equal(performance.on.schedule, undefined);
   assert.ok('schedule' in nightly.on);
-  assert.equal(performance.jobs.validation.uses, './.github/workflows/release-validation.yml');
+  assert.equal(performance.jobs.validation.uses, './.github/workflows/pr-validation.yml');
+  assert.equal(performance.jobs['diagnostic-validation'].uses, './.github/workflows/release-validation.yml');
   assert.equal(pages.jobs.validation.with['run-backend-tests'], false);
   assert.equal(pages.jobs.validation.with['run-schema-tests'], false);
   assert.equal(pages.concurrency['cancel-in-progress'], false);
@@ -233,7 +236,7 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
     }}, console: {log() {}}});
   }
   assert.doesNotThrow(() => run(healthy));
-  for (const name of ['release-mode','lint','unit','react','contracts','database','build','fast-browser']) {
+  for (const name of ['release-mode','lint','unit','react','contracts','database','build']) {
     for (const result of ['failure','cancelled','skipped']) {
       assert.throws(() => run({...healthy, [name]: {...healthy[name], result}}), /RELEASE_GATE_FAILED/);
     }
@@ -245,16 +248,17 @@ test('execute the actual release gate: failed, skipped, cancelled or missing lan
   assert.throws(() => run(healthy), /RELEASE_DIGEST_MISSING/);
 });
 
-test('standard releases require one headless Chromium gate and expanded matrices run only nightly', () => {
-  assert.equal(validation.on.workflow_call.inputs['fast-pr'].default, false);
-  assert.match(performance.jobs.validation.with['fast-pr'], /github.event_name == 'pull_request'/);
-  const fast = validation.jobs['fast-browser'];
-  assert.equal(fast.strategy, undefined);
-  assert.equal(fast.steps.find(step => step.uses === './.github/actions/setup-browser-tests').with.browsers, 'chromium');
-  const command = fast.steps.find(step => step.run?.includes('playwright test')).run;
-  assert.match(command, /--project=chromium/);
-  assert.doesNotMatch(command, /--shard|firefox|webkit|--headed/);
-  assert.match(validation.jobs['fast-browser'].if, /inputs\.run-frontend-tests/);
+test('standard PR validation is unit and lint only; browser matrices run only nightly', () => {
+  assert.equal(performance.jobs.validation.uses, './.github/workflows/pr-validation.yml');
+  assert.equal(performance.jobs['diagnostic-validation'].uses, './.github/workflows/release-validation.yml');
+  assert.equal(performance.jobs['diagnostic-validation'].with['run-nightly-suites'], false);
+  assert.equal(prValidation.jobs['pr-gate'].needs.includes('lint'), true);
+  assert.equal(prValidation.jobs['pr-gate'].needs.includes('unit'), true);
+  assert.equal(prValidation.jobs['pr-gate'].needs.includes('react'), true);
+  assert.equal(prValidation.jobs['pr-gate'].needs.includes('contracts'), true);
+  assert.equal(prValidation.jobs['pr-gate'].needs.includes('backend-unit'), true);
+  assert.doesNotMatch(JSON.stringify(prValidation.jobs.react), /playwright|chromium|lighthouse|performance|artifact|proof/i);
+  assert.equal(prValidation.jobs['pr-gate'].needs.includes('build'), false);
   for (const name of ['foundation', 'functional', 'compiled', 'timing', 'performance', 'lighthouse']) {
     assert.match(validation.jobs[name].if, /needs\.release-mode\.outputs\.hotfix != 'true'/);
     assert.match(validation.jobs[name].if, /inputs\.run-nightly-suites/);
@@ -264,26 +268,12 @@ test('standard releases require one headless Chromium gate and expanded matrices
   for (const name of ['contracts', 'database', 'production-health']) {
     assert.match(validation.jobs[name].if, /needs\.release-mode\.outputs\.hotfix != 'true'/);
   }
-  const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
-  const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'skipped' }]));
-  results['release-mode'].result = 'success';
-  for (const name of ['lint', 'unit', 'react', 'contracts', 'build', 'fast-browser']) results[name].result = 'success';
-  results.build.outputs = { digest: 'a'.repeat(64) };
-  const execute = () => vm.runInNewContext(gate, { process: { env: {
-    RELEASE_JOB_RESULTS: JSON.stringify(results), HOTFIX: 'false', RUN_NIGHTLY_SUITES: 'false', RUN_FRONTEND_TESTS: 'true', RUN_BACKEND_TESTS: 'false',
-  } }, console: { log() {} } });
-  assert.doesNotThrow(execute);
-  for (const result of ['failure', 'cancelled', 'skipped', undefined]) {
-    results['fast-browser'].result = result;
-    assert.throws(execute, /RELEASE_GATE_FAILED_fast-browser/);
-  }
   const database = yaml.load(read('.github/workflows/release-database.yml'));
   for (const name of ['integration', 'schema-contracts', 'database-and-functions', 'suspend-tag-approval']) {
     assert.match(database.jobs[name].if, /inputs\.run-schema-tests/);
     assert.match(database.jobs[name].if, /needs\.schema-path-scope\.outputs\.changed == 'true'/);
   }
-  assert.match(validation.jobs.react.if, /needs\.release-mode\.outputs\.hotfix != 'true' && inputs\.run-frontend-tests/);
-  assert.ok(validation.jobs.react.steps.some(step => step.run === 'npm run test:v2'));
+  assert.match(validation.jobs['fast-browser'].if, /inputs\.run-nightly-suites/);
 });
 
 test('production health recovery follows actual publication and the published build commit', async () => {
@@ -397,14 +387,12 @@ test('PR path filters select affected tests and match the artifact reuse classif
   assert.equal(validation.on.workflow_call.inputs['run-frontend-tests'].default, true);
   assert.equal(validation.on.workflow_call.inputs['run-backend-tests'].default, true);
   assert.equal(validation.on.workflow_call.inputs['run-schema-tests'].default, false);
-  for (const input of ['run-backend-tests', 'run-schema-tests']) {
-    assert.doesNotMatch(performance.jobs.validation.with[input], /github\.event_name != 'pull_request'/);
-  }
+  assert.equal(performance.jobs.validation.uses, './.github/workflows/pr-validation.yml');
 });
 
 test('the release gate accepts only intentional skips and still requires the immutable build', () => {
   const gate = validation.jobs['release-gate'].steps[0].run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
-  const frontend = ['react','fast-browser','foundation','functional','compiled','timing','performance','lighthouse'];
+  const frontend = ['foundation','functional','compiled','timing','performance','lighthouse'];
   for (const scope of [{ frontend: true, backend: false, schema: false }, { frontend: false, backend: true, schema: true }]) {
     const results = Object.fromEntries(validation.jobs['release-gate'].needs.map(name => [name, { result: 'success' }]));
     results.build.outputs = { digest: 'a'.repeat(64) };
@@ -414,7 +402,7 @@ test('the release gate accepts only intentional skips and still requires the imm
       RUN_FRONTEND_TESTS: String(scope.frontend), RUN_BACKEND_TESTS: String(scope.backend),
     } }, console: { log() {} } });
     assert.doesNotThrow(execute);
-    const selected = scope.frontend ? 'fast-browser' : 'database';
+    const selected = scope.frontend ? 'react' : 'database';
     for (const result of ['failure', 'cancelled', 'skipped']) {
       results[selected].result = result;
       assert.throws(execute, /RELEASE_GATE_FAILED/);

@@ -74,8 +74,11 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
   resolveCli = packageBin } = {}) {
   if (mode !== 'staged' && mode !== 'all') throw new Error('Usage: node scripts/database-check.mjs --staged|--all');
   const apiBenchmarkRequested = environment.PERFORMANCE_API_BENCHMARK === 'true';
+  const sqlBenchmarkRequested = environment.DATABASE_PERFORMANCE_BENCHMARK === 'true';
   const canonicalHttpTests = discoverCanonicalHttpTests({ root });
   if (apiBenchmarkRequested && mode !== 'all') throw new Error('PERFORMANCE_API_BENCHMARK_REQUIRES_ALL_MODE');
+  if (apiBenchmarkRequested && !sqlBenchmarkRequested) throw new Error('PERFORMANCE_API_BENCHMARK_REQUIRES_SQL_BENCHMARK');
+  if (sqlBenchmarkRequested && mode !== 'all') throw new Error('DATABASE_PERFORMANCE_BENCHMARK_REQUIRES_ALL_MODE');
   if (apiBenchmarkRequested && environment.GITHUB_ACTIONS !== 'true') throw new Error('PERFORMANCE_API_BENCHMARK_CI_ONLY');
   const stagedFiles = stagedDatabaseFiles({ root, execute });
   if (mode === 'staged' && stagedFiles.length === 0) {
@@ -96,7 +99,7 @@ export function runDatabaseCheck({ root = repoRoot, mode = 'staged', execute = r
     // start has applied the complete migration chain. Measure before reset so
     // the child can independently verify the CLI's workdir container label;
     // reset replaces the container and retains proof only in this process.
-    if (mode === 'all') {
+    if (sqlBenchmarkRequested) {
       const directory = path.join(root, 'artifacts', 'performance');
       mkdirSync(directory, { recursive: true });
       const reportPath = path.join(directory, `database-sql-attempt-${Date.now()}-${process.pid}.json`);
