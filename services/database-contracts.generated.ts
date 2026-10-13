@@ -88698,22 +88698,6 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
-    "manager_report_read_v2": {
-      "oneOf": [
-        {
-          "object": {
-            "p_payload": {
-              "schema": {
-                "oneOf": [
-                  "json",
-                  "null"
-                ]
-              }
-            }
-          }
-        }
-      ]
-    },
     "manager_ncr_outbox_metadata_v1": {
       "oneOf": [
         {
@@ -88730,6 +88714,22 @@ export const contracts: RuntimeContracts<Database> = {
               "schema": {
                 "oneOf": [
                   "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "manager_report_read_v2": {
+      "oneOf": [
+        {
+          "object": {
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
                   "null"
                 ]
               }
@@ -98737,12 +98737,12 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
-    "manager_report_read_v2": {
+    "manager_ncr_outbox_metadata_v1": {
       "oneOf": [
         "json"
       ]
     },
-    "manager_ncr_outbox_metadata_v1": {
+    "manager_report_read_v2": {
       "oneOf": [
         "json"
       ]
