@@ -19,6 +19,8 @@ test('reusable PR validation defaults to frontend and backend unit coverage only
   assert.ok(pr.jobs['pr-gate'].needs.includes('lint'));
   assert.ok(pr.jobs['pr-gate'].needs.includes('unit'));
   assert.ok(pr.jobs['pr-gate'].needs.includes('contracts'));
+  assert.equal(pr.jobs.unit.steps.find(step => step.uses === 'actions/checkout@v4').with['fetch-depth'], 0,
+    'unit contracts retain access to their immutable historical Git fixtures');
   assert.doesNotMatch(JSON.stringify(pr.jobs.react.steps), /playwright|chromium|lighthouse|performance|artifact/i);
   assert.doesNotMatch(JSON.stringify(pr.jobs.unit.steps), /playwright|chromium|lighthouse|performance|artifact/i);
   for (const input of ['run-schema-tests', 'run-browser-tests', 'run-performance-tests']) {
