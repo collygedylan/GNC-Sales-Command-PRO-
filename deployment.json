@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-deployment-fingerprint-v1",
-  "release": "V2026.10.13.001",
-  "commit": "2b0837fe4001050b55408169de9c54fb11e30752",
-  "generatedAt": "2026-10-13T13:34:41.042Z"
+  "release": "V2026.10.13.002",
+  "commit": "1a64e11d566cc0aa38cee01ca6e7ab044adea2ec",
+  "generatedAt": "2026-10-13T15:16:09.571Z"
 }
