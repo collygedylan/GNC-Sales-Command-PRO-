@@ -33,6 +33,7 @@ for (const relativePath of [
   'assets/live-sync-registry.js',
   'assets/live-sync-adapters.js',
   'assets/live-sync-coordinator.js',
+  'assets/request-submission.js',
   'assets/inventory-list-contract.js',
   'assets/master-detail-snapshots.js',
   'sw.js'
@@ -46,4 +47,4 @@ for (const relativePath of [
 }
 
 if (parsed < 3) throw new Error(`Expected at least 3 inline scripts, parsed ${parsed}.`);
-console.log(`Parsed ${parsed} inline scripts and 12 shell assets.`);
+console.log(`Parsed ${parsed} inline scripts and 13 shell assets.`);
