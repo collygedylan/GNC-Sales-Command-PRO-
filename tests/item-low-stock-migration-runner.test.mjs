@@ -682,6 +682,8 @@ test('manager report read RPC is registered with bounded projections and service
   const normalizedItemcodeIndexKey = "upper(btrim(coalesce(itemcode,''::text)))";
   assert.ok(indexMigration.includes(normalizedItemcodeIndexKey), 'index migration and probe target use the same normalized itemcode key');
   assert.match(migration, /least\(100,greatest\(1/);
+  assert.match(migration, /coalesce\(policy\.source_revision::text,''\)/);
+  assert.match(migration, /from private\.ph_inventory_row_assignment_policy_state policy where policy\.singleton/);
   assert.match(migration, /private\.inventory_effective_owner_v1\(m\.unique_id\)/);
   assert.match(migration, /private\.manager_report_grid_filter_v1/);
   assert.match(migration, /'projection','list'\)='card'/);

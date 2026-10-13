@@ -766,5 +766,13 @@
   {
     "source": "supabase/migrations/20261012180000_sales_rep_inventory_operations.sql",
     "destination": "20261012180000_sales_rep_inventory_operations.sql"
+  },
+  {
+    "source": "supabase/migrations/20261012190002_manager_report_read_v2.sql",
+    "destination": "20261012190002_manager_report_read_v2.sql"
+  },
+  {
+    "source": "supabase/migrations/20261012190003_manager_list_read_v2.sql",
+    "destination": "20261012190003_manager_list_read_v2.sql"
   }
 ]
