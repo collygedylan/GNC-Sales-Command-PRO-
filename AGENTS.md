@@ -3,6 +3,7 @@
 2. **Report, Don't React:** If you discover a pre-existing bug, race condition, or deployment gap that is outside the exact scope of the user's prompt, DO NOT fix it. Report the blocker to the user, wait for instructions, and halt execution.
 3. **Surgical Precision:** Only modify the specific files required to complete the user's explicit feature request or bug fix. Do not refactor unrelated code or architecture you happen to pass through.
 4. **Credit Protection:** If a seemingly simple task requires modifying more than 5 files, pause and ask the user for authorization before writing the code to prevent burning through workspace credits on incorrect assumptions.
+5. **Amazon-Grade Performance & State:** Never introduce synchronous network blocking for lookup tables (customers, reps, locations). All static and semi-static dictionary data must be pre-fetched and cached locally (e.g., using SWR). Dropdowns and UI filters must respond instantly client-side. State must be strictly preserved across components to guarantee payload integrity during final database transactions.
 
 # Repository Agent Workflow
 
