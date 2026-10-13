@@ -370,7 +370,10 @@ test('Suspend photo-only saves use a consumed scoped proof and preserve the gene
   assert.match(source, /\['dock_photo_link', 'dock_photo_name'\]/);
   assert.match(source, /isCurrentSuspendTagPhotoProof\(options\.photoProof, mirror\)/);
   assert.match(source, /if \(photoOnly\) suspendTagPhotoProofs\.delete\(options\.photoProof\)/);
-  assert.match(source, /if \(\(!photoOnly && !requireCurrentSuspendTagWriteProof\(operation, mirror\)\)/);
+  assert.match(source, /if \(\(!photoOnly && !writeProof && !requireCurrentSuspendTagWriteProof\(operation, mirror\)\)/);
+  assert.match(source, /!photoOnly && \['save', 'complete'\]\.includes\(operation\) && canUseProductionLiveSync\(\)/);
+  assert.match(source, /await loadCurrentSuspendTagWriteRow\(mirror, operation, retryCommand\)/);
+  assert.match(source, /isCurrentSuspendTagWriteRowProof\(writeProof, mirror, operation\)/);
   assert.match(source, /expectedRevision === getDockSuspendCompletionRevision\(options\.photoProof\.row\)/);
 });
 

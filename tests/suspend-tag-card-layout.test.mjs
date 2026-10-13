@@ -30,6 +30,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     canCurrentUserViewDockSuspendDcRequests: () => allowed,
     canCurrentUserUseDriveCardOptions: () => driveAllowed,
     canCurrentUserSubmitRepInventoryOperations: () => false,
+    canUseProductionLiveSync: () => false,
     getDockStopOrDropValue: () => '3', getDockDisplayQty: () => 8, formatDockDisplayQty: String,
     getOperationalCardInventoryRow: () => inventory, buildInventoryQuantityChipsHtml: () => '<div>On Hand 8</div>',
     getSuspendTagStatus: row => row.suspend_tag_status,
@@ -110,6 +111,17 @@ test('selection, completion, and sharing stay independent of the card editor', t
   h.card.querySelector('input').click();
   for (const button of h.card.querySelectorAll('.app-suspend-tag-actions button')) button.click();
   assert.deepEqual(h.calls.map(call => call[0]), ['select', 'done', 'share']);
+});
+
+test('pending whole-view verification leaves Mark Done available for its awaited row check', t => {
+  const h = harness(t);
+  const start = html.indexOf('const SUSPEND_TAG_WRITE_ACTION_NAMES = new Set(');
+  const end = html.indexOf('        function isSuspendTagWriteSurface(', start);
+  h.w.eval(`${html.slice(start, end)}\nconst suspendTagWriteControlState = new WeakMap();\n${extract('isSuspendTagWriteControl')}\n${extract('applySuspendTagWriteProofToNode')}\napplySuspendTagWriteProofToNode(document.getElementById('request-content'), false);`);
+  const actions = Array.from(h.card.querySelectorAll('.app-suspend-tag-actions button'));
+  assert.equal(actions.find(button => button.textContent === 'Mark Done').disabled, false);
+  assert.equal(actions.find(button => button.textContent === 'Share Photo / Spec Options').disabled, true, 'sharing retains its existing freshness gate');
+  assert.equal(h.card.querySelector('.app-drive-card-reclass button').disabled, false);
 });
 
 test('permission and missing-inventory guards never invent a Reclass target', t => {
