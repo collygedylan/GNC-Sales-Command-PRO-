@@ -622,9 +622,36 @@ test('historical report fixture retains production task columns required by the 
 test('bounded report RPC types follow the generated public function order', () => {
   const types = readFileSync(path.join(root, 'supabase/functions/_shared/database.types.ts'), 'utf8');
   const outbox = types.indexOf('      manager_ncr_outbox_metadata_v1: {');
-  const reports = types.indexOf('      manager_report_read_v2: {');
+  const reports = types.indexOf('      manager_report_read_v2: { Args: { p_payload: Json }; Returns: Json }');
   const season = types.indexOf('      manager_season_priority_list_v1: {');
   assert.ok(outbox >= 0 && reports > outbox && season > reports);
+});
+
+test('historical report projections retain the production seasonal and NCR fields', () => {
+  const fixture = readFileSync(path.join(root, 'supabase/ci/request_workflow_baseline.sql'), 'utf8');
+  const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');
+  for (const field of ['season_oh', 'season_demand', 'season_available', 'ncr_approval_message']) {
+    const declaration = new RegExp(`\\b${field}\\s+text\\s*[,)]`, 'i');
+    assert.match(fixture, declaration);
+    assert.match(baseline, declaration);
+  }
+});
+
+test('every bounded report master projection column exists in the isolated schema', () => {
+  const manifest = readHistoricalMigrationManifest({ root });
+  const fixture = manifest.map(entry => readFileSync(path.join(root, entry.source), 'utf8')).join('\n');
+  const columns = new Set();
+  for (const table of fixture.matchAll(/create table(?: if not exists)? public\.ph_master_inventory\s*\(([\s\S]*?)\);/gi)) {
+    for (const column of table[1].matchAll(/^\s*([a-z_][a-z0-9_]*)\s+(?:text|numeric|timestamp|timestamptz|boolean|integer|bigint|uuid)\b/gim)) columns.add(column[1].toLowerCase());
+  }
+  for (const alter of fixture.matchAll(/alter table(?: if exists)?(?: only)? public\.ph_master_inventory\b([\s\S]*?);/gi)) {
+    for (const column of alter[1].matchAll(/add column(?: if not exists)?\s+([a-z_][a-z0-9_]*)\b/gi)) columns.add(column[1].toLowerCase());
+  }
+  const readers = ['20261012190002_manager_report_read_v2.sql', '20261012190003_manager_list_read_v2.sql']
+    .map(name => readFileSync(path.join(root, 'supabase/migrations', name), 'utf8')).join('\n');
+  const required = new Set([...readers.matchAll(/\b(?:m|sibling)\.([a-z_][a-z0-9_]*)\b/gi)].map(match => match[1].toLowerCase()));
+  assert.ok(required.size >= 43);
+  for (const column of required) assert.ok(columns.has(column), `report reader column ${column} must exist in the isolated inventory schema`);
 });
 
 test('historical master rows retain production Hold release approval types for V6 replay', () => {

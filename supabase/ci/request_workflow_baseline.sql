@@ -17,6 +17,9 @@ create table if not exists public.ph_master_inventory (
   ptrreviewed text,
   ptravailable text,
   season_supply text,
+  season_oh text,
+  season_demand text,
+  season_available text,
   priority text,
   qualitycode text,
   field_tag_color text,
@@ -52,7 +55,8 @@ create table if not exists public.ph_master_inventory (
   itemspec text,
   locationnote text,
   locationnotedate text,
-  app_tab_assignment text
+  app_tab_assignment text,
+  ncr_approval_message text
 );
 
 create table if not exists public.ph_active_request (

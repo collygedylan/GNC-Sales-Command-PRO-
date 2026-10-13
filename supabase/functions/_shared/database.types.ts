@@ -17789,10 +17789,7 @@ export type Database = {
         Args: { p_actor_username: string; p_approval_type: string }
         Returns: Json
       }
-      manager_report_read_v2: {
-        Args: { p_payload: Json }
-        Returns: Json
-      }
+      manager_report_read_v2: { Args: { p_payload: Json }; Returns: Json }
       manager_season_priority_list_v1: {
         Args: { p_actor_id: string; p_assigned_to?: string }
         Returns: Json
