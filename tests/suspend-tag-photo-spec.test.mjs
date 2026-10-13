@@ -14,7 +14,7 @@ function extract(name) {
 }
 function evaluate(ctx, ...names) { vm.createContext(ctx); vm.runInContext(names.map(extract).join('\n'), ctx); return ctx; }
 
-test('Suspend Tag card mounts its shared Photo / Specs action with current permissions', () => {
+test('Suspend Tag editor retains current permissions without a standalone face button', () => {
   let allowed = true, status = 'pending';
   const item = { UNIQUE_ID: 'dock_suspend_dc_soc-1' }, opened = [];
   const ctx = {
@@ -28,18 +28,10 @@ test('Suspend Tag card mounts its shared Photo / Specs action with current permi
     openDetail: (...args) => opened.push(args),
   };
   evaluate(ctx, 'buildSuspendTagActions', 'openDockSuspendDcRequestUpdate');
-  const dom = new JSDOM('<article id="card"></article>', { runScripts: 'dangerously' });
-  dom.window.openDockSuspendDcRequestUpdate = ctx.openDockSuspendDcRequestUpdate;
-  const card = dom.window.document.querySelector('#card');
-  card.innerHTML = ctx.buildSuspendTagActions(item, 'onpointerdown="event.stopPropagation()" ontouchstart="event.stopPropagation()"');
-  const button = [...card.querySelectorAll('button')].find(node => node.textContent === 'Photo / Specs');
-  assert.ok(button);
-  let cardActivations = 0;
-  for (const type of ['pointerdown', 'touchstart', 'click']) {
-    card.addEventListener(type, () => cardActivations++);
-    button.dispatchEvent(new dom.window.Event(type, { bubbles: true }));
+  for (status of ['pending', 'completed', 'awaiting_rep', 'approved', 'denied']) {
+    assert.doesNotMatch(ctx.buildSuspendTagActions(item), />Photo \/ Specs</);
   }
-  assert.equal(cardActivations, 0);
+  ctx.openDockSuspendDcRequestUpdate(item.UNIQUE_ID);
   assert.deepEqual(JSON.parse(JSON.stringify(opened)), [[item.UNIQUE_ID, 'request', { preferredTab: 'request' }]]);
   for (status of ['awaiting_rep', 'approved']) assert.doesNotMatch(ctx.buildSuspendTagActions(item), />Photo \/ Specs</);
   status = 'pending'; allowed = false;
@@ -48,7 +40,6 @@ test('Suspend Tag card mounts its shared Photo / Specs action with current permi
   assert.equal(opened.length, 1, 'direct activation also checks access');
   assert.match(html, /onchange="handlePhotoUpload\(this, 'req-'\)"/);
   assert.match(html, /id="req-spec"[^>]+onchange="saveData\(false, 'req-', true\)"/);
-  dom.window.close();
 });
 
 const identity = { itemCode:'PLANT-1', locationCode:'A1', lotCode:'LOT-A', source:'GREENLEAF', masterUid:'' };
