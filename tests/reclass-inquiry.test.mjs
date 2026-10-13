@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
+import { JSDOM } from 'jsdom';
 
 const root = process.cwd();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
@@ -104,6 +105,82 @@ function loadServerModel() {
   context.__pilotMessages = pilotMessages;
   context.__pilotProperties = pilotProperties;
   return context;
+}
+
+function assertReclassReportGridLayout(output, expectedRows) {
+  const dom = new JSDOM(output);
+  const { document, getComputedStyle } = dom.window;
+  const frame = document.querySelector('table.report-frame');
+  assert.ok(frame);
+  const outerHead = frame.tHead;
+  assert.equal(outerHead.rows.length, 1, 'outer thead contains only the repeating title');
+  assert.equal(outerHead.querySelectorAll('th').length, 1);
+  assert.match(outerHead.textContent, /GNC PH Reclass Item Inquiry/);
+  assert.equal(outerHead.querySelector('.column-heading-row'), null, 'location columns do not precede the metadata');
+
+  const outerRows = Array.from(frame.tBodies[0].rows);
+  assert.deepEqual(outerRows.map((row) => row.className), [
+    'report-summary-row', 'report-grid-row', ...(frame.querySelector('.supplemental-temporary-row') ? ['supplemental-temporary-row'] : []),
+  ]);
+  const summary = outerRows[0].querySelector('.report-summary-cell');
+  assert.ok(summary);
+  assert.equal(summary.querySelectorAll('.meta').length, 1, 'submission metadata is emitted once');
+  assert.equal(frame.querySelectorAll('.meta').length, 1);
+  const summaryChildren = Array.from(summary.children);
+  const summaryOrder = ['meta', 'proposal-legend', 'identity'];
+  assert.deepEqual(summaryChildren.slice(0, 3).map((element) => element.className), summaryOrder);
+  const evidence = summaryChildren.filter((element) => element.matches('.evaluation-origin'));
+  assert.ok(evidence.length === 0 || summaryChildren.indexOf(evidence[0]) > summaryChildren.findIndex((element) => element.matches('.identity')));
+  assert.ok(summaryChildren.every((element) => element.matches('.meta, .proposal-legend, .identity, .section-title, .evaluation-origin')));
+
+  const gridCell = outerRows[1].querySelector('.report-grid-cell');
+  assert.ok(gridCell);
+  const sectionHeading = gridCell.querySelector('.section-title');
+  const locationTable = gridCell.querySelector('table.location-table');
+  assert.ok(sectionHeading && locationTable);
+  assert.equal(sectionHeading.textContent.trim(), 'Location / Lot Item Inquiry');
+  assert.equal(locationTable.previousElementSibling, sectionHeading, 'section heading immediately precedes the location table');
+  assert.equal(locationTable.tHead.rows.length, 1, 'inner thead contains only the column headings');
+  assert.equal(locationTable.tHead.rows[0].className, 'column-heading-row');
+  assert.equal(locationTable.querySelector('.page-header'), null);
+  const colCount = locationTable.querySelectorAll('colgroup col').length;
+  const headings = Array.from(locationTable.tHead.rows[0].cells);
+  assert.equal(headings.length, colCount, 'column heading count matches the location table colgroup');
+  assert.equal(locationTable.tBodies.length, 1);
+  assert.equal(locationTable.tBodies[0].rows.length, expectedRows);
+  for (const row of locationTable.tBodies[0].rows) {
+    assert.equal(row.cells.length, colCount, 'every location row matches its colgroup, including empty reports');
+    assert.equal(row.cells.length, headings.length);
+  }
+
+  const firstCell = locationTable.tBodies[0].rows[0]?.cells[0];
+  const thStyle = getComputedStyle(headings[0]);
+  const tdStyle = firstCell ? getComputedStyle(firstCell) : getComputedStyle(headings[0]);
+  for (const style of [thStyle, tdStyle]) {
+    assert.equal(style.padding, '0.5px 2px');
+    assert.equal(style.lineHeight, '1.05');
+    assert.equal(style.height, 'auto');
+    assert.equal(style.minHeight, '0px');
+    assert.equal(style.overflowWrap, 'anywhere');
+    assert.equal(style.wordBreak, 'break-word');
+  }
+  const metadataCellStyle = getComputedStyle(summary);
+  assert.equal(metadataCellStyle.padding, '3px 0px', 'compact cell padding does not leak onto metadata');
+  assert.notEqual(metadataCellStyle.padding, thStyle.padding);
+  const proposal = locationTable.querySelector('.proposal-box');
+  if (expectedRows) {
+    assert.ok(proposal, 'location grid retains boxed proposals');
+    assert.equal(getComputedStyle(proposal).padding, '0.5px 2px');
+    assert.notEqual(getComputedStyle(frame.querySelector('.proposal-legend')).padding, getComputedStyle(proposal).padding);
+    assert.equal(getComputedStyle(locationTable.tBodies[0].rows[0]).breakInside, 'avoid');
+  }
+  const summaryCellRules = Array.from(document.styleSheets[0].cssRules)
+    .filter((rule) => rule.selectorText?.split(',').some((selector) => selector.trim() === '.report-summary-cell'));
+  assert.ok(summaryCellRules.every((rule) => !rule.style.minHeight && !/\.5px\s+2px/.test(rule.style.padding)), 'metadata layout keeps its independent spacing');
+  assert.match(output, /\.report-frame>tbody>tr\{break-inside:auto;page-break-inside:auto\}/);
+  assert.match(output, /\.report-grid-cell>\.section-title\{break-after:avoid;page-break-after:avoid\}/);
+  assert.match(output, /\.proposal-box-movement\{[^}]*break-inside:avoid;page-break-inside:avoid\}/);
+  assert.match(output, /\.location-table tr\{break-inside:avoid;page-break-inside:avoid\}/);
 }
 
 function loadEvalServerModel() {
@@ -345,11 +422,19 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
         ['holdstopreason', index === 0 ? 'Check' : ''],
       ]),
       changedFields: index === 0 ? ['holdstopcode', 'holdstopreason'] : [],
+      temporaryChanges: index === 0 ? [{ key: 'specialpuller', label: 'Special Puller', value: 'Temporary pilot' }] : [],
     }));
-    const output = server.buildReclassInquiryReportHtml_({ ...baseModel, rows }, true);
+    const output = server.buildReclassInquiryReportHtml_({ ...baseModel, rows, evaluationResultsRows: [{ locationcode: 'A.1', lotcode: '27.F1', spec: 'Evidence retained' }] }, true);
+    assertReclassReportGridLayout(output, rowCount);
+    const headerHtml = output.match(/<tr class="column-heading-row">([\s\S]*?)<\/tr>/)?.[1] || '';
+    const headers = Array.from(headerHtml.matchAll(/<th>(.*?)<\/th>/g), (match) => match[1]);
+    assert.deepEqual(headers, ['Lotcode', 'Location', 'Source', 'Priority', 'OH', 'Rev', 'H/S', 'H/S Reason', 'H/S Begin Date', 'Loc Note Date', 'Loc PTN1', 'Loc Note',
+      'Desig Item', 'Desig Cust', 'Desig Loc', 'Pull', 'OS%', 'Sales Note', 'SUS']);
+    for (const rowHtml of output.matchAll(/<tr data-location-row="true">([\s\S]*?)<\/tr>/g)) {
+      assert.equal((rowHtml[1].match(/<td(?:\s|>)/g) || []).length, headers.length, 'each detail row matches the column count');
+    }
     assert.match(output, /@page\{size:Letter landscape;margin:[^}]+\}/);
     assert.doesNotMatch(output, /@top-center/);
-    assert.match(output, /<thead><tr class="page-title-row"><th class="page-title-cell" colspan="\d+"><div class="page-header">GNC PH Reclass Item Inquiry<\/div><\/th><\/tr><tr class="column-heading-row">/);
     assert.match(output, /thead\{display:table-header-group\}/);
     assert.match(output, /font-size:8pt/);
     assert.match(output, /background:#fff/);
@@ -359,6 +444,8 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.doesNotMatch(output, /PROPOSED/i);
     assert.match(output, /F1 \| sales year &lt;= 27 \| 3 rows/);
     assert.match(output, /proposal-legend/);
+    assert.match(output, /Evaluation Results[\s\S]*?Evidence retained/);
+    assert.match(output, /Temporary Report Edits[\s\S]*?Temporary pilot/);
     assert.match(output, /border:2px solid #000/);
     assert.doesNotMatch(output, /<th>Hold\/Stop Reason<\/th>/);
     assert.doesNotMatch(output, /<img/i);
@@ -369,8 +456,9 @@ test('1-row, 8-row, and 41-row PDFs are escaped, simplified, highlighted, landsc
     assert.match(output, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
     assert.match(output, /<th>Rev<\/th>/);
     assert.doesNotMatch(output, /<th>Hold\/Stop Code<\/th>/);
-    assert.equal((output.match(/<tr data-location-row="true">/g) || []).length, rowCount, `${rowCount}-row report should include every detail row`);
   }
+  const emptyOutput = server.buildReclassInquiryReportHtml_({ ...baseModel, rows: [] }, true);
+  assertReclassReportGridLayout(emptyOutput, 0);
 });
 
 test('Reclass workflow V3 row actions are live while V2 remains available for compatibility', () => {
