@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(42);
+select plan(46);
 
 select ok(has_function_privilege('service_role','public.manager_report_read_v2(jsonb)','execute')
   and not has_function_privilege('authenticated','public.manager_report_read_v2(jsonb)','execute')
@@ -68,7 +68,11 @@ values
  ('MRV2-BASE-2','MRV2-BASE','Location Base Fixture','#2','E.01.002','27.F1','10','8','1','F1','27','20','','','','','PH'),
  ('MRV2-GOLD-BOUNDARY','MRV2-GOLD-BOUNDARY','Golden Date Boundary','#2','D.08.001','27.F1','10','8','','F1','27','20','', 'H',
    to_char((now() at time zone 'America/Chicago')::date-5,'YYYY-MM-DD'),
-   to_char((now() at time zone 'America/Chicago')::date-10,'YYYY-MM-DD'),'PH');
+   to_char((now() at time zone 'America/Chicago')::date-10,'YYYY-MM-DD'),'PH'),
+ ('MRV2-LOW-NO-TARGET-F1','MRV2-LOW-NO-TARGET','Low Stock Without Target Fixture','#2','Z.98.001','27.F1','10','8','','F1','27','1','','','','','PH'),
+ ('MRV2-SHARED-LOC-LOT1','MRV2-SHARED-LOC','Shared Location Fixture','#2','Z.99.001','27.U1-A','10','8','','U1','27','20','','','','','PH'),
+ ('MRV2-SHARED-LOC-LOT2','MRV2-SHARED-LOC','Shared Location Fixture','#2','Z.99.001','27.U1-B','10','8','','U1','27','20','','','','','PH'),
+ ('MRV2-SHARED-LOC-OTHER','MRV2-SHARED-OTHER','Shared Location Other Item','#2','Z.99.001','27.U1','10','8','','U1','27','20','','','','','PH');
 update public.ph_master_inventory set app_tab_assignment='ncr_outbox_new_crop',
   ncr_approval_message='[[GNC_NCR_ITEM_INQUIRY:{"activeRows":[{"unique_id":"MRV2-E1"},{"unique_id":"MRV2-E2"}]}]]'
 where unique_id='MRV2-E1';
@@ -113,7 +117,15 @@ insert into report_read_results values
 ('eval1_locationbase',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval1','operation','groups',
   'filters',jsonb_build_object('itemCode','MRV2-BASE','reportIds',jsonb_build_array('s1-with-pri'),'groupBy','locationbase'),'limit',25))),
 ('lowstock_override',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','rows',
-  'filters',jsonb_build_object('itemCode','MRV2-OVERRIDE','reportIds',jsonb_build_array('low-stock')),'limit',100)));
+  'filters',jsonb_build_object('itemCode','MRV2-OVERRIDE','reportIds',jsonb_build_array('low-stock')),'limit',100))),
+('lowstock_missing_target',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','rows',
+  'filters',jsonb_build_object('itemCode','MRV2-LOW-NO-TARGET','reportIds',jsonb_build_array('low-stock')),'limit',100))),
+('shared_location_rows',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','rows',
+  'filters',jsonb_build_object('locationcode','Z.99.001','reportIds',jsonb_build_array('u1')),'limit',100))),
+('shared_location_item_groups',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','groups',
+  'filters',jsonb_build_object('locationcode','Z.99.001','reportIds',jsonb_build_array('u1'),'groupBy','itemcode'),'limit',25))),
+('shared_location_location_groups',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','groups',
+  'filters',jsonb_build_object('locationcode','Z.99.001','reportIds',jsonb_build_array('u1'),'groupBy','locationcode'),'limit',25)));
 
 select is((select result->>'total' from report_read_results where name='eval2_groups'),'1','multiple report memberships produce one grouped item');
 select is((select (result->'rows'->0->>'rowCount')::integer from report_read_results where name='eval2_groups'),4,'Eval2 broad card group includes current sibling rows');
@@ -131,6 +143,18 @@ select ok((select result->'metadata'->'diagnostics'->>'invalidHoldStartDateCount
   and result->'metadata'->'diagnostics'->>'invalidLocationNoteDateCount'='1' from report_read_results where name='eval1_metadata'),
   'Eval1 diagnostics count invalid dates using Central time source');
 select is((select result->>'total' from report_read_results where name='lowstock_override'),'0','manual low-stock override wins over the global threshold');
+select ok((select result->>'total'='1' and result->'rows' @> '[{"unique_id":"MRV2-LOW-NO-TARGET-F1","reportIds":["low-stock","no-pri"]}]'::jsonb
+  from report_read_results where name='lowstock_missing_target'),
+  'missing low-stock target stats and override preserve qualifying inventory rows using the global threshold');
+select ok((select result->>'total'='3' and jsonb_array_length(result->'rows')=3
+  from report_read_results where name='shared_location_rows'),
+  'multiple lots and items at one location remain three inventory report rows');
+select ok((select result->>'total'='2' and (result->'rows'->0->>'rowCount')::integer+(result->'rows'->1->>'rowCount')::integer=3
+  from report_read_results where name='shared_location_item_groups'),
+  'shared-location item groups retain two itemcodes and three distinct inventory rows');
+select ok((select result->>'total'='1' and result->'rows'->0->>'itemCount'='2' and result->'rows'->0->>'rowCount'='3'
+  from report_read_results where name='shared_location_location_groups'),
+  'location grouping does not multiply rows when lots and itemcodes share one location');
 select ok((select result->>'hasMore'='false' from report_read_results where name='eval1_metadata'),'metadata response is not an incomplete empty page');
 select is((public.manager_ncr_outbox_metadata_v1('dylan_collyge','new-crop')->>'activeLineCount'),'2',
   'NCR outbox metadata aggregates all active lines independently of the page');

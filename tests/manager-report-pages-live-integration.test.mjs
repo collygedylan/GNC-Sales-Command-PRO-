@@ -148,3 +148,84 @@ test('selection tray counts use complete server metadata independently of retain
   assert.equal(context.getManagerEvalReport2SelectionCounts().locationCount,12);
   state.revision='r2';assert.equal(context.getManagerEvalReport2SelectionCounts().rowCount,0);
 });
+
+test('Eval2 report index waits for verified metadata and then exposes populated report counts', () => {
+  const state = { revision:'', metadata:{}, page:null, rows:[] };
+  const context = run(['createPagedManagerEvalIndex','getManagerEvalReport2Index'], {
+    useManagerReportPages:() => true,
+    getManagerReportPageController:() => ({ state:() => state }),
+    getSupabaseReadIdentityScope:() => 'account-a',
+    appAccessSnapshotState:{snapshot:{dataPermissionVersion:'p1'}},
+    managerEvalReport2Cache:null,
+    getManagerEvalReportsApi:() => ({ REPORT_IDS:['low-stock','s1-with-pri'] }),
+    getConfiguredCurrentSeasonCode:() => 'S1', getConfiguredCurrentSalesYearCode:() => 27,
+    getConfiguredNextSaleSeasonTarget:() => ({season:'S2',salesYear:27}),
+    managerEvalReportSettings:{}
+  });
+  assert.equal(context.getManagerEvalReport2Index(), null);
+  state.revision = 'rev-1';
+  state.metadata = { counts:{'low-stock':3,'s1-with-pri':2} };
+  state.page = { rows:[], sourceRevision:'rev-1', metadata:state.metadata };
+  const index = context.getManagerEvalReport2Index();
+  assert.equal(index.counts['low-stock'], 3);
+  assert.equal(index.counts['s1-with-pri'], 2);
+  state.metadata = { counts:{}, inventoryRowCount:0 };
+  state.revision = 'empty-rev';
+  assert.equal(context.getManagerEvalReport2Index().inventoryRowCount, 0);
+});
+
+test('Eval2 loader falls back to full inventory after paged capabilities resolve unsupported', async () => {
+  const calls = [];
+  let paged = true;
+  const context = run(['loadManagerEvalReports2'], {
+    canViewManagerEvalReports2:() => true,
+    useManagerReportPages:() => paged,
+    getManagerReportPageController:() => ({ initialize:async () => { calls.push('initialize'); paged = false; }, enabled:() => false }),
+    getSupabaseReadIdentityScope:() => 'account-a',
+    managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
+    managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
+    getDatasetLoadSignature:key => `${key}-signature`,
+    ensureDatasetLoaded:async key => { calls.push(key); },
+    loadManagerEvalReportSettings:async () => { calls.push('settings'); },
+    isDatasetLoaded:() => true,
+    managerEvalReport2NeedsLowStockTargets:() => false,
+    getManagerEvalReport2LatestSourceUpdate:() => '',
+    scheduleManagersRender:() => {},
+    getCurrentVisibleViewId:() => '',
+    activeHomeTab:'', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
+    fullInventory:[{unique_id:'inventory'}], warehouseAssignedItemsInventory:[{unique_id:'assignment'}],
+    buildManagerEvalReport2IndexAsync:async () => ({ counts:{'low-stock':1} }),
+    invalidateManagerEvalReport2Cache:() => {},
+    getFriendlyBackendErrorMessage:error => error.message,
+    reportSemanticHealthEvent:() => {}, showToast:() => {}
+  });
+  const result = await context.loadManagerEvalReports2(false);
+  assert.deepEqual(calls.slice(0, 4), ['initialize','master','warehouseAssignedItems','settings']);
+  assert.deepEqual(result.counts, {'low-stock':1});
+});
+
+test('supported Eval2 load explicitly fetches report metadata before rendering the index', async () => {
+  const calls = [];
+  const controller = {
+    refresh:surface => calls.push(`refresh:${surface}`),
+    initialize:async () => { calls.push('initialize'); return {}; },
+    enabled:() => true,
+    load:async (query, fresh) => { calls.push(`load:${query.surface}:${query.operation}:${fresh}`); return { metadata:{counts:{'low-stock':4}}, rows:[] }; },
+    state:() => ({page:{sourceRevision:'r1'}})
+  };
+  const context = run(['loadManagerEvalReports2'], {
+    canViewManagerEvalReports2:() => true, useManagerReportPages:() => true,
+    getManagerReportPageController:() => controller,
+    buildManagerReportPageQuery:(surface, operation) => ({surface,operation}),
+    getSupabaseReadIdentityScope:() => 'account-a',
+    managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
+    managerEvalReport2Cache:{paged:true,counts:{'low-stock':4}}, managerEvalReport2CacheKey:'',
+    getDatasetLoadSignature:() => '', scheduleManagersRender:() => {},
+    MANAGER_EVAL_REPORTS_2_VIEW:'eval2', activeHomeTab:'',
+    getCurrentVisibleViewId:() => '',
+    getManagerEvalReport2Index:() => ({paged:true,counts:{'low-stock':4}})
+  });
+  const result = await context.loadManagerEvalReports2(false);
+  assert.deepEqual(calls, ['initialize','load:eval2:metadata:false']);
+  assert.equal(result.counts['low-stock'], 4);
+});
