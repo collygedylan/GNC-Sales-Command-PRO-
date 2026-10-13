@@ -133213,7 +133213,7 @@ C.14.043 C.15.000
                     : surface === 'assigned-items' ? canViewAssignedItemsExport()
                     : surface === 'season-priority' ? canViewManagerSeasonPriority()
                     : surface === 'approval' ? isManagerApprovalTab(activeHomeTab) : canAccessView('low-stock'),
-                loadModule: () => import('./assets/report-pages.js?v=' + APP_VERSION),
+                loadModule: () => import('/assets/report-pages.js?v=' + APP_VERSION),
                 onSuspend:() => managerReportVisibleRows.clear(),
                 onClear:() => {
                     managerReportScopedRows.clear(); managerReportVisibleRows.clear(); managerEvalReport2Cache = null; managerEvalReport2CacheKey = '';
