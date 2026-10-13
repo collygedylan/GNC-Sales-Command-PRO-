@@ -10,9 +10,9 @@ import {
 } from './apps-script-sync-lib.mjs';
 import {
   assertProductionAppsScriptTarget,
-  authorizeProductionReleaseFromEnvironment,
   verifyAppsScriptDeploymentOwnership
 } from './lib/production-release-guard.mjs';
+import { authorizeProductionAppsScriptDeploymentFromEnvironment } from './lib/apps-script-deployment-guard.mjs';
 import { createAppsScriptRecoveryEvidence } from './apps-script-recovery-evidence.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -98,7 +98,7 @@ async function main() {
     console.log('Supabase service credentials remain in Apps Script Properties; no credential is embedded in source.');
   }
 
-  await authorizeProductionReleaseFromEnvironment();
+  await authorizeProductionAppsScriptDeploymentFromEnvironment();
   const claspRc = parseClaspRc(claspRcJson);
   const auth = getOAuthClientFromClaspRc(claspRc);
   const script = google.script({ version: 'v1', auth });
@@ -112,6 +112,7 @@ async function main() {
     deploymentId,
     source,
     githubSha,
+    beforeMutation: () => authorizeProductionAppsScriptDeploymentFromEnvironment(),
     logger: console
   });
 

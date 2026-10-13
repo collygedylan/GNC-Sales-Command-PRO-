@@ -323,9 +323,9 @@ test('backend workflow guards current-main Supabase deployment without Apps Scri
   assert.equal(workflow.jobs['publish-pages'], undefined);
 });
 
-test('deploy script reauthorizes exact main and proof before creating OAuth credentials', () => {
+test('deploy script reauthorizes current main and validation before creating OAuth credentials', () => {
   const source = fs.readFileSync(new URL('../scripts/sync-codegs-to-apps-script.js', import.meta.url), 'utf8');
-  const authorization = source.indexOf('await authorizeProductionReleaseFromEnvironment()');
+  const authorization = source.indexOf('await authorizeProductionAppsScriptDeploymentFromEnvironment()');
   const oauth = source.indexOf('const claspRc = parseClaspRc(claspRcJson)');
   const ownership = source.indexOf('await verifyAppsScriptDeploymentOwnership({');
   const mutation = source.indexOf('await syncAppsScriptProject({');

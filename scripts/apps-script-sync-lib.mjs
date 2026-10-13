@@ -157,10 +157,12 @@ export async function syncAppsScriptProject({
   fetchImpl = globalThis.fetch,
   sleep = delay,
   healthAttempts = 12,
-  healthRetryDelayMs = 5000
+  healthRetryDelayMs = 5000,
+  beforeMutation = async () => {}
 }) {
   if (!scriptId) throw syncError('APPS_SCRIPT_SCRIPT_ID_MISSING');
   if (!String(source || '').trim()) throw syncError('APPS_SCRIPT_SOURCE_EMPTY');
+  if (typeof beforeMutation !== 'function') throw syncError('APPS_SCRIPT_MUTATION_GUARD_INVALID');
 
   const versions = await listAllAppsScriptVersions(script, scriptId);
   const versionCount = versions.length;
@@ -187,12 +189,14 @@ export async function syncAppsScriptProject({
   if (codeFileIndex >= 0) files[codeFileIndex] = { ...files[codeFileIndex], ...nextCodeFile };
   else files.push(nextCodeFile);
 
+  await beforeMutation();
   await script.projects.updateContent({ scriptId, requestBody: { files } });
   if (!deploymentRequested) {
     return { versionCountBefore: versionCount, sourceUpdated: true, deploymentUpdated: false };
   }
 
   const description = `GitHub Code.gs sync ${String(githubSha).slice(0, 7)}`;
+  await beforeMutation();
   const versionResponse = await script.projects.versions.create({
     scriptId,
     requestBody: { description }
@@ -202,6 +206,7 @@ export async function syncAppsScriptProject({
     throw syncError('APPS_SCRIPT_VERSION_NUMBER_MISSING');
   }
 
+  await beforeMutation();
   await script.projects.deployments.update({
     scriptId,
     deploymentId,

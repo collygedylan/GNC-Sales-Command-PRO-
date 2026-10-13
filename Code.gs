@@ -525,7 +525,22 @@ function removeDropFolderAutoSyncTrigger() {
   console.log('Auto sync trigger removed.');
 }
 
-function runAutoDropFolderSync_() {
+function runAutoDropFolderSync_(event) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(MANUAL_SYNC_LOCK_WAIT_MS_)) {
+    return deferredManualSyncProcessorBusy_(loadManualSyncStatus_());
+  }
+  try {
+    const existing = loadManualSyncStatus_();
+    if (existing && existing.active) {
+      // Under the processor lock, ensure there is one continuation for an
+      // orphaned active run. Stale checkpoint recovery is handled by the worker.
+      ensureManualSyncStageRetryTrigger_(MANUAL_SYNC_PROCESSOR_RETRY_MS_, event && event.triggerUid);
+      return deferredManualSyncProcessorBusy_(existing, true);
+    }
+  } finally {
+    lock.releaseLock();
+  }
   // Queue bounded historical analysis independently of the operational import.
   // A failed/unfinished backfill must never block current SOC synchronization.
   try { scheduleSocOrderHistoryTrigger_(60 * 1000); }
@@ -1396,6 +1411,15 @@ const MANUAL_SYNC_EXECUTION_BUDGET_MS = 285000;
 const MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS = 120000;
 const MANUAL_SYNC_QUEUED_STALE_MS = 5 * 60 * 1000;
 const MANUAL_SYNC_ACTIVE_STALE_MS = 12 * 60 * 1000;
+const MANUAL_SYNC_STAGE_WATCHDOG_MS_ = 4 * 60 * 1000;
+const MANUAL_SYNC_PROCESSOR_RETRY_MS_ = 60 * 1000;
+const MANUAL_SYNC_LOCK_WAIT_MS_ = 1000;
+const IMPORT_EXTRACTION_CHECKPOINT_KEY_ = 'IMPORT_EXTRACTION_CHECKPOINT_V1';
+const IMPORT_SHEET_READ_CHUNK_ROWS_ = 500;
+const IMPORT_TRANSIENT_READ_ATTEMPTS_ = 3;
+const IMPORT_TRANSIENT_READ_BACKOFF_MS_ = Object.freeze([1000, 2000]);
+const IMPORT_READ_FINALIZATION_RESERVE_MS_ = 45000;
+var manualSyncInvocationDeadlineMs_ = 0;
 const SUPABASE_DELETE_URL_MAX_LENGTH = 1800;
 const SUPABASE_FETCH_PAGE_SIZE = 1000;
 const SUPABASE_PAGED_READ_FETCH_BATCH_SIZE = 8;
@@ -1766,11 +1790,82 @@ function removeManualSyncStageTriggers_() {
 }
 
 function scheduleManualSyncStageTrigger_() {
+  scheduleManualSyncStageTriggerAfter_(1000);
+}
+
+function scheduleManualSyncStageTriggerAfter_(delayMs) {
   removeManualSyncStageTriggers_();
   ScriptApp.newTrigger(MANUAL_SYNC_TRIGGER_HANDLER)
     .timeBased()
-    .after(1000)
+    .after(Math.max(1000, Number(delayMs) || 1000))
     .create();
+}
+
+function ensureManualSyncStageRetryTrigger_(delayMs, currentTriggerUid) {
+  const pending = ScriptApp.getProjectTriggers().filter(function(trigger) {
+    if (trigger.getHandlerFunction() !== MANUAL_SYNC_TRIGGER_HANDLER) return false;
+    const triggerUid = typeof trigger.getUniqueId === 'function' ? String(trigger.getUniqueId() || '') : '';
+    return !currentTriggerUid || triggerUid !== String(currentTriggerUid);
+  });
+  if (pending.length) {
+    // Callers hold the processor lock. Keep one pending continuation and
+    // remove duplicate one-shot triggers left by interrupted invocations.
+    pending.slice(1).forEach(function(trigger) { ScriptApp.deleteTrigger(trigger); });
+    return false;
+  }
+  ScriptApp.newTrigger(MANUAL_SYNC_TRIGGER_HANDLER)
+    .timeBased()
+    .after(Math.max(1000, Number(delayMs) || MANUAL_SYNC_PROCESSOR_RETRY_MS_))
+    .create();
+  return true;
+}
+
+function deferredManualSyncProcessorBusy_(status, activeRunAccepted) {
+  const current = status || loadManualSyncStatus_() || {};
+  return {
+    ok: true,
+    status: 'deferred',
+    code: 'MANUAL_SYNC_PROCESSOR_BUSY',
+    errorCode: 'MANUAL_SYNC_PROCESSOR_BUSY',
+    active: current.active === true,
+    runId: String(current.runId || ''),
+    currentStage: String(current.currentStage || ''),
+    currentStageLabel: String(current.currentStageLabel || ''),
+    currentPhase: String(current.currentPhase || ''),
+    message: current.active === true || activeRunAccepted === true
+      ? 'The import processor is busy. The active sync will continue shortly.'
+      : 'Another processor is busy; no sync was queued. Try again shortly.'
+  };
+}
+
+function createManualSyncQueuedStatus_(options) {
+  const stageOrder = getManualSyncStageOrder_(options && options.job);
+  const stageLabels = stageOrder.map(function(stageKey) {
+    const stageDef = MANUAL_SYNC_STAGE_DEFINITIONS[stageKey];
+    return stageDef ? stageDef.label : stageKey;
+  });
+  const timestamp = new Date().toISOString();
+  const runId = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
+  return {
+    active: true,
+    runId: runId,
+    job: String(options && options.job || 'all'),
+    source: String(options && options.source || 'manual_run'),
+    requestedBy: String(options && options.requestedBy || 'Unknown'),
+    stageOrder: stageOrder,
+    stageIndex: 0,
+    currentStage: 'queued',
+    currentStageLabel: 'Queued',
+    completedStages: [],
+    stageResults: [],
+    sourceFailureCount: 0,
+    startedAt: timestamp,
+    updatedAt: timestamp,
+    finishedAt: '',
+    message: `Queued ${stageLabels.join(' -> ')} sync.`,
+    error: '',
+    errorCode: ''
+  };
 }
 
 function getManualSyncStageOrder_(jobName) {
@@ -2061,7 +2156,10 @@ function appendSkippedManualSyncStages_(status, stageOrder, startIndex, reasonCo
 
 function queueManualSyncRequest_(options) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  if (!lock.tryLock(MANUAL_SYNC_LOCK_WAIT_MS_)) {
+    const existing = loadManualSyncStatus_();
+    return deferredManualSyncProcessorBusy_(existing);
+  }
   try {
     cleanupRequestGalleryPropertyCache_();
     const forceIfStale = !!(options && (options.forceIfStale === true || options.force_if_stale === true));
@@ -2083,52 +2181,16 @@ function queueManualSyncRequest_(options) {
     }
     if (existing && existing.active) {
       console.warn(`[MANUAL SYNC][${existing.runId || 'active'}] A manual sync is already running.`);
-      return sanitizeManualSyncStatusForClient_(Object.assign({}, existing, {
-        ok: true,
-        status: 'busy',
-        active: true,
-        runId: existing.runId || '',
-        currentStage: existing.currentStage || '',
-        currentStageLabel: existing.currentStageLabel || '',
-        stageOrder: Array.isArray(existing.stageOrder) ? existing.stageOrder : [],
-        stageIndex: Number(existing.stageIndex || 0),
-        completedStages: Array.isArray(existing.completedStages) ? existing.completedStages : [],
-        stageResults: Array.isArray(existing.stageResults) ? existing.stageResults : [],
-        startedAt: existing.startedAt || existing.started_at || '',
-        updatedAt: existing.updatedAt || existing.updated_at || existing.startedAt || existing.started_at || new Date().toISOString(),
-        finishedAt: existing.finishedAt || existing.finished_at || '',
-        message: existing.message || 'A manual sync is already running.',
-        error: existing.error || ''
-      }));
+      ensureManualSyncStageRetryTrigger_(MANUAL_SYNC_PROCESSOR_RETRY_MS_);
+      return deferredManualSyncProcessorBusy_(existing);
     }
 
-    const stageOrder = getManualSyncStageOrder_(options && options.job);
+    const status = createManualSyncQueuedStatus_(options);
+    const stageOrder = status.stageOrder;
     const stageLabels = stageOrder.map(function(stageKey) {
       const stageDef = MANUAL_SYNC_STAGE_DEFINITIONS[stageKey];
       return stageDef ? stageDef.label : stageKey;
     });
-    const timestamp = new Date().toISOString();
-    const runId = Utilities.getUuid().replace(/-/g, '').slice(0, 10);
-    const status = {
-      active: true,
-      runId: runId,
-      job: String(options && options.job || 'all'),
-      source: String(options && options.source || 'manual_run'),
-      requestedBy: String(options && options.requestedBy || 'Unknown'),
-      stageOrder: stageOrder,
-      stageIndex: 0,
-      currentStage: 'queued',
-      currentStageLabel: 'Queued',
-      completedStages: [],
-      stageResults: [],
-      sourceFailureCount: 0,
-      startedAt: timestamp,
-      updatedAt: timestamp,
-      finishedAt: '',
-      message: `Queued ${stageLabels.join(' -> ')} sync.`,
-      error: '',
-      errorCode: ''
-    };
 
     saveManualSyncStatus_(status);
     const deferStart = !(options && options.deferStart === false);
@@ -2149,10 +2211,10 @@ function queueManualSyncRequest_(options) {
         throw new Error('MANUAL_SYNC_TRIGGER_FAILED');
       }
     }
-    console.log(`[MANUAL SYNC][${runId}] Queued ${stageLabels.join(' -> ')} from ${status.source} by ${status.requestedBy}.`);
+    console.log(`[MANUAL SYNC][${status.runId}] Queued ${stageLabels.join(' -> ')} from ${status.source} by ${status.requestedBy}.`);
     return {
       status: 'queued',
-      runId: runId,
+      runId: status.runId,
       stageOrder: stageOrder,
       message: status.message
     };
@@ -2166,15 +2228,43 @@ function runQueuedManualSyncStage_(options) {
   const executionBudgetMs = Math.max(60000, Number(runOptions.executionBudgetMs) || MANUAL_SYNC_EXECUTION_BUDGET_MS);
   const nextStageStartCutoffMs = Math.max(1000, Number(runOptions.nextStageStartCutoffMs) || MANUAL_SYNC_NEXT_STAGE_START_CUTOFF_MS);
   const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
+  if (!lock.tryLock(MANUAL_SYNC_LOCK_WAIT_MS_)) {
+    console.warn('[MANUAL SYNC] Processor lock busy; worker invocation deferred.');
+    return deferredManualSyncProcessorBusy_(loadManualSyncStatus_());
+  }
   let status = null;
   const invocationStartedAt = Date.now();
+  const priorDeadline = manualSyncInvocationDeadlineMs_;
+  manualSyncInvocationDeadlineMs_ = invocationStartedAt + executionBudgetMs;
   try {
     status = loadManualSyncStatus_();
     if (!status || !status.active) {
       removeManualSyncStageTriggers_();
       console.log('[MANUAL SYNC] No queued manual sync found.');
       return;
+    }
+    const recoveryCheckpoint = readImportExtractionCheckpoint_();
+    const checkpointMatchesStage = recoveryCheckpoint
+      && String(recoveryCheckpoint.runId || '') === String(status.runId || '')
+      && String(recoveryCheckpoint.stage || '') === String(status.currentStage || '') && (
+      (status.currentStage === 'soc' && getSiteSplitLegacyTableName_(recoveryCheckpoint.tableName) === 'ph_soc_master') ||
+      (status.currentStage === 'reserves' && getSiteSplitLegacyTableName_(recoveryCheckpoint.tableName) === 'ph_reserves')
+    );
+    const stageStartedAtMs = parseManualSyncTimestampMs_(status.stageStartedAt || status.updatedAt || status.startedAt);
+    const stageWatchdogElapsed = stageStartedAtMs > 0 && Date.now() - stageStartedAtMs >= MANUAL_SYNC_STAGE_WATCHDOG_MS_;
+    if (checkpointMatchesStage && stageWatchdogElapsed) {
+      if (Math.max(0, Number(status.stageRecoveryCount) || 0) >= 1) {
+        markManualSyncStatusStale_(status, `${status.currentStageLabel || status.currentStage} did not recover after its single checkpointed retry.`);
+        return;
+      }
+      status.stageRecoveryCount = Math.max(0, Number(status.stageRecoveryCount) || 0) + 1;
+      status.recoveryCount = Math.max(0, Number(status.recoveryCount) || 0) + 1;
+      status.stageStartedAt = new Date().toISOString();
+      status.stageStartedStage = status.currentStage;
+      status.updatedAt = status.stageStartedAt;
+      status.message = `${status.currentStageLabel || status.currentStage} is resuming its saved source extraction.`;
+      saveManualSyncStatus_(status);
+      console.warn(`[MANUAL SYNC][${status.runId || 'unknown'}] Resuming checkpointed ${status.currentStage} source extraction (${status.stageRecoveryCount}/1).`);
     }
     if (isManualSyncStatusStale_(status)) {
       const staleStageLabel = String(status.currentStageLabel || status.currentStage || 'manual sync');
@@ -2211,12 +2301,34 @@ function runQueuedManualSyncStage_(options) {
 
       status.currentStage = stageKey;
       status.currentStageLabel = stageDef.label;
+      if (String(status.stageStartedStage || '') !== stageKey) status.stageRecoveryCount = 0;
+      status.stageStartedStage = stageKey;
+      status.stageStartedAt = new Date().toISOString();
+      status.phaseStartedAt = status.stageStartedAt;
+      status.currentPhase = '';
+      status.phaseRowsRead = 0;
+      status.phaseTotalRows = 0;
       status.updatedAt = new Date().toISOString();
       status.message = `Starting ${stageDef.label} (${currentStageIndex + 1}/${stageOrder.length})...`;
       saveManualSyncStatus_(status);
+      ensureManualSyncStageRetryTrigger_(MANUAL_SYNC_STAGE_WATCHDOG_MS_, runOptions.triggerUid);
       console.log(`[MANUAL SYNC][${status.runId}] ${status.message}`);
 
-      const stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
+      let stageResult;
+      try {
+        stageResult = withDatasetImportProcessorLock_(function() { return stageDef.run(); }, lock) || {};
+      } catch (stageError) {
+        if (!isImportPreparationDeferredError_(stageError)) throw stageError;
+        status.preparationRetryCount = Math.max(0, Number(status.preparationRetryCount) || 0) + 1;
+        if (status.preparationRetryCount > 3) throw new Error('IMPORT_PREPARATION_RETRIES_EXHAUSTED');
+        status.currentPhase = String(stageError.phase || 'preparation').replace(/[^a-z0-9_]+/gi, '').slice(0, 40);
+        status.updatedAt = new Date().toISOString();
+        status.message = `${stageDef.label} preparation deferred; retry ${status.preparationRetryCount}/3 is queued.`;
+        saveManualSyncStatus_(status);
+        scheduleManualSyncStageTrigger_();
+        break;
+      }
+      status.preparationRetryCount = 0;
       if (stageResult.continuationPending === true) {
         const progressRows = Math.max(0, Number(stageResult.stagedRows) || 0);
         const totalRows = Math.max(0, Number(stageResult.totalRows) || 0);
@@ -2364,6 +2476,7 @@ function runQueuedManualSyncStage_(options) {
     console.error(`[MANUAL SYNC][${status && status.runId ? status.runId : 'unknown'}] ${status && status.errorCode ? status.errorCode : 'MANUAL_SYNC_STAGE_FAILED'}`);
     throw new Error(status && status.error ? status.error : 'Manual sync stage failed.');
   } finally {
+    manualSyncInvocationDeadlineMs_ = priorDeadline;
     lock.releaseLock();
   }
 }
@@ -5573,14 +5686,14 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   const deltaMode = !!(options && options.deltaMode);
   const files = listDriveFilesWithRetry_(dropFolder, `${tableName} drop folder`);
   const pendingFiles = [];
+  const tempFiles = [];
   let tempFilesRemoved = 0;
 
   while (files.hasNext()) {
     const file = files.next();
     const fileName = file.getName();
     if (fileName.startsWith('TEMP_')) {
-      tempFilesRemoved++;
-      trashDriveFileWithRetry_(file, `${tableName} temp file ${fileName}`);
+      tempFiles.push(file);
       continue;
     }
     pendingFiles.push(file);
@@ -5589,6 +5702,12 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   const rejectionMarkerState = pruneImportSourceRejectionMarkers_(tableName, pendingFiles);
 
   if (!pendingFiles.length) {
+    tempFiles.forEach(function(file) {
+      tempFilesRemoved++;
+      trashDriveFileWithRetry_(file, `${tableName} temp file ${file.getName()}`);
+    });
+    const oldCheckpoint = readImportExtractionCheckpoint_();
+    if (oldCheckpoint && oldCheckpoint.tableName === tableName) clearImportExtractionCheckpoint_(oldCheckpoint);
     console.log(`[SKIP] No files found for ${tableName}.`);
     return {
       tableName: tableName,
@@ -5611,6 +5730,37 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   });
 
   const newestFile = pendingFiles[0];
+  const checkpointingEnabled = isCheckpointedLatestImportTable_(tableName);
+  let sourceIdentity = null;
+  try {
+    sourceIdentity = checkpointingEnabled ? withTransientGoogleReadRetry_('source metadata', function() {
+      return getImportSourceIdentity_(newestFile, tableName);
+    }) : null;
+  } catch (metadataError) {
+    if (isTransientGoogleReadFailure_(metadataError)) throw createImportPrewriteDeferralError_('IMPORT_PREPARATION_DEFERRED', 'source_metadata');
+    throw metadataError;
+  }
+  const activeStatus = loadManualSyncStatus_();
+  const priorCheckpoint = sourceIdentity && readImportExtractionCheckpoint_();
+  const sameAttempt = priorCheckpoint && importSourceIdentityMatches_(sourceIdentity, priorCheckpoint)
+    && String(priorCheckpoint.runId || '') === String(activeStatus && activeStatus.runId || 'direct')
+    && String(priorCheckpoint.stage || '') === String(activeStatus && activeStatus.currentStage || '');
+  const checkpointIdentity = sourceIdentity ? Object.assign({}, sourceIdentity, {
+    runId: String(activeStatus && activeStatus.active ? activeStatus.runId : 'direct'),
+    stage: String(activeStatus && activeStatus.active ? activeStatus.currentStage : getSiteSplitLegacyTableName_(tableName)),
+    attempt: sameAttempt ? Number(priorCheckpoint.attempt || 1) + 1 : 1
+  }) : null;
+  const deterministicTempName = buildImportTempSheetName_(sourceIdentity || {});
+  const checkpoint = readImportExtractionCheckpoint_();
+  tempFiles.forEach(function(file) {
+    const isCurrentCheckpoint = checkpoint && sourceIdentity
+      && importSourceIdentityMatches_(sourceIdentity, checkpoint)
+      && String(file.getId()) === String(checkpoint.tempSheetId);
+    const isCurrentDeterministic = sourceIdentity && String(file.getName()) === deterministicTempName;
+    if (isCurrentCheckpoint || isCurrentDeterministic) return;
+    tempFilesRemoved++;
+    trashDriveFileWithRetry_(file, `${tableName} stale temp file ${file.getName()}`);
+  });
   const olderFiles = pendingFiles.slice(1);
   const newestFileName = newestFile.getName();
   let skippedFilesArchived = 0;
@@ -5624,6 +5774,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   let fatalFailure = false;
   let fatalErrorCode = '';
   let revisionFence = null;
+  let writePhaseStarted = false;
 
   console.log(
     `[START] Processing latest file only: ${newestFileName} -> Table: ${tableName}` +
@@ -5632,14 +5783,21 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
 
   try {
     const syncStartTime = new Date().toISOString();
-    const rawData = extractDataFromFile(newestFile, dropFolderId, options);
+    const importOptions = Object.assign({}, options || {}, checkpointingEnabled ? {
+      importTableName: tableName,
+      importCheckpointContext: { runId: checkpointIdentity && checkpointIdentity.runId, stage: checkpointIdentity && checkpointIdentity.stage, attempt: checkpointIdentity && checkpointIdentity.attempt }
+    } : {});
+    const rawData = extractDataFromFile(newestFile, dropFolderId, importOptions);
     if (!rawData || rawData.length < 1) {
       throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No readable rows were found in ${newestFileName}.`);
     }
     const selectColumns = (options && typeof options.selectColumnsBuilder === 'function')
       ? options.selectColumnsBuilder(rawData, tableName)
       : getPayloadSelectColumns_(tableName, rawData);
+    setManualSyncImportPhase_(tableName, 'existing_rows', 0, 0);
     const existingRows = fetchAllSupabaseData(tableName, selectColumns, getSupabaseFetchOptionsForTable_(tableName));
+    assertImportTimeBudget_('existing_rows', IMPORT_READ_FINALIZATION_RESERVE_MS_);
+    setManualSyncImportPhase_(tableName, 'validation', rawData.length, rawData.length);
     const results = payloadBuilderFunc(rawData, tableName, existingRows, syncStartTime, newestFileName);
     const upserts = Array.isArray(results && results.upserts) ? results.upserts : [];
     const seenIds = results && results.seenIds instanceof Set ? results.seenIds : new Set();
@@ -5655,10 +5813,19 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
       archivedOlderFiles: olderFiles.length,
       upserts: upsertCount
     }));
+    assertImportTimeBudget_('prewrite_validation', IMPORT_READ_FINALIZATION_RESERVE_MS_);
+    if (sourceIdentity) {
+      assertLatestPendingSourceSelection_(dropFolderId, sourceIdentity, tableName);
+      revalidateImportSourceIdentity_(sourceIdentity, tableName);
+    }
+    setManualSyncImportPhase_(tableName, 'prepared', rawData.length, rawData.length);
+    writePhaseStarted = true;
     revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
+    setManualSyncImportPhase_(tableName, 'writing', 0, upserts.length + deletes.length);
     if (upserts.length > 0) pushToSupabase(tableName, upserts);
     if (deltaMode && deletes.length > 0) deleteFromSupabase(tableName, deletes);
     if (options && typeof options.afterCommit === 'function') {
+      setManualSyncImportPhase_(tableName, 'reconciliation', upserts.length + deletes.length, upserts.length + deletes.length);
       options.afterCommit({
         tableName: tableName,
         fileName: newestFileName,
@@ -5669,10 +5836,23 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
       });
     }
 
+    // Reconfirm the pinned Drive file after database writes and immediately
+    // before publication/archive. A changed source must remain pending for a
+    // canonical replay; writePhaseStarted ensures this fails the fence.
+    if (sourceIdentity) revalidateImportSourceIdentity_(sourceIdentity, tableName);
+    setManualSyncImportPhase_(tableName, 'publication', totalRows, totalRows);
     closeDatasetImportFence_(revisionFence, true);
+    setManualSyncImportPhase_(tableName, 'archiving', totalRows, totalRows);
     moveDriveFileToFolderWithRetry_(newestFile, processedFolder, `${tableName} processed file ${newestFileName}`);
     importSucceeded = true;
   } catch (err) {
+    // Deferral is safe only before the import fence and any database writes.
+    // Once the write phase begins, preserve the failed fence and let the next
+    // invocation replay the complete source through the canonical idempotent path.
+    if (isImportPreparationDeferredError_(err) && !writePhaseStarted) throw err;
+    if (!writePhaseStarted && isTransientGoogleReadFailure_(err)) {
+      throw createImportPrewriteDeferralError_('IMPORT_PREPARATION_DEFERRED', 'preparation_read');
+    }
     failDatasetImportFence_(revisionFence);
     const errorMessage = err && err.message ? err.message : String(err);
     upsertCount = 0;
@@ -5697,6 +5877,11 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
   }
 
   if (importSucceeded) {
+    const completedCheckpoint = readImportExtractionCheckpoint_();
+    if (completedCheckpoint && sourceIdentity && importSourceIdentityMatches_(sourceIdentity, completedCheckpoint)) {
+      if (completedCheckpoint.isTempSheet === true) cleanupTempGoogleSheet_(completedCheckpoint.tempSheetId, newestFileName);
+      clearImportExtractionCheckpoint_(sourceIdentity);
+    }
     olderFiles.forEach(function(file) {
       const rejectionMarker = getImportSourceRejectionMarker_(rejectionMarkerState, tableName, file);
       if (rejectionMarker) {
@@ -6765,14 +6950,281 @@ function isExcelLikeFile_(mime, fileName) {
     safeFileName.endsWith('.xlsm');
 }
 
-function createTempGoogleSheetFromExcel_(file, folderId) {
-  const convertedFile = withDriveRetry_(`Convert Excel to Google Sheet: ${file.getName()}`, function() {
-    return Drive.Files.create(
-      { name: "TEMP_" + file.getName(), mimeType: MimeType.GOOGLE_SHEETS, parents: [folderId] },
+function getImportSourceIdentity_(file, tableName) {
+  if (!file || typeof file.getId !== 'function' || typeof file.getLastUpdated !== 'function' || typeof file.getSize !== 'function') return null;
+  const modified = file && typeof file.getLastUpdated === 'function' ? file.getLastUpdated() : null;
+  const fileId = String(file && typeof file.getId === 'function' ? file.getId() : '').trim();
+  const modifiedAt = modified && typeof modified.toISOString === 'function' ? modified.toISOString() : '';
+  const safeTable = String(tableName || '').trim();
+  if (!fileId || !modifiedAt || !/^[a-zA-Z0-9_]{1,80}$/.test(safeTable)) return null;
+  return {
+    tableName: safeTable,
+    fileId: fileId,
+    fileName: String(file.getName ? file.getName() : '').slice(0, 180),
+    modifiedAt: modifiedAt,
+    size: Math.max(0, Number(file.getSize ? file.getSize() : 0) || 0)
+  };
+}
+
+function isCheckpointedLatestImportTable_(tableName) {
+  const logical = getSiteSplitLegacyTableName_(tableName);
+  return logical === 'ph_soc_master' || logical === 'ph_reserves';
+}
+
+function assertLatestPendingSourceSelection_(folderId, expectedIdentity, tableName) {
+  const folder = getDriveFolderByIdWithRetry_(folderId, `${tableName} source revalidation folder`);
+  const files = listDriveFilesWithRetry_(folder, `${tableName} source revalidation`);
+  const pending = [];
+  while (files.hasNext()) {
+    const file = files.next();
+    if (!String(file.getName() || '').startsWith('TEMP_')) pending.push(file);
+  }
+  if (!pending.length) throw createImportPrewriteDeferralError_('IMPORT_SOURCE_SELECTION_CHANGED', 'source_selection');
+  pending.sort(function(a, b) {
+    const difference = b.getLastUpdated().getTime() - a.getLastUpdated().getTime();
+    return difference || String(a.getName() || '').localeCompare(String(b.getName() || ''));
+  });
+  const selected = getImportSourceIdentity_(pending[0], tableName);
+  if (!importSourceIdentityMatches_(expectedIdentity, selected)) {
+    throw createImportPrewriteDeferralError_('IMPORT_SOURCE_SELECTION_CHANGED', 'source_selection');
+  }
+  return selected;
+}
+
+function importSourceIdentityMatches_(left, right) {
+  return !!(left && right && left.tableName === right.tableName && left.fileId === right.fileId
+    && left.modifiedAt === right.modifiedAt && Number(left.size) === Number(right.size));
+}
+
+function revalidateImportSourceIdentity_(expected, tableName) {
+  if (!expected || !expected.fileId) throw new Error('IMPORT_SOURCE_IDENTITY_UNAVAILABLE');
+  const latest = withTransientGoogleReadRetry_('source identity', function() {
+    return getImportSourceIdentity_(DriveApp.getFileById(expected.fileId), tableName);
+  });
+  const current = latest;
+  if (!importSourceIdentityMatches_(expected, current)) {
+    throw new Error('IMPORT_SOURCE_CHANGED_DURING_READ');
+  }
+  return current;
+}
+
+function buildImportTempSheetName_(identity) {
+  const safe = identity || {};
+  const timestamp = Date.parse(String(safe.modifiedAt || ''));
+  const size = Math.max(0, Number(safe.size) || 0);
+  return `TEMP_IMPORT_${String(safe.tableName || 'source')}_${String(safe.fileId || '').replace(/[^a-zA-Z0-9_-]/g, '')}_${Number.isFinite(timestamp) ? timestamp : 0}_${size}`.slice(0, 180);
+}
+
+function readImportExtractionCheckpoint_() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty(IMPORT_EXTRACTION_CHECKPOINT_KEY_);
+    const value = raw ? JSON.parse(raw) : null;
+    if (!value || typeof value !== 'object' || Array.isArray(value)
+        || !/^[a-zA-Z0-9_]{1,80}$/.test(String(value.tableName || ''))
+        || !String(value.fileId || '').trim()
+        || !Number.isFinite(Date.parse(String(value.modifiedAt || '')))
+        || (!String(value.tempSheetId || '').trim() && !(value.phase === 'converting' && String(value.tempSheetName || '').trim()))) return null;
+    return {
+      tableName: String(value.tableName), fileId: String(value.fileId), fileName: String(value.fileName || '').slice(0, 180),
+      modifiedAt: new Date(value.modifiedAt).toISOString(), size: Math.max(0, Number(value.size) || 0),
+      tempSheetId: String(value.tempSheetId || ''), phase: /^[a-z_]{1,32}$/.test(String(value.phase || '')) ? value.phase : 'converted',
+      tempSheetName: String(value.tempSheetName || '').slice(0, 180),
+      isTempSheet: value.isTempSheet === true,
+      runId: String(value.runId || '').slice(0, 40),
+      stage: String(value.stage || '').slice(0, 40),
+      attempt: Math.max(1, Number(value.attempt) || 1),
+      rowsRead: Math.max(0, Number(value.rowsRead) || 0), updatedAt: String(value.updatedAt || '')
+    };
+  } catch (ignored) { return null; }
+}
+
+function saveImportExtractionCheckpoint_(identity, tempSheetId, phase, rowsRead, isTempSheet) {
+  if (!identity || !String(tempSheetId || '').trim()) throw new Error('IMPORT_EXTRACTION_CHECKPOINT_INVALID');
+  const value = {
+    tableName: identity.tableName, fileId: identity.fileId, fileName: identity.fileName,
+    modifiedAt: identity.modifiedAt, size: identity.size, tempSheetId: String(tempSheetId), isTempSheet: isTempSheet === true,
+    runId: String(identity.runId || '').slice(0, 40), stage: String(identity.stage || '').slice(0, 40), attempt: Math.max(1, Number(identity.attempt) || 1),
+    phase: String(phase || 'converted'), rowsRead: Math.max(0, Number(rowsRead) || 0), updatedAt: new Date().toISOString()
+  };
+  PropertiesService.getScriptProperties().setProperty(IMPORT_EXTRACTION_CHECKPOINT_KEY_, JSON.stringify(value));
+  return value;
+}
+
+function saveImportExtractionIntent_(identity, tempSheetName) {
+  if (!identity || !String(tempSheetName || '').trim()) throw new Error('IMPORT_EXTRACTION_CHECKPOINT_INVALID');
+  PropertiesService.getScriptProperties().setProperty(IMPORT_EXTRACTION_CHECKPOINT_KEY_, JSON.stringify({
+    tableName: identity.tableName, fileId: identity.fileId, fileName: identity.fileName,
+    modifiedAt: identity.modifiedAt, size: identity.size, tempSheetId: '', isTempSheet: true,
+    runId: String(identity.runId || '').slice(0, 40), stage: String(identity.stage || '').slice(0, 40), attempt: Math.max(1, Number(identity.attempt) || 1),
+    tempSheetName: String(tempSheetName).slice(0, 180), phase: 'converting', rowsRead: 0,
+    updatedAt: new Date().toISOString()
+  }));
+}
+
+function clearImportExtractionCheckpoint_(identity) {
+  const current = readImportExtractionCheckpoint_();
+  if (identity && current && !importSourceIdentityMatches_(identity, current)) return false;
+  PropertiesService.getScriptProperties().deleteProperty(IMPORT_EXTRACTION_CHECKPOINT_KEY_);
+  return true;
+}
+
+function setManualSyncImportPhase_(tableName, phase, rowsRead, totalRows) {
+  if (!isCheckpointedLatestImportTable_(tableName)) return;
+  try {
+    const properties = PropertiesService.getScriptProperties();
+    const status = loadManualSyncStatus_();
+    const now = Date.now();
+    const previousStart = status && status.active === true ? parseManualSyncTimestampMs_(status.phaseStartedAt) : 0;
+    const elapsed = previousStart > 0 ? Math.max(0, now - previousStart) : 0;
+    const phaseName = String(phase || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 40);
+    console.log(`[IMPORT PHASE][${String(tableName || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 80)}] ${phaseName} elapsed_ms=${elapsed} rows=${Math.max(0, Number(rowsRead) || 0)} total=${Math.max(0, Number(totalRows) || 0)}.`);
+    if (!status || status.active !== true) return;
+    status.currentPhase = phaseName;
+    status.phaseTable = String(tableName || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 80);
+    status.phaseRowsRead = Math.max(0, Number(rowsRead) || 0);
+    status.phaseTotalRows = Math.max(0, Number(totalRows) || 0);
+    status.phaseElapsedMs = elapsed;
+    status.phaseElapsedTotalMs = Math.max(0, Number(status.phaseElapsedTotalMs) || 0) + elapsed;
+    status.phaseStartedAt = new Date(now).toISOString();
+    status.updatedAt = status.phaseStartedAt;
+    properties.setProperty(MANUAL_SYNC_STATUS_KEY, JSON.stringify(status));
+  } catch (ignored) { console.warn('[MANUAL SYNC] PHASE_CHECKPOINT_UNAVAILABLE'); }
+}
+
+function createImportPrewriteDeferralError_(code, phase) {
+  const safeCode = code === 'IMPORT_SOURCE_SELECTION_CHANGED' ? code : 'IMPORT_PREPARATION_DEFERRED';
+  const error = new Error(safeCode);
+  error.errorCode = safeCode;
+  error.phase = String(phase || '').replace(/[^a-z0-9_]+/gi, '').slice(0, 40);
+  return error;
+}
+
+function assertImportTimeBudget_(phase, reserveMs) {
+  if (manualSyncInvocationDeadlineMs_ <= 0) return;
+  const remaining = manualSyncInvocationDeadlineMs_ - Date.now();
+  if (remaining <= Math.max(1000, Number(reserveMs) || IMPORT_READ_FINALIZATION_RESERVE_MS_)) {
+    throw createImportPrewriteDeferralError_('IMPORT_EXTRACTION_BUDGET_DEFERRED', phase);
+  }
+}
+
+function isImportPreparationDeferredError_(error) {
+  const code = String(error && (error.errorCode || error.code || error.message) || '');
+  return code === 'IMPORT_PREPARATION_DEFERRED' || code === 'IMPORT_SOURCE_SELECTION_CHANGED';
+}
+
+function isTransientGoogleReadFailure_(error) {
+  const message = String(error && error.message ? error.message : error || '').toLowerCase();
+  return message.includes('server error occurred')
+    || message.includes('please wait a bit and try again')
+    || message.includes('service unavailable')
+    || message.includes('temporarily unavailable')
+    || message.includes('internal error')
+    || message.includes('backend error')
+    || message.includes('try again later')
+    || message.includes('timed out');
+}
+
+function withTransientGoogleReadRetry_(label, action) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= IMPORT_TRANSIENT_READ_ATTEMPTS_; attempt++) {
+    try {
+      assertImportTimeBudget_(label, IMPORT_READ_FINALIZATION_RESERVE_MS_);
+      return action();
+    }
+    catch (error) {
+      lastError = error;
+      if (attempt >= IMPORT_TRANSIENT_READ_ATTEMPTS_ || !isTransientGoogleReadFailure_(error)) break;
+      assertImportTimeBudget_(label, IMPORT_READ_FINALIZATION_RESERVE_MS_ + IMPORT_TRANSIENT_READ_BACKOFF_MS_[attempt - 1]);
+      console.warn(`[IMPORT READ] transient ${label} failure; retry ${attempt}/${IMPORT_TRANSIENT_READ_ATTEMPTS_ - 1}.`);
+      Utilities.sleep(IMPORT_TRANSIENT_READ_BACKOFF_MS_[attempt - 1]);
+    }
+  }
+  throw lastError || new Error(`${label} failed.`);
+}
+
+function readSpreadsheetDataRangeChunked_(sheet, options, identity, tempSheetId, isTempSheet) {
+  const dimensions = withTransientGoogleReadRetry_('worksheet dimensions', function() {
+    const range = sheet.getDataRange();
+    if (!range || typeof range.getNumRows !== 'function' || typeof range.getNumColumns !== 'function') {
+      return { legacyRange: range, rows: 0, columns: 0 };
+    }
+    return { rows: range.getNumRows(), columns: range.getNumColumns() };
+  });
+  if (dimensions.legacyRange) {
+    const range = dimensions.legacyRange;
+    return options && options.displayValues === true && typeof range.getDisplayValues === 'function'
+      ? withTransientGoogleReadRetry_('worksheet values', function() { return range.getDisplayValues(); })
+      : withTransientGoogleReadRetry_('worksheet values', function() { return range.getValues(); });
+  }
+  const rowCount = Math.max(0, Number(dimensions.rows) || 0);
+  const columnCount = Math.max(0, Number(dimensions.columns) || 0);
+  if (!rowCount || !columnCount) return [];
+  const values = [];
+  for (let startRow = 1; startRow <= rowCount; startRow += IMPORT_SHEET_READ_CHUNK_ROWS_) {
+    const chunkRows = Math.min(IMPORT_SHEET_READ_CHUNK_ROWS_, rowCount - startRow + 1);
+    const chunk = withTransientGoogleReadRetry_(`worksheet rows ${startRow}-${startRow + chunkRows - 1}`, function() {
+      const range = sheet.getRange(startRow, 1, chunkRows, columnCount);
+      return options && options.displayValues === true && typeof range.getDisplayValues === 'function'
+        ? range.getDisplayValues()
+        : range.getValues();
+    });
+    if (!Array.isArray(chunk) || chunk.length !== chunkRows || chunk.some(function(row) {
+      return !Array.isArray(row) || row.length !== columnCount;
+    })) throw new Error('IMPORT_WORKSHEET_READ_INCOMPLETE');
+    chunk.forEach(function(row) { values.push(row); });
+    const rowsRead = Math.min(rowCount, startRow + chunkRows - 1);
+    if (identity && tempSheetId && (rowsRead % (IMPORT_SHEET_READ_CHUNK_ROWS_ * 10) === 0 || rowsRead === rowCount)) {
+      saveImportExtractionCheckpoint_(identity, tempSheetId, 'reading', rowsRead, isTempSheet === true);
+      setManualSyncImportPhase_(identity.tableName, 'reading', rowsRead, rowCount);
+    }
+  }
+  return values;
+}
+
+function findImportTempSheet_(folderId, tempName) {
+  const folder = getDriveFolderByIdWithRetry_(folderId, 'import conversion folder');
+  return withTransientGoogleReadRetry_('conversion lookup', function() {
+    const files = folder.getFilesByName(tempName);
+    while (files.hasNext()) {
+      const file = files.next();
+      if (file && file.getId && file.getMimeType && String(file.getMimeType()).toLowerCase().indexOf('spreadsheet') >= 0) return file;
+    }
+    return null;
+  });
+}
+
+function createTempGoogleSheetFromExcel_(file, folderId, identity) {
+  if (!identity) {
+    const legacyConvertedFile = withDriveRetry_(`Convert Excel to Google Sheet: ${file.getName()}`, function() {
+      return Drive.Files.create(
+        { name: 'TEMP_' + file.getName(), mimeType: MimeType.GOOGLE_SHEETS, parents: [folderId] },
+        file.getBlob(),
+        { fields: 'id,name' }
+      );
+    });
+    if (!legacyConvertedFile || !legacyConvertedFile.id) throw new Error(`Converted Google Sheet id was not returned for ${file.getName()}.`);
+    return String(legacyConvertedFile.id);
+  }
+  const tempName = buildImportTempSheetName_(identity || getImportSourceIdentity_(file, 'import_source') || {});
+  const existing = findImportTempSheet_(folderId, tempName);
+  if (existing) return String(existing.getId());
+  // Drive file creation is deliberately not retried on an ambiguous server
+  // error. The deterministic name lets a later run reuse a create that
+  // committed before its response was lost.
+  let convertedFile;
+  try {
+    convertedFile = Drive.Files.create(
+      { name: tempName, mimeType: MimeType.GOOGLE_SHEETS, parents: [folderId] },
       file.getBlob(),
       { fields: 'id,name' }
     );
-  });
+  } catch (createError) {
+    // A lost response may hide a successful create. Reconcile by the stable
+    // source-derived name before allowing a retry to create another copy.
+    const reconciled = findImportTempSheet_(folderId, tempName);
+    if (reconciled) return String(reconciled.getId());
+    throw createError;
+  }
 
   if (!convertedFile || !convertedFile.id) {
     throw new Error(`Converted Google Sheet id was not returned for ${file.getName()}.`);
@@ -6786,6 +7238,7 @@ function openSpreadsheetWithRetry_(sheetId, fileName) {
 
   for (let attempt = 1; attempt <= EXCEL_CONVERSION_OPEN_RETRY_COUNT; attempt++) {
     try {
+      assertImportTimeBudget_('opening', IMPORT_READ_FINALIZATION_RESERVE_MS_);
       const spreadsheet = SpreadsheetApp.openById(sheetId);
       const sheets = spreadsheet.getSheets();
       if (!sheets || !sheets.length) {
@@ -6795,6 +7248,7 @@ function openSpreadsheetWithRetry_(sheetId, fileName) {
     } catch (err) {
       lastError = err;
       if (attempt < EXCEL_CONVERSION_OPEN_RETRY_COUNT) {
+        assertImportTimeBudget_('opening', IMPORT_READ_FINALIZATION_RESERVE_MS_);
         Utilities.sleep(EXCEL_CONVERSION_OPEN_RETRY_DELAY_MS * attempt);
       }
     }
@@ -6824,34 +7278,75 @@ function extractDataFromFile(file, folderId, options) {
   const headerMatcher = options && typeof options.headerMatcher === 'function' ? options.headerMatcher : null;
   let allValues = [];
   let tempSheetId = '';
+  const requestedTableName = String(options && options.importTableName || '').trim();
+  const tableName = isCheckpointedLatestImportTable_(requestedTableName) ? requestedTableName : '';
+  const identity = tableName ? withTransientGoogleReadRetry_('source metadata', function() {
+    return getImportSourceIdentity_(file, tableName);
+  }) : null;
+  if (identity && options && options.importCheckpointContext) {
+    Object.assign(identity, options.importCheckpointContext);
+  }
+  const checkpoint = identity && readImportExtractionCheckpoint_();
+  const reusableCheckpoint = identity && checkpoint && importSourceIdentityMatches_(identity, checkpoint) ? checkpoint : null;
+  if (identity) setManualSyncImportPhase_(tableName, 'extracting', 0, 0);
 
   try {
     if (mime === MimeType.CSV || normalizedFileName.endsWith('.csv')) {
-      const csvString = file.getBlob().getDataAsString('UTF-8');
+      setManualSyncImportPhase_(tableName, 'reading', 0, 0);
+      if (identity && !reusableCheckpoint) saveImportExtractionCheckpoint_(identity, file.getId(), 'reading', 0, false);
+      const readCsv = function() { return file.getBlob().getDataAsString('UTF-8'); };
+      const csvString = identity ? withTransientGoogleReadRetry_('CSV source read', readCsv) : readCsv();
       allValues = Utilities.parseCsv(csvString);
     } else {
       let sheetId = file.getId();
       if (isExcelLikeFile_(mime, normalizedFileName)) {
-        tempSheetId = createTempGoogleSheetFromExcel_(file, folderId);
+        const tempName = identity ? buildImportTempSheetName_(identity) : '';
+        if (identity && !reusableCheckpoint) saveImportExtractionIntent_(identity, tempName);
+        setManualSyncImportPhase_(tableName, 'conversion', 0, 0);
+        assertImportTimeBudget_('conversion', IMPORT_READ_FINALIZATION_RESERVE_MS_);
+        tempSheetId = reusableCheckpoint && reusableCheckpoint.tempSheetId
+          ? reusableCheckpoint.tempSheetId
+          : createTempGoogleSheetFromExcel_(file, folderId, identity);
         sheetId = tempSheetId;
+        if (identity && (!reusableCheckpoint || !reusableCheckpoint.tempSheetId)) saveImportExtractionCheckpoint_(identity, tempSheetId, 'converted', 0, true);
+      } else if (identity && !reusableCheckpoint) {
+        saveImportExtractionCheckpoint_(identity, sheetId, 'reading', 0, false);
       }
 
-      const ss = tempSheetId
-        ? openSpreadsheetWithRetry_(sheetId, originalFileName)
-        : SpreadsheetApp.openById(sheetId);
-      const sheets = ss.getSheets();
+      setManualSyncImportPhase_(tableName, 'opening', 0, 0);
+      let ss;
+      let sheets;
+      if (identity) {
+        const opened = withTransientGoogleReadRetry_('workbook open', function() {
+          const spreadsheet = SpreadsheetApp.openById(sheetId);
+          const workbookSheets = spreadsheet.getSheets();
+          if (!workbookSheets || !workbookSheets.length) throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No sheets found in ${originalFileName}.`);
+          return { spreadsheet: spreadsheet, sheets: workbookSheets };
+        });
+        ss = opened.spreadsheet;
+        sheets = opened.sheets;
+      } else {
+        ss = tempSheetId ? openSpreadsheetWithRetry_(sheetId, originalFileName) : SpreadsheetApp.openById(sheetId);
+        sheets = ss.getSheets();
+      }
       if (!sheets || !sheets.length) {
         throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No sheets found in ${originalFileName}.`);
       }
-      const dataRange = sheets[0].getDataRange();
-      allValues = options && options.displayValues === true && typeof dataRange.getDisplayValues === 'function'
-        ? dataRange.getDisplayValues()
-        : dataRange.getValues();
+      if (identity) {
+        setManualSyncImportPhase_(tableName, 'reading', 0, 0);
+        allValues = readSpreadsheetDataRangeChunked_(sheets[0], options, identity, tempSheetId || sheetId, !!tempSheetId);
+      } else {
+        const dataRange = sheets[0].getDataRange();
+        allValues = options && options.displayValues === true && typeof dataRange.getDisplayValues === 'function'
+          ? dataRange.getDisplayValues()
+          : dataRange.getValues();
+      }
     }
 
     if (!Array.isArray(allValues) || !allValues.length) {
       throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No source rows were found in ${originalFileName}.`);
     }
+    setManualSyncImportPhase_(tableName, 'validation', allValues.length, allValues.length);
     const hasNonEmptyCell = allValues.some(function(row) {
       return Array.isArray(row) && row.some(function(cell) { return cell != null && String(cell).trim() !== ''; });
     });
@@ -6880,6 +7375,10 @@ function extractDataFromFile(file, folderId, options) {
     }
 
     allValues.splice(0, headerRowIdx);
+    if (identity) {
+      saveImportExtractionCheckpoint_(identity, tempSheetId || file.getId(), 'prepared', allValues.length, !!tempSheetId);
+      setManualSyncImportPhase_(tableName, 'prepared', allValues.length, allValues.length);
+    }
     if (options && options.preserveHeaderRowIndex === true) {
       Object.defineProperty(allValues, '__sourceHeaderRowIndex', { configurable: true, enumerable: false, value: headerRowIdx });
     }
@@ -6887,10 +7386,18 @@ function extractDataFromFile(file, folderId, options) {
   } catch (err) {
     const errorMessage = err && err.message ? err.message : String(err);
     console.error(`[ERROR] extractDataFromFile failed for ${originalFileName}: ${errorMessage}`);
+    if (isImportPreparationDeferredError_(err)) throw err;
+    if (identity && isTransientGoogleReadFailure_(err)) {
+      throw createImportPrewriteDeferralError_('IMPORT_PREPARATION_DEFERRED', 'reading');
+    }
+    if (identity && isImportSourceValidationErrorCode_(err && err.errorCode)) {
+      if (tempSheetId) cleanupTempGoogleSheet_(tempSheetId, originalFileName);
+      clearImportExtractionCheckpoint_(identity);
+    }
     if (isImportSourceValidationErrorCode_(err && err.errorCode)) throw err;
     throw new Error(errorMessage);
   } finally {
-    cleanupTempGoogleSheet_(tempSheetId, originalFileName);
+    if (!identity) cleanupTempGoogleSheet_(tempSheetId, originalFileName);
   }
 }
 

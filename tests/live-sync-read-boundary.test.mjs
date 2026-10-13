@@ -38,10 +38,16 @@ function dashboardMetadataFixture() {
     const calls = [];
     const ctx = { Error, Object, String, Number, Array, Set, Map, Math, JSON, Promise, Date, encodeURIComponent, AbortController,
         currentUser: 'metadata-user-a', owner: 'metadata-scope-a', allowed: true,
+        appAccessSnapshotState: { status: 'ready', stale: false, snapshot: { dataPermissionVersion: 'metadata-permission-a' } },
+        coordinatorOwnsMetadata: false, coordinatorSignals: [],
         navigator: { onLine: true }, document: { hidden: false },
         productionLiveSyncNavigation: new AbortController(),
         DASHBOARD_SYNC_METADATA_LIMIT: 30, DASHBOARD_SYNC_METADATA_TTL_MS: 60000, SUPABASE_READ_TIMEOUT_MS: 1000,
         canViewDashboardSyncStatus: () => ctx.allowed,
+        canUseProductionLiveSync: () => ctx.coordinatorOwnsMetadata,
+        getCurrentVisibleViewId: () => ctx.coordinatorOwnsMetadata ? 'home' : 'legacy',
+        getProductionLiveSyncContext: () => ({ surfaces: ctx.coordinatorOwnsMetadata ? ['home:sync-metadata'] : [], adapters: ctx.coordinatorOwnsMetadata ? [{ id: 'side:homeSyncMetadata' }] : [] }),
+        signalProductionLiveSync: (...args) => { ctx.coordinatorSignals.push(args); },
         getSupabaseReadIdentityScope: () => ctx.owner,
         firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') || '',
         getValidIsoTimestamp: value => Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : '',
@@ -213,6 +219,36 @@ test('dashboard metadata permission loss at the final UI yield prevents a comple
     ctx.yieldToUiFrame = async () => { if (++yields === 4) ctx.allowed = false; };
     assert.equal(await ctx.refreshDashboardSyncMetadata(true), false);
     assert.equal(calls.length, 4);
+    assert.equal(ctx.commits, 0);
+    assert.equal(ctx.metadataState().summaries.length, 0);
+    assert.equal(ctx.metadataState().fetchedAt, 0);
+});
+
+test('Home coordinator ownership prevents an older legacy metadata request from overwriting its committed snapshot', async () => {
+    const { ctx, calls } = dashboardMetadataFixture(), gate = deferred();
+    ctx.transport = () => gate.promise;
+    const old = ctx.refreshDashboardSyncMetadata(true);
+    await settle();
+    assert.equal(calls.length, 1);
+    ctx.coordinatorOwnsMetadata = true;
+    gate.resolve({ rows: [{ filename: 'legacy-stale.csv', last_updated: '2026-09-12T12:00:00Z' }] });
+    assert.equal(await old, false);
+    assert.equal(ctx.commits, 0);
+    assert.equal(ctx.metadataState().summaries.length, 0);
+    assert.equal(await ctx.refreshDashboardSyncMetadata(true), true);
+    assert.deepEqual(ctx.coordinatorSignals, [['home-metadata-refresh', 0]]);
+    assert.equal(calls.length, 1, 'the coordinator owns Home metadata transport');
+});
+
+test('dashboard metadata discards an in-flight request when the same user receives a new permission version', async () => {
+    const { ctx, calls } = dashboardMetadataFixture(), gate = deferred();
+    ctx.transport = () => gate.promise;
+    const pending = ctx.refreshDashboardSyncMetadata(true);
+    await settle();
+    assert.equal(calls.length, 1);
+    ctx.appAccessSnapshotState.snapshot.dataPermissionVersion = 'metadata-permission-b';
+    gate.resolve({ rows: [{ filename: 'old-policy.csv', last_updated: '2026-09-12T12:00:00Z' }] });
+    assert.equal(await pending, false);
     assert.equal(ctx.commits, 0);
     assert.equal(ctx.metadataState().summaries.length, 0);
     assert.equal(ctx.metadataState().fetchedAt, 0);
@@ -849,9 +885,11 @@ test('live permission signal arriving during a foreground check performs a full 
 
 test('permission-change coordinator callback returns the permission refresh promise', () => {
     const code = html.match(/onPermissionChange: (\(\) => \{[^\n]+\}),/)[1];
-    const promise = Promise.resolve(true); const groups = new Set(['prior']); const ctx = { productionDisplayGroups: groups, refreshNativeRoleAndCapabilities: () => promise };
+    const promise = Promise.resolve(true); const groups = new Set(['prior']); const ctx = { productionDisplayGroups: groups, refreshNativeRoleAndCapabilities: () => promise,
+        resetDashboardSyncMetadataForPermissionChange: () => { ctx.reset = true; } };
     vm.createContext(ctx); vm.runInContext(`this.callback = ${code}`, ctx);
     assert.equal(ctx.callback(), promise);
+    assert.equal(ctx.reset, true);
 });
 
 test('footer refresh skips static and navigation-only screens but renders data-backed Managers tabs', () => {
