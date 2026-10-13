@@ -248,6 +248,19 @@ test('saved view projections use linked live stock while retaining the owning pe
   assert.equal(ctx.formatLocPhotoMatchQtyValue({ ...saved, REQ_PHOTO_LINK: '' }, 'request'), 'Not verified');
 });
 
+test('a copied zero-stock row cannot hide a positive live quantity or bypass expiry checks', () => {
+  let reasons = ['loc_match_qty_zero'];
+  const ctx = runtime(['shouldHideSharedAppPayloadForInvalidAvRules'], {
+    findLinkedMasterRow: () => ({ PTRAVAILABLE: 900 }),
+    getMasterAvInvalidationReasons: () => reasons,
+    getHoldStopBlockTokens: () => new Set(), getHoldStopSnapshotFromItem: () => '',
+  });
+  const saved = row({ PTRAVAILABLE: 0, LOC_MATCH_QTY: 0 });
+  assert.equal(ctx.formatLocPhotoMatchQtyValue(saved, 'drive'), '450');
+  reasons = ['loc_match_qty_zero', 'stale_10_day'];
+  assert.equal(ctx.formatLocPhotoMatchQtyValue(saved, 'drive'), 'Not verified');
+});
+
 test('incremental card painting recalculates stock changes without a timestamp change', () => {
   const current = row({ UNIQUE_ID: 'live-1', PTRAVAILABLE: 1000, LAST_UPDATED: '2026-09-06T18:00:00Z' });
   const replacements = [];
