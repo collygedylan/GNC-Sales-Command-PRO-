@@ -254,6 +254,17 @@ test('master lookup reads all rows for one exact item and location pair', async 
   assert.ok(queries[0].calls.some(([method, field, value]) => method === 'eq' && field === 'itemcode' && value === 'ABC'));
   assert.ok(queries[0].calls.some(([method, field, value]) => method === 'eq' && field === 'locationcode' && value === 'C.16.000'));
   assert.ok(queries[0].calls.some(([method]) => method === 'range'));
+  assert.ok(!queries[0].calls.some(([method, field]) => method === 'eq' && ['lotcode', 'source'].includes(field)));
+  const exact = await handler({ actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
+    operation: 'master_page', params: { dataset: 'lookup', projection: 'full', itemCode: 'ABC', locationCode: 'C.16.000', lotCode: 'LOT-1', source: 'warehouse', offset: 2, limit: 1 },
+  });
+  assert.equal(exact.status, 200);
+  assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'lotcode' && value === 'LOT-1'));
+  assert.ok(queries.at(-1).calls.some(([method, field, value]) => method === 'eq' && field === 'source' && value === 'warehouse'));
+  const partial = await handler({ actor: { id: 'profile-1', username: 'reader', role: 'admin' } }, {
+    operation: 'master_page', params: { dataset: 'lookup', itemCode: 'ABC', locationCode: 'C.16.000', lotCode: 'LOT-1' },
+  });
+  assert.equal(partial.status, 400, 'incomplete exact-row filters remain invalid');
 });
 
 test('master pages and deltas append full pair totals after the physical projection and fence source changes', async () => {
