@@ -2,21 +2,38 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(14);
+select plan(15);
+-- The historical CI table predates native-auth RLS. Reproduce the existing
+-- production session boundary inside this rollback-only fixture.
+alter table public.ph_master_inventory enable row level security;
+do $fixture$
+begin
+  if not exists (select 1 from pg_policies where schemaname='public'
+    and tablename='ph_master_inventory' and policyname='scheduled_handover_active_session') then
+    create policy scheduled_handover_active_session on public.ph_master_inventory
+      as restrictive for all to authenticated
+      using ((select (private.current_active_profile()).id) is not null)
+      with check ((select (private.current_active_profile()).id) is not null);
+  end if;
+end
+$fixture$;
 select ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime'
   and schemaname='public' and tablename='ph_master_inventory'), 'inventory UPDATE publication is present');
 select ok((select pubupdate from pg_publication where pubname='supabase_realtime'), 'publication emits UPDATE events');
 select ok((select relrowsecurity from pg_class where oid='public.ph_master_inventory'::regclass), 'RLS remains enabled');
 select ok(exists(select 1 from pg_policies where tablename='ph_master_inventory'
   and policyname='scheduled_handover_active_session' and permissive='RESTRICTIVE'), 'existing restrictive session policy remains');
-
--- Historical fixtures also grant full reads in an independent sales migration.
--- Remove that table grant inside this rollback fixture to reproduce production's
--- API-only boundary and verify the new column grants suffice for Realtime.
-revoke select on public.ph_master_inventory from authenticated;
+select ok(exists(select 1 from pg_policies where tablename='ph_master_inventory'
+  and policyname='inventory_status_realtime_read_v1' and cmd='SELECT'), 'the migration installed its authorized identifier policy');
 select ok(has_column_privilege('authenticated','public.ph_master_inventory','unique_id','SELECT')
   and has_column_privilege('authenticated','public.ph_master_inventory','itemcode','SELECT')
   and has_column_privilege('authenticated','public.ph_master_inventory','locationcode','SELECT'), 'authenticated events can carry the primary key and pair');
+
+-- Historical fixtures also grant full reads in an independent sales migration.
+-- REVOKE SELECT also removes column grants. Restore the migration's three key
+-- grants after removing historical full reads to model the production ACL.
+revoke select on public.ph_master_inventory from authenticated;
+grant select (unique_id,itemcode,locationcode) on public.ph_master_inventory to authenticated;
 select ok(not has_column_privilege('authenticated','public.ph_master_inventory','holdstopreason','SELECT'), 'status content stays behind inventory_read');
 select ok(not has_any_column_privilege('anon','public.ph_master_inventory','SELECT'), 'anonymous clients cannot receive inventory identifiers');
 
