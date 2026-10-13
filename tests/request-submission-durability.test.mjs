@@ -157,6 +157,50 @@ function extractFunction(name, nextDeclaration) {
     return appSource.slice(start, end).trim();
 }
 
+test('request commit telemetry cannot interrupt retained drafts or a successful retry', async () => {
+    for (const telemetry of ['available', 'missing', 'throwing']) {
+        const captured = [], retries = [], refreshed = [];
+        let shellOptions;
+        const failure = new Error('Request transport failed');
+        const context = {
+            window: {
+                AgMetricRequestSubmission: { createController(options) { shellOptions = options; return options; } },
+                __gncOpsPilot: telemetry === 'missing' ? null : { captureFailure(kind, error) {
+                    captured.push([kind, error]);
+                    if (telemetry === 'throwing') throw new Error('Telemetry unavailable');
+                } }
+            },
+            requestSubmissionController: null, requestSubmissionGeneration: 1,
+            saveRequestOutboxEntry() {}, readOwnedRequestOutboxEntries() {}, restoreRequestSubmissionSelection() {},
+            requestSubmissionEntries: new Map(), activeRequestSubmissionBatchId: 'batch-1',
+            scheduleRequestOutboxRetry: value => retries.push(value),
+            updateRequestQtyStepSubmitButton: () => refreshed.push(true),
+            isRequestCustomerMappingError: () => false
+        };
+        vm.runInNewContext(extractFunction('getRequestSubmissionController', 'async function performRequestSubmission('), context);
+        context.getRequestSubmissionController();
+        let attempts = 0;
+        const f = fixture({
+            onFailure: shellOptions.onFailure,
+            send: async value => { if (++attempts === 1) throw failure; return ack(value); }
+        });
+        const draft = entry();
+        const first = await f.controller.submit(draft);
+        assert.equal(first.status, 'pending', telemetry);
+        assert.deepEqual(f.entries.get(draft.clientBatchId).formSnapshot, draft.formSnapshot);
+        assert.equal(context.requestSubmissionEntries.get(draft.clientBatchId).status, 'pending');
+        assert.equal(retries.length, 1, 'telemetry cannot prevent retry scheduling');
+        assert.equal(refreshed.length, 1, 'telemetry cannot prevent updating the retry button');
+        assert.equal(captured.length, telemetry === 'missing' ? 0 : 1);
+        if (captured.length) assert.deepEqual(captured[0], ['commit', failure]);
+        const second = await f.controller.submit(first.entry);
+        assert.equal(second.status, 'acknowledged', telemetry);
+        assert.equal(f.sent[1].clientBatchId, draft.clientBatchId);
+        assert.equal(f.entries.size, 0);
+        assert.equal(f.acknowledged.length, 1);
+    }
+});
+
 test('optional quantities normalize blanks to null while preserving explicit zero and mixed values', () => {
     for (const value of [null, undefined, '', ' ', '\t\n']) assert.equal(api.normalizeOptionalQuantity(value), null);
     assert.equal(api.normalizeOptionalQuantity(0), '0');

@@ -1,6 +1,6 @@
 # Engineering Guidance
 
-`AGENTS.md` is the authoritative workflow for local development, candidate delivery, release monitoring, and file hygiene. Its Fast Deployment & Execution Policy applies to all work; this document summarizes the same rules for day-to-day changes.
+`AGENTS.md` is the authoritative workflow for local development, candidate delivery, release monitoring, and file hygiene. Its permanent CI/CD override governs automatic merging and monitoring through verified publication; its Fast Deployment & Execution Policy governs scoped local checks and hooks.
 
 ## Development
 
@@ -20,8 +20,8 @@
 
 - Keep application release markers synchronized with `package.json` using the release-version tooling when preparing an application release. CI-only and documentation-only changes retain the current application version.
 - Commit focused functional changes and push the candidate branch promptly so GitHub Actions can perform complete validation.
-- Create or reuse the candidate pull request according to `AGENTS.md`. Do not manually promote changes to `main` or bypass release gates.
-- Monitor CI or production publication only when `AGENTS.md` or the user's current request calls for it. Report a production release as live only after final hosted publication succeeds.
+- Create or reuse the candidate pull request, request its merge immediately, and enable auto-merge when GitHub requires pending checks or a merge queue. Continue through configured release gates without another manual review or PR hand-off.
+- Start deployment monitoring automatically and follow checks, merge completion, frontend hosted verification, and applicable backend publication until completion. Report live status only after those processes succeed; report specific blockers or failures truthfully.
 
 ## Cleanup
 
