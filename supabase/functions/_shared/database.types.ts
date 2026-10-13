@@ -17765,6 +17765,14 @@ export type Database = {
         Args: { p_delivered: boolean; p_error_code?: string; p_id: string }
         Returns: undefined
       }
+      inventory_location_on_hand_read_v1: {
+        Args: {
+          p_actor_id: string
+          p_expected_revision?: string
+          p_pairs: Json
+        }
+        Returns: Json
+      }
       inventory_transaction_history_v1: {
         Args: { p_actor_id: string; p_payload?: Json }
         Returns: Json
@@ -17787,10 +17795,6 @@ export type Database = {
       }
       manager_ncr_outbox_metadata_v1: {
         Args: { p_actor_username: string; p_approval_type: string }
-        Returns: Json
-      }
-      inventory_location_on_hand_read_v1: {
-        Args: { p_actor_id: string; p_pairs: Json; p_expected_revision?: string }
         Returns: Json
       }
       manager_report_read_v2: { Args: { p_payload: Json }; Returns: Json }

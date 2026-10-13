@@ -628,6 +628,16 @@ test('bounded report RPC types follow the generated public function order', () =
   assert.ok(outbox >= 0 && reports > outbox && season > reports);
 });
 
+test('inventory location aggregate RPC type follows generated function and argument order', () => {
+  const types = readFileSync(path.join(root, 'supabase/functions/_shared/database.types.ts'), 'utf8');
+  const aggregate = types.indexOf('      inventory_location_on_hand_read_v1: {');
+  const transaction = types.indexOf('      inventory_transaction_history_v1: {');
+  assert.ok(aggregate >= 0 && aggregate < transaction, 'inventory functions remain alphabetically ordered');
+  const block = types.slice(aggregate, transaction);
+  assert.match(block, /Args: \{\s+p_actor_id: string\s+p_expected_revision\?: string\s+p_pairs: Json\s+\}/,
+    'generated args use alphabetical order and keep the optional revision optional');
+});
+
 test('historical report projections retain the production seasonal and NCR fields', () => {
   const fixture = readFileSync(path.join(root, 'supabase/ci/request_workflow_baseline.sql'), 'utf8');
   const baseline = readFileSync(path.join(root, 'supabase/migrations/20260929200000_production_baseline.sql'), 'utf8');

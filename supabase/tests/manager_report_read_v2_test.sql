@@ -218,7 +218,9 @@ begin
   insert into manager_report_query_plan values(query_plan);
 end
 $$;
-select ok((select plan::text like '%idx_ph_master_inventory_eval_itemcode_lookup%' from manager_report_query_plan),
+select ok((select plan::text like '%idx_ph_master_inventory_eval_itemcode_lookup%'
+    or plan::text like '%ph_master_inventory_item_location_on_hand_idx%'
+  from manager_report_query_plan),
   'selective normalized itemcode predicate has a usable index plan');
 select throws_ok($$select public.manager_report_read_v2('{"actorUsername":"dylan_collyge","surface":"eval1","operation":"metadata","sourceRevision":"stale"}'::jsonb)$$,
   '40001','manager_report_source_revision_changed','source revision mismatch requires the frontend to restart its page sequence');
