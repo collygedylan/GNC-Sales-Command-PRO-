@@ -9930,7 +9930,7 @@ function buildRequestItemFieldRowsText_(item) {
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
-    ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+    ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
     ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
@@ -9974,7 +9974,7 @@ function buildRequestItemFieldRowsHtml_(item) {
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
-    ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+    ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Completed By', formatRequestCompletionUserLabel_(item)],
     ['Submitted By', formatApprovalRequesterLabel_(item)],
     ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
@@ -10722,7 +10722,7 @@ function buildRequestEmailTableItemsHtml_(payload, options) {
     const changedFieldsTable = buildRequestChangedFieldsTableHtml_(item);
     const requestFields = [
       ['ACTION', getEmailTableValue_(item, ['approval_label', 'approvalLabel', 'approval_type', 'APPROVAL_TYPE', 'action', 'ACTION'], '')],
-      ['QTY', getEmailTableValue_(item, ['qty', 'REQ_QTY', 'request_qty', 'requested_qty', 'ncr_qty', 'NCR_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '')],
+      ['QTY', getEmailTableValue_(item, ['qty', 'req_qty', 'REQ_QTY', 'request_qty', 'requested_qty', 'ncr_qty', 'NCR_QTY', 'loc_match_qty', 'LOC_MATCH_QTY'], '')],
       ['MOVE DOWN SEASON', getEmailTableValue_(item, ['move_down_season', 'MOVE_DOWN_SEASON', 'moveDownSeason'], '')],
       ['SPEC', getEmailTableValue_(item, ['spec', 'REQ_SPEC', 'SPEC'], '')],
       ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
@@ -16318,7 +16318,7 @@ function buildRequestGallerySlidesFromItems_(items) {
     const itemcode = firstNonEmptyRequestValue_(item.itemcode, item.ITEMCODE, '');
     const locationcode = firstNonEmptyRequestValue_(item.loc, item.locationcode, item.LOCATIONCODE, '');
     const lotcode = firstNonEmptyRequestValue_(item.lotcode, item.LOTCODE, '');
-    const qty = firstNonEmptyRequestValue_(item.qty, item.requested_qty, item.REQ_QTY, '');
+    const qty = firstNonEmptyRequestValue_(item.qty, item.req_qty, item.requested_qty, item.REQ_QTY, '');
     const spec = firstNonEmptyRequestValue_(item.spec, item.REQ_SPEC, item.SPEC, '');
     const caliper = firstNonEmptyRequestValue_(item.caliper, item.REQ_CALIPER, item.CALIPER, '');
     const locMatchQty = getRequestLocPhotoMatchEmailValue_(item);
@@ -16441,7 +16441,7 @@ function buildRequestGalleryRowsHtml_(items) {
       ['Item', firstNonEmptyRequestValue_(item && item.itemcode, item && item.ITEMCODE, '-')],
       ['Location', firstNonEmptyRequestValue_(item && item.loc, item && item.locationcode, item && item.LOCATIONCODE, '-')],
       ['Lot', firstNonEmptyRequestValue_(item && item.lotcode, item && item.LOTCODE, '')],
-      ['Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+      ['Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.requested_qty, item && item.REQ_QTY, '')],
       ['Spec', firstNonEmptyRequestValue_(item && item.spec, item && item.REQ_SPEC, item && item.SPEC, '')],
       ['Caliper', firstNonEmptyRequestValue_(item && item.caliper, item && item.REQ_CALIPER, item && item.CALIPER, '')],
       ['LOC PHOTO MATCH', getRequestLocPhotoMatchEmailValue_(item)],
@@ -16539,7 +16539,7 @@ function buildRequestRowCopyFields_(item) {
     ['Priority', firstNonEmptyRequestValue_(item && item.priority, item && item.PRIORITY, '')],
     ['PTR Available', firstNonEmptyRequestValue_(item && item.ptravailable, item && item.PTRAVAILABLE, '')],
     ['S_LTS', firstNonEmptyRequestValue_(item && item.s_lts, item && item.S_LTS, '')],
-    ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.requested_qty, item && item.REQ_QTY, '')],
+    ['Requested Qty', firstNonEmptyRequestValue_(item && item.qty, item && item.req_qty, item && item.requested_qty, item && item.REQ_QTY, '')],
     ['Request Note', firstNonEmptyRequestValue_(item && item.request_note, item && item.req_note, item && item.REQUEST_NOTE, item && item.REQ_NOTE, '')],
     ['Desired Spec', firstNonEmptyRequestValue_(item && item.desired_spec, item && item.req_desired_spec, item && item.REQ_DESIRED_SPEC, item && item.DESIRED_SPEC, '')],
     ['Desired Caliper', firstNonEmptyRequestValue_(item && item.desired_caliper, item && item.req_desired_caliper, item && item.REQ_DESIRED_CALIPER, item && item.DESIRED_CALIPER, '')],
