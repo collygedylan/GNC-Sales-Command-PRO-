@@ -94,6 +94,7 @@ function loadConfirmedApplyFixture(currentRow, revision = '9') {
     getDatasetKeysForTable: () => ['master'],
     getVisibleAffectedViewIds: () => ['drive'],
     propagateCommittedEdit: () => {},
+    refreshLiveLocMatchQuantityPreviews: () => {},
     parseAppNumber: value => value == null || value === '' ? null : Number(value),
     invalidateResolvedViewStateCaches: () => {},
     getAffectedViewsForDatasets: () => ['request', 'drive'],
