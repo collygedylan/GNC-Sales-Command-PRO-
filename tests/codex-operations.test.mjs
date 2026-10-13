@@ -164,11 +164,13 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   assert.match(agentRules, /Never run sandbox assertions or full database validations inside pre-commit hooks/);
   assert.match(agentRules, /Immediately create a new branch's PR with `gh pr create --fill`/);
   assert.match(agentRules, /GitHub Actions owns complete validation, validated merging, production publication, and hosted verification/);
-  assert.match(agentRules, /Do not start unprompted CI\/deployment watchers or repeated verification loops/);
-  assert.match(agentRules, /Monitor only when the user explicitly requests it for the current task/);
+  assert.match(agentRules, /automatically create the PR and immediately merge it into the `main` branch/);
+  assert.match(agentRules, /Monitor the GitHub Actions workflows until completion/);
+  assert.match(agentRules, /frontend and backend publication processes are 100% complete/);
   assert.match(agentRules, /live only after successful final hosted publication is confirmed/);
   assert.match(agentRules, /preserve unrelated changes, shared resources, credentials, production data, and diagnostics/);
-  assert.doesNotMatch(agentRules, /FIRE-AND-FORGET|OVERRIDE:|terminate the session immediately/);
+  assert.match(agentRules, /## PERMANENT OVERRIDE: Fully Automated CI\/CD Deployment Protocol/);
+  assert.doesNotMatch(agentRules, /FIRE-AND-FORGET|terminate the session immediately/);
   assert.match(releasePipeline, /single source of progress/);
   assert.match(releasePipeline, /Planning, explanation, diagnosis, status, and review-only requests do not authorize/);
 });
