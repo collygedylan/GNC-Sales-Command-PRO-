@@ -25,6 +25,7 @@ function harness() {
   const context = {
     window: {}, console, Date, JSON, Map, Set, String, Number, Array, Object,
     canUseProductionLiveSync: () => true,
+    getActiveManagerReportPageSurface: () => '', useManagerReportPages: () => false,
     currentUser: 'fixture', currentRole: 'ADMIN', activeReqTab: 'pending', activeHomeTab: 'orders',
     activeMovesTab: 'office', activeInventoryOfficeApprovalType: 'crop-roll', activeAVTab: 'open',
     activeTaskView: 'flyer', cropRollDriveSchemaReady: true, inventoryMainTab: 'sales', productionInventoryTab: 'counting',
@@ -123,6 +124,22 @@ test('Managers navigation has no data gate and each data tab declares its own co
     assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: [surface] })).sort(), adapters.sort(), surface);
   }
   assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports-2-low-stock'] })).sort(), ['side:itemLowStockTargets']);
+});
+
+test('paged report lists subscribe to revisions without materializing complete inventory or assignments', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  const ids = Array.from(registry.getViewAdapters('managers', { pagedReportSurface:'eval2', surfaces:['managers:eval-reports-2'] }));
+  assert.deepEqual(ids.sort(), ['side:reportEval2','side:settings']);
+  const sources = Array.from(registry.getSourceKeys(ids));
+  assert.ok(sources.includes('ph_master_inventory'));
+  assert.ok(sources.includes('ph_inventory_row_assignments'));
+  assert.ok(sources.includes('private.ph_eval_item_low_stock_overrides'));
+  assert.deepEqual(Array.from(registry.getCoreKeys('low-stock', { pagedReportSurface:'ncr' })), []);
+  assert.deepEqual(Array.from(registry.getViewAdapters('sales-inventory', { pagedReportSurface:'inventory-hub' })), []);
+  const dialog = Array.from(registry.getViewAdapters('managers', {
+    pagedReportSurface:'eval2', surfaces:['managers:eval-reports-2','dialog:item-inquiry']
+  }));
+  assert.ok(dialog.includes('core:master'), 'Existing dialog authority cohort remains intact');
 });
 
 test('actual loader dependencies remain covered for every route, request tab, task state and Eval role', () => {

@@ -88698,6 +88698,46 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "manager_report_read_v2": {
+      "oneOf": [
+        {
+          "object": {
+            "p_payload": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "manager_ncr_outbox_metadata_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_username": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_approval_type": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "manager_season_priority_list_v1": {
       "oneOf": [
         {
@@ -98693,6 +98733,16 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "list_expired_codex_ops_evidence_service_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "manager_report_read_v2": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "manager_ncr_outbox_metadata_v1": {
       "oneOf": [
         "json"
       ]

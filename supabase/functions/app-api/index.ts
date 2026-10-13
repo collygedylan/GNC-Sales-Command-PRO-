@@ -2864,6 +2864,210 @@ async function handleEvalWorkAction(
   }
 }
 
+export async function handleManagerReportReadAction(
+  session: Awaited<ReturnType<typeof readSupabaseOrAppSessionFromRequest>>,
+  payload: Record<string, unknown>,
+) {
+  if (!session) return errorResponse("Authentication required.", 401, { code: "AUTH_REQUIRED" });
+  if (session.mustChangePassword) return errorResponse("Password change required.", 403, { code: "PASSWORD_CHANGE_REQUIRED" });
+  const profile = await resolveActiveSessionProfile(session).catch(() => null);
+  const actor = normalizeUsername(String(profile?.username || ""));
+  if (!actor || !profile) return errorResponse("An active, unlocked app profile is required.", 403, { code: "PROFILE_NOT_ACTIVE" });
+  const query = payload.query && typeof payload.query === "object" && !Array.isArray(payload.query)
+    ? payload.query as Record<string, unknown> : null;
+  const operation = String(query?.operation || payload.operation || "").trim().toLowerCase();
+  if (operation === "capabilities") {
+    const canViewEval1 = ["dylan_collyge", "megan_kelly"].includes(actor);
+    const canViewEval2 = ["dylan_collyge", "megan_kelly", "jd_jones"].includes(actor);
+    const canViewInventoryManager = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
+    const canViewApproval = INVENTORY_NCR_FIRST_STAGE_USERS.has(actor) || INVENTORY_NCR_JD_STAGE_USERS.has(actor);
+    const roleCanReadInventory = hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor);
+    try {
+      const { data, error } = await supabase.rpc("manager_report_read_v2", { p_payload: {
+        actorUsername: actor, operation: "capabilities",
+      } });
+      const capabilityData = data && typeof data === "object" && !Array.isArray(data) ? data as Record<string, unknown> : {};
+      if (error || capabilityData.ok !== true) throw error || new Error("MANAGER_REPORT_CAPABILITIES_UNAVAILABLE");
+      const backendSurfaces = new Set(Array.isArray(capabilityData.surfaces) ? capabilityData.surfaces.map(String) : []);
+      const surfaces = [
+        ...(canViewEval1 && backendSurfaces.has("eval1") ? ["eval1"] : []),
+        ...(canViewEval2 && backendSurfaces.has("eval2") ? ["eval2"] : []),
+        ...(roleCanReadInventory && backendSurfaces.has("ncr") ? ["ncr"] : []),
+        ...(canViewInventoryManager && backendSurfaces.has("assigned-items") ? ["assigned-items"] : []),
+        ...(canViewInventoryManager && backendSurfaces.has("season-priority") ? ["season-priority"] : []),
+        ...(canViewApproval && backendSurfaces.has("approval") ? ["approval"] : []),
+      ];
+      const approvalTabs = canViewApproval && backendSurfaces.has("approval") ? [
+        "ncr-approvals", "move-up-approvals", "move-down-approvals",
+        "hold-release-approvals", "recount-approvals", "not-on-inventory-approvals",
+      ] : [];
+      return jsonResponse({ ok: true, data: { version: "manager-report-read-v2", surfaces,
+        approvalTabs, operations: ["groups", "rows", "metadata", "detail"] } });
+    } catch {
+      return jsonResponse({ ok: true, data: { version: "manager-report-read-v2", surfaces: [],
+        approvalTabs: [], operations: [] } });
+    }
+  }
+  if (!query || Object.keys(payload).some((key) => !["action", "operation", "query"].includes(key))) {
+    return errorResponse("Invalid report read request.", 400, { code: "MANAGER_REPORT_QUERY_INVALID" });
+  }
+  const surface = String(query.surface || "").trim().toLowerCase();
+  if (surface === "assigned-items" || surface === "season-priority") {
+    if (!hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) {
+      return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
+    }
+    const allowed = new Set(["surface", "operation", "filters", "offset", "limit", "sourceRevision"]);
+    if (Object.keys(query).some((key) => !allowed.has(key))) return errorResponse("Invalid report read query.", 400, { code: "MANAGER_REPORT_QUERY_INVALID" });
+    const filters = query.filters && typeof query.filters === "object" && !Array.isArray(query.filters)
+      ? query.filters as Record<string, unknown> : {};
+    const limit = Math.min(operation === "groups" ? 25 : 100, Math.max(1, Math.trunc(Number(query.limit) || 25)));
+    const offset = Math.min(2_000_000, Math.max(0, Math.trunc(Number(query.offset) || 0)));
+    try {
+      const { data, error } = await supabase.rpc("manager_report_read_v2", { p_payload: {
+        actorUsername: actor, surface, operation, filters: jsonValue(filters), offset, limit,
+        sourceRevision: query.sourceRevision == null ? null : String(query.sourceRevision),
+      } });
+      if (error) throw error;
+      return jsonResponse(data && typeof data === "object" ? { ok: true, data } : { ok: false, code: "MANAGER_REPORT_READ_FAILED" });
+    } catch (error) {
+      const message = String((error as { message?: unknown })?.message || (error instanceof Error ? error.message : error || ""));
+      if (message.includes("manager_report_source_revision_changed")) {
+        return errorResponse("The report source changed while paging. Restart the page request.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
+      }
+      if (message.includes("manager_report_source_not_ready")) {
+        return errorResponse("The report source is refreshing. Try again shortly.", 423, { code: "DATASET_NOT_READY" });
+      }
+      return errorResponse("Could not load manager report data.", 409, { code: "MANAGER_REPORT_READ_FAILED" });
+    }
+  }
+  if (surface === "approval") {
+    if ((!INVENTORY_NCR_FIRST_STAGE_USERS.has(actor) && !INVENTORY_NCR_JD_STAGE_USERS.has(actor))
+      || !hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) {
+      return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
+    }
+    const allowed = new Set(["surface", "operation", "filters", "offset", "limit", "sourceRevision"]);
+    if (Object.keys(query).some((key) => !allowed.has(key))) return errorResponse("Invalid report read query.", 400, { code: "MANAGER_REPORT_QUERY_INVALID" });
+    const filters = query.filters && typeof query.filters === "object" && !Array.isArray(query.filters)
+      ? query.filters as Record<string, unknown> : {};
+    const view = String(filters.approvalTab || "").trim().toLowerCase();
+    const queue = String(filters.queue || "queue").trim().toLowerCase();
+    const approvalType = MANAGER_APPROVAL_VIEW_TYPES[view];
+    const isNotOnInventory = view === MANAGER_NOT_ON_INVENTORY_APPROVAL_VIEW;
+    if ((!approvalType && !isNotOnInventory) || !["queue", "outbox"].includes(queue)
+      || (isNotOnInventory && queue === "outbox")) {
+      return errorResponse("Invalid approval queue.", 400, { code: "MANAGER_REPORT_APPROVAL_TAB_INVALID" });
+    }
+    const limit = Math.min(100, Math.max(1, Math.trunc(Number(query.limit) || 25)));
+    const offset = Math.min(2_000_000, Math.max(0, Math.trunc(Number(query.offset) || 0)));
+    if (!['rows', 'metadata', 'detail'].includes(operation)) {
+      return errorResponse("Invalid approval queue operation.", 400, { code: "MANAGER_REPORT_QUERY_INVALID" });
+    }
+    const allAssignments = [...inventoryActorQueueAssignments(actor)];
+    const assignments = queue === "outbox"
+      ? allAssignments.filter(assignment => assignment === ("ncr_outbox_" + approvalType!.replace(/-/g, "_"))).sort()
+      : allAssignments.filter((assignment) => isNotOnInventory
+      ? INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS.has(assignment)
+      : assignment === `ncr_approval_${approvalType!.replace(/-/g, "_")}_dylan`
+        || assignment === `ncr_approval_${approvalType!.replace(/-/g, "_")}_jd`).sort();
+    if (!assignments.length) return errorResponse("Forbidden", 403, { code: "QUEUE_ASSIGNMENT_FORBIDDEN" });
+    try {
+      let outboxSummary: Record<string, unknown> | null = null;
+      let sourceRevision: string;
+      if (queue === "outbox") {
+        const { data, error } = await supabase.rpc("manager_ncr_outbox_metadata_v1", {
+          p_actor_username: actor, p_approval_type: approvalType,
+        });
+        if (error || !data || typeof data !== "object") throw error || new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        outboxSummary = data as Record<string, unknown>;
+        sourceRevision = String(outboxSummary.sourceRevision || "");
+        if (!sourceRevision) throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+      } else {
+        const revisionResult = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
+        if (revisionResult.error || revisionResult.data?.state !== "ready") throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        sourceRevision = String(revisionResult.data.revision);
+      }
+      if (query.sourceRevision != null && String(query.sourceRevision) !== sourceRevision) {
+        return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
+      }
+      const fields = isNotOnInventory ? INVENTORY_NOT_ON_INVENTORY_FIELDS : INVENTORY_NCR_QUEUE_FIELDS;
+      let request = inventoryReadQuery(profile, fields, true, operation === "metadata")
+        .in("app_tab_assignment", assignments);
+      if (queue === "outbox") {
+        request = request
+          .like("ncr_approval_message", "%[[GNC_NCR_ITEM_INQUIRY:%")
+          .like("ncr_approval_message", '%"activeRows":[{%');
+      }
+      request = request.order("unique_id", { ascending: true });
+      if (operation === "detail" && String(filters.uniqueId || "").trim()) request = request.eq("unique_id", String(filters.uniqueId).trim());
+      const { data, error, count } = operation === "metadata" && queue === "outbox"
+        ? { data: null, error: null, count: Number(outboxSummary?.total || 0) }
+        : await request.range(offset, offset + limit - 1);
+      if (error) throw error;
+      const rows = projectInventoryRows(data, fields);
+      if (queue === "outbox") {
+        const { data: afterSummary, error: afterError } = await supabase.rpc("manager_ncr_outbox_metadata_v1", {
+          p_actor_username: actor, p_approval_type: approvalType,
+        });
+        if (afterError || !afterSummary || typeof afterSummary !== "object") throw afterError || new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (String((afterSummary as Record<string, unknown>).sourceRevision || "") !== sourceRevision) {
+          return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
+        }
+        outboxSummary = afterSummary as Record<string, unknown>;
+      } else {
+        const afterRevision = await supabase.from("app_dataset_revisions").select("revision,state").eq("key", "ph_master_inventory").maybeSingle();
+        if (afterRevision.error || afterRevision.data?.state !== "ready") throw new Error("MANAGER_REPORT_SOURCE_NOT_READY");
+        if (String(afterRevision.data.revision) !== sourceRevision) {
+          return errorResponse("Approval queue changed while paging.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
+        }
+      }
+      const total = queue === "outbox" ? Number(outboxSummary?.total || 0) : count ?? 0;
+      return jsonResponse({ ok: true, data: { rows: operation === "metadata" ? [] : rows, total, offset, limit,
+        hasMore: operation !== "metadata" && offset + rows.length < total, sourceRevision, metadata: { approvalTab: view, queue, assignments,
+          ...(queue === "outbox" ? { activeLineCount: Number(outboxSummary?.activeLineCount || 0) } : {}) } } });
+    } catch (error) {
+      const message = String((error as { message?: unknown })?.message || error || "");
+      if (message.includes("manager_report_source_not_ready")) return errorResponse("The report source is refreshing. Try again shortly.", 423, { code: "DATASET_NOT_READY" });
+      return errorResponse("Could not load approval queue.", 409, { code: "MANAGER_REPORT_APPROVAL_READ_FAILED" });
+    }
+  }
+  if (!["eval1", "eval2", "ncr"].includes(surface)) {
+    return errorResponse("This report surface is not available through the bounded report API.", 501, { code: "MANAGER_REPORT_SURFACE_UNAVAILABLE" });
+  }
+  if (surface === "ncr" && !hasTableReadAccess(String(profile.role || ""), "ph_master_inventory", actor)) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
+  if ((surface === "eval1" && !["dylan_collyge", "megan_kelly"].includes(actor))
+    || (surface === "eval2" && !["dylan_collyge", "megan_kelly", "jd_jones"].includes(actor))) {
+    return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
+  }
+  const allowed = new Set(["surface", "operation", "filters", "offset", "limit", "sourceRevision"]);
+  if (Object.keys(query).some((key) => !allowed.has(key))) {
+    return errorResponse("Invalid report read query.", 400, { code: "MANAGER_REPORT_QUERY_INVALID" });
+  }
+  const filters = query.filters && typeof query.filters === "object" && !Array.isArray(query.filters)
+    ? query.filters as Record<string, unknown> : {};
+  const reportIds = Array.isArray(filters.reportIds) ? filters.reportIds.filter((value): value is string => typeof value === "string").slice(0, 11) : [];
+  const safeFilters = { ...filters, reportIds };
+  const limit = Math.min(100, Math.max(1, Math.trunc(Number(query.limit) || 25)));
+  const offset = Math.min(2_000_000, Math.max(0, Math.trunc(Number(query.offset) || 0)));
+  const readOperation = String(query.operation || payload.operation || "groups").trim().toLowerCase();
+  if (!["groups", "rows", "metadata", "detail"].includes(readOperation)) {
+    return errorResponse("Invalid report read operation.", 400, { code: "MANAGER_REPORT_OPERATION_INVALID" });
+  }
+  try {
+    const { data, error } = await supabase.rpc("manager_report_read_v2", { p_payload: {
+      actorUsername: actor, surface, operation: readOperation, filters: safeFilters, offset, limit,
+      sourceRevision: query.sourceRevision == null ? null : String(query.sourceRevision),
+    } });
+    if (error) throw error;
+    return jsonResponse(data && typeof data === "object" ? { ok: true, data } : { ok: false, code: "MANAGER_REPORT_READ_FAILED" });
+  } catch (error) {
+    const message = String((error as { message?: unknown })?.message || (error instanceof Error ? error.message : error || ""));
+    if (message.includes("manager_report_eval1_forbidden") || message.includes("manager_report_eval2_forbidden")) return errorResponse("Forbidden", 403, { code: "MANAGER_REPORT_FORBIDDEN" });
+    if (message.includes("manager_report_source_revision_changed")) return errorResponse("The report source changed while paging. Restart the page request.", 409, { code: "MANAGER_REPORT_SOURCE_REVISION_CHANGED" });
+    if (message.includes("manager_report_source_not_ready")) return errorResponse("The report source is refreshing. Try again shortly.", 423, { code: "DATASET_NOT_READY" });
+    return errorResponse("Could not load manager report data.", 409, { code: "MANAGER_REPORT_READ_FAILED" });
+  }
+}
+
 type LivePilotFeatureKey = typeof LIVE_PILOT_FEATURE_KEYS[number];
 
 function getDisabledLivePilotFlags(): Record<LivePilotFeatureKey, boolean> {
@@ -3504,6 +3708,11 @@ const INVENTORY_NCR_ASSIGNMENT_TYPES = new Set(["new-crop", "move-up", "move-dow
 const INVENTORY_NCR_FIRST_STAGE_USERS = new Set(["dylan_collyge", "megan_kelly"]);
 const INVENTORY_NCR_JD_STAGE_USERS = new Set(["jd_jones", "megan_kelly"]);
 const INVENTORY_NOT_ON_INVENTORY_ASSIGNMENTS = new Set(["not_on_inventory_dylan", "not_on_inventory_jd"]);
+const MANAGER_APPROVAL_VIEW_TYPES: Record<string, string> = {
+  "ncr-approvals": "new-crop", "move-up-approvals": "move-up", "move-down-approvals": "move-down",
+  "hold-release-approvals": "hold-release", "recount-approvals": "recount",
+};
+const MANAGER_NOT_ON_INVENTORY_APPROVAL_VIEW = "not-on-inventory-approvals";
 const INVENTORY_SCHEMA_CAPABILITY_FIELDS: Record<string, string> = {
   evalTask: "eval_task_type,eval_task_status,eval_task_instructions,eval_task_assigned_by,eval_task_assigned_at,eval_task_completed_by,eval_task_completed_at,eval_task_recount_qty,eval_task_moved_up_qty,eval_task_hold_action,eval_task_hold_code,eval_task_hold_reason,eval_task_result_note",
   ncrApproval: "ncr_approval_type,ncr_requested_by_username,ncr_requested_by_display,ncr_requested_by_email,ncr_requested_at,ncr_approval_message",
@@ -3546,8 +3755,8 @@ function inventoryActorQueueAssignments(username: string) {
   return allowed;
 }
 
-function inventoryReadQuery(actor: Record<string, unknown>, fields: string, includeCount = true) {
-  let query = supabase.from("ph_master_inventory").select(fields, includeCount ? { count: "exact" } : {});
+function inventoryReadQuery(actor: Record<string, unknown>, fields: string, includeCount = true, head = false) {
+  let query = supabase.from("ph_master_inventory").select(fields, includeCount ? { count: "exact", head } : {});
   const role = String(actor.role || "").trim();
   const compactRole = role.toUpperCase().replace(/[^A-Z0-9]+/g, "");
   if (compactRole.includes("FOREMAN")) {
@@ -4926,6 +5135,7 @@ if (import.meta.main) serve((req) => withObservedRequest("app-api", req, async (
     return await handleSetUserPreferences(session, payload);
   }
   if (action === "eval_work") return await handleEvalWorkAction(session, payload);
+  if (action === "report_read_v2") return await handleManagerReportReadAction(session, payload);
   if (action === "photo_history") return await handlePhotoHistoryAction(session, payload);
   if (action === "drive_reclass_inquiry") return await handleDriveReclassAction(session, payload);
   if (action === "season_sales_office") return await handleSeasonSalesOfficeAction(session, payload);
