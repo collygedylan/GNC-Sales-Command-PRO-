@@ -179,8 +179,8 @@ begin
       (select count(*)::text||':'||coalesce(max(revision),0)::text||':'||coalesce(max(updated_at)::text,'') from public.ph_inventory_row_assignments),
       (select count(*)::text||':'||coalesce(max(updated_at)::text,'') from public.ph_itemcode_default_owners),
       (select coalesce(max(updated_at)::text,'') from public.ph_eval_assignment_users),
-      (select coalesce(active::text,'false')||':'||coalesce(source_revision::text,'')||':'||coalesce(updated_at::text,'')
-        from private.ph_inventory_row_assignment_policy_state where singleton),
+      (select coalesce(policy.active::text,'false')||':'||coalesce(policy.source_revision::text,'')||':'||coalesce(policy.updated_at::text,'')
+        from private.ph_inventory_row_assignment_policy_state policy where policy.singleton),
       private.eval_work_settings_v1()::text,
       (select to_jsonb(s)::text from public.ph_eval_report_settings s where s.singleton limit 1),
       (select coalesce(active_run_id::text,'')||':'||coalesce(pending_run_id::text,'')||':'||updated_at::text

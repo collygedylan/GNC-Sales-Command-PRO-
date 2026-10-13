@@ -142,6 +142,17 @@ test('isolated SQL fixture preparation accepts only discovered affected tests', 
   }), /SQL_TEST_SELECTION_INVALID/);
 });
 
+test('isolated report RPC tests install both bounded report migrations in dependency order', () => {
+  const manifest = JSON.parse(readFileSync(path.join(process.cwd(), 'scripts/historical-database-migrations.json'), 'utf8'));
+  const names = manifest.map(entry => entry.destination);
+  const report = names.indexOf('20261012190002_manager_report_read_v2.sql');
+  const lists = names.indexOf('20261012190003_manager_list_read_v2.sql');
+  assert.ok(report >= 0 && lists > report);
+  for (const index of [report, lists]) {
+    assert.equal(manifest[index].source, `supabase/migrations/${names[index]}`);
+  }
+});
+
 test('historical photo refresh relations are present with production access semantics in the isolated fixture', () => {
   const root = process.cwd();
   const reportFixture = readFileSync(path.join(root, 'supabase/ci/historical_report_baseline.sql'), 'utf8');
