@@ -467,7 +467,7 @@ export function migrationContractQuery(name) {
     ]::regclass[]) named(index_oid) left join pg_index i on i.indexrelid=named.index_oid
       where i.indexrelid is null or not i.indisvalid)
     and not exists(select 1 from (values
-      ('idx_ph_master_inventory_eval_itemcode_lookup','public.ph_master_inventory','upper(btrim(coalesce(itemcode, ''''::text)))',''),
+      ('idx_ph_master_inventory_eval_itemcode_lookup','public.ph_master_inventory','upper(btrim(coalesce(itemcode,''''::text)))',''),
       ('idx_ph_master_inventory_eval_tasks','public.ph_master_inventory','assignedto,eval_task_status,eval_task_type',''),
       ('ph_master_inventory_location_work_match_idx','public.ph_master_inventory','lower(btrim(itemcode)),lower(btrim(saleyear)),lower(btrim(locationcode)),unique_id',''),
       ('ph_inventory_row_assignments_owner_idx','public.ph_inventory_row_assignments','lower(btrim(assignedto)),master_unique_id','present_in_driveand(assignedtoisnotnull)'),
@@ -477,7 +477,7 @@ export function migrationContractQuery(name) {
     left join pg_index i on i.indexrelid=c.oid
     where c.oid is null or c.relnamespace<>'public'::regnamespace
       or i.indrelid<>expected.table_name::regclass
-      or position(expected.key_fragment in lower(regexp_replace(pg_get_indexdef(c.oid),'[[:space:]\"]','','g')))=0
+      or position(regexp_replace(lower(expected.key_fragment),'[[:space:]\"]','','g') in lower(regexp_replace(pg_get_indexdef(c.oid),'[[:space:]\"]','','g')))=0
       or (expected.predicate_fragment<>'' and position(expected.predicate_fragment in lower(regexp_replace(pg_get_expr(i.indpred,i.indrelid),'[[:space:]\"]','','g')))=0)
     ) as installed`;
   if (name === managerListReadV2MigrationName) return `select

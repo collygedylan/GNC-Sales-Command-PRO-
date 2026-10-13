@@ -163,7 +163,7 @@ select is((select result->'metadata'->>'matchingSelectedItemCount' from report_r
 select is((select result->'metadata'->>'matchingSelectedItemCount' from report_read_results where name='eval2_groups'),'0','empty selected itemcode list returns zero selected groups');
 select ok(to_regclass('public.idx_ph_master_inventory_eval_itemcode_lookup') is not null
   and (select indisvalid from pg_index where indexrelid='public.idx_ph_master_inventory_eval_itemcode_lookup'::regclass)
-  and position('upper(btrim(coalesce(itemcode' in lower(pg_get_indexdef('public.idx_ph_master_inventory_eval_itemcode_lookup'::regclass)))>0,
+  and position('upper(btrim(coalesce(itemcode' in lower(regexp_replace(pg_get_indexdef('public.idx_ph_master_inventory_eval_itemcode_lookup'::regclass),'[[:space:]\"]','','g')))>0,
   'normalized itemcode expression index exists, is valid and matches the RPC lookup predicate');
 select ok(to_regclass('public.ph_inventory_row_assignments_owner_idx') is not null
   and (select indisvalid from pg_index where indexrelid='public.ph_inventory_row_assignments_owner_idx'::regclass)

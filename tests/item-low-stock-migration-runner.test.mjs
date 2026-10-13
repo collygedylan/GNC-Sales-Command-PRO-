@@ -670,11 +670,17 @@ test('manager report read RPC is registered with bounded projections and service
   assert.match(contract, /not i\.indisvalid/);
   assert.match(contract, /pg_get_indexdef/);
   assert.match(contract, /pg_get_expr/);
+  assert.match(contract, /'idx_ph_master_inventory_eval_itemcode_lookup','public\.ph_master_inventory','upper\(btrim\(coalesce\(itemcode,''''::text\)\)\)'/);
+  assert.match(contract, /position\(regexp_replace\(lower\(expected\.key_fragment\),'\[\[:space:\]/);
+  assert.match(contract, /in lower\(regexp_replace\(pg_get_indexdef\(c\.oid\)/);
   assert.match(contract, /i\.indrelid<>expected\.table_name::regclass/);
   for (const indexName of ['idx_ph_master_inventory_eval_itemcode_lookup', 'idx_ph_master_inventory_eval_tasks',
     'ph_master_inventory_location_work_match_idx', 'ph_inventory_row_assignments_owner_idx',
     'ph_inventory_row_assignments_itemcode_idx']) assert.ok(contract.includes(indexName), indexName);
   const migration = fs.readFileSync(new URL('../supabase/migrations/' + managerReportReadV2MigrationName, import.meta.url), 'utf8');
+  const indexMigration = fs.readFileSync(new URL('../supabase/migrations/' + managerListReadV2MigrationName, import.meta.url), 'utf8');
+  const normalizedItemcodeIndexKey = "upper(btrim(coalesce(itemcode,''::text)))";
+  assert.ok(indexMigration.includes(normalizedItemcodeIndexKey), 'index migration and probe target use the same normalized itemcode key');
   assert.match(migration, /least\(100,greatest\(1/);
   assert.match(migration, /private\.inventory_effective_owner_v1\(m\.unique_id\)/);
   assert.match(migration, /private\.manager_report_grid_filter_v1/);
