@@ -70,6 +70,7 @@ values
    to_char((now() at time zone 'America/Chicago')::date-5,'YYYY-MM-DD'),
    to_char((now() at time zone 'America/Chicago')::date-10,'YYYY-MM-DD'),'PH'),
  ('MRV2-LOW-NO-TARGET-F1','MRV2-LOW-NO-TARGET','Low Stock Without Target Fixture','#2','Z.98.001','27.F1','10','8','','F1','27','1','','','','','PH'),
+ ('MRV2-LOW-NO-TARGET-S1','MRV2-LOW-NO-TARGET','Low Stock Without Target Fixture','#2','Z.98.002','27.S1','10','8','','S1','27','20','','','','','PH'),
  ('MRV2-SHARED-LOC-LOT1','MRV2-SHARED-LOC','Shared Location Fixture','#2','Z.99.001','27.U1-A','10','8','','U1','27','20','','','','','PH'),
  ('MRV2-SHARED-LOC-LOT2','MRV2-SHARED-LOC','Shared Location Fixture','#2','Z.99.001','27.U1-B','10','8','','U1','27','20','','','','','PH'),
  ('MRV2-SHARED-LOC-OTHER','MRV2-SHARED-OTHER','Shared Location Other Item','#2','Z.99.001','27.U1','10','8','','U1','27','20','','','','','PH');
@@ -143,7 +144,8 @@ select ok((select result->'metadata'->'diagnostics'->>'invalidHoldStartDateCount
   and result->'metadata'->'diagnostics'->>'invalidLocationNoteDateCount'='1' from report_read_results where name='eval1_metadata'),
   'Eval1 diagnostics count invalid dates using Central time source');
 select is((select result->>'total' from report_read_results where name='lowstock_override'),'0','manual low-stock override wins over the global threshold');
-select ok((select result->>'total'='1' and result->'rows' @> '[{"unique_id":"MRV2-LOW-NO-TARGET-F1","reportIds":["low-stock","no-pri"]}]'::jsonb
+-- Current F1 stock establishes the item threshold; the report emits its S1 sibling.
+select ok((select result->>'total'='1' and result->'rows' @> '[{"unique_id":"MRV2-LOW-NO-TARGET-S1","reportIds":["low-stock","no-pri"]}]'::jsonb
   from report_read_results where name='lowstock_missing_target'),
   'missing low-stock target stats and override preserve qualifying inventory rows using the global threshold');
 select ok((select result->>'total'='3' and jsonb_array_length(result->'rows')=3
