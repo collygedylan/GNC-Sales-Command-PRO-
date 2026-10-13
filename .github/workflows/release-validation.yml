@@ -8,7 +8,7 @@ on:
         type: boolean
         default: false
       fast-pr:
-        description: Retained for callers; standard releases always run one Chromium gate.
+        description: Deprecated compatibility input; browsers run only with run-nightly-suites on main.
         type: boolean
         default: false
       run-nightly-suites:
@@ -210,7 +210,7 @@ jobs:
           retention-days: 7
 
   fast-browser:
-    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests
+    if: needs.release-mode.outputs.hotfix != 'true' && inputs.run-frontend-tests && inputs.run-nightly-suites && github.ref == 'refs/heads/main'
     needs: [build, release-mode]
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -222,16 +222,16 @@ jobs:
       - uses: ./.github/actions/download-release
         with:
           digest: ${{ needs.build.outputs.digest }}
-      - name: Single headless Chromium PR gate
+      - name: Single headless Chromium nightly gate
         run: npx playwright test --config playwright.release-functional.config.ts --project=chromium --workers=2 --max-failures=1 --reporter=github
-      - name: Verify the sealed package after the PR gate
+      - name: Verify the sealed package after the nightly gate
         env:
           EXPECTED_RELEASE_DIGEST: ${{ needs.build.outputs.digest }}
         run: node scripts/release-artifact.mjs verify
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: pr-chromium-${{ github.run_attempt }}
+          name: nightly-chromium-${{ github.run_attempt }}
           path: test-results
           if-no-files-found: ignore
 
@@ -993,8 +993,7 @@ jobs:
           const required = hotfix ? ['lint','unit','build'] : ['lint','unit','contracts','build'];
           if (!hotfix && process.env.RUN_FRONTEND_TESTS === 'true') {
             required.push('react');
-            required.push('fast-browser');
-            if (process.env.RUN_NIGHTLY_SUITES === 'true') required.push('foundation','functional','compiled','timing','performance','lighthouse');
+            if (process.env.RUN_NIGHTLY_SUITES === 'true') required.push('fast-browser','foundation','functional','compiled','timing','performance','lighthouse');
           }
           if (!hotfix && process.env.RUN_BACKEND_TESTS === 'true') required.push('database');
           for (const name of required) {
@@ -1023,7 +1022,7 @@ jobs:
             attempt:Number(process.env.GITHUB_RUN_ATTEMPT), siteArtifactId:Number(process.env.RELEASE_SITE_ID),
             digest:process.env.RELEASE_DIGEST,
             hotfix,
-            browserMode:hotfix ? 'hotfix-minimal' : process.env.RUN_NIGHTLY_SUITES === 'true' ? 'full' : 'pr-chromium',
+            browserMode:hotfix ? 'hotfix-minimal' : process.env.RUN_NIGHTLY_SUITES === 'true' ? 'full' : 'none',
             testScope:{frontend:!hotfix && process.env.RUN_FRONTEND_TESTS === 'true', backend:!hotfix && process.env.RUN_BACKEND_TESTS === 'true', schema:!hotfix && process.env.RUN_SCHEMA_TESTS === 'true'}
           }));
           NODE

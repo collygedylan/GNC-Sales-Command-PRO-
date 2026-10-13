@@ -54,6 +54,8 @@ async function matchingProof({ repository, commit, api, now, allowPrBrowserProof
   };
   const run = await latest();
   const jobs = await complete(api, `${root}/actions/runs/${run.id}/attempts/${run.run_attempt}/jobs`, 'jobs');
+  // Unit/lint PR status authorizes merging, never reuse of a publication artifact.
+  if (jobs.some(job => job.name === 'validation / pr-gate')) unavailable('PR_CHECKS_NOT_PUBLICATION_PROOF');
   const hotfix = hasAttestedHotfix(jobs);
   const fastPr = jobs.some(job => job.name === 'validation / fast-browser');
   if (fastPr && !allowPrBrowserProof && !hotfix) unavailable('PRODUCTION_BROWSER_VALIDATION_REQUIRED');
@@ -120,8 +122,8 @@ export async function selectPagesRelease({ repository, commit, api, now = Date.n
   identity(repository, commit);
   try { return await matchingProof({ repository, commit, api, now, allowPrBrowserProof }); }
   catch (error) {
-    // An unavailable proof is never a waiver. Pages must run the complete suite
-    // on main. Transport/API errors fail the job instead of silently publishing.
+    // An unavailable proof is never a waiver. Pages must build and validate the
+    // merged main artifact. Transport/API errors fail instead of publishing.
     if (error instanceof Unavailable) return { reuse: false, reason: error.message };
     throw error;
   }
@@ -181,14 +183,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
         output({ 'run-id': selected.runId, attempt: selected.attempt, 'site-id': selected.siteArtifactId,
           'proof-id': selected.proofArtifactId, 'build-commit': selected.commit });
         console.log(`Reuse validated build ${selected.commit} from run ${selected.runId}, attempt ${selected.attempt}; merged tree matches.`);
-      } else console.log(`Full main validation required: ${selected.reason}.`);
+      } else console.log(`Merged main artifact validation required: ${selected.reason}.`);
     } else if (process.argv[2] === 'verify') {
       if (!['true', 'false'].includes(env.RELEASE_REUSE)) fail('REUSE_INVALID');
       const result = await verifyPagesRelease({
         proof: JSON.parse(readFileSync('artifacts/candidate-proof/release-proof.json', 'utf8')),
         selected: { reuse: env.RELEASE_REUSE === 'true', commit: env.RELEASE_BUILD_COMMIT,
           runId: Number(env.RELEASE_PROOF_RUN_ID), attempt: Number(env.RELEASE_PROOF_ATTEMPT),
-          siteArtifactId: Number(env.RELEASE_PROOF_SITE_ID), proofArtifactId: Number(env.RELEASE_PROOF_ID), digest: env.RELEASE_PROOF_DIGEST },
+          siteArtifactId: Number(env.RELEASE_PROOF_SITE_ID), proofArtifactId: Number(env.RELEASE_PROOF_ID), digest: env.RELEASE_PROOF_DIGEST,
+          ...(env.RELEASE_BROWSER_MODE ? { browserMode: env.RELEASE_BROWSER_MODE } : {}) },
         repository: env.GITHUB_REPOSITORY, commit: env.GITHUB_SHA,
         runId: Number(env.GITHUB_RUN_ID), attempt: Number(env.GITHUB_RUN_ATTEMPT),
         release: `V${JSON.parse(readFileSync('package.json', 'utf8')).version}`, api,

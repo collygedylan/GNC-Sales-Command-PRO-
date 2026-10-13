@@ -1,9 +1,6 @@
 name: Private pending-order transaction tests
 on:
-  pull_request:
-    paths:
-      - 'supabase/**'
-      - 'database/**'
+  workflow_call:
   workflow_dispatch:
 permissions:
   contents: read

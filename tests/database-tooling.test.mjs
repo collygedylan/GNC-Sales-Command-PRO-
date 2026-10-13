@@ -408,7 +408,7 @@ test('API performance pair is explicit CI-only and runs on canonical schema befo
     return { events, apiRuns, httpRuns, starts };
   };
 
-  const optedIn = runCheck({ GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' });
+  const optedIn = runCheck({ GITHUB_ACTIONS: 'true', DATABASE_PERFORMANCE_BENCHMARK: 'true', PERFORMANCE_API_BENCHMARK: 'true' });
   assert.equal(optedIn.apiRuns, 1);
   assert.equal(optedIn.httpRuns, 1, 'all-mode also runs discovered canonical HTTP drivers');
   assert.ok(optedIn.events.indexOf('sql-performance') < optedIn.events.indexOf('api-performance'));
@@ -424,6 +424,7 @@ test('API performance pair is explicit CI-only and runs on canonical schema befo
 
   const localDefault = runCheck({});
   assert.equal(localDefault.apiRuns, 0, 'ordinary local --all checks do not start the authenticated API benchmark');
+  assert.equal(localDefault.events.includes('sql-performance'), false, 'ordinary local --all does not run SQL benchmarks');
   assert.equal(localDefault.httpRuns, 1, 'local --all still runs canonical HTTP correctness drivers');
   const localCanonical = localDefault.starts.find(start => start.workspaceRoot === 'C:/tmp/gnc-performance-canonical');
   assert.equal(localCanonical.excluded.includes('gotrue'), false, 'canonical HTTP drivers need local Auth');
@@ -438,7 +439,15 @@ test('API performance pair is explicit CI-only and runs on canonical schema befo
     'without discovered HTTP drivers, ordinary local --all keeps the database-only profile');
   assert.throws(() => runDatabaseCheck({ mode: 'all', environment: { PERFORMANCE_API_BENCHMARK: 'true' },
     preflight: () => {}, createProductionWorkspace: () => { throw new Error('must fail before workspace creation'); } }),
+  /PERFORMANCE_API_BENCHMARK_REQUIRES_SQL_BENCHMARK/);
+  assert.throws(() => runDatabaseCheck({ mode: 'all', environment: { DATABASE_PERFORMANCE_BENCHMARK: 'true', PERFORMANCE_API_BENCHMARK: 'true' },
+    preflight: () => {}, createProductionWorkspace: () => { throw new Error('must fail before workspace creation'); } }),
   /PERFORMANCE_API_BENCHMARK_CI_ONLY/);
+  assert.throws(() => runDatabaseCheck({ mode: 'all', environment: { GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' },
+    preflight: () => {}, createProductionWorkspace: () => { throw new Error('must fail before workspace creation'); } }),
+  /PERFORMANCE_API_BENCHMARK_REQUIRES_SQL_BENCHMARK/);
+  assert.throws(() => runDatabaseCheck({ mode: 'staged', environment: { GITHUB_ACTIONS: 'true', DATABASE_PERFORMANCE_BENCHMARK: 'true' },
+    execute: () => 'supabase/config.toml', preflight: () => {} }), /DATABASE_PERFORMANCE_BENCHMARK_REQUIRES_ALL_MODE/);
   assert.throws(() => runDatabaseCheck({ mode: 'staged', environment: { GITHUB_ACTIONS: 'true', PERFORMANCE_API_BENCHMARK: 'true' },
     execute: () => 'supabase/config.toml', preflight: () => {} }), /PERFORMANCE_API_BENCHMARK_REQUIRES_ALL_MODE/);
 });

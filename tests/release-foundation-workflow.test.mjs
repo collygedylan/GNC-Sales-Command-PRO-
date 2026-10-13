@@ -9,7 +9,8 @@ const workflow = yaml.load(read('.github/workflows/release-validation.yml'));
 test('foundation remains a sealed-artifact diagnostic in the scheduled nightly suite', () => {
   const nightly = yaml.load(read('.github/workflows/nightly-browser-validation.yml'));
   const job = workflow.jobs.foundation;
-  assert.deepEqual(job.needs, ['build', 'release-mode']);
+  assert.ok(job.needs.includes('build'));
+  assert.ok(job.needs.includes('release-mode'));
   assert.match(job.if, /inputs\.run-nightly-suites/);
   assert.equal(job['timeout-minutes'], 20);
   assert.ok(job.steps.some(step => step.uses === './.github/actions/download-release'));

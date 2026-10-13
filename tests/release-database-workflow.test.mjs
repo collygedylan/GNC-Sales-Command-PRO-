@@ -8,6 +8,7 @@ import { startIsolatedDatabase, collectDatabaseEvidence, excludedServices } from
 import { readHistoricalMigrationManifest } from '../scripts/historical-database-fixture.mjs';
 import { discoverTests } from '../scripts/test-discovery.mjs';
 import { backendTestMatrices } from '../scripts/ci-backend-matrix.mjs';
+import vm from 'node:vm';
 
 const workflow = fs.readFileSync(new URL('../.github/workflows/release-database.yml', import.meta.url), 'utf8');
 const yaml = createRequire(import.meta.url)('js-yaml');
@@ -114,6 +115,9 @@ test('database reusable workflow is secret-free and has read-only repository per
 
 test('historical replay and SQL benchmark jobs fail closed unless schema paths changed', () => {
   assert.equal(workflowConfig.on.workflow_call.inputs['run-schema-tests'].default, false);
+  assert.equal(workflowConfig.on.workflow_call.inputs['run-browser-tests'].default, false);
+  assert.equal(workflowConfig.on.workflow_call.inputs['run-performance-tests'].default, false);
+  assert.equal(workflowConfig.on.workflow_call.inputs['run-all-schema-tests'].default, false);
   const scope = workflowConfig.jobs['schema-path-scope'];
   assert.ok(scope, 'the reusable workflow verifies changed paths independently of its caller');
   const compare = scope.steps.find(step => step.id === 'scope');
@@ -131,11 +135,68 @@ test('historical replay and SQL benchmark jobs fail closed unless schema paths c
   }
   assert.equal(workflowConfig.jobs['edge-functions'].needs, 'discover',
     'Edge unit checks remain distinct from historical database replays');
+  const browserSetup = workflowConfig.jobs['database-and-functions'].steps.find(step => step.id === 'browser_setup');
+  const browserTransactions = workflowConfig.jobs['database-and-functions'].steps.find(step => step.id === 'transactions');
+  assert.match(browserSetup.if, /inputs\.run-browser-tests/);
+  assert.match(browserTransactions.if, /inputs\.run-browser-tests/);
+  const pgTransactions = workflowConfig.jobs['database-and-functions'].steps.find(step => step.name === 'Run PostgreSQL concurrency transactions');
+  assert.match(pgTransactions.if, /inputs\.run-schema-tests/);
+  const benchmarks = workflowConfig.jobs['schema-contracts'].steps.find(step => step.run === 'node scripts/database-check.mjs --all');
+  assert.equal(benchmarks.env.DATABASE_PERFORMANCE_BENCHMARK, "${{ inputs.run-performance-tests && 'true' || 'false' }}");
+  assert.equal(benchmarks.env.PERFORMANCE_API_BENCHMARK, "${{ inputs.run-performance-tests && 'true' || 'false' }}");
+});
+
+test('backend schema gate requires every selected integration job and rejects skips', () => {
+  const gate = workflowConfig.jobs['schema-gate'];
+  assert.ok(gate.needs.includes('schema-path-scope'));
+  const run = gate.steps.find(step => step.name === 'Require every selected backend integration check').run;
+  const script = run.split("<<'NODE'\n")[1].replace(/\nNODE\s*$/, '');
+  const names = ['schema-path-scope', 'discover', 'integration', 'edge-functions', 'schema-contracts', 'suspend-tag-approval', 'database-and-functions'];
+  const results = Object.fromEntries(names.map(name => [name, { result: 'success' }]));
+  const execute = (scope = 'true', requireScope = 'true') => vm.runInNewContext(script, {
+    process: { env: { SCOPE: scope, REQUIRE_SCHEMA_SCOPE: requireScope, RESULTS: JSON.stringify(results) } },
+    console: { log() {} },
+  });
+  assert.doesNotThrow(() => execute());
+  assert.doesNotThrow(() => execute('false', 'false'), 'unmatched paths are an intentional no-op for targeted/manual diagnostics');
+  assert.throws(() => execute('false', 'true'), /BACKEND_SCHEMA_SCOPE_REQUIRED/);
+  assert.throws(() => execute('', 'false'), /BACKEND_SCHEMA_SCOPE_REQUIRED/);
+  for (const name of ['schema-path-scope', 'discover', 'edge-functions']) {
+    results[name] = { result: 'failure' };
+    assert.throws(() => execute('false', 'false'), new RegExp(`BACKEND_SCHEMA_GATE_FAILED_${name}`));
+    results[name] = { result: 'success' };
+  }
+  for (const name of names) {
+    for (const result of ['failure', 'skipped', 'cancelled']) {
+      results[name] = { result };
+      assert.throws(execute, new RegExp(`BACKEND_SCHEMA_GATE_FAILED_${name}`));
+    }
+    results[name] = { result: 'success' };
+    const missing = { ...results }; delete missing[name];
+    assert.throws(() => vm.runInNewContext(script, { process: { env: { SCOPE: 'true', RESULTS: JSON.stringify(missing) } } }),
+      new RegExp(`BACKEND_SCHEMA_GATE_FAILED_${name}`));
+  }
+});
+
+test('backend production mutations require current-main validation and every contract suite', () => {
+  const sync = yaml.load(fs.readFileSync(new URL('../.github/workflows/apps-script-sync.yml', import.meta.url), 'utf8'));
+  const validation = sync.jobs['backend-validation'];
+  assert.equal(validation.uses, './.github/workflows/release-database.yml');
+  assert.equal(validation.with['run-schema-tests'], true);
+  assert.equal(validation.with['run-browser-tests'], false);
+  assert.equal(validation.with['run-performance-tests'], false);
+  assert.equal(validation.with['run-all-schema-tests'], true);
+  const deploy = sync.jobs['deploy-supabase'];
+  for (const name of ['authorize-backend', 'backend-validation', 'pending-order-contract', 'suspend-tag-contract', 'live-dataset-contract']) {
+    assert.ok(deploy.needs.includes(name));
+    if (name !== 'authorize-backend') assert.match(deploy.if, new RegExp(`needs\\.${name}\\.result == 'success'`));
+  }
 });
 
 test('disposable live dataset database checks exclude workflow-only and application paths', () => {
   const live = yaml.load(fs.readFileSync(new URL('../.github/workflows/live-dataset-revisions.yml', import.meta.url), 'utf8'));
-  assert.deepEqual(live.on.pull_request.paths, ['supabase/**', 'database/**']);
+  assert.ok(Object.hasOwn(live.on, 'workflow_call'));
+  assert.equal(live.on.pull_request, undefined);
   const scope = live.jobs['database-path-scope'];
   assert.ok(scope);
   const compare = scope.steps.find(step => step.id === 'scope');
@@ -152,8 +213,8 @@ test('standalone disposable database workflows require actual database paths, in
     ['bloomscapes-pending-tests.yml', 'pending-transactions'],
   ]) {
     const config = yaml.load(fs.readFileSync(new URL(`../.github/workflows/${file}`, import.meta.url), 'utf8'));
-    assert.deepEqual(config.on.pull_request.paths, ['supabase/**', 'database/**'], file);
-    assert.ok(!config.on.pull_request.paths.includes(`.github/workflows/${file}`), file);
+    assert.ok(Object.hasOwn(config.on, 'workflow_call'), file);
+    assert.equal(config.on.pull_request, undefined, file);
     const scope = config.jobs['database-path-scope'];
     assert.ok(scope, file);
     const compare = scope.steps.find(step => step.id === 'scope');
@@ -284,7 +345,8 @@ test('canonical schema contracts run as an isolated database-check gate', () => 
   ]);
   assert.ok(job.steps.some(step => step.run === 'node scripts/database-check.mjs --all'));
   const replay = job.steps.find(step => step.run === 'node scripts/database-check.mjs --all');
-  assert.equal(replay.env.PERFORMANCE_API_BENCHMARK, 'true', 'the canonical replay opts into the authenticated API pair before reset');
+  assert.equal(replay.env.DATABASE_PERFORMANCE_BENCHMARK, "${{ inputs.run-performance-tests && 'true' || 'false' }}");
+  assert.equal(replay.env.PERFORMANCE_API_BENCHMARK, "${{ inputs.run-performance-tests && 'true' || 'false' }}");
   assert.ok(!databaseJob.steps.some(step => step.run === 'node scripts/run-performance-api.mjs "$SUPABASE_CI_ROOT"'),
     'the historical fixture must not run inventory benchmarks against its partial schema');
   const evidence = job.steps.find(step => step.uses === 'actions/upload-artifact@v4');

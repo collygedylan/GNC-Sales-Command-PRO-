@@ -28,6 +28,15 @@ jobs:
       run-backend-tests: false
     secrets: inherit
 
+  backend-diagnostics:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/release-database.yml
+    with:
+      run-schema-tests: true
+      run-browser-tests: true
+      run-performance-tests: true
+      run-all-schema-tests: true
+
   current-live-release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
