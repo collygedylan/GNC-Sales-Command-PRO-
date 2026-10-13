@@ -107,22 +107,33 @@
                 return null;
             }
         }
-        async function load(query) {
+        async function load(query, fresh = false) {
             const scope = current(), token = generation, target = state(query.surface);
             const key = JSON.stringify(query);
             if (target.pendingKey === key) return target.promise;
-            target.pendingKey = key; target.queryKey = key; target.loading = true;
-            target.promise = initialize().then(() => session.read(query)).then(page => {
+            target.pendingKey = key; target.loading = true;
+            // A metadata request has its own cache key; the active list must
+            // keep accepting updates for its mounted query during that read.
+            if (query.operation !== 'metadata') target.queryKey = key;
+            options.onState?.(query.surface, target);
+            target.promise = initialize().then(() => {
+                if (!enabled(query.surface) || !session) throw new Error('Paged reports are unavailable.');
+                return fresh ? session.refresh(query) : session.read(query);
+            }).then(page => {
                 if (token !== generation || scope !== options.scope()) throw abortError();
-                apply(query.surface, query, { page, rows:page.rows, initialLoading:false, refreshing:false });
+                if (query.operation === 'metadata') {
+                    acceptMetadata(query.surface, page);
+                    target.loading = false; target.error = '';
+                    options.onState?.(query.surface, target);
+                } else apply(query.surface, query, { page, rows:page.rows, initialLoading:false, refreshing:false });
                 return page;
             }).catch(error => {
                 if (token === generation && error.name !== 'AbortError') {
-                    target.error = String(error.message || error); target.loading = false;
-                    options.onMetadata?.(query.surface, target);
+                    target.error = enabled(query.surface) ? String(error.message || error) : ''; target.loading = false;
+                    options.onState?.(query.surface, target);
                 }
                 return null;
-            }).finally(() => { if (token === generation) target.pendingKey = ''; });
+            }).finally(() => { if (token === generation && target.pendingKey === key) target.pendingKey = ''; });
             return target.promise;
         }
         async function readComplete(query, fresh = true) {
@@ -159,6 +170,7 @@
         async function readPage(query, signal) {
             const scope = current(), token = generation;
             await initialize();
+            if (!enabled(query.surface) || !session) throw new Error('Paged reports are unavailable.');
             const page = await session.refresh(query, signal);
             if (token !== generation || scope !== options.scope()) throw abortError();
             return page;
@@ -171,6 +183,9 @@
             } else {
                 target.metadata = page.metadata || {};
                 target.revision = page.sourceRevision;
+                // Metadata may establish counts before a list mounts. It must
+                // never replace the rows already displayed by that list.
+                if (!target.page) target.page = page;
             }
             options.onMetadata?.(surface, target);
             refresh(surface);

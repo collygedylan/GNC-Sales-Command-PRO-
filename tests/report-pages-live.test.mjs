@@ -97,3 +97,74 @@ test('live metadata keeps a coherent display cohort until the refreshed page arr
     assert.equal(fixture.controller.state('eval2').revision,'r2');
     assert.equal(fixture.controller.state('eval2').expectedRevision,'');
 });
+
+test('missing capabilities never trigger a page read or publish blank metadata', async () => {
+    let reads = 0;
+    // A legacy server signals unsupported paged reports during initialization.
+    const ctx = { AbortController }; vm.createContext(ctx); vm.runInContext(source, ctx);
+    const metadata = [], states = [];
+    const controller = ctx.GncReportPagesLive.createController({
+        scope:() => 'account', permission:() => 'p1', allowed:() => true,
+        loadModule:async () => ({ createReportSession:() => ({ read:async () => { reads += 1; return page([], 0); }, refresh:async () => page([], 0), clear() {} }), mountReportRows() {} }),
+        transport:async () => { throw Object.assign(new Error('unsupported'), { status:404 }); },
+        onMetadata:(_surface, state) => metadata.push(state.revision), onState:(_surface, state) => states.push(state.error)
+    });
+    await controller.load(query);
+    await controller.readPage(query).catch(() => null);
+    assert.equal(reads, 0);
+    assert.deepEqual(metadata, []);
+    assert.deepEqual(states, ['', '']);
+    assert.equal(controller.enabled('eval2'), false);
+});
+
+test('metadata read failure reports an error without publishing an index', async () => {
+    const metadata = [], states = [];
+    const ctx = { AbortController }; vm.createContext(ctx); vm.runInContext(source, ctx);
+    const controller = ctx.GncReportPagesLive.createController({
+        scope:() => 'account', permission:() => 'p1', allowed:() => true,
+        loadModule:async () => ({ createReportSession:() => ({ read:async () => { throw new Error('metadata offline'); }, refresh:async () => {}, clear() {} }), mountReportRows() {} }),
+        transport:async query => query ? {} : { surfaces:['eval2'] },
+        onMetadata:(_surface, state) => metadata.push(state.revision), onState:(_surface, state) => states.push(state.error)
+    });
+    await controller.load(query);
+    assert.deepEqual(metadata, []);
+    assert.deepEqual(states, ['', 'metadata offline']);
+    assert.equal(controller.state('eval2').revision, '');
+});
+
+test('metadata arriving during group mount hydrates counts without replacing mounted rows', async () => {
+    let finishMetadata;
+    const fixture = setup(async request => request.operation === 'metadata'
+        ? new Promise(resolve => { finishMetadata = resolve; })
+        : page([{ unique_id:'list-row' }], 1, false, 'r1'));
+    const groupsQuery = { ...query, operation:'groups' };
+    const state = fixture.controller.state('eval2');
+    const metadataLoad = fixture.controller.load({ ...groupsQuery, operation:'metadata' });
+    await new Promise(resolve => setImmediate(resolve));
+    await fixture.controller.load(groupsQuery);
+    const mountedRows = state.rows;
+    assert.equal(mountedRows[0].unique_id, 'list-row');
+    finishMetadata(page([], 7, false, 'r1'));
+    await metadataLoad;
+    assert.equal(state.metadata.counts.u1, 7);
+    assert.equal(state.page.metadata.counts.u1, 1);
+    assert.equal(state.rows, mountedRows);
+    assert.equal(state.rows[0].unique_id, 'list-row');
+});
+
+test('metadata refresh leaves the mounted group query able to adopt its new revision', async () => {
+    const fixture = setup(async () => page([], 2, false, 'r2'));
+    const groupsQuery = { ...query, operation:'groups' };
+    await fixture.controller.mount({isConnected:true}, groupsQuery, {});
+    const notify = fixture.mounts[0].config.onState;
+    notify({page:page([{unique_id:'old'}], 1), rows:[{unique_id:'old'}]});
+    await fixture.controller.load({...groupsQuery, operation:'metadata'}, true);
+    const state = fixture.controller.state('eval2');
+    assert.equal(state.queryKey, JSON.stringify(groupsQuery));
+    assert.equal(state.expectedRevision, 'r2');
+    notify({page:page([{unique_id:'new'}], 2, false, 'r2'), rows:[{unique_id:'new'}]});
+    assert.equal(state.revision, 'r2');
+    assert.equal(state.expectedRevision, '');
+    assert.equal(state.rows[0].unique_id, 'new');
+    assert.equal(state.metadata.counts.u1, 2);
+});
