@@ -71,9 +71,20 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
     assert.ok(report.includes('Submitted:') && report.includes('By: Synthetic reviewer'));
     assert.ok(!report.includes('Request:') && !report.includes('Edited:'));
     assert.ok(!report.includes('Confirmed Inventory Fields'));
-    assert.match(html, /<thead><tr class="page-title-row"><th class="page-title-cell" colspan="\d+"><div class="page-header">TEST PILOT - SYNTHETIC DATA ONLY \| GNC PH Reclass Item Inquiry<\/div><\/th><\/tr><tr class="column-heading-row">/);
+    assert.match(html, /<table class="report-frame"><thead><tr class="page-title-row"><th class="page-title-cell" colspan="1"><div class="page-header">TEST PILOT - SYNTHETIC DATA ONLY \| GNC PH Reclass Item Inquiry<\/div><\/th><\/tr><\/thead><tbody>/);
+    assert.match(html, /<tr class="report-summary-row"><td class="report-summary-cell">[\s\S]*?<\/td><\/tr><tr class="report-grid-row"><td class="report-grid-cell">[\s\S]*?<table class="location-table">[\s\S]*?<thead><tr class="column-heading-row">/,
+      'metadata is a single outer row and location headings belong to the nested grid table');
     assert.doesNotMatch(html, /@top-center/);
-    assert.equal(await page.locator('.page-header').count(), 1, 'the document flow contains one title; pagination repeats it through the table header');
+    assert.equal(await page.locator('.report-frame > thead > tr').count(), 1, 'the outer repeated header contains only the title row');
+    assert.equal(await page.locator('.report-summary-row').count(), 1, 'report metadata occurs once in document flow');
+    assert.equal(await page.locator('.report-frame > thead .page-header').count(), 1, 'the document flow contains one title; pagination repeats it through the outer table header');
+    const compactCellStyles = await page.locator('.location-table th, .location-table td').first().evaluate(cell => {
+      const style = getComputedStyle(cell);
+      return { padding: style.padding, lineHeight: style.lineHeight, minHeight: style.minHeight };
+    });
+    assert.equal(compactCellStyles.padding, '0.5px 2px', 'grid cells use compact padding');
+    assert.ok(Number.parseFloat(compactCellStyles.lineHeight) <= 9.5, 'grid cells use a compact 1.05 line height');
+    assert.equal(compactCellStyles.minHeight, '0px', 'grid cells do not impose a minimum height');
     assert.match(html, /<s>SYN<\/s>/, 'cleared SUS value is shown as struck through');
     assert.match(html, /Yes - SR/, 'blank SUS Yes is rendered with server initials');
     assert.match(report, /By SR \| Eval 10\/8\/2026 \| Updated 10\/8\/2026/, 'server stamps appear as compact row annotations');
@@ -86,17 +97,39 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
         return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom,
           width: cell.clientWidth, scroll: cell.scrollWidth, text: cell.innerText };
       });
-      return { top: box.top, bottom: box.bottom, cells };
+      return { top: box.top, bottom: box.bottom, height: box.height, cells };
     }));
+    const baselineGeometry = await page.evaluate(() => {
+      const style = document.createElement('style');
+      style.dataset.reclassLayoutBaseline = 'true';
+      style.textContent = `
+        .location-table th, .location-table td { padding: 2px; line-height: 1.15; }
+        .location-table .proposal-box { margin: 1px 0; padding: 2px 3px; }
+        .location-table .proposal-box-movement { margin-top: 2px; }
+        .location-table .row-stamps { margin-top: 2px; line-height: 1.1; }
+        .location-table .scope-note { margin-top: 3px; padding-top: 2px; }
+      `;
+      document.head.append(style);
+      return [...document.querySelectorAll('.location-table tbody tr[data-location-row="true"]')]
+        .map(row => row.getBoundingClientRect().height);
+    });
+    await page.locator('style[data-reclass-layout-baseline="true"]').evaluate(style => style.remove());
     assert.equal(geometry.length, arrows.length, 'each submitted item remains one main table row');
-    geometry.forEach(row => {
+    assert.equal(baselineGeometry.length, geometry.length, 'baseline measures the same location rows');
+    let compactTotalHeight = 0;
+    let baselineTotalHeight = 0;
+    geometry.forEach((row, index) => {
       assert.equal(row.cells.length, expectedHeadings.length, 'each row contains every displayed main-table column');
+      assert.ok(row.height <= baselineGeometry[index], 'compact location row is no taller than the previous spacing');
+      compactTotalHeight += row.height;
+      baselineTotalHeight += baselineGeometry[index];
       row.cells.forEach(cell => {
         assert.ok(cell.left >= 0 && cell.right <= 1101, 'main table stays within the page width');
         assert.ok(cell.bottom <= row.bottom + 1, 'field cell remains inside its location row');
         assert.ok(cell.scroll <= cell.width + 1, 'long editable values wrap instead of clipping');
       });
     });
+    assert.ok(compactTotalHeight < baselineTotalHeight, 'compact spacing measurably reduces total location-row height');
 
     const arrowRows = await page.locator('.movement-cell').evaluateAll(elements => elements.map(element =>
       [...element.querySelectorAll('.proposal-box-movement')].map(line => line.textContent)));
@@ -130,8 +163,19 @@ for (const [name, engine] of Object.entries({ chromium, webkit })) {
       const content = await (await pdf.getPage(index + 1)).getTextContent();
       return content.items.filter(item => 'str' in item).map(item => item.str).join(' ');
     }));
-    pageTexts.forEach((text, index) => assert.ok(text.includes('TEST PILOT - SYNTHETIC DATA ONLY | GNC PH Reclass Item Inquiry'),
-      `yellow title header repeats on PDF page ${index + 1}`));
+    pageTexts.forEach((text, index) => assert.equal((text.match(/TEST PILOT - SYNTHETIC DATA ONLY \| GNC PH Reclass Item Inquiry/g) || []).length, 1,
+      `yellow title header repeats once on PDF page ${index + 1}`));
+    const normalizedPageTexts = pageTexts.map(text => text.replace(/\s+/g, ' '));
+    const compactPageTexts = normalizedPageTexts.map(text => text.replace(/\s/g, ''));
+    const pagesWithLocationRows = normalizedPageTexts.map((text, index) => /A\.01\.\d{3}/.test(text) ? index : -1).filter(index => index >= 0);
+    assert.ok(pagesWithLocationRows.length > 1, 'fixture puts location rows on multiple PDF pages');
+    for (const pageIndex of pagesWithLocationRows) {
+      for (const heading of expectedHeadings) assert.ok(compactPageTexts[pageIndex].includes(heading.replace(/\s/g, '')),
+        `nested location column heading ${heading} repeats on data page ${pageIndex + 1}`);
+    }
+    const metadataText = normalizedPageTexts.join(' ');
+    assert.equal((metadataText.match(/Submitted:/g) || []).length, 1, 'submitted metadata is printed once across all pages');
+    assert.equal((metadataText.match(/By: Synthetic reviewer/g) || []).length, 1, 'reviewer metadata is printed once across all pages');
     for (let index = 1; index <= pdf.numPages; index += 1) {
       const pageContent = await (await pdf.getPage(index)).getTextContent();
       const headers = pageContent.items.filter(item => 'str' in item && item.str.includes('TEST PILOT - SYNTHETIC DATA ONLY'));
