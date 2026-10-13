@@ -8,6 +8,7 @@ import { confirmedReclassLiveEditsFromResult } from './reclassLiveEdits';
 import { inquiryFieldEdits, validateReclassEditableFieldProposals } from './reclassEditableFields';
 import { mountCustomerRepMapping } from './customerRepMapping';
 import { historicalRequestsQuery } from './historicalRequests';
+import { createInventoryStatusSync } from './inventoryStatusSync';
 export { tableName, rpcName, validateQuery, tableRequest } from './databaseRest';
 type Profile = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'legacy_user_id' | 'username' | 'display_name' | 'role' | 'division' | 'language' | 'disabled_at' | 'locked_until' | 'must_change_password' | 'passkey_pilot'>;
 export function databaseClient(url: string, key: string, options?: SupabaseClientOptions<'public'>) {
@@ -20,6 +21,7 @@ export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout) {
     requestRecipientDirectoryFromResult,
     reclassShearedProposal,
     confirmedReclassLiveEditsFromResult,
+    createInventoryStatusSync,
     inquiryFieldEdits, validateReclassEditableFieldProposals,
     mountCustomerRepMapping,
     async readHistoricalRequests(client: SupabaseClient<Database>, input: unknown, signal?: AbortSignal) {
