@@ -37,6 +37,16 @@ function harness(sourceFactory = factorySource) {
         fetchPoManagementRows: async () => { calls.push(['GET', 'po']); return rows; },
         runDedupeSupabaseRead: async (_key, taskFn, options = {}) => taskFn({ signal: options.signal }),
         productionLiveSyncNavigation: { signal: null },
+        useManagerReportPages: () => true,
+        buildManagerReportPageQuery: (surface, operation) => ({ surface, operation, filters: {}, offset: 0, limit: 25 }),
+        reportMetadata: new Map(),
+        getManagerReportPageController: () => ({
+            readPage: async (query) => {
+                calls.push(['api', 'report_read_v2', query.operation]);
+                return { rows: [], total: 0, hasMore: false, sourceRevision: 'fixture-r1', metadata: {} };
+            },
+            acceptMetadata: (surface, page) => { ctx.reportMetadata.set(surface, page); }
+        }),
         supabaseFetch: async (table, method, body, query) => { calls.push([method, table, query]); return rows; },
         runDockTripStatusRequest: async (operation) => { calls.push(['dock', operation]); return { data: rows }; },
         runAppApiSupabaseWrite: async (table, method) => { calls.push([method, table]); return rows; },
@@ -168,12 +178,13 @@ test('every side adapter executes a read-only stage and a synchronous commit', a
     for (const call of h.calls) {
         assert.ok(['GET', 'RPC', 'dock', 'eval', 'location', 'shear', 'codex', 'script', 'api'].includes(call[0]), JSON.stringify(call));
         if (['dock', 'eval', 'location', 'shear'].includes(call[0])) assert.ok(['list', 'get'].includes(call[1]), JSON.stringify(call));
-        if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read'].includes(call[1]+':'+call[2]), JSON.stringify(call));
+        if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read','report_read_v2:metadata'].includes(call[1]+':'+call[2]), JSON.stringify(call));
         if (call[1] === 'bloomscapes_pending_command') assert.equal(call[2].p_action, 'state');
     }
     assert.equal(h.ctx.shearListState.draft, 'keep me');
     assert.equal(h.ctx.accessControlAdminState.editor.draft, 'keep');
     assert.equal(h.ctx.codexOpsState.draft, 'keep');
+    assert.deepEqual([...h.ctx.reportMetadata.keys()], ['eval1', 'eval2', 'ncr', 'assigned-items', 'season-priority', 'approval']);
 });
 
 test('low-stock target adapter fetches assigned item codes and commits a fresh Eval2 snapshot', async () => {
@@ -475,6 +486,8 @@ test('every registered physical source has a database revision contract', () => 
       '20261012052500_aura_enterprise_domain_voice.sql',
       '20261012153000_aura_account_rollout.sql',
     '20261012180000_sales_rep_inventory_operations.sql',
+      '20261012190002_manager_report_read_v2.sql',
+      '20261012190003_manager_list_read_v2.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
