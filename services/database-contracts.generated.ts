@@ -88722,6 +88722,39 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "inventory_location_on_hand_read_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_pairs": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
     "manager_report_read_v2": {
       "oneOf": [
         {
@@ -98738,6 +98771,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "manager_ncr_outbox_metadata_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "inventory_location_on_hand_read_v1": {
       "oneOf": [
         "json"
       ]

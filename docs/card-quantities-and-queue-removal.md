@@ -12,15 +12,18 @@ grid, followed by specifications, AV notes, Bloom Picker and a single hold-data
 row (Code, Reason, Since). Source sits below Reclass; only Drive includes field
 tag color. Existing AV photo/gallery controls and price semantics remain available.
 
-Loc On Hand uses the complete master inventory cohort, indexed once alongside
-the existing master indexes by normalized item code and location code. Item codes
-remain strings, preserving leading zeros. Lots and sizes do not split the total.
-Partial pages, incomplete field coverage, missing quantities, or unverified
-native-session data display **Unknown**. The renderer does not issue an extra
-inventory read or sum the visible filtered page. Master index rebuilds update
-the totals after a confirmed change. Cross-tab master-row acknowledgments rebuild
-the index when item, location, or on-hand quantity changes; unchanged and
-photo-only acknowledgments avoid that extra sweep.
+Loc On Hand sums physical inventory rows by normalized item code and location
+code across lots, sizes, and sales years. Item codes remain strings, preserving
+leading zeros. Bounded inventory reads may carry a server aggregate with its
+normalized pair and verified master revision, so cards can show the total before
+the full master cohort finishes loading. If the server aggregate is absent, the
+renderer can use a complete verified master snapshot; otherwise it displays
+**Unknown**. Explicit nulls, pair mismatches, stale revisions, and unverified
+native-session receipts display **Unknown** without falling back to a partial
+snapshot. The renderer does not sum only the visible filtered page. Confirmed
+master changes update the pair-keyed fallback index; cross-tab row snapshots
+carry aggregate changes and rebuild that index when item, location, or on-hand
+quantity changes.
 
 ## Permanent removal from Que
 

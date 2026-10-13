@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(46);
+select plan(49);
 
 select ok(has_function_privilege('service_role','public.manager_report_read_v2(jsonb)','execute')
   and not has_function_privilege('authenticated','public.manager_report_read_v2(jsonb)','execute')
@@ -155,6 +155,19 @@ select ok((select result->>'total'='2' and (result->'rows'->0->>'rowCount')::int
 select ok((select result->>'total'='1' and result->'rows'->0->>'itemCount'='2' and result->'rows'->0->>'rowCount'='3'
   from report_read_results where name='shared_location_location_groups'),
   'location grouping does not multiply rows when lots and itemcodes share one location');
+select is((select item_row->>'loc_on_hand' from report_read_results r
+  cross join lateral jsonb_array_elements(r.result->'rows') item_row
+  where r.name='shared_location_rows' and item_row->>'unique_id'='MRV2-SHARED-LOC-LOT1'),'20',
+  'public Manager row projection sums both lots for the exact item and location only');
+select is((select item_row->>'loc_on_hand_revision' from report_read_results r
+  cross join lateral jsonb_array_elements(r.result->'rows') item_row
+  where r.name='shared_location_rows' and item_row->>'unique_id'='MRV2-SHARED-LOC-LOT1'),
+  (select result->>'inventoryRevision' from report_read_results where name='shared_location_rows'),
+  'public Manager rows carry the inventory revision from the response envelope');
+select is((select item_row->'representativeRow'->>'loc_on_hand' from report_read_results r
+  cross join lateral jsonb_array_elements(r.result->'rows') item_row
+  where r.name='shared_location_item_groups' and item_row->>'itemCode'='MRV2-SHARED-LOC'),'20',
+  'public Manager grouped representative rows receive the item and location total');
 select ok((select result->>'hasMore'='false' from report_read_results where name='eval1_metadata'),'metadata response is not an incomplete empty page');
 select is((public.manager_ncr_outbox_metadata_v1('dylan_collyge','new-crop')->>'activeLineCount'),'2',
   'NCR outbox metadata aggregates all active lines independently of the page');

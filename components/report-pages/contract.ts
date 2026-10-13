@@ -15,6 +15,10 @@ export type ServerListProjection = {
   assignedToUsers: string[];
   reportIds: string[];
   ptronhand: number | string | null;
+  loc_on_hand?: number | null;
+  loc_on_hand_itemcode?: string;
+  loc_on_hand_locationcode?: string;
+  loc_on_hand_revision?: string;
   ptravailable: number | string | null;
   s_lts: number | string | null;
   saleyear: string | null;
@@ -37,6 +41,8 @@ export type InventoryDetailRow = {
   default_assignedto?: string; DEFAULT_ASSIGNEDTO?: string; default_revision?: number; DEFAULT_REVISION?: number;
   assignment_reason?: string; ASSIGNMENT_REASON?: string; review_required?: boolean; warehousei?: string; WAREHOUSEI?: string;
   source?: string; SOURCE?: string; genusname?: string; GENUSNAME?: string; ptravailable?: number | string; PTRAVAILABLE?: number | string;
+  loc_on_hand?: number | null; LOC_ON_HAND?: number | null; loc_on_hand_itemcode?: string; LOC_ON_HAND_ITEMCODE?: string;
+  loc_on_hand_locationcode?: string; LOC_ON_HAND_LOCATIONCODE?: string; loc_on_hand_revision?: string; LOC_ON_HAND_REVISION?: string;
   priority?: number | string; blockalpha?: string; assignedTo?: string; resolvedAssignedTo?: string[]; warehouseAssignedTo?: string[];
   sourceUid?: string; noteContext?: Record<string, string>; avg_order_qty?: number | string; low_stock_target?: number | string;
 };

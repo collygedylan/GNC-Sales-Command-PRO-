@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { captureInventoryLocationRevision, enrichInventoryLocationRows } from '../supabase/functions/_shared/inventory-location-on-hand.ts';
 
 const source = readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const errorHelperStart = source.indexOf('function databaseFailureResponse(');
@@ -17,20 +18,24 @@ const productivityStart = source.indexOf('async function handleAppendProductivit
 assert.ok(datasetEnd > start && productivityStart > datasetEnd && productivityStart < end);
 const block = source.slice(start, datasetEnd) + source.slice(productivityStart, end);
 
-function harness({ readable = true, writable = true, role = 'admin', username = 'dylan_collyge', rows = [{ unique_id: 'one' }], count = 1, dbError = null, writeError = null } = {}) {
+function harness({ readable = true, masterReadable = false, writable = true, role = 'admin', username = 'dylan_collyge', rows = [{ unique_id: 'one' }], count = 1, dbError = null, writeError = null } = {}) {
   const queries = [];
   const tables = [];
   const transpiled = ts.transpileModule(`function errorResponse(message, status = 400, extra = {}) { return { status, body: { error: message, ...extra } }; }\n${errorHelper}\n${block}\nthis.datasetReadTest = handleDatasetRead; this.productivityWriteTest = handleAppendProductivityHistory;`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
   const context = vm.createContext({
+    Error,
+    captureInventoryLocationRevision,
+    enrichInventoryLocationRows,
+    locationCalls: [],
     SUSPEND_TAG_EDITORS: new Set(['dylan_collyge','megan_kelly','dan_mccuistion']),
     handleSuspendTag: async () => ({ rows: [] }),
     suspendTagRowsFromResult: (result) => Array.isArray(result?.rows) ? result.rows : [],
     verifySuspendTagSession: async () => 'verified-session',
     normalizeUsername: (value) => String(value || '').trim().toLowerCase(),
     FULL_ACCESS_USER_KEYS: new Set(['dylan_collyge', 'jd_jones', 'megan_kelly']),
-    hasTableReadAccess: (_role, table) => readable && table !== 'ph_master_inventory',
+    hasTableReadAccess: (_role, table) => readable && (table !== 'ph_master_inventory' || masterReadable),
     hasTableWriteAccess: (_role, table) => writable && table === 'ph_productivity_history',
     getRoleAccessState: (value) => ({ isAdmin: String(value).toLowerCase() === 'admin', isRep: String(value).toLowerCase() === 'rep' }),
     resolveActiveSessionProfile: async (session) => {
@@ -81,6 +86,10 @@ function harness({ readable = true, writable = true, role = 'admin', username = 
       },
     },
     supabase: {
+      async rpc(name, args) {
+        context.locationCalls.push({ name, args });
+        return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
+      },
       from(table) {
         tables.push(table);
         const query = { table, calls: [], result: { data: rows, error: table === 'ph_productivity_history' ? writeError : dbError, count } };
@@ -152,6 +161,35 @@ test('dataset_read uses fixed sources, typed filters, stable order, and a 500 ro
   const arbitrary = await h.context.datasetReadTest(h.session(), { dataset: 'ph_master_inventory', params: {} });
   assert.equal(arbitrary.status, 400);
   assert.equal(h.tables.length, 1);
+});
+
+test('Que and active request pages receive authoritative pair totals without loading master inventory', async () => {
+  for (const dataset of ['request_queue', 'active_request']) {
+    const h = harness({ masterReadable: true, rows: [{ unique_id: 'request', itemcode: '001973.030.1', locationcode: 'I.12.000' }] });
+    const response = await h.context.datasetReadTest(h.session(), { dataset, params: {} });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.rows[0].loc_on_hand, 2000);
+    assert.equal(response.body.data.rows[0].loc_on_hand_revision, '12');
+    assert.equal(h.context.locationCalls.length, 2);
+    assert.deepEqual(h.context.locationCalls[0].args.p_pairs, []);
+    assert.equal(h.context.locationCalls[1].args.p_expected_revision, '12');
+    assert.ok(!h.tables.includes('ph_master_inventory'));
+  }
+});
+
+test('request aggregate enrichment keeps permissions and rejects an inventory revision race', async () => {
+  const denied = harness({ rows: [{ unique_id: 'request', itemcode: 'A', locationcode: 'C' }] });
+  const allowedRequest = await denied.context.datasetReadTest(denied.session(), { dataset: 'request_queue', params: {} });
+  assert.equal(allowedRequest.status, 200);
+  assert.equal(allowedRequest.body.data.rows[0].loc_on_hand, undefined);
+  assert.equal(denied.context.locationCalls.length, 0);
+
+  const h = harness({ masterReadable: true, rows: [{ unique_id: 'request', itemcode: 'A', locationcode: 'C' }] });
+  h.context.supabase.rpc = async (_name, args) => ({ data: { inventoryRevision: args.p_expected_revision ? '13' : '12', rows: [] }, error: null });
+  const changed = await h.context.datasetReadTest(h.session(), { dataset: 'request_queue', params: {} });
+  assert.equal(changed.status, 409);
+  assert.equal(changed.body.code, 'LOC_ON_HAND_REVISION_CHANGED');
+  assert.equal(changed.body.retryable, true);
 });
 
 test('default projections are explicit current columns and Request signatures are a valid subset', () => {

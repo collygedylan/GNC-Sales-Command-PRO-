@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { captureInventoryLocationRevision, enrichInventoryLocationRows } from '../supabase/functions/_shared/inventory-location-on-hand.ts';
 import {
   INVENTORY_MASTER_BROWSE_FIELDS as MASTER_BROWSE_FIELDS,
   INVENTORY_MASTER_FULL_FIELDS as MASTER_FULL_FIELDS,
@@ -126,12 +127,17 @@ function appApiHarness({ moduleAllowed = true } = {}) {
   }).outputText;
   const queries = [];
   const context = vm.createContext({
+    Error,
+    inventoryReadRows: [],
+    locationCalls: [],
     jsonValue: value => value,
     jsonObject: value => {
       if (!value || typeof value !== 'object' || Array.isArray(value)) throw new TypeError('JSON object required');
       return value;
     },
     projectInventoryRows,
+    captureInventoryLocationRevision,
+    enrichInventoryLocationRows,
     MASTER_BROWSE_FIELDS,
     MASTER_FULL_FIELDS,
     MASTER_INITIAL_BASE_FIELDS,
@@ -156,8 +162,13 @@ function appApiHarness({ moduleAllowed = true } = {}) {
     errorResponse: (message, status, details = {}) => ({ status, body: { error: message, ...details } }),
     jsonResponse: (body) => ({ status: 200, body }),
     supabase: {
+      async rpc(name, args) {
+        assert.equal(name, 'inventory_location_on_hand_read_v1');
+        context.locationCalls.push(args);
+        return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
+      },
       from(table) {
-        const query = { table, calls: [], result: { data: [], error: null, count: 0 } };
+        const query = { table, calls: [], result: { data: context.inventoryReadRows, error: null, count: context.inventoryReadRows.length } };
         queries.push(query);
         for (const method of ['select', 'not', 'or', 'order', 'range', 'eq', 'in', 'gt', 'limit']) {
           query[method] = (...args) => { query.calls.push([method, ...args]); return query; };
@@ -223,6 +234,27 @@ test('inventory freshness does not count all matching rows', async () => {
   assert.equal(select[1], 'filename,last_updated');
   assert.equal(select[2].count, undefined);
   assert.ok(queries[0].calls.some(([method, size]) => method === 'limit' && size === 1));
+});
+
+test('master pages and deltas append full pair totals after the physical projection and fence source changes', async () => {
+  const { handler, context } = appApiHarness();
+  context.inventoryReadRows = [{ unique_id: 'C-1', itemcode: '001973.030.1', locationcode: 'C.16.000', ptronhand: '2,000', loc_on_hand: 37492 }];
+  const actor = { actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
+  for (const payload of [
+    { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } },
+    { operation: 'master_delta', params: { since: '2026-10-01T00:00:00Z' } },
+  ]) {
+    const response = await handler(actor, payload);
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.rows[0].loc_on_hand, 2000);
+    assert.equal(response.body.data.rows[0].loc_on_hand_revision, '12');
+    assert.equal(response.body.data.rows[0].ptronhand, '2,000');
+  }
+  assert.equal(context.locationCalls.length, 4, 'one revision capture and one batched enrichment per page');
+  context.supabase.rpc = async (_name, args) => ({ data: { inventoryRevision: args.p_expected_revision ? '13' : '12', rows: [] }, error: null });
+  const changed = await handler(actor, { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } });
+  assert.equal(changed.status, 409);
+  assert.equal(changed.body.code, 'LOC_ON_HAND_REVISION_CHANGED');
 });
 
 test('legacy app-api database proxy cannot read ph_master_inventory around the operation allowlist', async () => {
