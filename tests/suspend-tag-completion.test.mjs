@@ -32,6 +32,21 @@ function harness(options = {}) {
     normalizeSessionIdentity: (value) => String(value || '').trim().toLowerCase(),
     firstNonEmptyValue: (...values) => values.find((value) => value !== null && value !== undefined && String(value).trim()) ?? '',
     canCurrentUserViewDockSuspendDcRequests: () => ctx.allowed,
+    canCurrentUserWorkRequestItem: () => ctx.allowed,
+    canUseProductionLiveSync: () => options.live === true,
+    AbortController,
+    productionLiveSyncNavigation: new AbortController(),
+    view: 'detail', permission: 'permissions-1',
+    getCurrentVisibleViewId: () => ctx.view,
+    getProductionLiveSyncContext: () => ({ scope: ctx.currentUser, dataPermissionVersion: ctx.permission }),
+    isSuspendTagWriteSurface: () => ['detail', 'request'].includes(ctx.view),
+    isDockSuspendDcRequestRowAnyStatus: () => true,
+    staleSupabaseReadScopeError: () => new Error('stale scope'),
+    withProductionLiveSyncSignal: async (_, read) => read(ctx.productionLiveSyncNavigation.signal),
+    window: { AgMetricLiveSync: { snapshot: value => value } },
+    supabaseRpc: async () => ({ permissionVersion: ctx.permission,
+      sources: new Map([['ph_soc_master', { state: 'ready', revision: 'dataset-1' }]]) }),
+    remoteRow: { unique_id: 'soc-1', last_updated: revision, suspend_tag_version: 0, suspend_tag_status: 'pending' },
     requireCurrentSuspendTagWriteProof: () => options.proof !== false,
     getDockSuspendDcRequestSourceUid: (item) => item?.DOCK_SUSPEND_SOURCE_UID || item?.UNIQUE_ID?.replace(/^dock_suspend_dc_/, '') || '',
     findDockSuspendDcRequestSourceRow: () => ctx.currentSource,
@@ -41,7 +56,13 @@ function harness(options = {}) {
     showAppConfirm: async () => options.confirm !== false,
     showToast: (...args) => toasts.push(args),
     getDetailRowWriteTimeoutMs: () => 1000,
-    postAppFunctionJson: async (_url, body) => { calls.push({ name: body.operation, body }); return { ok: true, data: options.api ? await options.api(body) : acknowledgement() }; },
+    postAppFunctionJson: async (_url, body) => {
+      calls.push({ name: body.operation, body });
+      if (body.operation === 'rows') return { ok: true, data: options.read ? await options.read(ctx) : { rows: [{ ...ctx.remoteRow }] } };
+      const result = options.api ? await options.api(body) : acknowledgement();
+      if (options.live && result?.row) ctx.remoteRow = { ...result.row };
+      return { ok: true, data: result };
+    },
     APP_API_FUNCTION_URL: 'https://example.invalid', normalizeRowPhotoFields() {}, buildSearchIndex() {},
     getDockSuspendDcRequestCompletionReadiness: () => ({ ready: options.ready !== false, missing: ['photo'] }), openDockSuspendDcRequestUpdate() {},
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
@@ -56,6 +77,140 @@ function harness(options = {}) {
   vm.runInContext(`${workflow}\n${helpers}\n${handler}`, ctx);
   return { ctx, row, mirror, calls, toasts, storage };
 }
+
+test('native Save verifies only its row and succeeds while the whole view is unverified', async () => {
+  const h = harness({ live: true, proof: false });
+  assert.equal(await h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'new spec', dock_photo_link: 'photo.jpg' }), true);
+  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'save']);
+  assert.equal(h.calls[1].body.expectedVersion, 0);
+  assert.equal(h.calls[1].body.payload.patch.dock_spec, 'new spec');
+  assert.equal(h.calls[1].body.payload.patch.dock_photo_link, 'photo.jpg');
+  assert.equal(h.toasts.length, 0);
+  assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
+  assert.equal(vm.runInContext('suspendTagRowWrites.size', h.ctx), 0);
+});
+
+test('native verification deduplicates reads and releases pending state after failure and retry', async () => {
+  let finish;
+  const h = harness({ live: true, proof: false, read: () => new Promise(resolve => { finish = resolve; }) });
+  const first = h.ctx.loadCurrentSuspendTagWriteRow(h.mirror, 'save');
+  assert.equal(h.ctx.loadCurrentSuspendTagWriteRow(h.mirror, 'save'), first);
+  await new Promise(setImmediate);
+  assert.equal(h.calls.length, 1);
+  finish({ rows: [] });
+  await assert.rejects(first, /SOURCE_CHANGED/);
+  assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
+  const retry = h.ctx.loadCurrentSuspendTagWriteRow(h.mirror, 'save');
+  await new Promise(setImmediate);
+  finish({ rows: [h.ctx.remoteRow] });
+  assert.equal(h.ctx.isCurrentSuspendTagWriteRowProof(await retry, h.mirror, 'save'), true);
+  assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
+});
+
+test('native Mark Done waits for verification and ignores duplicate taps before writing', async () => {
+  let finish;
+  const h = harness({ live: true, proof: false, read: () => new Promise(resolve => { finish = resolve; }) });
+  const action = button();
+  const first = h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, action);
+  await new Promise(setImmediate);
+  assert.equal(action.disabled, true);
+  await h.ctx.completeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  assert.deepEqual(h.calls.map(call => call.name), ['rows']);
+  finish({ rows: [h.ctx.remoteRow] });
+  await first;
+  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'complete']);
+  assert.equal(action.disabled, false);
+  assert.equal(vm.runInContext('suspendTagCompletionActions.size', h.ctx), 0);
+});
+
+test('native writes reject locked, stale, unauthorized and changing source snapshots', async () => {
+  const scenarios = [
+    h => { h.ctx.remoteRow.suspend_tag_status = 'awaiting_rep'; },
+    h => { h.ctx.remoteRow.suspend_tag_version = 5; },
+    h => { h.ctx.remoteRow.last_updated = 'changed'; },
+    h => { h.ctx.remoteRow.unique_id = 'other-row'; },
+    h => { h.ctx.allowed = false; },
+    h => { h.ctx.supabaseRpc = async () => ({ permissionVersion: 'wrong', sources: new Map([['ph_soc_master', { state: 'ready', revision: 'a' }]]) }); },
+    h => { h.ctx.supabaseRpc = async () => ({ permissionVersion: h.ctx.permission, sources: new Map([['ph_soc_master', { state: 'importing', revision: 'a' }]]) }); },
+    h => { let i = 0; h.ctx.supabaseRpc = async () => ({ permissionVersion: h.ctx.permission, sources: new Map([['ph_soc_master', { state: 'ready', revision: String(i++) }]]) }); },
+  ];
+  for (const configure of scenarios) {
+    const h = harness({ live: true, proof: false }); configure(h);
+    await assert.rejects(h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' }));
+    assert.equal(h.calls.filter(call => call.name === 'save').length, 0);
+    assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
+    assert.equal(vm.runInContext('suspendTagRowWrites.size', h.ctx), 0);
+  }
+});
+
+test('navigation, account and permission changes discard an in-flight row verification', async () => {
+  for (const change of [h => h.ctx.productionLiveSyncNavigation.abort(), h => { h.ctx.productionLiveSyncNavigation = new AbortController(); },
+    h => { h.ctx.currentUser = 'other'; }, h => { h.ctx.permission = 'changed'; }, h => { h.ctx.view = 'home'; }]) {
+    let finish;
+    const h = harness({ live: true, proof: false, read: () => new Promise(resolve => { finish = resolve; }) });
+    const pending = h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' });
+    await new Promise(setImmediate); change(h); finish({ rows: [h.ctx.remoteRow] });
+    await assert.rejects(pending);
+    assert.equal(h.calls.filter(call => call.name === 'save').length, 0);
+    assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
+  }
+});
+
+test('native lost-response retry retains its exact idempotency token and expected version', async () => {
+  let fail = true;
+  const h = harness({ live: true, proof: false, api: () => {
+    h.ctx.remoteRow = { ...h.ctx.remoteRow, suspend_tag_version: 1, dock_spec: 'draft' };
+    if (fail) { fail = false; throw new Error('response lost'); }
+    return acknowledgement({ suspend_tag_status: 'pending', dock_spec: 'draft' });
+  } });
+  await assert.rejects(h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' }), /response lost/);
+  assert.equal(await h.ctx.runSuspendTagRowCommand('save', h.mirror, { dock_spec: 'draft' }), true);
+  const writes = h.calls.filter(call => call.name === 'save');
+  assert.equal(writes.length, 2);
+  assert.equal(writes[0].body.commandId, writes[1].body.commandId);
+  assert.equal(writes[1].body.expectedVersion, 0);
+});
+
+test('row verification does not bypass the approval action guard', async () => {
+  const h = harness({ live: true, proof: false });
+  await assert.rejects(h.ctx.runSuspendTagRowCommand('send', h.mirror), /FORBIDDEN/);
+  assert.equal(h.calls.length, 0);
+});
+
+test('detail save keeps captured fields and waits for photos, with a recoverable verification timeout', async () => {
+  let finishPhoto, failRead = true;
+  const photo = new Promise(resolve => { finishPhoto = resolve; });
+  const h = harness({ live: true, proof: false, read: ctx => {
+    if (failRead) throw new Error('verification timed out');
+    return { rows: [ctx.remoteRow] };
+  }, api: body => acknowledgement({ ...body.payload.patch, suspend_tag_status: 'pending' }) });
+  const action = button();
+  Object.assign(h.ctx, {
+    activeItem: h.mirror,
+    document: { getElementById: () => action },
+    getDockSuspendDcRequestFormValues: () => ({ spec: 'captured spec', caliper: '2', match: '', avNote: 'note' }),
+    getPendingPhotoUploadsForItem: () => [photo], syncDockSuspendDcRequestPhotoAliases() {},
+    buildDockSuspendDcRequestNote: () => 'captured comment',
+  });
+  vm.runInContext(between('async function saveDockSuspendDcRequestMirrorData(', 'function getDockSuspendDcRequestHandledConfirmMessage('), h.ctx);
+  const pending = h.ctx.saveDockSuspendDcRequestMirrorData(false, h.mirror);
+  await new Promise(setImmediate);
+  assert.equal(h.calls.length, 0);
+  h.row.DOCK_PHOTO_LINK = 'old.jpg,new.jpg'; h.row.DOCK_PHOTO_NAME = 'old,new';
+  h.ctx.remoteRow.dock_photo_link = h.row.DOCK_PHOTO_LINK; h.ctx.remoteRow.dock_photo_name = h.row.DOCK_PHOTO_NAME;
+  finishPhoto(); await pending;
+  assert.match(h.toasts[0][1], /timed out/);
+  assert.equal(h.calls.filter(call => call.name === 'save').length, 0);
+  failRead = false;
+  await h.ctx.saveDockSuspendDcRequestMirrorData(false, h.mirror);
+  const saved = h.calls.find(call => call.name === 'save').body.payload.patch;
+  assert.equal(saved.dock_spec, 'captured spec');
+  assert.equal(saved.dock_caliper, '2');
+  assert.equal(saved.dock_note, 'captured comment');
+  assert.equal(saved.dock_photo_link, 'old.jpg,new.jpg');
+  assert.ok(h.toasts.some(([title]) => title === 'Saved'));
+  assert.ok(!h.toasts.some(([title]) => title === 'Checking for updates'));
+});
 
 test('Done saves the exact source revision before marking retained rows completed; retains the source', async () => {
   let resolve;
