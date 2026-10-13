@@ -50,6 +50,7 @@ function harness() {
     isInventoryOfficeBlankShellTab: () => false, isCropRollManagerReviewActive: () => false,
     shouldUseRepAvOpenDataset: () => true, shouldPrepareAvRepCustomerFilterData: () => true,
     canAccessView: () => false, canManageRequestDeliveryRecovery: () => false,
+    canViewDashboardSyncStatus: () => false,
     canUseWeatherHoldRiskTools: () => false, canViewBloomscapesPendingOrders: () => false,
     canViewDriveCustomerConsigneeRows: () => true
   };
@@ -72,6 +73,14 @@ test('every rendered route and root DOM view has an explicit registry classifica
   for (const route of routes) assert.ok(registry.views[route], `Unclassified real route: ${route}`);
   for (const id of ['sales', 'qc', 'production', 'office', 'disease-pest']) assert.equal(registry.views[id].kind, 'navigation');
   assert.equal(registry.views.hours.kind, 'static');
+});
+
+test('Home registers its metadata-only verification surface only for authorized dashboard viewers', () => {
+  const context = harness();
+  context.view = 'home';
+  assert.equal(context.getProductionLiveSyncSideContext().surfaces.includes('home:sync-metadata'), false);
+  context.canViewDashboardSyncStatus = () => true;
+  assert.equal(context.getProductionLiveSyncSideContext().surfaces.includes('home:sync-metadata'), true);
 });
 
 test('manager low-stock summaries load only for Assigned Items and Eval Reports 2 consumers', () => {

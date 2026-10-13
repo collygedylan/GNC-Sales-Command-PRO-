@@ -1,0 +1,59 @@
+name: Deploy Apps Script ingestion
+
+on:
+  workflow_run:
+    workflows: [Publish validated candidate]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      expected-commit:
+        description: Merged main SHA supplied by the trusted publisher.
+        type: string
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: apps-script-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy-apps-script:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_COMMIT: ${{ inputs.expected-commit }}
+      APPS_SCRIPT_PUBLISHER_RUN_ID: ${{ github.event.workflow_run.id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-node-dependencies
+      - name: Authorize current merged main and standard PR validation
+        id: authorize
+        run: node scripts/lib/apps-script-deployment-guard.mjs
+      - name: Publish the guarded production Apps Script version
+        if: steps.authorize.outputs.script-changed == 'true'
+        env:
+          APPS_SCRIPT_SCRIPT_ID: ${{ secrets.APPS_SCRIPT_SCRIPT_ID }}
+          APPS_SCRIPT_CLASPRC_JSON: ${{ secrets.APPS_SCRIPT_CLASPRC_JSON }}
+          APPS_SCRIPT_DEPLOYMENT_ID: ${{ secrets.APPS_SCRIPT_DEPLOYMENT_ID }}
+          APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID: ${{ vars.APPS_SCRIPT_PRODUCTION_DEPLOYMENT_ID }}
+        run: node scripts/sync-codegs-to-apps-script.js
+      - name: Retain Apps Script publication evidence
+        if: steps.authorize.outputs.script-changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: apps-script-publication-${{ github.sha }}-${{ github.run_attempt }}
+          path: .gnc-local/apps-script-recovery-evidence.json
+          if-no-files-found: error
+          retention-days: 14

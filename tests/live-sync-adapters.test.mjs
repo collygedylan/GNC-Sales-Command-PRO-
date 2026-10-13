@@ -23,6 +23,8 @@ function inlineFunctionSource(name) {
     assert.ok(functionEnd > 0, `${name} end`);
     return html.slice(functionStart, functionStart + 1 + functionEnd);
 }
+const homeTimestampSource = inlineFunctionSource('applyCurrentVerifiedSyncTimestamp');
+const resetMetadataSource = inlineFunctionSource('resetDashboardSyncMetadataForPermissionChange');
 const targetCodesSource = inlineFunctionSource('getManagerItemLowStockTargetCodes');
 const targetKeySource = inlineFunctionSource('getManagerAssignedItemTargetKey')
     .replace('function getManagerAssignedItemTargetKey(', 'function getManagerAssignedItemTargetKeyActual(');
@@ -34,6 +36,7 @@ function harness(sourceFactory = factorySource) {
     const rows = [{ unique_id: 'new', source_unique_id: 'new', id: 'new', tripnumber: 'T1', issueSourceUniqueId: 'new', allocationUniqueId: 'new', UNIQUE_ID: 'new', conversationId: 'new' }];
     const ctx = { SalesWorkspace: {isView:()=>true,stageRefresh:async()=>{calls.push(['api','sales_credit','sources']);return {rows};},applyRefresh(){}}, BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
         fetchAllSupabaseRows: async (table, query) => { calls.push(['GET', table, query]); return table === 'ph_crop_roll_runs' ? [] : rows; },
+        fetchAuthenticatedSupabaseReadPage: async (table, query, options) => { calls.push(['PAGE', table, query, options]); return { rows: [{ filename: `${table}.xlsx`, last_updated: '2026-10-13T12:00:00Z' }], total: 1 }; },
         fetchPoManagementRows: async () => { calls.push(['GET', 'po']); return rows; },
         runDedupeSupabaseRead: async (_key, taskFn, options = {}) => taskFn({ signal: options.signal }),
         productionLiveSyncNavigation: { signal: null },
@@ -106,6 +109,19 @@ function harness(sourceFactory = factorySource) {
         accessControlAdminState: { editor: { draft: 'keep' } }, codexOpsState: { draft: 'keep' }, activeChatConversationId: 'new',
         activeDetailTab: '', activeDetailSourceView: '', activeItem: null, driveDemandSnapshots: new Map(),
         getCurrentVisibleViewId: () => 'home', getSupabaseReadIdentityScope: () => 'native:dylan',
+        getCurrentLoginCacheScopeKey: () => 'native:dylan',
+        appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'permission-v1' } },
+        DASHBOARD_SYNC_METADATA_LIMIT: 30,
+        getDashboardSyncMetadataSources: () => [
+            { label: 'Drive', table: 'ph_master_inventory' }, { label: 'SOC', table: 'ph_soc_master' },
+            { label: 'Reserves', table: 'ph_reserves' }, { label: 'CAV', table: 'ph_cav_import' }
+        ],
+        collectDashboardSyncSource: (rows, label) => {
+            const latest = Math.max(-1, ...rows.map(row => Date.parse(row.last_updated || '') || -1));
+            return { label, iso: latest >= 0 ? new Date(latest).toISOString() : '', ms: latest,
+                files: [...new Set(rows.filter(row => (Date.parse(row.last_updated || '') || -1) === latest).map(row => row.filename).filter(Boolean))].sort() };
+        },
+        updateDashboardSyncSummary() {},
         getRoleAccessState: () => ({ isRep: false, isAdmin: true }), isMyRep: () => true,
         canViewDriveCustomerConsigneeRows: () => true
     };
@@ -163,6 +179,8 @@ test('all root production views are classified and every declared adapter has ph
     }
     assert.ok(registry.core.cropRollDrive.includes('ph_crop_roll_completed_drive_keys'));
     assert.ok(registry.core.requests.includes('ph_request_delivery_outbox'));
+    assert.deepEqual([...registry.surfaces['home:sync-metadata'].adapters], ['homeSyncMetadata']);
+    assert.deepEqual([...registry.side.homeSyncMetadata], ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']);
 });
 
 test('every side adapter executes a read-only stage and a synchronous commit', async () => {
@@ -176,7 +194,7 @@ test('every side adapter executes a read-only stage and a synchronous commit', a
         assert.equal(item.commit(staged), undefined, id);
     }
     for (const call of h.calls) {
-        assert.ok(['GET', 'RPC', 'dock', 'eval', 'location', 'shear', 'codex', 'script', 'api'].includes(call[0]), JSON.stringify(call));
+        assert.ok(['GET', 'PAGE', 'RPC', 'dock', 'eval', 'location', 'shear', 'codex', 'script', 'api'].includes(call[0]), JSON.stringify(call));
         if (['dock', 'eval', 'location', 'shear'].includes(call[0])) assert.ok(['list', 'get'].includes(call[1]), JSON.stringify(call));
         if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read','report_read_v2:metadata'].includes(call[1]+':'+call[2]), JSON.stringify(call));
         if (call[1] === 'bloomscapes_pending_command') assert.equal(call[2].p_action, 'state');
@@ -185,6 +203,87 @@ test('every side adapter executes a read-only stage and a synchronous commit', a
     assert.equal(h.ctx.accessControlAdminState.editor.draft, 'keep');
     assert.equal(h.ctx.codexOpsState.draft, 'keep');
     assert.deepEqual([...h.ctx.reportMetadata.keys()], ['eval1', 'eval2', 'ncr', 'assigned-items', 'season-priority', 'approval']);
+});
+
+test('Home sync metadata side adapter is bounded, projected, scoped, and commits only metadata', async () => {
+    const h = harness();
+    let active = 0, maxActive = 0;
+    h.ctx.fetchAuthenticatedSupabaseReadPage = async (table, query, options) => {
+        h.calls.push(['PAGE', table, query, options]);
+        active += 1; maxActive = Math.max(maxActive, active);
+        await Promise.resolve();
+        active -= 1;
+        return { rows: [
+            { filename: `${table}-latest-a.xlsx`, last_updated: '2026-10-13T12:00:00Z' },
+            { filename: `${table}-latest-b.xlsx`, last_updated: '2026-10-13T12:00:00Z' },
+            { filename: `${table}-old.xlsx`, last_updated: '2026-10-12T12:00:00Z' }
+        ], total: 3 };
+    };
+    const adapter = descriptor(h, 'side:homeSyncMetadata');
+    assert.equal(JSON.parse(adapter.cacheKey)[2], JSON.stringify(['native:dylan', 'permission-v1']));
+    const controller = new AbortController();
+    const staged = await adapter.stage({ signal: controller.signal });
+    assert.deepEqual(Array.from(staged.entries, entry => entry.table), ['ph_master_inventory', 'ph_soc_master', 'ph_reserves', 'ph_cav_import']);
+    assert.ok(staged.entries.every(entry => Array.isArray(entry.rows) && entry.rows.length === 3));
+    assert.equal(maxActive, 2, 'metadata source reads run in two bounded concurrent batches');
+    const reads = h.calls.filter(call => call[0] === 'PAGE');
+    assert.equal(reads.length, 4);
+    for (const [, , query] of reads) {
+        assert.match(query, /^select=filename,last_updated&last_updated=not\.is\.null&order=last_updated\.desc&limit=30&offset=0$/);
+        assert.doesNotMatch(query, /select=\*/);
+    }
+    adapter.commit(staged);
+    assert.equal(h.ctx.dashboardSyncMetadataSummaries.length, 4);
+    assert.deepEqual(Array.from(h.ctx.dashboardSyncMetadataSummaries[0].files), ['ph_master_inventory-latest-a.xlsx', 'ph_master_inventory-latest-b.xlsx']);
+});
+
+test('deferred manual run response clears optimistic Starting state without completion side effects', () => {
+    const start = html.indexOf('function handleDeferredManualSyncStart(');
+    const end = html.indexOf('\n        async function runGoogleAppsScriptTrigger(', start);
+    assert.ok(start > 0 && end > start);
+    const calls = [];
+    const sandbox = {
+        module: { exports: {} }, manualSyncStatusState: { active: true },
+        clearManualSyncStatusPoll: () => calls.push('clear-poll'),
+        syncGoogleScriptButton: () => calls.push('button'), updateSyncDiagnostics: () => calls.push('diagnostics'),
+        showToast: (...args) => calls.push(['toast', ...args])
+    };
+    vm.runInNewContext(`${html.slice(start, end)}\nmodule.exports = handleDeferredManualSyncStart;`, sandbox);
+    const handle = sandbox.module.exports;
+    assert.equal(handle({ ok: true, status: 'deferred', code: 'MANUAL_SYNC_PROCESSOR_BUSY', message: 'Busy' }), true);
+    assert.equal(sandbox.manualSyncStatusState, null);
+    assert.deepEqual(calls.map(call => Array.isArray(call) ? call[0] : call), ['clear-poll', 'button', 'diagnostics', 'toast']);
+    assert.equal(handle({ ok: true, status: 'queued' }), false);
+});
+
+test('header timestamp accepts any current-scope data cohort and ignores empty navigation statuses', () => {
+    const sandbox = { module: { exports: {} }, Date, JSON, Number, String,
+        productionVerifiedViewKey: context => context.expectedKey };
+    vm.runInNewContext(`${homeTimestampSource}\nmodule.exports = applyCurrentVerifiedSyncTimestamp;`, sandbox);
+    const apply = sandbox.module.exports;
+    const context = { view: 'inventory', surfaces: [], adapters: [{ id: 'core:master' }], scope: 'user-1', dataPermissionVersion: 'perm-2', expectedKey: 'home-key' };
+    assert.equal(apply({ state: 'Up to date', lastVerifiedAt: 1791892800000, contextKey: 'home-key' }, context), true);
+    assert.equal(sandbox.lastSuccessfulSyncTime, new Date(1791892800000).toISOString());
+    assert.equal(sandbox.lastSuccessfulSyncOwner, JSON.stringify(['user-1', 'perm-2']));
+    for (const status of [
+        { state: 'Syncing', lastVerifiedAt: 1791892800000, contextKey: 'home-key' },
+        { state: 'Up to date', lastVerifiedAt: 0, contextKey: 'home-key' },
+        { state: 'Up to date', lastVerifiedAt: 1791892800000, contextKey: 'old-key' }
+    ]) assert.equal(apply(status, context), false);
+    assert.equal(apply({ state: 'Up to date', lastVerifiedAt: 1791892800000, contextKey: 'home-key' }, { ...context, adapters: [], expectedKey: 'home-key' }), false);
+});
+
+test('permission reset clears the header stamp and cached Home metadata before a new read can pass', () => {
+    const sandbox = { module: { exports: {} }, dashboardSyncMetadataSummaries: [{ label: 'SOC' }], dashboardSyncMetadataFetchedAt: 123,
+        dashboardSyncMetadataOwner: 'old-owner', lastSuccessfulSyncTime: 'old-stamp', lastSuccessfulSyncOwner: 'old-owner' };
+    const resetHomeSource = inlineFunctionSource('resetHomeSuccessfulSyncTimestamp');
+    vm.runInNewContext(`${resetHomeSource}\n${resetMetadataSource}\nmodule.exports = resetDashboardSyncMetadataForPermissionChange;`, sandbox);
+    sandbox.module.exports();
+    assert.equal(sandbox.dashboardSyncMetadataSummaries.length, 0);
+    assert.equal(sandbox.dashboardSyncMetadataFetchedAt, 0);
+    assert.equal(sandbox.dashboardSyncMetadataOwner, '');
+    assert.equal(sandbox.lastSuccessfulSyncTime, '');
+    assert.equal(sandbox.lastSuccessfulSyncOwner, '');
 });
 
 test('low-stock target adapter fetches assigned item codes and commits a fresh Eval2 snapshot', async () => {

@@ -19,6 +19,7 @@ function createHarness() {
   }
   const lock = {
     hasLock: () => locked,
+    tryLock: () => { if (locked) return false; locked = true; return true; },
     waitLock: () => { locked = true; },
     releaseLock: () => { locked = false; },
   };
@@ -78,9 +79,112 @@ function createHarness() {
   return {
     context, events, properties, triggers, setRunningStatus, runStage,
     setStageRunner(fn) { context.__runStage = fn; },
+    setLockBusy(value) { locked = !!value; },
+    setProperty(key, value) { propertyStore.setProperty(key, value); },
     status() { return JSON.parse(propertyStore.getProperty('MANUAL_SYNC_STATUS')); },
   };
 }
+
+test('a lock collision defers without enqueueing a request or mutating the active worker', () => {
+  const harness = createHarness();
+  harness.setLockBusy(true);
+  const deferred = vm.runInContext("queueManualSyncRequest_({ job: 'soc', source: 'test', requestedBy: 'tester' })", harness.context);
+  assert.equal(deferred.code, 'MANUAL_SYNC_PROCESSOR_BUSY');
+  assert.equal(deferred.status, 'deferred');
+  assert.equal(harness.triggers.filter(trigger => trigger.handler === 'runQueuedManualSyncStage_').length, 0, 'busy responses do not enqueue or mutate triggers outside the lock');
+  assert.equal(harness.properties.has('MANUAL_SYNC_DEFERRED_REQUEST_V1'), false);
+  harness.setLockBusy(false);
+  const calls = [];
+  harness.setStageRunner(stage => { calls.push(stage); return { filesProcessed: 1, failedFiles: 0 }; });
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  assert.deepEqual(calls, []);
+  assert.equal(harness.properties.has('MANUAL_SYNC_STATUS'), false, 'the caller must retry because this response did not enqueue work');
+});
+
+test('automatic sync defers while a worker is active and skips maintenance work', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['soc']);
+  let maintenanceCalls = 0;
+  harness.context.scheduleSocOrderHistoryTrigger_ = () => { maintenanceCalls++; };
+  harness.context.runRequestIntegrityScheduledWorker_ = () => { maintenanceCalls++; };
+  const result = vm.runInContext('runAutoDropFolderSync_()', harness.context);
+  assert.equal(result.code, 'MANUAL_SYNC_PROCESSOR_BUSY');
+  assert.equal(result.status, 'deferred');
+  assert.equal(maintenanceCalls, 0);
+  assert.equal(harness.triggers.filter(trigger => trigger.handler === 'runQueuedManualSyncStage_').length, 1, 'the lock-protected active-worker check ensures one continuation');
+  vm.runInContext('runAutoDropFolderSync_()', harness.context);
+  assert.equal(harness.triggers.length, 1, 'repeated automatic invocations do not duplicate the continuation');
+});
+
+test('continuation recovery removes duplicate pending triggers and excludes the executing trigger', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['soc']);
+  const trigger = id => ({ handler: 'runQueuedManualSyncStage_', getHandlerFunction: () => 'runQueuedManualSyncStage_', getUniqueId: () => id });
+  harness.triggers.push(trigger('executing'), trigger('pending-1'), trigger('pending-2'));
+  harness.context.__event = { triggerUid: 'executing' };
+  vm.runInContext('runAutoDropFolderSync_(__event)', harness.context);
+  assert.deepEqual(harness.triggers.map(item => item.getUniqueId()), ['executing', 'pending-1']);
+});
+
+test('a stale SOC worker resumes only when its persisted extraction source matches the stage', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['soc']);
+  const staleAt = new Date(Date.parse('2026-10-08T18:00:00.000Z') - 13 * 60 * 1000).toISOString();
+  const status = harness.status();
+  status.currentStage = 'soc';
+  status.currentStageLabel = 'SOC';
+  status.updatedAt = staleAt;
+  harness.setProperty('MANUAL_SYNC_STATUS', JSON.stringify(status));
+  harness.setProperty('IMPORT_EXTRACTION_CHECKPOINT_V1', JSON.stringify({
+    tableName: 'ph_soc_master', fileId: 'source-1', fileName: 'SOC.xlsx',
+    modifiedAt: '2026-10-13T07:00:00.000Z', size: 1234, tempSheetId: 'converted-1',
+    phase: 'reading', rowsRead: 500, updatedAt: staleAt,
+    runId: 'daily-run-1', stage: 'soc', attempt: 1,
+  }));
+  const calls = [];
+  harness.setStageRunner(stage => { calls.push(stage); return { filesProcessed: 1, failedFiles: 0 }; });
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  assert.deepEqual(calls, ['soc']);
+  assert.equal(harness.status().currentStage, 'complete');
+  assert.equal(harness.status().recoveryCount, 1);
+});
+
+test('a preparation deferral schedules the same stage without advancing the cursor', () => {
+  const harness = createHarness();
+  harness.setRunningStatus(['soc', 'reserves']);
+  const runId = harness.status().runId;
+  let attempts = 0;
+  harness.setStageRunner(stage => {
+    attempts++;
+    if (attempts === 1) {
+      const deferred = new Error('IMPORT_PREPARATION_DEFERRED');
+      deferred.errorCode = 'IMPORT_PREPARATION_DEFERRED';
+      deferred.phase = 'reading';
+      throw deferred;
+    }
+    return { filesProcessed: 1, failedFiles: 0 };
+  });
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  let status = harness.status();
+  assert.equal(status.active, true);
+  assert.equal(status.stageIndex, 0);
+  assert.equal(status.runId, runId);
+  assert.equal(status.preparationRetryCount, 1);
+  assert.match(status.message, /retry 1\/3 is queued/);
+  harness.runStage({ executionBudgetMs: 60000, nextStageStartCutoffMs: 120000 });
+  status = harness.status();
+  assert.equal(status.stageIndex, 2);
+  assert.equal(status.active, false);
+  assert.deepEqual(status.completedStages, ['soc', 'reserves']);
+});
+
+test('queue responses expose the persisted run id after queue-status construction', () => {
+  const harness = createHarness();
+  const response = vm.runInContext("queueManualSyncRequest_({ job: 'soc', source: 'test', requestedBy: 'tester' })", harness.context);
+  assert.equal(response.status, 'queued');
+  assert.equal(response.runId, harness.status().runId);
+  assert.ok(response.runId);
+});
 
 const sourceFailure = (name = 'bad-drive.csv', errorCode = 'IMPORT_SOURCE_NO_HEADER') => ({
   tableName: 'ph_master_inventory', filesProcessed: 0, failedFiles: 1,

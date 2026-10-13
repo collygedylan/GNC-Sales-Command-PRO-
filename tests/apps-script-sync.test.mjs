@@ -119,6 +119,25 @@ test('successful sync advances and verifies the exact deployment version and hea
   ]);
 });
 
+test('production authorization is checked immediately before each source, version, and deployment mutation', async () => {
+  const { script, calls } = makeScript();
+  await syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
+    beforeMutation: async () => { calls.push('authorize'); }, fetchImpl: healthyFetch(), healthAttempts: 1 });
+  for (const name of ['updateContent', 'versions.create', 'deployments.update']) {
+    assert.equal(calls[calls.indexOf(name) - 1], 'authorize');
+  }
+});
+
+for (const deniedMutation of [1, 2, 3]) test(`a superseded main stops mutation ${deniedMutation} without retrying publication`, async () => {
+  const { script, calls } = makeScript();
+  let checks = 0;
+  await assert.rejects(syncAppsScriptProject({ script, scriptId: 'script', deploymentId: 'deployment', source, githubSha: sha,
+    beforeMutation: async () => { if (++checks === deniedMutation) throw new Error('CURRENT_MAIN_CHANGED'); },
+    fetchImpl: healthyFetch(), healthAttempts: 1 }), /CURRENT_MAIN_CHANGED/);
+  const mutations = calls.filter(name => ['updateContent', 'versions.create', 'deployments.update'].includes(name));
+  assert.equal(mutations.length, deniedMutation - 1);
+});
+
 test('deployment version mismatch is rejected before health is accepted', async () => {
   const { script, calls } = makeScript({ versionCount: 30, createdVersion: 202, deployedVersion: 201 });
   const sleeps = [];
