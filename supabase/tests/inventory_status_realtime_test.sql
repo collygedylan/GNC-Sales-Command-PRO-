@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(13);
+select plan(14);
 select ok(exists(select 1 from pg_publication_tables where pubname='supabase_realtime'
   and schemaname='public' and tablename='ph_master_inventory'), 'inventory UPDATE publication is present');
 select ok((select pubupdate from pg_publication where pubname='supabase_realtime'), 'publication emits UPDATE events');
@@ -18,6 +18,7 @@ select ok(has_column_privilege('authenticated','public.ph_master_inventory','uni
   and has_column_privilege('authenticated','public.ph_master_inventory','itemcode','SELECT')
   and has_column_privilege('authenticated','public.ph_master_inventory','locationcode','SELECT'), 'authenticated events can carry the primary key and pair');
 select ok(not has_column_privilege('authenticated','public.ph_master_inventory','holdstopreason','SELECT'), 'status content stays behind inventory_read');
+select ok(not has_any_column_privilege('anon','public.ph_master_inventory','SELECT'), 'anonymous clients cannot receive inventory identifiers');
 
 insert into auth.users(id,email,email_confirmed_at,raw_app_meta_data,raw_user_meta_data)
 values ('9f8b0000-0000-4000-8000-000000000291','status-sync@example.invalid',now(),'{}','{}');
