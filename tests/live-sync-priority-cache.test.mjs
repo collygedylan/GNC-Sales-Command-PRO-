@@ -578,6 +578,7 @@ test('an obsolete Eval refresh cannot restore its old account cache after a fail
     const read = new Promise((_, reject) => { rejectRead = reject; });
     const ctx = {
         managerEvalReport2LoadState: {}, managerEvalReport2Cache: { privateRows: ['account-a'] }, managerEvalReport2CacheKey: 'old',
+        useManagerReportPages: () => false,
         canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => owner,
         getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: () => read,
         loadManagerEvalReportSettings: async () => {}, scheduleManagersRender: () => { renders++; }
@@ -600,6 +601,7 @@ test('Eval2 does not build from global fallbacks when the ItemCode target read f
     const targetReadForces = [], loadOptions = [];
     const ctx = {
         managerEvalReport2LoadState: {}, managerEvalReport2Cache: null, managerEvalReport2CacheKey: '',
+        useManagerReportPages: () => false,
         canViewManagerEvalReports2: () => true, getSupabaseReadIdentityScope: () => 'user-a:permission-a',
         getDatasetLoadSignature: () => 'source-a', ensureDatasetLoaded: async (...args) => { loadOptions.push(args); },
         loadManagerEvalReportSettings: async () => {}, isDatasetLoaded: () => true,
