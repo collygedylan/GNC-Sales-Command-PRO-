@@ -53,7 +53,9 @@ export const itemcodeDefaultOwnersMigrationName = '20261006200448_itemcode_defau
 export const inventoryRowAssignmentFenceIntegrationMigrationName = '20261006200449_inventory_row_assignment_fence_integration.sql';
 export const requestHistoryDrilldownMigrationName = '20261012011000_request_history_drilldown_isolation.sql';
 export const auraEnterpriseDomainVoiceMigrationName = '20261012052500_aura_enterprise_domain_voice.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName]);
+export const managerReportReadV2MigrationName = '20261012190002_manager_report_read_v2.sql';
+export const managerListReadV2MigrationName = '20261012190003_manager_list_read_v2.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -444,6 +446,53 @@ export function migrationContractQuery(name) {
   if (name === passwordReconciliationMigrationName) return "select to_regprocedure('public.prepare_password_change_profile(text,uuid,text)') is not null and to_regprocedure('public.complete_password_change_profile(uuid,uuid,text,text)') is not null as installed";
   if (name === productionScheduleMigrationName) return "select to_regprocedure('public.production_schedule_start_import_v1(text)') is not null and to_regprocedure('public.production_schedule_read_metadata_v1()') is not null and to_regclass('public.production_schedule_rows') is not null as installed";
   if (name === auraHrCommandCenterMigrationName) return "select to_regclass('public.core_employees') is not null and to_regclass('public.hr_job_codes') is not null and to_regclass('public.hr_events') is not null and to_regclass('public.labor_timesheets') is not null and exists(select 1 from pg_partitioned_table where partrelid='public.labor_timesheets'::regclass) and to_regprocedure('public.hr_claim_calendar_reminders_v1(integer)') is not null and to_regprocedure('public.hr_finish_calendar_reminder_v1(uuid,boolean,text)') is not null and to_regprocedure('private.hr_purge_calendar_reminders_v1()') is not null and to_regprocedure('private.hr_active_username_v1()') is not null and exists(select 1 from cron.job where jobname='hr_calendar_reminder_sweep') as installed";
+  if (name === managerReportReadV2MigrationName) return `select
+    to_regprocedure('public.manager_report_read_v2(jsonb)') is not null
+    and exists(select 1 from pg_proc p where p.oid='public.manager_report_read_v2(jsonb)'::regprocedure
+      and p.prosecdef and p.proconfig @> array['search_path=""'])
+    and has_function_privilege('service_role','public.manager_report_read_v2(jsonb)','execute')
+    and not has_function_privilege('anon','public.manager_report_read_v2(jsonb)','execute')
+    and not has_function_privilege('authenticated','public.manager_report_read_v2(jsonb)','execute')
+    and to_regprocedure('public.manager_ncr_outbox_metadata_v1(text,text)') is not null
+    and has_function_privilege('service_role','public.manager_ncr_outbox_metadata_v1(text,text)','execute')
+    and not has_function_privilege('anon','public.manager_ncr_outbox_metadata_v1(text,text)','execute')
+    and not has_function_privilege('authenticated','public.manager_ncr_outbox_metadata_v1(text,text)','execute')
+    and position('private.inventory_effective_owner_v1' in pg_get_functiondef('public.manager_report_read_v2(jsonb)'::regprocedure))>0
+    and not exists(select 1 from unnest(array[
+      to_regclass('public.idx_ph_master_inventory_eval_itemcode_lookup'),
+      to_regclass('public.idx_ph_master_inventory_eval_tasks'),
+      to_regclass('public.ph_master_inventory_location_work_match_idx'),
+      to_regclass('public.ph_inventory_row_assignments_owner_idx'),
+      to_regclass('public.ph_inventory_row_assignments_itemcode_idx')
+    ]::regclass[]) named(index_oid) left join pg_index i on i.indexrelid=named.index_oid
+      where i.indexrelid is null or not i.indisvalid)
+    and not exists(select 1 from (values
+      ('idx_ph_master_inventory_eval_itemcode_lookup','public.ph_master_inventory','upper(btrim(coalesce(itemcode, ''''::text)))',''),
+      ('idx_ph_master_inventory_eval_tasks','public.ph_master_inventory','assignedto,eval_task_status,eval_task_type',''),
+      ('ph_master_inventory_location_work_match_idx','public.ph_master_inventory','lower(btrim(itemcode)),lower(btrim(saleyear)),lower(btrim(locationcode)),unique_id',''),
+      ('ph_inventory_row_assignments_owner_idx','public.ph_inventory_row_assignments','lower(btrim(assignedto)),master_unique_id','present_in_driveand(assignedtoisnotnull)'),
+      ('ph_inventory_row_assignments_itemcode_idx','public.ph_inventory_row_assignments','itemcode_normalized,master_unique_id','present_in_drive')
+    ) expected(index_name,table_name,key_fragment,predicate_fragment)
+    left join pg_class c on c.oid=to_regclass('public.'||expected.index_name)
+    left join pg_index i on i.indexrelid=c.oid
+    where c.oid is null or c.relnamespace<>'public'::regnamespace
+      or i.indrelid<>expected.table_name::regclass
+      or position(expected.key_fragment in lower(regexp_replace(pg_get_indexdef(c.oid),'[[:space:]\"]','','g')))=0
+      or (expected.predicate_fragment<>'' and position(expected.predicate_fragment in lower(regexp_replace(pg_get_expr(i.indpred,i.indrelid),'[[:space:]\"]','','g')))=0)
+    ) as installed`;
+  if (name === managerListReadV2MigrationName) return `select
+    to_regprocedure('private.manager_report_assigned_page_v2(uuid,jsonb,text,integer,integer,text)') is not null
+    and to_regprocedure('private.manager_report_season_page_v2(uuid,jsonb,text,integer,integer,text)') is not null
+    and not has_function_privilege('anon','private.manager_report_assigned_page_v2(uuid,jsonb,text,integer,integer,text)','execute')
+    and not has_function_privilege('authenticated','private.manager_report_assigned_page_v2(uuid,jsonb,text,integer,integer,text)','execute')
+    and not has_function_privilege('service_role','private.manager_report_assigned_page_v2(uuid,jsonb,text,integer,integer,text)','execute')
+    and not has_function_privilege('anon','private.manager_report_season_page_v2(uuid,jsonb,text,integer,integer,text)','execute')
+    and not has_function_privilege('authenticated','private.manager_report_season_page_v2(uuid,jsonb,text,integer,integer,text)','execute')
+    and not has_function_privilege('service_role','private.manager_report_season_page_v2(uuid,jsonb,text,integer,integer,text)','execute')
+    and exists(select 1 from pg_proc p where p.oid='private.manager_report_assigned_page_v2(uuid,jsonb,text,integer,integer,text)'::regprocedure
+      and p.prosecdef and p.proconfig @> array['search_path=""'])
+    and exists(select 1 from pg_proc p where p.oid='private.manager_report_season_page_v2(uuid,jsonb,text,integer,integer,text)'::regprocedure
+      and p.prosecdef and p.proconfig @> array['search_path=""']) as installed`;
   throw new Error('LOW_STOCK_MIGRATION_HISTORY_MISMATCH');
 }
 

@@ -43,6 +43,12 @@
         deliveryRecovery: ['ph_request_delivery_outbox'],
         managerOrders: ['ph_pikes_order_batches', 'ph_pikes_order_source_rows'],
         managerEvalSettings: ['ph_eval_report_settings'],
+        reportEval1: ['ph_master_inventory', 'ph_eval_report_settings', 'ph_app_settings'],
+        reportEval2: ['ph_master_inventory', 'ph_inventory_row_assignments', 'ph_eval_report_settings', 'ph_app_settings', 'private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'],
+        reportNcr: ['ph_master_inventory', 'ph_app_settings'],
+        reportAssigned: ['ph_master_inventory', 'ph_inventory_row_assignments', 'private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'],
+        reportSeason: ['ph_master_inventory', 'ph_inventory_row_assignments', 'ph_cav_import', 'ph_app_settings'],
+        reportApproval: ['ph_master_inventory', 'ph_ncr_completions', 'ph_shear_list', 'ph_inventory_edit_requests'],
         itemLowStockTargets: ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'],
         ncr: ['ph_ncr_completions'],
         productivity: ['ph_productivity_history'],
@@ -174,7 +180,11 @@
         const requestArchived = viewId === 'request' && requestedSurfaces.includes('request:archived');
         const requestPending = viewId === 'request' && requestedSurfaces.includes('request:pending');
         const requestSuspendTag = viewId === 'request' && requestedSurfaces.includes('request:suspend-tag');
-        const entries = [requestBunchNotes ? data([], ['bunchNotes'])
+        // A paged report owns its read-only list cache. Dialogs and write proof
+        // still request their normal complete source adapters.
+        const pagedReport = context.pagedReportSurface && !requestedSurfaces.some(id => id.startsWith('dialog:'));
+        const reportAdapter = { eval1:'reportEval1', eval2:'reportEval2', ncr:'reportNcr', 'assigned-items':'reportAssigned', 'season-priority':'reportSeason', approval:'reportApproval' }[context.pagedReportSurface];
+        const entries = [pagedReport ? data([], reportAdapter ? ['settings', reportAdapter] : []) : requestBunchNotes ? data([], ['bunchNotes'])
             : requestArchived ? data([], [])
             : requestPending ? data(['requests'])
             : requestSuspendTag ? data([])
@@ -194,6 +204,7 @@
         }
         requestedSurfaces.forEach((surface) => {
             if (!surfaces[surface]) throw new Error(`Unregistered live-sync surface: ${surface}`);
+            if (pagedReport && surface.startsWith('managers:')) return;
             entries.push(surfaces[surface]);
         });
         return entries;
@@ -202,7 +213,7 @@
         const selected = getEntries(viewId, context).flatMap((entry) => [
             ...entry.datasets.map((id) => `core:${id}`), ...entry.adapters.map((id) => `side:${id}`)
         ]);
-        if (context.evalInventoryRows && (evalRowViews.has(viewId) || viewId === 'detail' && context.driveDetail)) selected.push('core:inventoryEditRequests');
+        if (!context.pagedReportSurface && context.evalInventoryRows && (evalRowViews.has(viewId) || viewId === 'detail' && context.driveDetail)) selected.push('core:inventoryEditRequests');
         // Badge-only dependencies must not cause static forms or Chat to take on
         // inventory settings; direct inventory views and dialogs do depend on them.
         const dataEntries = getEntries(viewId, { ...context, surfaces: (context.surfaces || []).filter((id) => !id.startsWith('badge:')) });

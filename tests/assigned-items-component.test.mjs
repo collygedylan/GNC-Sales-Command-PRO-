@@ -10,7 +10,7 @@ const rootDir = process.cwd();
 const tempRoot = path.join(rootDir, '.gnc-local', 'assigned-items-component');
 await fs.mkdir(tempRoot, { recursive: true });
 const tempDir = await fs.mkdtemp(path.join(tempRoot, 'run-'));
-await build({ entryPoints: ['components/assigned-items/AssignedItems.jsx'], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', jsx: 'automatic', external: ['react', 'react-dom/client', '@tanstack/react-virtual'], outfile: path.join(tempDir, 'component.mjs') });
+await build({ entryPoints: ['components/assigned-items/AssignedItems.jsx'], bundle: true, format: 'esm', platform: 'browser', target: 'es2020', jsx: 'automatic', external: ['react', 'react-dom/client', '@tanstack/react-virtual', 'swr'], outfile: path.join(tempDir, 'component.mjs') });
 let dom, mounted;
 const previous = {};
 const globalNames = ['window', 'document', 'navigator', 'HTMLElement', 'Node', 'MutationObserver', 'ResizeObserver', 'requestAnimationFrame', 'cancelAnimationFrame', 'IS_REACT_ACT_ENVIRONMENT'];

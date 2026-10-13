@@ -687,6 +687,7 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
     return { rows: [], assignedToOptions: [], assignmentCount: 0, matchedCount: 0, unassignedCount: 0 };
   }, classifyScriptCompatibleRows: () => ({ reports: {}, counts: {} }) };
   const scope = vm.createContext({ Worker: class {}, Map, Set, Date, Object, Array,
+    useManagerReportPages: () => false,
     getManagerEvalReports2Api: () => api, canUseProductionLiveSync: () => false, hasProgressiveViewData: () => false,
     isDatasetLoaded: () => true, managerEvalReport2DisplaySourcesReady: () => true, prepareManagerEvalReport2GroupLookups: value => value, managerEvalReport2LoadState: state,
     managerEvalReport2Cache: null, managerEvalReport2CacheKey: '', fullInventory: Array(9364), warehouseAssignedItemsInventory: [],
@@ -747,6 +748,7 @@ test('Eval2 stale low-stock thresholds fetch once for the current source key and
     };
     const calls = [];
     const scope = vm.createContext({
+      useManagerReportPages: () => false,
       document: {
         getElementById: id => id === 'manager-eval-report-2-records' ? container : null,
         createElement: tag => tag === 'div' ? banner : null

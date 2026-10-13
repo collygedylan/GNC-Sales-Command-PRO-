@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { ReportPageSessionProvider, useReportPage } from '../../services/reportPages';
 
 const codeOf = row => String(row?.ITEMCODE || '').trim().toUpperCase();
 const idOf = row => String(row?.MASTER_UNIQUE_ID || row?.UNIQUE_ID || '');
@@ -8,6 +9,22 @@ const textOf = value => value == null || value === '' ? '—' : String(value);
 const numberOf = value => value == null || value === '' || !Number.isFinite(Number(value)) ? '—' : Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 });
 const isAssigned = row => !!String(row?.ASSIGNEDTO || '').trim();
 const EMPTY_SET = new Set();
+
+function AssignedItemsReportPage({ source, offset, onPage }) {
+  const pageSize = Math.max(1, Math.min(100, Number(source.pageSize) || 100));
+  const { sourceRevision: queryRevision, ...baseQuery } = source.query;
+  const sourceRevision = offset > 0 ? source.sourceRevision || queryRevision : '';
+  const query = { ...baseQuery, offset, limit: pageSize, ...(sourceRevision ? { sourceRevision } : {}) };
+  const { data, error, isLoading, isValidating } = useReportPage(source.session, query);
+  const normalizedData = useMemo(() => data && source.normalizeRow
+    ? { ...data, rows: data.rows.map((row, index) => source.normalizeRow(row, offset + index)).filter(Boolean) }
+    : data, [data, source.normalizeRow, offset]);
+  useLayoutEffect(() => {
+    onPage(offset, { data: normalizedData, error, isLoading, isValidating });
+    source.onPageState?.(normalizedData, offset, { error, isLoading, isValidating });
+  }, [offset, normalizedData, error, isLoading, isValidating, onPage, source.onPageState]);
+  return null;
+}
 
 function assignmentOverride(row) {
   const reason = String(row?.assignment_reason || row?.ASSIGNMENT_REASON || '');
@@ -91,12 +108,48 @@ function Info({ label, value }) { return <div className="min-w-0 rounded-xl bord
 
 function AssignedItemsView(props) {
   const hostRef = useRef(null), propsRef = useRef(props), [layout, setLayout] = useState('desktop'), [scrollMargin, setScrollMargin] = useState(0), [expanded, setExpanded] = useState(() => new Set(props.uiState?.expanded || [])), [pinnedRowId, setPinnedRowId] = useState('');
+  const pageSource = props.pageSource || null, pageSize = Math.max(1, Math.min(100, Number(pageSource?.pageSize) || 100));
+  const pageQueryKey = pageSource ? pageSource.session.key(pageSource.query) : '';
+  const [pageCollection, setPageCollection] = useState(() => ({ key: pageQueryKey, pages: new Map(), total: null, revision: '', error: null }));
+  const visiblePageOffsetsRef = useRef(new Set());
+  const pageState = pageCollection.key === pageQueryKey ? pageCollection : { key: pageQueryKey, pages: new Map(), total: null, revision: '', error: null };
+  const snapshotCurrent = pageSource ? !!pageState.revision && !pageState.error : !!props.snapshotCurrent;
+  const pageRows = pageState.pages;
+  const pageError = pageState.error;
+  const onPage = useCallback((offset, result) => {
+    setPageCollection(current => {
+      const base = current.key === pageQueryKey ? current : { key: pageQueryKey, pages: new Map(), total: null, revision: '', error: null };
+      const incoming = result.data;
+      if (incoming?.sourceRevision && base.revision && incoming.sourceRevision !== base.revision && offset !== 0) return base;
+      const pages = incoming?.sourceRevision && base.revision && incoming.sourceRevision !== base.revision ? new Map() : new Map(base.pages);
+      const prior = pages.get(offset);
+      const next = { key: pageQueryKey, pages, total: incoming?.total ?? base.total, revision: offset === 0 && incoming?.sourceRevision ? incoming.sourceRevision : base.revision || incoming?.sourceRevision || '', error: result.error || null };
+      if (incoming) pages.set(offset, incoming);
+      else if (result.error && !prior) next.error = result.error;
+      if (pages.size > 8) {
+        const visibleOffsets = visiblePageOffsetsRef.current;
+        for (const key of pages.keys()) if (pages.size > 8 && !visibleOffsets.has(key) && key !== offset) pages.delete(key);
+        while (pages.size > 8) pages.delete(pages.keys().next().value);
+      }
+      if (prior === incoming && next.total === base.total && next.revision === base.revision && next.error === base.error) return current;
+      return next;
+    });
+  }, [pageQueryKey]);
   const anchorRef = useRef(props.uiState?.anchor || null), priorEntriesRef = useRef(null);
   const entriesRef = useRef([]), virtualizerRef = useRef(null), rowIndexByIdRef = useRef(new Map()), anchorFrameRef = useRef(0), scrollRevisionRef = useRef(0);
   propsRef.current = props;
-  const rows = props.rows || [], columns = props.columns || [], grouped = !!props.grouped;
+  const rows = props.rows || [], columns = props.columns || [], grouped = !!props.grouped && !pageSource;
   const mobile = layout === 'mobile';
   const entries = useMemo(() => {
+    if (pageSource) {
+      const count = Math.max(0, Math.min(2_000_000, Number(pageState.total ?? props.totalRows ?? pageSize)));
+      const output = new Array(count);
+      pageRows.forEach((page, offset) => page.rows.forEach((row, index) => {
+        const absolute = offset + index;
+        if (absolute < count) output[absolute] = { type: 'row', row, key: idOf(row) || `row:${absolute}` };
+      }));
+      return output;
+    }
     const output = [];
     let previous = null;
     rows.forEach((row, index) => {
@@ -106,7 +159,7 @@ function AssignedItemsView(props) {
       previous = assigned;
     });
     return output;
-  }, [rows, grouped]);
+  }, [rows, grouped, !!pageSource, pageQueryKey, pageState.total, pageRows, props.totalRows, pageSize]);
   const rowIndexById = useMemo(() => {
     const output = new Map();
     entries.forEach((entry, index) => { if (entry.type === 'row') output.set(idOf(entry.row), index); });
@@ -117,7 +170,22 @@ function AssignedItemsView(props) {
   const estimateSize = useCallback(index => entries[index]?.type === 'group' ? 42 : mobile ? 360 : 64, [entries, mobile]);
   const virtualizer = useVirtualizer({ count: entries.length, getItemKey, getScrollElement, estimateSize, overscan: 2, gap: mobile ? 12 : 0, scrollMargin });
   entriesRef.current = entries; virtualizerRef.current = virtualizer; rowIndexByIdRef.current = rowIndexById;
-  const visible = virtualizer.getVirtualItems();
+  const measuredVisible = virtualizer.getVirtualItems();
+  const firstLoadedIndex = entries.findIndex(Boolean);
+  const visible = measuredVisible.length ? measuredVisible : firstLoadedIndex >= 0 ? [{ index: firstLoadedIndex }] : pageSource && entries.length ? [{ index: 0 }] : [];
+  const pageOffsets = pageSource ? [...new Set((visible.length ? visible : [{ index: 0 }]).map(item => Math.floor(item.index / pageSize) * pageSize))].slice(0, 8) : [];
+  useLayoutEffect(() => {
+    if (!pageSource) return;
+    visiblePageOffsetsRef.current = new Set(pageOffsets);
+    pageOffsets.forEach(offset => pageSource.session.pin({ ...pageSource.query, offset, limit: pageSize }, true));
+    for (const offset of pageRows.keys()) if (!pageOffsets.includes(offset)) pageSource.session.pin({ ...pageSource.query, offset, limit: pageSize }, false);
+    setPageCollection(current => {
+      if (current.key !== pageQueryKey) return current;
+      const retained = new Map([...current.pages.entries()].filter(([offset]) => pageOffsets.includes(offset)));
+      return retained.size === current.pages.size ? current : { ...current, pages: retained };
+    });
+    return () => pageOffsets.forEach(offset => pageSource.session.pin({ ...pageSource.query, offset, limit: pageSize }, false));
+  }, [pageSource?.session, pageQueryKey, pageSize, pageOffsets.join(','), pageRows]);
   const pinnedIndex = pinnedRowId ? rowIndexById.get(pinnedRowId) ?? -1 : -1;
   const activePinned = pinnedIndex >= 0 && !visible.some(item => item.index === pinnedIndex) ? pinnedIndex : null;
   const indexSet = new Set(visible.map(item => item.index));
@@ -186,7 +254,7 @@ function AssignedItemsView(props) {
       const targetIndex = rowIndex + direction;
       if (targetIndex < 0 || targetIndex >= currentEntries.length) return;
       let next = targetIndex;
-      while (next >= 0 && next < currentEntries.length && currentEntries[next].type !== 'row') next += direction;
+      while (next >= 0 && next < currentEntries.length && currentEntries[next]?.type !== 'row') next += direction;
       if (next < 0 || next >= currentEntries.length) return;
       event.preventDefault();
       const targetId = idOf(currentEntries[next].row);
@@ -245,10 +313,12 @@ function AssignedItemsView(props) {
   const colSpan = columns.length + groupCount;
   const renderEntry = index => {
     const entry = entries[index];
-    if (!entry) return null;
+    if (!entry) return pageSource ? (mobile
+      ? <div key={`loading:${index}`} ref={measure} data-index={index} data-virtual-index={index} role="status" className="rounded-xl border border-slate-100 bg-white p-4 text-xs text-slate-500">Loading row…</div>
+      : <tr key={`loading:${index}`} ref={measure} data-index={index} data-virtual-index={index}><td colSpan={colSpan} className="px-3 py-3 text-xs font-semibold text-slate-500">Loading row…</td></tr>) : null;
     if (entry.type === 'group') return mobile ? <div key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'} className={`rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</div> : <tr key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'}><td colSpan={colSpan} className={`border-y px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</td></tr>;
     const code = codeOf(entry.row);
-    const rowId = idOf(entry.row), rowProps = { row: entry.row, columns, canManageAssignments: props.canManageAssignments, snapshotCurrent: props.snapshotCurrent, options, ownerDraft: props.ownerDrafts?.[code], pendingOwner: props.pendingCodes?.has(code), selected: props.selectedCodes || EMPTY_SET, lowStockState: lowStock, handlers, getReason: props.getReason, index, measure, historyExpanded: expanded.has(`history:${rowId}`), onToggleHistory: onToggle };
+    const rowId = idOf(entry.row), rowProps = { row: entry.row, columns, canManageAssignments: props.canManageAssignments, snapshotCurrent, options, ownerDraft: props.ownerDrafts?.[code], pendingOwner: props.pendingCodes?.has(code), selected: props.selectedCodes || EMPTY_SET, lowStockState: lowStock, handlers, getReason: props.getReason, index, measure, historyExpanded: expanded.has(`history:${rowId}`), onToggleHistory: onToggle };
     return mobile ? <Card key={entry.key} {...rowProps} expanded={expanded.has(rowId)} onToggle={onToggle} /> : <Row key={entry.key} {...rowProps} />;
   };
   const measurements = virtualizer.getMeasurements();
@@ -266,9 +336,11 @@ function AssignedItemsView(props) {
     table.querySelectorAll('tbody tr[data-virtual-index]').forEach(row => row.setAttribute('aria-rowindex', String(Number(row.dataset.virtualIndex) + 2)));
   }, [entries, indexes, mobile]);
   return <div ref={hostRef} className="ai-virtual-root" data-manager-assigned-layout={mobile ? 'mobile' : 'desktop'}>
-    <div className="sr-only" aria-live="polite">Showing {rows.length} matching rows from {props.totalRows ?? rows.length} rows.</div>
+    {pageSource && pageOffsets.map(offset => <AssignedItemsReportPage key={`${pageQueryKey}:${offset}`} source={{ ...pageSource, sourceRevision: pageState.revision }} offset={offset} onPage={onPage} />)}
+    {pageError && !pageRows.size && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{pageError.message || 'Assigned Items could not be loaded.'}</div>}
+    <div className="sr-only" aria-live="polite">Showing {pageSource ? [...pageRows.values()].reduce((sum, page) => sum + page.rows.length, 0) : rows.length} matching rows from {pageState.total ?? props.totalRows ?? rows.length} rows.</div>
     {mobile ? <div data-manager-assigned-mobile-list className="ai-mobile-list">{indexes.length ? indexes.map((index, position) => <React.Fragment key={entries[index]?.key || index}>{gaps[position] > 0 && <div aria-hidden="true" style={{ height: `${gaps[position]}px` }} />}{renderEntry(index)}</React.Fragment>) : <p>No rows match. Change or clear filters above.</p>}{tailGap > 0 && <div aria-hidden="true" style={{ height: `${tailGap}px` }} />}</div> : <div data-manager-assigned-desktop-table className="overflow-x-auto rounded-2xl border border-emerald-100 bg-white shadow-sm"><table className="min-w-full text-left text-xs font-bold text-slate-600"><thead className="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><tr>{groupCount > 0 && <th className="px-3 py-3">Bulk</th>}{columns.map(([field, label]) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <th key={field} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} className={`assigned-column-trigger min-h-[44px] px-3 py-2 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button></th>; })}</tr></thead><tbody>{indexes.length ? <>{indexes.map((index, position) => <React.Fragment key={entries[index]?.key || index}>{gaps[position] > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${gaps[position]}px`, padding: 0 }} /></tr>}{renderEntry(index)}</React.Fragment>)}{tailGap > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${tailGap}px`, padding: 0 }} /></tr>}</> : <tr><td colSpan={colSpan} className="p-4">No rows match. Change or clear filters above.</td></tr>}</tbody></table></div>}
-    <div data-manager-assigned-full-list-status className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-800">Showing all {rows.length} matching row{rows.length === 1 ? '' : 's'}. Search checks the complete {props.totalRows ?? rows.length}-row list.</div>
+    <div data-manager-assigned-full-list-status className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-800">Showing {pageSource ? pageState.total ?? props.totalRows ?? rows.length : rows.length} matching row{(pageState.total ?? rows.length) === 1 ? '' : 's'}. Search checks the complete {pageState.total ?? props.totalRows ?? rows.length}-row list.</div>
   </div>;
 }
 
@@ -309,7 +381,8 @@ export function mountAssignedItems(host, props) {
     const value = next || {};
     host.dataset.logicalRowCount = String(value.rows?.length || 0);
     host.dataset.totalRowCount = String(value.totalRows ?? value.rows?.length ?? 0);
-    root.render(<AssignedItemsErrorBoundary onError={value.onError} onRetry={value.onRetry}><AssignedItemsView {...value} /></AssignedItemsErrorBoundary>);
+    const view = <AssignedItemsErrorBoundary onError={value.onError} onRetry={value.onRetry}><AssignedItemsView {...value} /></AssignedItemsErrorBoundary>;
+    root.render(value.pageSource ? <ReportPageSessionProvider session={value.pageSource.session}>{view}</ReportPageSessionProvider> : view);
   };
   update(props || {});
   return { update, destroy() { if (destroyed) return; destroyed = true; root.unmount(); } };
