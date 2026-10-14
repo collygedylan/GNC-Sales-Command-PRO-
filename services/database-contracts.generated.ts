@@ -90085,6 +90085,31 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "reconcile_inventory_row_assignments_batch_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_batch_size": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_import_run_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "reconcile_request_folder_completion_window_v2": {
       "oneOf": [
         {
@@ -100219,6 +100244,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "reconcile_eval_report2_work_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "reconcile_inventory_row_assignments_batch_v1": {
       "oneOf": [
         "json"
       ]
