@@ -1,60 +1,27 @@
-# 🛑 STRICT SCOPE AND PIPELINE BOUNDARIES
+# 🛑 PILLAR 1: STRICT SCOPE AND WORKSPACE HYGIENE
 1. **Zero Scope Creep:** You are strictly forbidden from modifying CI/CD pipelines, `.github/workflows/`, deployment scripts, or baseline helpers unless the user explicitly commands you to "update the deployment pipeline."
-2. **Report, Don't React:** If you discover a pre-existing bug, race condition, or deployment gap that is outside the exact scope of the user's prompt, DO NOT fix it. Report the blocker to the user, wait for instructions, and halt execution.
-3. **Surgical Precision:** Only modify the specific files required to complete the user's explicit feature request or bug fix. Do not refactor unrelated code or architecture you happen to pass through.
+2. **Report, Don't React:** If you discover a pre-existing bug, race condition, or deployment gap outside the exact scope of the user's prompt, DO NOT fix it. Report the blocker, wait for instructions, and halt execution.
+3. **Surgical Precision & Token Economy:** Only read and modify the specific files required to complete the explicit feature request. Do not load unrelated files into your context window. Never refactor unrelated code or architecture you happen to pass through.
 4. **Credit Protection:** If a seemingly simple task requires modifying more than 5 files, pause and ask the user for authorization before writing the code to prevent burning through workspace credits on incorrect assumptions.
-5. **Amazon-Grade Performance & State:** Never introduce synchronous network blocking for lookup tables (customers, reps, locations). All static and semi-static dictionary data must be pre-fetched and cached locally (e.g., using SWR). Dropdowns and UI filters must respond instantly client-side. State must be strictly preserved across components to guarantee payload integrity during final database transactions.
-6. **Zero Feature Regression & Permissions:** Never remove existing UI elements, buttons, features, or workflows unless explicitly instructed. You must strictly preserve all existing Row Level Security (RLS) policies and Role-Based Access Control (RBAC) permissions during component refactors to ensure users never lose capabilities between updates.
+5. **Strict Workspace Synchronization:** You must keep the repository in pristine order. Before beginning any implementation, verify the local workspace is completely clean and synchronized with `origin/main`. Never leave dangling untracked files, unresolved merge conflicts, or messy uncommitted states across sessions. Never execute new work on an unauthorized branch.
 
-# Repository Agent Workflow
+# 🏗️ PILLAR 2: ARCHITECTURE, SECURITY & QUALITY
+6. **Separation of Concerns (SoC):** Strictly decouple UI presentation from business logic and database operations. Never write raw database queries directly inside UI components. Data fetching and mutations must be abstracted into dedicated hooks or service layers.
+7. **Modular Component Design:** Prevent monolithic files. UI components must be small, reusable, and singularly focused. If a component grows too complex, refactor it into smaller sub-components before continuing.
+8. **Strict Type Safety & Secure by Default:** Never use implicit `any` types. Enforce strict typing on all database payloads and component props. Never hardcode API keys or secrets; rely exclusively on environment variables and Supabase Row Level Security (RLS) policies.
+9. **Zero Feature Regression:** Never remove existing UI elements, buttons, features, or workflows unless explicitly instructed. Strictly preserve all existing RLS and Role-Based Access Control (RBAC) permissions during component refactors.
+10. **Test-Driven Remediation:** When fixing a reported bug, first verify or write a focused unit test that replicates the failure. Fix the code to pass the test.
 
-This file is the authoritative repository workflow. The permanent CI/CD override below governs automatic merging, deployment monitoring, and completion reporting. The Fast Deployment & Execution Policy governs testing, replays, and hooks and supersedes conflicting guidance in supporting documents.
+# ⚡ PILLAR 3: RESILIENCY & PERFORMANCE STANDARDS
+11. **Amazon-Grade Performance & State:** Never introduce synchronous network blocking for lookup tables (customers, reps, locations). All static and semi-static dictionary data must be pre-fetched and cached locally (e.g., using SWR). Dropdowns and UI filters must respond instantly client-side. 
+12. **Payload & State Integrity:** State must be strictly preserved across components to guarantee payload integrity during final database transactions. Do not block UI interaction while awaiting broader view synchronization.
+13. **Defensive UI & Error Boundaries:** Assume all network requests will eventually fail. Implement fallback UIs and Error Boundaries. A failure in a single component (e.g., a photo upload) must never crash or white-screen the entire application view. 
+14. **Idempotent Transactions:** All database writes and form submissions must be idempotent. Implement strict deduplication and button-disabling during inflight requests so that network retries or accidental double-taps do not create duplicate database rows.
 
-## Pipeline Architecture and Deployment Policy
+# 🚀 PILLAR 4: AUTONOMOUS CI/CD DEPLOYMENT PROTOCOL
+15. **Anti-Looping Protocol (The Kill Switch):** If a local test, pipeline build, or deployment fails 3 times consecutively, you must instantly halt execution, restore the last known good state, and escalate to the user. Do not attempt to brute-force fixes through infinite guessing loops.
 
-1. Independent Deployments: GitHub Pages frontend publication and Supabase/Apps Script backend deployment are decoupled. Backend validation or deployment failures must not gate frontend publication.
-2. Fast Standard PRs: Standard PR validation runs unit tests and lint/type checks only. Do not launch or wait for browser emulators, performance checks, release builds, or disposable database integration environments during standard PR delivery.
-3. Nightly Validation: All browser checks, phone emulators, layout snapshots, timing checks, and performance benchmarks belong to Nightly Validation, scheduled daily at 09:17 UTC. Run its manual trigger only when explicitly requested. A job timeout is a safety limit, not an expected deployment duration.
-4. Targeted Repairs: Do not fix unrelated legacy phone layout tests, layout snapshots, or missing historical fixtures during a targeted UI repair. Preserve their assertions and report unrelated failures separately.
-5. LIVE Confirmation: A deployment is not fully live until the final GitHub Pages workflow succeeds and its hosted current-release descriptor and immutable fingerprint check pass for the published main commit. A push, passing PR, merge, or Pages branch publication alone is insufficient.
-
-Pages builds and seals the merged main artifact, validates it without browsers, publishes the frontend, and verifies the hosted fingerprint. Standard PR checks emit no publication proof. Database integration validation runs in the independent backend workflow before production changes; browser and performance diagnostics remain nightly-only.
-
-### Fast Deployment & Execution Policy
-
-1. Targeted Local Verification Only: Run unit and lint/type checks strictly scoped to modified files. Never execute full repository-wide test suites, browser emulators, performance benchmarks, or disposable database integrations locally during standard delivery.
-2. No Unprompted Historical Replays: Do not run historical database replays or migration replay fixtures unless a new SQL migration is explicitly introduced.
-3. Strict Zero-Scope-Creep Rule: Do not halt execution to fix unrelated legacy tests or missing older fixtures.
-4. Lightweight Pre-Commit Hooks: Pre-commit hooks must only run formatting/syntax checks against staged files. Never run sandbox assertions or full database validations inside pre-commit hooks.
-5. Fast Hand-off to CI: Commit functional changes rapidly and push to the remote branch. GitHub Actions runs unit/lint PR checks, independent publication and backend validation, and scheduled nightly diagnostics. Continue automatically through merging and verified publication under the permanent CI/CD override below.
-
-## Implementation and Delivery
-
-- Map the direct consumers of changed schema, security rules, or core UI behavior before editing. Include necessary dependent changes in the feature commit; preserve unrelated work.
-- Use an isolated `codex/` candidate branch targeting `main`. Keep application release markers synchronized with `package.json` using the release-version tooling.
-- Run focused local unit/lint checks for the changed behavior, commit, and push immediately. Leave browser and performance suites to Nightly Validation and database integration checks to backend predeployment validation.
-- Immediately create a new branch's PR with `gh pr create --fill`. Reuse an existing open PR for subsequent pushes to that branch.
-- GitHub Actions owns complete validation, validated merging, production publication, and hosted verification. Automatically request the PR merge, enable auto-merge if required checks are pending, and continue watching publication. Do not run exact-commit candidate proofs manually or bypass release gates.
-- After pushing and creating the PR, automatically monitor its checks, merge completion, and applicable frontend and backend publication workflows through final hosted verification. Do not stop at a PR hand-off or request another manual review.
-- Report a production release as live only after successful final hosted publication is confirmed. A pushed branch or merged PR alone is not confirmation.
-
-## Focused Remediation and File Hygiene
-
-- When asked to diagnose CI, read the failed job's logs and repair only failures directly caused by the authorized changes. Preserve assertions; do not fix unrelated legacy tests or missing historical fixtures.
-- Keep task changes committed and preserve unrelated changes, shared resources, credentials, production data, and diagnostics needed for unresolved failures.
-- Remove only confirmed obsolete artifacts within the task's scope. Verify resolved paths before recursive cleanup; never broadly clean a shared workspace.
-
-## PERMANENT OVERRIDE: Fully Automated CI/CD Deployment Protocol
-
-Effective immediately, I am removing the requirement for manual Pull Request reviews and deployment hand-offs. Do not stop at the staging or PR phase.
-From now on, you must adhere to this new deployment protocol:
-
-1. **Auto-Merge Everything:** Once you have completed coding and local tests have passed, automatically create the PR and immediately merge it into the `main` branch.
-2. **Monitor & Confirm:** Start your deployment watchers automatically. Monitor the GitHub Actions workflows until completion.
-3. **Report Live Status:** Only report back to me when the frontend and backend publication processes are 100% complete and the changes are live in production.
-
-This override applies to all current and future implementation chats working in this repository and supersedes conflicting review, merge, hand-off, and monitoring instructions above or in supporting documents.
-
-Request the merge immediately; when GitHub requires checks or a merge queue, enable auto-merge and keep monitoring until the merge completes. Follow configured GitHub protections without adding a manual review requirement.
-
-Continue through final Pages hosted release-descriptor and immutable fingerprint verification and every applicable backend publication. A backend workflow that confirms no backend changes are required satisfies that part of a documentation-only release. If an external blocker or failed workflow prevents completion, report the specific failure truthfully; do not describe a partial deployment as live.
+**Deployment Architecture & Execution**
+* **Decoupled Pipelines:** GitHub Pages frontend publication and Supabase/Apps Script backend deployment are fully independent. Backend validation failures must not gate frontend publication.
+* **Nightly Validation Isolation:** Browser checks, phone emulators, layout snapshots, timing checks, and performance benchmarks belong EXCLUSIVELY to Nightly Validation (09:17 UTC). Never run these during standard PR delivery. 
+* **The Delivery Sequence:** Use an isolated `codex/` branch. Auto-merge the PR immediately upon passing scoped local tests. Monitor the GitHub Actions workflows and report live status only when the frontend and/or backend publications are 100% complete. Do not request manual PR reviews.
