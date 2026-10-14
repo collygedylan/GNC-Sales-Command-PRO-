@@ -57,7 +57,7 @@ insert into public.ph_inventory_row_assignments(
   present_in_drive,source_revision,revision
 ) values (
   'batch-stale-fixture','batch-stale-fixture','BATCH-STALE','BATCH-STALE',
-  'existing_fixture',true,0,1
+  'unresolved_new',true,0,1
 );
 
 select app_sync_private.begin_import(

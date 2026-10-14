@@ -93,7 +93,8 @@ export function discoverTests({ root = repositoryRoot, group, harness } = {}) {
   if (RUNTIME_GROUPS[group]) {
     const candidates = group === 'sandbox-pgtap'
       ? files.filter(file => file.startsWith('supabase/sandbox/tests/') && /_test\.sql$/.test(file))
-      : files;
+      : files.filter(file => !file.startsWith('supabase/migrations/')
+        && !file.startsWith('supabase/archive_migrations/'));
     const tests = candidates.filter(file => readTestAnnotations({ root: absoluteRoot, file })
       .some(annotation => annotation.type === 'runtime' && annotation.value.split(',').includes(RUNTIME_GROUPS[group]))).sort();
     if (group === 'sql-canonical' && !tests.length) throw new Error('SQL_CANONICAL_TESTS_REQUIRED');

@@ -18180,6 +18180,10 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_inventory_row_assignments_batch_v1: {
+        Args: { p_batch_size?: number; p_import_run_id: string }
+        Returns: Json
+      }
       reconcile_request_folder_completion_window_v2: {
         Args: { p_dry_run?: boolean; p_from: string; p_to: string }
         Returns: Json

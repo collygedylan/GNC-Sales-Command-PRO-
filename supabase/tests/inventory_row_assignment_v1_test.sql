@@ -29,9 +29,11 @@ select ok(position('ph_itemcode_default_owners' in pg_get_functiondef(
   and position('ph_inventory_row_assignments' in pg_get_functiondef(
   'app_sync_private.begin_import(text[],uuid,text[])'::regprocedure))>0,
   'master imports fence both derived assignment datasets');
-select ok(position('reconcile_inventory_row_assignments_v1' in pg_get_functiondef(
-  'app_sync_private.advance_import(uuid,text)'::regprocedure))>0,
-  'the import finalizer reconciles assignments before marking the snapshot ready');
+select ok(position('inventory_row_assignment_reconcile_finish_v1' in pg_get_functiondef(
+  'app_sync_private.advance_import(uuid,text)'::regprocedure))>0
+  and position('reconcile_inventory_row_assignments_v1' in pg_get_functiondef(
+  'private.inventory_row_assignment_reconcile_finish_v1(uuid)'::regprocedure))>0,
+  'the import finalizer validates bounded assignment progress and preserves its legacy fallback');
 select ok(exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
   and t.tgname='trg_ph_master_inventory_row_assignment_update' and not t.tgisinternal),
   'master changes resolve through statement-level transition-table processing');
