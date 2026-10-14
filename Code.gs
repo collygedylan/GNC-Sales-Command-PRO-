@@ -962,11 +962,12 @@ function beginDatasetImportFence_(sourceTables) {
   const lock = datasetImportProcessorLock_ || LockService.getScriptLock();
   const ownsLock = !lock.hasLock();
   if (ownsLock) lock.waitLock(30000);
-  const context = { runId: Utilities.getUuid(), keys: keys, lock: lock, ownsLock: ownsLock, lastHeartbeatAt: Date.now() };
+  const canonicalKeys = Array.isArray(sourceTables) ? sourceTables.slice() : [sourceTables];
+  const context = { runId: Utilities.getUuid(), keys: keys, canonicalKeys: canonicalKeys, lock: lock, ownsLock: ownsLock, lastHeartbeatAt: Date.now() };
   try {
     const result = callDatasetImportFenceRpc_('begin_dataset_import_v1', {
       p_dataset_keys: keys, p_run_id: context.runId,
-      p_canonical_keys: Array.isArray(sourceTables) ? sourceTables : [sourceTables]
+      p_canonical_keys: canonicalKeys
     });
     if (!result || result.ok !== true || result.state !== 'active') throw new Error('DATASET_IMPORT_NOT_ACTIVE');
     datasetImportFenceContext_ = context;
@@ -1019,9 +1020,53 @@ function runRequiredDatasetImportReconciliation_(stageCode, reconcile) {
   }
   throw new Error(String(stageCode) + '_INCOMPLETE');
 }
+function reconcileInventoryAssignmentsInBatches_(context) {
+  const batchSize = 100;
+  const maxCalls = 500;
+  const maxResets = 1;
+  let previousProcessed = -1;
+  let expectedTotal = null;
+  let resetCount = 0;
+  for (let call = 0; call < maxCalls; call++) {
+    heartbeatDatasetImportFence_(true);
+    const result = callDatasetImportFenceRpc_('reconcile_inventory_row_assignments_batch_v1', {
+      p_import_run_id: context.runId, p_batch_size: batchSize
+    });
+    const status = result && result.status;
+    const processed = result && result.processed;
+    const total = result && result.total;
+    if (!result || result.ok !== true || !Number.isSafeInteger(processed) || !Number.isSafeInteger(total) ||
+        processed < 0 || total < 0 || processed > total) {
+      throw new Error('ASSIGNMENT_RECONCILIATION_RESPONSE_INVALID');
+    }
+    if (status === 'reset') {
+      if (processed !== 0 || result.cursor !== null || ++resetCount > maxResets) {
+        throw new Error('ASSIGNMENT_RECONCILIATION_RESET_INVALID');
+      }
+      expectedTotal = total;
+      previousProcessed = 0;
+      continue;
+    }
+    if (expectedTotal === null) expectedTotal = total;
+    if (total !== expectedTotal) throw new Error('ASSIGNMENT_RECONCILIATION_TOTAL_CHANGED');
+    if (status === 'completed') {
+      if (processed !== total) throw new Error('ASSIGNMENT_RECONCILIATION_COMPLETION_INCOMPLETE');
+      return result;
+    }
+    if (status !== 'in_progress' || processed <= previousProcessed || processed >= total) {
+      throw new Error('ASSIGNMENT_RECONCILIATION_PROGRESS_INVALID');
+    }
+    previousProcessed = processed;
+  }
+  throw new Error('ASSIGNMENT_RECONCILIATION_CALL_LIMIT');
+}
 function closeDatasetImportFence_(context, succeeded) {
   if (!context || context.closed) return;
   try {
+    if (succeeded && context.keys && context.keys.includes('ph_master_inventory') &&
+        context.canonicalKeys && context.canonicalKeys.includes('ph_master_inventory')) {
+      reconcileInventoryAssignmentsInBatches_(context);
+    }
     const result = callDatasetImportFenceRpc_(succeeded ? 'finish_dataset_import_v1' : 'fail_dataset_import_v1', { p_run_id: context.runId });
     if (!result || result.ok !== true) throw new Error('DATASET_IMPORT_CLOSE_FAILED');
     context.closed = true;
