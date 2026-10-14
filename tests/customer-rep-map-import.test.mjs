@@ -40,6 +40,35 @@ const row = (customerId, consigneeId, repId = '', extras = []) => [
 ];
 const invoke = (ctx, name, ...args) => { ctx.__args = args; return vm.runInContext(`${name}(...__args)`, ctx); };
 
+test('customer map normalizes rep names after source identity and preserves original source evidence', () => {
+  const ctx = context();
+  for (const [original, expected] of [
+    ['Lee, Troy', 'Troy Lee'],
+    ['  Lee ,  Troy  ', 'Troy Lee'],
+    ['Alldredge, Chance - South TX', 'Chance Alldredge - South TX'],
+    ['Troy Lee', 'Troy Lee'],
+    ['Lee,', 'Lee,'],
+    ['Lee, Troy, Jr.', 'Lee, Troy, Jr.'],
+    ['InHouse Sales', 'InHouse Sales'],
+    ['', null]
+  ]) {
+    const values = row('00001', '00009', 'S12');
+    values[5] = original;
+    const snapshot = invoke(ctx, 'buildCustomerRepMapSnapshot_', [headers, values], '2026-10-09T12:00:00Z', 'CONS List 261009.xlsx');
+    const actual = snapshot.rows[0];
+    const identity = ['00001', 'Café 植物', '00009', 'Consignee™', 'S12', original.trim(), ''].join('|');
+    const expectedId = 'cust_rep_' + createHash('sha256').update(identity).digest('base64url').slice(0, 48);
+    assert.equal(actual.unique_id, expectedId, 'identity still comes from the original source name');
+    assert.equal(actual.salesrepname, expected);
+    assert.equal(actual.raw_data.SALESREPNAME, original);
+    assert.equal(actual.filename, 'CONS List 261009.xlsx');
+    assert.equal(actual.source_row_number, 2);
+    const { row_hash: rowHash, ...beforeHash } = actual;
+    assert.equal(rowHash, invoke(ctx, 'buildRowSyncHash_', beforeHash, ['imported_at', 'updated_at']));
+    assert.equal(invoke(ctx, 'normalizeImportedSalesRepName_', actual.salesrepname), expected, 'normalization is idempotent');
+  }
+});
+
 test('customer map snapshot preserves raw display strings, newer fields, blank reps, and inactive rows', () => {
   const ctx = context();
   const snapshot = invoke(ctx, 'buildCustomerRepMapSnapshot_', [headers, row('00001', '00009'), row('00002', '00010', 'R007')], '2026-10-09T12:00:00Z', 'Cons List261009.xlsx');
