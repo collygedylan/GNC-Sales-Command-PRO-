@@ -69,6 +69,16 @@ function ack(value) {
 
 function finalizerFixture({ count = 2, preflight = async () => true } = {}) {
     const calls = [];
+    const customerMapping = {
+        customeridentityid: '00012', customername: 'Garden ®', customerName: 'Garden ®',
+        consigneeidentityid: '00007', consigneename: 'North ™', consigneeName: 'North ™',
+        request_selected_salesrep_id: 'rep-a', salesrepname: 'Rep One', customerstatus: 'A', consigneestatus: 'A'
+    };
+    const customerContext = {
+        customeridentityid: customerMapping.customeridentityid, customername: customerMapping.customername,
+        consigneeidentityid: customerMapping.consigneeidentityid, consigneename: customerMapping.consigneename,
+        request_selected_salesrep_id: customerMapping.request_selected_salesrep_id
+    };
     const rows = Array.from({ length: count }, (_, index) => ({
         DOM_ID: `dom-${index}`, UNIQUE_ID: `MASTER-${index}`, COMMONNAME: `Tree ${index}`, CONTSIZE: '1 gal',
         LOCATIONCODE: 'A1', ITEMCODE: `ITEM-${index}`, PTRAVAILABLE: 5, PRIORITY: 1
@@ -90,7 +100,9 @@ function finalizerFixture({ count = 2, preflight = async () => true } = {}) {
         normalizeRequestReuseChoice: value => value, normalizeRequestDesiredMeasurementValue: value => value || '',
         navigator: { onLine: true }, ensureRequestSchemaCompatible: preflight,
         window: { AgMetricRequestSubmission: api, __gncOpsPilot: null },
-        createRequestFolderId: () => 'folder-a', resolveRequestCustomerContext: () => ({ req_consignee: 'Con A' }),
+        createRequestFolderId: () => 'folder-a', resolveRequestCustomerContext: () => ({ ...customerContext }),
+        tempRequestCustomerSelectedContext: { ...customerContext }, tempRequestCustomerSelectedFinalLabel: 'Garden ® | North ™',
+        requestModalCustomerOptionsReady: true, getRequestModalCustomerOptionsForRep: () => [customerMapping],
         isCurrentRequestCustomerContext: () => true, createStableClientBatchId: () => 'batch-built',
         getRequestSelectionIntentToken: domId => `token-${domId}`,
         selectedItemSources: new Map(rows.map(row => [row.DOM_ID, 'drive'])),
@@ -104,7 +116,7 @@ function finalizerFixture({ count = 2, preflight = async () => true } = {}) {
         firstNonEmptyValue: (...values) => values.find(value => value !== undefined && value !== null && value !== '')
     };
     vm.runInNewContext(extractFunction('finalizeRequestAction', 'function processTabSelection('), context);
-    return { context, rows, calls };
+    return { context, rows, calls, customerMapping, customerContext };
 }
 
 function outboxTransactionFixture(initialRecords = [], { failCommit = false } = {}) {
@@ -280,13 +292,19 @@ test('concurrent duplicate submits share one in-flight send for the same owner a
 
 test('flush replays the exact durable batch ID and request payload', async () => {
     const f = fixture();
-    const request = entry();
+    const mapping = {
+        customeridentityid: '00012', customername: 'Garden ®', consigneeidentityid: '00007', consigneename: 'North ™',
+        request_selected_salesrep_id: 'rep-a', requested_by: 'Rep One', request_selected_rep_display: 'Rep One',
+        request_selected_rep_username: null
+    };
+    const request = entry({ requests: [{ unique_id: 'REQ-1', ...mapping }] });
     f.entries.set(request.clientBatchId, structuredClone(request));
     const result = await f.controller.flush();
     assert.equal(result.sent, 1);
     assert.equal(f.sent.length, 1);
     assert.equal(f.sent[0].clientBatchId, request.clientBatchId);
     assert.deepEqual(f.sent[0].requests, request.requests);
+    assert.deepEqual(f.sent[0].requests[0], { unique_id: 'REQ-1', ...mapping }, 'retry retains the verified customer and sales rep tuple');
 });
 
 test('restore exposes only entries for the current authenticated owner', async () => {
@@ -402,8 +420,11 @@ test('acknowledgment clears only original selection intents and preserves later 
 });
 
 test('captured request form snapshot includes current modal fields, selection, recipients, and input values', () => {
+    const selectedMapping = { customeridentityid: '00012', consigneeidentityid: '00007', request_selected_salesrep_id: 'sales-id' };
     const context = {
         tempSelectedReqRep: 'rep-a', tempSelectedReqSalesrepId: 'sales-id', tempReqFolder: 'Folder A', tempReqCust: 'Grower A',
+        tempRequestCustomerSelectedContext: selectedMapping, tempRequestCustomerSelectedFinalLabel: 'Grower A | North',
+        tempRequestCustomerSelectedCustomerKey: 'id:00012', tempRequestCustomerSelectedCustomerName: 'Grower A',
         tempReqAppendToExistingFolder: true, tempExistingReqCustomerSearch: 'grower', tempExistingReqSelectedCustomer: { id: 'cust-1' },
         tempExistingReqConsigneeSearch: 'consignee', tempExistingReqSelectedConsignee: { id: 'con-1' }, tempExistingReqFolderSearch: 'folder',
         previousReqStep: 'review', requestQtyStepDomIds: ['row-a'], requestQtyStepIndex: 1, requestQtyStepItemsData: { 'row-a': { qty: '' } },
@@ -415,6 +436,10 @@ test('captured request form snapshot includes current modal fields, selection, r
     const snapshot = context.captureRequestSubmissionForm();
     assert.equal(snapshot.customer, 'Grower A');
     assert.equal(snapshot.append, true);
+    assert.deepEqual({ ...snapshot.selectedMapping }, selectedMapping);
+    assert.equal(snapshot.selectedMappingLabel, 'Grower A | North');
+    assert.equal(snapshot.selectedMappingCustomerKey, 'id:00012');
+    assert.equal(snapshot.selectedMappingCustomerName, 'Grower A');
     assert.deepEqual(Array.from(snapshot.domIds), ['row-a']);
     assert.deepEqual(Array.from(snapshot.recipients, (recipient) => recipient.email), ['rep@example.com']);
     assert.deepEqual(Array.from(snapshot.inputs, (input) => [input.id, input.value, input.checked]), [
@@ -425,16 +450,22 @@ test('captured request form snapshot includes current modal fields, selection, r
 test('restoring a saved request snapshot rebuilds modal state and original input values', () => {
     const nodes = new Map([['request-qty', { value: 'changed', checked: true }]]);
     const calls = [];
+    const mappingRefreshes = [];
     const context = {
         getRequestSubmissionOwnerKey: () => 'https://db.example|user-a|alice',
         showRequestModalBase: () => calls.push('show'), activeRequestSubmissionBatchId: '',
         tempSelectedReqRep: '', tempSelectedReqSalesrepId: '', tempReqFolder: '', tempReqCust: '', tempReqAppendToExistingFolder: false,
+        tempRequestCustomerSelectedContext: null, tempRequestCustomerSelectedFinalLabel: '',
+        tempRequestCustomerSelectedCustomerKey: '', tempRequestCustomerSelectedCustomerName: '',
         tempExistingReqCustomerSearch: '', tempExistingReqSelectedCustomer: null, tempExistingReqConsigneeSearch: '', tempExistingReqSelectedConsignee: null,
         tempExistingReqFolderSearch: '', previousReqStep: '', driveQuickRequestFlow: false, detailRequestSourceDomIds: [], requestQtyStepDomIds: [],
         requestQtyStepIndex: 0, requestQtyStepItemsData: {}, tempRequestEmailChainSelectedEmails: new Set(), tempRequestEmailChainRecipientByEmail: new Map(),
         requestSubmissionEntries: new Map(), canUseRequestEmailChainPicker: () => true,
+        ensureRequestModalCustomerOptionsReady: force => mappingRefreshes.push(force),
         showRequestEmailChainFinalStep: () => calls.push('email-step'), updateRequestQtyStepSubmitButton() {},
-        goToQtyStep: (...args) => calls.push(args), document: { getElementById: (id) => nodes.get(id) || null },
+        goToQtyStep: (...args) => calls.push([args, context.tempRequestCustomerSelectedContext,
+            context.tempRequestCustomerSelectedFinalLabel, context.tempRequestCustomerSelectedCustomerKey,
+            context.tempRequestCustomerSelectedCustomerName]), document: { getElementById: (id) => nodes.get(id) || null },
         JSON, Set, Map
     };
     vm.runInNewContext(extractFunction('restoreRequestSubmissionForm', 'function clearAcknowledgedRequestSelection('), context);
@@ -442,6 +473,8 @@ test('restoring a saved request snapshot rebuilds modal state and original input
         ownerKey: 'https://db.example|user-a|alice', clientBatchId: 'batch-restore',
         formSnapshot: {
             rep: 'rep-b', salesrepId: 'sales-b', folder: 'Folder B', customer: 'Grower B', append: false,
+            selectedMapping: { customeridentityid: 'c2', consigneeidentityid: 'd2', request_selected_salesrep_id: 'sales-b' },
+            selectedMappingLabel: 'Grower B | South', selectedMappingCustomerKey: 'id:c2', selectedMappingCustomerName: 'Grower B',
             customerSearch: 'g', selectedCustomer: { id: 'c2' }, consigneeSearch: 'con', selectedConsignee: { id: 'd2' },
             folderSearch: 'f', previousStep: 'picker', quickMode: true, detailDomIds: ['detail-b'], domIds: ['row-b'], index: 2,
             itemsData: { 'row-b': { qty: '0' } }, recipients: [{ email: 'rep-b@example.com', name: 'Rep B' }], emailStep: true,
@@ -452,6 +485,11 @@ test('restoring a saved request snapshot rebuilds modal state and original input
     assert.equal(context.restoreRequestSubmissionForm(saved), true);
     assert.equal(context.activeRequestSubmissionBatchId, 'batch-restore');
     assert.equal(context.tempReqCust, 'Grower B');
+    assert.deepEqual(context.tempRequestCustomerSelectedContext, saved.formSnapshot.selectedMapping);
+    assert.equal(context.tempRequestCustomerSelectedFinalLabel, 'Grower B | South');
+    assert.equal(context.tempRequestCustomerSelectedCustomerKey, 'id:c2');
+    assert.equal(context.tempRequestCustomerSelectedCustomerName, 'Grower B');
+    assert.deepEqual(mappingRefreshes, [true], 'restored rep starts a fresh background mapping read');
     assert.equal(context.driveQuickRequestFlow, true);
     assert.deepEqual(Array.from(context.detailRequestSourceDomIds), ['command-row-a', 'command-row-b'],
         'restore must constrain modal details to this saved command rather than the current cart');
@@ -459,7 +497,9 @@ test('restoring a saved request snapshot rebuilds modal state and original input
     assert.equal(nodes.get('request-qty').value, '0');
     assert.equal(nodes.get('request-qty').checked, false);
     assert.equal(calls.includes('email-step'), true);
-    assert.deepEqual(calls[1], [null, 'Grower B', 'picker', false, { 'row-b': { qty: '0' } }, 2]);
+    assert.deepEqual(calls[1][0], [null, 'Grower B', 'picker', false, { 'row-b': { qty: '0' } }, 2]);
+    assert.deepEqual(calls[1][1], saved.formSnapshot.selectedMapping, 'mapping context must be restored before rebuilding the quantity step');
+    assert.equal(calls[1][2], saved.formSnapshot.selectedMappingLabel);
 });
 
 test('restored selection updates the real toolbar helpers and ignores a different owner', () => {
@@ -553,6 +593,45 @@ test('storage failure leaves selections intact and unlocks the saved request for
     assert.equal(calls.some(call => call[0] === 'toast' && call[1] === 'Storage Error'), true);
 });
 
+test('mapping rejection keeps the saved form editable and does not schedule an automatic retry', async () => {
+    const mappedRequest = {
+        unique_id: 'REQ-MAP-1', customeridentityid: '00012', customername: 'Garden ®',
+        consigneeidentityid: '00007', consigneename: 'North ™', request_selected_salesrep_id: 'rep-a',
+        requested_by: 'Rep One', request_selected_rep_display: 'Rep One', request_selected_rep_username: null
+    };
+    const submitted = entry({
+        clientBatchId: 'mapped-batch', requests: [mappedRequest],
+        formSnapshot: { customer: 'Garden ® | North ™', qtyByUid: { 'MASTER-1': '2' }, noteByUid: { 'MASTER-1': 'Call first' }, recipients: ['rep@example.com'] },
+        selectionSnapshot: [{ domId: 'drive-row', item: { UNIQUE_ID: 'MASTER-1' }, selectionToken: 'intent-a' }]
+    });
+    const rejected = { ...submitted, status: 'review-required' };
+    const calls = [];
+    const context = {
+        getRequestSubmissionOwnerKey: () => submitted.ownerKey, activeRequestSubmissionBatchId: '',
+        requestSubmissionEntries: new Map(),
+        setRequestSubmissionFormLocked: locked => calls.push(['lock', locked]),
+        showToast: (...args) => calls.push(['toast', ...args]),
+        getRequestSubmissionController: () => ({ submit: async () => ({ status: 'review-required', entry: rejected,
+            error: Object.assign(new Error('REQUEST_CUSTOMER_MAPPING_REQUIRED'), { code: '22023' }) }) }),
+        isRequestCustomerMappingError: error => /REQUEST_CUSTOMER_MAPPING_REQUIRED/.test(error?.message || ''),
+        scheduleRequestOutboxRetry: () => calls.push(['retry']), updateRequestQtyStepSubmitButton() {}
+    };
+    vm.runInNewContext(extractFunction('performRequestSubmission', 'let lastLocalRequestDurabilityAuditAt ='), context);
+    assert.equal(await context.performRequestSubmission(submitted), false);
+    assert.equal(context.requestSubmissionEntries.get('mapped-batch').status, 'review-required');
+    assert.equal(context.activeRequestSubmissionBatchId, 'mapped-batch');
+    assert.deepEqual(submitted.requests[0], mappedRequest);
+    assert.deepEqual(submitted.formSnapshot, {
+        customer: 'Garden ® | North ™', qtyByUid: { 'MASTER-1': '2' }, noteByUid: { 'MASTER-1': 'Call first' }, recipients: ['rep@example.com']
+    });
+    assert.deepEqual(calls.filter(call => call[0] === 'lock'), [['lock', true], ['lock', false]]);
+    assert.equal(calls.some(call => call[0] === 'retry'), false);
+    const toast = calls.find(call => call[0] === 'toast' && call[1] === 'Request Not Saved');
+    assert.ok(toast);
+    assert.match(toast[2], /quantities, notes, and recipients are saved/i);
+    assert.doesNotMatch(toast.join(' '), /REQUEST_CUSTOMER_MAPPING_REQUIRED/);
+});
+
 test('submitRequestWithQtys awaits retry of the active saved batch and prevents duplicate submits', async () => {
     const gate = deferred();
     const calls = [];
@@ -589,6 +668,150 @@ test('finalizeRequestAction builds bounded request payloads with blank and expli
     assert.equal(outbox.requests[1].req_qty, '0', 'explicit zero is not converted to blank or omitted');
     assert.equal(outbox.requests[0].request_folder, 'folder-a');
     assert.equal(outbox.formSnapshot.customer, 'saved-customer');
+});
+
+test('finalizeRequestAction attaches the verified mapping after creator audit fields', async () => {
+    const f = finalizerFixture();
+    f.context.buildRequestCreatorAuditInfo = () => ({
+        request_created_by_username: 'alice', requested_by: 'Wrong Rep', request_selected_rep_display: 'Wrong Rep',
+        request_selected_rep_username: 'wrong-username'
+    });
+    f.context.applyRequestCreatorAuditFields = (payload, audit) => Object.assign(payload, audit);
+    assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
+        'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
+    }), true);
+    const outbox = f.calls.find(call => call[0] === 'submit')[1];
+    const submitted = outbox.requests[0];
+    assert.deepEqual({
+        customeridentityid: submitted.customeridentityid, customername: submitted.customername,
+        consigneeidentityid: submitted.consigneeidentityid, consigneename: submitted.consigneename,
+        request_selected_salesrep_id: submitted.request_selected_salesrep_id, requested_by: submitted.requested_by,
+        request_selected_rep_display: submitted.request_selected_rep_display,
+        request_selected_rep_username: submitted.request_selected_rep_username
+    }, {
+        customeridentityid: f.customerMapping.customeridentityid, customername: f.customerMapping.customername,
+        consigneeidentityid: f.customerMapping.consigneeidentityid, consigneename: f.customerMapping.consigneename,
+        request_selected_salesrep_id: f.customerMapping.request_selected_salesrep_id, requested_by: 'Rep One',
+        request_selected_rep_display: 'Rep One', request_selected_rep_username: null
+    });
+    assert.equal(submitted.request_created_by_username, 'alice', 'creator audit fields remain present');
+    assert.equal(outbox.requests[0].request_selected_rep_username, null,
+        'the outbox row keeps the verified null username instead of the audit fallback');
+});
+
+test('finalizeRequestAction blocks submission when the selected mapping is not ready and preserves the form', async () => {
+    let preflightCalls = 0;
+    const f = finalizerFixture({ preflight: async () => { preflightCalls++; return true; } });
+    f.context.requestModalCustomerOptionsReady = false;
+    const selectionBefore = { ...f.context.tempRequestCustomerSelectedContext };
+    assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
+        'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
+    }), false);
+    assert.equal(preflightCalls, 0, 'mapping validation happens before schema preflight');
+    assert.equal(f.calls.some(call => call[0] === 'submit'), false);
+    assert.equal(f.context.tempReqCust, 'Grower A');
+    assert.deepEqual(f.context.tempRequestCustomerSelectedContext, selectionBefore);
+    const toast = f.calls.find(call => call[0] === 'toast');
+    assert.ok(toast, 'show an actionable mapping message');
+    assert.doesNotMatch(toast.join(' '), /REQUEST_CUSTOMER_MAPPING_REQUIRED/);
+});
+
+test('finalizeRequestAction rechecks mapping readiness after asynchronous schema preflight', async () => {
+    let f;
+    f = finalizerFixture({ preflight: async () => { f.context.requestModalCustomerOptionsReady = false; return true; } });
+    const selectionBefore = { ...f.context.tempRequestCustomerSelectedContext };
+    assert.equal(await f.context.finalizeRequestAction(null, 'Garden ® | North ™', {
+        'MASTER-0': { qty: '2', reuse: 'NO', reserve: 'NO' }
+    }), false);
+    assert.equal(f.calls.some(call => call[0] === 'submit'), false, 'a mapping that became stale during preflight is never queued');
+    assert.deepEqual(f.context.tempRequestCustomerSelectedContext, selectionBefore);
+    assert.equal(f.context.tempReqCust, 'Grower A');
+});
+
+test('submit button blocks only final submission when mapped customer context is stale', () => {
+    const button = {
+        disabled: false, innerText: '', attrs: new Map(),
+        setAttribute(name, value) { this.attrs.set(name, value); }, removeAttribute(name) { this.attrs.delete(name); }
+    };
+    const mappingFeedback = { toggles: [], classList: { toggle: (...args) => mappingFeedback.toggles.push(args) } };
+    const resolvedArgs = [];
+    let mappingCurrent = false;
+    const context = {
+        requestSubmitInFlight: false, requestQtyStepDomIds: ['row-a'], requestQtyStepIndex: 0, requestQtyEmailStepActive: false,
+        getActiveRequestSubmissionEntry: () => null, getCurrentRequestReuseDecisionState: () => ({ valid: true }),
+        setRequestSubmissionFormLocked() {}, isCurrentRequestCustomerContext: () => mappingCurrent,
+        resolveRequestCustomerContext: (...args) => { resolvedArgs.push(args); return null; },
+        tempReqCust: 'Garden ® | North ™', tempReqAppendToExistingFolder: false, tempReqFolder: '', requestModalCustomerOptionsLoading: false,
+        tempRequestCustomerSelectedContext: { customeridentityid: '00012' }, canUseRequestEmailChainPicker: () => false,
+        document: { getElementById: id => id === 'request-submit-btn' ? button : id === 'request-mapping-feedback' ? mappingFeedback : null }
+    };
+    vm.runInNewContext(extractFunction('updateRequestQtyStepSubmitButton', 'function renderRequestQtyStepCurrentItem('), context);
+    context.updateRequestQtyStepSubmitButton();
+    assert.equal(button.innerText, 'SUBMIT REQUEST');
+    assert.equal(button.disabled, true, 'the final submit action requires a current mapped customer context');
+    assert.deepEqual(resolvedArgs[0], ['Garden ® | North ™', '']);
+    assert.deepEqual(mappingFeedback.toggles, [['hidden', false]], 'inline feedback is shown when the current folder mapping cannot be verified');
+
+    context.requestQtyStepDomIds = ['row-a', 'row-b'];
+    context.requestQtyStepIndex = 0;
+    context.updateRequestQtyStepSubmitButton();
+    assert.equal(button.innerText, 'NEXT ITEM');
+    assert.equal(button.disabled, false, 'item navigation stays available while final mapping validation is pending');
+
+    context.requestQtyStepDomIds = ['row-a'];
+    context.requestQtyStepIndex = 0;
+    context.canUseRequestEmailChainPicker = () => true;
+    context.updateRequestQtyStepSubmitButton();
+    assert.equal(button.innerText, 'NEXT');
+    assert.equal(button.disabled, false, 'email-chain navigation stays available while final mapping validation is pending');
+});
+
+test('backing up and reselecting a new folder preserves current quantities, notes, and email recipients', () => {
+    const quantityInput = { value: '4', getAttribute: name => name === 'data-uid' ? 'MASTER-1' : '' };
+    const noteInput = { value: 'Call before delivery', getAttribute: name => name === 'data-uid' ? 'MASTER-1' : '' };
+    const recipientInput = {
+        getAttribute: name => ({ 'data-rep-email': 'rep@example.com', 'data-rep-name': 'Rep One', 'data-request-email-chain-group': 'sales' }[name] || '')
+    };
+    const modalClasses = new Set(['request-qty-active']);
+    const node = () => ({ classList: {
+        add: name => modalClasses.add(name), remove: name => modalClasses.delete(name)
+    } });
+    const nodes = new Map([
+        ['request-rep-modal', node()], ['step-3-qty', node()], ['step-1.5-folder', node()],
+        ['step-2-cust', node()]
+    ]);
+    const rendered = [];
+    const state = {
+        requestQtyStepItemsData: { 'MASTER-1': { qty: '1', note: 'Old note' } },
+        requestQtyStepDomIds: ['row-a'], requestQtyStepIndex: 0, requestQtyEmailStepActive: true,
+        tempRequestEmailChainSelectedEmails: new Set(), tempRequestEmailChainRecipientByEmail: new Map(),
+        previousReqStep: 'step-1.5-folder', tempReqAppendToExistingFolder: false, tempReqFolder: '', tempReqCust: 'Garden ® | North ™',
+        document: {
+            getElementById: id => nodes.get(id) || null,
+            querySelectorAll: selector => selector === '.item-qty-input' ? [quantityInput]
+                : selector === '.item-note-input' ? [noteInput]
+                : selector === '[data-request-email-chain-recipient="true"]:checked' ? [recipientInput] : []
+        },
+        getRequestQtyStepData: uid => state.requestQtyStepItemsData[uid] || (state.requestQtyStepItemsData[uid] = {}),
+        normalizeRequestEmailAddress: value => String(value).trim().toLowerCase(),
+        normalizeEmailRecipientGroupKey: value => String(value).trim().toUpperCase(),
+        buildRequestModalCustomerOptionsCache() {}, ensureRequestModalCustomerOptionsReady() {}, renderExistingRequestFolderPicker() {},
+        showRequestCustomerStep() {}, populateCustomerList() {}, getRequestSourceDomIds: () => ['row-a'],
+        cloneRequestQtyStepItemsData: value => JSON.parse(JSON.stringify(value || {})),
+        renderRequestQtyStepCurrentItem: () => rendered.push(JSON.parse(JSON.stringify(state.requestQtyStepItemsData)))
+    };
+    vm.runInNewContext(extractFunction('captureRequestQtyStepRenderedInputs', 'function getCurrentRequestReuseDecisionState('), state);
+    vm.runInNewContext(extractFunction('syncRequestEmailChainSelectionFromInputs', 'function handleRequestEmailChainRecipientChange('), state);
+    vm.runInNewContext(extractFunction('goBackFromQty', 'function collectRequestQtyStepItemsData('), state);
+    vm.runInNewContext(extractFunction('goToQtyStep', 'function goBackFromQty('), state);
+
+    state.goBackFromQty();
+    assert.deepEqual(state.requestQtyStepItemsData['MASTER-1'], { qty: '4', note: 'Call before delivery' });
+    assert.equal(state.tempRequestEmailChainSelectedEmails.has('rep@example.com'), true);
+    assert.equal(state.tempRequestEmailChainRecipientByEmail.get('rep@example.com').name, 'Rep One');
+    state.goToQtyStep(null, 'Garden ® | North ™', 'step-1.5-folder', false, null, 0);
+    assert.deepEqual({ ...rendered[0]['MASTER-1'] }, { qty: '4', note: 'Call before delivery' });
+    assert.equal(state.tempRequestEmailChainSelectedEmails.has('rep@example.com'), true);
 });
 
 test('finalizeRequestAction rejects over 100 rows before schema preflight or submission', async () => {

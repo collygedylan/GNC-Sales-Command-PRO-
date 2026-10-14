@@ -7107,7 +7107,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
     <script src="./assets/live-sync-registry.js?v=V2026.10.13.021"></script>
     <script src="./assets/live-sync-adapters.js?v=V2026.10.13.021"></script>
     <script src="./assets/live-sync-coordinator.js?v=V2026.10.13.021"></script>
-    <script src="./assets/request-submission.js?v=V2026.10.13.021"></script>
+    <script src="./assets/request-submission.js?v=V2026.10.13.021&mapping=20261014"></script>
     <script src="./assets/ops-precision-pilot.js?v=V2026.10.13.021"></script>
     <script src="./assets/production-schedule.js?v=V2026.10.13.021"></script>
     <script src="./assets/eval-reports-engine.js?v=V2026.10.13.021"></script>
@@ -7627,6 +7627,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 </div>
                 <div id="request-qty-scroll-body" class="min-h-0 flex-1 overflow-y-auto pr-1 pb-3">
                     <div id="request-folder-context" class="hidden rounded-xl border border-yellow-200 bg-yellow-50 p-3 mb-3 text-xs font-bold text-yellow-900"></div>
+                    <div id="request-mapping-feedback" role="alert" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 mb-3 text-xs font-bold text-amber-900">Customer choices need to be checked. Your quantities, notes, and recipients are saved.<button type="button" class="request-secondary-action mt-2" onclick="goBackFromQty()">Review Customer / Consignee</button></div>
                     <div id="qty-list-container" class="flex flex-col gap-3 mb-4 p-1"></div>
                     <div id="request-email-chain-panel" class="hidden mb-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 shadow-sm"></div>
                 </div>
@@ -31772,6 +31773,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         function captureRequestSubmissionForm() {
             return JSON.parse(JSON.stringify({
                 rep: tempSelectedReqRep, salesrepId: tempSelectedReqSalesrepId,
+                selectedMapping: tempRequestCustomerSelectedContext, selectedMappingLabel: tempRequestCustomerSelectedFinalLabel,
+                selectedMappingCustomerKey: tempRequestCustomerSelectedCustomerKey, selectedMappingCustomerName: tempRequestCustomerSelectedCustomerName,
                 folder: tempReqFolder, customer: tempReqCust, append: tempReqAppendToExistingFolder,
                 customerSearch: tempExistingReqCustomerSearch, selectedCustomer: tempExistingReqSelectedCustomer,
                 consigneeSearch: tempExistingReqConsigneeSearch, selectedConsignee: tempExistingReqSelectedConsignee,
@@ -31829,6 +31832,10 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             showRequestModalBase({ restoringSubmission: true });
             activeRequestSubmissionBatchId = entry.clientBatchId;
             tempSelectedReqRep = form.rep; tempSelectedReqSalesrepId = form.salesrepId || '';
+            tempRequestCustomerSelectedContext = form.selectedMapping ? JSON.parse(JSON.stringify(form.selectedMapping)) : null;
+            tempRequestCustomerSelectedFinalLabel = form.selectedMappingLabel || '';
+            tempRequestCustomerSelectedCustomerKey = form.selectedMappingCustomerKey || '';
+            tempRequestCustomerSelectedCustomerName = form.selectedMappingCustomerName || '';
             tempReqFolder = form.folder; tempReqCust = form.customer; tempReqAppendToExistingFolder = form.append;
             tempExistingReqCustomerSearch = form.customerSearch; tempExistingReqSelectedCustomer = form.selectedCustomer;
             tempExistingReqConsigneeSearch = form.consigneeSearch; tempExistingReqSelectedConsignee = form.selectedConsignee;
@@ -31840,6 +31847,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             requestQtyStepItemsData = JSON.parse(JSON.stringify(form.itemsData || {}));
             tempRequestEmailChainSelectedEmails = new Set((form.recipients || []).map(rep => rep.email));
             tempRequestEmailChainRecipientByEmail = new Map((form.recipients || []).map(rep => [rep.email, rep]));
+            // Base modal loading may target another rep; supersede it without waiting to restore the form.
+            ensureRequestModalCustomerOptionsReady(true);
             goToQtyStep(form.append ? form.folder : null, form.customer, form.previousStep, form.append, form.itemsData || {}, form.index || 0);
             (form.inputs || []).forEach(saved => {
                 const control = document.getElementById(saved.id);
@@ -31916,9 +31925,14 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                     } catch {}
                     requestSubmissionEntries.set(entry.clientBatchId, entry);
                     scheduleRequestOutboxRetry(entry);
+                    if (isRequestCustomerMappingError(error)) {
+                        markDatasetDirty('customerRepMap', 'request-mapping-rejected');
+                        requestMappingRpcCache.delete(entry.requests?.[0]?.request_selected_salesrep_id || getRequestSelectedSalesrepId(entry.requestedBy));
+                        requestModalCustomerOptionsReady = false;
+                        requestModalCustomerOptionsError = 'Choose an active customer and consignee again. Your Request details are saved.';
+                    }
                     if (activeRequestSubmissionBatchId === entry.clientBatchId) updateRequestQtyStepSubmitButton();
-                    if (entry.status === 'review-required') showToast('Request Not Saved', 'Review your retained Request and refresh access or customer choices. ' + String(error?.message || ''), true);
-                    if (isRequestCustomerMappingError(error)) markDatasetDirty('customerRepMap', 'request-mapping-rejected');
+                    if (entry.status === 'review-required' && !isRequestCustomerMappingError(error)) showToast('Request Not Saved', 'Review your retained Request and refresh access or customer choices. ' + String(error?.message || ''), true);
                 },
                 onCleanupError: error => console.warn('Request local bookkeeping deferred.', error?.code || 'REQUEST_LOCAL_CLEANUP'),
                 onAcknowledged: (entry, result) => {
@@ -31984,7 +31998,9 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
                 activeRequestSubmissionBatchId = '';
                 showToast('Storage Error', 'Could not save this Request on your device. Nothing was sent. Your cart and form are still here; free device storage and retry.', true);
             } else if (outcome.status === 'review-required') {
-                showToast('Request Not Saved', String(outcome.error?.message || 'Review the saved Request, refresh your access and customer choices, then retry.'), true);
+                showToast('Request Not Saved', isRequestCustomerMappingError(outcome.error)
+                    ? 'Choose an active customer and consignee again. Your cart, quantities, notes, and recipients are saved.'
+                    : String(outcome.error?.message || 'Review the saved Request, refresh your access and customer choices, then retry.'), true);
             } else {
                 scheduleRequestOutboxRetry(outcome.entry);
                 showToast('Request Pending', 'Your cart and form are saved on this device. The same Request will retry when connected. Use Retry Saved Request to check again.', true);
@@ -57306,6 +57322,8 @@ function toggleDriveQuickRequestItem(domId) {
             if (folderStep && !folderStep.classList.contains('hidden')) {
                 scheduleRequestModalSearchRender('existing-folder-refresh', '', () => renderExistingRequestFolderPicker(), { force: true, skipDebounce: true });
             }
+            const qtyStep = document.getElementById('step-3-qty');
+            if (qtyStep && !qtyStep.classList.contains('hidden')) updateRequestQtyStepSubmitButton();
         }
 
         function getRequestCustomerContext(row = {}) {
@@ -57326,8 +57344,17 @@ function toggleDriveQuickRequestItem(domId) {
         function resolveRequestCustomerContext(label = '', folderId = '') {
             if (!folderId && label === tempRequestCustomerSelectedFinalLabel && tempRequestCustomerSelectedContext) return { ...tempRequestCustomerSelectedContext };
             const folderRows = folderId ? (requestsInventory || []).filter((row) => getRequestFolderName(row) === folderId) : [];
+            let options = null;
             const contexts = new Map(folderRows.map((row) => {
-                const context = getRequestCustomerContext(row);
+                let context = getRequestCustomerContext(row);
+                if (!context.request_selected_salesrep_id) {
+                    // Resolve older rows before grouping so mixed old/new folder rows retain one identity.
+                    if (!options) options = getRequestModalCustomerOptionsForRep(tempSelectedReqRep);
+                    const matches = options.filter(option => option.customeridentityid === context.customeridentityid
+                        && option.consigneeidentityid === context.consigneeidentityid && option.customername === context.customername
+                        && option.consigneename === context.consigneename);
+                    if (matches.length === 1) context = getRequestCustomerContext(matches[0]);
+                }
                 return [JSON.stringify(context), context];
             }).filter(([, context]) => context.customername || context.customeridentityid || context.consigneename || context.consigneeidentityid));
             if (contexts.size === 1) return { ...contexts.values().next().value };
@@ -57392,8 +57419,8 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function isCurrentRequestCustomerContext(context, rep = tempSelectedReqRep) {
-            if (!context || !context.customeridentityid || !context.consigneeidentityid || !isRequestModalCustomerMapReady()) return false;
-            return getRequestModalCustomerOptionsForRep(rep).some(option => (!context.request_selected_salesrep_id || option.request_selected_salesrep_id === context.request_selected_salesrep_id) && option.customeridentityid === context.customeridentityid
+            if (!context || !context.customeridentityid || !context.consigneeidentityid || !context.request_selected_salesrep_id || !isRequestModalCustomerMapReady()) return false;
+            return getRequestModalCustomerOptionsForRep(rep).some(option => option.request_selected_salesrep_id === context.request_selected_salesrep_id && option.customeridentityid === context.customeridentityid
                 && option.consigneeidentityid === context.consigneeidentityid && option.customerName === context.customername && option.consigneeName === context.consigneename);
         }
 
@@ -147940,9 +147967,18 @@ C.14.043 C.15.000
         }
 
         function setCustomerInput(val, customerId = '', consigneeId = '', customerName = '', consigneeName = '') {
-            tempRequestCustomerSelectedFinalLabel = String(val || '').trim();
             const parsed = parseRequestCustomerFolderParts(val);
-            tempRequestCustomerSelectedContext = { customeridentityid: customerId, consigneeidentityid: consigneeId, customername: customerName || parsed.customerName || '', consigneename: consigneeName || parsed.consigneeName || '' };
+            const matches = getRequestModalCustomerOptionsForRep(tempSelectedReqRep).filter(option =>
+                option.customeridentityid === customerId && option.consigneeidentityid === consigneeId
+                && option.customername === (customerName || parsed.customerName || '') && option.consigneename === (consigneeName || parsed.consigneeName || ''));
+            if (matches.length !== 1) {
+                tempRequestCustomerSelectedContext = null;
+                tempRequestCustomerSelectedFinalLabel = '';
+                showToast('Select Mapped Consignee', 'Choose an active customer and consignee mapped to this sales rep.', true);
+                return false;
+            }
+            tempRequestCustomerSelectedFinalLabel = String(val || '').trim();
+            tempRequestCustomerSelectedContext = getRequestCustomerContext(matches[0]);
             document.getElementById('cust-search-input').value = tempRequestCustomerSelectedFinalLabel;
             populateCustomerList(tempRequestCustomerSelectedFinalLabel);
             return false;
@@ -148059,6 +148095,9 @@ C.14.043 C.15.000
             const pending = saved && !['review-required', 'mapping-review'].includes(saved.status);
             setRequestSubmissionFormLocked(!!pending);
             if (pending) { submitBtn.disabled = false; submitBtn.innerText = 'RETRY SAVED REQUEST'; return; }
+            const mappingCurrent = isCurrentRequestCustomerContext(resolveRequestCustomerContext(tempReqCust, tempReqAppendToExistingFolder ? tempReqFolder : ''));
+            const mappingFeedback = document.getElementById('request-mapping-feedback');
+            if (mappingFeedback) mappingFeedback.classList.toggle('hidden', mappingCurrent);
             const reuseState = getCurrentRequestReuseDecisionState();
             if (!reuseState.valid) {
                 submitBtn.disabled = true;
@@ -148069,6 +148108,7 @@ C.14.043 C.15.000
             const total = requestQtyStepDomIds.length;
             if (requestQtyEmailStepActive) {
                 submitBtn.innerText = 'SUBMIT REQUEST';
+                submitBtn.disabled = !mappingCurrent;
                 return;
             }
             if (total > 1 && requestQtyStepIndex < total - 1) {
@@ -148076,6 +148116,7 @@ C.14.043 C.15.000
                 return;
             }
             submitBtn.innerText = canUseRequestEmailChainPicker() ? 'NEXT' : 'SUBMIT REQUEST';
+            if (submitBtn.innerText === 'SUBMIT REQUEST') submitBtn.disabled = !mappingCurrent;
         }
 
         function renderRequestQtyStepCurrentItem() {
@@ -148258,17 +148299,23 @@ C.14.043 C.15.000
                 }
             }
             requestQtyStepDomIds = getRequestSourceDomIds();
-            requestQtyStepItemsData = cloneRequestQtyStepItemsData(seedItemsData || {});
+            requestQtyStepItemsData = cloneRequestQtyStepItemsData(seedItemsData || requestQtyStepItemsData);
             requestQtyStepIndex = Math.max(0, Math.min(Number(preferredIndex) || 0, Math.max(requestQtyStepDomIds.length - 1, 0)));
             renderRequestQtyStepCurrentItem();
         }
 
         function goBackFromQty() {
+            captureRequestQtyStepRenderedInputs();
+            syncRequestEmailChainSelectionFromInputs();
             const requestModal = document.getElementById('request-rep-modal');
             if (requestModal) requestModal.classList.remove('request-qty-active');
             document.getElementById('step-3-qty').classList.add('hidden');
-            resetRequestQtyStepState();
-            document.getElementById(previousReqStep).classList.remove('hidden')
+            requestQtyEmailStepActive = false;
+            document.getElementById(previousReqStep).classList.remove('hidden');
+            buildRequestModalCustomerOptionsCache();
+            ensureRequestModalCustomerOptionsReady();
+            if (previousReqStep === 'step-2-cust') populateCustomerList();
+            else if (previousReqStep === 'step-1.5-folder') renderExistingRequestFolderPicker();
         }
 
         function collectRequestQtyStepItemsData() {
@@ -149313,7 +149360,11 @@ C.14.043 C.15.000
                 return false;
             }
             const requestCustomerContext = resolveRequestCustomerContext(cust, appendingToExistingFolder ? folderId : '');
-            if (!isCurrentRequestCustomerContext(requestCustomerContext, requestedBy)) {
+            const resolveMappingPayload = () => isCurrentRequestCustomerContext(requestCustomerContext, requestedBy)
+                ? window.AgMetricRequestSubmission.resolveCustomerMappingPayload(requestCustomerContext, getRequestModalCustomerOptionsForRep(requestedBy), requestModalCustomerOptionsReady)
+                : null;
+            let requestMappingPayload = resolveMappingPayload();
+            if (!requestMappingPayload) {
                 showToast('Mapping Changed', 'Choose a currently active mapped customer and consignee before submitting. Your cart and form are still here.', true);
                 return false;
             }
@@ -149332,6 +149383,11 @@ C.14.043 C.15.000
                 return false;
             }
             if (!ownerKey || ownerKey !== getRequestSubmissionOwnerKey() || generation !== requestSubmissionGeneration) return false;
+            requestMappingPayload = resolveMappingPayload();
+            if (!requestMappingPayload) {
+                showToast('Mapping Changed', 'Choose a currently active mapped customer and consignee before submitting. Your cart and form are still here.', true);
+                return false;
+            }
             if(!appendingToExistingFolder){
                 folderId = createRequestFolderId(cust);
             }
@@ -149403,6 +149459,7 @@ C.14.043 C.15.000
                     };
                     newReq.request_source = requestSource;
                     applyRequestCreatorAuditFields(newReq, requestCreatorAudit);
+                    Object.assign(newReq, requestMappingPayload);
                     if (autoCompleteUser) {
                         newReq.completed_by_username = autoCompleteUser.username || currentUser || null;
                         newReq.completed_by_display = autoCompleteUser.display || currentUserDisplay || currentUser || null;
@@ -149416,7 +149473,7 @@ C.14.043 C.15.000
             const outboxEntry = {
                 clientBatchId, ownerKey, requestSource, requests: insertPayloads,
                 supersedesBatchId: rejected && ['review-required', 'mapping-review'].includes(rejected.status) ? rejected.clientBatchId : null,
-                folderId, customer: cust, requestedBy, createdAt: requestCreatedAt,
+                folderId, customer: cust, requestedBy: requestMappingPayload.requested_by, createdAt: requestCreatedAt,
                 status: 'pending', attempts: 0, selectionSnapshot, formSnapshot, emailChainRecipients
             };
             return await performRequestSubmission(outboxEntry, { navigate: true });

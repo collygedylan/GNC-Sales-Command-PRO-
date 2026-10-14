@@ -1,8 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { JSDOM } from 'jsdom';
 import { mappingBrowserBundle, requestMappingFunctions, requestMappingSetup, mappingFixtureRow as row } from './helpers/customer-mapping-fixture.mjs';
+
+const requestSubmissionSource = readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8');
+const requestSubmissionSandbox = { window: {} };
+vm.runInNewContext(requestSubmissionSource, requestSubmissionSandbox);
+const requestSubmissionApi = requestSubmissionSandbox.window.AgMetricRequestSubmission;
+const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+function extractAppFunction(name) {
+  const start = appSource.indexOf(`        function ${name}(`);
+  assert.ok(start >= 0, `expected ${name} in index.html`);
+  const tail = appSource.slice(start);
+  const end = tail.slice(20).search(/\n        (?:async )?function /);
+  assert.ok(end >= 0, `expected a function boundary after ${name}`);
+  return tail.slice(0, end + 20);
+}
+
+function addAppFunction(context, name) {
+  vm.runInContext(extractAppFunction(name), context);
+}
+
+function resolveMappedPayload(context) {
+  const options = context.getRequestModalCustomerOptionsForRep(context.tempSelectedReqRep);
+  return requestSubmissionApi.resolveCustomerMappingPayload(context.tempRequestCustomerSelectedContext, options, true);
+}
 
 function requestFixture() {
   const context=vm.createContext({document:{getElementById:()=>({value:'Custom Customer'})}});
@@ -42,11 +67,58 @@ test('Request matching uses production normalization for rep aliases, statuses, 
   assert.equal(c.getRequestModalCustomerOptionsForRep('Molly D').length,0,'partial names cannot identify an external sales rep');
 });
 test('Request membership rechecks both IDs, names and the current map revision',()=>{
-  const c=requestFixture(); const context={customeridentityid:row.customeridentityid,consigneeidentityid:row.consigneeid,customername:row.customername,consigneename:row.consigneename};
+  const c=requestFixture(); const context={customeridentityid:row.customeridentityid,consigneeidentityid:row.consigneeid,customername:row.customername,consigneename:row.consigneename,request_selected_salesrep_id:'01'};
   assert.equal(c.isCurrentRequestCustomerContext(context),true);
   assert.equal(c.isCurrentRequestCustomerContext({...context,consigneeidentityid:'00008'}),false);
+  assert.equal(c.isCurrentRequestCustomerContext({...context,request_selected_salesrep_id:''}),false);
+  assert.equal(c.isCurrentRequestCustomerContext({...context,request_selected_salesrep_id:'02'}),false);
   c.customerRepMapRows=[];c.mappingRevision='2';
   assert.equal(c.isCurrentRequestCustomerContext(context),false);
+});
+
+test('legacy and current folder rows resolve to one cached mapped tuple; ambiguous rows stay invalid',()=>{
+  const c=requestFixture();
+  c.getRequestFolderName=folderRow=>folderRow.request_folder;
+  c.tempRequestCustomerSelectedFinalLabel='';
+  addAppFunction(c,'resolveRequestCustomerContext');
+  const legacy={request_folder:'folder-a',customeridentityid:'00012',customername:'Garden ®',consigneeidentityid:'00007',consigneename:'North ™'};
+  const current={...legacy,request_selected_salesrep_id:'01'};
+  c.requestsInventory=[legacy,current];
+  const resolved=c.resolveRequestCustomerContext('Garden ® | North ™','folder-a');
+  assert.equal(resolved.request_selected_salesrep_id,'01');
+  assert.equal(c.isCurrentRequestCustomerContext(resolved),true);
+
+  c.requestsInventory=[legacy,current,{...legacy,customeridentityid:'00013'}];
+  const ambiguous=c.resolveRequestCustomerContext('Garden ® | North ™','folder-a');
+  assert.equal(c.isCurrentRequestCustomerContext(ambiguous),false,'conflicting stored identities cannot be guessed');
+});
+
+test('payload resolver rejects missing, ambiguous, inactive, or unverified mapping options without mutation',()=>{
+  const c=requestFixture();
+  const option=c.getRequestModalCustomerOptionsForRep('Rep One')[0];
+  const context={
+    customeridentityid:option.customeridentityid,customername:option.customername,
+    consigneeidentityid:option.consigneeidentityid,consigneename:option.consigneename,
+    request_selected_salesrep_id:option.request_selected_salesrep_id
+  };
+  const options=[option];
+  const expected=requestSubmissionApi.resolveCustomerMappingPayload(context,options,true);
+  assert.deepEqual({ ...expected },{
+    customeridentityid:'00012',customername:'Garden ®',consigneeidentityid:'00007',consigneename:'North ™',
+    request_selected_salesrep_id:'01',requested_by:'Rep One',request_selected_rep_display:'Rep One',request_selected_rep_username:null
+  });
+  const contextBefore=JSON.stringify(context);
+  const optionBefore=JSON.stringify(option);
+  for (const field of ['customeridentityid','customername','consigneeidentityid','consigneename','request_selected_salesrep_id']) {
+    assert.equal(requestSubmissionApi.resolveCustomerMappingPayload({...context,[field]:' '},options,true),null,`missing ${field} is rejected`);
+  }
+  assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[option,{...option}],true),null,'duplicate candidates are ambiguous');
+  assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[{...option,customerstatus:'I'}],true),null);
+  assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[{...option,consigneestatus:'I'}],true),null);
+  assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,[{...option,salesrepname:' '}],true),null);
+  assert.equal(requestSubmissionApi.resolveCustomerMappingPayload(context,options,false),null,'cached options must be ready');
+  assert.equal(JSON.stringify(context),contextBefore);
+  assert.equal(JSON.stringify(option),optionBefore);
 });
 
 test('verified mapping metadata survives grouping and permits an exact new folder selection',()=>{
@@ -61,6 +133,29 @@ test('verified mapping metadata survives grouping and permits an exact new folde
   assert.equal(c.qtyCalls[0][1],option.label);
   assert.equal(c.tempRequestCustomerSelectedContext.request_selected_salesrep_id,'01');
   assert.equal(c.isCurrentRequestCustomerContext(c.tempRequestCustomerSelectedContext),true);
+  assert.deepEqual({ ...resolveMappedPayload(c) }, {
+    customeridentityid:'00012', customername:'Garden ®', consigneeidentityid:'00007', consigneename:'North ™',
+    request_selected_salesrep_id:'01', requested_by:'Rep One', request_selected_rep_display:'Rep One', request_selected_rep_username:null
+  });
+});
+
+test('ordinary customer selection resolves the complete mapping by IDs within the selected rep',()=>{
+  const c=requestFixture();
+  c.document={getElementById:()=>({value:''})};
+  c.populateCustomerList=()=>{};
+  addAppFunction(c,'setCustomerInput');
+  c.setCustomerInput('Garden ® | North ™','00012','00007','Garden ®','North ™');
+  assert.equal(c.tempRequestCustomerSelectedContext.request_selected_salesrep_id,'01');
+  assert.equal(c.isCurrentRequestCustomerContext(c.tempRequestCustomerSelectedContext),true);
+  assert.deepEqual({ ...resolveMappedPayload(c) }, {
+    customeridentityid:'00012', customername:'Garden ®', consigneeidentityid:'00007', consigneename:'North ™',
+    request_selected_salesrep_id:'01', requested_by:'Rep One', request_selected_rep_display:'Rep One', request_selected_rep_username:null
+  });
+  c.customerRepMapRows=[{...row,salesrepid:'02',salesrepname:'Rep Two'}];
+  c.tempSelectedReqRep='Rep Two';
+  c.tempSelectedReqSalesrepId='02';
+  assert.equal(c.isCurrentRequestCustomerContext(c.tempRequestCustomerSelectedContext),false,
+    'a selection cannot be reused after the selected rep changes');
 });
 
 test('folder grouping cache separates reps and customer identities with identical names',()=>{
