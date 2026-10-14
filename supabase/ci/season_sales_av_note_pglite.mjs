@@ -1,6 +1,7 @@
 // Optional, isolated PostgreSQL WASM verification when native Postgres is absent.
 // Pass the installed PGlite dependency root with --pglite-root.
 // This does not exercise Supabase Auth, transport, or concurrent connections.
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -89,6 +90,45 @@ try {
     console.log(`PASS ${test}`);
     for (const result of results) for (const row of result.rows ?? []) if (row.tap) console.log(row.tap);
   }
+
+  // The production reconciliation predicates normalize nullable CAV keys with
+  // COALESCE. The older expression index omits it, so lock in the pre-fix plan
+  // and verify the focused migration makes both the plan and result correct.
+  const cavIndexMigration = 'supabase/migrations/20261014142125_season_sales_cav_lookup_index.sql';
+  await db.exec(`insert into public.ph_cav_import(unique_id,last_updated,itemcode,season,holdstopreason)
+    select 'CAV-LOOKUP-DECOY-'||g,now()-interval '1 day','DECOY-'||g,'F1',''
+    from generate_series(1,8000) g;
+    insert into public.ph_cav_import(unique_id,last_updated,itemcode,season,holdstopreason) values
+      ('CAV-LOOKUP-TARGET-OLD',now()-interval '2 days',' cav-lookup-target ',' f1 ','') ,
+      ('CAV-LOOKUP-TARGET-NEW',now()-interval '1 day','CAV-LOOKUP-TARGET','F1',''),
+      ('CAV-LOOKUP-TARGET-HELD',now(),'CAV-LOOKUP-TARGET','F1','H');
+    analyze public.ph_cav_import;`);
+  const cavLookupQuery = `select max(c.last_updated) as latest_blank
+    from public.ph_cav_import c
+    where upper(btrim(coalesce(c.itemcode,'')))='CAV-LOOKUP-TARGET'
+      and upper(btrim(coalesce(c.season,'')))='F1'
+      and btrim(coalesce(c.holdstopreason,''))=''
+      and c.last_updated > '-infinity'::timestamptz`;
+  const planBeforeIndex = (await db.query(`explain (costs true, format text) ${cavLookupQuery}`)).rows
+    .map(row => row['QUERY PLAN']).join('\n');
+  assert.match(planBeforeIndex, /Seq Scan on ph_cav_import/i,
+    'the COALESCE-normalized CAV predicate must reproduce the old sequential scan plan');
+  assert.doesNotMatch(planBeforeIndex, /ph_cav_import_season_sales_normalized_lookup_idx/);
+  const resultBeforeIndex = (await db.query(cavLookupQuery)).rows;
+  const migrationSql = read(cavIndexMigration);
+  if (!migrationSql.trim()) throw new Error(`CAV lookup index migration is empty: ${cavIndexMigration}`);
+  await db.exec(migrationSql);
+  await db.exec(migrationSql);
+  const planAfterIndex = (await db.query(`explain (costs true, format text) ${cavLookupQuery}`)).rows
+    .map(row => row['QUERY PLAN']).join('\n');
+  assert.match(planAfterIndex, /(?:Index Scan|Bitmap Index Scan).*ph_cav_import_season_sales_normalized_lookup_idx/is,
+    `the normalized CAV index must serve the reconciliation predicate; got plan:\n${planAfterIndex}`);
+  assert.deepEqual((await db.query(cavLookupQuery)).rows, resultBeforeIndex,
+    'adding the lookup index must not change the CAV reconciliation result');
+  assert.equal((await db.query(`select count(*)::integer as count from pg_indexes
+    where schemaname='public' and indexname='ph_cav_import_season_sales_normalized_lookup_idx'`)).rows[0].count, 1,
+  'replaying the migration must leave exactly one normalized CAV index');
+  console.log(`PASS ${cavIndexMigration}: old scan reproduced; normalized index selected; query result unchanged; replay is idempotent`);
 } catch (error) {
   console.error(error.message, error.detail || '', error.where || '');
   process.exitCode = 1;
