@@ -41,10 +41,16 @@ test('native auth refreshes once before protected Request reads or writes fail',
 });
 
 test('Request completion retries one current row-version conflict with the canonical version', () => {
-  assert.match(saveData, /for \(let requestSaveAttempt = 0; requestSaveAttempt < 2;/);
-  assert.match(saveData, /REQUEST_VERSION_CONFLICT/);
-  assert.match(saveData, /const refreshedRow = await fetchRemoteRequestCompletionRow\(\)/);
-  assert.match(saveData, /rpcExpectedVersion = refreshedVersion/);
+  assert.match(saveData, /saveRequestWorkWithReconciliation\(/);
+  assert.match(html, /REQUEST_VERSION_CONFLICT/);
+  assert.match(saveData, /REQUEST_WORK_CONFLICT_RETRY_LIMIT/);
+  assert.doesNotMatch(saveData, /patch: requestPatch,\s*complete: !!isComplete\s*\}\);\s*break;\s*\} catch/);
+});
+
+test('ordinary Request autosave is stopped by the persisted per-row conflict breaker', () => {
+  assert.match(saveData, /isRequestWorkConflictBlocked\(itemToSave\)/);
+  assert.match(html, /autoRetryBlocked: true/);
+  assert.match(html, /requestWorkDraft/);
 });
 
 test('Request completion never leaves a modal backdrop trapping the screen', () => {

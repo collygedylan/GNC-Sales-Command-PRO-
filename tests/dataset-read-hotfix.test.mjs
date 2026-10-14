@@ -18,7 +18,7 @@ const productivityStart = source.indexOf('async function handleAppendProductivit
 assert.ok(datasetEnd > start && productivityStart > datasetEnd && productivityStart < end);
 const block = source.slice(start, datasetEnd) + source.slice(productivityStart, end);
 
-function harness({ readable = true, masterReadable = false, writable = true, role = 'admin', username = 'dylan_collyge', rows = [{ unique_id: 'one' }], count = 1, dbError = null, writeError = null } = {}) {
+function harness({ readable = true, masterReadable = false, sourceState = 'ready', writable = true, role = 'admin', username = 'dylan_collyge', rows = [{ unique_id: 'one' }], count = 1, dbError = null, writeError = null } = {}) {
   const queries = [];
   const tables = [];
   const transpiled = ts.transpileModule(`function errorResponse(message, status = 400, extra = {}) { return { status, body: { error: message, ...extra } }; }\n${errorHelper}\n${block}\nthis.datasetReadTest = handleDatasetRead; this.productivityWriteTest = handleAppendProductivityHistory;`, {
@@ -91,6 +91,11 @@ function harness({ readable = true, masterReadable = false, writable = true, rol
         return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
       },
       from(table) {
+        if (table === 'app_dataset_revisions') {
+          const metadata = { select: () => metadata, eq: () => metadata,
+            maybeSingle: async () => ({ data: { revision: 12, state: sourceState }, error: null }) };
+          return metadata;
+        }
         tables.push(table);
         const query = { table, calls: [], result: { data: rows, error: table === 'ph_productivity_history' ? writeError : dbError, count } };
         queries.push(query);
@@ -189,7 +194,17 @@ test('request aggregate enrichment keeps permissions and rejects an inventory re
   const changed = await h.context.datasetReadTest(h.session(), { dataset: 'request_queue', params: {} });
   assert.equal(changed.status, 409);
   assert.equal(changed.body.code, 'LOC_ON_HAND_REVISION_CHANGED');
-  assert.equal(changed.body.retryable, true);
+  assert.equal(changed.body.retryable, false);
+});
+
+test('Request totals pause during a master import without reading rows or raising a totals RPC exception', async () => {
+  const h = harness({ masterReadable: true, sourceState: 'importing' });
+  const response = await h.context.datasetReadTest(h.session(), { dataset: 'active_request', params: {} });
+  assert.equal(response.status, 423);
+  assert.equal(response.body.code, 'LOC_ON_HAND_SOURCE_NOT_READY');
+  assert.equal(response.body.retryable, false);
+  assert.deepEqual(h.tables, []);
+  assert.equal(h.context.locationCalls.length, 0);
 });
 
 test('default projections are explicit current columns and Request signatures are a valid subset', () => {

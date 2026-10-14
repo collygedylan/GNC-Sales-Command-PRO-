@@ -21,6 +21,24 @@ const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const edgeSource = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts', import.meta.url), 'utf8');
 const appsScript = fs.readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
 
+function inventoryReadRetryHarness() {
+  const start = html.indexOf('function getSupabaseReadErrorCode(error)');
+  const end = html.indexOf('function makeSupabaseReadCooldownError', start);
+  assert.ok(start >= 0 && end > start, 'inventory retry helpers should exist');
+  const context = vm.createContext({});
+  vm.runInContext(`${html.slice(start, end)}; this.retry = isSupabaseReadRetryable; this.semantic = isInventorySourceReadinessError;`, context);
+  return context;
+}
+
+test('inventory readiness and revision conflict codes bypass generic read retries', () => {
+  const retry = inventoryReadRetryHarness();
+  for (const code of ['LOC_ON_HAND_SOURCE_NOT_READY', 'LOC_SOURCE_NOT_READY', 'DATASET_NOT_READY', 'LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED', 'MANAGER_REPORT_SOURCE_REVISION_CHANGED']) {
+    assert.equal(retry.semantic({ code, status: 0 }), true, `${code} should be recognized as a source readiness condition`);
+    assert.equal(retry.retry({ code, status: 0 }), false, `${code} must not enter generic retry/backoff`);
+  }
+  assert.equal(retry.retry({ code: 'NETWORK_ERROR', status: 0, message: 'network failed' }), true, 'ordinary transient failures remain retryable');
+});
+
 function availabilityHarness(rpc) {
   const start = html.indexOf('function normalizeHlAvailabilityValue(value)');
   const end = html.indexOf('function getHlOrderAvailabilitySummaryRows', start);
@@ -118,11 +136,12 @@ test('availability refresh preserves verified cached tuples on RPC failure and c
   assert.equal(empty.rows().has(key), false);
 });
 
-function appApiHarness({ moduleAllowed = true } = {}) {
+function appApiHarness({ moduleAllowed = true, sourceState = 'ready', sourceRevision = 12 } = {}) {
   const start = edgeSource.indexOf('const INVENTORY_MASTER_INITIAL_FIELDS');
   const end = edgeSource.indexOf('const AURA_V2_OPERATIONS', start);
   assert.ok(start >= 0 && end > start, 'inventory read handler block should exist');
-  const transpiled = ts.transpileModule(`${edgeSource.slice(start, end)}\nthis.inventoryReadTest = handleInventoryRead;`, {
+  const helpers = edgeSource.slice(edgeSource.indexOf('async function captureReadyInventoryLocationRevision('), edgeSource.indexOf('function ensureServerConfig('));
+  const transpiled = ts.transpileModule(`${helpers}\n${edgeSource.slice(start, end)}\nthis.inventoryReadTest = handleInventoryRead;`, {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None }
   }).outputText;
   const queries = [];
@@ -168,6 +187,11 @@ function appApiHarness({ moduleAllowed = true } = {}) {
         return { data: { inventoryRevision: '12', rows: args.p_pairs.map(pair => ({ ...pair, loc_on_hand: 2000, loc_on_hand_revision: '12' })) }, error: null };
       },
       from(table) {
+        if (table === 'app_dataset_revisions') {
+          const source = { select: () => source, eq: () => source,
+            maybeSingle: async () => ({ data: sourceState === null ? null : { revision: sourceRevision, state: sourceState }, error: null }) };
+          return source;
+        }
         const query = { table, calls: [], result: { data: context.inventoryReadRows, error: null, count: context.inventoryReadRows.length } };
         queries.push(query);
         for (const method of ['select', 'not', 'or', 'order', 'range', 'eq', 'in', 'gt', 'limit']) {
@@ -286,6 +310,21 @@ test('master pages and deltas append full pair totals after the physical project
   const changed = await handler(actor, { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } });
   assert.equal(changed.status, 409);
   assert.equal(changed.body.code, 'LOC_ON_HAND_REVISION_CHANGED');
+  assert.equal(changed.body.retryable, false);
+});
+
+test('import readiness short-circuits inventory rows and totals before invoking the database RPC', async () => {
+  const actor = { actor: { id: 'profile-1', username: 'reader', role: 'admin' } };
+  for (const sourceState of ['importing', 'interrupted', null]) {
+    const { handler, queries, context } = appApiHarness({ sourceState });
+    const response = await handler(actor, { operation: 'master_page', params: { dataset: 'master', projection: 'browse' } });
+    assert.equal(response.status, 423);
+    assert.equal(response.body.code, 'LOC_ON_HAND_SOURCE_NOT_READY');
+    assert.equal(response.body.retryable, false);
+    assert.equal(response.body.retryAfterMs, 30000);
+    assert.equal(context.locationCalls.length, 0, 'non-ready sources must not invoke the exception-raising RPC');
+    assert.equal(queries.length, 0, 'non-ready sources must not query partial inventory rows');
+  }
 });
 
 test('legacy app-api database proxy cannot read ph_master_inventory around the operation allowlist', async () => {

@@ -15,8 +15,8 @@ const jsonExtensions = /\.json$/i;
 const yamlExtensions = /\.ya?ml$/i;
 const htmlExtensions = /\.html?$/i;
 
-function assertJavaScriptSyntax(source, fileName) {
-  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+function assertJavaScriptSyntax(source, fileName, scriptKind = ts.ScriptKind.JS) {
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, scriptKind);
   if (sourceFile.parseDiagnostics.length) {
     const errors = sourceFile.parseDiagnostics.map(diagnostic => ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
     throw new Error(errors.join('\n'));
@@ -51,7 +51,11 @@ export function syntaxCheck(files, root = repoRoot) {
     if (!existsSync(absolute) || !statSync(absolute).isFile()) continue;
     const source = readFileSync(absolute, 'utf8');
     if (sourceExtensions.test(file)) {
-      assertJavaScriptSyntax(source, file);
+      const extension = path.extname(file).toLowerCase();
+      const scriptKind = extension === '.tsx' ? ts.ScriptKind.TSX
+        : /\.[cm]?ts$/.test(extension) ? ts.ScriptKind.TS
+        : extension === '.jsx' ? ts.ScriptKind.JSX : ts.ScriptKind.JS;
+      assertJavaScriptSyntax(source, file, scriptKind);
     } else if (jsonExtensions.test(file)) {
       JSON.parse(source);
     } else if (yamlExtensions.test(file)) {

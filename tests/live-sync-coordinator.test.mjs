@@ -4,7 +4,9 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFileSync } from 'node:fs';
 
-const sandbox = { module: { exports: {} }, setTimeout, clearTimeout, AbortController };
+const deterministicMath = Object.create(Math);
+deterministicMath.random = () => 0.2;
+const sandbox = { module: { exports: {} }, setTimeout, clearTimeout, AbortController, Math: deterministicMath };
 vm.runInNewContext(readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8'), sandbox);
 const { createCoordinator } = sandbox.module.exports;
 const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
@@ -12,18 +14,20 @@ const settle = async () => { for (let i = 0; i < 25; i++) await Promise.resolve(
 function fixture() {
     let revision = '1', state = 'ready', permission = 'role-v1', changedAt = '2026-10-08T00:00:00Z', clock = 1000;
     let rows = [{ id: 'dock-28' }], reads = 0, metadataReads = 0, subscriptions = 0, closes = 0;
-    let fault = null, loadHook = null, metadataHook = null, notify = null;
+    let fault = null, loadHook = null, metadataHook = null, notify = null, sourceGateReadChecks = false;
     const commits = [], statuses = [], timers = new Map(); let timerId = 0;
     const adapter = { id: 'core:soc', cacheKey: 'soc/all', sourceKeys: ['ph_soc_master'],
-        stage: async () => { reads++; if (fault) throw fault; const captured = structuredClone(rows); if (loadHook) await loadHook(); return captured; },
+        stage: async ({ signal } = {}) => { reads++; if (sourceGateReadChecks && coordinator.isSourceReadSuspended()) throw Object.assign(new Error('LOC_SOURCE_READ_SUSPENDED'), { code: 'LOC_SOURCE_READ_SUSPENDED' }); if (fault) throw fault; const captured = structuredClone(rows); if (loadHook) await loadHook(signal); if (signal?.aborted) throw signal.reason || new Error('Stage aborted.'); return captured; },
         commit: (value) => commits.push(value) };
     const context = { scope: 'same-user/site-role-v1', viewKey: 'docks', visible: true, online: true, adapters: [adapter] };
-    const coordinator = createCoordinator({
+    let coordinator;
+    coordinator = createCoordinator({
         getContext: () => context,
-        readRevisions: async (keys) => {
-            metadataReads++; if (metadataHook) await metadataHook();
-            return { contractVersion: 1, permissionVersion: permission, serverTime: '2026-09-08T00:00:00Z',
+        readRevisions: async (keys, readOptions = {}) => {
+            metadataReads++; if (metadataHook) await metadataHook(keys, readOptions);
+            const result = { contractVersion: 1, permissionVersion: permission, serverTime: '2026-09-08T00:00:00Z',
                 sources: keys.map((key) => ({ key, revision, state, changedAt })) };
+            return result;
         },
         onStatus: (value) => statuses.push(value), now: () => clock,
         subscribe: (changed) => { subscriptions++; notify = changed; return () => { closes++; }; },
@@ -31,10 +35,10 @@ function fixture() {
         clearTimeout: (id) => timers.delete(id)
     });
     return { coordinator, context, adapter, commits, statuses, timers,
-        set revision(value) { revision = value; }, set state(value) { state = value; }, set changedAt(value) { changedAt = value; }, set rows(value) { rows = value; },
-        set fault(value) { fault = value; }, set loadHook(value) { loadHook = value; }, set metadataHook(value) { metadataHook = value; },
+        get revision() { return revision; }, set revision(value) { revision = value; }, set state(value) { state = value; }, set changedAt(value) { changedAt = value; }, set rows(value) { rows = value; },
+        set fault(value) { fault = value; }, set loadHook(value) { loadHook = value; }, set metadataHook(value) { metadataHook = value; }, set sourceGateReadChecks(value) { sourceGateReadChecks = value; },
         set permission(value) { permission = value; },
-        set clock(value) { clock = value; },
+        get clock() { return clock; }, set clock(value) { clock = value; },
         get reads() { return reads; }, get metadataReads() { return metadataReads; }, get subscriptions() { return subscriptions; }, get closes() { return closes; },
         notify: () => notify?.(),
         advance: async (milliseconds) => {
@@ -112,6 +116,152 @@ test('network failures keep old data visibly stale instead of committing an empt
     await f.coordinator.check(); assert.equal(f.commits.length, 1);
     assert.equal(f.coordinator.getStatus().state, 'Needs attention');
     assert.match(f.coordinator.getStatus().message, /timed out/);
+});
+
+test('semantic location readiness failures gate repeated checks until a new ready revision is confirmed', async () => {
+    const f = fixture();
+    f.context.dataPermissionVersion = 'role-v1';
+    f.adapter.sourceKeys = ['ph_master_inventory'];
+    const error = Object.assign(new Error('Location on-hand source is not ready.'), { code: 'LOC_ON_HAND_SOURCE_NOT_READY', status: 423 });
+    f.fault = error;
+    assert.equal(await f.coordinator.check(), false);
+    assert.equal(f.reads, 1);
+    assert.equal(f.coordinator.isSourceReadSuspended(), true);
+    const scheduledDelays = Array.from(f.timers.values()).map((timer) => timer.at - f.clock);
+    assert.ok(scheduledDelays.includes(31200), 'first readiness probe applies positive jitter within the 30–36 second bound');
+    await settle();
+    const gateTimer = Array.from(f.timers.entries()).find(([, timer]) => timer.at - f.clock === 31200)?.[0];
+    assert.equal(f.coordinator.suspendSourceReads(error, ['ph_master_inventory']), true);
+    assert.equal(f.timers.has(gateTimer), true, 'repeated semantic errors must preserve the existing cooldown timer');
+
+    f.notify();
+    await f.coordinator.check('metadata');
+    await f.advance(1000);
+    assert.equal(f.reads, 1, 'semantic source failures must not restart adapter reads on queued/realtime checks');
+    const metadataBeforeHidden = f.metadataReads;
+    f.context.visible = false;
+    assert.equal(f.coordinator.isSourceReadSuspended(), true, 'hidden state pauses probes without releasing the row-read gate');
+    await f.advance(180000);
+    assert.equal(f.metadataReads, metadataBeforeHidden, 'hidden sessions must pause readiness probes');
+    f.context.visible = true;
+    f.context.online = false;
+    assert.equal(f.coordinator.isSourceReadSuspended(), true, 'offline state also keeps direct reads blocked');
+    f.context.online = true;
+    await f.coordinator.check('view-entry');
+    assert.equal(f.reads, 1, 'returning to the view must preserve the gate');
+
+    f.fault = null;
+    f.revision = '2';
+    await f.advance(180000);
+    assert.equal(f.reads, 1, 'a changed ready revision first becomes the gate baseline');
+    await f.advance(180000);
+    assert.equal(f.reads, 2, 'one new ready revision permits exactly one fresh adapter read');
+    assert.equal(f.coordinator.getStatus().state, 'Up to date');
+    assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }]);
+});
+
+test('direct semantic read failures install a scoped gate and logout reset clears it', async () => {
+    const f = fixture();
+    f.context.dataPermissionVersion = 'role-v1';
+    const error = Object.assign(new Error('Manager report source revision changed.'), { code: 'MANAGER_REPORT_SOURCE_REVISION_CHANGED', status: 409, source: 'ph_master_inventory' });
+    assert.equal(f.coordinator.suspendSourceReads(error, ['ph_master_inventory']), true);
+    await settle();
+    assert.equal(f.coordinator.isSourceReadSuspended(), true);
+    assert.equal(f.metadataReads, 1, 'direct path captures its baseline through the metadata RPC');
+    await f.coordinator.check('metadata');
+    assert.equal(f.reads, 0, 'direct read callers cannot bypass the readiness gate');
+
+    f.coordinator.reset();
+    assert.equal(f.coordinator.isSourceReadSuspended(), false, 'logout/session reset clears the prior identity gate');
+
+    const unrelated = fixture();
+    unrelated.context.dataPermissionVersion = 'role-v1';
+    assert.equal(unrelated.coordinator.suspendSourceReads(Object.assign(new Error('Dataset is unavailable.'), { code: 'DATASET_NOT_READY', status: 423 }), ['ph_soc_master']), false,
+        'a generic capability/readiness failure on another source must not gate master inventory');
+    assert.equal(unrelated.coordinator.suspendSourceReads(Object.assign(new Error('Manager source changed.'), { code: 'MANAGER_REPORT_SOURCE_REVISION_CHANGED', status: 409 }), ['ph_master_inventory']), false,
+        'a manager revision alias without a verified master source must not suspend unrelated inventory reads');
+
+    const hidden = fixture();
+    hidden.context.dataPermissionVersion = 'role-v1'; hidden.context.visible = false;
+    assert.equal(hidden.coordinator.suspendSourceReads(Object.assign(new Error('Source not ready.'), { code: 'LOC_ON_HAND_SOURCE_NOT_READY', status: 423 }), ['ph_master_inventory']), true);
+    await settle();
+    assert.equal(hidden.metadataReads, 0, 'hidden contexts defer the baseline metadata request');
+    assert.equal(hidden.coordinator.isSourceReadSuspended(), true, 'hidden contexts retain the direct-read gate');
+    hidden.context.visible = true;
+    await hidden.coordinator.check('view-entry');
+    await settle();
+    assert.equal(hidden.metadataReads, 1, 'the baseline metadata request starts after the scope becomes visible');
+});
+
+test('a direct readiness failure during another live-sync pass gates reads and aborts that pass', async () => {
+    const f = fixture();
+    f.context.dataPermissionVersion = 'role-v1';
+    const stageStarted = deferred();
+    f.loadHook = (signal) => new Promise((resolve, reject) => {
+        stageStarted.resolve();
+        signal.addEventListener('abort', () => reject(signal.reason || new Error('Stage aborted.')), { once: true });
+    });
+    const check = f.coordinator.check();
+    await stageStarted.promise;
+    const error = Object.assign(new Error('Location on-hand source is not ready.'), { code: 'LOC_ON_HAND_SOURCE_NOT_READY', status: 423 });
+    assert.equal(f.coordinator.suspendSourceReads(error, ['ph_master_inventory']), true);
+    assert.equal(await check, false);
+    await settle();
+    assert.equal(f.reads, 1, 'the active unrelated cohort is aborted instead of being allowed to restart rows');
+    assert.equal(f.commits.length, 0, 'the aborted cohort cannot commit an incomplete snapshot');
+    assert.equal(f.coordinator.isSourceReadSuspended(), true);
+    await f.coordinator.check('metadata');
+    assert.equal(f.reads, 1, 'later coordinator checks remain gated');
+});
+
+test('scope changes abort an in-flight direct readiness baseline probe', async () => {
+    const f = fixture();
+    f.context.dataPermissionVersion = 'role-v1';
+    const gate = deferred(); let baselineSignal = null, first = true;
+    f.metadataHook = async (_keys, options) => {
+        if (!first) return;
+        first = false; baselineSignal = options.signal; await gate.promise;
+    };
+    assert.equal(f.coordinator.suspendSourceReads(Object.assign(new Error('Source not ready.'), { code: 'LOC_ON_HAND_SOURCE_NOT_READY', status: 423 }), ['ph_master_inventory']), true);
+    await settle();
+    assert.equal(baselineSignal?.aborted, false);
+    f.context.scope = 'other-account';
+    f.coordinator.isSourceReadSuspended();
+    assert.equal(baselineSignal?.aborted, true, 'identity changes abort the old identity metadata probe');
+    gate.resolve();
+    await settle();
+});
+
+test('repeated revision churn pauses after three discarded snapshots and resumes on a later ready revision', async () => {
+    const f = fixture();
+    f.loadHook = async () => { f.revision = String(Number(f.revision) + 1); };
+    assert.equal(await f.coordinator.check(), false);
+    assert.equal(f.reads, 3, 'three unstable snapshots are discarded before the cooldown gate opens');
+    assert.equal(f.coordinator.isSourceReadSuspended(), true);
+    await f.coordinator.check('metadata');
+    assert.equal(f.reads, 3, 'new signals cannot bypass the churn gate');
+
+    f.loadHook = null;
+    await f.advance(180000);
+    assert.equal(f.reads, 4, 'one stable ready revision permits a bounded half-open replacement snapshot');
+    assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }]);
+    assert.equal(f.coordinator.isSourceReadSuspended(), false);
+});
+
+test('a direct revision conflict whose baseline is already ready recovers after one stable cooldown probe', async () => {
+    const f = fixture();
+    f.adapter.sourceKeys = ['ph_master_inventory'];
+    f.revision = '42';
+    const error = Object.assign(new Error('Location on-hand revision changed.'), { code: 'LOC_ON_HAND_REVISION_CHANGED', status: 409 });
+    assert.equal(f.coordinator.suspendSourceReads(error, ['ph_master_inventory']), true);
+    f.sourceGateReadChecks = true;
+    assert.equal(f.reads, 0, 'installing the direct-read gate does not fetch rows');
+    await settle();
+    assert.equal(f.coordinator.isSourceReadSuspended(), true, 'a ready baseline alone never opens the gate');
+    await f.advance(31200);
+    assert.equal(f.reads, 1, 'the real read gate permits the single half-open snapshot attempt');
+    assert.deepEqual(f.commits.at(-1), [{ id: 'dock-28' }]);
+    assert.equal(f.coordinator.isSourceReadSuspended(), false, 'the recovery episode ends only after the snapshot commits');
 });
 test('verification timestamps and metadata failures belong to the current screen', async () => {
     const f = fixture();
