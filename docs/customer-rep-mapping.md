@@ -4,7 +4,13 @@
 
 `public.ph_customer_consignee_sales_reps` remains the customer/consignee directory used by Request and existing credit identity readers. External customer and consignee IDs distinguish identical display names. `raw_data` retains the complete source record, including fields not in the existing explicit schema.
 
-In **Managers → Customer Mappings**, active Admin, Administrator and Manager profiles can filter, sort, page and correct the four mapping display/rep fields. External customer and consignee IDs are read-only. Save requires the current row revision; a conflict preserves the draft and requires review. The next successful master snapshot replaces manual corrections. Raw source/contact details are available only through the authorized management reader.
+In **Managers → Customer Assignments**, active Admin, Administrator and Manager profiles can filter, sort, page and assign a sales rep to a customer/consignee pair. The directory loads 50 rows at a time. A prefetched, locally searchable picker pairs each external rep ID with its canonical First Last name. External customer and consignee IDs are read-only. Existing customer/consignee name corrections remain available. A conflict preserves the draft and requires review. Raw source/contact details remain limited to the authorized management reader.
+
+An assignment saves a persistent manager override keyed by the external customer and consignee IDs. Later imports continue to update source fields and status, but retain that assignment even when the imported row ID changes. Overrides remain dormant if a pair disappears and apply again if it returns; inactive pairs stay unavailable for new Requests. Name corrections retain their existing import-replacement behavior. The source label distinguishes **Imported** and **Manager override**.
+
+**Reset to imported assignment** previews the latest imported rep and asks for confirmation. It deletes the override and restores import control. Existing `S99` / `Interdivision` assignments remain visible and can be restored by reset; they are not selectable as new assignments. Ordinary assignment requires an unambiguous canonical rep ID/name, with no comma-order names or email addresses.
+
+The private source snapshot, overrides, and request receipts are accessible only through the existing protected backend. Assignment and reset require the current row revision and a request UUID. Exact retries replay the stored success result; changing a payload while reusing its UUID is rejected. Legacy rep corrections receive the same canonical validation. The existing manager role checks, RLS, and Request membership checks remain authoritative.
 
 ## Manual import
 
@@ -20,7 +26,7 @@ Rows stage in bounded chunks of 300 and each Apps Script invocation stops stagin
 
 If a source is rejected, it stays in place and is reported as skipped on later runs until its Drive modification timestamp changes. If an older pending file is encountered after a newer snapshot has already published, the database marks it stale; the importer reports and leaves it pending rather than replacing newer data. If publication succeeds but Drive archiving fails, the next run sends the same source file ID, modification timestamp and content hash. The server recognizes that exact published snapshot and lets the importer retry only the archive move.
 
-The SQL finalizer owns the atomic dataset revision fence. Apps Script holds its import lock across source selection, staging, finalization and archive handling, but does not start a second revision fence. Staging uses bounded 300-row RPC calls and exposes no partial rows to readers. A continuation status reports staged/expected rows and queues the same manual-sync stage again; it does not mark the stage complete or archive the source.
+The SQL finalizer owns the atomic dataset revision fence. Apps Script holds its import lock across source selection, staging, finalization and archive handling, but does not start a second revision fence. Staging uses bounded 300-row RPC calls and exposes no partial rows to readers. A continuation status reports staged/expected rows and queues the same manual-sync stage again; it does not mark the stage complete or archive the source. Publication replaces the private source snapshot and overlays manager assignments in the same transaction, retaining the existing 55-second timeout. Multiple source rows for an overridden customer/consignee pair reject publication atomically; other source relationships retain their existing behavior.
 
 ## Request contract
 
@@ -34,4 +40,4 @@ The server revalidates membership at submission. Existing queued requests and sa
 
 ## Validation and release
 
-Conventional Node, Edge, SQL and Playwright tests cover parsing, publication, permissions, stale edits, duplicate names, Request membership and editor behavior. Database types and REST contracts are generated from the disposable Supabase migration chain. The existing release pipeline deploys the additive migration and backend before publishing the PWA and importer. No separate production write path or credentials are introduced.
+Focused Node/DOM, Edge-validator, and disposable-database SQL tests cover parsing, publication, permissions, stale edits, retry replay, assignment persistence/reset, duplicate names, Request membership and editor behavior. Browser, layout, timing and performance checks remain in Nightly Validation. The migration is registered in the existing backend release list; frontend and backend publication remain independent. New private tables and JSON operation fields preserve the existing public RPC signature and public table shape.

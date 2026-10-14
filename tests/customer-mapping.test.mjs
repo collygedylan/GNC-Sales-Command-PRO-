@@ -190,7 +190,7 @@ test('mapping response validation rejects unbounded or malformed database result
   assert.throws(()=>api.mappingPage({ok:true,rows:[row],total:1,page:0,pageSize:500,revision:'1',canEdit:true}));
   dom.window.close();
 });
-test('mapping editor preserves drafts on conflicts and sends expected revision without source IDs',async()=>{
+test('name correction preserves the current rep assignment and keeps drafts on conflicts',async()=>{
   const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
   const calls=[];let saves=0;
   const root=dom.window.document.getElementById('root');
@@ -202,20 +202,113 @@ test('mapping editor preserves drafts on conflicts and sends expected revision w
   await new Promise(resolve=>setTimeout(resolve,0));
   assert.equal(root.querySelector('tbody tr').children[4].textContent,'Active','status labels use the same normalization as the server');
   Array.from(root.querySelectorAll('button')).find(b=>b.textContent==='Edit').click();
-  const form=root.querySelector('form');form.querySelector('input').value='02';
+  const form=root.querySelector('form');form.querySelector('input').value='Garden Updated';
   form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
   await new Promise(resolve=>setTimeout(resolve,0));
-  assert.equal(calls.at(-1).expectedRevision,'3');assert.equal(calls.at(-1).salesrepId,'02');
+  assert.equal(calls.at(-1).expectedRevision,'3');assert.equal(calls.at(-1).salesrepId,'01');
   assert.equal(Object.hasOwn(calls.at(-1),'customeridentityid'),false);
-  assert.equal(root.querySelector('form input').value,'02'); assert.equal(saves,0);
+  assert.equal(root.querySelector('form input').value,'Garden Updated'); assert.equal(saves,0);
   assert.match(root.querySelector('[role=alert]').textContent,/Mapping changed/);
   unmount();dom.window.close();
+});
+
+test('assignments use cached canonical reps, UUID mutations and preserve drafts on conflicts',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const calls=[];let saves=0;
+  const root=dom.window.document.getElementById('root');
+  const transport=async payload=>{
+    calls.push(payload);
+    if(payload.operation==='reps')return {ok:true,rows:[{salesrepId:'01',salesrepName:'Morgan Smith'},{salesrepId:'02',salesrepName:'Molly Dixon'}],total:2,page:0,pageSize:2,revision:'r1'};
+    if(payload.operation==='list')return {ok:true,rows:[{...row,hasOverride:false,sourceSalesrepId:'01',sourceSalesrepName:'Morgan Smith'}],total:1,page:0,pageSize:50,revision:'r1',canEdit:true};
+    if(payload.operation==='assign')throw new dom.window.Error('Mapping changed. Refresh and retry.');
+    return {ok:true,row,revision:'r1'};
+  };
+  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,transport,()=>saves++,'manager:test');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.match(root.textContent,/Imported/);assert.match(root.textContent,/Garden ®/);assert.match(root.textContent,/North ™/);
+  Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Assign rep').click();
+  const search=root.querySelector('[aria-label="Search sales reps"]');search.value='Molly';search.dispatchEvent(new dom.window.Event('input'));
+  const select=root.querySelector('[aria-label="Select sales rep"]');assert.equal(select.options.length,2);select.value='02';
+  const form=root.querySelector('form');form.dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+  await new Promise(resolve=>setTimeout(resolve,0));
+  const submitted=calls.find(call=>call.operation==='assign');assert.equal(submitted.salesrepId,'02');assert.equal(submitted.expectedRevision,'3');
+  assert.match(submitted.requestId,/^[0-9a-f-]{36}$/i);assert.equal(root.querySelector('form select').value,'02');
+  assert.match(root.querySelector('[role="alert"]').textContent,/Mapping changed/);assert.equal(saves,0);
+  unmount();dom.window.close();
+});
+
+test('rep catalog validation rejects S99 and noncanonical or forged names',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const root=dom.window.document.getElementById('root');
+  const transport=async payload=>payload.operation==='reps'
+    ? {ok:true,rows:[{salesrepId:'S99',salesrepName:'Interdivision'}],total:1,page:0,pageSize:1,revision:'r1'}
+    : {ok:true,rows:[{...row,hasOverride:true,sourceSalesrepId:'01',sourceSalesrepName:'Morgan Smith'}],total:1,page:0,pageSize:50,revision:'r1',canEdit:true};
+  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,transport,()=>{},'manager:invalid');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.match(root.querySelector('[data-assignment-error="catalog"]').textContent,/invalid assignment/);
+  assert.equal(Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Assign rep').disabled,false,'an override can still be opened to reset when choices are unavailable');
+  Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Assign rep').click();
+  assert.ok(Array.from(root.querySelectorAll('button')).some(button=>button.textContent==='Reset to imported assignment'));
+  unmount();dom.window.close();
+});
+
+test('rep directory loads every bounded page and caches it only at the matching revision',async()=>{
+  const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const calls=[];const choices=Array.from({length:101},(_,index)=>({salesrepId:String(index+1),salesrepName:`Rep${index+1} Smith`}));
+  const client=dom.window.MappingEditor.createCustomerRepAssignments(async(payload)=>{
+    calls.push(payload);const page=payload.page||0;return{ok:true,rows:choices.slice(page*100,(page+1)*100),total:choices.length,page,pageSize:100,revision:'directory-r1'};
+  },'manager:directory-test');
+  const first=await client.reps(new dom.window.AbortController().signal);assert.equal(first.length,101);assert.deepEqual(calls.map(call=>call.page),[0,1]);
+  client.setRevision('directory-r1');assert.equal(await client.reps(new dom.window.AbortController().signal),first);assert.equal(calls.length,2);
+  client.dispose();dom.window.close();
+});
+
+test('an obsolete or aborted rep response cannot populate the shared catalog cache',async()=>{
+  const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  let resolveOld;const calls=[];
+  const client=dom.window.MappingEditor.createCustomerRepAssignments(async(payload)=>{
+    calls.push(payload);
+    if(calls.length===1)return new Promise(resolve=>{resolveOld=resolve;});
+    return{ok:true,rows:[{salesrepId:'02',salesrepName:'Molly Dixon'}],total:1,page:0,pageSize:100,revision:'r2'};
+  },'manager:obsolete-test');
+  const oldController=new dom.window.AbortController();const old=client.reps(oldController.signal).catch(error=>error);
+  client.setRevision('r2');oldController.abort();
+  resolveOld({ok:true,rows:[{salesrepId:'01',salesrepName:'Morgan Smith'}],total:1,page:0,pageSize:100,revision:'r1'});
+  assert.match((await old).message,/changed while loading/);
+  const current=await client.reps(new dom.window.AbortController().signal);assert.equal(current.length,1);assert.equal(current[0].salesrepId,'02');assert.equal(current[0].salesrepName,'Molly Dixon');
+  assert.equal(calls.length,2);client.dispose();dom.window.close();
+});
+
+test('mutation requests deduplicate in flight and reuse one request ID for an exact retry',async()=>{
+  const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const calls=[];let rejectFirst;let attempts=0;
+  const client=dom.window.MappingEditor.createCustomerRepAssignments(async(payload)=>{
+    calls.push(payload);attempts++;
+    if(attempts===1)return new Promise((_resolve,reject)=>{rejectFirst=reject;});
+    if(attempts===2)throw new Error('temporary network failure');
+    return{ok:true,row:{...row,revision:'4',salesrepid:'02',salesrepname:'Molly Dixon'},revision:'4'};
+  },'manager:retry-test');
+  const signal=new dom.window.AbortController().signal;
+  const pending=client.assign(row,'02',signal);assert.equal(client.assign(row,'02',signal),pending);assert.equal(calls.length,1);
+  rejectFirst(new Error('network unavailable'));await assert.rejects(pending,/network unavailable/);
+  await assert.rejects(client.assign(row,'02',signal),/temporary network failure/);
+  const retry=client.assign(row,'02',signal);await retry;
+  assert.equal(calls.length,3);assert.ok(calls.every(call=>call.requestId===calls[0].requestId));assert.equal(calls[0].salesrepId,'02');
+  client.dispose();dom.window.close();
+});
+
+test('mapping validator requires identity and status fields while allowing additive source metadata',()=>{
+  const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  assert.throws(()=>dom.window.MappingEditor.mappingRow({...row,customeridentityid:undefined}),/customeridentityid/);
+  assert.throws(()=>dom.window.MappingEditor.mappingRow({...row,consigneestatus:12}),/consigneestatus/);
+  assert.equal(dom.window.MappingEditor.mappingRow(row).sourceSalesrepName,null);
+  dom.window.close();
 });
 
 test('mapping editor cancels obsolete reads and never paints results after unmount',async()=>{
   const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
   const requests=[];const root=dom.window.document.getElementById('root');
-  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,(_payload,signal)=>new Promise(resolve=>requests.push({resolve,signal})),()=>{});
+  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,(payload,signal)=>payload.operation==='list'?new Promise(resolve=>requests.push({resolve,signal})):Promise.resolve({ok:true,rows:[],total:0,page:0,pageSize:50,revision:'4'}),()=>{});
   Array.from(root.querySelectorAll('button')).find(b=>b.textContent==='Refresh').click();
   assert.equal(requests[0].signal.aborted,true);
   requests[1].resolve({ok:true,rows:[{...row,customername:'Current'}],total:1,page:0,pageSize:50,revision:'4',canEdit:true});

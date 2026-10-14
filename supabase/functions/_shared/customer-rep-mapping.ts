@@ -1,4 +1,4 @@
-export type CustomerRepMappingOperation = "list" | "options" | "detail" | "save";
+export type CustomerRepMappingOperation = "list" | "options" | "detail" | "save" | "reps" | "assign" | "reset";
 
 export type CustomerRepMappingRequest = {
   operation: CustomerRepMappingOperation;
@@ -8,6 +8,9 @@ export type CustomerRepMappingRequest = {
 const LIST_FIELDS = new Set(["action", "operation", "page", "pageSize", "filters", "sort", "direction", "q"]);
 const OPTIONS_FIELDS = new Set(["action", "operation", "page", "pageSize", "q", "salesrepId", "customerId", "consigneeId"]);
 const SAVE_FIELDS = new Set(["action", "operation", "id", "expectedRevision", "salesrepId", "salesrepName", "customerName", "consigneeName"]);
+const REP_FIELDS = new Set(["action", "operation", "page", "pageSize", "q"]);
+const ASSIGN_FIELDS = new Set(["action", "operation", "id", "expectedRevision", "requestId", "salesrepId"]);
+const RESET_FIELDS = new Set(["action", "operation", "id", "expectedRevision", "requestId"]);
 const FILTER_FIELDS = new Set(["salesrepid", "salesrepname", "customername", "consigneename", "status"]);
 const SORT_FIELDS = new Set(["salesrepid", "salesrepname", "customername", "consigneename"]);
 const STATUSES = new Set(["all", "active", "inactive", "unassigned"]);
@@ -78,14 +81,44 @@ export function validateCustomerRepMappingRequest(input: unknown): CustomerRepMa
     if (!onlyKeys(value, new Set(["action", "operation", "id"]))) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
     return { operation, payload: { id: boundedString(value.id, "id", 200, false) } };
   }
-  if (operation === "save") {
-    if (!onlyKeys(value, SAVE_FIELDS)) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+  if (operation === "reps") {
+    if (!onlyKeys(value, REP_FIELDS)) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    const page = value.page ?? 0;
+    const pageSize = value.pageSize ?? 100;
+    const q = value.q === undefined ? "" : boundedString(value.q, "q", 120);
+    if (!Number.isSafeInteger(page) || Number(page) < 0 || Number(page) > 1000
+      || !Number.isSafeInteger(pageSize) || Number(pageSize) < 1 || Number(pageSize) > 200) {
+      throw new Error("CUSTOMER_REP_MAPPING_FILTER_INVALID");
+    }
+    return { operation, payload: { page, pageSize, q } };
+  }
+  if (operation === "assign" || operation === "reset") {
+    const allowed = operation === "assign" ? ASSIGN_FIELDS : RESET_FIELDS;
+    if (!onlyKeys(value, allowed)) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
     const expectedRevision = boundedString(value.expectedRevision, "expectedRevision", 19, false);
     if (!/^[1-9][0-9]{0,18}$/.test(expectedRevision)) throw new Error("CUSTOMER_REP_MAPPING_REVISION_INVALID");
+    const requestId = boundedString(value.requestId, "requestId", 36, false);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    }
+    return { operation, payload: {
+      id: boundedString(value.id, "id", 200, false), expectedRevision, requestId,
+      ...(operation === "assign" ? { salesrepId: boundedString(value.salesrepId, "salesrepId", 100, false) } : {}),
+    } };
+  }
+  if (operation === "save") {
+    if (!onlyKeys(value, new Set([...SAVE_FIELDS, "requestId"]))) throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    const expectedRevision = boundedString(value.expectedRevision, "expectedRevision", 19, false);
+    if (!/^[1-9][0-9]{0,18}$/.test(expectedRevision)) throw new Error("CUSTOMER_REP_MAPPING_REVISION_INVALID");
+    const requestId = value.requestId === undefined ? undefined : boundedString(value.requestId, "requestId", 36, false);
+    if (requestId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
+      throw new Error("CUSTOMER_REP_MAPPING_PAYLOAD_INVALID");
+    }
     return {
       operation,
       payload: {
         id: boundedString(value.id, "id", 200, false), expectedRevision,
+        ...(requestId ? { requestId } : {}),
         salesrepId: boundedString(value.salesrepId, "salesrepId", 100, false),
         salesrepName: boundedString(value.salesrepName, "salesrepName", 240, false),
         customerName: boundedString(value.customerName, "customerName", 300, false),

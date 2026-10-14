@@ -20,6 +20,19 @@ select ok(not has_function_privilege('authenticated','public.finalize_customer_r
   and not has_function_privilege('anon','public.finalize_customer_rep_mapping_import_v1(uuid)','execute')
   and has_function_privilege('service_role','public.finalize_customer_rep_mapping_import_v1(uuid)','execute'),
   'bounded finalizer keeps its service-only execution boundary');
+select ok((select bool_and(relrowsecurity) from pg_class where oid in (
+  'sales_private.customer_rep_assignment_sources'::regclass,
+  'sales_private.customer_rep_assignment_overrides'::regclass,
+  'sales_private.customer_rep_assignment_receipts'::regclass))
+  and not has_table_privilege('anon','sales_private.customer_rep_assignment_sources','select')
+  and not has_table_privilege('authenticated','sales_private.customer_rep_assignment_overrides','select')
+  and not has_table_privilege('authenticated','sales_private.customer_rep_assignment_receipts','select'),
+  'assignment source, override, and receipt tables stay private under RLS');
+select ok(sales_private.is_first_last_salesrep_name_v1('Zoë O’Neil - South TX')
+  and sales_private.is_first_last_salesrep_name_v1('Chance Alldredge - South TX')
+  and not sales_private.is_first_last_salesrep_name_v1('Interdivision')
+  and not sales_private.is_first_last_salesrep_name_v1('Last, First'),
+  'First Last validation accepts Unicode, compound names, and regions but rejects non-person labels');
 
 insert into auth.users(id,email,raw_app_meta_data,raw_user_meta_data) values
  ('a9f00000-0000-4000-8000-000000000001','map-admin@example.invalid','{}','{}'),
@@ -37,6 +50,13 @@ insert into public.ph_customer_consignee_sales_reps(unique_id,customeridentityid
  ('map-test-row-2','00002','Map Customer ®','A','00010','Map Consignee ™','A','R2','Other Rep','{}'),
  ('map-inactive','00003','Inactive Customer','I','00011','Inactive Consignee','A','R1','Map Rep','{}'),
  ('map-unassigned','00004','Unassigned Customer',null,'00012','Unassigned Consignee','A',null,null,'{}');
+insert into sales_private.customer_rep_assignment_sources(unique_id,customeridentityid,consigneeid,salesrepid,salesrepname) values
+ ('map-test-row-1','00001','00009','R1','Map Rep'),
+ ('map-test-row-2','00002','00010','R2','Other Rep'),
+ ('map-inactive','00003','00011','R1','Map Rep'),
+ ('map-unassigned','00004','00012',null,null),
+ ('map-alt-rep-1','00005','00015','R3','Ariana O’Neil'),
+ ('map-alt-rep-2','00006','00016','R3','Different Name');
 create temporary table mapping_before on commit drop as
  select revision from public.app_dataset_revisions where key='ph_customer_consignee_sales_reps';
 
@@ -54,6 +74,14 @@ select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4
  '42501','CUSTOMER_REP_MAPPING_FORBIDDEN','CSR cannot manage mappings');
 select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000002','detail','{"id":"map-test-row-1"}')$$,
  '42501','CUSTOMER_REP_MAPPING_FORBIDDEN','CSR cannot read source details');
+select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000002','reps','{}')$$,
+ '42501','CUSTOMER_REP_MAPPING_FORBIDDEN','CSR cannot read assignment rep catalog');
+select ok((public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000001','reps','{"q":"R1"}')
+  ->'rows'->0->>'salesrepName')='Map Rep'
+  and (public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000001','reps','{"q":"R3"}')
+  ->>'total')='0'
+  and (public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000001','reps','{"q":"S99"}')
+  ->>'total')='0', 'rep catalog keeps canonical names and excludes ambiguous IDs and S99');
 select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000001','save',
  '{"id":"map-test-row-1","expectedRevision":"1","salesrepId":"UNKNOWN","salesrepName":"Unknown Rep","customerName":"Manual Customer","consigneeName":"Map Consignee ™"}')$$,
  '22023','CUSTOMER_REP_MAPPING_REP_UNVERIFIED','unknown external rep cannot be invented by a mapping correction');
@@ -71,6 +99,9 @@ select lives_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-40
  '{"id":"map-inactive","expectedRevision":"1","salesrepId":"R1","salesrepName":"Map Rep","customerName":"Corrected Inactive Customer","consigneeName":"Inactive Consignee"}')$$,
  'Manager may correct display mappings without activating an inactive customer');
 select is((select customerstatus from public.ph_customer_consignee_sales_reps where unique_id='map-inactive'),'I','editing never activates an inactive customer');
+select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000001','save',
+ '{"id":"map-test-row-1","expectedRevision":"2","salesrepId":"R3","salesrepName":"Ariana O’Neil","customerName":"Manual Customer","consigneeName":"Map Consignee ™"}')$$,
+ '22023','CUSTOMER_REP_MAPPING_REP_UNVERIFIED','legacy save cannot use a rep ID with ambiguous canonical names');
 
 select set_config('request.jwt.claim.role','authenticated',true);
 select lives_ok($$insert into public.ph_active_request(unique_id,requested_by,request_source,customeridentityid,customername,consigneeidentityid,consigneename)
@@ -85,6 +116,23 @@ select throws_ok($$update public.ph_active_request set request_selected_rep_disp
  '22023','REQUEST_CUSTOMER_MAPPING_REQUIRED','changing only the selected rep revalidates membership');
 select throws_ok($$update public.ph_active_request set requested_by='Other Rep' where unique_id='map-request-valid'$$,
  '22023','REQUEST_CUSTOMER_MAPPING_REQUIRED','changing the requested rep revalidates membership');
+
+select is(public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','assign',
+ '{"id":"map-test-row-1","expectedRevision":"2","requestId":"4d59b4e8-7847-4a66-9cb7-dc9fcbb74c24","salesrepId":"R2"}')
+  ->'row'->>'salesrepname','Other Rep','manager assignment uses canonical ID/name from source');
+select is((select count(*)::integer from sales_private.customer_rep_assignment_overrides
+  where customeridentityid='00001' and consigneeid='00009'),1,'manual assignment is stored by stable customer/consignee IDs');
+select is(public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','assign',
+ '{"id":"map-test-row-1","expectedRevision":"2","requestId":"4d59b4e8-7847-4a66-9cb7-dc9fcbb74c24","salesrepId":"R2"}')
+  ->'row'->>'revision','3','exact assignment retry returns its original result');
+select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','assign',
+ '{"id":"map-test-row-1","expectedRevision":"2","requestId":"4d59b4e8-7847-4a66-9cb7-dc9fcbb74c24","salesrepId":"R1"}')$$,
+ '22023','CUSTOMER_REP_MAPPING_VALUE_INVALID','request ID cannot be reused for a different assignment');
+select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','assign',
+ '{"id":"map-test-row-1","expectedRevision":"3","requestId":"4d59b4e8-7847-4a66-9cb7-dc9fcbb74c25","salesrepId":"S99"}')$$,
+ '22023','CUSTOMER_REP_MAPPING_REP_UNVERIFIED','S99 cannot be selected for a new assignment');
+insert into sales_private.customer_rep_assignment_overrides(customeridentityid,consigneeid,salesrepid,salesrepname,updated_by)
+ values('DORMANT-CUSTOMER','DORMANT-CONSIGNEE','R1','Map Rep','map_manager');
 
 -- Reusable synthetic source record: unknown fields, Unicode and leading zeros
 -- remain raw text; no production customer data is part of this fixture.
@@ -124,10 +172,19 @@ select is((public.stage_customer_rep_mapping_rows_v1('a9f00000-0000-4000-8000-00
  (select jsonb_agg(payload) from mapping_source_rows where seq=2))->>'stagedRows')::integer,2,'blank physical row gaps do not break prefix resume');
 select is((public.finalize_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000101')->>'rowCount')::integer,2,'complete snapshot publishes atomically');
 select is((select customername from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),'Master Customer ®','successful source publication replaces manual correction');
+select is((select salesrepname from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),'Other Rep','manual assignment wins over later full import');
+select is((select count(*)::integer from sales_private.customer_rep_assignment_sources),'2','successful import atomically replaces latest-source snapshot');
+select is((select count(*)::integer from sales_private.customer_rep_assignment_overrides
+  where customeridentityid='DORMANT-CUSTOMER' and consigneeid='DORMANT-CONSIGNEE'),1,'override remains dormant when a future snapshot omits its pair');
 select is((select count(*)::integer from public.ph_customer_consignee_sales_reps),2,'relationships absent from the new full snapshot are removed');
 select is((select raw_data->>'UNKNOWN_CONTACT_FIELD' from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),'原文 00007','unknown source fields preserve Unicode and leading zeros');
 select is((select customeridentityid from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),'00001','typed external identity retains leading zeros');
 select is((public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000002','options','{}')->>'total')::integer,1,'retained blank status/unassigned rows remain unselectable');
+select is(public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','reset',
+ jsonb_build_object('id','map-test-row-1','expectedRevision',(select mapping_revision::text from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),
+  'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c26'))->'row'->>'salesrepname','Map Rep','reset restores the newest imported rep including source-only choices');
+select is((select count(*)::integer from sales_private.customer_rep_assignment_overrides
+  where customeridentityid='00001' and consigneeid='00009'),0,'reset removes the persistent override');
 select lives_ok($$update public.ph_active_request set request_note='Historical note survives new mapping' where unique_id='map-request-valid'$$,'existing queued Request survives mapping replacement');
 select is((select customername from public.ph_active_request where unique_id='map-request-valid'),'Manual Customer','historical Request snapshot remains unchanged');
 
@@ -156,6 +213,20 @@ select public.stage_customer_rep_mapping_rows_v1('a9f00000-0000-4000-8000-000000
 select throws_ok($$select public.finalize_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000105')$$,
  '23505','CUSTOMER_REP_IMPORT_DUPLICATE_RELATIONSHIP','different row IDs cannot hide duplicate source relationships');
 select is((select customername from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),'After Publish Correction','rejected malformed snapshots preserve the live corrected directory');
+
+update sales_private.customer_rep_mapping_import_runs set status='failed',finished_at=clock_timestamp()
+ where run_id='a9f00000-0000-4000-8000-000000000105';
+delete from sales_private.customer_rep_mapping_import_stage where run_id='a9f00000-0000-4000-8000-000000000105';
+insert into sales_private.customer_rep_assignment_overrides(customeridentityid,consigneeid,salesrepid,salesrepname,updated_by)
+ values('DUP-OVERRIDE-CUSTOMER','DUP-OVERRIDE-CONSIGNEE','R1','Map Rep','map_manager');
+select public.begin_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000106',
+ 'ambiguous-override.csv','2026-10-12T12:00:00Z',repeat('d',64),2);
+select public.stage_customer_rep_mapping_rows_v1('a9f00000-0000-4000-8000-000000000106',jsonb_build_array(
+ pg_temp.mapping_source('override-source-1',3,'DUP-OVERRIDE-CUSTOMER','C','DUP-OVERRIDE-CONSIGNEE','D','R1','Map Rep'),
+ pg_temp.mapping_source('override-source-2',4,'DUP-OVERRIDE-CUSTOMER','C','DUP-OVERRIDE-CONSIGNEE','D','R2','Other Rep')));
+select throws_ok($$select public.finalize_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000106')$$,
+ '23505','CUSTOMER_REP_ASSIGNMENT_IMPORT_AMBIGUOUS_OVERRIDE','ambiguous duplicate pair cannot replace source rows under an override');
+select is((select count(*)::integer from public.ph_customer_consignee_sales_reps),2,'ambiguous overridden import leaves the published mapping intact');
 
 select * from finish();
 rollback;
