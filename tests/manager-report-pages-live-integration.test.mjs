@@ -39,6 +39,154 @@ test('report query isolates sorted report/user/season choices and current config
   assert.equal(context.buildManagerReportPageQuery('eval2','rows').limit,100);
 });
 
+test('Eval2 opts out of paged reports while other advertised surfaces retain the controller', () => {
+  const enabled = new Set(['eval1', 'eval2', 'assigned-items']);
+  const controllerCalls = [];
+  const context = run(['useManagerReportPages'], {
+    window:{GncReportPagesLive:{}}, currentUser:{username:'manager'},
+    getManagerReportPageController:() => ({ enabled:surface => { controllerCalls.push(surface); return enabled.has(surface); } })
+  });
+  assert.equal(context.useManagerReportPages('eval2'), false);
+  assert.equal(context.useManagerReportPages('eval1'), true);
+  assert.equal(context.useManagerReportPages('assigned-items'), true);
+  assert.deepEqual(controllerCalls, ['eval1', 'assigned-items']);
+});
+
+test('legacy LowStock All Users snapshot renders Block Alpha through ITEMCODE drill groups', () => {
+  const rows = [
+    {UNIQUE_ID:'low-1',ITEMCODE:'ALPHA-1',BLOCKALPHA:'A',LOCATIONCODE:'L-01',ASSIGNEDTO:'Manager A'},
+    {UNIQUE_ID:'low-2',ITEMCODE:'ALPHA-2',BLOCKALPHA:'A',LOCATIONCODE:'L-01',ASSIGNEDTO:'Manager B'},
+    {UNIQUE_ID:'low-3',ITEMCODE:'BETA-1',BLOCKALPHA:'B',LOCATIONCODE:'L-02',ASSIGNEDTO:''}
+  ];
+  const index = {reports:{'low-stock':rows},selectedReportRows:new Map()};
+  const context = run([
+    'getManagerEvalReport2Rows', 'getManagerEvalReport2RowsBeforeCommonName', 'managerEvalAssignedUserMatches',
+    'getManagerEvalReport2DrillGroups', 'renderManagerEvalReport2DrillGroupCard'
+  ], {
+    getManagerEvalReport2Index:() => index,
+    getManagerEvalReport2SelectedReportIds:() => ['low-stock'],
+    getManagerEvalReport2RowKey:row => row.UNIQUE_ID,
+    getManagerEvalAssignedUserSet:() => new Set(),
+    managerEvalReport2AssignmentFilterRefreshing:false,
+    getManagerEvalReport2SeasonFilters:() => new Set(),
+    doesManagerEvalReport2RowMatchSeasonFilter:() => true,
+    managerEvalReport2ContSizeFilter:'all', managerEvalReport2LocationFilter:'all', managerEvalReport2PriorityFilter:'all',
+    getManagerEvalReportRowPriority:() => '', managerEvalReportRowMatchesSearch:() => true,
+    getDriveBlockAlphaValue:row => row.BLOCKALPHA || '__NO_BLOCK_ALPHA__',
+    getDriveBlockAlphaLabel:value => value === '__NO_BLOCK_ALPHA__' ? 'No Block Alpha' : value,
+    getManagerEvalReportRowLocation:row => row.LOCATIONCODE,
+    getManagerEvalReport2ItemCode:row => row.ITEMCODE,
+    compareManagerEvalReport2Natural:(left,right) => String(left).localeCompare(String(right),undefined,{numeric:true}),
+    escapeHtml:value => String(value), escJsAttrValue:value => String(value),
+    managerEvalReport2BrowseMode:'location', managerEvalReport2DrillLevel:0,
+    managerEvalReport2SelectedBlockAlpha:'', managerEvalReport2SelectedLocationCode:''
+  });
+  const selectedRows = context.getManagerEvalReport2RowsBeforeCommonName();
+  assert.deepEqual(Array.from(selectedRows, row => row.ITEMCODE), ['ALPHA-1','ALPHA-2','BETA-1']);
+  let groups = context.getManagerEvalReport2DrillGroups(selectedRows);
+  assert.deepEqual(Array.from(groups, group => [group.kind,group.label,group.itemCount]), [['blockalpha','A',2],['blockalpha','B',1]]);
+  assert.match(context.renderManagerEvalReport2DrillGroupCard(groups[0]), /Block Alpha/);
+  context.managerEvalReport2DrillLevel = 1;
+  context.managerEvalReport2SelectedBlockAlpha = 'A';
+  groups = context.getManagerEvalReport2DrillGroups(selectedRows);
+  assert.deepEqual(Array.from(groups, group => [group.kind,group.label,group.itemCount]), [['locationcode','L-01',2]]);
+  context.managerEvalReport2DrillLevel = 2;
+  context.managerEvalReport2SelectedLocationCode = 'L-01';
+  groups = context.getManagerEvalReport2DrillGroups(selectedRows);
+  assert.deepEqual(Array.from(groups, group => [group.kind,group.label,group.itemCount]), [['itemcode','ALPHA-1',1],['itemcode','ALPHA-2',1]]);
+  assert.match(context.renderManagerEvalReport2DrillGroupCard(groups[0]), /ALPHA-1/);
+});
+
+test('legacy Eval2 cold load deduplicates requests and awaits current LowStock targets', async () => {
+  let release, settingsReads = 0, targetReads = 0, indexBuilds = 0, pagedCalls = 0;
+  const datasetReads = [];
+  const gate = new Promise(resolve => { release = resolve; });
+  const context = run(['useManagerReportPages', 'managerEvalReport2NeedsLowStockTargets', 'loadManagerEvalReports2'], {
+    window:{GncReportPagesLive:{}}, currentUser:{username:'manager'},
+    getManagerReportPageController:() => ({
+      state:() => ({pendingKey:'',promise:null,error:'',page:null}),
+      enabled:() => { pagedCalls += 1; return true; },
+      load:async () => { pagedCalls += 1; return {sourceRevision:'paged-r1'}; }
+    }),
+    canViewManagerEvalReports2:() => true,
+    getSupabaseReadIdentityScope:() => 'account-a',
+    managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
+    managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
+    getDatasetLoadSignature:key => `${key}-source-r1`,
+    ensureDatasetLoaded:async (key, mode) => { datasetReads.push([key, mode]); await gate; },
+    loadManagerEvalReportSettings:async () => { settingsReads += 1; },
+    isDatasetLoaded:() => true,
+    getManagerEvalReport2SelectedReportIds:() => ['low-stock'],
+    canReadItemLowStockTargets:() => true,
+    loadManagerItemLowStockTargets:async force => { assert.equal(force, false); targetReads += 1; },
+    managerEvalReport2LowStockTargetsReady:() => true,
+    getManagerEvalReport2LatestSourceUpdate:() => '',
+    scheduleManagersRender:() => {}, getCurrentVisibleViewId:() => '', activeHomeTab:'', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
+    fullInventory:[{unique_id:'inventory-row',itemcode:'ALPHA-1',blockalpha:'A',s_lts:10}],
+    warehouseAssignedItemsInventory:[{unique_id:'assignment-row',itemcode:'ALPHA-1',assignedto:'Manager A'}],
+    buildManagerEvalReport2IndexAsync:async () => { indexBuilds += 1; return {counts:{'low-stock':1}}; },
+    invalidateManagerEvalReport2Cache:() => {}, getFriendlyBackendErrorMessage:error => error.message,
+    reportSemanticHealthEvent:() => {}, showToast:() => {}
+  });
+
+  const first = context.loadManagerEvalReports2(false);
+  const second = context.loadManagerEvalReports2(false);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(datasetReads, [['master','full'],['warehouseAssignedItems','full']], 'one full master and assignments snapshot read');
+  assert.equal(pagedCalls, 0, 'the production Eval2 gate must bypass report-page calls');
+  release();
+  const [firstResult, secondResult] = await Promise.all([first, second]);
+  assert.equal(firstResult, secondResult);
+  assert.equal(settingsReads, 1);
+  assert.equal(targetReads, 1);
+  assert.equal(indexBuilds, 1);
+  assert.deepEqual(firstResult.counts, {'low-stock':1});
+});
+
+test('legacy Eval2 cache key changes for source, settings, target revision, and report date', () => {
+  const dimensions = {
+    master:'master-r1', warehouseAssignedItems:'assign-r1',
+    currentSeason:'F1', currentYear:27, nextSeason:'S1', nextYear:27,
+    lowStockMax:150, holdAge:5, noteAge:10, targetRevision:1, date:'2026-10-14'
+  };
+  const context = run(['getManagerEvalReport2CacheKeyValue'], {
+    getDatasetLoadSignature:key => dimensions[key],
+    fullInventory:[], warehouseAssignedItemsInventory:[],
+    getConfiguredCurrentSeasonCode:() => dimensions.currentSeason,
+    getConfiguredCurrentSalesYearCode:() => dimensions.currentYear,
+    getConfiguredNextSaleSeasonTarget:() => ({season:dimensions.nextSeason,salesYear:dimensions.nextYear}),
+    managerEvalReportSettings:{get lowStockMaxSLts(){return dimensions.lowStockMax;},get holdAgeDays(){return dimensions.holdAge;},get locationNoteAgeDays(){return dimensions.noteAge;}},
+    getManagerItemLowStockTargetsState:() => ({revision:dimensions.targetRevision}),
+    getManagerEvalReportCentralDateKey:() => dimensions.date
+  });
+  const baseline = context.getManagerEvalReport2CacheKeyValue();
+  for (const [key, value] of Object.entries({master:'master-r2',warehouseAssignedItems:'assign-r2',lowStockMax:151,holdAge:6,noteAge:11,targetRevision:2,date:'2026-10-15'})) {
+    const previous = dimensions[key]; dimensions[key] = value;
+    assert.notEqual(context.getManagerEvalReport2CacheKeyValue(), baseline, `${key} changes must invalidate the derived index`);
+    dimensions[key] = previous;
+  }
+});
+
+test('warm legacy Eval2 index reuses its exact cache key without starting classification', async () => {
+  const cached = {reports:{'low-stock':[]},rowsByItemCode:new Map()};
+  let classifications = 0, reconciliations = 0;
+  const context = run(['getManagerEvalReport2CacheKeyValue','performManagerEvalReport2IndexBuild'], {
+    getDatasetLoadSignature:key => `${key}-r1`, fullInventory:[{unique_id:'a'}], warehouseAssignedItemsInventory:[{unique_id:'b'}],
+    getConfiguredCurrentSeasonCode:() => 'F1', getConfiguredCurrentSalesYearCode:() => 27,
+    getConfiguredNextSaleSeasonTarget:() => ({season:'S1',salesYear:27}),
+    managerEvalReportSettings:{lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10},
+    getManagerItemLowStockTargetsState:() => ({revision:1}), getManagerEvalReportCentralDateKey:() => '2026-10-14',
+    getSupabaseReadIdentityScope:() => 'account-a',
+    managerEvalReport2Cache:cached, managerEvalReport2NeedsReconcile:true,
+    reconcileManagerEvalReport2Navigation:() => { reconciliations += 1; },
+    getManagerEvalReports2Api:() => { classifications += 1; throw new Error('unexpected classification'); }
+  });
+  context.managerEvalReport2CacheKey = context.getManagerEvalReport2CacheKeyValue();
+  assert.equal(await context.performManagerEvalReport2IndexBuild({}), cached);
+  assert.equal(classifications, 0);
+  assert.equal(reconciliations, 1);
+});
+
 test('paged action rows cannot fall back to a shared full inventory snapshot', () => {
   const state = { revision:'r2',completeItems:new Map() }, current = [{unique_id:'current'}];
   const context = run(['getManagerEvalReport2AllCurrentItemRows'], {
