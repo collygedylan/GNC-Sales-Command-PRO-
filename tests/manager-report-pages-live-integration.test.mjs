@@ -180,7 +180,11 @@ test('Eval2 loader falls back to full inventory after paged capabilities resolve
   const context = run(['loadManagerEvalReports2'], {
     canViewManagerEvalReports2:() => true,
     useManagerReportPages:() => paged,
-    getManagerReportPageController:() => ({ initialize:async () => { calls.push('initialize'); paged = false; }, enabled:() => false }),
+    getManagerReportPageController:() => ({
+      state:() => ({}),
+      load:async () => { calls.push('metadata'); paged = false; return null; }, enabled:() => false
+    }),
+    buildManagerReportPageQuery:(surface, operation) => ({surface,operation}),
     getSupabaseReadIdentityScope:() => 'account-a',
     managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
     managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
@@ -200,7 +204,7 @@ test('Eval2 loader falls back to full inventory after paged capabilities resolve
     reportSemanticHealthEvent:() => {}, showToast:() => {}
   });
   const result = await context.loadManagerEvalReports2(false);
-  assert.deepEqual(calls.slice(0, 4), ['initialize','master','warehouseAssignedItems','settings']);
+  assert.deepEqual(calls.slice(0, 4), ['metadata','master','warehouseAssignedItems','settings']);
   assert.deepEqual(result.counts, {'low-stock':1});
 });
 
@@ -226,6 +230,196 @@ test('supported Eval2 load explicitly fetches report metadata before rendering t
     getManagerEvalReport2Index:() => ({paged:true,counts:{'low-stock':4}})
   });
   const result = await context.loadManagerEvalReports2(false);
-  assert.deepEqual(calls, ['initialize','load:eval2:metadata:false']);
+  assert.deepEqual(calls, ['load:eval2:metadata:false']);
   assert.equal(result.counts['low-stock'], 4);
+});
+
+function evalLoadFixture(paged) {
+  let account = 'account-a', permission = 'p1', fail = true, gate = null;
+  let queuedRender = false, rendered = '', rowRefreshes = 0, capabilityCalls = 0;
+  let failCapabilities = false;
+  const timers = [], requests = [], loaded = new Set();
+  const index = { counts:{'low-stock':1}, diagnostics:{} };
+  const context = run([
+    'getManagerReportPageController', 'buildManagerReportPageQuery',
+    'ensurePagedManagerReportMetadata', 'managerEvalReport2DisplaySourcesReady',
+    'loadManagerEvalReports2', 'renderManagerEvalReports2Panel'
+  ], {
+    AbortController,
+    managerReportPageController:null,
+    managerEvalReport2LoadState:{loading:false,error:'',owner:'',promise:null},
+    managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
+    getSupabaseReadIdentityScope:() => account,
+    appAccessSnapshotState:{get snapshot() { return {dataPermissionVersion:permission}; }},
+    canViewManagerEvalReports2:() => true, useManagerReportPages:() => paged,
+    getManagerEvalReports2Api:() => ({}),
+    getManagerEvalReport2Index:() => paged
+      ? context.getManagerReportPageController().state('eval2').page && index
+      : context.managerEvalReport2Cache,
+    createPagedManagerEvalIndex:() => index,
+    getCurrentVisibleViewId:() => 'managers', isViewVisible:() => true,
+    activeHomeTab:'eval2', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
+    APP_API_FUNCTION_URL:'mock-only', SUPABASE_READ_TIMEOUT_MS:1000,
+    postAppFunctionJson:async (_url, body) => {
+      if (body.operation === 'capabilities') {
+        capabilityCalls += 1;
+        return failCapabilities ? {ok:false,error:'capability failure',status:503}
+          : {ok:true,data:{surfaces:['eval2']}};
+      }
+      requests.push(body.query);
+      if (gate) await gate;
+      return fail ? {ok:false,error:'database failure',status:503}
+        : {ok:true,data:{rows:[],sourceRevision:'r1',metadata:{counts:{'low-stock':1}}}};
+    },
+    signalProductionLiveSync:() => {}, syncManagerEvalReport2SelectionUi:() => {},
+    scheduleManagersRender:() => { queuedRender = true; },
+    setTimeout:callback => { timers.push(callback); return timers.length; },
+    escapeHtml:value => String(value),
+    managersSearchTerm:'', managerEvalReportSettings:{lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10},
+    getConfiguredNextSaleSeasonTarget:() => ({season:'S1',salesYear:27}),
+    getConfiguredCurrentSeasonCode:() => 'F1', getConfiguredCurrentSalesYearCode:() => 27,
+    getManagerEvalReportCentralDateKey:() => '2026-10-14',
+    getManagerEvalReport2SelectedReportIds:() => ['low-stock'], getManagerEvalAssignedUsers:() => [],
+    getManagerEvalReport2SeasonFilters:() => new Set(),
+    managerEvalReport2ContSizeFilter:'all', managerEvalReport2LocationFilter:'all', managerEvalReport2PriorityFilter:'all',
+    managerEvalReport2SelectedCommonName:'', managerEvalReport2SelectedBlockAlpha:'', managerEvalReport2SelectedLocationCode:'',
+    managerEvalReport2SelectedContSize:'', isManagerEvalReport2ItemcodeBrowseLevel:() => false, managerEvalReport2DrillLevel:0,
+    managerEvalReport2AssignmentFilterRefreshing:false, managerEvalReport2DetailItemKey:'',
+    getManagerEvalReport2Meta:() => ({label:'LowStock'}),
+    getManagerEvalReport2LatestSourceUpdate:() => '',
+    renderManagerEvalReport2MoreMenu:() => '', renderManagerEvalReport2ReportsPanel:() => '<div>Block Alpha cards</div>',
+    getDatasetLoadSignature:key => `${key}-signature`,
+    ensureDatasetLoaded:async key => {
+      requests.push(key);
+      if (key === 'master') {
+        if (gate) await gate;
+        if (fail) throw new Error('database failure');
+      }
+      loaded.add(key);
+    },
+    isDatasetLoaded:key => loaded.has(key), canUseProductionLiveSync:() => false,
+    loadManagerEvalReportSettings:async () => {}, managerEvalReport2NeedsLowStockTargets:() => false,
+    fullInventory:[], warehouseAssignedItemsInventory:[],
+    invalidateManagerEvalReport2Cache:() => {},
+    buildManagerEvalReport2IndexAsync:async () => { context.managerEvalReport2Cache = index; return index; },
+    getFriendlyBackendErrorMessage:error => error.message, reportSemanticHealthEvent:() => {}, showToast:() => {},
+    managerReportVisibleRows:new Map(), managerReportScopedRows:new Map(),
+    managerPagedLocationScroll:new Map(), managerReportGridFilters:new Map(),
+    managerEvalReport2SelectedItemsByKey:new Map(), managerEvalReport2EditsByRowKey:new Map(),
+    managerEvalAssignmentSelection:new Map()
+  });
+  vm.runInContext(readFileSync(new URL('../assets/report-pages-live.js', import.meta.url), 'utf8'), context);
+  const create = context.GncReportPagesLive.createController;
+  context.GncReportPagesLive.createController = options => {
+    const controller = create({...options, loadModule:async () => ({
+      createReportSession:({transport}) => ({read:query => transport(query),refresh:query => transport(query),clear() {}})
+    })});
+    const refresh = controller.refresh;
+    controller.refresh = surface => { rowRefreshes += 1; return refresh(surface); };
+    return controller;
+  };
+  function render() { rendered = context.renderManagerEvalReports2Panel(); return rendered; }
+  return {
+    context, requests, render, html:() => rendered, rowRefreshes:() => rowRefreshes,
+    capabilityCalls:() => capabilityCalls,
+    failCapabilities:() => { failCapabilities = true; },
+    succeed:() => { fail = false; }, fail:() => { fail = true; },
+    account:value => { account = value; }, permission:value => { permission = value; },
+    hold:() => { let release; gate = new Promise(resolve => { release = resolve; }); return release; },
+    fetchCount:() => paged ? requests.length : requests.filter(key => key === 'master').length,
+    async drain() {
+      // Bound the queue so the regression fails with a count instead of hanging.
+      for (let round = 0; round < 8; round += 1) {
+        await new Promise(resolve => setImmediate(resolve));
+        if (queuedRender) { queuedRender = false; render(); }
+        for (const callback of timers.splice(0)) await callback();
+      }
+    },
+    idle:() => !queuedRender && timers.length === 0
+  };
+}
+
+for (const paged of [true, false]) {
+  const mode = paged ? 'paged' : 'legacy';
+  test(`Eval2 ${mode} LowStock All Users Block Alpha fetches once after an initial error`, async () => {
+    const fixture = evalLoadFixture(paged);
+    fixture.render(); fixture.render(); // Includes timers queued before a request starts.
+    await fixture.drain();
+    assert.equal(fixture.fetchCount(), 1);
+    assert.match(fixture.html(), /database failure/);
+    assert.match(fixture.html(), /loadManagerEvalReports2\(true\)/);
+    assert.equal(fixture.idle(), true);
+    for (let repeat = 0; repeat < 3; repeat += 1) {
+      await fixture.context.loadManagerEvalReports2(false);
+      fixture.render();
+    }
+    await fixture.drain();
+    assert.equal(fixture.fetchCount(), 1, 'queued automatic calls must respect the failed state');
+    if (paged) {
+      assert.deepEqual(Array.from(fixture.requests[0].filters.reportIds), ['low-stock']);
+      assert.deepEqual(Array.from(fixture.requests[0].filters.assignedUsers), []);
+      assert.equal(fixture.requests[0].filters.groupBy, 'blockalpha');
+    }
+  });
+
+  test(`Eval2 ${mode} Retry makes one attempt, recovers, and retains cached results on later failure`, async () => {
+    const fixture = evalLoadFixture(paged);
+    fixture.render(); await fixture.drain();
+    await fixture.context.loadManagerEvalReports2(true); await fixture.drain();
+    assert.equal(fixture.fetchCount(), 2);
+    assert.equal(fixture.rowRefreshes(), 0, 'failed metadata must not trigger row refreshes');
+    assert.match(fixture.html(), /database failure/);
+    fixture.succeed();
+    await fixture.context.loadManagerEvalReports2(true); await fixture.drain();
+    assert.equal(fixture.fetchCount(), 3);
+    assert.equal(fixture.context.managerEvalReport2LoadState.error, '');
+    assert.match(fixture.html(), /Block Alpha cards/);
+    assert.equal(fixture.rowRefreshes(), paged ? 1 : 0);
+    const retained = fixture.context.managerEvalReport2Cache;
+    fixture.fail();
+    await fixture.context.loadManagerEvalReports2(true); await fixture.drain();
+    assert.equal(fixture.fetchCount(), 4);
+    assert.equal(fixture.context.managerEvalReport2Cache, retained);
+    assert.match(fixture.html(), /last complete results remain visible/);
+    assert.equal(fixture.rowRefreshes(), paged ? 1 : 0);
+  });
+
+  test(`Eval2 ${mode} concurrent retries share one pending fetch`, async () => {
+    const fixture = evalLoadFixture(paged), release = fixture.hold();
+    fixture.succeed();
+    const first = fixture.context.loadManagerEvalReports2(true);
+    const second = fixture.context.loadManagerEvalReports2(true);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(fixture.fetchCount(), 1);
+    release(); await Promise.all([first, second]); await fixture.drain();
+    assert.equal(fixture.fetchCount(), 1);
+    assert.equal(fixture.rowRefreshes(), paged ? 1 : 0);
+  });
+
+  test(`Eval2 ${mode} account changes permit a fresh attempt after failure`, async () => {
+    const fixture = evalLoadFixture(paged);
+    fixture.render(); await fixture.drain();
+    fixture.account('account-b'); fixture.render(); await fixture.drain();
+    assert.equal(fixture.fetchCount(), 2);
+    assert.match(fixture.html(), /database failure/);
+    assert.equal(fixture.idle(), true);
+  });
+}
+
+test('Eval2 paged permission changes clear the previous scoped failure', async () => {
+  const fixture = evalLoadFixture(true);
+  fixture.render(); await fixture.drain();
+  fixture.permission('p2'); fixture.render(); await fixture.drain();
+  assert.equal(fixture.fetchCount(), 2);
+  assert.equal(fixture.idle(), true);
+});
+
+test('Eval2 paged capability failure makes one attempt and waits for explicit Retry', async () => {
+  const fixture = evalLoadFixture(true);
+  fixture.failCapabilities();
+  await fixture.context.loadManagerEvalReports2(false); await fixture.drain();
+  assert.equal(fixture.capabilityCalls(), 1);
+  assert.equal(fixture.fetchCount(), 0);
+  assert.match(fixture.html(), /capability failure/);
+  assert.equal(fixture.idle(), true);
 });
