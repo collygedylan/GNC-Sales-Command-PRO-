@@ -232,7 +232,7 @@ export function migrationContractQuery(name) {
       and position('casewhensurface=''eval2''thenst.low_limitelsecoalesce(o.manual_override_qty,t.suggested_qty,st.low_limit)endlow_item_limit'
         in lower(regexp_replace(p.prosrc,'[[:space:]]','','g')))>0
       and position('leftjoinprivate.eval_item_low_stock_target_stats_v1tonsurface<>''eval2''and' in lower(regexp_replace(p.prosrc,'[[:space:]]','','g')))>0
-      and position('leftjoinprivate.ph_eval_item_low_stock_overridesonsurface<>''eval2''and' in lower(regexp_replace(p.prosrc,'[[:space:]]','','g')))>0)
+      and position('leftjoinprivate.ph_eval_item_low_stock_overridesoonsurface<>''eval2''and' in lower(regexp_replace(p.prosrc,'[[:space:]]','','g')))>0)
     and has_function_privilege('service_role','public.manager_report_read_v2(jsonb)','execute')
     and not has_function_privilege('anon','public.manager_report_read_v2(jsonb)','execute')
     and not has_function_privilege('authenticated','public.manager_report_read_v2(jsonb)','execute')

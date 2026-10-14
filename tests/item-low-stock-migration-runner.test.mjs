@@ -721,6 +721,13 @@ test('Eval2 shared low-stock threshold migration is registered and validates bot
   assert.match(migration, /coalesce\(o\.manual_override_qty,t\.suggested_qty,st\.low_limit\)/);
   assert.match(migration, /left join private\.eval_item_low_stock_target_stats_v1 t on surface<>'eval2'/i);
   assert.match(migration, /left join private\.ph_eval_item_low_stock_overrides o on surface<>'eval2'/i);
+  const normalizedMigration = migration.replace(/\s/g, '').toLowerCase();
+  const definitionNeedles = Array.from(contract.matchAll(/position\('((?:''|[^'])*)'\s+in lower\(regexp_replace/g), match => match[1].replace(/''/g, "'"));
+  assert.equal(definitionNeedles.length, 3, 'the threshold and both gated joins must be checked');
+  for (const needle of definitionNeedles) {
+    assert.ok(normalizedMigration.includes(needle), `deployment contract must match the installed function: ${needle}`);
+  }
+  assert.equal((migration.match(/\$function\$;/g) || []).length, 2, 'both replacement functions must end before their grants');
 });
 
 test('manager list readers follow the report boundary and remain private service-only helpers', () => {
