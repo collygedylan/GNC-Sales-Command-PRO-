@@ -140,6 +140,91 @@ test('full import locks before reads, fences writes/derived reconciliation, then
   assert.equal(env.reconciliationRequests[2].p_itemcodes, null);
   assert.equal(env.locked(), false);
 });
+test('master fence batches assignment reconciliation with a heartbeat before each batch', () => {
+  const env = environment();
+  const batchResponses = [
+    { ok: true, status: 'in_progress', processed: 100, total: 250, cursor: 'c1' },
+    { ok: true, status: 'in_progress', processed: 200, total: 250, cursor: 'c2' },
+    { ok: true, status: 'completed', processed: 250, total: 250, cursor: null }
+  ];
+  env.ctx.callSupabaseRpc_ = (name, payload) => {
+    env.events.push({ action: name, payload: plain(payload) });
+    if (name === 'heartbeat_dataset_import_v1') return { ok: true, state: 'active' };
+    if (name === 'reconcile_inventory_row_assignments_batch_v1') return batchResponses.shift();
+    if (name === 'finish_dataset_import_v1') return { ok: true, state: 'completed' };
+    if (name === 'fail_dataset_import_v1') return { ok: true, state: 'failed' };
+    throw new Error(`Unexpected RPC ${name}`);
+  };
+  env.ctx.assignmentContext = { runId: 'master-run', keys: ['ph_master_inventory'], canonicalKeys: ['ph_master_inventory'], lock: { releaseLock() {} }, ownsLock: false };
+  vm.runInContext('datasetImportFenceContext_ = assignmentContext; closeDatasetImportFence_(assignmentContext, true)', env.ctx);
+  const names = actions(env);
+  assert.deepEqual(names, [
+    'heartbeat_dataset_import_v1', 'reconcile_inventory_row_assignments_batch_v1',
+    'heartbeat_dataset_import_v1', 'reconcile_inventory_row_assignments_batch_v1',
+    'heartbeat_dataset_import_v1', 'reconcile_inventory_row_assignments_batch_v1',
+    'finish_dataset_import_v1'
+  ]);
+  const batches = env.events.filter(event => event.action === 'reconcile_inventory_row_assignments_batch_v1');
+  assert.deepEqual(batches.map(event => event.payload), [
+    { p_import_run_id: 'master-run', p_batch_size: 100 },
+    { p_import_run_id: 'master-run', p_batch_size: 100 },
+    { p_import_run_id: 'master-run', p_batch_size: 100 }
+  ]);
+});
+test('assignment reconciliation failure never finishes the import as ready', () => {
+  const env = environment();
+  env.ctx.callSupabaseRpc_ = (name, payload) => {
+    env.events.push({ action: name, payload: plain(payload) });
+    if (name === 'heartbeat_dataset_import_v1') return { ok: true, state: 'active' };
+    if (name === 'reconcile_inventory_row_assignments_batch_v1') return { ok: false, status: 'failed', processed: 0, total: 10, cursor: null };
+    if (name === 'fail_dataset_import_v1') return { ok: true, state: 'failed' };
+    if (name === 'finish_dataset_import_v1') return { ok: true, state: 'completed' };
+    throw new Error(`Unexpected RPC ${name}`);
+  };
+  env.ctx.assignmentContext = { runId: 'master-run', keys: ['ph_master_inventory'], canonicalKeys: ['ph_master_inventory'], lock: { releaseLock() {} }, ownsLock: false };
+  assert.throws(() => vm.runInContext('datasetImportFenceContext_ = assignmentContext; closeDatasetImportFence_(assignmentContext, true)', env.ctx), /ASSIGNMENT_RECONCILIATION/);
+  assert.ok(!actions(env).includes('finish_dataset_import_v1'));
+});
+test('assignment reconciliation accepts one explicit witness reset and stops on a second reset', () => {
+  const env = environment(); let calls = 0;
+  env.ctx.callSupabaseRpc_ = (name, payload) => {
+    env.events.push({ action: name, payload: plain(payload) });
+    if (name === 'heartbeat_dataset_import_v1') return { ok: true, state: 'active' };
+    if (name === 'reconcile_inventory_row_assignments_batch_v1') {
+      calls++;
+      return calls === 1
+        ? { ok: true, status: 'reset', processed: 0, total: 120, cursor: null }
+        : calls === 2
+          ? { ok: true, status: 'in_progress', processed: 100, total: 120, cursor: 'c1' }
+          : { ok: true, status: 'completed', processed: 120, total: 120, cursor: null };
+    }
+    if (name === 'finish_dataset_import_v1') return { ok: true, state: 'completed' };
+    throw new Error(`Unexpected RPC ${name}`);
+  };
+  env.ctx.assignmentContext = { runId: 'master-run', keys: ['ph_master_inventory'], canonicalKeys: ['ph_master_inventory'], lock: { releaseLock() {} }, ownsLock: false };
+  vm.runInContext('datasetImportFenceContext_ = assignmentContext; closeDatasetImportFence_(assignmentContext, true)', env.ctx);
+  assert.equal(actions(env).filter(action => action === 'reconcile_inventory_row_assignments_batch_v1').length, 3);
+  assert.ok(actions(env).includes('finish_dataset_import_v1'));
+
+  const repeatedReset = environment();
+  repeatedReset.ctx.callSupabaseRpc_ = (name, payload) => {
+    repeatedReset.events.push({ action: name, payload: plain(payload) });
+    if (name === 'heartbeat_dataset_import_v1') return { ok: true, state: 'active' };
+    if (name === 'reconcile_inventory_row_assignments_batch_v1') return { ok: true, status: 'reset', processed: 0, total: 1, cursor: null };
+    if (name === 'fail_dataset_import_v1') return { ok: true, state: 'failed' };
+    throw new Error(`Unexpected RPC ${name}`);
+  };
+  repeatedReset.ctx.assignmentContext = { runId: 'master-run', keys: ['ph_master_inventory'], canonicalKeys: ['ph_master_inventory'], lock: { releaseLock() {} }, ownsLock: false };
+  assert.throws(() => vm.runInContext('datasetImportFenceContext_ = assignmentContext; closeDatasetImportFence_(assignmentContext, true)', repeatedReset.ctx), /ASSIGNMENT_RECONCILIATION_RESET_INVALID/);
+  assert.ok(!actions(repeatedReset).includes('finish_dataset_import_v1'));
+});
+test('assignment batching preserves the database source-and-canonical master gate', () => {
+  const env = environment();
+  env.ctx.callSupabaseRpc_ = (name, payload) => { env.events.push({ action: name, payload: plain(payload) }); return { ok: true, state: 'completed' }; };
+  env.ctx.assignmentContext = { runId: 'master-run', keys: ['ph_master_inventory'], canonicalKeys: ['ph_soc_master'], lock: { releaseLock() {} }, ownsLock: false };
+  vm.runInContext('datasetImportFenceContext_ = assignmentContext; closeDatasetImportFence_(assignmentContext,true)', env.ctx);
+  assert.deepEqual(actions(env), ['finish_dataset_import_v1']);
+});
 test('failed pruning does not publish ready or archive canonical input', () => {
   const env = environment({ deleteFailure: true });
   assert.equal(env.run().failedFiles, 1);

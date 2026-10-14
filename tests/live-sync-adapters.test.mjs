@@ -594,6 +594,9 @@ test('every registered physical source has a database revision contract', () => 
       '20261014142125_season_sales_cav_lookup_index.sql',
       '20261014144043_season_sales_skip_empty_mirror_cleanup.sql',
       '20261014145025_season_sales_reconciliation_worklist.sql',
+      '20261014155536_inventory_assignment_reconciliation_batches.sql',
+      '20261014160924_inventory_assignment_witness_projection.sql',
+      '20261014161813_inventory_assignment_input_generation.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
