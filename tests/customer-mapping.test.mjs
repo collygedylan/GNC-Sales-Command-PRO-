@@ -252,6 +252,86 @@ test('rep catalog validation rejects S99 and noncanonical or forged names',async
   unmount();dom.window.close();
 });
 
+test('reset confirmation can be cancelled or restore imported S99 with a revisioned UUID request',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const root=dom.window.document.getElementById('root'),calls=[];let confirmResult=false,confirmation='';
+  const imported={...row,salesrepid:'S99',salesrepname:'Interdivision',revision:'7',hasOverride:true,sourceSalesrepId:'S99',sourceSalesrepName:'Interdivision'};
+  const transport=async payload=>{
+    calls.push(payload);
+    if(payload.operation==='reps')return{ok:true,rows:[{salesrepId:'01',salesrepName:'Morgan Smith'}],total:1,page:0,pageSize:100,revision:'list-r1'};
+    if(payload.operation==='list')return{ok:true,rows:[imported],total:1,page:payload.page||0,pageSize:50,revision:'list-r1',canEdit:true};
+    if(payload.operation==='reset')return{ok:true,row:{...imported,revision:'8',hasOverride:false},revision:'list-r2'};
+    throw new Error('Unexpected mutation');
+  };
+  dom.window.confirm=message=>{confirmation=message;return confirmResult;};
+  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,transport,()=>{},'manager:reset-confirm');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Assign rep').click();
+  const reset=Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Reset to imported assignment');
+  reset.click();assert.match(confirmation,/Interdivision/);assert.equal(calls.filter(call=>call.operation==='reset').length,0);
+  confirmResult=true;reset.click();await new Promise(resolve=>setTimeout(resolve,0));
+  const request=calls.find(call=>call.operation==='reset');assert.ok(request);assert.equal(request.expectedRevision,'7');assert.match(request.requestId,/^[0-9a-f-]{36}$/i);
+  assert.equal(root.querySelector('tbody tr').children[3].textContent,'Interdivision');
+  unmount();dom.window.close();
+});
+
+test('pending assignment disables reset and manager access gates all mutation controls',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const root=dom.window.document.getElementById('root'),calls=[];let resolveAssign,confirmCalls=0;
+  const current={...row,hasOverride:true,sourceSalesrepId:'01',sourceSalesrepName:'Morgan Smith'};
+  const transport=async payload=>{
+    calls.push(payload);
+    if(payload.operation==='reps')return{ok:true,rows:[{salesrepId:'02',salesrepName:'Molly Dixon'}],total:1,page:0,pageSize:100,revision:'list-r1'};
+    if(payload.operation==='list')return{ok:true,rows:[current],total:1,page:payload.page||0,pageSize:50,revision:'list-r1',canEdit:true};
+    if(payload.operation==='assign')return new Promise(resolve=>{resolveAssign=resolve;});
+    throw new Error('Unexpected reset');
+  };
+  dom.window.confirm=()=>{confirmCalls++;return true;};
+  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,transport,()=>{},'manager:pending-reset');
+  await new Promise(resolve=>setTimeout(resolve,0));Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Assign rep').click();
+  const select=root.querySelector('[aria-label="Select sales rep"]');select.value='02';select.dispatchEvent(new dom.window.Event('change'));
+  root.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+  const reset=Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Reset to imported assignment');
+  assert.equal(reset.disabled,true);reset.click();assert.equal(confirmCalls,0);assert.equal(calls.filter(call=>['assign','reset'].includes(call.operation)).length,1);
+  resolveAssign({ok:true,row:{...current,salesrepid:'02',salesrepname:'Molly Dixon',revision:'8'},revision:'list-r2'});
+  await new Promise(resolve=>setTimeout(resolve,0));unmount();dom.window.close();
+
+  const deniedDom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});deniedDom.window.eval(mappingBrowserBundle());
+  const deniedRoot=deniedDom.window.document.getElementById('root'),deniedCalls=[];
+  const denied=deniedDom.window.MappingEditor.mountCustomerRepMapping(deniedRoot,async payload=>{
+    deniedCalls.push(payload);
+    if(payload.operation==='reps')return{ok:true,rows:[{salesrepId:'02',salesrepName:'Molly Dixon'}],total:1,page:0,pageSize:100,revision:'list-r1'};
+    return{ok:true,rows:[current],total:1,page:0,pageSize:50,revision:'list-r1',canEdit:false};
+  },()=>{},'manager:read-only');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(deniedRoot.querySelectorAll('tbody button').length,0);assert.equal(deniedRoot.querySelector('form'),null);
+  assert.equal(deniedCalls.some(call=>['assign','reset','save'].includes(call.operation)),false);
+  denied();deniedDom.window.close();
+});
+
+test('successful assignment paints its confirmed row while the followup page refresh is pending',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const root=dom.window.document.getElementById('root'),calls=[];let followupResolve;
+  const current={...row,revision:'3',hasOverride:false,sourceSalesrepId:'01',sourceSalesrepName:'Morgan Smith'};
+  const transport=async payload=>{
+    calls.push(payload);
+    if(payload.operation==='reps')return{ok:true,rows:[{salesrepId:'02',salesrepName:'Molly Dixon'}],total:1,page:0,pageSize:100,revision:'list-r1'};
+    if(payload.operation==='list'){
+      if(calls.filter(call=>call.operation==='list').length===1)return{ok:true,rows:[current],total:1,page:0,pageSize:50,revision:'list-r1',canEdit:true};
+      return new Promise(resolve=>{followupResolve=resolve;});
+    }
+    if(payload.operation==='assign')return{ok:true,row:{...current,salesrepid:'02',salesrepname:'Molly Dixon',revision:'4',hasOverride:true},revision:'list-r2'};
+    throw new Error('Unexpected mutation');
+  };
+  const unmount=dom.window.MappingEditor.mountCustomerRepMapping(root,transport,()=>{},'manager:paint-success');
+  await new Promise(resolve=>setTimeout(resolve,0));Array.from(root.querySelectorAll('button')).find(button=>button.textContent==='Assign rep').click();
+  const select=root.querySelector('[aria-label="Select sales rep"]');select.value='02';root.querySelector('form').dispatchEvent(new dom.window.Event('submit',{bubbles:true,cancelable:true}));
+  for(let i=0;i<8&&!followupResolve;i++)await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(typeof followupResolve,'function');assert.equal(root.querySelector('tbody tr').children[3].textContent,'Molly Dixon');
+  followupResolve({ok:true,rows:[{...current,salesrepid:'02',salesrepname:'Molly Dixon',revision:'4',hasOverride:true}],total:1,page:0,pageSize:50,revision:'list-r2',canEdit:true});
+  await new Promise(resolve=>setTimeout(resolve,0));unmount();dom.window.close();
+});
+
 test('rep directory loads every bounded page and caches it only at the matching revision',async()=>{
   const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
   const calls=[];const choices=Array.from({length:101},(_,index)=>({salesrepId:String(index+1),salesrepName:`Rep${index+1} Smith`}));
@@ -303,6 +383,15 @@ test('mapping validator requires identity and status fields while allowing addit
   assert.throws(()=>dom.window.MappingEditor.mappingRow({...row,consigneestatus:12}),/consigneestatus/);
   assert.equal(dom.window.MappingEditor.mappingRow(row).sourceSalesrepName,null);
   dom.window.close();
+});
+
+test('canonical rep validation rejects control characters and mutation response identity mismatches',async()=>{
+  const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const invalidCatalog=dom.window.MappingEditor.createCustomerRepAssignments(async()=>({ok:true,rows:[{salesrepId:'01',salesrepName:'Morgan\nSmith'}],total:1,page:0,pageSize:100,revision:'r1'}),'manager:control-name');
+  await assert.rejects(invalidCatalog.reps(new dom.window.AbortController().signal),/invalid assignment/);
+  const wrongRow=dom.window.MappingEditor.createCustomerRepAssignments(async()=>({ok:true,row:{...row,unique_id:'another-mapping'},revision:'r2'}),'manager:wrong-row');
+  await assert.rejects(wrongRow.assign(row,'02',new dom.window.AbortController().signal),/different mapping/);
+  invalidCatalog.dispose();wrongRow.dispose();dom.window.close();
 });
 
 test('mapping editor cancels obsolete reads and never paints results after unmount',async()=>{

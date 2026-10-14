@@ -180,6 +180,8 @@ select is((select count(*)::integer from public.ph_customer_consignee_sales_reps
 select is((select raw_data->>'UNKNOWN_CONTACT_FIELD' from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),'原文 00007','unknown source fields preserve Unicode and leading zeros');
 select is((select customeridentityid from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),'00001','typed external identity retains leading zeros');
 select is((public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000002','options','{}')->>'total')::integer,1,'retained blank status/unassigned rows remain unselectable');
+select set_config('request.headers','{}',true);
+select set_config('app_sync.touched','{}',true);
 select is(public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','reset',
  jsonb_build_object('id','map-test-row-1','expectedRevision',(select mapping_revision::text from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1'),
   'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c26'))->'row'->>'salesrepname','Map Rep','reset restores the newest imported rep including source-only choices');
@@ -227,6 +229,91 @@ select public.stage_customer_rep_mapping_rows_v1('a9f00000-0000-4000-8000-000000
 select throws_ok($$select public.finalize_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000106')$$,
  '23505','CUSTOMER_REP_ASSIGNMENT_IMPORT_AMBIGUOUS_OVERRIDE','ambiguous duplicate pair cannot replace source rows under an override');
 select is((select count(*)::integer from public.ph_customer_consignee_sales_reps),2,'ambiguous overridden import leaves the published mapping intact');
+update sales_private.customer_rep_mapping_import_runs set status='failed',finished_at=clock_timestamp()
+ where run_id='a9f00000-0000-4000-8000-000000000106';
+delete from sales_private.customer_rep_mapping_import_stage where run_id='a9f00000-0000-4000-8000-000000000106';
+
+-- A persistent override follows the stable external pair through a changed
+-- unique_id, a source disappearance, and a later reappearance.
+insert into sales_private.customer_rep_assignment_overrides(customeridentityid,consigneeid,salesrepid,salesrepname,updated_by)
+ values('00001','00009','R2','Other Rep','map_manager'),
+       ('00003','00011','R2','Other Rep','map_manager'),
+       ('DORMANT-CUSTOMER','DORMANT-CONSIGNEE','R2','Other Rep','map_manager'),
+       ('00007','00017','R2','Other Rep','map_manager')
+on conflict(customeridentityid,consigneeid) do update set salesrepid=excluded.salesrepid,salesrepname=excluded.salesrepname;
+select public.begin_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000107',
+ 'pair-stability.csv','2026-10-13T12:00:00Z',repeat('e',64),3);
+select public.stage_customer_rep_mapping_rows_v1('a9f00000-0000-4000-8000-000000000107',jsonb_build_array(
+ pg_temp.mapping_source('map-test-row-1-v2',3,'00001','Customer v2','00009','Map Consignee ™','R1','Map Rep'),
+ pg_temp.mapping_source('map-inactive-v2',4,'00003','Inactive Customer','00011','Inactive Consignee','R1','Map Rep','I'),
+ pg_temp.mapping_source('map-s99-source',5,'00007','S99 Customer','00017','S99 Consignee','S99','Interdivision')));
+select is((public.finalize_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000107')->>'rowCount')::integer,3,
+ 'source snapshot can change unique_id while retaining a stable pair override');
+select is((select salesrepid from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1-v2'),'R2',
+ 'override follows customer/consignee pair when source unique_id changes');
+select is((public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000002','options',
+ '{"page":0,"pageSize":10,"salesrepId":"R2","customerId":"00003"}')->>'total')::integer,0,
+ 'an inactive source row remains ineligible despite a persistent override');
+select ok((public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000001','reps','{"q":"S99"}')
+ ->>'total')='0','source-only S99 remains excluded from new assignment choices');
+select set_config('request.jwt.claim.role','authenticated',true);
+select throws_ok($$insert into public.ph_active_request(unique_id,requested_by,request_source,customeridentityid,customername,consigneeidentityid,consigneename)
+ values('map-request-inactive-override','Other Rep','general','00003','Inactive Customer','00011','Inactive Consignee')$$,
+ '22023','REQUEST_CUSTOMER_MAPPING_REQUIRED','inactive relationship cannot be requested through its retained override');
+
+-- Restore the dormant pair from a later full import and verify the dormant
+-- override applies again; reset for an S99 source is valid and replay-safe.
+select set_config('request.jwt.claim.role','service_role',true);
+select set_config('request.headers','{}',true);
+select set_config('app_sync.touched','{}',true);
+select public.begin_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000108',
+ 'pair-reappears.csv','2026-10-14T12:00:00Z',repeat('f',64),4);
+select public.stage_customer_rep_mapping_rows_v1('a9f00000-0000-4000-8000-000000000108',jsonb_build_array(
+ pg_temp.mapping_source('map-test-row-1-v3',3,'00001','Customer v3','00009','Map Consignee ™','R1','Map Rep'),
+ pg_temp.mapping_source('map-inactive-v3',4,'00003','Inactive Customer','00011','Inactive Consignee','R1','Map Rep','I'),
+ pg_temp.mapping_source('map-s99-source-v2',5,'00007','S99 Customer','00017','S99 Consignee','S99','Interdivision'),
+ pg_temp.mapping_source('map-dormant-reappeared',6,'DORMANT-CUSTOMER','Dormant Customer','DORMANT-CONSIGNEE','Dormant Consignee','R1','Map Rep')));
+select public.finalize_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000108');
+select is((select salesrepid from public.ph_customer_consignee_sales_reps where unique_id='map-dormant-reappeared'),'R2',
+ 'dormant override reapplies when its pair returns to a later snapshot');
+create temporary table assignment_test_expected(operation text primary key, revision text) on commit drop;
+insert into assignment_test_expected values
+ ('reset',(select mapping_revision::text from public.ph_customer_consignee_sales_reps where unique_id='map-s99-source-v2'));
+select set_config('request.headers','{}',true);
+select set_config('app_sync.touched','{}',true);
+select is(public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','reset',
+ jsonb_build_object('id','map-s99-source-v2','expectedRevision',(select revision from assignment_test_expected where operation='reset'),
+  'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c27'))->'row'->>'salesrepname','Interdivision',
+ 'reset may restore the imported S99 source assignment');
+select is(public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','reset',
+ jsonb_build_object('id','map-s99-source-v2','expectedRevision',(select revision from assignment_test_expected where operation='reset'),
+  'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c27'))->'row'->>'revision',
+ (select mapping_revision::text from public.ph_customer_consignee_sales_reps where unique_id='map-s99-source-v2'),
+ 'reset request replay returns its original result');
+select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','reset',
+ jsonb_build_object('id','map-dormant-reappeared','expectedRevision',(select revision from assignment_test_expected where operation='reset'),
+  'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c27'))$$,
+ '22023','CUSTOMER_REP_MAPPING_VALUE_INVALID','reset request UUID cannot be reused for a different operation payload');
+
+-- Legacy save callers may send a receipt ID too. A retry returns the saved
+-- response and changed-payload reuse is rejected consistently with assign.
+select set_config('app_sync.touched','{}',true);
+insert into assignment_test_expected values
+ ('save',(select mapping_revision::text from public.ph_customer_consignee_sales_reps where unique_id='map-test-row-1-v3'));
+select lives_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','save',
+ jsonb_build_object('id','map-test-row-1-v3','expectedRevision',(select revision from assignment_test_expected where operation='save'),
+ 'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c28','salesrepId','R2','salesrepName','Other Rep',
+ 'customerName','Saved with receipt','consigneeName','Map Consignee ™'))$$,'legacy save accepts an idempotency request ID');
+select is(public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','save',
+ jsonb_build_object('id','map-test-row-1-v3','expectedRevision',(select revision from assignment_test_expected where operation='save'),
+ 'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c28',
+ 'salesrepId','R2','salesrepName','Other Rep','customerName','Saved with receipt','consigneeName','Map Consignee ™'))->'row'->>'customername',
+ 'Saved with receipt','legacy save exact retry replays its receipt');
+select throws_ok($$select public.customer_rep_mapping_manage_v1('a9f00000-0000-4000-8000-000000000003','save',
+ jsonb_build_object('id','map-test-row-1-v3','expectedRevision',(select revision from assignment_test_expected where operation='save'),
+ 'requestId','4d59b4e8-7847-4a66-9cb7-dc9fcbb74c28',
+ 'salesrepId','R2','salesrepName','Other Rep','customerName','Changed payload','consigneeName','Map Consignee ™'))$$,
+ '22023','CUSTOMER_REP_MAPPING_VALUE_INVALID','legacy save request UUID cannot be reused for a changed payload');
 
 select * from finish();
 rollback;
