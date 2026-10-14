@@ -782,5 +782,9 @@
   {
     "source": "supabase/migrations/20261013170000_master_inventory_realtime_publication.sql",
     "destination": "20261013170000_master_inventory_realtime_publication.sql"
+  },
+  {
+    "source": "supabase/migrations/20261014110620_eval2_shared_low_stock_threshold.sql",
+    "destination": "20261014110620_eval2_shared_low_stock_threshold.sql"
   }
 ]

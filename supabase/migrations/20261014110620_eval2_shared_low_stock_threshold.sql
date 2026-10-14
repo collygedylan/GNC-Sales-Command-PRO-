@@ -3,6 +3,7 @@ begin;
 -- Eval2 reports use the shared setting. Assigned Items history and manual
 -- overrides remain available through their existing APIs and screens.
 -- The release contract verifies the threshold and both gated joins before commit.
+-- Production release and isolated historical replay both register this migration.
 CREATE OR REPLACE FUNCTION private.eval_report2_item_qualifies_v1(p_report_id text, p_itemcode text, p_now timestamp with time zone DEFAULT now())
  RETURNS boolean
  LANGUAGE plpgsql

@@ -574,9 +574,9 @@ test('database pre-commit recognizes staged database tooling and schema configur
 test('historical migration order manifest preserves original inputs and appends approved SQL repairs', () => {
   const manifest = readHistoricalMigrationManifest({ root });
   const workflow = readFileSync(path.join(root, '.github/workflows/release-database.yml'), 'utf8');
-  assert.equal(manifest.length, 196);
+  assert.equal(manifest.length, 197);
   assert.equal(new Set(manifest.map(entry => entry.destination)).size, manifest.length);
-  assert.deepEqual(manifest.slice(-16).map(entry => entry.source), [
+  assert.deepEqual(manifest.slice(-17).map(entry => entry.source), [
     'supabase/migrations/20261010165013_historical_requests_financial_dashboard.sql',
     'supabase/migrations/20261010200046_aura_voice_role_access.sql',
     'supabase/migrations/20261011032352_aura_voice_soc_reads.sql',
@@ -593,6 +593,7 @@ test('historical migration order manifest preserves original inputs and appends 
     'supabase/migrations/20261012190003_manager_list_read_v2.sql',
     'supabase/migrations/20261013160000_inventory_location_item_on_hand.sql',
     'supabase/migrations/20261013170000_master_inventory_realtime_publication.sql',
+    'supabase/migrations/20261014110620_eval2_shared_low_stock_threshold.sql',
   ]);
   const sources = new Set(manifest.map(entry => entry.source));
   for (const name of ["20261008190038_reclass_sheared_action_v5.sql","20261009053029_reclass_smart_priority_hold_shield_v6.sql","20261009202507_prompt25_editable_field_shield_and_hold_clear.sql","20261010024830_customer_rep_mapping_management.sql","20261010152556_customer_rep_mapping_finalize_timeout_55s.sql","20261010165013_historical_requests_financial_dashboard.sql","20261011170000_request_mapping_salesrep_identity.sql","20261011193000_historical_requests_price_fallback.sql"]) {
@@ -609,6 +610,30 @@ test('historical migration order manifest preserves original inputs and appends 
   assert.match(workflow, /node scripts\/historical-database-fixture\.mjs "\$RUNNER_TEMP\/gnc-supabase-ci"/);
   assert.doesNotMatch(workflow, /cp supabase\/(?:ci|archive_migrations|migrations)\/[^\s]+\.sql "\$ci_root\/supabase\/migrations\//);
   assert.doesNotMatch(workflow, /python3 - "\$ci_root"/);
+});
+
+test('historical SQL fixture replays the Eval2 shared low-stock threshold migration', () => {
+  const migrationName = '20261014110620_eval2_shared_low_stock_threshold.sql';
+  const manifest = readHistoricalMigrationManifest({ root });
+  assert.deepEqual(manifest.at(-1), {
+    source: `supabase/migrations/${migrationName}`,
+    destination: migrationName,
+  });
+
+  const destination = mkdtempSync(path.join(os.tmpdir(), 'gnc-historical-eval2-threshold-'));
+  try {
+    const fixture = prepareHistoricalDatabaseFixture({ root, destination,
+      testFiles: ['supabase/tests/eval_item_low_stock_targets_test.sql', 'supabase/tests/manager_report_read_v2_test.sql'],
+    });
+    const replayedMigration = readFileSync(path.join(fixture.root, 'supabase/migrations', migrationName), 'utf8');
+    assert.match(replayedMigration, /create or replace function private\.eval_report2_item_qualifies_v1/i);
+    assert.match(replayedMigration, /case when surface\s*=\s*'eval2' then st\.low_limit/i);
+    assert.match(replayedMigration, /left join private\.eval_item_low_stock_target_stats_v1 t on surface<>\s*'eval2'/i);
+    assert.match(replayedMigration, /left join private\.ph_eval_item_low_stock_overrides o on surface<>\s*'eval2'/i);
+    assert.match(replayedMigration, /create or replace function public\.manager_report_read_v2/i);
+  } finally {
+    rmSync(destination, { recursive: true, force: true });
+  }
 });
 
 test('historical report fixture retains production task columns required by the existing index', () => {
