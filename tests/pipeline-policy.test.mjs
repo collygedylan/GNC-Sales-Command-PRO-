@@ -7,27 +7,34 @@ const yaml = createRequire(import.meta.url)('js-yaml');
 const read = file => fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8');
 const workflow = file => yaml.load(read('.github/workflows/' + file));
 
-test('root agent instructions persist the pipeline policy and automatic deployment protocol', () => {
+test('root agent instructions persist the workspace and implementation policies', () => {
   const policy = read('AGENTS.md');
   for (const rule of [
-    /frontend publication and Supabase\/Apps Script backend deployment are decoupled/,
-    /Standard PR validation runs unit tests and lint\/type checks only/,
-    /scheduled daily at 09:17 UTC/,
-    /Do not fix unrelated legacy phone layout tests, layout snapshots/,
-    /final GitHub Pages workflow succeeds[\s\S]*immutable fingerprint check pass/,
-    /job timeout is a safety limit, not an expected deployment duration/,
-    /## PERMANENT OVERRIDE: Fully Automated CI\/CD Deployment Protocol/,
-    /automatically create the PR and immediately merge it into the `main` branch/,
-    /Monitor the GitHub Actions workflows until completion/,
-    /frontend and backend publication processes are 100% complete/,
+    /PILLAR 1: STRICT SCOPE AND WORKSPACE HYGIENE/,
+    /Strict Workspace Synchronization/,
+    /PILLAR 2: ARCHITECTURE, SECURITY & QUALITY/,
+    /Zero Feature Regression/,
+    /PILLAR 3: RESILIENCY & PERFORMANCE STANDARDS/,
+    /PILLAR 4: AUTONOMOUS CI\/CD DEPLOYMENT PROTOCOL/,
+    /Auto-merge the PR immediately upon passing scoped local tests/,
+    /report live status only when the frontend and\/or backend publications are 100% complete/,
   ]) assert.match(policy, rule);
   assert.doesNotMatch(policy, /FIRE-AND-FORGET|STAY AWAKE|gh pr checks --watch/);
 });
 
 test('nightly retains daily and manual diagnostics and opts into full database coverage', () => {
   const nightly = workflow('nightly-browser-validation.yml');
-  assert.equal(nightly.on.schedule[0].cron, '17 9 * * *');
+  assert.equal(nightly.on.schedule[0].cron, '30 1,2 * * *');
   assert.ok(Object.hasOwn(nightly.on, 'workflow_dispatch'));
+  assert.match(nightly.jobs['central-time-gate'].steps[0].run, /TZ=America\/Chicago date \+%H/);
+  assert.match(nightly.jobs['central-time-gate'].steps[0].run, /central_hour.*== "20"/);
+  const email = nightly.jobs['compile-and-email-report'].steps.at(-1);
+  assert.equal(email.uses, 'dawidd6/action-send-mail@v3');
+  assert.equal(email.with.to, 'dylan_collyge@greenleafnursery.com');
+  assert.equal(email.with.body, 'file://nightly-validation-report.txt');
+  assert.match(email.with.server_address, /secrets\.SMTP_SERVER/);
+  assert.match(email.with.username, /secrets\.SMTP_USERNAME/);
+  assert.match(email.with.password, /secrets\.SMTP_PASSWORD/);
   assert.equal(nightly.jobs['expanded-validation'].with['run-nightly-suites'], true);
   for (const input of ['run-schema-tests', 'run-browser-tests', 'run-performance-tests', 'run-all-schema-tests']) {
     assert.equal(nightly.jobs['backend-diagnostics'].with[input], true, input);

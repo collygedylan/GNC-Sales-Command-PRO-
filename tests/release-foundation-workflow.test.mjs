@@ -21,7 +21,7 @@ test('foundation remains a sealed-artifact diagnostic in the scheduled nightly s
   for (const name of ['functional', 'compiled']) assert.deepEqual(workflow.jobs[name].needs, ['build', 'release-mode']);
   assert.ok(workflow.jobs['release-gate'].needs.includes('foundation'));
   assert.match(workflow.jobs['release-gate'].steps[0].run, /RUN_NIGHTLY_SUITES/);
-  assert.equal(nightly.on.schedule[0].cron, '17 9 * * *');
+  assert.equal(nightly.on.schedule[0].cron, '30 1,2 * * *');
   assert.equal(nightly.jobs['expanded-validation'].with['run-nightly-suites'], true);
   assert.equal(nightly.jobs['expanded-validation'].with['run-schema-tests'], false);
   assert.doesNotMatch(job.steps.map(step => step.run || '').join('\n'), /build:|--retries|continue-on-error/);

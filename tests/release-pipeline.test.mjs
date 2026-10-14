@@ -132,7 +132,7 @@ test('expanded browser shards remain intact for the nightly workflow, outside st
   for (const name of ['foundation','functional','compiled','timing','performance','lighthouse']) {
     assert.match(validation.jobs[name].if, /inputs\.run-nightly-suites/);
   }
-  assert.equal(nightly.on.schedule[0].cron, '17 9 * * *');
+  assert.equal(nightly.on.schedule[0].cron, '30 1,2 * * *');
   assert.ok('workflow_dispatch' in nightly.on);
   assert.equal(nightly.jobs['expanded-validation'].with['run-nightly-suites'], true);
   assert.equal(nightly.jobs['expanded-validation'].with['run-schema-tests'], false);
@@ -198,7 +198,7 @@ test('scheduled live canaries await main and run outside the release publication
   assert.equal(pages.jobs['exact-live'].steps.find(step => step.name === 'Wait for the current live descriptor and immutable fingerprint').env.EXPECTED_COMMIT,
     '${{ needs.deploy.outputs.build-commit }}');
   assert.equal(pages.jobs['post-deployment-canary'], undefined);
-  assert.deepEqual(nightly.jobs['post-deployment-canary'].needs, 'current-live-release');
+  assert.deepEqual(nightly.jobs['post-deployment-canary'].needs, ['central-time-gate', 'current-live-release']);
   const matrix = nightly.jobs['post-deployment-canary'].strategy.matrix.include;
   assert.deepEqual([...new Set(matrix.map(x=>x.suite))], ['foundation','requests','session','login-photo']);
   assert.match(matrix.find(x=>x.suite==='requests').command, /--config playwright\.production\.config\.ts/);
