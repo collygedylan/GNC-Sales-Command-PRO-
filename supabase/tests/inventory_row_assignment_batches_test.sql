@@ -148,6 +148,8 @@ select is((public.reconcile_inventory_row_assignments_batch_v1(
   'second run begins with a bounded page');
 select set_config('request.headers',
   '{"x-gnc-import-run-id":"ae100000-0000-4000-8000-000000000002"}',true);
+select set_config('request.jwt.claim.role','service_role',true);
+select set_config('request.jwt.claims','{"role":"service_role"}',true);
 update public.ph_master_inventory set itemcode='RESET-ONE-A'
 where unique_id='batch-reset-one';
 select is((public.reconcile_inventory_row_assignments_batch_v1(
