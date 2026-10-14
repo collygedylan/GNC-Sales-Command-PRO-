@@ -786,5 +786,9 @@
   {
     "source": "supabase/migrations/20261014110620_eval2_shared_low_stock_threshold.sql",
     "destination": "20261014110620_eval2_shared_low_stock_threshold.sql"
+  },
+  {
+    "source": "supabase/migrations/20261014140147_master_lineage_cleanup_bounded.sql",
+    "destination": "20261014140147_master_lineage_cleanup_bounded.sql"
   }
 ]
