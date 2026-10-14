@@ -201,7 +201,8 @@ begin
   ) then
     raise exception using errcode = '23505', message = 'CUSTOMER_REP_ASSIGNMENT_IMPORT_AMBIGUOUS_OVERRIDE';
   end if;
-  delete from sales_private.customer_rep_assignment_sources;
+  -- Explicitly scope the snapshot replacement for PostgREST safe-update checks.
+  delete from sales_private.customer_rep_assignment_sources where unique_id is not null;
   insert into sales_private.customer_rep_assignment_sources
     (unique_id, customeridentityid, consigneeid, salesrepid, salesrepname, imported_at)
   select s.unique_id, s.row_data->>'customeridentityid', s.row_data->>'consigneeid',

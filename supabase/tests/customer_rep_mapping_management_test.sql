@@ -28,6 +28,9 @@ select ok((select bool_and(relrowsecurity) from pg_class where oid in (
   and not has_table_privilege('authenticated','sales_private.customer_rep_assignment_overrides','select')
   and not has_table_privilege('authenticated','sales_private.customer_rep_assignment_receipts','select'),
   'assignment source, override, and receipt tables stay private under RLS');
+select ok(pg_get_functiondef('sales_private.customer_rep_assignment_prepare_import_v1(uuid)'::regprocedure)
+  ~* 'delete[[:space:]]+from[[:space:]]+sales_private[.]customer_rep_assignment_sources[[:space:]]+where[[:space:]]+unique_id[[:space:]]+is[[:space:]]+not[[:space:]]+null',
+  'source snapshot replacement stays qualified for PostgREST safe-update protection');
 select ok(sales_private.is_first_last_salesrep_name_v1('Zoë O’Neil - South TX')
   and sales_private.is_first_last_salesrep_name_v1('Chance Alldredge - South TX')
   and not sales_private.is_first_last_salesrep_name_v1('Interdivision')
