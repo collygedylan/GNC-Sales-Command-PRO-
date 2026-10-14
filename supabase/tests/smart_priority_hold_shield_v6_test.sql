@@ -1,7 +1,7 @@
 -- @test-runtime: canonical
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(86);
+select plan(89);
 
 select has_function('private','guard_ph_master_inventory_priority_hold_v1',array[]::text[],'master legacy-field shield trigger function exists');
 select ok(not has_table_privilege('authenticated','app_sync_private.ph_master_inventory_app_edits','select'),'app-edit shield state is private');
@@ -55,6 +55,37 @@ select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_
 
 select public.begin_dataset_import_v1(array['ph_master_inventory'],'9b000000-0000-4000-8000-000000000001');
 select set_config('request.headers','{"x-gnc-import-run-id":"9b000000-0000-4000-8000-000000000001","x-gnc-master-tuple-policy":"raw-priority-hold-v1"}',true);
+insert into app_sync_private.ph_master_inventory_import_lineage_seen(
+  run_id,canonical_unique_id,imported_unique_id,lineage_key,seen_at
+) values
+  ('9b000000-0000-4000-8000-000000000001','smart-shield-exact-b','expired-same-run-alias',
+    private.ph_master_inventory_lineage_key_v1((select to_jsonb(m) from public.ph_master_inventory m where m.unique_id='smart-shield-exact-b')),
+    clock_timestamp()-interval '4 days'),
+  ('9b000000-0000-4000-8000-000000000009','old-unleased-marker','old-imported-uid','old-lineage-key',
+    clock_timestamp()-interval '4 days');
+insert into public.ph_master_inventory(
+  unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
+  priority,source,season,saleyear,desigitem,desigcust,desigloc,warehousei
+) values ('smart-shield-exact-a','SMART-SHIELD-EXACT','Synthetic exact plant','#3','C.01.001','27.F1','30','29',
+  '1','PH','F1','27','D3','C3','L3','10')
+on conflict (unique_id) do update set ptronhand=excluded.ptronhand;
+select is((select count(*)::integer from app_sync_private.ph_master_inventory_import_lineage_seen
+  where run_id='9b000000-0000-4000-8000-000000000009'),0,
+  'an expired unleased lineage marker is pruned during the import transaction');
+select is((select imported_unique_id from app_sync_private.ph_master_inventory_import_lineage_seen
+  where run_id='9b000000-0000-4000-8000-000000000001' and canonical_unique_id='smart-shield-exact-b'),
+  'expired-same-run-alias','an expired marker for the active leased run remains available to guard lineage');
+select throws_ok($$insert into public.ph_master_inventory(
+  unique_id,itemcode,commonname,contsize,locationcode,lotcode,ptronhand,ptravailable,
+  priority,source,season,saleyear,desigitem,desigcust,desigloc,warehousei
+) values ('smart-shield-exact-b','SMART-SHIELD-EXACT','Synthetic exact plant','#3','C.01.001','27.F1','30','29',
+  '1','PH','F1','27','D3','C3','L3','10')
+on conflict (unique_id) do update set ptronhand=excluded.ptronhand$$,
+  '40001','MASTER_PRIORITY_HOLD_LINEAGE_AMBIGUOUS',
+  'an expired same-run marker still rejects a conflicting exact UID');
+delete from app_sync_private.ph_master_inventory_import_lineage_seen
+where run_id='9b000000-0000-4000-8000-000000000001'
+  and canonical_unique_id='smart-shield-exact-b';
 update public.ph_master_inventory set
   priority='1',holdstopcode=null,holdstopreason=null,concat='stale-legacy-hash',av_note=null
 where unique_id='smart-shield-main';
