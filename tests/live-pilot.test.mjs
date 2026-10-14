@@ -1742,9 +1742,9 @@ test('hosted monitoring probes the real production login bridge every five minut
 });
 
 test('Drive Around inventory writes avoid parallel lock contention and retry safely', () => {
-  assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 1000;/);
+  assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 75;/);
   assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE = 1;/);
-  assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE = 100;/);
+  assert.match(appsScriptBackend, /const SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE = 25;/);
   const requestBuilder = appsScriptBackend.slice(
     appsScriptBackend.indexOf('function buildSupabaseUpsertRequests_'),
     appsScriptBackend.indexOf('function extractMissingSupabaseColumnNames_')

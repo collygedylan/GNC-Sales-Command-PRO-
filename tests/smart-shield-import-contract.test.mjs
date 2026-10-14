@@ -23,6 +23,48 @@ function importer() {
 }
 const plain = value => JSON.parse(JSON.stringify(value));
 
+function stubSeasonReconciliation(context, responses) {
+  const calls = [];
+  context.Utilities.sleep = () => {};
+  context.callDatasetImportFenceRpc_ = name => ({ ok: true, state: 'active', name });
+  context.callSupabaseRpc_ = (name, payload) => {
+    calls.push({ name, payload: plain(payload) });
+    const response = responses.shift();
+    if (!response) throw new Error('Unexpected Season Sales RPC call');
+    if (response instanceof Error) throw response;
+    const output = plain(response);
+    if (vm.runInContext('Boolean(datasetImportFenceContext_)', context) && output &&
+        (output.status === 'completed' || output.status === 'dry_run')) {
+      if (!Object.hasOwn(output, 'seasonCode')) output.seasonCode = 'F1';
+      if (!Object.hasOwn(output, 'salesYear')) output.salesYear = 27;
+    }
+    return output;
+  };
+  return calls;
+}
+
+function seasonPlan(itemcodes, overrides = {}) {
+  return {
+    ok: true, status: 'dry_run', scopeCount: itemcodes.length, itemcodes,
+    seasonCode: 'F1', salesYear: 27,
+    winnerCount: itemcodes.length, openCount: 0, doneCount: 0,
+    newStateCount: 0, winnerChangeCount: 0, reopenCount: 0, retireCount: 0,
+    mirrorUpsertCount: 0, scopeHash: 'a'.repeat(64), ...overrides,
+  };
+}
+
+test('master writes start with bounded chunks and preserve every source row and mask', () => {
+  const context = importer();
+  const rows = Array.from({ length: 153 }, (_, index) => ({ unique_id: `bounded-${index}`, locationnote: `note-${index}` }));
+  rows.forEach(row => context.setMasterItem6RawFieldMask_(row, ['locationnote']));
+  const requests = context.buildSupabaseUpsertRequests_('ph_master_inventory', rows);
+  assert.deepEqual(plain(requests.map(request => JSON.parse(request.payload).length)), [75, 75, 3]);
+  assert.deepEqual(plain(requests.flatMap(request => JSON.parse(request.payload))).map(row => row.unique_id), rows.map(row => row.unique_id));
+  requests.forEach(request => assert.deepEqual(JSON.parse(request.headers['x-gnc-master-item6-fields']), ['locationnote']));
+  const auxiliary = context.buildSupabaseUpsertRequests_('ph_soc_master', rows);
+  assert.equal(auxiliary.length, 1, 'auxiliary sources retain their existing request size');
+});
+
 test('daily source upserts and retries carry the validated import identity used by the database shield', () => {
   const context = importer();
   for (const table of ['ph_master_inventory', 'ph_soc_master', 'ph_reserves']) {
@@ -214,4 +256,126 @@ test('bounded master upsert transport retries refresh an expired import heartbea
 
   assert.equal(response.getResponseCode(), 204);
   assert.deepEqual(events, ['heartbeat_dataset_import_v1', 'fetch']);
+});
+
+test('fenced Season reconciliation uses the server worklist in bounded, stable-idempotency batches', () => {
+  const context = importer();
+  const itemcodes = Array.from({ length: 27 }, (_, index) => `ITEM-${String(index).padStart(3, '0')}`);
+  itemcodes.push('RETIRED-ITEM');
+  itemcodes.sort();
+  const deferredThenDone = { ok: true, status: 'maintenance_deferred', code: 'MAINTENANCE_DEFERRED' };
+  const completed = { ok: true, status: 'completed', winnerCount: 25, openCount: 20, doneCount: 5,
+    newStateCount: 0, winnerChangeCount: 0, reopenCount: 0, retireCount: 0,
+    mirrorUpsertCount: 20, scopeHash: 'chunk-hash' };
+  const finalPlan = seasonPlan(itemcodes, { winnerCount: 28 });
+  const calls = stubSeasonReconciliation(context, [
+    seasonPlan(itemcodes, { winnerCount: 28 }), deferredThenDone, completed,
+    { ...completed, winnerCount: 3, openCount: 3, doneCount: 0, mirrorUpsertCount: 3 }, finalPlan,
+  ]);
+
+  const result = context.reconcileSeasonSalesOfficeAfterImport_('revision-27', 'canonical_import');
+
+  const writes = calls.filter(call => call.payload.p_dry_run === false);
+  assert.deepEqual(plain(writes.map(call => call.payload.p_itemcodes)), [itemcodes.slice(0, 25), itemcodes.slice(0, 25), itemcodes.slice(25)]);
+  assert.equal(writes[0].payload.p_idempotency_key, writes[1].payload.p_idempotency_key,
+    'retrying a deferred chunk must reuse its stable idempotency key');
+  assert.notEqual(writes[1].payload.p_idempotency_key, writes[2].payload.p_idempotency_key,
+    'different chunks must have distinct idempotency keys');
+  assert.equal(writes.every(call => call.payload.p_import_revision === 'canonical_import:revision-27'), true);
+  assert.equal(writes.flatMap(call => call.payload.p_itemcodes).includes('RETIRED-ITEM'), true,
+    'the server worklist must include scope items without a current winner');
+  assert.equal(calls.filter(call => call.payload.p_dry_run === true).length, 2,
+    'one full-scope dry run plans chunks and one verifies convergence');
+  assert.equal(result.status, 'completed');
+});
+
+test('fenced Season reconciliation fails closed on missing or malformed server worklists', () => {
+  for (const plan of [
+    { ok: true, status: 'dry_run', scopeCount: 1 },
+    seasonPlan([' item ']),
+    seasonPlan(['DUP', 'DUP']),
+    seasonPlan(['A', ' A']),
+    seasonPlan(['A'], { scopeCount: 2 }),
+  ]) {
+    const context = importer();
+    const calls = stubSeasonReconciliation(context, [plan]);
+    assert.throws(() => context.reconcileSeasonSalesOfficeAfterImport_('revision-bad', 'canonical_import'), /SEASON_SALES_RECONCILIATION/);
+    assert.equal(calls.length, 1, 'invalid plans must fail before any writes');
+  }
+});
+
+test('fenced Season reconciliation sorts a unique server worklist without assuming database collation order', () => {
+  const context = importer();
+  const databaseOrder = ['ITEM-2', 'ITEM-10', 'ITEM-1'];
+  const completed = { ok: true, status: 'completed', winnerCount: 3, openCount: 3, doneCount: 0,
+    newStateCount: 0, winnerChangeCount: 0, reopenCount: 0, retireCount: 0, mirrorUpsertCount: 3 };
+  const calls = stubSeasonReconciliation(context, [
+    seasonPlan(databaseOrder), completed, seasonPlan(['ITEM-1', 'ITEM-2', 'ITEM-10']),
+  ]);
+
+  context.reconcileSeasonSalesOfficeAfterImport_('revision-collation', 'canonical_import');
+
+  const batch = calls.find(call => call.payload.p_dry_run === false);
+  assert.deepEqual(plain(batch.payload.p_itemcodes), ['ITEM-1', 'ITEM-10', 'ITEM-2']);
+});
+
+test('Season batch idempotency hashing preserves itemcode boundaries', () => {
+  const context = importer();
+  const first = context.getSeasonSalesBatchIdempotencyKey_('same-base', 0, ['A|B', 'C']);
+  const second = context.getSeasonSalesBatchIdempotencyKey_('same-base', 0, ['A', 'B|C']);
+  assert.notEqual(first, second);
+});
+
+test('fenced Season reconciliation never reports success after a failed batch or failed convergence check', () => {
+  const itemcodes = ['A', 'B'];
+  const failedChunkContext = importer();
+  const failedChunkCalls = stubSeasonReconciliation(failedChunkContext, [
+    seasonPlan(itemcodes), { ok: false, status: 'failed' },
+  ]);
+  assert.throws(() => failedChunkContext.reconcileSeasonSalesOfficeAfterImport_('revision-fail', 'canonical_import'), /SEASON_SALES_RECONCILIATION/);
+  assert.equal(failedChunkCalls.filter(call => call.payload.p_dry_run === true).length, 1,
+    'a failed chunk must prevent final verification and success');
+
+  for (const finalPlan of [
+    seasonPlan(['A', 'CHANGED']),
+    seasonPlan(itemcodes, { newStateCount: 1 }),
+    seasonPlan(itemcodes, { winnerChangeCount: 1 }),
+    seasonPlan(itemcodes, { retireCount: 1 }),
+    seasonPlan(itemcodes, { reopenCount: 1 }),
+    seasonPlan(itemcodes, { seasonCode: 'S1', scopeHash: 'b'.repeat(64) }),
+    seasonPlan(itemcodes, { salesYear: 28, scopeHash: 'b'.repeat(64) }),
+  ]) {
+    const context = importer();
+    const calls = stubSeasonReconciliation(context, [seasonPlan(itemcodes),
+      { ok: true, status: 'completed', winnerCount: 2, openCount: 2, doneCount: 0,
+        newStateCount: 0, winnerChangeCount: 0, reopenCount: 0, retireCount: 0, mirrorUpsertCount: 2 },
+      finalPlan]);
+    assert.throws(() => context.reconcileSeasonSalesOfficeAfterImport_('revision-converge', 'canonical_import'), /SEASON_SALES_RECONCILIATION/);
+    assert.equal(calls.filter(call => call.payload.p_dry_run === true).length, 2);
+  }
+
+  const shiftedBatchContext = importer();
+  const shiftedBatchCalls = stubSeasonReconciliation(shiftedBatchContext, [
+    seasonPlan(itemcodes),
+    { ok: true, status: 'completed', winnerCount: 2, openCount: 2, doneCount: 0,
+      newStateCount: 0, winnerChangeCount: 0, reopenCount: 0, retireCount: 0, mirrorUpsertCount: 2,
+      seasonCode: 'S1', salesYear: 27 },
+  ]);
+  assert.throws(() => shiftedBatchContext.reconcileSeasonSalesOfficeAfterImport_('revision-batch-scope', 'canonical_import'), /SCOPE_CHANGED/);
+  assert.equal(shiftedBatchCalls.filter(call => call.payload.p_dry_run === true).length, 1,
+    'a batch that ran under changed season settings must fail before final success');
+});
+
+test('unfenced Season reconciliation preserves its original single full-scope call', () => {
+  const context = importer();
+  vm.runInContext('datasetImportFenceContext_ = null;', context);
+  const expected = { ok: true, status: 'completed', winnerCount: 2 };
+  const calls = stubSeasonReconciliation(context, [expected]);
+
+  const result = context.reconcileSeasonSalesOfficeAfterImport_('revision-plain', 'manual');
+
+  assert.deepEqual(plain(result), expected);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].payload.p_itemcodes, null);
+  assert.equal(calls[0].payload.p_dry_run, false);
 });
