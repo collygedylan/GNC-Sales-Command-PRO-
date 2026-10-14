@@ -140464,7 +140464,7 @@ C.14.043 C.15.000
                     requestModalCustomerOptionsCacheKey = '';
                     requestExistingFolderGroupsCacheKey = '';
                     void ensureDatasetLoaded('customerRepMap', 'full', {force:true}).catch(error => showToast('Mapping Saved', 'Refresh Request options before submitting: ' + error.message, true));
-                });
+                }, identity);
             customerRepMappingView = {root, identity, destroy};
         }
 
@@ -140546,7 +140546,7 @@ C.14.043 C.15.000
             if (access.canViewTransactionsKeyed) tabs.push({ id: MANAGER_TRANSACTIONS_KEYED_VIEW, label: 'Transactions Keyed' });
             if (access.canViewOrders) tabs.push({ id: MANAGER_ORDERS_VIEW, label: 'Orders' });
             if (access.canViewAssignedItemsExport) tabs.push({ id: MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW, label: 'Assigned Items' });
-            if (access.canManageCustomerRepMappings) tabs.push({ id: MANAGER_CUSTOMER_REP_MAP_VIEW, label: 'Customer Mappings' });
+            if (access.canManageCustomerRepMappings) tabs.push({ id: MANAGER_CUSTOMER_REP_MAP_VIEW, label: 'Customer Assignments' });
             if (access.canViewEvalReports) tabs.push({ id: MANAGER_EVAL_REPORTS_VIEW, label: 'Eval Reports' });
             if (access.canViewEvalReports2) tabs.push({ id: MANAGER_EVAL_REPORTS_2_VIEW, label: 'Eval Reports #2' });
             if (access.canViewHistoricalReport) tabs.push({ id: MANAGER_HISTORICAL_REPORT_VIEW, label: 'Historical Report' });
@@ -140590,7 +140590,7 @@ C.14.043 C.15.000
             if (safeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) return { label: 'Transactions Keyed', description: 'Compare keyed transaction counts and daily or historical shares.', icon: 'ph-table' };
             if (safeTab === MANAGER_ORDERS_VIEW) return { label: 'Orders', description: 'Open frozen order-file history and matched Drive Mode rows.', icon: 'ph-package' };
             if (safeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) return { label: 'Assigned Items', description: 'Export warehouse assigned item rows by AssignedTo.', icon: 'ph-user-list' };
-            if (safeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) return { label: 'Customer Mappings', description: 'Filter and correct sales rep, customer and consignee mappings.', icon: 'ph-address-book' };
+            if (safeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) return { label: 'Customer Assignments', description: 'Assign customer and consignee sales reps, or restore their imported assignments.', icon: 'ph-address-book' };
             if (safeTab === MANAGER_EVAL_REPORTS_VIEW) return { label: 'Eval Reports', description: 'Open live Drive-based Eval inventory reports.', icon: 'ph-chart-bar' };
             if (safeTab === MANAGER_EVAL_REPORTS_2_VIEW) return { label: 'Eval Reports #2', description: 'Open Apps Script-compatible reports and Item Inquiry from live Park Hill inventory.', icon: 'ph-chart-line-up' };
             if (safeTab === MANAGER_HISTORICAL_REPORT_VIEW) return { label: 'Historical Report', description: 'Search Common Name and ContSize history with selectable columns.', icon: 'ph-clock-counter-clockwise' };
@@ -142950,7 +142950,7 @@ C.14.043 C.15.000
             else if (activeHomeTab === MANAGER_TRANSACTIONS_KEYED_VIEW) html += renderTransactionsKeyedPanel();
             else if (activeHomeTab === MANAGER_ORDERS_VIEW) html += renderManagerOrdersPanel();
             else if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) html += renderManagerAssignedItemsExportPanel();
-            else if (activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) html += '<div id="manager-customer-rep-map-root" role="region" aria-label="Customer mapping management"></div>';
+            else if (activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW) html += '<div id="manager-customer-rep-map-root" role="region" aria-label="Customer assignment management"></div>';
             else if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) html += renderManagerEvalReportsPanel();
             else if (activeHomeTab === MANAGER_EVAL_REPORTS_2_VIEW) html += renderManagerEvalReports2Panel();
             else if (activeHomeTab === MANAGER_HISTORICAL_REPORT_VIEW) html += renderManagerHistoricalReportPanel();

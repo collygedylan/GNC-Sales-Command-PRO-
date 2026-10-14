@@ -48,6 +48,36 @@ Deno.test("customer rep map Request options are bounded and carry no management 
   ]) assertThrows(() => validateCustomerRepMappingRequest(invalid));
 });
 
+Deno.test("customer rep assignment picker is bounded and exposes only supported fields", () => {
+  assertEquals(validateCustomerRepMappingRequest({ action: "customer-rep-map", operation: "reps", page: 1, pageSize: 25, q: "Alvarez" }), {
+    operation: "reps", payload: { page: 1, pageSize: 25, q: "Alvarez" },
+  });
+  for (const invalid of [
+    { action: "customer-rep-map", operation: "reps", pageSize: 201 },
+    { action: "customer-rep-map", operation: "reps", rawData: true },
+  ]) assertThrows(() => validateCustomerRepMappingRequest(invalid));
+});
+
+Deno.test("customer rep assign and reset require idempotency UUIDs and revisions", () => {
+  const requestId = "e2bafdb8-a297-4df7-a68a-1bb99240b92e";
+  assertEquals(validateCustomerRepMappingRequest({ action: "customer-rep-map", operation: "assign", id: "row-1",
+    expectedRevision: "2", requestId, salesrepId: "R1" }), {
+    operation: "assign", payload: { id: "row-1", expectedRevision: "2", requestId, salesrepId: "R1" },
+  });
+  assertEquals(validateCustomerRepMappingRequest({ action: "customer-rep-map", operation: "reset", id: "row-1",
+    expectedRevision: "2", requestId }), {
+    operation: "reset", payload: { id: "row-1", expectedRevision: "2", requestId },
+  });
+  for (const invalid of [
+    { action: "customer-rep-map", operation: "assign", id: "row-1", expectedRevision: "2", salesrepId: "R1" },
+    { action: "customer-rep-map", operation: "reset", id: "row-1", expectedRevision: "0", requestId },
+    { action: "customer-rep-map", operation: "assign", id: "row-1", expectedRevision: "2", requestId: "nope", salesrepId: "R1" },
+    { action: "customer-rep-map", operation: "assign", id: "row-1", expectedRevision: "2", requestId, salesrepId: "R1", salesrepName: "Forged Name" },
+  ]) assertThrows(() => validateCustomerRepMappingRequest(invalid));
+  assertEquals(validateCustomerRepMappingRequest({ action: "customer-rep-map", operation: "save", id: "row-1",
+    expectedRevision: "2", requestId, salesrepId: "R1", salesrepName: "Rep Name", customerName: "C", consigneeName: "D" }).payload.requestId, requestId);
+});
+
 Deno.test("only current Admin and Manager roles may edit customer rep mappings", () => {
   for (const role of ["Admin", "Administrator", "Manager"]) assertEquals(isCustomerRepMappingEditorRole(role), true);
   for (const role of ["Rep", "CSR", "QC", "Sales Marketing", "", null]) assertEquals(isCustomerRepMappingEditorRole(role), false);
