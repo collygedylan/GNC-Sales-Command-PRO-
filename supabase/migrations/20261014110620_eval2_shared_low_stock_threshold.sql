@@ -192,9 +192,11 @@ begin
     raise exception using errcode='42501',message='manager_report_eval2_forbidden';
   end if;
   if surface='assigned-items' then
-    return private.manager_report_assigned_page_v2(actor.id,filters,operation,page_offset,page_limit,source_revision);
+    return private.manager_report_enrich_location_on_hand_v1(private.manager_report_assigned_page_v2(actor.id,filters,operation,page_offset,page_limit,source_revision),
+      regexp_replace(upper(coalesce(actor.role,'')), '[^A-Z0-9]+', '', 'g') like '%FOREMAN%');
   elsif surface='season-priority' then
-    return private.manager_report_season_page_v2(actor.id,filters,operation,page_offset,page_limit,source_revision);
+    return private.manager_report_enrich_location_on_hand_v1(private.manager_report_season_page_v2(actor.id,filters,operation,page_offset,page_limit,source_revision),
+      regexp_replace(upper(coalesce(actor.role,'')), '[^A-Z0-9]+', '', 'g') like '%FOREMAN%');
   elsif surface='approval' then
     raise exception using errcode='22023',message='manager_report_surface_uses_protected_adapter';
   end if;
@@ -288,7 +290,8 @@ begin
       'sourceFreshness',source_state,'metadata',jsonb_build_object('currentSeason',(select current_season from settings),
         'currentSalesYear',(select current_year from settings),'releaseSeason',(select release_season from settings),
         'releaseSalesYear',(select release_year from settings))) into response;
-    return response;
+    return private.manager_report_enrich_location_on_hand_v1(response,
+      regexp_replace(upper(coalesce(actor.role,'')), '[^A-Z0-9]+', '', 'g') like '%FOREMAN%');
   end if;
   select coalesce(array_agg(value),array[]::text[])
     into requested_reports
@@ -544,7 +547,8 @@ begin
       else (select count(*)>page_offset+page_limit from filtered) end,
     'sourceRevision',source_revision,'sourceFreshness',source_state,
     'metadata',(select value from metadata)) into response;
-  return response;
+  return private.manager_report_enrich_location_on_hand_v1(response,
+    regexp_replace(upper(coalesce(actor.role,'')), '[^A-Z0-9]+', '', 'g') like '%FOREMAN%');
 end
 $function$;
 revoke all on function public.manager_report_read_v2(jsonb) from public,anon,authenticated;
