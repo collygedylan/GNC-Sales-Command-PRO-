@@ -1239,7 +1239,7 @@ function makeRequestSaveHarness(waitForRetry) {
   const ctx = { window: {}, waitForSupabaseReadRetry: waitForRetry, REQUEST_WORK_CONFLICT_RETRY_LIMIT: 1 };
   vm.createContext(ctx);
   vm.runInContext(readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8'), ctx);
-  const start = html.indexOf('async function saveRequestWorkWithBoundedRetry(');
+  const start = html.indexOf('async function saveRequestWorkWithReconciliation(');
   const end = html.indexOf('const REQUEST_WORK_DRAFT_FIELDS', start);
   assert.ok(start > 0 && end > start);
   vm.runInContext(html.slice(start, end), ctx);
@@ -1262,7 +1262,7 @@ test('request conflicts allow one canonical read and one delayed rebase, preserv
   const ctx = makeRequestSaveHarness(ms => { delays.push(ms); return gate.promise; });
   let reads = 0;
   const sends = [];
-  const pending = ctx.saveRequestWorkWithBoundedRetry({
+  const pending = ctx.saveRequestWorkWithReconciliation({
     draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
     maxRebases: 100, assertScope() {},
     readCanonical: async () => { reads += 1; return requestCanonical(); },
@@ -1290,7 +1290,7 @@ test('identity or permission changes during rebase delay cancel dispatch and pre
   const ctx = makeRequestSaveHarness(() => gate.promise);
   let currentScope = true;
   let sends = 0;
-  const pending = ctx.saveRequestWorkWithBoundedRetry({
+  const pending = ctx.saveRequestWorkWithReconciliation({
     draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
     assertScope() { if (!currentScope) throw Object.assign(new Error('Scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }); },
     readCanonical: async () => requestCanonical(),
@@ -1309,7 +1309,7 @@ test('identity or permission changes during rebase delay cancel dispatch and pre
 test('successful request saves remain immediate and require no canonical reread', async () => {
   const ctx = makeRequestSaveHarness(() => assert.fail('successful save must not back off'));
   let sends = 0;
-  const outcome = await ctx.saveRequestWorkWithBoundedRetry({
+  const outcome = await ctx.saveRequestWorkWithReconciliation({
     draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' }, assertScope() {},
     readCanonical: async () => assert.fail('successful save must not reread'),
     send: async () => { sends += 1; return { row: { unique_id: 'request-1', req_spec: 'local spec' }, row_version: 5 }; }

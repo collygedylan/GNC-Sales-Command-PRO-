@@ -169362,7 +169362,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()
                                     || requestSavePermissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
                             };
-                            const requestSaveOutcome = await saveRequestWorkWithBoundedRetry({
+                            const requestSaveOutcome = await saveRequestWorkWithReconciliation({
                                 assertScope: assertRequestSaveScope,
                                 draft: getRequestWorkDraftEntry(itemToSave.UNIQUE_ID) || requestWorkDraft,
                                 expectedVersion: rpcExpectedVersion,
@@ -169606,7 +169606,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         const REQUEST_WORK_CONFLICT_RETRY_LIMIT = 1;
 
-        async function saveRequestWorkWithBoundedRetry(options) {
+        async function saveRequestWorkWithReconciliation(options) {
             let canonicalReadStarted = false;
             return window.AgMetricRequestSubmission.saveRequestWorkWithReconciliation({
                 ...options,
@@ -170170,7 +170170,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(findRequestInventoryRowByUniqueId(requestId)) || {};
                     const requestWorkCacheEntryTimestampAtDispatch = Number(entry.timestamp || 0);
                     try {
-                        const reconciliation = await saveRequestWorkWithBoundedRetry({
+                        const reconciliation = await saveRequestWorkWithReconciliation({
                             assertScope: assertPendingRequestScope,
                             draft, expectedVersion, initialPatch: patch, maxRebases: REQUEST_WORK_CONFLICT_RETRY_LIMIT,
                             readCanonical: async () => { assertPendingRequestScope(); const canonical = await fetchCanonicalRequestWorkRow(requestId); assertPendingRequestScope(); return canonical; },
