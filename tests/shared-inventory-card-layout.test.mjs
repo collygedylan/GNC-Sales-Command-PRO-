@@ -40,12 +40,13 @@ test('Docks details preserve field chips without duplicating the six inventory m
 });
 test('operational metrics require a verified exact inventory row',()=>{
   let verified=true;
-  const c=vm.createContext({getDatasetState:()=>({rowCompleteness:'complete',initialLoaded:true}),getCardLocationOnHandValue:()=>verified?'0':null,fullInventory:[{ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1',PTRONHAND:0}],isSameDockSuspendDcRequestCardDataLocation:(a,b)=>['ITEMCODE','LOCATIONCODE','LOTCODE'].every(k=>a[k]===b[k])});
+  const c=vm.createContext({getDatasetState:()=>({rowCompleteness:'complete',initialLoaded:true}),nativeAuthSessionActive:false,nativeAuthProfile:null,getCardLocationOnHandValue:()=>verified?'0':null,fullInventory:[{ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1',PTRONHAND:0}],isSameDockSuspendDcRequestCardDataLocation:(a,b)=>['ITEMCODE','LOCATIONCODE','LOTCODE'].every(k=>a[k]===b[k]),getSuspendTagInventoryIdentity:row=>row,matchesSuspendTagInventoryIdentity:()=>true,getSuspendTagHydratedInventoryRow:()=>null,findDockSuspendDcRequestSourceRow:()=>null});
   c.masterInventoryByItemCode=new Map([['0001',c.fullInventory]]);
   c.getItemInquiryItemCode=row=>row.ITEMCODE;
   vm.runInContext(extract('getOperationalCardInventoryRow'),c);
   assert.equal(c.getOperationalCardInventoryRow({ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1'}).PTRONHAND,0);
   assert.equal(Object.keys(c.getOperationalCardInventoryRow({ITEMCODE:'0001',LOCATIONCODE:'B1',LOTCODE:'L1'})).length,0);
   verified=false;
-  assert.equal(Object.keys(c.getOperationalCardInventoryRow({ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1'})).length,0);
+  assert.equal(c.getOperationalCardInventoryRow({ITEMCODE:'0001',LOCATIONCODE:'A1',LOTCODE:'L1'}).PTRONHAND,0,
+    'an unavailable location aggregate does not erase independently verified inventory fields');
 });

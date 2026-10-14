@@ -32,16 +32,25 @@ function actionHarness({ allowed = true, eligible = true } = {}) {
     getSuspendTagStatus: () => 'pending',
     masterInventoryById: new Map([[master.UNIQUE_ID, master]]),
     masterInventoryByExactKey: new Map([['SKU-1__A1__27.U3__PH', master]]),
+    masterInventoryByItemCode: new Map([['SKU-1', [master]]]),
     fullInventory: [master],
     getMasterInventorySourceCode: row => row.SOURCE || '',
+    normalizeMasterInventorySourceCode: value => ['DOCK','DOCKS','SOC'].includes(String(value || '').trim().toUpperCase()) ? '' : String(value || '').trim().toUpperCase(),
+    getDatasetState: () => ({ rowCompleteness:'complete', initialLoaded:true }),
+    nativeAuthSessionActive: false, nativeAuthProfile: null,
+    getItemInquiryItemCode: () => 'SKU-1',
+    isSameDockSuspendDcRequestCardDataLocation: (row, target) => row.ITEMCODE === target.ITEMCODE && row.LOCATIONCODE === target.LOCATIONCODE && row.LOTCODE === target.LOTCODE,
+    getSuspendTagHydratedInventoryRow: () => null,
+    isSuspendTagHydratedInventoryRowStale: () => false,
     findDockSuspendDcRequestSourceRow: () => source,
   });
   vm.runInContext(['getMasterInventoryExactKey', 'findLinkedMasterRow', 'getDockSuspendDcRequestLinkedMasterRow',
+    'getSuspendTagInventoryIdentity', 'matchesSuspendTagInventoryIdentity', 'getOperationalCardInventoryRow',
     'isArgosInventoryTransactionEligible', 'buildArgosInventoryTransactionRailHtml', 'buildSuspendTagReclassActionHtml', 'buildSuspendTagActions'].map(extract).join('\n'), context);
   return { context, item, source, master };
 }
 
-function coldReclassHarness(t) {
+function coldReclassHarness(t, { warmFullCache = false } = {}) {
   const h = actionHarness();
   const dom = new JSDOM('<div id="request-content"><article id="card"></article></div>', { runScripts: 'dangerously' });
   t.after(() => dom.window.close());
@@ -52,7 +61,9 @@ function coldReclassHarness(t) {
     canUseProductionLiveSync: () => true, isSuspendTagWriteSurface: () => true,
     getSupabaseReadIdentityScope: () => h.context.owner,
     getProductionLiveSyncContext: () => ({ dataPermissionVersion: h.context.permission }),
+    acceptedLocOnHandAggregateReceipt: { scope:'account-1', permission:'permission-1', revision:'1', valid:true },
     findDockSuspendDcRequestMirrorRowByUniqueId: () => h.item,
+    markViewDirty() {}, scheduleRequestRender() {},
     staleSupabaseReadScopeError: () => new Error('stale scope'),
     setTimeout: callback => { callbacks.push(callback); return callbacks.length; },
     resolveSuspendTagInventoryRow: (...args) => new Promise((resolve, reject) => { reads.push({ args, resolve, reject }); }),
@@ -61,26 +72,44 @@ function coldReclassHarness(t) {
   h.context.masterInventoryById.set('unrelated', {});
   h.context.masterInventoryById.delete(h.master.UNIQUE_ID);
   h.context.masterInventoryByExactKey.clear();
-  vm.runInContext('const suspendTagReclassLoads = new Map(); let suspendTagReclassLoadTimer = null; let suspendTagReclassActiveReads = 0;', h.context);
-  for (const name of ['getSuspendTagInventoryIdentity', 'matchesSuspendTagInventoryIdentity', 'scheduleSuspendTagReclassLoads', 'hydrateRenderedSuspendTagReclassCards']) vm.runInContext(extract(name), h.context);
+  h.master.PTRONHAND = 89;
+  if (warmFullCache) {
+    const olderCachedRow = { ...h.master, PTRONHAND:11 };
+    h.context.masterInventoryByItemCode.set('SKU-1', [olderCachedRow]);
+    h.context.fullInventory = [olderCachedRow];
+  } else {
+    h.context.masterInventoryByItemCode.clear();
+    h.context.fullInventory = [];
+    h.context.getDatasetState = () => ({ rowCompleteness:'partial', initialLoaded:true });
+  }
+  vm.runInContext('const suspendTagReclassLoads = new Map(); let suspendTagReclassLoadTimer = null; let suspendTagReclassActiveReads = 0; const SUSPEND_TAG_INVENTORY_CACHE_TTL_MS = 120000;', h.context);
+  for (const name of ['getSuspendTagInventoryReceiptSignature', 'isSuspendTagInventoryHydrationStale',
+    'isSuspendTagHydratedInventoryRowStale', 'getSuspendTagHydratedInventoryRow', 'scheduleSuspendTagReclassLoads',
+    'hydrateRenderedSuspendTagReclassCards']) vm.runInContext(extract(name), h.context);
+  vm.runInContext('globalThis.getSuspendTagTestEntry = () => [...suspendTagReclassLoads.values()][0];', h.context);
   const card = dom.window.document.getElementById('card');
   card.innerHTML = h.context.buildSuspendTagReclassActionHtml(h.item, 'onpointerdown="event.stopPropagation()"') + h.context.buildSuspendTagActions(h.item);
   const flush = async () => { while (callbacks.length) callbacks.shift()(); await new Promise(setImmediate); };
   return { ...h, dom, card, reads, flush };
 }
 
-test('cold-cache Reclass loads an exact link once and preserves Share and Mark Done', async t => {
+test('cold-cache Reclass loads an exact row once and preserves Complete Tag and Mark Done', async t => {
   const h = coldReclassHarness(t);
   await h.flush();
   h.context.hydrateRenderedSuspendTagReclassCards();
   assert.equal(h.reads.length, 1);
   assert.equal(h.reads[0].args[2].masterUid, 'master-row');
   h.reads[0].resolve(h.master);
+  await new Promise(setImmediate);
+  assert.equal(h.context.masterInventoryById.get('master-row'), h.master,
+    'accepted exact rows enter the ID index before the asynchronous card rerender');
   await h.flush(); await h.flush();
+  assert.equal(h.context.getSuspendTagHydratedInventoryRow(h.item,h.source),h.master,'the exact row is reused from the scoped cache');
+  assert.equal(h.reads.length,1,'rendering a hydrated card does not repeat the exact lookup');
   const button = h.card.querySelector('.app-card-bottom-btn--argos-reclass');
   assert.ok(button);
   assert.equal(h.card.querySelectorAll('.app-card-bottom-btn--argos-reclass').length, 1);
-  assert.match(h.card.textContent, /Share Photo \/ Spec Options/);
+  assert.match(h.card.textContent, /Complete Tag/);
   assert.match(h.card.textContent, /Mark Done/);
   let opened, bubbled = 0;
   h.dom.window.openArgosInventoryTransactionModal = (...args) => { opened = args; return false; };
@@ -92,6 +121,56 @@ test('cold-cache Reclass loads an exact link once and preserves Share and Mark D
   assert.equal(h.context.masterInventoryById.get('master-row'), h.master);
 });
 
+test('fresh exact inventory cache is reused without another read', async t => {
+  const h = coldReclassHarness(t); await h.flush();
+  h.reads[0].resolve(h.master); await h.flush(); await h.flush();
+  const entry = h.context.getSuspendTagTestEntry();
+  assert.ok(entry.verifiedAt > 0);
+  assert.equal(h.context.isSuspendTagInventoryHydrationStale(entry), false);
+  h.card.innerHTML = h.context.buildSuspendTagReclassActionHtml(h.item, '');
+  await h.flush();
+  assert.equal(h.reads.length, 1);
+  assert.equal(h.context.getSuspendTagHydratedInventoryRow(h.item, h.source), h.master);
+});
+
+test('warm full inventory displays immediately while exact row hydration replaces older cached fields', async t => {
+  const h = coldReclassHarness(t, { warmFullCache:true });
+  Object.assign(h.item, { ITEMCODE:'SKU-1', LOCATIONCODE:'A1', LOTCODE:'27.U3' });
+  const warmRow = { ...h.master, PTRONHAND:11 };
+  h.context.masterInventoryByItemCode.set('SKU-1', [warmRow]);
+  h.context.fullInventory = [warmRow];
+  h.card.innerHTML = h.context.buildSuspendTagReclassActionHtml(h.item, '');
+  assert.equal(h.context.getOperationalCardInventoryRow(h.item).PTRONHAND, 11,
+    'the existing full cache stays visible while the exact row read starts');
+  await h.flush();
+  assert.equal(h.reads.length, 1, 'full-snapshot presence does not suppress row-scoped verification');
+  h.reads[0].resolve(h.master); await new Promise(setImmediate);
+  assert.equal(h.context.getOperationalCardInventoryRow(h.item).PTRONHAND, 89,
+    'the accepted exact row takes precedence over an older full-snapshot row');
+  await h.flush(); await h.flush();
+  assert.equal(h.reads.length, 1);
+});
+
+test('expired or aggregate-revision-stale metrics stay visible while exact inventory is reverified', async t => {
+  for (const staleBy of ['ttl', 'aggregate-revision']) {
+    const h = coldReclassHarness(t); await h.flush();
+    h.reads[0].resolve(h.master); await h.flush(); await h.flush();
+    const entry = h.context.getSuspendTagTestEntry();
+    if (staleBy === 'ttl') entry.verifiedAt = Date.now() - 120001;
+    else h.context.acceptedLocOnHandAggregateReceipt = { scope:'account-1', permission:'permission-1', revision:'2', valid:true };
+    assert.equal(h.context.isSuspendTagInventoryHydrationStale(entry), true);
+    h.card.innerHTML = h.context.buildSuspendTagReclassActionHtml(h.item, '');
+    await h.flush();
+    assert.equal(h.reads.length, 2, `${staleBy} triggers a fresh exact read`);
+    assert.equal(h.context.getSuspendTagHydratedInventoryRow(h.item, h.source), h.master,
+      'known metrics remain available during refresh');
+    assert.equal(h.context.getOperationalCardInventoryRow(h.item).PTRONHAND, 89,
+      'the card continues rendering the cached On Hand metric while refresh is in flight');
+    h.reads[1].resolve(h.master); await h.flush(); await h.flush();
+    assert.equal(h.context.isSuspendTagInventoryHydrationStale(entry), false);
+  }
+});
+
 test('cold-cache Reclass cannot expose a missing, ambiguous or unauthorized row', async t => {
   for (const scenario of ['missing', 'ambiguous', 'unauthorized', 'wrong-row']) {
     const h = coldReclassHarness(t); await h.flush();
@@ -100,8 +179,9 @@ test('cold-cache Reclass cannot expose a missing, ambiguous or unauthorized row'
     else h.reads[0].resolve(scenario === 'missing' ? null : scenario === 'wrong-row' ? { ...h.master, LOTCODE: 'other' } : h.master);
     await h.flush(); await h.flush();
     assert.equal(h.card.querySelector('.app-card-bottom-btn--argos-reclass'), null);
-    assert.equal(h.context.masterInventoryById.has('master-row'), false);
-    assert.match(h.card.textContent, /Share Photo \/ Spec Options/);
+    assert.equal(h.context.masterInventoryById.has('master-row'), scenario === 'unauthorized',
+      'view-authorized exact quantity rows may be indexed even when the user cannot launch Reclass');
+    assert.match(h.card.textContent, /Complete Tag/);
     assert.match(h.card.textContent, /Mark Done/);
   }
 });
@@ -142,7 +222,7 @@ test('Suspend Tag card renders shared Reclass button and its activation does not
   assert.deepEqual(opened, ['master-row', 'reclass', 'suspend-tag']);
   assert.equal(master.UNIQUE_ID, opened[0], 'the synthetic Suspend Tag card UID is not submitted');
   assert.match(dom.window.document.querySelector('#card').textContent, /Mark Done/);
-  assert.match(dom.window.document.querySelector('#card').textContent, /Share Photo \/ Spec Options/);
+  assert.match(dom.window.document.querySelector('#card').textContent, /Complete Tag/);
   dom.window.close();
 });
 

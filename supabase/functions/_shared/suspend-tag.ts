@@ -18,7 +18,7 @@ export async function verifySuspendTagSession(client: { auth: { getUser: (token:
 
 export async function handleSuspendTag(client: RpcClient, actor: RecordValue, payload: RecordValue) {
   const operation = String(payload.operation || '');
-  if (!['rows', 'save', 'complete', 'send', 'retry', 'approval', 'decide'].includes(operation)) throw new Error('SUSPEND_TAG_OPERATION_INVALID');
+  if (!['rows', 'save', 'complete', 'close', 'send', 'retry', 'approval', 'decide'].includes(operation)) throw new Error('SUSPEND_TAG_OPERATION_INVALID');
   if (!['approval', 'decide'].includes(operation) && !SUSPEND_TAG_EDITORS.has(String(actor.username || ''))) throw new Error('SUSPEND_TAG_FORBIDDEN');
   const input = payload.payload;
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('SUSPEND_TAG_REQUEST_INVALID');
@@ -41,6 +41,6 @@ export function suspendTagError(error: unknown) {
   const raw = String(error instanceof Error ? error.message : error);
   const code = raw.match(/SUSPEND_TAG_[A-Z_]+/)?.[0] || 'SUSPEND_TAG_REQUEST_FAILED';
   const status = /FORBIDDEN|SESSION_REQUIRED|SERVICE_REQUIRED|REVIEW_LOCKED/.test(code) ? 403
-    : /CHANGED|CONFLICT|SUPERSEDED/.test(code) ? 409 : /MISSING|REQUIRED|INVALID/.test(code) ? 422 : 503;
+    : /CHANGED|CONFLICT|SUPERSEDED|AMBIGUOUS/.test(code) ? 409 : /MISSING|REQUIRED|INVALID/.test(code) ? 422 : 503;
   return { status, body: { ok: false, error: code, code } };
 }

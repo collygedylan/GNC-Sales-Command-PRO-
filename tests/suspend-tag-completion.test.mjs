@@ -68,6 +68,11 @@ function harness(options = {}) {
     applyDockSuspendDcRequestHandledState: (item, at) => { item.DATE_COMPLETED = at; item.date_completed = at; },
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
     queueSuspendTagInventoryReconciliation() {},
+    invalidateSuspendTagInventoryRows() {},
+    getPendingPhotoUploadsForItem: () => [],
+    reconcileConfirmedDriveEvidence: (...args) => { ctx.inventoryReconciliation = args; return true; },
+    matchesSuspendTagInventoryIdentity: () => true,
+    getSuspendTagInventoryIdentity: () => ({}),
     getSupabaseReadIdentityScope: () => ctx.currentUser,
     mergePhotoCsvList: values => [...new Set(values.flatMap(value => String(value || '').split(',').filter(Boolean)))].join(','),
     dockSuspendDcRequestMirrorRowsCacheKey: 'stale', requestScopedItemsCacheKey: 'stale',
@@ -88,6 +93,89 @@ test('native Save verifies only its row and succeeds while the whole view is unv
   assert.equal(h.toasts.length, 0);
   assert.equal(vm.runInContext('suspendTagWriteReads.size', h.ctx), 0);
   assert.equal(vm.runInContext('suspendTagRowWrites.size', h.ctx), 0);
+});
+
+test('Done applies canonical inventory evidence before returning and keeps the tag visible', async () => {
+  const inventoryRow = { unique_id: 'master-1', photo_link: 'new.jpg', match: '40', av_rule_photo_updated_at: '2026-10-14T11:00:00Z' };
+  const h = harness({ api: () => ({ ...acknowledgement(), inventoryRow }) });
+  assert.equal(await h.ctx.runSuspendTagRowCommand('complete', h.mirror), true);
+  assert.equal(h.ctx.inventoryReconciliation?.[0].row, inventoryRow);
+  assert.equal(h.ctx.inventoryReconciliation?.[0].canonicalConfirmed, true);
+  assert.equal(h.row.SUSPEND, 'SUSPEND');
+  assert.equal(h.row.SUSPEND_TO, 'DC');
+});
+
+test('Complete Tag waits for confirmation, permits pending approval, and removes eligibility without emailing', async () => {
+  let finish;
+  const h = harness({ live: true, proof: false, api: () => new Promise(resolve => { finish = resolve; }) });
+  h.ctx.remoteRow.suspend_tag_status = h.mirror.suspend_tag_status = 'awaiting_rep';
+  const action = button();
+  const pending = h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, action);
+  await new Promise(setImmediate);
+  assert.equal(action.disabled, true);
+  assert.equal(h.row.SUSPEND, 'SUSPEND');
+  await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  assert.deepEqual(h.calls.map(call => call.name), ['rows', 'close']);
+  finish(acknowledgement({ suspend: null, suspend_to: null }));
+  await pending;
+  assert.equal(h.row.SUSPEND, null);
+  assert.equal(h.mirror.SUSPEND_TO, null);
+  assert.equal(action.disabled, false);
+  assert.ok(h.toasts.some(([title]) => title === 'Tag Complete'));
+});
+
+test('lost close response retries its receipt even after the row leaves the eligible dataset', async () => {
+  let first = true;
+  const h = harness({ live: true, proof: false,
+    read: ctx => ({ rows: first ? [{ ...ctx.remoteRow }] : [] }),
+    api: () => {
+      if (first) { first = false; throw new Error('response lost'); }
+      return acknowledgement({ suspend: null, suspend_to: null });
+    } });
+  await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  assert.equal(h.row.SUSPEND, 'SUSPEND');
+  await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  const writes = h.calls.filter(call => call.name === 'close');
+  assert.equal(writes.length, 2);
+  assert.equal(writes[0].body.commandId, writes[1].body.commandId);
+  assert.equal(writes[0].body.expectedVersion, writes[1].body.expectedVersion);
+  assert.equal(h.row.SUSPEND, null);
+  const restored = harness({ storage: h.storage });
+  assert.equal(restored.ctx.overlaySuspendTagReceipt(source()).suspend, null);
+  assert.equal(restored.ctx.overlaySuspendTagReceipt(source()).SUSPEND, null, 'cached uppercase aliases cannot resurrect a closed tag');
+  assert.equal(restored.ctx.overlaySuspendTagReceipt(source()).SUSPEND_TO, null);
+});
+
+test('Complete Tag retains the card when uploads fail, data is incomplete, or the server rejects closure', async () => {
+  for (const scenario of ['upload', 'incomplete', 'conflict']) {
+    const h = harness({ ready: scenario !== 'incomplete', api: () => { throw new Error('SUSPEND_TAG_VERSION_CHANGED'); } });
+    if (scenario === 'upload') h.ctx.getPendingPhotoUploadsForItem = () => [Promise.reject(new Error('Upload failed'))];
+    await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+    assert.equal(h.row.SUSPEND, 'SUSPEND');
+    assert.equal(h.calls.filter(call => call.name === 'close').length, scenario === 'conflict' ? 1 : 0);
+    assert.ok(!h.toasts.some(([title]) => title === 'Tag Complete'));
+  }
+});
+
+test('close permission permits reviewed rows without unlocking editing or bypassing role access', () => {
+  const h = harness();
+  vm.runInContext(between('function canCurrentUserWorkRequestItem(', 'function parseRequestCustomerFolderParts('), h.ctx);
+  for (const status of ['awaiting_rep', 'approved']) {
+    h.mirror.suspend_tag_status = status;
+    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'close'), true);
+    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'edit'), false);
+    assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'complete'), false);
+  }
+  h.ctx.allowed = false;
+  assert.equal(h.ctx.canCurrentUserWorkRequestItem(h.mirror, 'close'), false);
+});
+
+test('an incomplete close acknowledgement cannot remove the card or report completion', async () => {
+  const h = harness({ api: () => acknowledgement({ suspend: 'SUSPEND', suspend_to: 'DC' }) });
+  await h.ctx.closeDockSuspendDcRequestFromCard(h.mirror.UNIQUE_ID, button());
+  assert.equal(h.row.SUSPEND, 'SUSPEND');
+  assert.ok(h.toasts.some(([title]) => title === 'Could Not Complete Tag'));
+  assert.ok(!h.toasts.some(([title]) => title === 'Tag Complete'));
 });
 
 test('native verification deduplicates reads and releases pending state after failure and retry', async () => {

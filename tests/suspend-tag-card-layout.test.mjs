@@ -27,6 +27,8 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     isDockSuspendDcRequestMirrorRow: row => row?.UNIQUE_ID === item.UNIQUE_ID,
     findDockSuspendDcRequestSourceRow: () => ({ UNIQUE_ID: 'soc-1', SOURCE_TABLE: 'ph_soc_master' }),
     getDockSuspendDcRequestLinkedMasterRow: () => inventory,
+    getSuspendTagHydratedInventoryRow: () => null,
+    isSuspendTagHydratedInventoryRowStale: () => false,
     canCurrentUserViewDockSuspendDcRequests: () => allowed,
     canCurrentUserUseDriveCardOptions: () => driveAllowed,
     canCurrentUserSubmitRepInventoryOperations: () => false,
@@ -41,7 +43,7 @@ function harness(t, { photo = true, allowed = true, driveAllowed = true, master 
     toggleGlobalItem: (...args) => calls.push(['select', ...args]),
     completeDockSuspendDcRequestFromCard: uid => { calls.push(['done', uid]); return false; },
     sendSuspendTagApproval: uid => { calls.push(['approval', uid]); return false; },
-    sendDockSuspendDcPhotoSpecEmail: uid => { calls.push(['share', uid]); return false; },
+    closeDockSuspendDcRequestFromCard: uid => { calls.push(['close', uid]); return false; },
     seasonCardShellClass: '', requestCardToneClass: '', requestBorderClass: '', suspendTagPlanstartToneDataAttr: '',
     isChecked: '', requestCustomer: 'A customer', safeCardSourceViewKey: 'request', historyBadge: '', statusChip: '', reserveBadge: '',
     requestMetaHtml: '<div class="app-request-card-meta"><span class="app-request-card-meta-chip">Customer <strong>A long customer name</strong></span></div>',
@@ -106,11 +108,11 @@ test('Reclass uses the linked master and never opens the row editor', t => {
   assert.deepEqual(h.calls, [['reclass', 'master-1', 'reclass', 'suspend-tag']]);
 });
 
-test('selection, completion, and sharing stay independent of the card editor', t => {
+test('selection, marking done, and Complete Tag stay independent of the card editor', t => {
   const h = harness(t);
   h.card.querySelector('input').click();
   for (const button of h.card.querySelectorAll('.app-suspend-tag-actions button')) button.click();
-  assert.deepEqual(h.calls.map(call => call[0]), ['select', 'done', 'share']);
+  assert.deepEqual(h.calls.map(call => call[0]), ['select', 'done', 'close']);
 });
 
 test('pending whole-view verification leaves Mark Done available for its awaited row check', t => {
@@ -120,7 +122,8 @@ test('pending whole-view verification leaves Mark Done available for its awaited
   h.w.eval(`${html.slice(start, end)}\nconst suspendTagWriteControlState = new WeakMap();\n${extract('isSuspendTagWriteControl')}\n${extract('applySuspendTagWriteProofToNode')}\napplySuspendTagWriteProofToNode(document.getElementById('request-content'), false);`);
   const actions = Array.from(h.card.querySelectorAll('.app-suspend-tag-actions button'));
   assert.equal(actions.find(button => button.textContent === 'Mark Done').disabled, false);
-  assert.equal(actions.find(button => button.textContent === 'Share Photo / Spec Options').disabled, true, 'sharing retains its existing freshness gate');
+  assert.equal(actions.find(button => button.textContent === 'Complete Tag').disabled, false, 'closure performs its own awaited row verification');
+  assert.equal(actions.some(button => button.textContent === 'Share Photo / Spec Options'), false);
   assert.equal(h.card.querySelector('.app-drive-card-reclass button').disabled, false);
 });
 
@@ -154,6 +157,22 @@ test('approval and retry actions survive removal of the standalone editor button
     assert.ok(button); button.click();
     assert.deepEqual(h.calls, [['approval', h.item.UNIQUE_ID]]);
   }
+});
+
+test('Complete Tag is on the card face for reviewed and pending-approval rows', t => {
+  for (const status of ['pending', 'completed', 'awaiting_rep', 'approved', 'denied']) {
+    const h = harness(t, { status });
+    const button = [...h.card.querySelectorAll('button')].find(node => node.textContent === 'Complete Tag');
+    assert.ok(button); button.click();
+    assert.deepEqual(h.calls, [['close', h.item.UNIQUE_ID]]);
+  }
+});
+
+test('legacy Suspend Tag sharing code is removed while the approval action remains', () => {
+  const gs = readFileSync(new URL('../Code.gs', import.meta.url), 'utf8');
+  assert.doesNotMatch(html, /sendDockSuspendDcPhotoSpecEmail|maybePromptDockSuspendTagPhotoSpecSendAfterSave|Share Photo \/ Spec Options/);
+  assert.doesNotMatch(gs, /suspend_tag_photo_spec|isSuspendTagPhotoSpecEmail/);
+  assert.match(html, /Email Rep for Approval/);
 });
 
 test('Suspend Tag density is scoped and keeps readable wrapping notes and touch targets', () => {
