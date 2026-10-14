@@ -5,6 +5,7 @@ import vm from 'node:vm';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const registryCode = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
+const coordinatorCode = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
 const demandDetailCode = readFileSync(new URL('../assets/drive-demand-detail.js', import.meta.url), 'utf8');
 // Extract real top-level functions without copying implementation into the test.
 function functionSource(name) {
@@ -83,16 +84,13 @@ test('Home registers its metadata-only verification surface only for authorized 
   assert.equal(context.getProductionLiveSyncSideContext().surfaces.includes('home:sync-metadata'), true);
 });
 
-test('manager low-stock summaries load only for Assigned Items and Eval Reports 2 consumers', () => {
+test('manager low-stock summaries load only for Assigned Items consumers', () => {
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;
   const sources = ['private.ph_eval_item_low_stock_overrides', 'private.ph_eval_item_low_stock_import_state'];
   const sourceKeys = (surface) => registry.getSourceKeys(registry.getViewAdapters('managers', surface ? { surfaces: [surface] } : {}));
   assert.ok(!sourceKeys().some(table => sources.includes(table)), 'Opening the Managers hub must not wait for low-stock summaries');
   assert.ok(!sourceKeys('managers:eval-reports').some(table => sources.includes(table)), 'Classic Eval Reports do not consume per-item targets');
-  for (const surface of ['managers:assigned-items-export', 'managers:eval-reports-2-low-stock']) {
-    assert.ok(sources.every(table => sourceKeys(surface).includes(table)), `${surface} must retain target revision tracking`);
-  }
-  assert.deepEqual(Array.from(registry.getViewAdapters('managers', { surfaces: ['managers:eval-reports-2-low-stock'] })).filter(id => id === 'side:itemLowStockTargets'), ['side:itemLowStockTargets']);
+  assert.ok(sources.every(table => sourceKeys('managers:assigned-items-export').includes(table)), 'Assigned Items retains target revision tracking');
 
   context.document = { activeElement: {}, body: { classList: { contains: () => false } }, getElementById: () => null };
   context.view = 'managers';
@@ -111,10 +109,47 @@ test('manager low-stock summaries load only for Assigned Items and Eval Reports 
   context.selectedEvalReports = ['low-stock'];
   const eval2Surfaces = context.getProductionLiveSyncSideContext().surfaces;
   assert.ok(eval2Surfaces.includes('managers:eval-reports-2'));
-  assert.ok(registry.getViewAdapters('managers', { surfaces: eval2Surfaces }).includes('side:itemLowStockTargets'));
-  context.selectedEvalReports = ['holds'];
-  assert.ok(!context.getProductionLiveSyncSideContext().surfaces.includes('managers:eval-reports-2-low-stock'),
-    'Eval Reports 2 only joins the low-stock target adapter when that report is selected');
+  assert.ok(!eval2Surfaces.includes('managers:eval-reports-2-low-stock'), 'Eval2 LowStock keeps the shared-threshold path');
+  assert.ok(!registry.getViewAdapters('managers', { surfaces: eval2Surfaces }).includes('side:itemLowStockTargets'));
+});
+
+test('Eval2 LowStock preview keeps the actual coordinator cohort stable', async () => {
+  const context = harness(), registry = context.AgMetricLiveSyncRegistry;
+  context.view = 'managers';
+  context.activeHomeTab = context.MANAGER_EVAL_REPORTS_2_VIEW;
+  context.selectedEvalReports = ['low-stock'];
+  let targetCodes = ['INITIAL'], masterStages = 0;
+  const getContext = () => {
+    const side = context.getProductionLiveSyncSideContext();
+    const ids = Array.from(registry.getViewAdapters('managers', { surfaces: side.surfaces }));
+    const adapters = ids.map(id => ({
+      id,
+      cacheKey: id === 'side:itemLowStockTargets' ? JSON.stringify(targetCodes) : JSON.stringify([id, 'stable']),
+      sourceKeys: Array.from(registry.getSourceKeys([id])),
+      stage: async options => {
+        if (id === 'core:master') {
+          masterStages += 1;
+          options.preview?.({partial:true});
+        }
+        return {id};
+      },
+      commit:() => {}
+    }));
+    return {scope:'manager-account', viewKey:'managers', visible:true, online:true, dataPermissionVersion:'p1', progressive:true, adapters};
+  };
+  vm.runInContext(coordinatorCode, context);
+  const coordinator = context.AgMetricLiveSync.createCoordinator({
+    getContext,
+    readRevisions:async keys => ({contractVersion:1,permissionVersion:'p1',serverTime:'fixture',sources:keys.map(key => ({key,state:'ready',revision:'1'}))}),
+    previewSnapshots:() => { targetCodes = [...targetCodes, `PREVIEW-${targetCodes.length}`]; },
+    setTimeout:() => 1, clearTimeout:() => {}, concurrency:2
+  });
+  await coordinator.check('visible-view');
+  const stats = coordinator.getStatistics();
+  assert.equal(stats.discardedLoads, 0, 'partial inventory preview must not change Eval2 coordinator identity');
+  assert.equal(masterStages, 1, 'the full master snapshot must not restart from offset zero');
+  assert.equal(stats.commits, 1);
+  assert.ok(!getContext().adapters.some(adapter => adapter.id === 'side:itemLowStockTargets'));
 });
 
 test('Managers navigation has no data gate and each data tab declares its own cohort', () => {

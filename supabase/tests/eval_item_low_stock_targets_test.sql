@@ -1,7 +1,7 @@
 -- @test-runtime: isolated-supabase
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(37);
 
 select has_table('private', 'ph_eval_item_low_stock_import_runs', 'immutable import manifests are private');
 select has_table('private', 'ph_eval_item_low_stock_file_versions', 'file revisions are stored privately');
@@ -190,19 +190,23 @@ select is((select count(*)::integer from public.get_eval_item_low_stock_targets_
 select throws_ok($$select public.set_eval_item_low_stock_override_v1('TARGET-ITEM',100000001,0)$$, '22023', 'LOW_STOCK_OVERRIDE_INVALID', 'manual low-stock override rejects quantities above the supported cap');
 insert into public.ph_master_inventory(unique_id,itemcode,season,saleyear,s_lts) values
  ('LOW-STOCK-F1','TARGET-ITEM','F1','27','162'),('LOW-STOCK-S1','TARGET-ITEM','S1','27','500');
-select ok(private.eval_report2_item_qualifies_v1('low-stock','TARGET-ITEM'), 'Eval #2 uses derived target 163 while preserving F1 and support-season membership');
+select is((select jsonb_build_object('effective_qty',effective_qty,'calculated_at',calculated_at)
+    from public.set_eval_item_low_stock_override_v1('TARGET-ITEM',160,0)),
+  jsonb_build_object('effective_qty',160,'calculated_at',(select value from low_stock_calculated_at)),
+  'Dylan can set the item override without changing aggregate calculation time');
+update public.ph_eval_report_settings set low_stock_max_slts=163 where singleton;
+select ok(private.eval_report2_item_qualifies_v1('low-stock','TARGET-ITEM'), 'Eval2 uses configured 163 despite the saved override of 160');
+update public.ph_eval_report_settings set low_stock_max_slts=162 where singleton;
+select ok(not private.eval_report2_item_qualifies_v1('low-stock','TARGET-ITEM'), 'Eval2 excludes stock exactly equal to the configured threshold');
+update public.ph_eval_report_settings set low_stock_max_slts=150 where singleton;
 insert into public.ph_master_inventory(unique_id,itemcode,season,saleyear,s_lts) values
  ('LOW-STOCK-S1-CURRENT','TARGET-ITEM','S1','27','162'),('LOW-STOCK-S1-SUPPORT','TARGET-ITEM','U1','27','300'),
  ('LOW-STOCK-S1-F1-ONLY','TARGET-F1-ONLY','F1','27','149'),('LOW-STOCK-S1-F1-ONLY-SUPPORT','TARGET-F1-ONLY','U1','27','300');
 update public.ph_app_settings set value=jsonb_set(value,'{seasonCode}','"S1"'::jsonb) where key='current_season_salesyear';
-select ok(private.eval_report2_item_qualifies_v1('low-stock','TARGET-ITEM'), 'Eval #2 uses current S1 inventory against the derived item target');
+select ok(not private.eval_report2_item_qualifies_v1('low-stock','TARGET-ITEM'), 'Eval #2 uses the shared 150 threshold for current S1 inventory');
 select ok(not private.eval_report2_item_qualifies_v1('low-stock','TARGET-F1-ONLY'), 'prior F1 inventory does not qualify as current low stock during S1');
 update public.ph_app_settings set value=jsonb_set(value,'{seasonCode}','"F1"'::jsonb) where key='current_season_salesyear';
-select is((select jsonb_build_object('effective_qty',effective_qty,'calculated_at',calculated_at)
-    from public.set_eval_item_low_stock_override_v1('TARGET-ITEM',160,0)),
-  jsonb_build_object('effective_qty',160,'calculated_at',(select value from low_stock_calculated_at)),
-  'Dylan can override the target without changing aggregate calculation time');
-select ok(not private.eval_report2_item_qualifies_v1('low-stock','TARGET-ITEM'), 'Eval #2 uses the manual override threshold');
+select ok(not private.eval_report2_item_qualifies_v1('low-stock','TARGET-ITEM'), 'Eval #2 keeps the shared threshold after an item override is saved');
 select set_config('request.jwt.claims', jsonb_build_object('role','authenticated','sub',(select id from low_stock_test_users where username='megan_kelly'))::text, true);
 select set_config('request.jwt.claim.sub', (select id::text from low_stock_test_users where username='megan_kelly'), true);
 select is((select effective_qty from public.set_eval_item_low_stock_override_v1('TARGET-ITEM',161,1)), 161, 'Megan can update the optimistic override revision');

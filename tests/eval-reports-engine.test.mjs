@@ -729,100 +729,80 @@ test('large getter uses one guarded loading lifecycle and retains monitored fall
   assert.equal(loads, 1, 'an error must not create an automatic retry loop');
 });
 
-test('Eval2 stale low-stock thresholds fetch once for the current source key and fail closed', () => {
+test('Eval2 classifier paths omit per-item target APIs and honor shared threshold boundaries', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const start = html.indexOf('function renderManagerEvalReport2Records()');
-  const end = html.indexOf('function exportManagerEvalReport2ToExcel()', start);
-  assert.ok(start >= 0 && end > start);
-  const source = html.slice(start, end);
-
-  function renderScenario({ lowStock = true, ready = false, error = '', existingCard = false, canRead = true } = {}) {
-    const currentKey = 'master-r2|assigned-r4|A,B';
-    const targetState = { key:'stale-key', loading:false, loadingKey:'', error, errorKey:error ? currentKey : '', rowsByCode:new Map() };
-    const messageNode = { textContent:'' };
-    const banner = {
-      dataset:{}, attributes:new Set(),
-      setAttribute(name) { this.attributes.add(name); },
-      querySelector(selector) { return selector === '[data-role="manager-eval2-low-stock-message"]' ? messageNode : null; },
-      remove() { container.banner = null; }
-    };
-    const container = {
-      html: existingCard ? '<article class="manager-eval2-item-card">saved card</article>' : '', attributes:new Set(), banner:null,
-      querySelector(selector) {
-        if (selector === '.manager-eval2-item-card') return existingCard ? {} : null;
-        if (selector === '[data-role="manager-eval2-low-stock-status"]') return this.banner;
-        return null;
-      },
-      append(node) { this.banner = node; },
-      setAttribute(name) { this.attributes.add(name); },
-      removeAttribute(name) { this.attributes.delete(name); }
-    };
-    const calls = [];
-    const scope = vm.createContext({
-      useManagerReportPages: () => false,
-      document: {
-        getElementById: id => id === 'manager-eval-report-2-records' ? container : null,
-        createElement: tag => tag === 'div' ? banner : null
-      },
-      managerEvalReport2LoadState: { loading:false },
-      managerEvalReport2NeedsLowStockTargets: () => lowStock,
-      managerEvalReport2LowStockTargetsReady: () => ready,
-      getManagerItemLowStockTargetsState: () => targetState,
-      getManagerAssignedItemTargetKey: () => currentKey,
-      canReadItemLowStockTargets: () => canRead,
-      managerEvalReport2DisplaySourcesReady: () => true,
-      loadManagerItemLowStockTargets: force => {
-        calls.push({ force, key:currentKey });
-        targetState.loading = true;
-        targetState.loadingKey = currentKey;
-        return Promise.resolve();
-      },
-      setContainerHtml: (node, content) => { node.html = content; node.banner = null; },
-      isManagerEvalReport2ItemcodeBrowseLevel: () => true,
-      getManagerEvalReport2VisibleItemGroups: () => [],
-      escapeHtml: value => String(value)
-    });
-    vm.runInContext(`${source};globalThis.render = renderManagerEvalReport2Records;`, scope);
-    return { render:scope.render, container, calls, targetState };
+  const source = name => {
+    const start = html.indexOf(`function ${name}(`);
+    const end = html.indexOf('\n        function ', start + 1);
+    assert.ok(start >= 0 && end > start, name);
+    return html.slice(start, end);
+  };
+  for (const name of ['getManagerEvalReport2CacheKeyValue', 'getManagerEvalReport2WorkerSource', 'performManagerEvalReport2IndexBuild', 'getManagerEvalReport2Index', 'renderManagerEvalReport2Records']) {
+    assert.doesNotMatch(source(name), /getManagerItemLowStockTarget|managerEvalReport2NeedsLowStockTargets|managerEvalReport2LowStockTargetsReady|itemLowStockTargets|lowStockReady/, `${name} must not wait on or classify with per-item overrides`);
   }
 
-  const stale = renderScenario();
-  stale.render();
-  stale.render();
-  assert.deepEqual(stale.calls, [{ force:false, key:'master-r2|assigned-r4|A,B' }], 'one render cycle schedules one load for the new core key');
-  assert.match(stale.container.html, /Checking current low-stock quantities/);
+  const rows = [
+    row('OVERRIDDEN', 'F1', 27, { TEST_ID:'override-only', S_LTS:80 }),
+    row('OVERRIDDEN', 'U1', 27, { TEST_ID:'override-support' }),
+    row('SHARED', 'F1', 27, { TEST_ID:'shared-anchor', S_LTS:74 }),
+    row('SHARED', 'U1', 27, { TEST_ID:'shared-support' })
+  ];
+  for (const classify of [engine.classifyRows, engine.classifyScriptCompatibleRows]) {
+    const result = classify(rows, { currentSeason:'F1', currentSalesYear:27, nextSeason:'S1', nextSalesYear:27,
+      settings:{lowStockMaxSLts:75}, now });
+    assert.deepEqual(ids(result.reports['low-stock']), ['shared-support']);
+  }
+});
 
-  const retained = renderScenario({ existingCard:true });
-  retained.render();
-  assert.match(retained.container.html, /saved card/, 'saved cards remain attached during a current-key refresh');
-  assert.ok(retained.container.attributes.has('aria-busy'));
-
-  const failed = renderScenario({ error:'temporary RPC error' });
-  failed.render();
-  failed.render();
-  assert.deepEqual(failed.calls, [], 'a current-key error does not create an automatic retry loop');
-  assert.match(failed.container.banner?.innerHTML || '', /Retry/);
-
-  const failedWithCards = renderScenario({ error:'temporary RPC error', existingCard:true });
-  failedWithCards.render();
-  assert.match(failedWithCards.container.html, /saved card/, 'current-key failure keeps the last eligible cards visible');
-  assert.match(failedWithCards.container.banner?.innerHTML || '', /Retry/);
-  assert.match(failedWithCards.container.banner?.attributes.has('aria-live') ? 'polite' : '', /polite/);
-  assert.match(failedWithCards.container.banner?.attributes.has('role') ? 'status' : '', /status/);
-
-  const unrelated = renderScenario({ lowStock:false });
-  unrelated.render();
-  assert.deepEqual(unrelated.calls, [], 'other reports do not fetch low-stock thresholds');
-
-  const current = renderScenario({ ready:true });
-  current.render();
-  assert.deepEqual(current.calls, [], 'a target cache already ready for the current key does not refetch');
-
-  const forbidden = renderScenario({ canRead:false, existingCard:true });
-  forbidden.render();
-  assert.deepEqual(forbidden.calls, [], 'permission denial does not issue a target request');
-  assert.match(forbidden.container.html, /unavailable for this account/);
-  assert.doesNotMatch(forbidden.container.html, /saved card/, 'permission denial clears cards the account may no longer view');
+test('Eval2 index builder sends shared-threshold options to every classifier path', async () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('async function performManagerEvalReport2IndexBuild(');
+  const end = html.indexOf('function getManagerEvalReport2Index(', start);
+  assert.ok(start >= 0 && end > start);
+  const source = html.slice(start, end);
+  const rows = [
+    row('OVERRIDDEN', 'F1', 27, { TEST_ID:'override-only', UNIQUE_ID:'override-anchor', S_LTS:80 }),
+    row('OVERRIDDEN', 'U1', 27, { TEST_ID:'override-support', UNIQUE_ID:'override-support' }),
+    row('SHARED', 'F1', 27, { TEST_ID:'shared-anchor', UNIQUE_ID:'shared-anchor', S_LTS:74 }),
+    row('SHARED', 'U1', 27, { TEST_ID:'shared-support', UNIQUE_ID:'shared-support' })
+  ];
+  const warmedOverrides = new Map([['OVERRIDDEN', {manual_override_qty:120,suggested_qty:110}]]);
+  let targetStateReads = 0, actualOptions = null;
+  const api = Object.assign({}, engine, {
+    async classifyScriptCompatibleRowsAsync(input, options, yieldTask) {
+      actualOptions = options;
+      return engine.classifyScriptCompatibleRowsAsync(input, options, yieldTask);
+    }
+  });
+  const scope = vm.createContext({
+    Worker:undefined, Map, Set, Date, Object, Array, String, Number, Math,
+    managerEvalReport2Cache:null, managerEvalReport2CacheKey:'',
+    getManagerEvalReport2CacheKeyValue:() => 'snapshot-settings-date-v1',
+    getSupabaseReadIdentityScope:() => 'manager-account', canViewManagerEvalReports2:() => true,
+    getManagerEvalReports2Api:() => api,
+    getConfiguredCurrentSeasonCode:() => 'F1', getConfiguredCurrentSalesYearCode:() => 27,
+    getConfiguredNextSaleSeasonTarget:() => ({season:'S1',salesYear:27}),
+    managerEvalReportSettings:{lowStockMaxSLts:75,holdAgeDays:5,locationNoteAgeDays:10},
+    fullInventory:rows, warehouseAssignedItemsInventory:[],
+    getManagerItemLowStockTargetsState:() => { targetStateReads += 1; return {rowsByCode:warmedOverrides,revision:9}; },
+    getManagerEvalReport2ItemCode:item => String(item.ITEMCODE || '').toUpperCase(),
+    getManagerEvalReport2RowKey:(item,index) => String(item.UNIQUE_ID || `row-${index}`),
+    prepareManagerEvalReport2GroupLookups:index => index,
+    setTimeout:callback => { callback(); return 1; }, clearTimeout:() => {},
+    reconcileManagerEvalReport2Navigation:() => {},
+    reportSemanticHealthEvent:() => {}
+  });
+  vm.runInContext(`${source};globalThis.build = performManagerEvalReport2IndexBuild;`, scope);
+  const result = await scope.build({key:'snapshot-settings-date-v1',owner:'manager-account',cancelled:false});
+  assert.equal(targetStateReads, 0, 'a warm override cache must not be read by Eval2 indexing');
+  assert.equal(Object.hasOwn(actualOptions, 'itemLowStockTargets'), false, 'the worker and fallback options use the shared threshold only');
+  assert.deepEqual(Array.from(result.reports['low-stock'], item => item.UNIQUE_ID), ['shared-support']);
+  for (const classify of [engine.classifyRows, engine.classifyScriptCompatibleRows]) {
+    const classified = classify(rows, actualOptions);
+    assert.deepEqual(ids(classified.reports['low-stock']), ['shared-support']);
+  }
+  const asyncClassified = await engine.classifyScriptCompatibleRowsAsync(rows, actualOptions, async () => {});
+  assert.deepEqual(ids(asyncClassified.reports['low-stock']), ['shared-support']);
 });
 
 test('async report results reject changed identity, snapshot, and access', async () => {

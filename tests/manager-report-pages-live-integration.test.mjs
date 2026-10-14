@@ -52,6 +52,82 @@ test('Eval2 opts out of paged reports while other advertised surfaces retain the
   assert.deepEqual(controllerCalls, ['eval1', 'assigned-items']);
 });
 
+test('direct Eval2 full-snapshot ensures use bounded master-page concurrency', async () => {
+  let adapter = null;
+  const pageConcurrency = [];
+  const context = run(['createProductionCoreLiveAdapter', 'ensureDatasetLoaded'], {
+    window:{AgMetricLiveSyncRegistry:{getSourceKeys:() => ['ph_master_inventory']}},
+    DATASET_DEFINITIONS:{master:{table:'ph_master_inventory',fullQuery:'select=*',initialQuery:'select=*'}},
+    RETIRED_DATASET_KEYS:new Set(),
+    getCurrentAppSeasonSettings:() => ({seasonCode:'F1',salesYear:2026}),
+    getCurrentVisibleViewId:() => 'managers', activeHomeTab:'eval2', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
+    getProductionLiveSyncCoordinator:() => ({ensure:value => { adapter = value; return Promise.resolve(true); }}),
+    canUseProductionLiveSync:() => true,
+    withProductionLiveSyncSignal:(_signal, operation) => operation({aborted:false}),
+    fetchAllInventoryReadRows:async (_operation, _params, options) => {
+      pageConcurrency.push(options.pageConcurrency);
+      const rows = [];
+      rows.readMeta = {fieldCoverage:'full',columns:[]};
+      return rows;
+    },
+    buildDatasetPayload:() => ({}), validateInventoryReadProjection:() => true,
+    canUseHlOrder:() => false
+  });
+  await context.ensureDatasetLoaded('master','full');
+  assert.ok(adapter, 'the production ensure path must create the core adapter');
+  await adapter.stage();
+  assert.deepEqual(pageConcurrency, [2], 'direct ensure must share Eval2 full-master concurrency policy');
+});
+
+test('full inventory reader bounds concurrent offsets and rejects inconsistent snapshots', async () => {
+  const readerSource = source('fetchAllInventoryReadRows');
+  const makeReader = fetchInventoryReadPage => run(['fetchAllInventoryReadRows'], {
+    fetchInventoryReadPage, yieldToUiFrame:async () => {}, console:{warn() {}}
+  });
+  const page = (rows, total = 5) => ({ rows, total, hasMore:rows.length > 0, projection:'full', fieldCoverage:'full', columns:['UNIQUE_ID'] });
+  let active = 0, maxActive = 0;
+  const offsets = [], deferred = new Map();
+  const context = vm.createContext({ Map, Set, Date, JSON, Object, Array, String, Number,
+    fetchInventoryReadPage:async (_operation, _params, _limit, offset) => {
+      offsets.push(offset);
+      if (offset === 0) return page([{unique_id:'row-0'},{unique_id:'row-1'}]);
+      active += 1;
+      maxActive = Math.max(maxActive, active);
+      return new Promise(resolve => deferred.set(offset, rows => { active -= 1; resolve(page(rows)); }));
+    },
+    yieldToUiFrame:async () => {}, console:{warn() {}}
+  });
+  vm.runInContext(`${readerSource};globalThis.read = fetchAllInventoryReadRows;`, context);
+  const resultPromise = context.read('master_page', {projection:'full'}, {limit:2,pageConcurrency:2,requireComplete:true});
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(maxActive, 2, 'the reader runs at most two subsequent pages at once');
+  assert.deepEqual(offsets, [0,2,4], 'each page offset is requested exactly once');
+  deferred.get(4)([{unique_id:'row-4'}]);
+  deferred.get(2)([{unique_id:'row-2'},{unique_id:'row-3'}]);
+  const rows = await resultPromise;
+  assert.deepEqual(Array.from(rows, item => item.unique_id), ['row-0','row-1','row-2','row-3','row-4']);
+
+  async function rejectsPageSet(nextPages, matcher) {
+    const reader = makeReader(async (_operation, _params, _limit, offset) => {
+      if (offset === 0) return page([{unique_id:'row-0'},{unique_id:'row-1'}]);
+      return nextPages[offset]();
+    });
+    await assert.rejects(reader.fetchAllInventoryReadRows('master_page', {projection:'full'}, {limit:2,pageConcurrency:2,requireComplete:true}), matcher);
+  }
+  await rejectsPageSet({
+    2:() => Promise.resolve(page([{unique_id:'row-2'},{unique_id:'row-3'}], 6)),
+    4:() => Promise.resolve(page([{unique_id:'row-4'}], 6))
+  }, /total changed between pages/);
+  await rejectsPageSet({
+    2:() => Promise.resolve(page([{unique_id:'row-2'},{unique_id:'row-3'}])),
+    4:() => Promise.resolve(page([]))
+  }, /page was incomplete/);
+  await rejectsPageSet({
+    2:() => Promise.resolve(page([{unique_id:'row-1'},{unique_id:'row-3'}])),
+    4:() => Promise.resolve(page([{unique_id:'row-4'}]))
+  }, /Complete inventory rows could not be verified/);
+});
+
 test('legacy LowStock All Users snapshot renders Block Alpha through ITEMCODE drill groups', () => {
   const rows = [
     {UNIQUE_ID:'low-1',ITEMCODE:'ALPHA-1',BLOCKALPHA:'A',LOCATIONCODE:'L-01',ASSIGNEDTO:'Manager A'},
@@ -97,11 +173,11 @@ test('legacy LowStock All Users snapshot renders Block Alpha through ITEMCODE dr
   assert.match(context.renderManagerEvalReport2DrillGroupCard(groups[0]), /ALPHA-1/);
 });
 
-test('legacy Eval2 cold load deduplicates requests and awaits current LowStock targets', async () => {
+test('legacy Eval2 cold load deduplicates snapshot requests without fetching per-item LowStock targets', async () => {
   let release, settingsReads = 0, targetReads = 0, indexBuilds = 0, pagedCalls = 0;
   const datasetReads = [];
   const gate = new Promise(resolve => { release = resolve; });
-  const context = run(['useManagerReportPages', 'managerEvalReport2NeedsLowStockTargets', 'loadManagerEvalReports2'], {
+  const context = run(['useManagerReportPages', 'loadManagerEvalReports2'], {
     window:{GncReportPagesLive:{}}, currentUser:{username:'manager'},
     getManagerReportPageController:() => ({
       state:() => ({pendingKey:'',promise:null,error:'',page:null}),
@@ -138,12 +214,12 @@ test('legacy Eval2 cold load deduplicates requests and awaits current LowStock t
   const [firstResult, secondResult] = await Promise.all([first, second]);
   assert.equal(firstResult, secondResult);
   assert.equal(settingsReads, 1);
-  assert.equal(targetReads, 1);
+  assert.equal(targetReads, 0, 'Eval2 LowStock uses the shared threshold and must not wait on per-item target reads');
   assert.equal(indexBuilds, 1);
   assert.deepEqual(firstResult.counts, {'low-stock':1});
 });
 
-test('legacy Eval2 cache key changes for source, settings, target revision, and report date', () => {
+test('legacy Eval2 cache key tracks source, settings, and report date but ignores target revision', () => {
   const dimensions = {
     master:'master-r1', warehouseAssignedItems:'assign-r1',
     currentSeason:'F1', currentYear:27, nextSeason:'S1', nextYear:27,
@@ -162,7 +238,8 @@ test('legacy Eval2 cache key changes for source, settings, target revision, and 
   const baseline = context.getManagerEvalReport2CacheKeyValue();
   for (const [key, value] of Object.entries({master:'master-r2',warehouseAssignedItems:'assign-r2',lowStockMax:151,holdAge:6,noteAge:11,targetRevision:2,date:'2026-10-15'})) {
     const previous = dimensions[key]; dimensions[key] = value;
-    assert.notEqual(context.getManagerEvalReport2CacheKeyValue(), baseline, `${key} changes must invalidate the derived index`);
+    if (key === 'targetRevision') assert.equal(context.getManagerEvalReport2CacheKeyValue(), baseline, 'a warmed per-item target override is not part of Eval2 classification');
+    else assert.notEqual(context.getManagerEvalReport2CacheKeyValue(), baseline, `${key} changes must invalidate the derived index`);
     dimensions[key] = previous;
   }
 });
