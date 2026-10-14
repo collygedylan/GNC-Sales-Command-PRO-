@@ -4205,6 +4205,7 @@ function buildCustomerRepMapSnapshot_(rawData, syncStartTime, fileName) {
       const value = String(rawValues[column] == null ? '' : rawValues[column]).trim();
       obj[key] = value === '' || value.toUpperCase() === 'NULL' ? null : value;
     });
+    obj.salesrepname = normalizeImportedSalesRepName_(obj.salesrepname);
     obj.row_hash = buildRowSyncHash_(obj, ['imported_at', 'updated_at']);
     rows.push(obj);
   }
@@ -10212,8 +10213,43 @@ function sendOperationalEmail_(to, subject, body, options) {
   return GmailApp.sendEmail(headers.to.join(','), subject, body, safeOptions);
 }
 
+function normalizeImportedSalesRepName_(value) {
+  if (value == null) return value;
+  const original = String(value);
+  const parts = original.split(',');
+  if (parts.length !== 2) return original;
+  const last = parts[0].trim();
+  const first = parts[1].trim();
+  if (last === 'Alldredge' && first === 'Chance - South TX') return 'Chance Alldredge - South TX';
+  const personPart = /^[\p{L}]+(?:[ '\u2019-][\p{L}]+)*$/u;
+  const nonPerson = /\b(?:sales|inhouse|interdivision|division|team|office|department|company|unknown|unassigned|null)\b/i;
+  if (!personPart.test(last) || !personPart.test(first) || nonPerson.test(last + ' ' + first)) return original;
+  return first + ' ' + last;
+}
+
+function getImportedSalesRepBackwardEmail_(repName) {
+  const original = String(repName || '').trim();
+  const canonical = normalizeImportedSalesRepName_(original);
+  // Only these source-confirmed pairs can replace a fallback after the name has
+  // already been normalized. Other explicit mailboxes remain authoritative.
+  const importedNames = [
+    'Lee, Troy', 'Lugas, Wes', 'Burka, Abbey', 'Tapscott, Tracey',
+    'Hatfield, Brian', 'Harveson, Ben', 'Effinger, Kevin', 'Brown, Ben',
+    'Alldredge, Chance - South TX', 'Alldredge, Chance', 'Robertson, Jessica',
+    'Hancock, Annette', 'Maschino, Ben', 'Brown, Toby', 'Rufener, Casey',
+    'Ringleb, Josh', 'Deely, Ellen', 'Voeltner, Marla', 'Earle, Traci',
+    'Dixon, Molly', 'Bono, Tony', 'Gaydos, Chris', 'Douglas, Nate'
+  ];
+  const backward = canonical !== original ? original : importedNames.find(function(name) {
+    return normalizeImportedSalesRepName_(name).toLowerCase() === canonical.toLowerCase();
+  });
+  return backward ? backward.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim().replace(/\s+/g, '_') + '@greenleafnursery.com' : '';
+}
+
 function resolveRequestRecipientEmail_(repName, fallbackEmail) {
-  const normalized = String(repName || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  const canonicalName = normalizeImportedSalesRepName_(repName);
+  const mailboxName = canonicalName === 'Chance Alldredge - South TX' ? 'Chance Alldredge' : canonicalName;
+  const normalized = String(mailboxName || '').trim().toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
   const compact = normalized.replace(/\s+/g, '');
   const underscored = normalized.replace(/\s+/g, '_');
   const aliasMap = {
@@ -10261,6 +10297,7 @@ function resolveRequestRecipientEmail_(repName, fallbackEmail) {
 
   const fallback = normalizeEmailAddress_(fallbackEmail);
   if (isLikelyEmailAddress_(fallback)) {
+    if (fallback === getImportedSalesRepBackwardEmail_(repName)) return underscored + '@greenleafnursery.com';
     const localPart = fallback.split('@')[0].replace(/[^a-z0-9_]/g, '');
     if (aliasMap[localPart]) return aliasMap[localPart];
     return fallback;
@@ -17203,6 +17240,10 @@ function buildAdvertisementEmailHeroText_(payload) {
 }
 
 function buildRequestEmailMessage_(payload) {
+  payload = Object.assign({}, payload, {
+    repName: normalizeImportedSalesRepName_(payload.repName),
+    salesRepName: normalizeImportedSalesRepName_(payload.salesRepName)
+  });
   if (isHlTagsEmail_(payload)) return buildHlTagsEmailMessage_(payload.sourceRows);
   const emailType = String(payload.emailType || '').trim().toLowerCase();
   const emailSubType = String(payload.emailSubType || payload.email_sub_type || '').trim().toLowerCase();
