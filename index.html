@@ -10795,7 +10795,6 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         let pendingAppLiveEventRefreshes = new Map();
         let appLiveEventSeenKeys = new Map();
         const SUPABASE_READ_TIMEOUT_MS = 30000;
-        const SUPABASE_READ_CONCURRENCY_LIMIT = 2;
         const LOGIN_READ_TIMEOUT_MS = 15000;
         const LOGIN_FETCH_RETRY_COUNT = 1;
         const LOGIN_FETCH_RETRY_DELAY_MS = 650;
@@ -26484,8 +26483,6 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         const supabaseReadFailureCooldowns = new Map();
         const supabaseReadTerminalDenials = new Map();
         const supabaseReadAccessNoticeAt = new Map();
-        const supabaseReadQueue = [];
-        let activeSupabaseReadCount = 0;
         let productionLiveSyncReadGeneration = 0;
         let productionLiveSyncReadPermissionVersion = '';
         let productionLiveSyncReadAuthEpoch = 0;
@@ -26606,7 +26603,8 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             if (isInventorySourceReadinessError(error)) return false;
             if ([400, 401, 403, 404, 409].includes(status)) return false;
             if (/permission denied|not authorized|\bforbidden\b|failed \((401|403|404|409)\)/i.test(message)) return false;
-            if (['42501', 'PT409', '42P01', '42703', 'DATASET_QUERY_INVALID'].includes(code) || code.startsWith('23')) return false;
+            if (['40001', 'PT409', 'REQUEST_VERSION_CONFLICT', '42501', '42P01', '42703', 'DATASET_QUERY_INVALID'].includes(code) || code.startsWith('23')) return false;
+            if (/REQUEST_VERSION_CONFLICT/i.test(message)) return false;
             return true;
         }
 
@@ -26693,53 +26691,11 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             throw lastError;
         }
 
-        function runWithSupabaseReadSlot(taskFn, signal = null) {
-            return new Promise((resolve, reject) => {
-                let started = false;
-                let settled = false;
-                const abortError = () => Object.assign(new Error('Queued data read cancelled.'), { code: 'REQUEST_ABORTED' });
-                const cleanup = () => signal?.removeEventListener('abort', abortBeforeStart);
-                const abortBeforeStart = () => {
-                    if (started || settled) return;
-                    settled = true;
-                    const index = supabaseReadQueue.indexOf(entry);
-                    if (index >= 0) supabaseReadQueue.splice(index, 1);
-                    cleanup();
-                    reject(abortError());
-                };
-                const runTask = () => {
-                    if (settled) return;
-                    started = true;
-                    cleanup();
-                    if (signal?.aborted) {
-                        settled = true;
-                        reject(abortError());
-                        const nextEntry = supabaseReadQueue.shift();
-                        if (nextEntry) nextEntry.runTask();
-                        return;
-                    }
-                    activeSupabaseReadCount += 1;
-                    Promise.resolve()
-                        .then(() => {
-                            if (signal?.aborted) throw abortError();
-                            return taskFn();
-                        })
-                        .then((value) => { settled = true; resolve(value); }, (error) => { settled = true; reject(error); })
-                        .finally(() => {
-                            activeSupabaseReadCount = Math.max(0, activeSupabaseReadCount - 1);
-                            const nextEntry = supabaseReadQueue.shift();
-                            if (nextEntry) nextEntry.runTask();
-                        });
-                };
-                const entry = { runTask };
-                if (signal?.aborted) return abortBeforeStart();
-                signal?.addEventListener('abort', abortBeforeStart, { once: true });
-                if (activeSupabaseReadCount < SUPABASE_READ_CONCURRENCY_LIMIT) runTask();
-                else if (supabaseReadQueue.length >= 64) {
-                    settled = true;
-                    cleanup();
-                    reject(Object.assign(new Error('The data read queue is full. Wait briefly, then retry.'), { code: 'SUPABASE_READ_QUEUE_FULL' }));
-                } else supabaseReadQueue.push(entry);
+        function runSupabaseReadTask(taskFn, signal = null) {
+            // Defer dispatch one microtask so identical reads share the registered promise.
+            return Promise.resolve().then(() => {
+                if (signal?.aborted) throw Object.assign(new Error('Data read cancelled.'), { code: 'REQUEST_ABORTED' });
+                return taskFn();
             });
         }
 
@@ -26803,7 +26759,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             const abortController = () => { try { controller.abort(externalSignal?.reason); } catch (_) { controller.abort(); } };
             if (externalSignal?.aborted) abortController();
             else externalSignal?.addEventListener('abort', abortController, { once: true });
-            const promise = runWithSupabaseReadSlot(() => runSupabaseReadWithBackoff(cooldownKey, async () => {
+            const promise = runSupabaseReadTask(() => runSupabaseReadWithBackoff(cooldownKey, async () => {
                 if (controller.signal.aborted) throw Object.assign(new Error('Data read cancelled.'), { code: 'REQUEST_ABORTED' });
                 if (generation !== productionLiveSyncReadGeneration || identityScope !== getSupabaseReadIdentityScope()) throw staleSupabaseReadScopeError();
                 const result = await taskFn({ signal: controller.signal });
@@ -42410,7 +42366,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function getDatasetTargetLoadConcurrency(targets = [], options = {}) {
             const safeTargets = (Array.isArray(targets) ? targets : []).filter((item) => item && item.key);
             if (safeTargets.length < 2) return 1;
-            const readQueueCap = Math.max(1, Math.min(3, Number(SUPABASE_READ_CONCURRENCY_LIMIT) || 2));
+            const readQueueCap = 2;
             const hasHeavyFull = safeTargets.some((item) => HEAVY_DATASET_KEYS.has(item.key) && item.mode === 'full');
             const hasReserveFull = safeTargets.some((item) => item.key === 'reserves' && item.mode === 'full');
             const touchConstrained = isTouchConstrainedDevice();
@@ -169406,7 +169362,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 if (requestSaveIdentityScope !== getSupabaseReadIdentityScope()
                                     || requestSavePermissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')) throw staleSupabaseReadScopeError();
                             };
-                            const requestSaveOutcome = await window.AgMetricRequestSubmission.saveRequestWorkWithReconciliation({
+                            const requestSaveOutcome = await saveRequestWorkWithBoundedRetry({
+                                assertScope: assertRequestSaveScope,
                                 draft: getRequestWorkDraftEntry(itemToSave.UNIQUE_ID) || requestWorkDraft,
                                 expectedVersion: rpcExpectedVersion,
                                 initialPatch: requestPatch,
@@ -169648,6 +169605,31 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         const REQUEST_WORK_CONFLICT_RETRY_LIMIT = 1;
+
+        async function saveRequestWorkWithBoundedRetry(options) {
+            let canonicalReadStarted = false;
+            return window.AgMetricRequestSubmission.saveRequestWorkWithReconciliation({
+                ...options,
+                maxRebases: REQUEST_WORK_CONFLICT_RETRY_LIMIT,
+                readCanonical: async () => {
+                    options.assertScope();
+                    if (canonicalReadStarted) return null;
+                    canonicalReadStarted = true;
+                    const canonical = await options.readCanonical();
+                    options.assertScope();
+                    return canonical;
+                },
+                send: async (input) => {
+                    options.assertScope();
+                    if (input.attempt > 0) {
+                        await waitForSupabaseReadRetry(1000);
+                        options.assertScope();
+                    }
+                    return options.send(input);
+                }
+            });
+        }
+
         const REQUEST_WORK_DRAFT_FIELDS = Object.freeze({
             req_match: ['REQ_MATCH', 'req_match'], req_spec: ['REQ_SPEC', 'req_spec'],
             req_caliper: ['REQ_CALIPER', 'req_caliper'], req_pic_note: ['REQ_PIC_NOTE', 'req_pic_note', 'REQ_PICK', 'req_pick'],
@@ -170188,7 +170170,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                     const requestWorkFormValuesAtDispatch = getRequestWorkFormValues(findRequestInventoryRowByUniqueId(requestId)) || {};
                     const requestWorkCacheEntryTimestampAtDispatch = Number(entry.timestamp || 0);
                     try {
-                        const reconciliation = await window.AgMetricRequestSubmission.saveRequestWorkWithReconciliation({
+                        const reconciliation = await saveRequestWorkWithBoundedRetry({
+                            assertScope: assertPendingRequestScope,
                             draft, expectedVersion, initialPatch: patch, maxRebases: REQUEST_WORK_CONFLICT_RETRY_LIMIT,
                             readCanonical: async () => { assertPendingRequestScope(); const canonical = await fetchCanonicalRequestWorkRow(requestId); assertPendingRequestScope(); return canonical; },
                             send: async (input) => {

@@ -32,6 +32,119 @@ function makeGuardHarness() {
   return ctx;
 }
 
+test('independent reads start together without the global two-read bottleneck', async () => {
+  const ctx = makeGuardHarness();
+  ctx.SUPABASE_READ_CONCURRENCY_LIMIT = 2;
+  const gate = deferred();
+  let started = 0;
+  const reads = Array.from({ length: 5 }, (_, index) => ctx.runDedupeSupabaseRead(`parallel:${index}`, async () => {
+    started += 1;
+    await gate.promise;
+    return [];
+  }));
+  await settle();
+  const observed = started;
+  gate.resolve();
+  await Promise.all(reads);
+  assert.equal(observed, 5, 'unrelated reads do not wait for a global slot');
+});
+
+test('raw version conflict codes and messages are terminal to generic read retries', () => {
+  const ctx = makeGuardHarness();
+  for (const error of [
+    { code: '40001', message: 'conflict' },
+    { code: 'PT409', message: 'conflict' },
+    { code: 'REQUEST_VERSION_CONFLICT' },
+    { message: 'REQUEST_VERSION_CONFLICT' },
+    { code: 'LOC_ON_HAND_REVISION_CHANGED' },
+    { code: 'LOC_ON_HAND_SOURCE_NOT_READY' }
+  ]) assert.equal(ctx.isSupabaseReadRetryable(error), false, JSON.stringify(error));
+});
+
+function makeRequestSaveHarness(waitForRetry) {
+  const ctx = { window: {}, waitForSupabaseReadRetry: waitForRetry, REQUEST_WORK_CONFLICT_RETRY_LIMIT: 1 };
+  vm.createContext(ctx);
+  vm.runInContext(readFileSync(new URL('../assets/request-submission.js', import.meta.url), 'utf8'), ctx);
+  const start = html.indexOf('async function saveRequestWorkWithBoundedRetry(');
+  const end = html.indexOf('const REQUEST_WORK_DRAFT_FIELDS', start);
+  assert.ok(start > 0 && end > start);
+  vm.runInContext(html.slice(start, end), ctx);
+  return ctx;
+}
+
+const requestDraft = () => ({
+  requestId: 'request-1', baseVersion: 4,
+  baseValues: { req_spec: 'base spec', req_comments: 'base comments' },
+  dirtyValues: { req_spec: 'local spec' }, complete: false
+});
+const requestCanonical = () => ({
+  rowVersion: 5, values: { req_spec: 'base spec', req_comments: 'remote comments' }
+});
+const requestConflict = () => Object.assign(new Error('REQUEST_VERSION_CONFLICT'), { code: 'PT409', status: 409 });
+
+test('request conflicts allow one canonical read and one delayed rebase, preserving the blocked draft', async () => {
+  const gate = deferred();
+  const delays = [];
+  const ctx = makeRequestSaveHarness(ms => { delays.push(ms); return gate.promise; });
+  let reads = 0;
+  const sends = [];
+  const pending = ctx.saveRequestWorkWithBoundedRetry({
+    draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
+    maxRebases: 100, assertScope() {},
+    readCanonical: async () => { reads += 1; return requestCanonical(); },
+    send: async input => { sends.push(input); throw requestConflict(); }
+  });
+  await settle();
+  assert.equal(sends.length, 1, 'no immediate conflict retry');
+  assert.equal(reads, 1);
+  assert.deepEqual(delays, [1000]);
+  gate.resolve();
+  const outcome = await pending;
+  assert.equal(sends.length, 2);
+  assert.equal(sends[1].expectedVersion, 5);
+  assert.deepEqual({ ...sends[1].patch }, { req_spec: 'local spec' });
+  assert.equal(reads, 1, 'second conflict cannot dispatch another canonical read');
+  assert.equal(outcome.status, 'review-required');
+  assert.deepEqual({ ...outcome.draft.dirtyValues }, { req_spec: 'local spec' });
+  assert.match(html, /requestSaveOutcome\.status === 'review-required'[\s\S]*?await blockRequestWorkConflict/);
+  assert.match(html, /reconciliation\.status === 'review-required'[\s\S]*?entry\.autoRetryBlocked = true/);
+  assert.match(html, /if \(entry && entry\.autoRetryBlocked === true\) continue;/);
+});
+
+test('identity or permission changes during rebase delay cancel dispatch and preserve local edits', async () => {
+  const gate = deferred();
+  const ctx = makeRequestSaveHarness(() => gate.promise);
+  let currentScope = true;
+  let sends = 0;
+  const pending = ctx.saveRequestWorkWithBoundedRetry({
+    draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' },
+    assertScope() { if (!currentScope) throw Object.assign(new Error('Scope changed'), { code: 'DATASET_READ_SCOPE_CHANGED' }); },
+    readCanonical: async () => requestCanonical(),
+    send: async () => { sends += 1; throw requestConflict(); }
+  });
+  await settle();
+  currentScope = false;
+  gate.resolve();
+  const outcome = await pending;
+  assert.equal(sends, 1);
+  assert.equal(outcome.status, 'error');
+  assert.equal(outcome.error.code, 'DATASET_READ_SCOPE_CHANGED');
+  assert.deepEqual({ ...outcome.draft.dirtyValues }, { req_spec: 'local spec' });
+});
+
+test('successful request saves remain immediate and require no canonical reread', async () => {
+  const ctx = makeRequestSaveHarness(() => assert.fail('successful save must not back off'));
+  let sends = 0;
+  const outcome = await ctx.saveRequestWorkWithBoundedRetry({
+    draft: requestDraft(), expectedVersion: 4, initialPatch: { req_spec: 'local spec' }, assertScope() {},
+    readCanonical: async () => assert.fail('successful save must not reread'),
+    send: async () => { sends += 1; return { row: { unique_id: 'request-1', req_spec: 'local spec' }, row_version: 5 }; }
+  });
+  assert.equal(outcome.status, 'saved');
+  assert.equal(sends, 1);
+  assert.equal(outcome.result.row_version, 5);
+});
+
 test('shared reader caps transient failures at three attempts and establishes a generation-independent cooldown', async () => {
   const ctx = makeGuardHarness();
   let calls = 0;
