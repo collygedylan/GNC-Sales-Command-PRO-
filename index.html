@@ -134115,12 +134115,19 @@ C.14.043 C.15.000
             if (!canViewManagerEvalReports2()) return null;
             if (useManagerReportPages('eval2')) {
                 const controller = getManagerReportPageController();
-                await controller.initialize().catch(() => null);
+                const pageState = controller.state('eval2');
+                const query = buildManagerReportPageQuery('eval2', 'metadata');
+                if (pageState.pendingKey === JSON.stringify(query) && pageState.promise) {
+                    await pageState.promise;
+                    return getManagerEvalReport2Index();
+                }
+                // Automatic renders and already queued loads must stop after an error.
+                if (!force && pageState.error) return getManagerEvalReport2Index();
+                const page = await controller.load(query, force);
                 // Capability negotiation can select the legacy reader after
                 // navigation has already chosen the optimistic paged path.
                 if (controller.enabled('eval2')) {
-                    await controller.load(buildManagerReportPageQuery('eval2', 'metadata'), force);
-                    if (force) controller.refresh('eval2');
+                    if (force && page) controller.refresh('eval2');
                     scheduleManagersRender(true);
                     return getManagerEvalReport2Index();
                 }
@@ -134133,6 +134140,7 @@ C.14.043 C.15.000
             const owner = getSupabaseReadIdentityScope();
             const isCurrent = () => owner === getSupabaseReadIdentityScope() && canViewManagerEvalReports2();
             if (state.loading && state.promise && state.owner === owner) return state.promise;
+            if (!force && state.owner === owner && state.error) return managerEvalReport2Cache;
             state.owner = owner;
             const lastCompleteCache = managerEvalReport2Cache;
             const lastCompleteCacheKey = managerEvalReport2CacheKey;
@@ -136101,11 +136109,13 @@ C.14.043 C.15.000
         }
 
         function renderManagerEvalReports2Panel() {
-            if (useManagerReportPages('eval2')) ensurePagedManagerReportMetadata('eval2');
+            const paged = useManagerReportPages('eval2');
+            if (paged) ensurePagedManagerReportMetadata('eval2');
             if (!canViewManagerEvalReports2()) return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Eval Reports #2 is available only to Dylan, Megan, and JD.</div>';
             const api = getManagerEvalReports2Api();
             if (!api) return '<div class="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-sm font-bold text-red-700">Eval Reports #2 could not start. Refresh the app to load the report engine.</div>';
-            if (!managerEvalReport2DisplaySourcesReady() && !managerEvalReport2LoadState.loading && !managerEvalReport2Cache) setTimeout(() => loadManagerEvalReports2(false), 0);
+            if (!paged && !managerEvalReport2DisplaySourcesReady() && !managerEvalReport2LoadState.loading && !managerEvalReport2Cache
+                && (!managerEvalReport2LoadState.error || managerEvalReport2LoadState.owner !== getSupabaseReadIdentityScope())) setTimeout(() => loadManagerEvalReports2(false), 0);
             const index = getManagerEvalReport2Index();
             const accessibleTitle = '<h2 class="sr-only">Eval Reports #2</h2>';
             if (!index && managerEvalReport2LoadState.loading) return `${accessibleTitle}<div class="flex min-h-[44px] items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[11px] font-bold text-blue-800"><span class="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-blue-200 border-t-blue-700"></span>Loading inventory and assignments...</div>`;
