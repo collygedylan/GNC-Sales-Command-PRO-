@@ -10,6 +10,46 @@
         return text === '' ? null : text;
     }
 
+    /**
+     * @typedef {Object} RequestCustomerContext
+     * @property {string} customeridentityid
+     * @property {string} customername
+     * @property {string} consigneeidentityid
+     * @property {string} consigneename
+     * @property {string} request_selected_salesrep_id
+     */
+    /** @typedef {RequestCustomerContext & {salesrepname: string, customerstatus: string, consigneestatus: string}} RequestCustomerOption */
+    /** @typedef {RequestCustomerContext & {requested_by: string, request_selected_rep_display: string, request_selected_rep_username: null}} RequestCustomerPayload */
+
+    /**
+     * Resolve only against the complete, authorized options already cached by the picker.
+     * @param {RequestCustomerContext | null} context
+     * @param {RequestCustomerOption[]} options
+     * @param {boolean} ready
+     * @returns {RequestCustomerPayload | null}
+     */
+    function resolveCustomerMappingPayload(context, options, ready = true) {
+        if (!ready || !context || !Array.isArray(options)) return null;
+        /** @type {Array<keyof RequestCustomerContext>} */
+        const fields = ['customeridentityid', 'customername', 'consigneeidentityid', 'consigneename', 'request_selected_salesrep_id'];
+        if (!fields.every(key => typeof context[key] === 'string' && context[key].trim())) return null;
+        const matches = options.filter(option => option
+            && fields.every(key => typeof option[key] === 'string' && option[key].trim() === context[key].trim())
+            && String(option.customerstatus || '').trim().toUpperCase() === 'A'
+            && String(option.consigneestatus || '').trim().toUpperCase() === 'A'
+            && typeof option.salesrepname === 'string' && option.salesrepname.trim());
+        if (matches.length !== 1) return null;
+        const mapping = matches[0];
+        return {
+            customeridentityid: mapping.customeridentityid.trim(), customername: mapping.customername.trim(),
+            consigneeidentityid: mapping.consigneeidentityid.trim(), consigneename: mapping.consigneename.trim(),
+            request_selected_salesrep_id: mapping.request_selected_salesrep_id.trim(),
+            requested_by: mapping.salesrepname.trim(), request_selected_rep_display: mapping.salesrepname.trim(),
+            // The options response contains imported rep names, not verified profile usernames.
+            request_selected_rep_username: null
+        };
+    }
+
     function validateAcknowledgment(entry, result) {
         const expected = (entry.requests || []).map(rowId);
         const actual = Array.isArray(result?.rows) ? result.rows.map(rowId) : [];
@@ -118,5 +158,5 @@
         return Object.freeze({ submit, restore, flush });
     }
 
-    root.AgMetricRequestSubmission = Object.freeze({ normalizeOptionalQuantity, validateAcknowledgment, failureStatus, createController });
+    root.AgMetricRequestSubmission = Object.freeze({ normalizeOptionalQuantity, resolveCustomerMappingPayload, validateAcknowledgment, failureStatus, createController });
 })(typeof window === 'object' ? window : globalThis);

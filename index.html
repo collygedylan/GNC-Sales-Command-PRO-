@@ -815,7 +815,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
     <script src="./assets/live-sync-registry.js?v=V2026.10.13.021"></script>
     <script src="./assets/live-sync-adapters.js?v=V2026.10.13.021"></script>
     <script src="./assets/live-sync-coordinator.js?v=V2026.10.13.021"></script>
-    <script src="./assets/request-submission.js?v=V2026.10.13.021"></script>
+    <script src="./assets/request-submission.js?v=V2026.10.13.021&mapping=20261014"></script>
     <script src="./assets/ops-precision-pilot.js?v=V2026.10.13.021"></script>
     <script src="./assets/production-schedule.js?v=V2026.10.13.021"></script>
     <script src="./assets/eval-reports-engine.js?v=V2026.10.13.021"></script>
@@ -1335,6 +1335,7 @@ html[data-ops-prepaint-theme="dark"] .login-brand-logo {
                 </div>
                 <div id="request-qty-scroll-body" class="min-h-0 flex-1 overflow-y-auto pr-1 pb-3">
                     <div id="request-folder-context" class="hidden rounded-xl border border-yellow-200 bg-yellow-50 p-3 mb-3 text-xs font-bold text-yellow-900"></div>
+                    <div id="request-mapping-feedback" role="alert" class="hidden rounded-xl border border-amber-200 bg-amber-50 p-3 mb-3 text-xs font-bold text-amber-900">Customer choices need to be checked. Your quantities, notes, and recipients are saved.<button type="button" class="request-secondary-action mt-2" onclick="goBackFromQty()">Review Customer / Consignee</button></div>
                     <div id="qty-list-container" class="flex flex-col gap-3 mb-4 p-1"></div>
                     <div id="request-email-chain-panel" class="hidden mb-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 shadow-sm"></div>
                 </div>
