@@ -11209,7 +11209,7 @@ function collectRequestRecipients_(payload) {
   const requestedByEmail = normalizeEmailAddress_(payload && (payload.requestedByEmail || payload.requested_by_email) || '');
   const isInventoryTransactionReportEmail = emailType === 'bloom_purpose_report' || (
     emailType === 'drive_customer_outreach' &&
-    ['grouped_bloom_ncr', 'paper_ncr_item_inquiry', 'suspend_tag_photo_spec'].indexOf(emailSubType) !== -1
+    ['grouped_bloom_ncr', 'paper_ncr_item_inquiry'].indexOf(emailSubType) !== -1
   );
   const inventoryTransactionFallbackRecipients = isInventoryTransactionReportEmail
     ? dedupeEmailAddresses_([
@@ -17211,7 +17211,6 @@ function buildRequestEmailMessage_(payload) {
   const isDriveShiftReportEmail = emailType === 'drive_shift_report';
   const isGroupedBloomNcrEmail = emailType === 'drive_customer_outreach' && emailSubType === 'grouped_bloom_ncr';
   const isPaperNcrItemInquiryEmail = emailType === 'drive_customer_outreach' && emailSubType === 'paper_ncr_item_inquiry';
-  const isSuspendTagPhotoSpecEmail = emailType === 'drive_customer_outreach' && emailSubType === 'suspend_tag_photo_spec';
   const formattedItemsHtmlRaw = String(payload.formattedItemsHtml || '').trim();
   const formattedItemsTextRaw = String(payload.formattedItemsText || '').trim();
   const isSuspendTagCompletionEmail = isSuspendTagCompletionEmail_(payload);
@@ -17223,7 +17222,6 @@ function buildRequestEmailMessage_(payload) {
     !!formattedItemsHtmlRaw
     || isDriveShiftReportEmail
     || isPaperNcrItemInquiryEmail
-    || isSuspendTagPhotoSpecEmail
     || useFormattedApprovalLayout
   ) && !(emailType === 'request_complete' && !isSuspendTagCompletionEmail && !isEvalTaskCompletion);
   const repName = escapeEmailHtml_(payload.repName || payload.salesRepName || '');
@@ -17477,15 +17475,15 @@ function buildRequestEmailMessage_(payload) {
     const htmlItem = [commonName, itemCode, season].filter(Boolean).join(' &bull; ');
     const itemSectionTitle = isPaperNcrItemInquiryEmail
       ? ''
-      : '<p style="font-weight:700; margin-bottom:12px;">' + (isGroupedBloomNcrEmail ? 'NCR Rows' : (isSuspendTagPhotoSpecEmail ? 'Suspend Tag Photo / Spec Rows' : 'Photo / Spec Rows')) + '</p>';
+      : '<p style="font-weight:700; margin-bottom:12px;">' + (isGroupedBloomNcrEmail ? 'NCR Rows' : 'Photo / Spec Rows') + '</p>';
     const detailSection = itemsHtml
       ? [
           '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">',
-          (isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail) ? '' : customerConsigneeSummaryHtml,
+          (isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail) ? '' : customerConsigneeSummaryHtml,
           itemSectionTitle,
           itemsHtml
         ].join('')
-      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">' + ((isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail) ? 'No NCR row details were provided.' : (isSuspendTagPhotoSpecEmail ? 'No Suspend Tag photo/spec rows were provided.' : 'No selected customer/source row details were provided.')) + '</p>';
+      : '<hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"><p style="font-size: 12px; color: #777;">' + ((isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail) ? 'No NCR row details were provided.' : 'No selected customer/source row details were provided.') + '</p>';
 
     if (isPaperNcrItemInquiryEmail) {
       const paperNcrActionPlain = String(payload.customer || payload.requestCustomer || brandLabelPlain.replace(/^GNC PH\s*/i, '') || 'NCR').trim() || 'NCR';
@@ -17523,7 +17521,7 @@ function buildRequestEmailMessage_(payload) {
         brandLabelPlain,
         plainAudienceLabel ? 'Hello ' + plainAudienceLabel + ',' : '',
         hideItemHeader ? '' : 'Item: ' + plainItem,
-        (isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail || isSuspendTagPhotoSpecEmail) ? '' : customerConsigneeSummaryText,
+        (isGroupedBloomNcrEmail || isPaperNcrItemInquiryEmail) ? '' : customerConsigneeSummaryText,
         itemsText
       ].filter(Boolean).join('\n\n'),
       htmlBody: buildPhoneSizedEmailHtml_([

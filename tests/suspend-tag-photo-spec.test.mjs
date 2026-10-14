@@ -66,6 +66,9 @@ test('inventory resolver selects only exact item, location, lot, source and expl
   assert.equal(resolved.UNIQUE_ID, 'master-a');
   assert.equal(f.calls.length, 1);
   assert.equal(f.calls[0][0], 'master_page');
+  assert.deepEqual(JSON.parse(JSON.stringify(f.calls[0][1])), {
+    dataset:'lookup', projection:'full', itemCode:'PLANT-1', locationCode:'A1', lotCode:'LOT-A', source:'GREENLEAF'
+  });
   const explicitMismatch = resolverFixture([good]);
   await assert.rejects(explicitMismatch.ctx.resolveSuspendTagInventoryRow({},{},{...identity, masterUid:'master-wrong'}), /identity changed/);
   await assert.rejects(f.ctx.resolveSuspendTagInventoryRow({},{},{...identity, masterUid:'other-lot'}), /identity changed/);
@@ -80,6 +83,75 @@ test('inventory resolver rejects mismatched linked rows and ambiguous lookup; mi
   assert.equal(await missing.ctx.resolveSuspendTagInventoryRow({},{},identity), null);
 });
 
+test('Suspend Tag master identity ignores Dock labels and uses exact row filters', async () => {
+  const source = { unique_id:'soc-10', itemcode:'PLANT-1', locationcode:'A1', lotcode:'LOT-A' };
+  const mirror = { ITEMCODE:'PLANT-1', LOCATIONCODE:'A1', LOTCODE:'LOT-A', SOURCE:'Docks', REQUEST_SOURCE:'Docks' };
+  const canonical = inv('master-a');
+  const calls = [];
+  const ctx = {
+    String, Object, Array, Error,
+    firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim())??'',
+    normalizeMasterInventorySourceCode:value=>['DOCK','DOCKS','SOC'].includes(String(value||'').trim().toUpperCase())?'':String(value||'').trim().toUpperCase(),
+    getMasterInventorySourceCode:row=>row?.SOURCE||row?.source||'', findDockSuspendDcRequestSourceRow:()=>source,
+    getDockSuspendDcRequestLinkedMasterRow:()=>null, fetchAllInventoryReadRows:async(...args)=>{calls.push(args);return [canonical];},
+    validateInventoryReadProjection:()=>true, loadExactMasterDetailRow:async uid=>uid==='master-a'?canonical:null,
+  };
+  vm.createContext(ctx);
+  for (const name of ['getSuspendTagInventoryIdentity','matchesSuspendTagInventoryIdentity','resolveSuspendTagInventoryRow']) vm.runInContext(extract(name),ctx);
+  const exactIdentity = ctx.getSuspendTagInventoryIdentity(mirror,source);
+  assert.equal(exactIdentity.source,'', 'REQUEST_SOURCE= Docks must not be treated as master SOURCE');
+  assert.equal((await ctx.resolveSuspendTagInventoryRow(mirror,source,exactIdentity)).UNIQUE_ID,'master-a');
+  assert.deepEqual(JSON.parse(JSON.stringify(calls[0][1])), { dataset:'lookup', projection:'full', itemCode:'PLANT-1', locationCode:'A1' });
+});
+
+test('Suspend Tag quantity chips use exact hydrated inventory fields independently', () => {
+  const mirror = { UNIQUE_ID:'dock_suspend_dc_soc-4', ITEMCODE:'PLANT-1', LOCATIONCODE:'A1', LOTCODE:'LOT-A' };
+  const exact = { UNIQUE_ID:'master-a', ITEMCODE:'PLANT-1', LOCATIONCODE:'A1', LOTCODE:'LOT-A', SOURCE:'GREENLEAF',
+    PTRONHAND:89, PTRREVIEWED:27, PTRAVAILABLE:62, S_LTS:61, LOC_PHOTO_MATCH:14 };
+  const ctx = {
+    String, Object, Array, Map,
+    escapeHtml:value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'),
+    firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim()!=='')??'',
+    getDatasetState:()=>({rowCompleteness:'partial',initialLoaded:true}), nativeAuthSessionActive:false, nativeAuthProfile:null,
+    masterInventoryByItemCode:new Map(), getItemInquiryItemCode:()=> 'PLANT-1',
+    getSuspendTagHydratedInventoryRow:()=>exact, findDockSuspendDcRequestSourceRow:()=>({unique_id:'soc-4'}),
+    formatLocPhotoMatchQtyValue:row=>row?.LOC_PHOTO_MATCH == null?'Not verified':String(row.LOC_PHOTO_MATCH),
+    getCardLocationOnHandValue:()=>null, isDockSuspendDcRequestMirrorRow:row=>row===mirror,
+  };
+  vm.createContext(ctx);
+  for (const name of ['firstNonEmptyValue','normalizeCardQuantityValue','getCardPtrOnHandValue','getCardPtrReviewedValue','getCardPtrAvailableValue','getCardOpenStockValue','getOperationalCardInventoryRow']) {
+    vm.runInContext(extract(name),ctx);
+  }
+  const quantityStart = html.indexOf('        function buildInventoryQuantityChipsHtml(');
+  const quantityEnd = html.indexOf('        function isInventoryCardMeaningfulTextValue(',quantityStart);
+  vm.runInContext(html.slice(quantityStart,quantityEnd),ctx);
+  const hydrated = ctx.getOperationalCardInventoryRow(mirror);
+  assert.equal(hydrated,exact);
+  const dom = new JSDOM(ctx.buildInventoryQuantityChipsHtml(hydrated,{layout:'row',sourceView:'request',locationMetricItem:hydrated,preserveUnknown:true}));
+  const metrics = Object.fromEntries([...dom.window.document.querySelectorAll('[data-inventory-card-metric]')]
+    .map(node=>[node.getAttribute('data-inventory-card-metric'),node.querySelector('.app-card-qty-value').textContent]));
+  assert.deepEqual(metrics, { 'on-hand':'89', review:'27', available:'62', 'open-stock':'61', 'loc-photo-match':'14', 'loc-on-hand':'Unknown' });
+  const cardDataStart = html.indexOf('        function buildDockSuspendDcRequestCardDataHtml(');
+  const cardDataEnd = html.indexOf('\n        function ', cardDataStart + 20);
+  assert.match(html.slice(cardDataStart, cardDataEnd),
+    /formatLocPhotoMatchQtyValue\(getOperationalCardInventoryRow\(item\), 'request'\)/,
+    'the duplicate LOC PHOTO MATCH chip uses the same verified inventory row as the six metrics');
+  dom.window.close();
+});
+
+test('confirmed inventory writes invalidate only matching hydrated Suspend Tag card rows', () => {
+  const loads = new Map();
+  const ctx = { String, Object, Map, suspendTagReclassLoads:loads,
+    getSuspendTagInventoryIdentity:item=>({itemCode:item.ITEMCODE,locationCode:item.LOCATIONCODE,lotCode:item.LOTCODE,source:item.SOURCE}) };
+  vm.createContext(ctx); vm.runInContext(extract('invalidateSuspendTagInventoryRows'),ctx);
+  const match = { identity:{itemCode:'PLANT-1',locationCode:'A1',lotCode:'LOT-A',source:'GREENLEAF'} };
+  const unresolvedSource = { identity:{itemCode:'PLANT-1',locationCode:'A1',lotCode:'LOT-A',source:''} };
+  const other = { identity:{itemCode:'PLANT-2',locationCode:'A1',lotCode:'LOT-A',source:'GREENLEAF'} };
+  loads.set('match',match); loads.set('unresolved-source',unresolvedSource); loads.set('other',other);
+  ctx.invalidateSuspendTagInventoryRows({ITEMCODE:'plant-1',LOCATIONCODE:'a1',LOTCODE:'lot-a',SOURCE:'greenleaf'});
+  assert.deepEqual([...loads.keys()],['other']);
+});
+
 test('confirmed inventory reconciliation uses exact server fields and retries a failed canonical read', async () => {
   let fail = true, scheduled = 0, reconciled;
   const mirror = { UNIQUE_ID:'dock_suspend_dc_soc-1', DOCK_SUSPEND_SOURCE_UID:'soc-1' };
@@ -92,6 +164,7 @@ test('confirmed inventory reconciliation uses exact server fields and retries a 
     String, Object, Array, Error, Map, Promise, setTimeout:fn => { scheduled++; return 1; },
     getSupabaseReadIdentityScope: ()=>'account-a', getDockSuspendDcRequestSourceUid: row => row.DOCK_SUSPEND_SOURCE_UID,
     getDockSuspendDcRequestLinkedMasterRow:()=>null, getMasterInventorySourceCode: row=>row?.source||row?.SOURCE||'',
+    normalizeMasterInventorySourceCode: value => ['DOCK','DOCKS','SOC'].includes(String(value||'').trim().toUpperCase()) ? '' : String(value||'').trim().toUpperCase(),
     firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim())??'',
     fetchAllInventoryReadRows:async()=>[canonical], validateInventoryReadProjection:()=>true,
     loadExactMasterDetailRow:async()=>{ if(fail) throw new Error('canonical read failed'); return canonical; },
@@ -119,7 +192,9 @@ test('inventory reconciliation discards a read after account scope changes', asy
   Object.defineProperty(canonical,'__masterDetailRaw',{value:raw,enumerable:false});
   const ctx={String,Object,Array,Error,Map,Promise,setTimeout:()=>1,getSupabaseReadIdentityScope:()=>scope,
     getDockSuspendDcRequestSourceUid:row=>row.DOCK_SUSPEND_SOURCE_UID,getDockSuspendDcRequestLinkedMasterRow:()=>null,
-    getMasterInventorySourceCode:row=>row?.source||row?.SOURCE||'',firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim())??'',
+    getMasterInventorySourceCode:row=>row?.source||row?.SOURCE||'',
+    normalizeMasterInventorySourceCode:value=>['DOCK','DOCKS','SOC'].includes(String(value||'').trim().toUpperCase())?'':String(value||'').trim().toUpperCase(),
+    firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim())??'',
     fetchAllInventoryReadRows:async()=>[canonical],validateInventoryReadProjection:()=>true,
     loadExactMasterDetailRow:()=>new Promise(resolve=>{finish=resolve;}),suspendTagInventoryReconciliations:new Map(),
     window:{GncDatabase:{driveEvidenceColumns:['req_spec']}},reconcileConfirmedDriveEvidence(){assert.fail('stale read applied');},
@@ -146,6 +221,7 @@ test('a newer acknowledgement supersedes an earlier late canonical read', async 
   const map=new Map(), ctx={String,Object,Array,Error,Map,Promise,setTimeout:()=>1,
     getSupabaseReadIdentityScope:()=>'account-a',getDockSuspendDcRequestSourceUid:row=>row.DOCK_SUSPEND_SOURCE_UID,
     getDockSuspendDcRequestLinkedMasterRow:()=>null,getMasterInventorySourceCode:row=>row?.source||row?.SOURCE||'',
+    normalizeMasterInventorySourceCode:value=>['DOCK','DOCKS','SOC'].includes(String(value||'').trim().toUpperCase())?'':String(value||'').trim().toUpperCase(),
     firstNonEmptyValue:(...v)=>v.find(x=>x!=null&&String(x).trim())??'',
     fetchAllInventoryReadRows:async()=>[inv('master-a')],validateInventoryReadProjection:()=>true,
     loadExactMasterDetailRow:()=>new Promise(resolve=>pendingReads.push(resolve)),

@@ -236,9 +236,11 @@ test('Pending and Suspend Tag verify their own queue cohorts while other request
   const registry = harness().AgMetricLiveSyncRegistry;
   assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:pending'] })),
     ['core:requests', 'side:settings']);
+  assert.deepEqual(Array.from(registry.getViewAdapters('request', { surfaces: ['request:suspend-tag', 'badge:queue'] })),
+    ['core:suspendTag'], 'Suspend Tag keeps cached footer counts without gating entry on broad queue badge sources');
   const expected = {
     'request:reps': ['core:requests', 'core:master', 'core:customerRepMap', 'core:requestHistory', 'core:salesCredits', 'side:settings'],
-    'request:suspend-tag': ['core:suspendTag', 'core:master', 'core:customerRepMap', 'side:settings'],
+    'request:suspend-tag': ['core:suspendTag'],
     'request:eval-work': ['core:requests', 'core:master', 'core:customerRepMap', 'side:evalWork', 'side:settings'],
     'request:av-check': ['core:requests', 'core:master', 'core:customerRepMap', 'side:avOptionEval', 'side:settings'],
     'request:moves': ['core:requests', 'core:master', 'core:customerRepMap', 'core:inventoryEditRequests', 'side:locationWork', 'side:settings'],
@@ -272,6 +274,29 @@ test('NCR completion indexes used to remove completed rows participate in review
     assert.match(functionSource(builder), /ensureNcrCompletionIndexLoaded/);
     assert.ok(registry.getViewAdapters(view).includes('side:ncr'), `${view} must track its NCR completion source`);
   }
+});
+
+test('Suspend Tag customer and rep mapping is background-only and deduplicated', () => {
+  const context = vm.createContext({ Array, Set });
+  vm.runInContext(functionSource('appendSuspendTagBackgroundCustomerRepMap'), context);
+  const foregroundIds = new Set(['core:suspendTag']);
+  const created = { id: 'core:customerRepMap' };
+  let factoryCalls = 0;
+  const background = context.appendSuspendTagBackgroundCustomerRepMap([], foregroundIds, 'request', ['request:suspend-tag'], () => {
+    factoryCalls += 1; return created;
+  });
+  assert.deepEqual(Array.from(foregroundIds), ['core:suspendTag'], 'the map is not a queue-entry gate');
+  assert.deepEqual(Array.from(background, adapter => adapter.id), ['core:customerRepMap']);
+  context.appendSuspendTagBackgroundCustomerRepMap(background, foregroundIds, 'request', ['request:suspend-tag'], () => {
+    factoryCalls += 1; return created;
+  });
+  context.appendSuspendTagBackgroundCustomerRepMap([], new Set(['core:customerRepMap']), 'request', ['request:suspend-tag'], () => {
+    factoryCalls += 1; return created;
+  });
+  context.appendSuspendTagBackgroundCustomerRepMap([], foregroundIds, 'request', ['request:pending'], () => {
+    factoryCalls += 1; return created;
+  });
+  assert.equal(factoryCalls, 1, 'existing adapters and unrelated request tabs do not duplicate the read');
 });
 
 test('Drive verifies its displayed stock without waiting for unopened detail sources', () => {
