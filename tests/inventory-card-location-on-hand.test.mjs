@@ -40,6 +40,7 @@ function setup(rows) {
     getSupabaseReadIdentityScope: () => 'actor-a',
     appAccessSnapshotState: { snapshot: { dataPermissionVersion:'permissions-1' } },
     APP_API_FUNCTION_URL:'app-api', SUPABASE_READ_TIMEOUT_MS:1000,
+    productionLiveSyncCoordinator: null,
     runDedupeSupabaseRead: async (key, task) => task({ signal:null }),
     postAppFunctionJson: async () => ({ ok:true, data:{} }),
     staleSupabaseReadScopeError: () => new Error('STALE'),
@@ -249,6 +250,19 @@ test('requestInventoryRead executes its permission fence and stamps only the cap
   context.appAccessSnapshotState.snapshot.dataPermissionVersion = 'permissions-2';
   release({ ok:true, data:{ inventoryRevision:'13', rows:[{ ...serverRow, loc_on_hand:3000, loc_on_hand_revision:'13' }] } });
   await assert.rejects(pending, /STALE/);
+});
+
+test('requestInventoryRead sends no page request while the source gate is suspended', async () => {
+  const { context } = setup(rows());
+  let pageReads = 0;
+  context.postAppFunctionJson = async () => { pageReads += 1; return { ok:true, data:{} }; };
+  context.productionLiveSyncCoordinator = { isSourceReadSuspended: () => true };
+  await assert.rejects(context.requestInventoryRead('master_page'), error =>
+    error.code === 'LOC_SOURCE_READ_SUSPENDED' && error.status === 423);
+  assert.equal(pageReads, 0);
+  context.productionLiveSyncCoordinator = { isSourceReadSuspended: () => false };
+  await context.requestInventoryRead('master_page');
+  assert.equal(pageReads, 1, 'a permitted recovery read reaches the normal boundary');
 });
 
 test('linked inventory rows preserve zero and null aggregates and copy receipts only for the exact pair', () => {
