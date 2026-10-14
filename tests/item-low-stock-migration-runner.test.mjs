@@ -730,6 +730,19 @@ test('Eval2 shared low-stock threshold migration is registered and validates bot
   assert.equal((migration.match(/\$function\$;/g) || []).length, 2, 'both replacement functions must end before their grants');
 });
 
+test('Eval2 threshold replacement preserves all existing Location On Hand report returns', () => {
+  const migration = fs.readFileSync(new URL('../supabase/migrations/' + eval2SharedLowStockThresholdMigrationName, import.meta.url), 'utf8');
+  const reader = migration.split(/create or replace function public\.manager_report_read_v2/i)[1].split('$function$')[1];
+  const normalize = value => value.replace(/\s/g, '').toLowerCase();
+  const roleGuard = "regexp_replace(upper(coalesce(actor.role,'')), '[^A-Z0-9]+', '', 'g') like '%FOREMAN%'";
+  const responseReturn = `return private.manager_report_enrich_location_on_hand_v1(response,${roleGuard});`;
+  assert.equal(normalize(reader).split(normalize(responseReturn)).length - 1, 2, 'NCR and Eval report responses retain enrichment and Foreman redaction');
+  for (const surface of ['assigned', 'season']) {
+    assert.ok(normalize(reader).includes(normalize(`return private.manager_report_enrich_location_on_hand_v1(private.manager_report_${surface}_page_v2(actor.id,filters,operation,page_offset,page_limit,source_revision),${roleGuard});`)), `${surface} page responses retain enrichment and Foreman redaction`);
+  }
+  assert.doesNotMatch(reader, /return\s+response\s*;/i);
+});
+
 test('manager list readers follow the report boundary and remain private service-only helpers', () => {
   assert.ok(releaseDatabaseMigrations.includes(managerListReadV2MigrationName));
   const contract = migrationContractQuery(managerListReadV2MigrationName);
