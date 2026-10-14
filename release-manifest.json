@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "75f4f0a05efdc527b042dcf72c4be5b1fac6a2c3",
+  "commit": "c718cbe4276e45c3ea3a88905dc1981b57301db8",
   "release": "V2026.10.14.003",
   "files": [
     {
@@ -425,8 +425,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8108707,
-      "sha256": "1b8c32029d5358ab7ad5786409af6f1737ff2148d129fbc70534ac020d167d7d"
+      "bytes": 8099660,
+      "sha256": "1c2a8a318642cc939c0ceb5b4a879a368f80496e276288123b7c6412db127ffa"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -450,8 +450,8 @@
     },
     {
       "path": "assets/live-sync-registry.js",
-      "bytes": 18056,
-      "sha256": "eae0f8ae620aeac595cb45fea11b5aecffdd0aa0d5830e1769509c4d310208ce"
+      "bytes": 18575,
+      "sha256": "06024e776aa2a9d10eabf469362cc1ca43c1611457f50743085542e032525884"
     },
     {
       "path": "assets/live-tailwind-source.css",
@@ -806,12 +806,12 @@
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "0823de1cdfefc74ab4be1c158c4012e34d44378facc9a9663c95831804130df8"
+      "sha256": "d0ad4e69cbf326b38849152beafea468c41d22765a3946c5e97eb7dc86379295"
     },
     {
-      "path": "deployments/75f4f0a05efdc527b042dcf72c4be5b1fac6a2c3.json",
+      "path": "deployments/c718cbe4276e45c3ea3a88905dc1981b57301db8.json",
       "bytes": 188,
-      "sha256": "0823de1cdfefc74ab4be1c158c4012e34d44378facc9a9663c95831804130df8"
+      "sha256": "d0ad4e69cbf326b38849152beafea468c41d22765a3946c5e97eb7dc86379295"
     },
     {
       "path": "index.html",
@@ -1086,7 +1086,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4807,
-      "sha256": "9a282969b2e12990772cd23b25c9f2f0370fd3b8a2f92d9308e856f4f33471f5"
+      "sha256": "bfb0a940e408582bad46e2df111a65590a6cbd0ca9d754d118998bde1aa276e1"
     },
     {
       "path": "v2/v2-cache-migration.js",

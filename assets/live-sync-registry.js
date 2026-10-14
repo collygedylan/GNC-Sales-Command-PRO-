@@ -115,7 +115,10 @@
         // they do not subscribe to or refresh the broad live Request datasets.
         'request:archived': data([]),
         'request:reps': data(['requests', 'requestHistory', 'salesCredits']),
-        'request:suspend-tag': data(['suspendTag', 'master', 'customerRepMap']),
+        // Suspend Tag renders its own queue rows first. Exact inventory rows are
+        // fetched lazily per card for metrics and reclassification, so neither
+        // the complete master scan nor the customer map belongs in this gate.
+        'request:suspend-tag': data(['suspendTag']),
         'request:eval-work': data(['master'], ['evalWork']),
         'request:av-check': data(['master'], ['avOptionEval']),
         'request:moves': data(['master', 'inventoryEditRequests'], ['locationWork']),
@@ -206,6 +209,10 @@
         }
         requestedSurfaces.forEach((surface) => {
             if (!surfaces[surface]) throw new Error(`Unregistered live-sync surface: ${surface}`);
+            // Suspend Tag keeps the footer's last known badge counts but does
+            // not make the broad queue badge cohort a foreground gate. Save and
+            // close acknowledgements update the affected count directly.
+            if (requestSuspendTag && surface === 'badge:queue') return;
             if (pagedReport && surface.startsWith('managers:')) return;
             entries.push(surfaces[surface]);
         });
