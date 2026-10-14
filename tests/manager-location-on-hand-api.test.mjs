@@ -10,7 +10,8 @@ const source = fs.readFileSync(new URL('../supabase/functions/app-api/index.ts',
 const start = source.indexOf('export async function handleManagerReportReadAction(');
 const end = source.indexOf('type LivePilotFeatureKey', start);
 assert.ok(start >= 0 && end > start);
-const code = ts.transpileModule(source.slice(start, end).replace('export async', 'async'), {
+const helpers = source.slice(source.indexOf('async function captureReadyInventoryLocationRevision('), source.indexOf('function ensureServerConfig('));
+const code = ts.transpileModule(helpers + source.slice(start, end).replace('export async', 'async'), {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
 }).outputText;
 
@@ -62,6 +63,8 @@ test('Manager source readiness and revision failures retain the existing retry c
       const result = await harness({ error }).read({ surface, operation:'rows' });
       assert.equal(result.status,status);
       assert.equal(result.body.code,code);
+      assert.equal(result.body.retryable,false);
+      assert.equal(result.body.source,'ph_master_inventory');
     }
   }
 });

@@ -29,6 +29,8 @@
         let epoch = 0, scope = '', permission = '', running = null, queued = false;
         let activeRun = null, backgroundRunning = null, backgroundGeneration = 0, backgroundTimer = null, backgroundController = null;
         let pollTimer = null, signalTimer = null, signalAt = Infinity, signalReason = '', signalIdentity = '', unsubscribe = null, subscribedScope = '';
+        let sourceGate = null, sourceGateTimer = null;
+        const revisionChurnCounts = new Map();
         const readinessReasons = new Set(['visible-view', 'view-entry', 'login-shell-open', 'drive-detail-tab', 'av-notes-input']);
         let lastVerifiedAt = null, currentStatus = { state: 'Syncing', lastVerifiedAt: null };
         const verifiedAtByIdentity = new Map();
@@ -45,10 +47,14 @@
         function clearTimers() {
             if (pollTimer !== null) cancel(pollTimer);
             if (signalTimer !== null) cancel(signalTimer);
+            if (sourceGateTimer !== null) cancel(sourceGateTimer);
             pollTimer = signalTimer = null;
+            sourceGateTimer = null;
             signalAt = Infinity;
             invalidateBackground();
             activeRun?.controller?.abort();
+            sourceGate?.probeController?.abort();
+            sourceGate?.baselineController?.abort();
         }
         function invalidateBackground() {
             backgroundGeneration++;
@@ -67,7 +73,7 @@
             unsubscribe = null; subscribedScope = '';
         }
         function reset() {
-            epoch++; clearTimers(); closeSubscription(); applied.clear(); requested.clear(); verifiedAtByIdentity.clear();
+            epoch++; clearTimers(); sourceGate = null; revisionChurnCounts.clear(); closeSubscription(); applied.clear(); requested.clear(); verifiedAtByIdentity.clear();
             permission = ''; scope = ''; lastVerifiedAt = null; queued = false;
             backgroundStatus = { state: 'Waiting', lastVerifiedAt: null };
             publish('Syncing', 'Waiting to verify current data.');
@@ -77,6 +83,8 @@
             if (!next || !next.scope || next.visible === false || next.online === false) return next;
             if (scope !== next.scope) {
                 invalidateBackground();
+                clearSourceGate();
+                revisionChurnCounts.clear();
                 epoch++; applied.clear(); requested.clear(); verifiedAtByIdentity.clear(); permission = ''; lastVerifiedAt = null;
                 scope = next.scope; closeSubscription();
             }
@@ -130,6 +138,205 @@
                 if (message) publish('Syncing', message);
             }
             return false;
+        }
+        const sourceReadinessCodes = new Set(['LOC_ON_HAND_SOURCE_NOT_READY', 'LOC_SOURCE_NOT_READY', 'DATASET_NOT_READY', 'LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED', 'MANAGER_REPORT_SOURCE_REVISION_CHANGED']);
+        function sourceReadinessCode(error) {
+            const direct = String(error?.code || error?.payload?.code || error?.payload?.sqlState || '').trim().toUpperCase();
+            if (sourceReadinessCodes.has(direct)) return direct;
+            const message = String(error?.message || error || '');
+            return (message.match(/\b(LOC_ON_HAND_SOURCE_NOT_READY|LOC_SOURCE_NOT_READY|DATASET_NOT_READY|LOC_ON_HAND_REVISION_CHANGED|LOC_REVISION_CHANGED|MANAGER_REPORT_SOURCE_REVISION_CHANGED)\b/i) || [])[1]?.toUpperCase() || '';
+        }
+        function sourceGateMatches(ctx) {
+            return !!sourceGate && sourceGate.scope === ctx?.scope
+                && sourceGate.permissionVersion === String(ctx?.dataPermissionVersion || permission || '');
+        }
+        function clearSourceGate() {
+            cancelSourceGateTimer();
+            sourceGate?.probeController?.abort();
+            sourceGate?.baselineController?.abort();
+            sourceGate = null;
+        }
+        function getSourceGateKeys(error, sourceKeys = []) {
+            const code = sourceReadinessCode(error);
+            const status = Number(error?.status || error?.payload?.status || 0);
+            if ([401, 403].includes(status) || !sourceKeys.includes('ph_master_inventory')) return [];
+            if (['LOC_ON_HAND_SOURCE_NOT_READY', 'LOC_SOURCE_NOT_READY', 'LOC_ON_HAND_REVISION_CHANGED', 'LOC_REVISION_CHANGED'].includes(code)) return ['ph_master_inventory'];
+            if (['DATASET_NOT_READY', 'MANAGER_REPORT_SOURCE_REVISION_CHANGED'].includes(code)
+                && String(error?.source || error?.payload?.source || '').trim() === 'ph_master_inventory') return ['ph_master_inventory'];
+            return [];
+        }
+        function cancelSourceGateTimer() {
+            if (sourceGateTimer !== null) cancel(sourceGateTimer);
+            sourceGateTimer = null;
+        }
+        function scheduleSourceGateProbe(delay = null) {
+            if (!sourceGate || sourceGateTimer !== null) return;
+            const ctx = options.getContext();
+            if (!ctx?.scope || ctx.visible === false || ctx.online === false || !sourceGateMatches(ctx)) return;
+            const slots = [30000, 60000, 120000];
+            const base = delay == null ? slots[Math.min(sourceGate.probeIndex, slots.length - 1)] : Math.max(0, delay);
+            const jitteredDelay = delay == null ? Math.min(120000, Math.floor(base * (1 + Math.random() * 0.2))) : Math.floor(base);
+            sourceGateTimer = later(() => {
+                sourceGateTimer = null;
+                void probeSourceGate();
+            }, jitteredDelay);
+        }
+        function startSourceGateBaseline(gate) {
+            if (!gate || sourceGate !== gate || !gate.baselinePending || gate.baselineProbe) return gate?.baselineProbe || null;
+            const ctx = options.getContext();
+            if (!ctx?.scope || ctx.visible === false || ctx.online === false || !sourceGateMatches(ctx)) return null;
+            gate.baselineController = typeof AbortController === 'function' ? new AbortController() : null;
+            const baselineProbe = Promise.resolve().then(() => options.readRevisions(gate.sourceKeys, { signal: gate.baselineController?.signal })).then((value) => {
+                if (sourceGate !== gate || !sourceGateMatches(options.getContext())) return;
+                const metadata = snapshot(value, gate.sourceKeys);
+                if (gate.permissionVersion && String(metadata.permissionVersion || '') !== gate.permissionVersion) {
+                    clearSourceGate();
+                    return;
+                }
+                if (!gate.permissionVersion) gate.permissionVersion = String(metadata.permissionVersion || '');
+                permission = String(metadata.permissionVersion || permission || '');
+                gate.baseline = new Map(gate.sourceKeys.map((key) => [key, metadata.sources.get(key)]));
+                gate.baselinePending = false;
+            }).catch(() => {
+                if (sourceGate !== gate) return;
+                const currentContext = options.getContext();
+                gate.baselinePending = !currentContext?.scope || currentContext.visible === false || currentContext.online === false;
+            }).finally(() => {
+                if (gate.baselineProbe === baselineProbe) gate.baselineProbe = null;
+                gate.baselineController = null;
+            });
+            gate.baselineProbe = baselineProbe;
+            return baselineProbe;
+        }
+        async function probeSourceGate() {
+            const gate = sourceGate;
+            const ctx = options.getContext();
+            if (!gate || !ctx?.scope || ctx.visible === false || ctx.online === false) return false;
+            if (!sourceGateMatches(ctx)) { clearSourceGate(); return check('source-gate-context-changed'); }
+            if (gate.probing) return gate.probing;
+            const probe = (async () => {
+                try {
+                    if (gate.baselinePending) {
+                        const baselineProbe = startSourceGateBaseline(gate);
+                        if (baselineProbe) await baselineProbe;
+                    }
+                    const latestContext = options.getContext();
+                    if (sourceGate !== gate || !latestContext?.scope || latestContext.visible === false || latestContext.online === false) return false;
+                    gate.probeController = typeof AbortController === 'function' ? new AbortController() : null;
+                    statistics.revisionReads++;
+                    const value = await options.readRevisions(gate.sourceKeys, { signal: gate.probeController?.signal });
+                    if (sourceGate !== gate) return false;
+                    if (!sourceGateMatches(options.getContext())) { clearSourceGate(); return check('source-gate-context-changed'); }
+                    const metadata = snapshot(value, gate.sourceKeys);
+                    if (String(metadata.permissionVersion || '') !== gate.permissionVersion) {
+                        clearSourceGate();
+                        return check('source-gate-permission-changed');
+                    }
+                    const currentBaseline = new Map(gate.sourceKeys.map((key) => [key, metadata.sources.get(key)]));
+                    const stableReadyRevision = gate.sourceKeys.every((key) => {
+                        const source = metadata.sources.get(key);
+                        const baseline = gate.baseline.get(key);
+                        return source?.state === 'ready' && baseline?.state === 'ready' && source.revision === baseline.revision;
+                    });
+                    const readyRevisionKey = stableReadyRevision
+                        ? JSON.stringify(gate.sourceKeys.map((key) => [key, metadata.sources.get(key)?.revision]))
+                        : '';
+                    if (stableReadyRevision && readyRevisionKey !== gate.lastHalfOpenRevision) {
+                        gate.lastHalfOpenRevision = readyRevisionKey;
+                        gate.halfOpenAllowed = true;
+                        cancelSourceGateTimer();
+                        return check('source-gate-half-open');
+                    }
+                    // A changed revision or the first ready observation becomes the new
+                    // baseline. Require a later probe to confirm that exact ready revision
+                    // is stable before spending the episode's one read attempt.
+                    gate.baseline = currentBaseline;
+                    gate.probeIndex += 1;
+                    scheduleSourceGateProbe();
+                    return false;
+                } catch (_) {
+                    if (sourceGate === gate) { gate.probeIndex += 1; scheduleSourceGateProbe(); }
+                    return false;
+                }
+            })();
+            gate.probing = probe;
+            try { return await probe; }
+            finally { if (gate.probing === probe) gate.probing = null; gate.probeController = null; }
+        }
+        function suspendForSourceReadiness(error, adapter, metadata, ctx) {
+            const sourceKeys = getSourceGateKeys(error, adapter?.sourceKeys || []);
+            if (!sourceKeys.length) return false;
+            const permissionVersion = String(ctx?.dataPermissionVersion || metadata?.permissionVersion || '');
+            if (sourceGateMatches(ctx) && sourceKeys.every((key) => sourceGate.sourceKeys.includes(key))) return true;
+            clearSourceGate();
+            sourceGate = {
+                scope: ctx.scope,
+                permissionVersion,
+                sourceKeys,
+                baseline: new Map(sourceKeys.map((key) => [key, metadata.sources.get(key)])),
+                probeIndex: 0,
+                probing: null,
+                lastHalfOpenRevision: '',
+                halfOpenAllowed: false,
+                halfOpenInFlight: false
+            };
+            cancelSourceGateTimer();
+            scheduleSourceGateProbe();
+            return true;
+        }
+        function suspendDirectSourceRead(error, sourceKeys = []) {
+            const gatedKeys = getSourceGateKeys(error, sourceKeys);
+            if (!gatedKeys.length) return false;
+            const ctx = options.getContext();
+            if (!ctx?.scope) return false;
+            if (sourceGateMatches(ctx)) return true;
+            clearSourceGate();
+            const keys = gatedKeys;
+            const gate = {
+                scope: ctx.scope,
+                permissionVersion: String(ctx.dataPermissionVersion || permission || ''),
+                sourceKeys: keys,
+                baseline: new Map(),
+                probeIndex: 0,
+                probing: null,
+                baselinePending: true,
+                baselineProbe: null,
+                baselineController: null,
+                lastHalfOpenRevision: '',
+                halfOpenAllowed: false,
+                halfOpenInFlight: false
+            };
+            sourceGate = gate;
+            cancelSourceGateTimer();
+            scheduleSourceGateProbe();
+            if (running) activeRun?.controller?.abort(error);
+            startSourceGateBaseline(gate);
+            return true;
+        }
+        function suspendForRevisionChurn(ctx, keys, metadata, contextKey) {
+            const count = (revisionChurnCounts.get(contextKey) || 0) + 1;
+            revisionChurnCounts.set(contextKey, count);
+            if (revisionChurnCounts.size > 128) revisionChurnCounts.delete(revisionChurnCounts.keys().next().value);
+            if (count < 3) return false;
+            const normalizedKeys = unique(keys);
+            const priorHalfOpenRevision = sourceGateMatches(ctx)
+                && JSON.stringify(sourceGate.sourceKeys) === JSON.stringify(normalizedKeys)
+                ? sourceGate.lastHalfOpenRevision : '';
+            clearSourceGate();
+            sourceGate = {
+                scope: ctx.scope,
+                permissionVersion: String(ctx.dataPermissionVersion || metadata.permissionVersion || ''),
+                sourceKeys: normalizedKeys,
+                baseline: new Map(keys.map((key) => [key, metadata.sources.get(key)])),
+                probeIndex: 0,
+                probing: null,
+                lastHalfOpenRevision: priorHalfOpenRevision || '',
+                halfOpenAllowed: false,
+                halfOpenInFlight: false
+            };
+            cancelSourceGateTimer();
+            scheduleSourceGateProbe();
+            return true;
         }
         async function cycle(run) {
             const background = !!run.background;
@@ -247,9 +454,10 @@
                 }
             };
             let failure = null, cursor = 0;
-            const fail = (error) => {
+            const fail = (error, adapter = null) => {
                 if (failure) return;
                 failure = error;
+                suspendForSourceReadiness(error, adapter, before, ctx);
                 if (current()) emit('Needs attention', error?.message || String(error));
                 run.controller?.abort(error);
             };
@@ -276,7 +484,7 @@
                             if (value === undefined) throw new Error(`${adapter.id} did not return a snapshot.`);
                             if (!display.has(adapter.id) || !adapter.id.startsWith('core:')) preview(adapter, value);
                             staged.push({ adapter, value });
-                        } catch (error) { fail(error); }
+                        } catch (error) { fail(error, adapter); }
                     }
                 }));
                 // An adapter may finish after pagehide suspended this cycle.
@@ -289,6 +497,10 @@
                 const after = snapshot(afterValue, keys);
                 if (signature(before, keys) !== signature(after, keys)) {
                     if (background) { publish('Syncing', 'Source data changed; verifying visible data.'); signal('background-source-changed', 0); }
+                    else if (suspendForRevisionChurn(ctx, keys, after, contextKey)) {
+                        emit('Needs attention', 'Source data is changing repeatedly. Pausing verification before another read.');
+                        return false;
+                    }
                     return discard('Source data changed while loading; checking again.');
                 }
                 // No asynchronous work is permitted between final validation and application.
@@ -307,9 +519,11 @@
                 }
             }
             if (!background) {
+                revisionChurnCounts.delete(contextKey);
                 lastVerifiedAt = now();
                 verifiedAtByIdentity.set(contextKey, lastVerifiedAt);
             }
+            if (!background && sourceGate?.halfOpenInFlight && sourceGateMatches(ctx)) clearSourceGate();
             emit('Up to date');
             return true;
         }
@@ -336,6 +550,29 @@
             }, Math.max(0, options.backgroundDelayMs ?? 250));
         }
         function check(reason = 'check') {
+            const gateContext = options.getContext();
+            if (sourceGate) {
+                if (!gateContext?.scope || gateContext.visible === false || gateContext.online === false) {
+                    cancelSourceGateTimer();
+                    sourceGate?.probeController?.abort();
+                    sourceGate?.baselineController?.abort();
+                    return Promise.resolve(false);
+                }
+                if (!sourceGateMatches(gateContext)) {
+                    clearSourceGate();
+                } else if (sourceGate.halfOpenAllowed && !sourceGate.halfOpenInFlight) {
+                    sourceGate.halfOpenAllowed = false;
+                    sourceGate.halfOpenInFlight = true;
+                } else if (sourceGate.halfOpenInFlight) {
+                    return running || Promise.resolve(false);
+                } else {
+                    // Signals and user view entry must not turn one failed
+                    // source proof into a burst of identical row downloads.
+                    startSourceGateBaseline(sourceGate);
+                    scheduleSourceGateProbe();
+                    return sourceGate.probing || Promise.resolve(false);
+                }
+            }
             const nextIdentity = identity(options.getContext() || {});
             if (readinessReasons.has(reason)) {
                 if (signalTimer !== null && readinessReasons.has(signalReason) && signalIdentity === nextIdentity) {
@@ -368,6 +605,11 @@
             task.finally(() => {
                 if (running === task) running = null;
                 activeRun = null;
+                if (sourceGate?.halfOpenInFlight) {
+                    sourceGate.halfOpenInFlight = false;
+                    sourceGate.probeIndex += 1;
+                    scheduleSourceGateProbe();
+                }
                 if (queued) signal('changed-during-load', 1000);
                 else if (currentStatus.state === 'Up to date') scheduleBackground();
             });
@@ -410,7 +652,16 @@
             return check('loader').then((ok) => ok && applied.get(adapter.id)?.cacheKey === adapter.cacheKey);
         }
         function suspend() { epoch++; clearTimers(); closeSubscription(); queued = false; }
-        return Object.freeze({ check, signal, ensure, reset, suspend, getStatus: () => ({ ...currentStatus }), getBackgroundStatus: () => ({ ...backgroundStatus }), getStatistics: () => ({ ...statistics }) });
+        return Object.freeze({ check, signal, ensure, reset, suspend,
+            isSourceReadSuspended: () => {
+                const ctx = options.getContext();
+                if (sourceGate && !sourceGateMatches(ctx)) clearSourceGate();
+                if (sourceGate?.halfOpenInFlight && ctx?.scope && ctx.visible !== false && ctx.online !== false
+                    && sourceGateMatches(ctx)) return false;
+                return sourceGateMatches(ctx);
+            },
+            suspendSourceReads: (error, sourceKeys) => suspendDirectSourceRead(error, sourceKeys),
+            getStatus: () => ({ ...currentStatus }), getBackgroundStatus: () => ({ ...backgroundStatus }), getStatistics: () => ({ ...statistics }) });
     }
     return Object.freeze({ createCoordinator, snapshot, signature });
 });

@@ -54,3 +54,22 @@ test('pre-commit rejects malformed staged source and configuration syntax', () =
     rmSync(fixture, { recursive: true, force: true });
   }
 });
+
+test('pre-commit selects TypeScript grammar for typed modules and JSX grammar for components', () => {
+  const fixture = mkdtempSync(path.join(tmpdir(), 'gnc typed staged syntax '));
+  try {
+    const files = ['typed.ts', 'typed.mts', 'typed.cts'];
+    for (const file of files) {
+      writeFileSync(path.join(fixture, file), 'export const identity = <T>(value: T): T => value;\nexport const label = <string>"ready";\n');
+    }
+    writeFileSync(path.join(fixture, 'component.tsx'), 'export const View = (props: { label: string }) => <div>{props.label}</div>;\n');
+    writeFileSync(path.join(fixture, 'component.jsx'), 'export const View = () => <div>Ready</div>;\n');
+    assert.doesNotThrow(() => syntaxCheck([...files, 'component.tsx', 'component.jsx'], fixture));
+    writeFileSync(path.join(fixture, 'broken.tsx'), 'export const View = () => <div>;\n');
+    assert.throws(() => syntaxCheck(['broken.tsx'], fixture));
+  } finally {
+    const allowed = path.resolve(tmpdir()) + path.sep;
+    assert.ok(path.resolve(fixture).startsWith(allowed));
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
