@@ -1,3 +1,13 @@
+# CRITICAL: Zero-Downtime & Autonomous Execution Protocols
+
+These protocols take precedence over conflicting instructions elsewhere in this document, including the Nightly-only restriction when mandatory pre-flight verification requires checks before merging. The three-consecutive-failure stop rule remains mandatory. Completion summaries must report only verified outcomes and measured metrics.
+
+1. **Mandatory Shadow Testing:** Before proposing any PR that touches the database schema, data imports, or frontend rendering, you MUST execute a complete dry-run on a temporary/disposable database instance. If a migration cannot be safely tested in isolation, you are forbidden from deploying it.
+2. **Automated Rollbacks & Self-Healing:** If your deployment triggers CI/CD failures, or if observability metrics (like Postgres warnings or API errors) spike immediately after a merge, you must automatically execute a rollback to the last known good state BEFORE asking me for input.
+3. **No-Nag Debugging:** If a test runner fails or a minor syntax error occurs during your isolated testing, do not halt and ask for permission to investigate. You are authorized to proactively diagnose and fix your own test failures up to the 3-failure limit. Only halt and ping me if you hit a fundamental architectural blocker.
+4. **Field-Worker Assumption:** Assume the human operator is in the field. When presenting a completed task, provide a 2-sentence executive summary of the outcome and the verified metrics (e.g., "Deployed 100%. Queues are clean. Load time is under 1s."). Do not require me to review line-by-line code to approve a deployment unless it changes core business logic.
+5. **Pre-Flight Performance Checks:** Before merging any frontend list-view or database-query change, require reproducible measurements below 100 ms at representative production data volumes. Record the environment, measured operation, dataset size, and cold/warm cache conditions, together with query-plan and appropriate pagination/caching evidence. Block merging when this evidence is missing or the threshold is exceeded.
+
 # 🛑 PILLAR 1: STRICT SCOPE AND WORKSPACE HYGIENE
 1. **Zero Scope Creep:** You are strictly forbidden from modifying CI/CD pipelines, `.github/workflows/`, deployment scripts, or baseline helpers unless the user explicitly commands you to "update the deployment pipeline."
 2. **Report, Don't React:** If you discover a pre-existing bug, race condition, or deployment gap outside the exact scope of the user's prompt, DO NOT fix it. Report the blocker, wait for instructions, and halt execution.
