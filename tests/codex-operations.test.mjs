@@ -144,7 +144,7 @@ test('official Codex Action is immutable-pinned and model routing is bounded', (
   assert.match(workflow, /needs\.diagnose\.outputs\.repair_allowed == 'true'/);
 });
 
-test('project defaults, bounded review, and automatic release policy stay aligned', () => {
+test('project defaults and strict workspace delivery policy stay aligned', () => {
   assert.match(projectConfig, /^model = "gpt-6-luna"$/m);
   assert.match(projectConfig, /^model_reasoning_effort = "low"$/m);
   assert.match(projectConfig, /^default_subagent_model = "gpt-6-luna"$/m);
@@ -153,24 +153,19 @@ test('project defaults, bounded review, and automatic release policy stay aligne
   assert.match(modelRouting, /GPT-6 Luna \/ low/);
   assert.match(modelRouting, /bounded diff or contract under review/);
   assert.match(modelRouting, /GPT-5\.6 Luna \/ low and record the fallback/);
-  assert.match(agentRules, /### Fast Deployment & Execution Policy/);
-  const executionRules = agentRules.split('### Fast Deployment & Execution Policy')[1].split('## Implementation and Delivery')[0];
-  assert.deepEqual([...executionRules.matchAll(/^\d\. ([^:]+):/gm)].map(match => match[1]),
-    ['Targeted Local Verification Only', 'No Unprompted Historical Replays', 'Strict Zero-Scope-Creep Rule', 'Lightweight Pre-Commit Hooks', 'Fast Hand-off to CI']);
-  assert.match(executionRules, /Never execute full repository-wide test suites, browser emulators, performance benchmarks, or disposable database integrations locally during standard delivery/);
-  assert.match(agentRules, /unless a new SQL migration is explicitly introduced/);
-  assert.match(agentRules, /Do not halt execution to fix unrelated legacy tests or missing older fixtures/);
-  assert.match(agentRules, /formatting\/syntax checks against staged files/);
-  assert.match(agentRules, /Never run sandbox assertions or full database validations inside pre-commit hooks/);
-  assert.match(agentRules, /Immediately create a new branch's PR with `gh pr create --fill`/);
-  assert.match(agentRules, /GitHub Actions owns complete validation, validated merging, production publication, and hosted verification/);
-  assert.match(agentRules, /automatically create the PR and immediately merge it into the `main` branch/);
-  assert.match(agentRules, /Monitor the GitHub Actions workflows until completion/);
-  assert.match(agentRules, /frontend and backend publication processes are 100% complete/);
-  assert.match(agentRules, /live only after successful final hosted publication is confirmed/);
-  assert.match(agentRules, /preserve unrelated changes, shared resources, credentials, production data, and diagnostics/);
-  assert.match(agentRules, /## PERMANENT OVERRIDE: Fully Automated CI\/CD Deployment Protocol/);
-  assert.doesNotMatch(agentRules, /FIRE-AND-FORGET|terminate the session immediately/);
+  assert.match(agentRules, /Zero Scope Creep:[\s\S]*explicitly commands you to "update the deployment pipeline\."/);
+  assert.match(agentRules, /strictly forbidden from modifying CI\/CD pipelines, `\.github\/workflows\/`, deployment scripts, or baseline helpers/);
+  assert.match(agentRules, /Report, Don't React:[\s\S]*Report the blocker, wait for instructions, and halt execution/);
+  assert.match(agentRules, /If a seemingly simple task requires modifying more than 5 files, pause and ask the user for authorization/);
+  assert.match(agentRules, /Before beginning any implementation, verify the local workspace is completely clean and synchronized with `origin\/main`/);
+  assert.match(agentRules, /When fixing a reported bug, first verify or write a focused unit test that replicates the failure/);
+  assert.match(agentRules, /If a local test, pipeline build, or deployment fails 3 times consecutively, you must instantly halt execution/);
+  assert.match(agentRules, /GitHub Pages frontend publication and Supabase\/Apps Script backend deployment are fully independent/);
+  assert.match(agentRules, /Browser checks, phone emulators, layout snapshots, timing checks, and performance benchmarks belong EXCLUSIVELY to Nightly Validation/);
+  assert.match(agentRules, /Use an isolated `codex\/` branch/);
+  assert.match(agentRules, /Auto-merge the PR immediately upon passing scoped local tests/);
+  assert.match(agentRules, /Do not request manual PR reviews/);
+  assert.match(agentRules, /report live status only when the frontend and\/or backend publications are 100% complete/);
   assert.match(releasePipeline, /single source of progress/);
   assert.match(releasePipeline, /Planning, explanation, diagnosis, status, and review-only requests do not authorize/);
 });

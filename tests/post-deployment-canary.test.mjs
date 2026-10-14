@@ -3,6 +3,7 @@ import { discoverTests } from '../scripts/test-discovery.mjs';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import yaml from 'js-yaml';
 import {
   buildDeploymentFingerprint,
   normalizeCommit,
@@ -35,9 +36,14 @@ test('deployment fingerprint normalization rejects ambiguous identifiers', () =>
 test('Pages workflow publishes and gates the production deployment fingerprint', () => {
   const workflow = readReleaseWorkflowSources('.github/workflows/pages-static.yml').text;
   const nightly = readReleaseWorkflowSources('.github/workflows/nightly-browser-validation.yml').text;
+  const nightlyJobs = yaml.load(fs.readFileSync(new URL('../.github/workflows/nightly-browser-validation.yml', import.meta.url), 'utf8')).jobs;
+  const jobDependencies = job => new Set(Array.isArray(job.needs) ? job.needs : [job.needs]);
+  const canaryNeeds = jobDependencies(nightlyJobs['post-deployment-canary']);
   const canary = fs.readFileSync(new URL('./production-request-canary.spec.ts', import.meta.url), 'utf8');
   assert.match(workflow, /write-deployment-fingerprint\.mjs/);
-  assert.match(nightly, /post-deployment-canary:[\s\S]{0,120}needs: current-live-release/);
+  assert.ok(canaryNeeds.has('central-time-gate'), 'nightly canaries require the schedule gate');
+  assert.ok(canaryNeeds.has('current-live-release'), 'nightly canaries require verified live publication');
+  assert.ok(jobDependencies(nightlyJobs['current-live-release']).has('central-time-gate'));
   assert.match(nightly, /Mutation-blocked live \$\{\{ matrix\.suite \}\} checks/);
   assert.match(workflow, /wait-for-live-release\.mjs/);
   assert.match(nightly, /playwright test --config playwright\.production\.config\.ts/);
