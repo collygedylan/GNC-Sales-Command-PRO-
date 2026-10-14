@@ -229,6 +229,15 @@ select public.stage_customer_rep_mapping_rows_v1('a9f00000-0000-4000-8000-000000
 select throws_ok($$select public.finalize_customer_rep_mapping_import_v1('a9f00000-0000-4000-8000-000000000106')$$,
  '23505','CUSTOMER_REP_ASSIGNMENT_IMPORT_AMBIGUOUS_OVERRIDE','ambiguous duplicate pair cannot replace source rows under an override');
 select is((select count(*)::integer from public.ph_customer_consignee_sales_reps),2,'ambiguous overridden import leaves the published mapping intact');
+select is((select count(*)::integer from sales_private.customer_rep_assignment_sources),2,
+ 'ambiguous overridden import leaves the latest source snapshot intact');
+select is((select salesrepid from sales_private.customer_rep_assignment_sources
+ where customeridentityid='00001' and consigneeid='00009'),'R1',
+ 'failed ambiguous import does not replace the prior pair source assignment');
+select is((select count(*)::integer from sales_private.customer_rep_assignment_overrides
+ where customeridentityid='DUP-OVERRIDE-CUSTOMER' and consigneeid='DUP-OVERRIDE-CONSIGNEE'
+   and salesrepid='R1' and salesrepname='Map Rep'),1,
+ 'failed ambiguous import preserves the existing manual override');
 update sales_private.customer_rep_mapping_import_runs set status='failed',finished_at=clock_timestamp()
  where run_id='a9f00000-0000-4000-8000-000000000106';
 delete from sales_private.customer_rep_mapping_import_stage where run_id='a9f00000-0000-4000-8000-000000000106';
