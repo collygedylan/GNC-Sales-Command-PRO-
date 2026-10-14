@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "b968e7620b9513c26a10e1b095992beb4d38ffbe",
+  "commit": "3d9ee84068e8d8ea782bd1f7e324797b1beb9f78",
   "release": "V2026.10.13.021",
   "files": [
     {
@@ -425,8 +425,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8081664,
-      "sha256": "dfe977f483f08d0b406f539db3a3d6971378935f669f49e14572c8f2da2bf1ed"
+      "bytes": 8082093,
+      "sha256": "7d03c7c73b5c6af56cc02896d1bf8d08f42a6435a0aa8d2c2bc2c5397f9df1c5"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -806,12 +806,12 @@
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "aa7e53591421974d3ecc592f3fc6b0d19c7a119d7d51091f9bfb584ccdfbdb22"
+      "sha256": "97b7502fb4f9adba166fcfeec1883f10a327e135e848a96391d9f05bb72fa94e"
     },
     {
-      "path": "deployments/b968e7620b9513c26a10e1b095992beb4d38ffbe.json",
+      "path": "deployments/3d9ee84068e8d8ea782bd1f7e324797b1beb9f78.json",
       "bytes": 188,
-      "sha256": "aa7e53591421974d3ecc592f3fc6b0d19c7a119d7d51091f9bfb584ccdfbdb22"
+      "sha256": "97b7502fb4f9adba166fcfeec1883f10a327e135e848a96391d9f05bb72fa94e"
     },
     {
       "path": "index.html",
@@ -1086,7 +1086,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4807,
-      "sha256": "06e76250e91ac73b0881039cf283bc81cde030b62b81779de47c6775a6fd9332"
+      "sha256": "8585867a8171ef7162ff7eca25eec1e469ffb1cdccda20121952f5abedaf70b5"
     },
     {
       "path": "v2/v2-cache-migration.js",
