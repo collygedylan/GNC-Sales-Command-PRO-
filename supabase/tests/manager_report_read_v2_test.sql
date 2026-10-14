@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_temp;
-select plan(49);
+select plan(51);
 
 select ok(has_function_privilege('service_role','public.manager_report_read_v2(jsonb)','execute')
   and not has_function_privilege('authenticated','public.manager_report_read_v2(jsonb)','execute')
@@ -37,7 +37,7 @@ insert into public.ph_app_settings(key,value,updated_by,updated_at)
 values('current_season_salesyear','{"seasonCode":"F1","salesYear":27}'::jsonb,'dylan_collyge',now())
 on conflict(key) do update set value=excluded.value,updated_by=excluded.updated_by,updated_at=excluded.updated_at;
 insert into public.ph_eval_report_settings(singleton,low_stock_max_slts,hold_age_days,location_note_age_days,updated_by)
-values(true,150,5,10,'dylan_collyge') on conflict(singleton) do update set low_stock_max_slts=150,hold_age_days=5,location_note_age_days=10;
+values(true,162,5,10,'dylan_collyge') on conflict(singleton) do update set low_stock_max_slts=162,hold_age_days=5,location_note_age_days=10;
 insert into public.app_dataset_revisions(key,revision,state)
 values('ph_master_inventory',1,'ready'),('ph_eval_report_settings',1,'ready'),
   ('ph_cav_import',1,'ready'),('ph_inventory_row_assignments',1,'ready')
@@ -54,6 +54,9 @@ values
  ('MRV2-OVERRIDE-F1','MRV2-OVERRIDE','Override Fixture','#1','B.01.001','27.F1','10','8','','F1','27','20','','','','','PH'),
  ('MRV2-OVERRIDE-S1','MRV2-OVERRIDE','Override Fixture','#1','B.01.002','27.S1','10','8','','S1','27','20','','','','','PH'),
  ('MRV2-E1','MRV2-EVAL1','Eval One Fixture','#2','C.01.001','27.F1','10','8','1','F1','27','20','','H','invalid hold date','invalid note date','PH'),
+ ('MRV2-E1-S1','MRV2-EVAL1','Eval One Fixture','#2','C.01.002','27.S1','10','8','','S1','27','20','','','','','PH'),
+ ('MRV2-LOW-BOUNDARY-F1','MRV2-LOW-BOUNDARY','Low Stock Boundary Fixture','#2','C.02.001','27.F1','10','8','','F1','27','162','','','','','PH'),
+ ('MRV2-LOW-BOUNDARY-S1','MRV2-LOW-BOUNDARY','Low Stock Boundary Fixture','#2','C.02.002','27.S1','10','8','','S1','27','20','','','','','PH'),
  ('MRV2-GOLD-U3','MRV2-GOLD-U3','Golden U3','#2','D.01.001','27.U3','10','8','','U3','27','20','','','','','PH'),
  ('MRV2-GOLD-NOTE','MRV2-GOLD-NOTE','Golden Note','#2','D.02.001','27.F1','10','8','','F1','27','20','','','',to_char((now() at time zone 'America/Chicago')::date-11,'YYYY-MM-DD'),'PH'),
  ('MRV2-GOLD-HOLD','MRV2-GOLD-HOLD','Golden Hold','#2','D.03.001','27.F1','10','8','','F1','27','20','','H',to_char((now() at time zone 'America/Chicago')::date-6,'YYYY-MM-DD'),'','PH'),
@@ -86,6 +89,8 @@ insert into private.ph_eval_item_low_stock_overrides(itemcode_normalized,manual_
 values('MRV2-OVERRIDE',5,'dylan_collyge') on conflict(itemcode_normalized) do update set manual_override_qty=5,updated_by='dylan_collyge';
 insert into private.ph_eval_item_low_stock_overrides(itemcode_normalized,manual_override_qty,updated_by)
 values('MRV2-GOLD-LOW',4,'dylan_collyge') on conflict(itemcode_normalized) do update set manual_override_qty=4,updated_by='dylan_collyge';
+insert into private.ph_eval_item_low_stock_overrides(itemcode_normalized,manual_override_qty,updated_by)
+values('MRV2-EVAL1',5,'dylan_collyge') on conflict(itemcode_normalized) do update set manual_override_qty=5,updated_by='dylan_collyge';
 
 create temporary table report_read_results(name text primary key,result jsonb not null);
 create temporary table report_golden_results(name text primary key,result jsonb not null);
@@ -117,8 +122,14 @@ insert into report_read_results values
   'filters',jsonb_build_object('itemCode','MRV2-EVAL1','groupBy','blockalpha'),'limit',25))),
 ('eval1_locationbase',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval1','operation','groups',
   'filters',jsonb_build_object('itemCode','MRV2-BASE','reportIds',jsonb_build_array('s1-with-pri'),'groupBy','locationbase'),'limit',25))),
+('eval1_lowstock_override',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval1','operation','rows',
+  'filters',jsonb_build_object('itemCode','MRV2-EVAL1','reportIds',jsonb_build_array('low-stock')),'limit',100))),
 ('lowstock_override',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','rows',
-  'filters',jsonb_build_object('itemCode','MRV2-OVERRIDE','reportIds',jsonb_build_array('low-stock')),'limit',100))),
+  'filters',jsonb_build_object('itemCode','MRV2-OVERRIDE','reportIds',jsonb_build_array('low-stock'),
+    'thresholds',jsonb_build_object('lowStockMaxSLts',5)),'limit',100))),
+('lowstock_boundary',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','rows',
+  'filters',jsonb_build_object('itemCode','MRV2-LOW-BOUNDARY','reportIds',jsonb_build_array('low-stock'),
+    'thresholds',jsonb_build_object('lowStockMaxSLts',1000)),'limit',100))),
 ('lowstock_missing_target',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','rows',
   'filters',jsonb_build_object('itemCode','MRV2-LOW-NO-TARGET','reportIds',jsonb_build_array('low-stock')),'limit',100))),
 ('shared_location_rows',public.manager_report_read_v2(jsonb_build_object('actorUsername','dylan_collyge','surface','eval2','operation','rows',
@@ -143,8 +154,12 @@ select is((select result->'metadata'->>'filteredRowCount' from report_read_resul
 select ok((select result->'metadata'->'diagnostics'->>'invalidHoldStartDateCount'='1'
   and result->'metadata'->'diagnostics'->>'invalidLocationNoteDateCount'='1' from report_read_results where name='eval1_metadata'),
   'Eval1 diagnostics count invalid dates using Central time source');
-select is((select result->>'total' from report_read_results where name='lowstock_override'),'0','manual low-stock override wins over the global threshold');
--- Current F1 stock establishes the item threshold; the report emits its S1 sibling.
+select is((select result->>'total' from report_read_results where name='eval1_lowstock_override'),'0',
+  'Eval1 retains per-item override behavior while Eval2 uses the shared threshold');
+select is((select result->>'total' from report_read_results where name='lowstock_override'),'1','Eval2 keeps the shared threshold when an item override exists');
+select is((select result->>'total' from report_read_results where name='lowstock_boundary'),'0',
+  'Eval2 excludes stock at the configured server threshold despite a request threshold');
+-- Current F1 stock establishes shared low-stock status; the report emits its S1 sibling.
 select ok((select result->>'total'='1' and result->'rows' @> '[{"unique_id":"MRV2-LOW-NO-TARGET-S1","reportIds":["low-stock","no-pri"]}]'::jsonb
   from report_read_results where name='lowstock_missing_target'),
   'missing low-stock target stats and override preserve qualifying inventory rows using the global threshold');
@@ -183,7 +198,7 @@ select ok((select result->'rows' @> '[{"unique_id":"MRV2-GOLD-OFF-CLEAR","report
   from report_golden_results where name='off-hold'),'an old item hold qualifies the sibling with a cleared hold code');
 select ok((select result->'rows' @> '[{"unique_id":"MRV2-GOLD-LOW-U1","reportIds":["u1","low-stock","no-pri"]}]'::jsonb
   and result->'rows' @> '[{"unique_id":"MRV2-GOLD-LOW-S1","reportIds":["low-stock","no-pri"]}]'::jsonb
-  from report_golden_results where name='low-stock'),'low-stock override qualifies both U1 and configured next-season S1 rows');
+  from report_golden_results where name='low-stock'),'shared threshold qualifies both U1 and configured next-season S1 rows');
 select ok((select result->'rows' @> '[{"unique_id":"MRV2-GOLD-CULL","reportIds":["no-pri","culls","not-in-f1"]}]'::jsonb
   from report_golden_results where name='culls'),'X season row retains culls, no-priority and not-in-F1 membership');
 select ok((select result->'rows' @> '[{"unique_id":"MRV2-GOLD-FUTURE","reportIds":["no-pri","not-in-f1"]}]'::jsonb

@@ -286,7 +286,7 @@ test('permission reset clears the header stamp and cached Home metadata before a
     assert.equal(sandbox.lastSuccessfulSyncOwner, '');
 });
 
-test('low-stock target adapter fetches assigned item codes and commits a fresh Eval2 snapshot', async () => {
+test('low-stock target adapter updates Assigned Items without invalidating the shared-threshold Eval2 snapshot', async () => {
     const h = harness();
     h.ctx.fullInventory = [{ ITEMCODE: 'drive-only-3' }, { ITEMCODE: 'orchid-1' }];
     h.ctx.warehouseAssignedItemsInventory = [{ ITEMCODE: ' orchid-1 ' }, { itemcode: 'ORCHID-1' }, { ITEMCODE: 'CEDAR-2' }];
@@ -309,7 +309,7 @@ test('low-stock target adapter fetches assigned item codes and commits a fresh E
         'the target map includes an overridden inventory item without an Assigned Items row');
     assert.equal(h.ctx.managerItemLowStockTargetsState.key, 'fixture-target-key');
     assert.equal(h.ctx.managerItemLowStockTargetsState.revision, 1);
-    assert.equal(invalidated, 1);
+    assert.equal(invalidated, 0);
 });
 
 test('low-stock target coordinator scope stays stable across commits but changes with inventory and account', async () => {
@@ -589,6 +589,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261012190003_manager_list_read_v2.sql',
       '20261013160000_inventory_location_item_on_hand.sql',
       '20261013170000_master_inventory_realtime_publication.sql',
+      '20261014110620_eval2_shared_low_stock_threshold.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain
