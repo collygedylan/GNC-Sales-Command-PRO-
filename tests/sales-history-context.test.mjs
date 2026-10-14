@@ -15,9 +15,15 @@ function harness() {
     getRequestConsigneeFolderLabel: value => value || 'No Consignee',
     getRequestFolderName: row => row.request_folder,
     requestsInventory: [], tempRequestCustomerSelectedFinalLabel: '', tempRequestCustomerSelectedContext: null,
+    tempSelectedReqRep: 'Rep One', requestMappingOptions: [
+      { customeridentityid: 'C1', customername: 'Same Name', consigneeidentityid: 'S1', consigneename: 'Store', request_selected_salesrep_id: 'REP-1', salesrepname: 'Rep One', customerstatus: 'A', consigneestatus: 'A' }
+    ],
     getRoleAccessState: () => ({ isRep: true }), canAccessView: () => true,
     buildFastInvokeAttrs: (fn, args) => `data-call="${fn}" data-uid="${args[0]}"`,
   });
+  context.getRequestModalCustomerOptionsForRep = rep => rep === context.tempSelectedReqRep
+    ? context.requestMappingOptions.filter(option => String(option.customerstatus || '').trim().toUpperCase() === 'A' && String(option.consigneestatus || '').trim().toUpperCase() === 'A')
+    : [];
   for (const name of ['getRequestCustomerContext', 'requestCustomerOptionKey', 'resolveRequestCustomerContext', 'applyRequestCustomerContextAliases', 'buildRequestCustomerPickerGroups', 'buildDocksCreditAction']) {
     const start = html.indexOf(`        function ${name}(`);
     assert.ok(start >= 0, name);
@@ -55,6 +61,35 @@ test('selected identities survive creation and aliases; typed or ambiguous names
   assert.equal(h.resolveRequestCustomerContext('Same Name | Store', 'F').customeridentityid, '');
   h.requestsInventory.pop();
   assert.equal(h.resolveRequestCustomerContext('Same Name | Store', 'F').customeridentityid, 'C1');
+});
+
+test('mixed legacy and current folder rows resolve one cached external rep tuple without guessing', () => {
+  const h = harness();
+  const mappedOption = h.requestMappingOptions[0];
+  const legacy = {
+    request_folder: 'F-MIXED', customeridentityid: 'C1', customername: 'Same Name',
+    consigneeidentityid: 'S1', consigneename: 'Store'
+  };
+  const current = { ...legacy, request_selected_salesrep_id: 'REP-1' };
+  h.requestsInventory = [legacy, current];
+  const resolved = h.resolveRequestCustomerContext('Same Name | Store', 'F-MIXED');
+  assert.equal(resolved.customeridentityid, 'C1');
+  assert.equal(resolved.consigneeidentityid, 'S1');
+  assert.equal(resolved.request_selected_salesrep_id, 'REP-1');
+
+  h.requestMappingOptions = [{ ...mappedOption, customerstatus: 'I' }];
+  const inactive = h.resolveRequestCustomerContext('Same Name | Store', 'F-MIXED');
+  assert.ok(!inactive.request_selected_salesrep_id, 'inactive mappings cannot supply an external rep ID');
+
+  h.requestMappingOptions = [];
+  const unmapped = h.resolveRequestCustomerContext('Same Name | Store', 'F-MIXED');
+  assert.ok(!unmapped.request_selected_salesrep_id, 'an unavailable or inactive cached option cannot supply a rep ID');
+
+  h.requestMappingOptions = [mappedOption];
+  h.requestsInventory = [legacy, current, { ...legacy, customeridentityid: 'C2' }];
+  const conflicting = h.resolveRequestCustomerContext('Same Name | Store', 'F-MIXED');
+  assert.equal(conflicting.customeridentityid, '', 'conflicting stored customer identities remain unresolved');
+  assert.ok(!conflicting.request_selected_salesrep_id, 'ambiguous folder rows never inherit a guessed rep ID');
 });
 
 test('Docks credit controls use exact source IDs, never synthetic rows or unauthorized modules', () => {
