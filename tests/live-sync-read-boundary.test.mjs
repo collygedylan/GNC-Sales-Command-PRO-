@@ -1318,4 +1318,3 @@ test('successful request saves remain immediate and require no canonical reread'
   assert.equal(sends, 1);
   assert.equal(outcome.result.row_version, 5);
 });
-
