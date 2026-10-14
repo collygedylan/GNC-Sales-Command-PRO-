@@ -87,6 +87,24 @@ test('canonical SQL is selected only by its explicit runtime annotation and must
   }
 });
 
+test('runtime SQL discovery never replays migration DDL as a test', t => {
+  const root = mkdtempSync(path.join(tmpdir(), 'gnc-test-discovery-migrations-'));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  for (const [file, runtime] of [
+    ['supabase/tests/assignment_test.sql', 'isolated-supabase'],
+    ['supabase/tests/canonical_test.sql', 'canonical'],
+    ['supabase/migrations/20261014155536_assignment.sql', 'isolated-supabase'],
+    ['supabase/archive_migrations/20260901120000_old_assignment.sql', 'isolated-supabase'],
+    ['supabase/migrations/20261014155537_canonical.sql', 'canonical'],
+  ]) {
+    const absolute = path.join(root, file);
+    mkdirSync(path.dirname(absolute), { recursive: true });
+    writeFileSync(absolute, `-- @test-runtime: ${runtime}\nselect 1;\n`);
+  }
+  assert.deepEqual(discoverTests({ root, group: 'sql-isolated-supabase' }), ['supabase/tests/assignment_test.sql']);
+  assert.deepEqual(discoverTests({ root, group: 'sql-canonical' }), ['supabase/tests/canonical_test.sql']);
+});
+
 test('sandbox SQL pgTAP discovery is scoped to sandbox tests and must be nonempty', t => {
   const root = mkdtempSync(path.join(tmpdir(), 'gnc-test-sandbox-pgtap-'));
   t.after(() => rmSync(root, { recursive: true, force: true }));
