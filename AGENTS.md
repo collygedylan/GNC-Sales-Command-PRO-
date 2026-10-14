@@ -23,5 +23,5 @@
 
 **Deployment Architecture & Execution**
 * **Decoupled Pipelines:** GitHub Pages frontend publication and Supabase/Apps Script backend deployment are fully independent. Backend validation failures must not gate frontend publication.
-* **Nightly Validation Isolation:** Browser checks, phone emulators, layout snapshots, timing checks, and performance benchmarks belong EXCLUSIVELY to Nightly Validation (09:17 UTC). Never run these during standard PR delivery. 
+* **Nightly Validation Isolation:** Browser checks, phone emulators, layout snapshots, timing checks, and performance benchmarks belong EXCLUSIVELY to Nightly Validation (8:30 PM Central Time (01:30 UTC)). Never run these during standard PR delivery. 
 * **The Delivery Sequence:** Use an isolated `codex/` branch. Auto-merge the PR immediately upon passing scoped local tests. Monitor the GitHub Actions workflows and report live status only when the frontend and/or backend publications are 100% complete. Do not request manual PR reviews.
