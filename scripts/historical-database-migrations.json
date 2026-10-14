@@ -794,5 +794,13 @@
   {
     "source": "supabase/migrations/20261014142125_season_sales_cav_lookup_index.sql",
     "destination": "20261014142125_season_sales_cav_lookup_index.sql"
+  },
+  {
+    "source": "supabase/migrations/20261014144043_season_sales_skip_empty_mirror_cleanup.sql",
+    "destination": "20261014144043_season_sales_skip_empty_mirror_cleanup.sql"
+  },
+  {
+    "source": "supabase/migrations/20261014145025_season_sales_reconciliation_worklist.sql",
+    "destination": "20261014145025_season_sales_reconciliation_worklist.sql"
   }
 ]

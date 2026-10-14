@@ -1216,6 +1216,28 @@ function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex
 function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
 function runCustomerRepMapOnly() { return processCustomerRepMapSnapshot_(); }
 function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE); }
+function validateSeasonSalesReconciliationPlan_(plan, stageCode) {
+  const failure = String(stageCode || 'SEASON_SALES_RECONCILIATION') + '_PLAN_INVALID';
+  if (!plan || plan.ok !== true || String(plan.status || '').trim().toLowerCase() !== 'completed') throw new Error(failure);
+  const itemcodes = plan.itemcodes;
+  if (!Array.isArray(itemcodes) || !Number.isInteger(plan.scopeCount) || plan.scopeCount !== itemcodes.length) throw new Error(failure);
+  if (typeof plan.seasonCode !== 'string' || !plan.seasonCode || plan.seasonCode !== plan.seasonCode.trim() ||
+      !Number.isInteger(plan.salesYear)) throw new Error(failure);
+  const scopeHash = Object.prototype.hasOwnProperty.call(plan, 'scopeHash') ? plan.scopeHash : null;
+  if (scopeHash !== null && (typeof scopeHash !== 'string' || !/^[a-f0-9]{64}$/i.test(scopeHash))) throw new Error(failure);
+  const unique = new Set();
+  for (const itemcode of itemcodes) {
+    if (typeof itemcode !== 'string' || !itemcode || itemcode !== itemcode.trim() || unique.has(itemcode)) throw new Error(failure);
+    unique.add(itemcode);
+  }
+  return { itemcodes: itemcodes.slice().sort(), seasonCode: plan.seasonCode, salesYear: plan.salesYear, scopeHash: scopeHash };
+}
+function getSeasonSalesBatchIdempotencyKey_(baseKey, batchIndex, itemcodes) {
+  const seed = JSON.stringify([baseKey, String(batchIndex), itemcodes]);
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, seed, Utilities.Charset.UTF_8);
+  const suffix = Utilities.base64EncodeWebSafe(digest).replace(/=+$/g, '').slice(0, 48);
+  return String(baseKey).slice(0, 112) + '-b' + String(batchIndex + 1) + '-' + suffix;
+}
 function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
   const safeRevision = String(importRevision || new Date().toISOString()).trim();
   const safeSource = String(sourceName || 'canonical_import').trim().replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 60);
@@ -1230,9 +1252,70 @@ function reconcileSeasonSalesOfficeAfterImport_(importRevision, sourceName) {
       p_idempotency_key: idempotencyKey
     });
   };
-  const result = datasetImportFenceContext_
-    ? runRequiredDatasetImportReconciliation_('SEASON_SALES_RECONCILIATION', reconcile)
-    : reconcile();
+  let result;
+  if (!datasetImportFenceContext_) {
+    result = reconcile();
+  } else {
+    const stageCode = 'SEASON_SALES_RECONCILIATION';
+    const callRequired = callback => runRequiredDatasetImportReconciliation_(stageCode, callback);
+    const dryRun = () => {
+      const response = callSupabaseRpc_('reconcile_season_sales_office_v1', {
+        p_itemcodes: null,
+        p_dry_run: true,
+        p_import_revision: safeSource + ':' + safeRevision,
+        p_idempotency_key: null
+      });
+      return response && response.status === 'dry_run' && response.ok === true
+        ? Object.assign({}, response, { status: 'completed' }) : response;
+    };
+    const initialPlan = callRequired(dryRun);
+    const initialScope = validateSeasonSalesReconciliationPlan_(initialPlan, stageCode);
+    const itemcodes = initialScope.itemcodes;
+    if (!itemcodes.length) {
+      result = callRequired(reconcile);
+    } else {
+      const totals = {
+        winnerCount: 0, openCount: 0, doneCount: 0, newStateCount: 0,
+        winnerChangeCount: 0, reopenCount: 0, retireCount: 0, mirrorUpsertCount: 0
+      };
+      const batchSize = 25;
+      for (let offset = 0, batchIndex = 0; offset < itemcodes.length; offset += batchSize, batchIndex++) {
+        const batch = itemcodes.slice(offset, offset + batchSize);
+        heartbeatDatasetImportFence_(true);
+        const batchKey = getSeasonSalesBatchIdempotencyKey_(idempotencyKey, batchIndex, batch);
+        const response = callRequired(() => callSupabaseRpc_('reconcile_season_sales_office_v1', {
+          p_itemcodes: batch,
+          p_dry_run: false,
+          p_import_revision: safeSource + ':' + safeRevision,
+          p_idempotency_key: batchKey
+        }));
+        if (!response || response.ok !== true || String(response.status || '').trim().toLowerCase() !== 'completed') {
+          throw new Error(stageCode + '_BATCH_INCOMPLETE');
+        }
+        if (response.seasonCode !== initialScope.seasonCode || response.salesYear !== initialScope.salesYear) {
+          throw new Error(stageCode + '_SCOPE_CHANGED');
+        }
+        for (const key of Object.keys(totals)) {
+          if (!Number.isInteger(response[key]) || response[key] < 0) throw new Error(stageCode + '_BATCH_INCOMPLETE');
+          totals[key] += response[key];
+        }
+      }
+      const finalPlan = callRequired(dryRun);
+      const finalScope = validateSeasonSalesReconciliationPlan_(finalPlan, stageCode);
+      if (finalScope.seasonCode !== initialScope.seasonCode || finalScope.salesYear !== initialScope.salesYear ||
+          finalScope.scopeHash !== initialScope.scopeHash || finalScope.itemcodes.length !== itemcodes.length ||
+          finalScope.itemcodes.some((itemcode, index) => itemcode !== itemcodes[index]) ||
+          ['newStateCount', 'winnerChangeCount', 'retireCount', 'reopenCount'].some(key => finalPlan[key] !== 0)) {
+        throw new Error(stageCode + '_CONVERGENCE_FAILED');
+      }
+      result = Object.assign({ ok: true, status: 'completed' }, totals, {
+        seasonCode: finalScope.seasonCode,
+        salesYear: finalScope.salesYear,
+        scopeHash: finalPlan.scopeHash,
+        scopeCount: itemcodes.length
+      });
+    }
+  }
   if (result && (result.status === 'maintenance_deferred' || result.code === 'MAINTENANCE_DEFERRED')) {
     console.warn('[SEASON SALES NOTES] MAINTENANCE_DEFERRED');
   } else {
@@ -1425,10 +1508,10 @@ const SUPABASE_FETCH_PAGE_SIZE = 1000;
 const SUPABASE_PAGED_READ_FETCH_BATCH_SIZE = 8;
 const SUPABASE_UPSERT_FETCH_BATCH_SIZE = 6;
 // Master inventory writes execute several row-level projection/invalidation triggers.
-// Keep full-size requests serial so they avoid lock contention and finish inside Apps Script's runtime.
-const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 1000;
+// Small serial requests leave room for projection and invalidation triggers.
+const SUPABASE_MASTER_UPSERT_CHUNK_SIZE = 75;
 const SUPABASE_MASTER_UPSERT_FETCH_BATCH_SIZE = 1;
-const SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE = 100;
+const SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE = 25;
 const SUPABASE_UPSERT_RETRY_COUNT = 3;
 const SUPABASE_UPSERT_RETRY_DELAY_MS = 900;
 const SUPABASE_DELETE_FETCH_BATCH_SIZE = 2;
@@ -5105,6 +5188,7 @@ function usesBoundedImportUpserts_(tableName) {
 function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialResponse, requestNumber, splitDepth) {
   if (isSuccessfulSupabaseWriteResponse_(initialResponse)) return [];
   const depth = Math.max(0, Number(splitDepth) || 0);
+  const minimumSplitSize = isMasterInventoryTable_(tableName) ? SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE : 100;
   const initialBody = initialResponse.getContentText();
   let payloadRows = [];
   try {
@@ -5116,7 +5200,7 @@ function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialRe
 
   if (usesBoundedImportUpserts_(tableName) &&
       extractSupabaseErrorCode_(initialBody) === '57014' &&
-      payloadRows.length > SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE) {
+      payloadRows.length > minimumSplitSize) {
     const midpoint = Math.ceil(payloadRows.length / 2);
     const splitChunks = [payloadRows.slice(0, midpoint), payloadRows.slice(midpoint)].filter(function(chunk) {
       return chunk.length > 0;
@@ -5146,7 +5230,7 @@ function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialRe
   const body = response.getContentText();
   if (usesBoundedImportUpserts_(tableName) &&
       extractSupabaseErrorCode_(body) === '57014' &&
-      payloadRows.length > SUPABASE_MASTER_UPSERT_MIN_SPLIT_SIZE) {
+      payloadRows.length > minimumSplitSize) {
     return executeSupabaseUpsertRequestWithRecovery_(tableName, request, response, requestNumber, depth + 1);
   }
   return [{ code: response.getResponseCode(), body: body }];
