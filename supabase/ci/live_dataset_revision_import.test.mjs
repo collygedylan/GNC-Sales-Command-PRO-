@@ -7,8 +7,8 @@ const code = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 function environment({ changed = true, recovery = false, deleteFailure = false, archiveFailure = false,
   deferredAttempts = 0, codeOnlyDeferred = false, reconciliationFailure = false,
-  heartbeatFailure = false, lostBeginResponse = false } = {}) {
-  const events = []; let locked = false; let lost = lostBeginResponse; let reconciliationCalls = 0;
+  heartbeatFailure = false, lostBeginResponse = false, batchFailure = false } = {}) {
+  const events = []; const reconciliationRequests = []; let locked = false; let lost = lostBeginResponse; let reconciliationCalls = 0;
   const lock = { hasLock: () => locked, waitLock: () => { assert.equal(locked, false); locked = true; events.push('lock'); }, releaseLock: () => { locked = false; events.push('unlock'); } };
   const ctx = vm.createContext({
     console: { log() {}, warn() {}, error() {} },
@@ -25,6 +25,15 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
   });
   new vm.Script(code).runInContext(ctx);
   ctx.callSupabaseRpc_ = (name, payload) => {
+    if (name === 'reconcile_season_sales_office_v1' && payload.p_dry_run) {
+      reconciliationRequests.push(plain(payload));
+      return {
+        ok: true, status: 'dry_run', seasonCode: 'F1', salesYear: 27,
+        scopeCount: 1, itemcodes: ['SYNTHETIC'], scopeHash: 'a'.repeat(64),
+        winnerCount: 1, openCount: 0, doneCount: 0, newStateCount: 0,
+        winnerChangeCount: 0, reopenCount: 0, retireCount: 0, mirrorUpsertCount: 0
+      };
+    }
     events.push({ action: name, payload: plain(payload) });
     if (name === 'get_dataset_import_status_v1') return { ok: true, requiresRecovery: recovery };
     if (name === 'begin_dataset_import_v1') {
@@ -38,6 +47,7 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
     if (name === 'finish_dataset_import_v1') return { ok: true, state: 'completed' };
     if (name === 'fail_dataset_import_v1') return { ok: true, state: 'failed' };
     if (name === 'reconcile_season_sales_office_v1') {
+      reconciliationRequests.push(plain(payload));
       reconciliationCalls++;
       if (reconciliationFailure) throw new Error('ordinary synthetic failure');
       if (reconciliationCalls <= deferredAttempts) {
@@ -45,7 +55,13 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
           ? { ok: true, code: 'MAINTENANCE_DEFERRED' }
           : { ok: true, status: 'maintenance_deferred' };
       }
-      return { ok: true, status: 'completed', openCount: 1 };
+      if (batchFailure) return { ok: false, status: 'failed' };
+      return {
+        ok: true, status: 'completed', seasonCode: 'F1', salesYear: 27,
+        winnerCount: 1, openCount: 1, doneCount: 0, newStateCount: 0,
+        winnerChangeCount: 0, reopenCount: 0, retireCount: 0,
+        mirrorUpsertCount: 1, scopeHash: 'b'.repeat(64)
+      };
     }
     throw new Error(`Unexpected RPC ${name}`);
   };
@@ -64,7 +80,7 @@ function environment({ changed = true, recovery = false, deleteFailure = false, 
     __run = () => processLatestFileOnlyFolder('source','processed','ph_soc_master',__build,{deltaMode:true,
       afterCommit:()=>reconcileSeasonSalesOfficeAfterImport_('synthetic-version','test')});
   `, ctx);
-  return { ctx, events, run: () => vm.runInContext('__run()', ctx), locked: () => locked };
+  return { ctx, events, reconciliationRequests, run: () => vm.runInContext('__run()', ctx), locked: () => locked };
 }
 const actions = env => env.events.map(event => typeof event === 'string' ? event : event.action);
 
@@ -113,10 +129,15 @@ test('full import locks before reads, fences writes/derived reconciliation, then
   const env = environment(); const result = env.run();
   assert.equal(result.failedFiles, 0);
   const names = actions(env);
-  assert.deepEqual(names, ['lock','begin_dataset_import_v1','upsert','delete','reconcile_season_sales_office_v1','finish_dataset_import_v1','archive','unlock']);
+  assert.deepEqual(names, ['lock','begin_dataset_import_v1','upsert','delete','heartbeat_dataset_import_v1','reconcile_season_sales_office_v1','finish_dataset_import_v1','archive','unlock']);
   const begin = env.events.find(event => event.action === 'begin_dataset_import_v1');
   for (const event of env.events.filter(event => event.headers)) assert.equal(event.headers['x-gnc-import-run-id'], begin.payload.p_run_id);
   assert.deepEqual(begin.payload.p_canonical_keys, ['ph_soc_master']);
+  assert.deepEqual(env.reconciliationRequests.map(request => request.p_dry_run), [true, false, true]);
+  assert.deepEqual(env.reconciliationRequests[1].p_itemcodes, ['SYNTHETIC']);
+  assert.ok(env.reconciliationRequests[1].p_idempotency_key);
+  assert.equal(env.reconciliationRequests[0].p_itemcodes, null);
+  assert.equal(env.reconciliationRequests[2].p_itemcodes, null);
   assert.equal(env.locked(), false);
 });
 test('failed pruning does not publish ready or archive canonical input', () => {
@@ -132,7 +153,8 @@ test('deferred derived reconciliation retries with bounded backoff and completes
   assert.equal(env.run().failedFiles, 0);
   assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 4);
   assert.deepEqual(env.events.filter(event => event.action === 'sleep').map(event => event.ms), [2000, 4000, 8000]);
-  assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 3);
+  assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 4,
+    'heartbeat once before each batch plus once after each deferred backoff');
   assert.ok(actions(env).includes('finish_dataset_import_v1'));
 });
 test('code-only maintenance deferral retries and completes before ready', () => {
@@ -140,7 +162,7 @@ test('code-only maintenance deferral retries and completes before ready', () => 
   assert.equal(env.run().failedFiles, 0);
   assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 2);
   assert.deepEqual(env.events.filter(event => event.action === 'sleep').map(event => event.ms), [2000]);
-  assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 1);
+  assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 2);
   assert.ok(actions(env).includes('finish_dataset_import_v1'));
 });
 test('exhausted deferred reconciliation fails the fence and leaves the file retryable', () => {
@@ -159,11 +181,23 @@ test('ordinary reconciliation failures are not retried and persist only a safe s
   assert.equal(result.failedFileErrors[0].error, 'SEASON_SALES_RECONCILIATION_FAILED');
   assert.ok(actions(env).includes('fail_dataset_import_v1'));
 });
+test('failed Season batch keeps the import fenced and canonical file retryable', () => {
+  const env = environment({ batchFailure: true });
+  const result = env.run();
+  assert.equal(result.failedFiles, 1);
+  assert.deepEqual(env.reconciliationRequests.map(request => request.p_dry_run), [true, false]);
+  assert.ok(actions(env).includes('fail_dataset_import_v1'));
+  assert.ok(!actions(env).includes('finish_dataset_import_v1'));
+  assert.ok(!actions(env).includes('archive'));
+  assert.equal(env.locked(), false);
+});
 test('heartbeat lease failure stops deferred reconciliation before another attempt', () => {
   const env = environment({ deferredAttempts: 1, heartbeatFailure: true });
   const result = env.run();
   assert.equal(result.failedFiles, 1);
-  assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 1);
+  assert.equal(actions(env).filter(action => action === 'reconcile_season_sales_office_v1').length, 0,
+    'a failed required heartbeat must stop before submitting the planned batch');
+  assert.deepEqual(env.reconciliationRequests.map(request => request.p_dry_run), [true]);
   assert.equal(actions(env).filter(action => action === 'heartbeat_dataset_import_v1').length, 1);
   assert.equal(result.failedFileErrors[0].error, 'DATASET_IMPORT_FENCE_LOST');
   assert.ok(actions(env).includes('fail_dataset_import_v1'));
