@@ -135,6 +135,11 @@ test('master timeout split retries retain the original chunk presence mask', () 
   });
   const request = context.buildSupabaseUpsertRequests_('ph_master_inventory', rows)[0];
   const retryRequests = [];
+  const heartbeatCalls = [];
+  context.callDatasetImportFenceRpc_ = name => {
+    heartbeatCalls.push(name);
+    return { ok: true, state: 'active' };
+  };
   context.console = { warn() {}, error() {}, log() {} };
   context.UrlFetchApp = { fetch(url, options) {
     retryRequests.push(options);
@@ -145,4 +150,68 @@ test('master timeout split retries retain the original chunk presence mask', () 
   assert.deepEqual(plain(failures), []);
   assert.equal(retryRequests.length, 2);
   retryRequests.forEach((retry) => assert.deepEqual(JSON.parse(retry.headers['x-gnc-master-item6-fields']), ['locationnote', 'suspend']));
+  assert.ok(heartbeatCalls.includes('heartbeat_dataset_import_v1'));
+});
+
+test('bounded master upsert split recovery heartbeats between slow network chunks', () => {
+  const context = importer();
+  let now = 1_000_000;
+  const events = [];
+  context.Date = { now: () => now };
+  vm.runInContext('datasetImportFenceContext_.lastHeartbeatAt = Date.now();', context);
+  context.callDatasetImportFenceRpc_ = (name) => {
+    events.push(name);
+    return { ok: true, state: 'active' };
+  };
+  const rows = Array.from({ length: 101 }, (_, index) => ({ unique_id: `heartbeat-split-${index}` }));
+  const request = context.buildSupabaseUpsertRequests_('ph_master_inventory', rows)[0];
+  context.UrlFetchApp = { fetch() {
+    events.push('fetch');
+    now += 61_000;
+    return { getResponseCode: () => 204, getContentText: () => '' };
+  } };
+
+  const failures = context.executeSupabaseUpsertRequestWithRecovery_(
+    'ph_master_inventory', request,
+    { getResponseCode: () => 500, getContentText: () => JSON.stringify({ code: '57014' }) },
+    1, 0,
+  );
+
+  assert.deepEqual(plain(failures), []);
+  const firstFetch = events.indexOf('fetch');
+  const secondFetch = events.indexOf('fetch', firstFetch + 1);
+  assert.notEqual(firstFetch, -1);
+  assert.notEqual(secondFetch, -1);
+  assert.ok(events.slice(firstFetch + 1, secondFetch).includes('heartbeat_dataset_import_v1'),
+    'a fetch taking longer than the 60-second heartbeat interval must refresh the import lease before the next split chunk');
+});
+
+test('bounded master upsert transport retries refresh an expired import heartbeat first', () => {
+  const context = importer();
+  let now = 2_000_000;
+  const events = [];
+  context.Date = { now: () => now };
+  vm.runInContext('datasetImportFenceContext_.lastHeartbeatAt = Date.now();', context);
+  context.callDatasetImportFenceRpc_ = (name) => {
+    events.push(name);
+    return { ok: true, state: 'active' };
+  };
+  context.Utilities.sleep = delay => { now += delay; };
+  const request = context.buildSupabaseUpsertRequests_('ph_master_inventory', [{ unique_id: 'heartbeat-transport-retry' }])[0];
+  context.UrlFetchApp = { fetch() {
+    events.push('fetch');
+    return { getResponseCode: () => 204, getContentText: () => '' };
+  } };
+
+  // The first request spent more than the heartbeat interval before returning
+  // its transient failure, so the subsequent transport retry must refresh.
+  now += 61_000;
+  const response = context.retrySupabaseUpsertRequest_(
+    'ph_master_inventory', request,
+    { getResponseCode: () => 503, getContentText: () => '' },
+    1,
+  );
+
+  assert.equal(response.getResponseCode(), 204);
+  assert.deepEqual(events, ['heartbeat_dataset_import_v1', 'fetch']);
 });

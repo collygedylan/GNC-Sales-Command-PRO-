@@ -5091,6 +5091,7 @@ function retrySupabaseUpsertRequest_(tableName, request, initialResponse, reques
     console.warn(`[RETRY] Transient Supabase upsert failure for ${tableName} chunk ${requestNumber} ` +
       `(Code ${code}, attempt ${attempt}/${SUPABASE_UPSERT_RETRY_COUNT}).`);
     Utilities.sleep(SUPABASE_UPSERT_RETRY_DELAY_MS * (attempt - 1));
+    heartbeatDatasetImportFence_();
     response = UrlFetchApp.fetch(request.url, request);
     if (isSuccessfulSupabaseWriteResponse_(response)) break;
   }
@@ -5127,6 +5128,7 @@ function executeSupabaseUpsertRequestWithRecovery_(tableName, request, initialRe
       const splitMaskText = request && request.headers ? request.headers[MASTER_ITEM6_FIELD_MASK_HEADER_] : '';
       const splitMask = splitMaskText ? JSON.parse(splitMaskText) : [];
       const splitRequest = buildSupabaseUpsertRequest_(tableName, chunk, splitMask);
+      heartbeatDatasetImportFence_();
       const splitResponse = UrlFetchApp.fetch(splitRequest.url, splitRequest);
       splitFailures = splitFailures.concat(executeSupabaseUpsertRequestWithRecovery_(
         tableName,
