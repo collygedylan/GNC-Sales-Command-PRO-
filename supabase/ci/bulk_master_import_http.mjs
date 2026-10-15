@@ -604,7 +604,53 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     failureTriggerInstalled = false;
     await fail(atomicRun);
 
-    console.log(`[bulk-master-http] ${ROW_COUNT} rows, ${tableColumns.length} production columns, ${masterImportFieldCount} importer fields, ${masterProductionTriggerCount} enabled production triggers including due handover, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
+    // Reproduce the production legacy-bootstrap path: all 9,539 live rows and
+    // their source baselines exist, but no bulk-import source hashes exist yet.
+    // The first full publication must update the pre-existing rows in one RPC.
+    await db.query(`delete from app_sync_private.ph_master_bulk_import_context_v1
+      where run_id = any($1::uuid[])`, [runIds]);
+    await db.query('analyze app_sync_private.ph_master_bulk_import_context_v1');
+    const emptyContextState = await queryValue(`select
+        (select count(*)::int from app_sync_private.ph_master_bulk_import_context_v1) as context_count,
+        c.reltuples::bigint as estimated_rows
+      from pg_class c where c.oid='app_sync_private.ph_master_bulk_import_context_v1'::regclass`);
+    assert.equal(emptyContextState.context_count, 0, 'legacy bootstrap starts with an empty bulk context table');
+    assert.equal(Number(emptyContextState.estimated_rows), 0,
+      'ANALYZE records zero-row planner statistics for the empty context table');
+    await db.query("delete from app_sync_private.ph_master_bulk_import_source_v1 where canonical_unique_id like 'GNC_BULK_BENCH_%'");
+    assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_bulk_import_source_v1 where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+      'legacy bootstrap begins with no saved bulk-source hashes');
+    assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_inventory_source_baselines where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), ROW_COUNT,
+      'legacy bootstrap preserves a source baseline for every existing row');
+    assert.equal(Number((await queryValue(`select count(*)::int as count
+      from app_sync_private.ph_master_inventory_source_baselines b
+      join public.ph_master_inventory m on m.unique_id=b.canonical_unique_id
+      where b.canonical_unique_id like 'GNC_BULK_BENCH_%'`)).count), ROW_COUNT,
+    'every pre-existing live identity has its matching source baseline');
+    const legacyTriggerState = await queryValue(`select count(*)::int as total,
+        count(*) filter (where tgenabled <> 'D')::int as enabled
+      from pg_trigger where tgrelid='public.ph_master_inventory'::regclass and not tgisinternal`);
+    assert.deepEqual(legacyTriggerState, {
+      total: EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
+      enabled: EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
+    }, 'all production triggers remain enabled for the legacy bootstrap RPC');
+    const legacyBootstrap = sourceRowsFromProductionShape({ shape, columns: tableColumns, variant: 2 });
+    const legacyRun = await begin();
+    const legacyRequest = bulkPayload(legacyRun, legacyBootstrap);
+    const legacyResult = await measuredBulk(legacyRequest, 'first full 9,539-row snapshot over legacy existing rows');
+    console.log(`[bulk-master-http] legacy bootstrap RPC ${Math.round(legacyResult.elapsedMs)}ms`);
+    assert.equal(legacyResult.result.inserted, 0);
+    assert.equal(legacyResult.result.updated, ROW_COUNT);
+    assert.equal(legacyResult.result.deleted, 0);
+    assert.equal(legacyResult.result.unchanged, 0);
+    assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_bulk_import_source_v1 where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), ROW_COUNT,
+      'the first full publication bootstraps a source hash for every existing row');
+    assert.deepEqual(await queryValue(`select holdstopcode, holdstopreason, locationnote
+      from public.ph_master_inventory where unique_id=$1`, [protectedId]), protectedBefore,
+    'legacy bootstrap updates cannot overwrite live app hold/location fields');
+    await finish(legacyRun);
+
+    console.log(`[bulk-master-http] ${ROW_COUNT} rows, ${tableColumns.length} production columns, ${masterImportFieldCount} importer fields, ${masterProductionTriggerCount} enabled production triggers including due handover, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms, legacy bootstrap ${Math.round(legacyResult.elapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
   } catch (error) {
     testFailure = error;
     testFailed = true;
