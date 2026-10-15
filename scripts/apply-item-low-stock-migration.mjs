@@ -69,7 +69,8 @@ export const customerAssignmentOverridesMigrationName = '20261014214542_customer
 export const bulkMasterSnapshotMigrationName = '20261015012249_bulk_master_snapshot_v1.sql';
 export const importHistoryRoutingMigrationName = '20261015165733_import_history_routing.sql';
 export const handoverMasterAssignmentFastPathMigrationName = '20261015183500_handover_master_assignment_fast_path.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName]);
+export const bulkContextIndexPlanMigrationName = '20261015192500_bulk_context_index_plan.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -231,6 +232,36 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === bulkContextIndexPlanMigrationName) return `select exists(select 1 from pg_proc p
+    where p.oid=to_regprocedure('private.ph_master_bulk_context_v1(uuid,text)')
+      and p.prosecdef and p.provolatile='v'
+      and p.proconfig @> array['search_path=""']
+      and not has_function_privilege('anon',p.oid,'execute')
+      and not has_function_privilege('authenticated',p.oid,'execute')
+      and not has_function_privilege('service_role',p.oid,'execute')
+      and position('c.source_unique_id = p_unique_id' in p.prosrc)>0
+      and position('c.canonical_unique_id = p_unique_id' in p.prosrc)>0
+      and position('ph_master_inventory_import_lineage_seen' in p.prosrc)>0
+      and position('ph_master_inventory_item6_alias_seen_v7' in p.prosrc)>0)
+      and exists(select 1 from pg_proc p
+        where p.oid=to_regprocedure('app_sync_private.ph_master_bulk_context_analyze_v1()')
+          and p.prosecdef and p.proconfig @> array['search_path=""']
+          and not has_function_privilege('anon',p.oid,'execute')
+          and not has_function_privilege('authenticated',p.oid,'execute')
+          and not has_function_privilege('service_role',p.oid,'execute')
+          and position('analyze app_sync_private.ph_master_bulk_import_context_v1' in lower(p.prosrc))>0)
+      and exists(select 1 from pg_trigger t
+        where t.tgrelid='app_sync_private.ph_master_bulk_import_context_v1'::regclass
+          and t.tgname='ph_master_bulk_context_analyze_v1'
+          and t.tgfoid=to_regprocedure('app_sync_private.ph_master_bulk_context_analyze_v1()')
+          and t.tgtype=4 and t.tgenabled='O' and not t.tgisinternal)
+      and (select count(*)=3 from pg_index i
+        where i.indrelid='app_sync_private.ph_master_bulk_import_context_v1'::regclass
+          and i.indisvalid and i.indisready
+          and i.indexrelid in (
+            'app_sync_private.ph_master_bulk_import_context_v1_pkey'::regclass,
+            'app_sync_private.ph_master_bulk_import_context_run_pid_xid_idx'::regclass,
+            'app_sync_private.ph_master_bulk_import_context_request_canonical_idx'::regclass)) as installed`;
   if (name === handoverMasterAssignmentFastPathMigrationName) return `select exists(select 1 from pg_proc p
     where p.oid=to_regprocedure('private.handover_normalize_assignment_v1()')
       and p.prosecdef and p.proconfig @> array['search_path=""']
