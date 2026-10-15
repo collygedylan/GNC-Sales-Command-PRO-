@@ -180,6 +180,44 @@ test('cold Suspend mirror preparation renders a loading state instead of an empt
   assert.match(renderOptions.emptyHtml, /Loading Suspend Tag rows/);
 });
 
+test('Suspend filtered-empty render signature changes when mirror preparation finishes', () => {
+  let pending = true;
+  const captured = [];
+  const ctx = vm.createContext({
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'dock:99',
+    getSuspendTagRequestItems: items => items.slice(),
+    sortRequestSuspendTagRows: items => items.slice(),
+    applyRequestSuspendTagCommonNameSearchFilter: items => items,
+    applyRequestSuspendTagAssignedToFilter: items => items,
+    applyRequestSuspendTagContSizeFilter: items => items,
+    applyRequestSuspendTagDockFilter: () => [],
+    normalizeSearchValue: value => value,
+    normalizeRequestSuspendTagAssignedToFilterValue: value => value,
+    normalizeRequestSuspendTagContSizeFilterValue: value => value,
+    buildRequestPagedRenderPlan: () => ({ rows: [], items: [], renderSignature: 'same-empty-rows', footerMarkup: '' }),
+    getDockSuspendDcRequestPlanstartInfo: () => ({ value: '', tone: 'unknown', valid: false }),
+    isDockSuspendDcRequestMirrorPreparationPending: () => pending,
+    renderMarkupChunkedByKey: (...args) => { captured.push(args[6]); return true; },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+  });
+  vm.runInContext(source('buildSuspendTagRenderPlan'), ctx);
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+
+  const loadingPlan = ctx.buildSuspendTagRenderPlan([{ UNIQUE_ID: 'source-1' }]);
+  ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', loadingPlan);
+  pending = false;
+  const readyPlan = ctx.buildSuspendTagRenderPlan([{ UNIQUE_ID: 'source-1' }]);
+  ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', readyPlan);
+
+  assert.equal(loadingPlan.rows.length, 0);
+  assert.equal(readyPlan.rows.length, 0);
+  assert.notEqual(readyPlan.renderSignature, loadingPlan.renderSignature);
+  assert.match(captured[0].emptyHtml, /Loading Suspend Tag rows/);
+  assert.match(captured[1].emptyHtml, /No suspend tag rows match these filters/);
+});
+
 test('Suspend queue counts scan source status without constructing rich mirror rows', () => {
   let mirrorBuilds = 0;
   const ctx = vm.createContext({
@@ -325,6 +363,7 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
     normalizeSearchValue: value => value,
     normalizeRequestSuspendTagAssignedToFilterValue: value => value,
     normalizeRequestSuspendTagContSizeFilterValue: value => value,
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
     getDockSuspendDcRequestPlanstartInfo: row => { planstartReads.push(row.UNIQUE_ID); return { value: row.date || '', tone: 'monday', valid: true }; }
   });
   ctx.sortRequestSuspendTagRows = values => values.slice().sort(ctx.compareRequestSuspendTagRows);

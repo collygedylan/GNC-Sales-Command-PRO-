@@ -1,6 +1,7 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 // @test-group: @suspend-tag,suspend
 
+import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
 
 
 type FixtureRow = Record<string, string | number>;
@@ -40,11 +41,32 @@ const fixtures: FixtureRow[] = [1, 2].map((index) => ({
   ASSIGNEDTO: 'dylan_collyge',
 }));
 
+function buildConfirmedInventoryRow(source: FixtureRow, patch: Record<string, unknown>) {
+  const asText = (value: unknown) => value == null ? null : String(value);
+  const row = Object.assign(Object.fromEntries(driveEvidenceColumns.map(column => [column, null])), {
+    unique_id: `master-${String(source.UNIQUE_ID)}`,
+    itemcode: String(source.ITEMCODE),
+    locationcode: String(source.LOCATIONCODE),
+    lotcode: String(source.LOTCODE),
+    last_updated: new Date(Date.parse(completionTime) + Math.max(0, Number(source.SUSPEND_TAG_VERSION) - 1) * 1000).toISOString(),
+    photo_link: asText(patch.dock_photo_link ?? source.DOCK_PHOTO_LINK),
+    photo_name: asText(patch.dock_photo_name ?? source.DOCK_PHOTO_NAME),
+    match: asText(patch.match ?? source.MATCH),
+    spec: asText(patch.dock_spec ?? source.DOCK_SPEC),
+    caliper: asText(patch.dock_caliper ?? source.DOCK_CALIPER),
+    initial_ptr: asText(patch.initial_ptr ?? source.INITIAL_PTR),
+    loc_match_qty: asText(patch.loc_match_qty ?? source.LOC_MATCH_QTY),
+    ptravailable: asText(source.PTRAVAILABLE),
+    av_note: asText(patch.av_note ?? source.AV_NOTE),
+  });
+  return confirmedDriveEvidence({ ok: true, canonicalConfirmed: true, row });
+}
+
 /** Runs the built app's real renderer, confirmation, transport and cache logic.
  * Only identity/data-loading boundaries are supplied. Backend state lives in
  * this test process across refresh/reload; no customer record is ever changed.
  */
-async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean } = {}) {
+async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean; inventoryUnavailable?: boolean } = {}) {
   const origin = new URL(baseURL).origin;
   const backendRows = structuredClone(rows);
   const receipts = new Map<string, Record<string, unknown>>();
@@ -53,6 +75,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const blockedReadOnlyAppApiCalls: string[] = [];
   const pageErrors: string[] = [];
   const runtimeResponses: string[] = [];
+  const inventoryLookupCalls: Array<{ params: Record<string, unknown>; status: number }> = [];
   const replies: Reply[] = [];
   await page.addInitScript(expired => { (window as any).__suspendTestAuthReady = !expired; }, !!options.expired);
   const corsHeaders = {
@@ -96,13 +119,28 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         source.SUSPEND_TAG_STATUS='awaiting_rep'; source.SUSPEND_TAG_APPROVAL_ID='a0000000-0000-4000-8000-'+String(receipts.size+1).padStart(12,'0');
       }
       source.SUSPEND_TAG_VERSION=Number(source.SUSPEND_TAG_VERSION)+1;
-      const acknowledgment={ok:true,row:canonical()};
+      const acknowledgment: Record<string, unknown> = {ok:true,row:canonical()};
+      if (['save', 'complete', 'close'].includes(String(body.operation))) {
+        acknowledgment.inventoryRow = options.inventoryUnavailable && body.operation === 'complete'
+          ? null
+          : buildConfirmedInventoryRow(source,input.patch || {});
+      }
       receipts.set(body.commandId,acknowledgment);
       if(reply.abort) return route.abort('connectionfailed');
       return fulfill(route,{ok:true,data:acknowledgment});
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      if (options.inventoryUnavailable && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
+        && body.action === 'inventory_read' && body.operation === 'master_page'
+        && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
+        && typeof body.params?.itemCode === 'string' && typeof body.params?.locationCode === 'string'
+        && Object.keys(body).sort().join(',') === 'action,operation,params'
+        && Object.keys(body.params).sort().join(',') === 'dataset,itemCode,limit,locationCode,offset,projection'
+        && body.params?.limit === 500 && body.params?.offset === 0) {
+        inventoryLookupCalls.push({ params: body.params, status: 503 });
+        return fulfill(route, { ok: false, status: 503, error: 'Synthetic full inventory lookup unavailable' }, 503);
+      }
       // The detail form looks up inventory for its AV choices. Keep this read
       // synthetic and bounded, while all inventory mutations remain blocked.
       if (url.hostname === 'kzrnyjsosryejjejliii.supabase.co' && body.action === 'inventory_read' && body.operation === 'master_page'
@@ -239,7 +277,21 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
   };
-  return { requests, replies, receipts, backendRows, card, done, complete, seed, refresh, assertClean };
+  return { requests, replies, receipts, backendRows, inventoryLookupCalls, card, done, complete, seed, refresh, assertClean };
+}
+
+async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
+  const customKeyboard = await page.evaluate((inputId) =>
+    (window as any).shouldPreferDetailMeasurementKeyboard()
+      && (window as any).isDetailMeasurementKeyboardInput(document.getElementById(inputId)), id);
+  if (!customKeyboard) {
+    await page.locator(`#${id}`).fill(value);
+    return;
+  }
+  await page.locator(`#${id}`).tap();
+  await page.locator('#detail-measurement-keyboard').getByRole('button', { name: 'Clear', exact: true }).first().tap({ timeout: 10000 });
+  for (const digit of value) await page.locator(`#detail-measurement-keyboard [data-key-token="${digit}"]`).tap();
+  await page.locator('#detail-measurement-keyboard [data-key-token="__done"]').tap();
 }
 
 test('Done waits for server acknowledgment, completes only that source and retains it, and survives refresh and app reload', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
@@ -477,6 +529,94 @@ test('an old completion response cannot hide a newer reopened version of the sou
 });
 
 
+test('detail Mark Done stays in detail until the global save is confirmed, then returns to Suspend', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+  test.setTimeout(120000);
+  const app = await harness(page, baseURL!);
+  let release!: () => void;
+  app.replies.push({ operation: 'complete', wait: new Promise<void>((resolve) => { release = resolve; }) });
+  await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await page.locator('#request-open-info-ok').tap();
+  await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+  await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
+  await setDetailMeasurement(page, 'req-spec', '24');
+  await setDetailMeasurement(page, 'req-match', '80');
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+
+  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#req-spec')).toHaveValue('24');
+  await expect(page.locator('#req-match')).toHaveValue('80');
+  expect(app.backendRows[0].DATE_COMPLETED).toBe('');
+
+  release();
+  await expect(page.locator('#view-detail')).toBeHidden();
+  await expect(page.locator('#view-request')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.eval('activeReqTab'))).toBe('suspend-tag');
+  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect.poll(() => page.evaluate(() => window.eval('Object.keys(getDockSuspendCompletionState().receipts).length'))).toBe(1);
+  expect(app.backendRows[0].DOCK_SPEC).toBe('24');
+  expect(String(app.backendRows[0].MATCH)).toBe('80');
+  app.assertClean();
+});
+
+test('detail Mark Done completes and returns to Suspend when background inventory refresh is unavailable', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+  test.setTimeout(120000);
+  const app = await harness(page, baseURL!, fixtures, { inventoryUnavailable: true });
+  await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await page.locator('#request-open-info-ok').tap();
+  await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+  await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
+  await setDetailMeasurement(page, 'req-spec', '24');
+  await setDetailMeasurement(page, 'req-match', '80');
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+
+  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
+  await expect.poll(() => app.backendRows[0].DATE_COMPLETED).toBe(completionTime);
+  await expect.poll(() => app.inventoryLookupCalls.some(call => call.status === 503)).toBe(true);
+  await expect(page.locator('#view-detail')).toBeHidden();
+  await expect(page.locator('#view-request')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.eval('activeReqTab'))).toBe('suspend-tag');
+  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect.poll(() => page.evaluate(() => window.eval('Object.keys(getDockSuspendCompletionState().receipts).length'))).toBe(1);
+  expect(app.backendRows[0].DOCK_SPEC).toBe('24');
+  expect(String(app.backendRows[0].MATCH)).toBe('80');
+  app.assertClean();
+});
+
+test('late detail completion acknowledgment does not override navigation away from Suspend', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+  test.setTimeout(120000);
+  const app = await harness(page, baseURL!);
+  let release!: () => void;
+  app.replies.push({ operation: 'complete', wait: new Promise<void>((resolve) => { release = resolve; }) });
+  await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await page.locator('#request-open-info-ok').tap();
+  await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+  await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
+  await setDetailMeasurement(page, 'req-spec', '24');
+  await setDetailMeasurement(page, 'req-match', '80');
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+
+  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await page.getByRole('button', { name: 'Home' }).tap();
+  await expect(page.locator('#view-home')).toBeVisible();
+
+  release();
+  await expect.poll(() => app.backendRows[0].DATE_COMPLETED).toBe(completionTime);
+  await expect.poll(() => page.evaluate(() => window.eval('Object.keys(getDockSuspendCompletionState().receipts).length'))).toBe(1);
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('#view-detail')).toBeHidden();
+  expect(app.backendRows[0].DATE_COMPLETED).toBe(completionTime);
+  expect(app.backendRows[0].DOCK_SPEC).toBe('24');
+  app.assertClean();
+});
+
 test('detail Mark Done preserves failed form edits and only applies a confirmed save', {"tag":["@suspend-tag"]}, async ({page,baseURL})=>{
   test.setTimeout(120000);
   const app=await harness(page,baseURL!);
@@ -500,6 +640,8 @@ test('detail Mark Done preserves failed form edits and only applies a confirmed 
   await page.locator('#req-btn-save-complete').tap({timeout:10000});
   await expect.poll(()=>app.requests.filter(r=>r.body.operation==='complete').length).toBeGreaterThan(0);
   await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind','error');
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#view-home')).toBeHidden();
   await expect(page.locator('#req-spec')).toHaveValue('24');
   expect(app.backendRows[0].DATE_COMPLETED).toBe('');
   await page.locator('#req-btn-save-complete').tap();

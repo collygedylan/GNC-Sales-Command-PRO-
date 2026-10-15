@@ -301,6 +301,67 @@ test('detail save keeps captured fields and waits for photos, with a recoverable
   assert.ok(!h.toasts.some(([title]) => title === 'Checking for updates'));
 });
 
+test('detail Mark Done returns to the request list only after the current detail save is confirmed', async () => {
+  const prepareDetail = h => {
+    h.ctx.activeItem = h.mirror;
+    h.ctx.activeDetailSourceView = 'request';
+    h.ctx.lastView = 'request';
+    h.ctx.view = 'detail';
+    h.ctx.detailBackCalls = 0;
+    h.ctx.isViewVisible = viewId => h.ctx.view === viewId;
+    h.ctx.goBackFromDetail = () => { h.ctx.detailBackCalls += 1; };
+    h.ctx.document = { getElementById: () => button() };
+    h.ctx.getDockSuspendDcRequestFormValues = () => ({ spec: 'saved', caliper: '', match: '', avNote: '' });
+    h.ctx.buildDockSuspendDcRequestNote = () => '';
+    h.ctx.getDockSuspendDcRequestCompletionReadiness = () => ({ ready: true, missing: [] });
+    h.ctx.syncDockSuspendDcRequestPhotoAliases = () => {};
+    vm.runInContext(between('async function saveDockSuspendDcRequestMirrorData(', 'function getDockSuspendDcRequestHandledConfirmMessage('), h.ctx);
+  };
+
+  const successful = harness();
+  prepareDetail(successful);
+  await successful.ctx.saveDockSuspendDcRequestMirrorData(true, successful.mirror);
+  assert.equal(successful.ctx.detailBackCalls, 1, JSON.stringify(successful.toasts));
+
+  const ordinarySave = harness();
+  prepareDetail(ordinarySave);
+  await ordinarySave.ctx.saveDockSuspendDcRequestMirrorData(false, ordinarySave.mirror);
+  assert.equal(ordinarySave.ctx.detailBackCalls, 0, 'Save leaves the detail editor open');
+
+  let acknowledge;
+  const late = harness({ api: () => new Promise(resolve => { acknowledge = resolve; }) });
+  prepareDetail(late);
+  const pending = late.ctx.saveDockSuspendDcRequestMirrorData(true, late.mirror);
+  await new Promise(setImmediate);
+  late.ctx.view = 'request';
+  late.ctx.activeDetailSourceView = '';
+  acknowledge(acknowledgement());
+  await pending;
+  assert.equal(late.ctx.detailBackCalls, 0, 'a late response cannot navigate after leaving detail');
+
+  let acknowledgeAfterScopeChange;
+  const changedScope = harness({ api: () => new Promise(resolve => { acknowledgeAfterScopeChange = resolve; }) });
+  prepareDetail(changedScope);
+  const scopePending = changedScope.ctx.saveDockSuspendDcRequestMirrorData(true, changedScope.mirror);
+  await new Promise(setImmediate);
+  changedScope.ctx.currentUser = 'another-user';
+  acknowledgeAfterScopeChange(acknowledgement());
+  await scopePending;
+  assert.equal(changedScope.ctx.detailBackCalls, 0, 'a response from a prior account scope cannot navigate');
+
+  const failed = harness({ api: () => { throw new Error('SUSPEND_TAG_VERSION_CHANGED'); } });
+  prepareDetail(failed);
+  await failed.ctx.saveDockSuspendDcRequestMirrorData(true, failed.mirror);
+  assert.equal(failed.ctx.detailBackCalls, 0, 'a rejected save keeps the user in the editor');
+
+  const uploadFailed = harness();
+  prepareDetail(uploadFailed);
+  uploadFailed.ctx.getPendingPhotoUploadsForItem = () => [Promise.reject(new Error('Upload failed'))];
+  await uploadFailed.ctx.saveDockSuspendDcRequestMirrorData(true, uploadFailed.mirror);
+  assert.equal(uploadFailed.ctx.detailBackCalls, 0, 'a failed photo upload keeps the user in the editor');
+  assert.equal(uploadFailed.calls.filter(call => call.name === 'complete').length, 0);
+});
+
 test('Done saves the exact source revision before marking retained rows completed; retains the source', async () => {
   let resolve;
   const wait = new Promise((done) => { resolve = done; });
