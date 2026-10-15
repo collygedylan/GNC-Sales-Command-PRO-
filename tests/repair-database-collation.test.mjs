@@ -12,19 +12,32 @@ function fixture(overrides = {}) {
   const state = {
     recorded: '153.120', actual: '153.121', free: 30_000_000_000,
     indexOps: 0, longTransactions: 0, canMaintainInvalid: true,
-    failReindex: false, invalid: true, noticeWarning: false, warningOnDatabaseOnly: false, duplicateLock: false,
+    failReindex: false, failDatabaseReindex: false, emitTransportEvent: true, failUnlock: false,
+    invalid: true, noticeWarning: false, warningOnDatabaseOnly: false, duplicateLock: false,
     owner: 'postgres', currentRole: 'postgres', denyStorageQuery: false,
     dependencyOverrides: null, preserveInvalidAfterRepair: false, actualChangeAfterDatabaseReindex: null,
     actualChangeAfterRefresh: null, noticePayload: null,
-    databaseName: 'postgres', listeners: new Set(), statements: [],
+    databaseName: 'postgres', listeners: new Set(), errorListeners: new Set(), statements: [], backendPid: 42,
+    sessionOverrides: {}, changeBackendAfterIndexRepair: false,
     ...overrides
   };
   const client = {
-    on(event, listener) { if (event === 'notice') state.listeners.add(listener); },
-    off(event, listener) { if (event === 'notice') state.listeners.delete(listener); },
+    on(event, listener) {
+      if (event === 'notice') state.listeners.add(listener);
+      if (event === 'error') state.errorListeners.add(listener);
+    },
+    off(event, listener) {
+      if (event === 'notice') state.listeners.delete(listener);
+      if (event === 'error') state.errorListeners.delete(listener);
+    },
     async query(sql) {
       state.statements.push(sql);
       if (/^SET /.test(sql)) return { rows: [] };
+      if (sql.includes("current_setting('application_name')")) return { rows: [{
+        application_name: 'gnc_collation_repair', statement_timeout_ok: true, lock_timeout_ok: true, parallel_workers_ok: true,
+        database_name: state.databaseName, role_name: state.currentRole, backend_pid: state.backendPid,
+        ...state.sessionOverrides
+      }] };
       if (sql.includes("current_setting('data_directory')")) {
         if (state.denyStorageQuery) throw Object.assign(new Error('permission denied to examine data_directory'), { code: '42501' });
         return { rows: [{
@@ -58,12 +71,18 @@ function fixture(overrides = {}) {
       if (sql.startsWith('REINDEX INDEX CONCURRENTLY')) {
         if (state.failReindex) throw Object.assign(new Error('index build failed'), { code: 'XX000' });
         if (!state.preserveInvalidAfterRepair) state.invalid = false;
+        if (state.changeBackendAfterIndexRepair) state.backendPid += 1;
         if (!state.warningOnDatabaseOnly && (state.noticeWarning || state.noticePayload)) {
           for (const listener of state.listeners) listener(state.noticePayload || { severity: 'WARNING' });
         }
         return { rows: [] };
       }
       if (sql.startsWith('REINDEX DATABASE CONCURRENTLY')) {
+        if (state.failDatabaseReindex) {
+          const error = Object.assign(new Error('socket reset'), { code: 'ECONNRESET' });
+          if (state.emitTransportEvent) for (const listener of state.errorListeners) listener(error);
+          throw error;
+        }
         if (state.failReindex) throw Object.assign(new Error('database rebuild failed'), { code: 'XX000' });
         if (state.actualChangeAfterDatabaseReindex) state.actual = state.actualChangeAfterDatabaseReindex;
         if (state.noticeWarning || state.noticePayload) {
@@ -72,7 +91,10 @@ function fixture(overrides = {}) {
         return { rows: [] };
       }
       if (sql.includes('pg_try_advisory_lock')) return { rows: [{ acquired: !state.duplicateLock }] };
-      if (sql.includes('pg_advisory_unlock')) return { rows: [{ pg_advisory_unlock: true }] };
+      if (sql.includes('pg_advisory_unlock')) {
+        if (state.failUnlock) throw Object.assign(new Error('unlock failed'), { code: 'XX000' });
+        return { rows: [{ pg_advisory_unlock: true }] };
+      }
       if (sql.startsWith('ALTER DATABASE')) {
         state.recorded = state.actual;
         if (state.actualChangeAfterRefresh) state.actual = state.actualChangeAfterRefresh;
@@ -231,6 +253,82 @@ test('unsupported invalid index is rejected before mutation', async () => {
 test('failed index reindex never refreshes collation metadata', async () => {
   const { client, state } = fixture({ failReindex: true });
   await assert.rejects(runCollationRepair({ ...common, client, apply: true }), /index build failed/);
+  assert.equal(state.statements.some(sql => sql.startsWith('ALTER DATABASE')), false);
+});
+
+test('session timeout and backend identity are verified before each reindex', async () => {
+  const { client, state } = fixture();
+  await runCollationRepair({ ...common, client, apply: true });
+  const appSetting = state.statements.indexOf("SET application_name = 'gnc_collation_repair'");
+  const timeoutSetting = state.statements.indexOf("SET statement_timeout = '60min'");
+  const identityChecks = state.statements.map((sql, index) => sql.includes("current_setting('application_name')") ? index : -1).filter(index => index >= 0);
+  const index = state.statements.findIndex(sql => sql.startsWith('REINDEX INDEX CONCURRENTLY'));
+  const database = state.statements.findIndex(sql => sql.startsWith('REINDEX DATABASE CONCURRENTLY'));
+  assert.ok(appSetting > -1 && appSetting < timeoutSetting && timeoutSetting < identityChecks[0]);
+  assert.ok(identityChecks.length >= 3, 'verify initial session and backend identity before each reindex');
+  assert.ok(identityChecks.at(-1) < database);
+  assert.ok(identityChecks.some(check => check < index));
+});
+
+test('unexpected session settings prevent reindex and backend changes stop the next reindex', async t => {
+  await t.test('incorrect session timeout', async () => {
+    const { client, state } = fixture({ sessionOverrides: { statement_timeout_ok: false } });
+    await assert.rejects(runCollationRepair({ ...common, client, apply: true }), /COLLATION_SESSION_SETTINGS_VERIFICATION_FAILED/);
+    assert.equal(state.statements.some(sql => sql.startsWith('REINDEX')), false);
+    assert.equal(state.statements.some(sql => sql.includes('pg_advisory_unlock')), true,
+      'release the lock when settings are wrong but backend identity is unchanged');
+  });
+  await t.test('incorrect lock timeout or parallel-worker limit', async () => {
+    for (const sessionOverrides of [{ lock_timeout_ok: false }, { parallel_workers_ok: false }]) {
+      const { client, state } = fixture({ sessionOverrides });
+      await assert.rejects(runCollationRepair({ ...common, client, apply: true }), /COLLATION_SESSION_SETTINGS_VERIFICATION_FAILED/);
+      assert.equal(state.statements.some(sql => sql.startsWith('REINDEX')), false);
+    }
+  });
+  await t.test('backend identity changed after invalid index repair', async () => {
+    const { client, state } = fixture({ changeBackendAfterIndexRepair: true });
+    await assert.rejects(runCollationRepair({ ...common, client, apply: true }), /COLLATION_SESSION_IDENTITY_CHANGED/);
+    assert.equal(state.statements.some(sql => sql.startsWith('REINDEX DATABASE')), false);
+    assert.equal(state.statements.some(sql => sql.startsWith('ALTER DATABASE')), false);
+    assert.equal(state.statements.some(sql => sql.includes('pg_advisory_unlock')), false,
+      'do not attempt unlock after the session backend changes');
+  });
+});
+
+test('transport reset preserves original phase and never unlocks or refreshes on broken connection', async () => {
+  const { client, state } = fixture({ failDatabaseReindex: true });
+  const phases = [];
+  await assert.rejects(
+    runCollationRepair({ ...common, client, apply: true, onPhase: phase => phases.push(phase) }),
+    error => error.code === 'ECONNRESET'
+  );
+  assert.equal(phases.at(-1), 'database_reindex');
+  assert.equal(state.statements.some(sql => sql.includes('pg_advisory_unlock')), false);
+  assert.equal(state.statements.some(sql => sql.startsWith('ALTER DATABASE')), false);
+  assert.equal(state.errorListeners.size, 0);
+});
+
+test('logical reindex failure unlocks a healthy session without changing its reported phase', async () => {
+  const { client, state } = fixture({ failReindex: true });
+  const phases = [];
+  await assert.rejects(
+    runCollationRepair({ ...common, client, apply: true, onPhase: phase => phases.push(phase) }),
+    error => error.code === 'XX000'
+  );
+  assert.equal(state.statements.some(sql => sql.includes('pg_advisory_unlock')), true);
+  assert.equal(phases.at(-1), 'index_repair');
+});
+
+test('unlock failure does not mask the original logical reindex failure', async () => {
+  const { client, state } = fixture({ failReindex: true, failUnlock: true });
+  await assert.rejects(runCollationRepair({ ...common, client, apply: true }), error => error.code === 'XX000');
+  assert.equal(state.statements.some(sql => sql.includes('pg_advisory_unlock')), true);
+});
+
+test('connection reset without a client error event still skips advisory unlock', async () => {
+  const { client, state } = fixture({ failDatabaseReindex: true, emitTransportEvent: false });
+  await assert.rejects(runCollationRepair({ ...common, client, apply: true }), error => error.code === 'ECONNRESET');
+  assert.equal(state.statements.some(sql => sql.includes('pg_advisory_unlock')), false);
   assert.equal(state.statements.some(sql => sql.startsWith('ALTER DATABASE')), false);
 });
 

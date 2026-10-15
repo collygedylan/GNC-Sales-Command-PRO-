@@ -270,6 +270,12 @@ export async function runCollationRepair({
   if (advisory.rows[0]?.acquired !== true) throw new Error('COLLATION_REPAIR_ALREADY_RUNNING');
   let reindexWarning = false;
   let operationPhase = 'index_repair';
+  let transportError = null;
+  let sessionInvalid = false;
+  let backendPid = null;
+  let operationError = null;
+  let unlockError = null;
+  let repairResult = null;
   const acceptedNotices = { expectedCollationMismatch: 0, expectedCatalogSkip: 0 };
   const setPhase = phase => {
     operationPhase = phase;
@@ -291,19 +297,67 @@ export async function runCollationRepair({
     else if (expectedCatalogSkip) acceptedNotices.expectedCatalogSkip += 1;
     else reindexWarning = true;
   };
+  const errorListener = error => { transportError = error; };
   client.on?.('notice', noticeListener);
+  client.on?.('error', errorListener);
   let operationFailed = false;
   try {
     setPhase('index_repair');
+    await client.query("SET application_name = 'gnc_collation_repair'");
     await client.query(`SET lock_timeout = '${safeLockTimeout}'`);
     await client.query(`SET statement_timeout = '${safeStatementTimeout}'`);
     await client.query('SET max_parallel_maintenance_workers = 0');
+    const session = await client.query(`
+      SELECT current_setting('application_name') AS application_name,
+             current_setting('statement_timeout')::interval = $1::interval AS statement_timeout_ok,
+             current_setting('lock_timeout')::interval = $2::interval AS lock_timeout_ok,
+             current_setting('max_parallel_maintenance_workers')::integer = 0 AS parallel_workers_ok,
+             current_database() AS database_name, current_user AS role_name,
+             pg_backend_pid() AS backend_pid`, [safeStatementTimeout, safeLockTimeout]);
+    const sessionRow = session.rows[0];
+    backendPid = Number(sessionRow?.backend_pid);
+    if (sessionRow?.database_name !== identity.datname
+        || sessionRow?.role_name !== identity.current_role
+        || !Number.isInteger(backendPid) || backendPid <= 0) {
+      sessionInvalid = true;
+      throw new Error('COLLATION_SESSION_IDENTITY_CHANGED');
+    }
+    if (sessionRow?.application_name !== 'gnc_collation_repair'
+        || sessionRow?.statement_timeout_ok !== true
+        || sessionRow?.lock_timeout_ok !== true
+        || sessionRow?.parallel_workers_ok !== true) {
+      throw new Error('COLLATION_SESSION_SETTINGS_VERIFICATION_FAILED');
+    }
+    const verifyBackend = async () => {
+      const { rows } = await client.query(`
+        SELECT pg_backend_pid() AS backend_pid,
+               current_setting('application_name') AS application_name,
+               current_setting('statement_timeout')::interval = $1::interval AS statement_timeout_ok,
+               current_setting('lock_timeout')::interval = $2::interval AS lock_timeout_ok,
+               current_setting('max_parallel_maintenance_workers')::integer = 0 AS parallel_workers_ok,
+               current_database() AS database_name, current_user AS role_name`, [safeStatementTimeout, safeLockTimeout]);
+      if (Number(rows[0]?.backend_pid) !== backendPid
+          || rows[0]?.database_name !== identity.datname
+          || rows[0]?.role_name !== identity.current_role) {
+        sessionInvalid = true;
+        throw new Error('COLLATION_SESSION_IDENTITY_CHANGED');
+      }
+      if (rows[0]?.application_name !== 'gnc_collation_repair'
+          || rows[0]?.statement_timeout_ok !== true
+          || rows[0]?.lock_timeout_ok !== true
+          || rows[0]?.parallel_workers_ok !== true) {
+        throw new Error('COLLATION_SESSION_SETTINGS_VERIFICATION_FAILED');
+      }
+    };
     if (targetInvalid) {
+      await verifyBackend();
       await client.query(`REINDEX INDEX CONCURRENTLY ${quoteIdentifier(targetInvalid.schema_name)}.${quoteIdentifier(targetInvalid.index_name)}`);
       if (reindexWarning) throw new Error('COLLATION_REINDEX_NOTICE_FAILED');
     }
     setPhase('database_reindex');
+    await verifyBackend();
     await client.query(`REINDEX DATABASE CONCURRENTLY ${quoteIdentifier(identity.datname)}`);
+    if (transportError) throw transportError;
     if (reindexWarning) throw new Error('COLLATION_REINDEX_NOTICE_FAILED');
     client.off?.('notice', noticeListener);
     setPhase('post_reindex_verification');
@@ -327,7 +381,7 @@ export async function runCollationRepair({
         || refreshedIdentity.datcollversion !== refreshedIdentity.actual_version) {
       throw new Error('COLLATION_REFRESH_VERIFICATION_FAILED');
     }
-    return {
+    repairResult = {
       mode: 'apply', projectRef, database: identity.datname, dependentIndexCount: dependent.length,
       invalidIndexRepaired: Boolean(targetInvalid), recordedVersion: refreshedIdentity.datcollversion,
       actualVersion: refreshedIdentity.actual_version, refreshed: true,
@@ -335,12 +389,30 @@ export async function runCollationRepair({
     };
   } catch (error) {
     operationFailed = true;
-    throw error;
+    const code = typeof error?.code === 'string' ? error.code : '';
+    if (!transportError && (/^08/.test(code) || ['ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'ECONNABORTED'].includes(code))) {
+      transportError = error;
+    }
+    operationError = transportError || error;
   } finally {
     client.off?.('notice', noticeListener);
-    if (!operationFailed) setPhase('advisory_unlock');
-    await client.query("SELECT pg_advisory_unlock(hashtextextended('collation-repair:' || current_database(), 0))");
+    try {
+      if (!transportError && !sessionInvalid) {
+        if (!operationFailed) setPhase('advisory_unlock');
+        try {
+          await client.query("SELECT pg_advisory_unlock(hashtextextended('collation-repair:' || current_database(), 0))");
+        } catch (error) {
+          if (!operationError) unlockError = error;
+        }
+        if (!operationError && transportError) unlockError = transportError;
+      }
+    } finally {
+      client.off?.('error', errorListener);
+    }
   }
+  if (operationError) throw operationError;
+  if (unlockError) throw unlockError;
+  return repairResult;
 }
 
 export { parsePrometheusMetrics };
@@ -373,7 +445,15 @@ async function main(args, env) {
   });
   if (!response.ok) throw new Error('COLLATION_METRICS_REQUEST_FAILED');
   const metricsText = await response.text();
-  const client = new pg.Client({ ...createDatabaseClientOptions(connectionString), application_name: 'gnc_collation_repair' });
+  const client = new pg.Client({
+    ...createDatabaseClientOptions(connectionString), application_name: 'gnc_collation_repair',
+    keepAlive: true, keepAliveInitialDelayMillis: 10_000
+  });
+  let primaryError = null;
+  const clientErrorListener = error => {
+    if (!primaryError) primaryError = error;
+  };
+  client.on('error', clientErrorListener);
   try {
     cliPhase = 'database_connect';
     await client.connect();
@@ -383,10 +463,18 @@ async function main(args, env) {
       expectedActualVersion: readValue('--expected-actual-version') || '153.121',
       onPhase: phase => { cliPhase = phase; }
     });
+    if (primaryError) throw primaryError;
     process.stdout.write(`${JSON.stringify(result)}\n`);
-  } finally {
+  } catch (error) {
+    primaryError = primaryError || error;
+  }
+  let closeError = null;
+  try { await client.end(); } catch (error) { closeError = error; }
+  client.off('error', clientErrorListener);
+  if (primaryError) throw primaryError;
+  if (closeError) {
     cliPhase = 'client_close';
-    await client.end();
+    throw closeError;
   }
 }
 
