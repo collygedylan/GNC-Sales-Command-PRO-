@@ -1,7 +1,7 @@
 -- @test-runtime: canonical
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(42);
 
 select set_config('request.jwt.claims','{"role":"service_role"}',true);
 select set_config('request.jwt.claim.role','service_role',true);
@@ -47,6 +47,7 @@ insert into bulk_v1_payload values (jsonb_build_array(
     'unique_id','bulk-v1-existing','itemcode','BULK-V1','commonname','Existing fixture',
     'contsize','#1','locationcode','A.01','lotcode','L1','source','PH','warehousei','10',
     'priority','1','holdstopcode','H','holdstopreason','source hold','locationnote','source location',
+    'genusname','Hydrangea macrophylla',
     'av_note','source evidence','last_updated','2026-10-14T12:00:00Z','filename','snapshot-a.csv','concat','hash-a'
   ),'rawFields',jsonb_build_array('locationnote')),
   jsonb_build_object('values',jsonb_build_object(
@@ -80,6 +81,14 @@ select is((select response->>'published' from bulk_v1_first),'true','bulk import
 select is((select (response->>'sourceRows')::int from bulk_v1_first),4,'response reports normalized source row count');
 select is((select (response->>'inserted')::int from bulk_v1_first),1,'new source row is inserted');
 select is((select (response->>'updated')::int from bulk_v1_first),3,'existing source rows are updated once');
+select is((select count(*)::int
+  from public.ph_master_inventory m
+  full join public.ph_crop_roll_drive_rows d on d.master_unique_id=m.unique_id
+  where coalesce(m.unique_id,d.master_unique_id) like 'bulk-v1-%'
+    and (m.unique_id is null or d.unique_id is null
+      or (to_jsonb(d)-'created_at'-'updated_at') is distinct from
+         (to_jsonb(public.v2_crop_roll_drive_row_from_json(to_jsonb(m)))-'created_at'-'updated_at'))),
+  0,'bulk publication mirrors every mapped field into crop-roll rows');
 select is((select holdstopcode from public.ph_master_inventory where unique_id='bulk-v1-existing'),null::text,
   'incoming holdstopcode cannot overwrite the live field');
 select is((select holdstopreason from public.ph_master_inventory where unique_id='bulk-v1-existing'),null::text,
@@ -94,6 +103,8 @@ select is((select priority from public.ph_master_inventory where unique_id='bulk
   'omitted priority preserves the live value instead of restoring an older source baseline');
 select is((select assignedto from public.ph_master_inventory where unique_id='bulk-v1-new'),'megan_kelly',
   'database assignment override replaces a forged source assignment');
+select is((select assignedto from public.ph_master_inventory where unique_id='bulk-v1-existing'),'megan_kelly',
+  'database assignment override is applied on an exact-identity update');
 select is((select jsonb_build_array(holdstopcode,holdstopreason,locationnote)
   from public.ph_master_inventory where unique_id='bulk-v1-empty-app'),
   '["LIVE-H","live reason","omitted live location"]'::jsonb,
@@ -115,6 +126,27 @@ select is((select field_values->>'locationnote' from app_sync_private.ph_master_
 select is((select field_values->>'locationnote' from app_sync_private.ph_master_inventory_item6_source_v7 where canonical_unique_id='bulk-v1-new'),'new source location',
   'new row records raw locationnote without changing its live value');
 
+-- Ordinary app updates continue to refresh the crop-roll mirror. A caller
+-- cannot suppress that trigger by spoofing the private bulk-defer marker.
+select set_config('request.headers','{}',true);
+update public.ph_master_inventory set av_note='ordinary app edit mirrored'
+where unique_id='bulk-v1-existing';
+select is((select (to_jsonb(d)-'created_at'-'updated_at') =
+                  (to_jsonb(public.v2_crop_roll_drive_row_from_json(to_jsonb(m)))-'created_at'-'updated_at')
+  from public.ph_master_inventory m
+  join public.ph_crop_roll_drive_rows d on d.master_unique_id=m.unique_id
+  where m.unique_id='bulk-v1-existing'),true,'ordinary app updates keep the crop-roll mirror current');
+select set_config('gnc.master_bulk_crop_roll_deferred',
+  'b1000000-0000-4000-8000-000000000001:b2000000-0000-4000-8000-000000000001',true);
+update public.ph_master_inventory set av_note='spoofed defer marker ignored'
+where unique_id='bulk-v1-existing';
+select is((select (to_jsonb(d)-'created_at'-'updated_at') =
+                  (to_jsonb(public.v2_crop_roll_drive_row_from_json(to_jsonb(m)))-'created_at'-'updated_at')
+  from public.ph_master_inventory m
+  join public.ph_crop_roll_drive_rows d on d.master_unique_id=m.unique_id
+  where m.unique_id='bulk-v1-existing'),true,'a spoofed defer marker without bulk context cannot skip the ordinary mirror');
+select set_config('gnc.master_bulk_crop_roll_deferred','',true);
+
 -- Sync metadata changes alone do not trigger an UPDATE or count as changed rows.
 update bulk_v1_payload set payload = jsonb_set(jsonb_set(payload,'{0,values,last_updated}','"2026-10-15T12:00:00Z"'),'{0,values,filename}','"snapshot-b.csv"');
 update bulk_v1_payload set payload = jsonb_set(jsonb_set(payload,'{1,values,last_updated}','"2026-10-15T12:00:00Z"'),'{1,values,filename}','"snapshot-b.csv"');
@@ -126,6 +158,27 @@ select public.bulk_import_master_snapshot_v1(
 ) as response from bulk_v1_payload;
 select is((select (response->>'updated')::int from bulk_v1_noop),0,'timestamp and filename changes alone are no-op');
 select is((select (response->>'unchanged')::int from bulk_v1_noop),4,'unchanged rows are reported accurately');
+
+-- Returning an app-edited shielded value to the raw source value still leaves
+-- a pending source acknowledgment. Reimporting the same raw source hash must
+-- revisit the guarded row even though source content itself is unchanged.
+select set_config('request.headers','{}',true);
+update public.ph_master_inventory set holdstopcode='APP-TEMP',holdstopreason='app temp reason'
+where unique_id='bulk-v1-existing';
+update public.ph_master_inventory set holdstopcode='H',holdstopreason='source hold'
+where unique_id='bulk-v1-existing';
+select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits
+  where canonical_unique_id='bulk-v1-existing'),
+  'app edit returning the full imported priority/hold tuple remains pending until source acknowledgment');
+create temporary table bulk_v1_same_hash_ack as
+select public.bulk_import_master_snapshot_v1(
+  'b1000000-0000-4000-8000-000000000001','b2000000-0000-4000-8000-000000000006',payload,repeat('c',64)
+) as response from bulk_v1_first_payload;
+select ok(not (select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits
+  where canonical_unique_id='bulk-v1-existing'),
+  'same raw source hash import acknowledges the pending shielded field');
+select is((select holdstopcode from public.ph_master_inventory where unique_id='bulk-v1-existing'),'H',
+  'same-hash acknowledgment preserves the app value matching the source');
 
 select public.finish_dataset_import_v1('b1000000-0000-4000-8000-000000000001');
 select throws_ok($$select public.bulk_import_master_snapshot_v1(
@@ -146,6 +199,9 @@ select ok(not has_table_privilege('anon','app_sync_private.ph_master_bulk_import
 -- row, acknowledge the exact pending app tuple, and remain in the snapshot.
 select set_config('request.headers','{}',true);
 update public.ph_master_inventory
+set priority='9',holdstopcode='APP-TEMP',holdstopreason='app temp reason'
+where unique_id='bulk-v1-existing';
+update public.ph_master_inventory
 set priority='1',holdstopcode='H',holdstopreason='source hold'
 where unique_id='bulk-v1-existing';
 select ok((select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits
@@ -164,6 +220,14 @@ select is((select count(*)::int from public.ph_master_inventory where unique_id=
   'changed source UID retains its canonical inventory row');
 select is((select count(*)::int from public.ph_master_inventory where unique_id='bulk-v1-existing-alias'),0,
   'changed source UID is not published as a duplicate live row');
+select is((select count(*)::int
+  from public.ph_master_inventory m
+  full join public.ph_crop_roll_drive_rows d on d.master_unique_id=m.unique_id
+  where coalesce(m.unique_id,d.master_unique_id) like 'bulk-v1-%'
+    and (m.unique_id is null or d.unique_id is null
+      or (to_jsonb(d)-'created_at'-'updated_at') is distinct from
+         (to_jsonb(public.v2_crop_roll_drive_row_from_json(to_jsonb(m)))-'created_at'-'updated_at'))),
+  0,'alias resolution leaves every crop-roll mirror field aligned with the canonical master row');
 select ok(not (select pending_legacy_sync from app_sync_private.ph_master_inventory_app_edits
   where canonical_unique_id='bulk-v1-existing'),'the exact raw priority and hold tuple acknowledges pending app state');
 select public.finish_dataset_import_v1('b1000000-0000-4000-8000-000000000002');
@@ -197,5 +261,14 @@ select throws_ok($$select public.bulk_import_master_snapshot_v1(
   '40001','BULK_MASTER_IMPORT_LINEAGE_AMBIGUOUS','ambiguous UID aliases reject atomically');
 select is((select count(*)::int from public.ph_master_inventory where unique_id in ('bulk-v1-ambiguous-a','bulk-v1-ambiguous-b')),2,
   'ambiguous alias rejection preserves both canonical rows');
+
+-- A one-row authoritative snapshot removes absent master rows and their
+-- derived crop-roll mirrors through the same transactional publication path.
+select public.bulk_import_master_snapshot_v1(
+  'b1000000-0000-4000-8000-000000000003','b2000000-0000-4000-8000-000000000007',
+  (select jsonb_build_array(payload->1) from bulk_v1_first_payload),repeat('2',64));
+select is((select count(*)::int from public.ph_crop_roll_drive_rows
+  where master_unique_id like 'bulk-v1-%' and master_unique_id <> 'bulk-v1-new'),
+  0,'full-snapshot deletion removes mirrors for rows absent from the retained snapshot');
 select * from finish();
 rollback;

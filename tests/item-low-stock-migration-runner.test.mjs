@@ -73,12 +73,20 @@ test('bulk master ingestion deploys after assignment overrides with protected st
     'ph_master_bulk_import_receipts_v1', 'ph_master_bulk_import_context_v1', 'ph_master_bulk_import_source_v1',
     'aa00_ph_master_bulk_raw_context_v1', 'aabz_ph_master_bulk_import_field_isolation_v1',
     'statement_timeout=55s', 'lock_timeout=5s', 'BULK_MASTER_IMPORT_REQUEST_ID_REUSED',
-    'BULK_MASTER_IMPORT_FENCE_LOST', 'request_row.response', 'p.prosecdef', 'bool_and(c.relrowsecurity)']) {
+    'BULK_MASTER_IMPORT_FENCE_LOST', 'request_row.response', 'p.prosecdef', 'bool_and(c.relrowsecurity)',
+    'ph_master_bulk_crop_roll_defer_active_v1()',
+    'sync_ph_master_bulk_crop_roll_v1(uuid,uuid,text[])',
+    'upsert_v2_crop_roll_drive_row_from_master()', 'trg_v2_master_inventory_crop_roll_drive_rows',
+    'previous_crop_roll_marker', 'coalesce(previous_crop_roll_marker']) {
     assert.ok(query.includes(marker), marker);
   }
   assert.match(query, /has_function_privilege\('service_role'/);
   assert.match(query, /not has_function_privilege\('authenticated'/);
   assert.match(query, /not has_function_privilege\('anon'/);
+  assert.match(query, /p\.proconfig\s*@>\s*array\['search_path=""'\]/);
+  assert.match(query, /position\('ph_master_inventory_import_run_v1' in p\.prosrc\)>0/);
+  assert.match(query, /position\('ph_master_bulk_import_context_v1' in p\.prosrc\)>0/);
+  assert.match(query, /position\('v2_crop_roll_drive_row_from_json' in p\.prosrc\)>0/);
   for (const role of ['anon', 'authenticated', 'service_role']) {
     assert.ok(query.includes(`not has_table_privilege('${role}'`));
   }

@@ -63,6 +63,24 @@ as $function$
 $function$;
 revoke all on function private.ph_master_bulk_has_value_v1(text) from public, anon, authenticated, service_role;
 
+create or replace function private.ph_master_bulk_pending_ack_v1(p_unique_id text, p_raw_values jsonb)
+returns boolean
+language sql stable security definer set search_path = ''
+as $function$
+  -- A source fingerprint can be unchanged after an app edit returns to that
+  -- exact tuple. The normal guard must still observe it to acknowledge the edit.
+  select p_raw_values ?& array['priority','holdstopcode','holdstopreason'] and exists (
+    select 1
+    from app_sync_private.ph_master_inventory_app_edits edit
+    join public.ph_master_inventory live on live.unique_id = edit.canonical_unique_id
+    where edit.canonical_unique_id = p_unique_id and edit.pending_legacy_sync
+      and nullif(p_raw_values->>'priority', '') is not distinct from live.priority
+      and nullif(p_raw_values->>'holdstopcode', '') is not distinct from live.holdstopcode
+      and nullif(p_raw_values->>'holdstopreason', '') is not distinct from live.holdstopreason
+  )
+$function$;
+revoke all on function private.ph_master_bulk_pending_ack_v1(text, jsonb) from public, anon, authenticated, service_role;
+
 create or replace function private.ph_master_bulk_context_v1(p_run_id uuid, p_unique_id text)
 returns app_sync_private.ph_master_bulk_import_context_v1
 language sql volatile security definer set search_path = ''
@@ -236,6 +254,294 @@ create trigger aabz_ph_master_bulk_import_field_isolation_v1
 before insert or update on public.ph_master_inventory
 for each row execute function private.ph_master_bulk_live_field_isolation_v1();
 
+create or replace function private.ph_master_bulk_crop_roll_defer_active_v1()
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $function$
+declare
+  v_run_id uuid;
+  v_request_id uuid;
+  v_marker text;
+begin
+  v_marker := current_setting('gnc.master_bulk_crop_roll_deferred', true);
+  if coalesce(v_marker, '') = '' then return false; end if;
+  -- This helper refuses to defer unless the existing service-role import
+  -- validator confirms the active run and lease.
+  v_run_id := private.ph_master_inventory_import_run_v1();
+  if v_run_id is null then return false; end if;
+
+  if v_marker is null or v_marker not like v_run_id::text || ':%' then return false; end if;
+  begin
+    v_request_id := split_part(v_marker, ':', 2)::uuid;
+  exception when others then
+    return false;
+  end;
+  if v_marker <> v_run_id::text || ':' || v_request_id::text then return false; end if;
+
+  return exists (
+    select 1
+    from app_sync_private.ph_master_bulk_import_context_v1 c
+    where c.run_id = v_run_id
+      and c.request_id = v_request_id
+      and c.backend_pid = pg_backend_pid()
+      and c.transaction_id = txid_current()
+  );
+end
+$function$;
+revoke all on function private.ph_master_bulk_crop_roll_defer_active_v1() from public, anon, authenticated, service_role;
+
+create or replace function public.upsert_v2_crop_roll_drive_row_from_master()
+returns trigger
+language plpgsql
+security definer
+set search_path = 'public'
+as $function$
+declare
+  mapped public.ph_crop_roll_drive_rows;
+  old_uid text;
+begin
+  -- The normal per-row mapper/upsert remains active for all ordinary writes.
+  -- Only a valid fenced bulk request with its transaction-bound private context
+  -- defers this side effect to one set-based sync near the RPC's end.
+  if private.ph_master_bulk_crop_roll_defer_active_v1() then
+    if tg_op = 'DELETE' then return old; end if;
+    return new;
+  end if;
+
+  if tg_op = 'DELETE' then
+    old_uid := btrim(coalesce(to_jsonb(old)->>'unique_id', to_jsonb(old)->>'UNIQUE_ID', ''));
+    if old_uid <> '' then
+      delete from public.ph_crop_roll_drive_rows where master_unique_id = old_uid;
+    end if;
+    return old;
+  end if;
+
+  mapped := public.v2_crop_roll_drive_row_from_json(to_jsonb(new));
+  if mapped.unique_id is null then
+    old_uid := btrim(coalesce(to_jsonb(new)->>'unique_id', to_jsonb(new)->>'UNIQUE_ID', ''));
+    if old_uid <> '' then
+      delete from public.ph_crop_roll_drive_rows where master_unique_id = old_uid;
+    end if;
+    return new;
+  end if;
+
+  insert into public.ph_crop_roll_drive_rows
+  select mapped.*
+  on conflict (unique_id) do update set
+    master_unique_id = excluded.master_unique_id,
+    source_table = excluded.source_table,
+    crop_roll_view = excluded.crop_roll_view,
+    warehouseid = excluded.warehouseid,
+    plantgroupcode = excluded.plantgroupcode,
+    itemcode = excluded.itemcode,
+    qualitycode = excluded.qualitycode,
+    contsize = excluded.contsize,
+    commonname = excluded.commonname,
+    genus = excluded.genus,
+    genusname = excluded.genusname,
+    botanicalname = excluded.botanicalname,
+    lotcode = excluded.lotcode,
+    locationcode = excluded.locationcode,
+    source = excluded.source,
+    desigitem = excluded.desigitem,
+    desigcust = excluded.desigcust,
+    desigloc = excluded.desigloc,
+    priority = excluded.priority,
+    ptravailable = excluded.ptravailable,
+    ptronhand = excluded.ptronhand,
+    ptrreviewed = excluded.ptrreviewed,
+    s_lts = excluded.s_lts,
+    season_supply = excluded.season_supply,
+    saleyear = excluded.saleyear,
+    itemspec = excluded.itemspec,
+    locationnote = excluded.locationnote,
+    locationnotedate = excluded.locationnotedate,
+    locationptn1 = excluded.locationptn1,
+    fieldtagcolor = excluded.fieldtagcolor,
+    holdstopcode = excluded.holdstopcode,
+    holdstopreason = excluded.holdstopreason,
+    holdstopbegindate = excluded.holdstopbegindate,
+    season = excluded.season,
+    blockalpha = excluded.blockalpha,
+    blocknumber = excluded.blocknumber,
+    app_tab_assignment = excluded.app_tab_assignment,
+    assignedto = excluded.assignedto,
+    date_completed = excluded.date_completed,
+    av_note = excluded.av_note,
+    sales_note = excluded.sales_note,
+    salesnote = excluded.salesnote,
+    match = excluded.match,
+    loc_match_qty = excluded.loc_match_qty,
+    initial_ptr = excluded.initial_ptr,
+    spec = excluded.spec,
+    caliper = excluded.caliper,
+    photo_link = excluded.photo_link,
+    photo_name = excluded.photo_name,
+    dock_photo_link = excluded.dock_photo_link,
+    dock_photo_name = excluded.dock_photo_name,
+    flyer_photo_link = excluded.flyer_photo_link,
+    flyer_photo_name = excluded.flyer_photo_name,
+    flyer_completed = excluded.flyer_completed,
+    flyer_av_note = excluded.flyer_av_note,
+    flyer_match = excluded.flyer_match,
+    flyer_loc_match_qty = excluded.flyer_loc_match_qty,
+    flyer_spec = excluded.flyer_spec,
+    flyer_caliper = excluded.flyer_caliper,
+    flyer_pick = excluded.flyer_pick,
+    flyer_initial_ptr = excluded.flyer_initial_ptr,
+    search_text = excluded.search_text,
+    master_updated_at = excluded.master_updated_at,
+    updated_at = now();
+
+  return new;
+end
+$function$;
+revoke all on function public.upsert_v2_crop_roll_drive_row_from_master() from public, anon, authenticated;
+grant execute on function public.upsert_v2_crop_roll_drive_row_from_master() to service_role;
+
+create or replace function private.sync_ph_master_bulk_crop_roll_v1(
+  p_run_id uuid,
+  p_request_id uuid,
+  p_touched_ids text[]
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_active_run uuid;
+  v_marker text;
+  v_touched integer;
+  v_deleted integer;
+  v_upserted integer;
+begin
+  if coalesce(auth.role(), '') <> 'service_role' then
+    raise exception using errcode = '42501', message = 'BULK_CROP_ROLL_SYNC_FORBIDDEN';
+  end if;
+  v_active_run := private.ph_master_inventory_import_run_v1();
+  if v_active_run is distinct from p_run_id
+     or p_request_id is null
+     or p_touched_ids is null
+ then
+    raise exception using errcode = '22023', message = 'BULK_CROP_ROLL_SYNC_INPUT_INVALID';
+  end if;
+  v_marker := current_setting('gnc.master_bulk_crop_roll_deferred', true);
+  if v_marker is distinct from p_run_id::text || ':' || p_request_id::text
+     or not exists (
+       select 1
+       from app_sync_private.ph_master_bulk_import_context_v1 c
+       where c.run_id = p_run_id
+         and c.request_id = p_request_id
+         and c.backend_pid = pg_backend_pid()
+         and c.transaction_id = txid_current()
+     ) then
+    raise exception using errcode = '55000', message = 'BULK_CROP_ROLL_SYNC_CONTEXT_INVALID';
+  end if;
+
+  select count(distinct id)::integer into v_touched
+  from unnest(p_touched_ids) as ids(id)
+  where id is not null;
+
+  -- Match the existing row trigger's delete behavior for deleted or unmappable
+  -- master rows. The mapper returns NULL exactly when UID, location, or item is
+  -- blank; using its preconditions avoids running it twice for these rows.
+  delete from public.ph_crop_roll_drive_rows crop
+  where crop.master_unique_id = any(p_touched_ids)
+    and not exists (
+      select 1
+      from public.ph_master_inventory master
+      where master.unique_id = crop.master_unique_id
+        and btrim(coalesce(master.locationcode, '')) <> ''
+        and btrim(coalesce(master.itemcode, '')) <> ''
+    );
+  get diagnostics v_deleted = row_count;
+
+  -- Keep the established mapper and exact field-copy/update list. One INSERT
+  -- statement reduces per-row index maintenance and fires the target table's
+  -- statement-level revision/live-event triggers once for this set.
+  insert into public.ph_crop_roll_drive_rows
+  select mapped.*
+  from public.ph_master_inventory master
+  cross join lateral public.v2_crop_roll_drive_row_from_json(to_jsonb(master)) as mapped
+  where master.unique_id = any(p_touched_ids)
+    and mapped.unique_id is not null
+  order by master.unique_id
+  on conflict (unique_id) do update set
+    master_unique_id = excluded.master_unique_id,
+    source_table = excluded.source_table,
+    crop_roll_view = excluded.crop_roll_view,
+    warehouseid = excluded.warehouseid,
+    plantgroupcode = excluded.plantgroupcode,
+    itemcode = excluded.itemcode,
+    qualitycode = excluded.qualitycode,
+    contsize = excluded.contsize,
+    commonname = excluded.commonname,
+    genus = excluded.genus,
+    genusname = excluded.genusname,
+    botanicalname = excluded.botanicalname,
+    lotcode = excluded.lotcode,
+    locationcode = excluded.locationcode,
+    source = excluded.source,
+    desigitem = excluded.desigitem,
+    desigcust = excluded.desigcust,
+    desigloc = excluded.desigloc,
+    priority = excluded.priority,
+    ptravailable = excluded.ptravailable,
+    ptronhand = excluded.ptronhand,
+    ptrreviewed = excluded.ptrreviewed,
+    s_lts = excluded.s_lts,
+    season_supply = excluded.season_supply,
+    saleyear = excluded.saleyear,
+    itemspec = excluded.itemspec,
+    locationnote = excluded.locationnote,
+    locationnotedate = excluded.locationnotedate,
+    locationptn1 = excluded.locationptn1,
+    fieldtagcolor = excluded.fieldtagcolor,
+    holdstopcode = excluded.holdstopcode,
+    holdstopreason = excluded.holdstopreason,
+    holdstopbegindate = excluded.holdstopbegindate,
+    season = excluded.season,
+    blockalpha = excluded.blockalpha,
+    blocknumber = excluded.blocknumber,
+    app_tab_assignment = excluded.app_tab_assignment,
+    assignedto = excluded.assignedto,
+    date_completed = excluded.date_completed,
+    av_note = excluded.av_note,
+    sales_note = excluded.sales_note,
+    salesnote = excluded.salesnote,
+    match = excluded.match,
+    loc_match_qty = excluded.loc_match_qty,
+    initial_ptr = excluded.initial_ptr,
+    spec = excluded.spec,
+    caliper = excluded.caliper,
+    photo_link = excluded.photo_link,
+    photo_name = excluded.photo_name,
+    dock_photo_link = excluded.dock_photo_link,
+    dock_photo_name = excluded.dock_photo_name,
+    flyer_photo_link = excluded.flyer_photo_link,
+    flyer_photo_name = excluded.flyer_photo_name,
+    flyer_completed = excluded.flyer_completed,
+    flyer_av_note = excluded.flyer_av_note,
+    flyer_match = excluded.flyer_match,
+    flyer_loc_match_qty = excluded.flyer_loc_match_qty,
+    flyer_spec = excluded.flyer_spec,
+    flyer_caliper = excluded.flyer_caliper,
+    flyer_pick = excluded.flyer_pick,
+    flyer_initial_ptr = excluded.flyer_initial_ptr,
+    search_text = excluded.search_text,
+    master_updated_at = excluded.master_updated_at,
+    updated_at = now();
+  get diagnostics v_upserted = row_count;
+
+  return jsonb_build_object('touched', v_touched, 'deleted', v_deleted, 'upserted', v_upserted);
+end
+$function$;
+revoke all on function private.sync_ph_master_bulk_crop_roll_v1(uuid, uuid, text[]) from public, anon, authenticated, service_role;
+
 create or replace function public.bulk_import_master_snapshot_v1(
   p_run_id uuid,
   p_request_id uuid,
@@ -272,9 +578,13 @@ declare
   column_names text;
   select_values text;
   set_values text;
+  direct_set_values text;
   sql_text text;
   batch_inserted integer;
   batch_updated integer;
+  batch_touched text[];
+  touched_ids text[] := '{}'::text[];
+  previous_crop_roll_marker text;
   response_value jsonb;
   changed_predicate text;
   update_fields text[];
@@ -409,23 +719,28 @@ begin
 
   drop table if exists pg_temp.ph_master_bulk_map_v1;
   create temp table ph_master_bulk_map_v1 on commit drop as
-  with candidates as materialized (
+  with unresolved as materialized (
+    select s.*
+    from pg_temp.ph_master_bulk_stage_v1 s
+    where not exists (
+      select 1 from public.ph_master_inventory exact_row
+      where exact_row.unique_id = s.unique_id
+    )
+  ), candidates as materialized (
     select s.row_number, m.unique_id as canonical_unique_id
     from pg_temp.ph_master_bulk_stage_v1 s
     join public.ph_master_inventory m on m.unique_id = s.unique_id
     union all
     select s.row_number, m.unique_id
-    from pg_temp.ph_master_bulk_stage_v1 s
+    from unresolved s
     join app_sync_private.ph_master_inventory_source_baselines b on b.lineage_key = s.lineage_key
     join public.ph_master_inventory m on m.unique_id = b.canonical_unique_id
-    where not exists(select 1 from public.ph_master_inventory exact_row where exact_row.unique_id = s.unique_id)
     union all
     select s.row_number, m.unique_id
-    from pg_temp.ph_master_bulk_stage_v1 s
+    from unresolved s
     join app_sync_private.ph_master_inventory_item6_source_v7 item6
       on item6.stable_identity_key = private.ph_master_inventory_stable_identity_v7(s.raw_values)
     join public.ph_master_inventory m on m.unique_id = item6.canonical_unique_id
-    where not exists(select 1 from public.ph_master_inventory exact_row where exact_row.unique_id = s.unique_id)
       and exists(select 1 from app_sync_private.ph_master_inventory_item6_edits_v7 edit
         where edit.canonical_unique_id = item6.canonical_unique_id and edit.pending
           and edit.field_name in ('desigitem','desigcust','desigloc'))
@@ -453,6 +768,9 @@ begin
     m.canonical_unique_id, s.raw_values, s.raw_item6_fields, s.source_hash
   from pg_temp.ph_master_bulk_map_v1 m
   join pg_temp.ph_master_bulk_stage_v1 s using (row_number);
+
+  previous_crop_roll_marker := current_setting('gnc.master_bulk_crop_roll_deferred', true);
+  perform set_config('gnc.master_bulk_crop_roll_deferred', p_run_id::text || ':' || p_request_id::text, true);
 
   for tuple_value in
     select s.raw_item6_fields, s.field_keys,
@@ -497,10 +815,37 @@ begin
       || 'assignedto = coalesce(private.ph_master_bulk_assignedto_override_v1(to_jsonb(excluded)), '
       || 'private.ph_master_bulk_assignedto_override_v1(to_jsonb(target)), target.assignedto)';
 
+    -- Exact identities already have a canonical row. UPDATE runs the normal
+    -- protection guards once, avoiding INSERT-side alias work before conflict
+    -- resolution. New identities and aliases still use the guarded upsert below.
+    direct_set_values := replace(set_values, 'excluded', 's');
+    sql_text := format(
+      'with affected as (
+         update public.ph_master_inventory target set %s
+         from pg_temp.ph_master_bulk_stage_v1 s
+         join pg_temp.ph_master_bulk_map_v1 mapped using (row_number)
+         where mapped.canonical_unique_id = s.unique_id and target.unique_id = s.unique_id
+           and s.raw_item6_fields = $1 and s.field_keys = $2
+           and (not exists (
+             select 1 from app_sync_private.ph_master_bulk_import_source_v1 prior_source
+             where prior_source.canonical_unique_id = target.unique_id
+               and prior_source.source_hash = s.source_hash
+           ) or private.ph_master_bulk_pending_ack_v1(target.unique_id, s.raw_values))
+         returning target.unique_id
+       ) select count(*)::integer, coalesce(array_agg(unique_id), ''{}''::text[]) from affected',
+      direct_set_values
+    );
+    execute sql_text into batch_updated, batch_touched using tuple_value.raw_item6_fields, tuple_value.field_keys;
+    updated_rows := updated_rows + batch_updated;
+    touched_ids := touched_ids || batch_touched;
+
     changed_predicate := '(select c.source_hash from private.ph_master_bulk_context_v1('
       || quote_literal(p_run_id::text) || '::uuid, target.unique_id) c) is distinct from '
       || '(select prior_source.source_hash from app_sync_private.ph_master_bulk_import_source_v1 prior_source '
-      || 'where prior_source.canonical_unique_id = target.unique_id)';
+      || 'where prior_source.canonical_unique_id = target.unique_id)'
+      || ' or private.ph_master_bulk_pending_ack_v1(target.unique_id, '
+      || '(select c.raw_values from private.ph_master_bulk_context_v1('
+      || quote_literal(p_run_id::text) || '::uuid, target.unique_id) c))';
 
     sql_text := format(
       'with affected as (
@@ -508,17 +853,20 @@ begin
          select %s from pg_temp.ph_master_bulk_stage_v1 s
          join pg_temp.ph_master_bulk_map_v1 mapped using (row_number)
          where s.raw_item6_fields = $1 and s.field_keys = $2
+           and mapped.canonical_unique_id is distinct from s.unique_id
            and (mapped.canonical_unique_id is null or not exists(
              select 1 from app_sync_private.ph_master_bulk_import_source_v1 prior_source
              where prior_source.canonical_unique_id = mapped.canonical_unique_id
                and prior_source.source_hash = s.source_hash
-           ))
+           ) or private.ph_master_bulk_pending_ack_v1(mapped.canonical_unique_id, s.raw_values))
          on conflict (unique_id) do update set %s where %s
-         returning (xmax = 0) as inserted
-       ) select count(*) filter (where inserted)::integer, count(*) filter (where not inserted)::integer from affected',
+         returning (xmax = 0) as inserted, unique_id
+       ) select count(*) filter (where inserted)::integer, count(*) filter (where not inserted)::integer,
+           coalesce(array_agg(unique_id), ''{}''::text[]) from affected',
       column_names, select_values, set_values, changed_predicate
     );
-    execute sql_text into batch_inserted, batch_updated using tuple_value.raw_item6_fields, tuple_value.field_keys;
+    execute sql_text into batch_inserted, batch_updated, batch_touched using tuple_value.raw_item6_fields, tuple_value.field_keys;
+    touched_ids := touched_ids || batch_touched;
     inserted_rows := inserted_rows + batch_inserted;
     updated_rows := updated_rows + batch_updated;
   end loop;
@@ -537,6 +885,13 @@ begin
   update pg_temp.ph_master_bulk_map_v1 mapped
   set canonical_unique_id = mapped.source_unique_id
   where mapped.canonical_unique_id is null;
+
+  if exists (
+    select 1 from pg_temp.ph_master_bulk_map_v1 mapped
+    where not exists(select 1 from public.ph_master_inventory live where live.unique_id = mapped.canonical_unique_id)
+  ) then
+    raise exception using errcode = '40001', message = 'BULK_MASTER_IMPORT_CONCURRENT_ROW_CHANGE';
+  end if;
 
   -- locationnote is source-acknowledged by the existing Item6 guard, while the
   -- live column remains isolated. New rows need the same private source value.
@@ -574,11 +929,18 @@ begin
      or app_sync_private.ph_master_bulk_import_source_v1.source_unique_id is distinct from excluded.source_unique_id;
 
   perform set_config('request.headers', jsonb_build_object('x-gnc-import-run-id', p_run_id::text)::text, true);
-  delete from public.ph_master_inventory live
-  where not exists (
-    select 1 from pg_temp.ph_master_bulk_map_v1 m where m.canonical_unique_id = live.unique_id
-  );
-  get diagnostics deleted_rows = row_count;
+  with deleted as (
+    delete from public.ph_master_inventory live
+    where not exists (
+      select 1 from pg_temp.ph_master_bulk_map_v1 m where m.canonical_unique_id = live.unique_id
+    ) returning unique_id
+  ) select count(*)::integer, coalesce(array_agg(unique_id), '{}'::text[])
+    into deleted_rows, batch_touched from deleted;
+  touched_ids := touched_ids || batch_touched;
+  if cardinality(touched_ids) > 0 then
+    perform private.sync_ph_master_bulk_crop_roll_v1(p_run_id, p_request_id, touched_ids);
+  end if;
+  perform set_config('gnc.master_bulk_crop_roll_deferred', coalesce(previous_crop_roll_marker, ''), true);
   delete from app_sync_private.ph_master_bulk_import_source_v1 s
   where not exists(select 1 from public.ph_master_inventory m where m.unique_id = s.canonical_unique_id);
 

@@ -133,10 +133,10 @@ function sourceRowsFromProductionShape({ shape, columns, rowCount = ROW_COUNT, v
   return { rows, sourceDigest: payload.sourceDigest, context: ctx };
 }
 
-export function syntheticBulkMasterSnapshot({ rowCount = ROW_COUNT, variant = 0 } = {}) {
+export function syntheticBulkMasterSnapshot({ rowCount = ROW_COUNT, variant = 0, columns: suppliedColumns = null } = {}) {
   const shape = JSON.parse(readFileSync(new URL('../../tests/fixtures/bulk-master-import-shape.json', import.meta.url), 'utf8'));
   const allowed = new Set(vm.runInContext('Array.from(ALLOWED_DB_COLUMNS)', appScriptContext()));
-  const columns = [...new Set([...shape.map(item => item.column_name), ...allowed])]
+  const columns = suppliedColumns || [...new Set([...shape.map(item => item.column_name), ...allowed])]
     .filter(column_name => !META_FIELDS.has(column_name)).map(column_name => ({ column_name, data_type: 'text' }));
   return sourceRowsFromProductionShape({ shape, columns, rowCount, variant });
 }
@@ -192,6 +192,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
   let fenceDatasetKeys;
   let revisionKeys;
   let testFailure;
+  let testFailed = false;
 
   const setDisposableDbClaims = async () => {
     await db.query("select set_config('request.jwt.claims', '{\"role\":\"service_role\"}', true)");
@@ -499,7 +500,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     console.log(`[bulk-master-http] ${ROW_COUNT} rows, ${initial.rows.length ? Object.keys(initial.rows[0].values).length : 0} normalized columns, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
   } catch (error) {
     testFailure = error;
-    throw error;
+    testFailed = true;
   } finally {
     let cleanupError;
     try {
@@ -599,13 +600,16 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       cleanupError = error;
       await db.query('rollback').catch(() => {});
     } finally {
-      await db.end();
+      await db.end().catch(error => { cleanupError ||= error; });
     }
     if (cleanupError) {
-      if (testFailure && typeof testFailure === 'object') testFailure.cleanupError = cleanupError;
-      else throw new Error(`BULK_MASTER_HTTP_CLEANUP_FAILED: ${cleanupError.message}`, { cause: cleanupError });
+      if (testFailed && testFailure && typeof testFailure === 'object') testFailure.cleanupError = cleanupError;
+      else if (testFailed) testFailure = new AggregateError([testFailure, cleanupError], 'BULK_MASTER_HTTP_AND_CLEANUP_FAILED');
+      else testFailure = new Error(`BULK_MASTER_HTTP_CLEANUP_FAILED: ${cleanupError.message}`, { cause: cleanupError });
+      testFailed = true;
     }
   }
+  if (testFailed) throw testFailure;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

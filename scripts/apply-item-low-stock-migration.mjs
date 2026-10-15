@@ -252,6 +252,42 @@ export function migrationContractQuery(name) {
           and t.tgfoid=to_regprocedure('private.ph_master_bulk_isolation_v1()'))
           or (t.tgname='aabz_ph_master_bulk_import_field_isolation_v1'
             and t.tgfoid=to_regprocedure('private.ph_master_bulk_live_field_isolation_v1()'))))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.ph_master_bulk_crop_roll_defer_active_v1()')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and position('ph_master_inventory_import_run_v1' in p.prosrc)>0
+        and position('ph_master_bulk_import_context_v1' in p.prosrc)>0
+        and position('pg_backend_pid' in p.prosrc)>0
+        and position('txid_current' in p.prosrc)>0
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.sync_ph_master_bulk_crop_roll_v1(uuid,uuid,text[])')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and position('ph_master_inventory_import_run_v1' in p.prosrc)>0
+        and position('gnc.master_bulk_crop_roll_deferred' in p.prosrc)>0
+        and position('ph_master_bulk_import_context_v1' in p.prosrc)>0
+        and position('v2_crop_roll_drive_row_from_json' in p.prosrc)>0
+        and position('public.ph_crop_roll_drive_rows' in p.prosrc)>0
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.upsert_v2_crop_roll_drive_row_from_master()')
+        and p.prosecdef
+        and position('ph_master_bulk_crop_roll_defer_active_v1' in p.prosrc)>0)
+    and exists(select 1 from pg_trigger t
+      where t.tgrelid='public.ph_master_inventory'::regclass
+        and t.tgname='trg_v2_master_inventory_crop_roll_drive_rows'
+        and not t.tgisinternal and t.tgenabled='O'
+        and t.tgfoid=to_regprocedure('public.upsert_v2_crop_roll_drive_row_from_master()'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)')
+        and position('sync_ph_master_bulk_crop_roll_v1' in p.prosrc)>0
+        and position('gnc.master_bulk_crop_roll_deferred' in p.prosrc)>0
+        and position('previous_crop_roll_marker' in p.prosrc)>0
+        and position('coalesce(previous_crop_roll_marker' in p.prosrc)>0)
     as installed`;
   if (name === customerAssignmentOverridesMigrationName) return `select
     to_regclass('sales_private.customer_rep_assignment_sources') is not null
