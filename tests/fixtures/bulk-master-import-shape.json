@@ -1,0 +1,650 @@
+[
+  {
+    "column_name": "a_lts",
+    "populated_rows": 7135,
+    "avg_text_length": "3.2",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "ai_lts",
+    "populated_rows": 7135,
+    "avg_text_length": "3.2",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "app_tab_assignment",
+    "populated_rows": 1397,
+    "avg_text_length": "7.1",
+    "max_text_length": 27
+  },
+  {
+    "column_name": "assignedto",
+    "populated_rows": 1033,
+    "avg_text_length": "12.0",
+    "max_text_length": 13
+  },
+  {
+    "column_name": "av_note",
+    "populated_rows": 139,
+    "avg_text_length": "23.6",
+    "max_text_length": 53
+  },
+  {
+    "column_name": "av_rule_av_note_updated_at",
+    "populated_rows": 144,
+    "avg_text_length": "31.9",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "av_rule_bundle_updated_at",
+    "populated_rows": 146,
+    "avg_text_length": "31.9",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "av_rule_caliper_updated_at",
+    "populated_rows": 124,
+    "avg_text_length": "31.9",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "av_rule_holdstop_snapshot",
+    "populated_rows": 770,
+    "avg_text_length": "2.3",
+    "max_text_length": 30
+  },
+  {
+    "column_name": "av_rule_last_clear_reason",
+    "populated_rows": 1137,
+    "avg_text_length": "14.3",
+    "max_text_length": 24
+  },
+  {
+    "column_name": "av_rule_last_cleared_at",
+    "populated_rows": 1137,
+    "avg_text_length": "31.9",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "av_rule_match_updated_at",
+    "populated_rows": 146,
+    "avg_text_length": "31.9",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "av_rule_photo_updated_at",
+    "populated_rows": 146,
+    "avg_text_length": "31.9",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "av_rule_priority_snapshot",
+    "populated_rows": 651,
+    "avg_text_length": "1.0",
+    "max_text_length": 2
+  },
+  {
+    "column_name": "av_rule_spec_updated_at",
+    "populated_rows": 146,
+    "avg_text_length": "31.9",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "bay",
+    "populated_rows": 9539,
+    "avg_text_length": "3.0",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "blockalpha",
+    "populated_rows": 9539,
+    "avg_text_length": "1.0",
+    "max_text_length": 1
+  },
+  {
+    "column_name": "blocknumber",
+    "populated_rows": 9539,
+    "avg_text_length": "2.0",
+    "max_text_length": 2
+  },
+  {
+    "column_name": "botanicalname",
+    "populated_rows": 9539,
+    "avg_text_length": "26.9",
+    "max_text_length": 49
+  },
+  {
+    "column_name": "brand",
+    "populated_rows": 26,
+    "avg_text_length": "6.8",
+    "max_text_length": 9
+  },
+  {
+    "column_name": "caliper",
+    "populated_rows": 30,
+    "avg_text_length": "5.1",
+    "max_text_length": 10
+  },
+  {
+    "column_name": "commonname",
+    "populated_rows": 9539,
+    "avg_text_length": "22.2",
+    "max_text_length": 47
+  },
+  {
+    "column_name": "concat",
+    "populated_rows": 9539,
+    "avg_text_length": "43.0",
+    "max_text_length": 91
+  },
+  {
+    "column_name": "containersort",
+    "populated_rows": 9539,
+    "avg_text_length": "4.0",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "contsize",
+    "populated_rows": 9539,
+    "avg_text_length": "2.5",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "date_completed",
+    "populated_rows": 258,
+    "avg_text_length": "31.8",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "desigcust",
+    "populated_rows": 79,
+    "avg_text_length": "4.3",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "desigitem",
+    "populated_rows": 599,
+    "avg_text_length": "2.2",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "desigloc",
+    "populated_rows": 1348,
+    "avg_text_length": "4.6",
+    "max_text_length": 7
+  },
+  {
+    "column_name": "equiv_unit",
+    "populated_rows": 9539,
+    "avg_text_length": "11.6",
+    "max_text_length": 18
+  },
+  {
+    "column_name": "eval_task_assigned_at",
+    "populated_rows": 1,
+    "avg_text_length": "29.0",
+    "max_text_length": 29
+  },
+  {
+    "column_name": "eval_task_assigned_by",
+    "populated_rows": 1,
+    "avg_text_length": "13.0",
+    "max_text_length": 13
+  },
+  {
+    "column_name": "eval_task_instructions",
+    "populated_rows": 1,
+    "avg_text_length": "67.0",
+    "max_text_length": 67
+  },
+  {
+    "column_name": "eval_task_status",
+    "populated_rows": 1,
+    "avg_text_length": "4.0",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "eval_task_type",
+    "populated_rows": 1,
+    "avg_text_length": "7.0",
+    "max_text_length": 7
+  },
+  {
+    "column_name": "ext_ptronhand",
+    "populated_rows": 9507,
+    "avg_text_length": "5.0",
+    "max_text_length": 9
+  },
+  {
+    "column_name": "fieldtagcolor",
+    "populated_rows": 8314,
+    "avg_text_length": "5.6",
+    "max_text_length": 8
+  },
+  {
+    "column_name": "filename",
+    "populated_rows": 9539,
+    "avg_text_length": "41.8",
+    "max_text_length": 42
+  },
+  {
+    "column_name": "fnsalesnote",
+    "populated_rows": 554,
+    "avg_text_length": "18.4",
+    "max_text_length": 49
+  },
+  {
+    "column_name": "genusname",
+    "populated_rows": 9539,
+    "avg_text_length": "8.0",
+    "max_text_length": 23
+  },
+  {
+    "column_name": "grower",
+    "populated_rows": 9392,
+    "avg_text_length": "9.0",
+    "max_text_length": 9
+  },
+  {
+    "column_name": "holdstopbegindate",
+    "populated_rows": 710,
+    "avg_text_length": "57.0",
+    "max_text_length": 57
+  },
+  {
+    "column_name": "holdstopcode",
+    "populated_rows": 711,
+    "avg_text_length": "1.0",
+    "max_text_length": 1
+  },
+  {
+    "column_name": "holdstopenddate",
+    "populated_rows": 227,
+    "avg_text_length": "57.0",
+    "max_text_length": 57
+  },
+  {
+    "column_name": "holdstopreason",
+    "populated_rows": 709,
+    "avg_text_length": "14.1",
+    "max_text_length": 37
+  },
+  {
+    "column_name": "hz",
+    "populated_rows": 9539,
+    "avg_text_length": "2.0",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "initial_ptr",
+    "populated_rows": 226,
+    "avg_text_length": "2.9",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "insurancegroup",
+    "populated_rows": 9537,
+    "avg_text_length": "9.8",
+    "max_text_length": 10
+  },
+  {
+    "column_name": "intercopo",
+    "populated_rows": 1094,
+    "avg_text_length": "1.0",
+    "max_text_length": 1
+  },
+  {
+    "column_name": "inventorynote",
+    "populated_rows": 777,
+    "avg_text_length": "2.4",
+    "max_text_length": 35
+  },
+  {
+    "column_name": "itemcode",
+    "populated_rows": 9539,
+    "avg_text_length": "12.0",
+    "max_text_length": 12
+  },
+  {
+    "column_name": "itemspec",
+    "populated_rows": 7226,
+    "avg_text_length": "3.8",
+    "max_text_length": 6
+  },
+  {
+    "column_name": "largeptrqty",
+    "populated_rows": 6808,
+    "avg_text_length": "2.0",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "last_updated",
+    "populated_rows": 9539,
+    "avg_text_length": "28.9",
+    "max_text_length": 29
+  },
+  {
+    "column_name": "listprice",
+    "populated_rows": 9507,
+    "avg_text_length": "3.7",
+    "max_text_length": 6
+  },
+  {
+    "column_name": "loc_match_qty",
+    "populated_rows": 157,
+    "avg_text_length": "2.5",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "locationcode",
+    "populated_rows": 9539,
+    "avg_text_length": "8.0",
+    "max_text_length": 8
+  },
+  {
+    "column_name": "locationnote",
+    "populated_rows": 5182,
+    "avg_text_length": "24.2",
+    "max_text_length": 197
+  },
+  {
+    "column_name": "locationnotedate",
+    "populated_rows": 5109,
+    "avg_text_length": "21.0",
+    "max_text_length": 22
+  },
+  {
+    "column_name": "locationptn1",
+    "populated_rows": 1528,
+    "avg_text_length": "12.6",
+    "max_text_length": 39
+  },
+  {
+    "column_name": "locationptn2",
+    "populated_rows": 1285,
+    "avg_text_length": "13.8",
+    "max_text_length": 47
+  },
+  {
+    "column_name": "lochold",
+    "populated_rows": 1,
+    "avg_text_length": "2.0",
+    "max_text_length": 2
+  },
+  {
+    "column_name": "lotcode",
+    "populated_rows": 9539,
+    "avg_text_length": "4.8",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "match",
+    "populated_rows": 158,
+    "avg_text_length": "2.1",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "maxorderquantity",
+    "populated_rows": 272,
+    "avg_text_length": "2.0",
+    "max_text_length": 2
+  },
+  {
+    "column_name": "mcstatus",
+    "populated_rows": 9539,
+    "avg_text_length": "1.0",
+    "max_text_length": 1
+  },
+  {
+    "column_name": "ncr_approval_message",
+    "populated_rows": 2,
+    "avg_text_length": "3174.5",
+    "max_text_length": 3818
+  },
+  {
+    "column_name": "ncr_approval_type",
+    "populated_rows": 2,
+    "avg_text_length": "8.0",
+    "max_text_length": 8
+  },
+  {
+    "column_name": "ncr_requested_at",
+    "populated_rows": 2,
+    "avg_text_length": "28.5",
+    "max_text_length": 29
+  },
+  {
+    "column_name": "ncr_requested_by_display",
+    "populated_rows": 2,
+    "avg_text_length": "11.0",
+    "max_text_length": 11
+  },
+  {
+    "column_name": "ncr_requested_by_email",
+    "populated_rows": 2,
+    "avg_text_length": "32.0",
+    "max_text_length": 32
+  },
+  {
+    "column_name": "ncr_requested_by_username",
+    "populated_rows": 2,
+    "avg_text_length": "11.0",
+    "max_text_length": 11
+  },
+  {
+    "column_name": "photo_link",
+    "populated_rows": 161,
+    "avg_text_length": "482.1",
+    "max_text_length": 923
+  },
+  {
+    "column_name": "photo_name",
+    "populated_rows": 30,
+    "avg_text_length": "174.1",
+    "max_text_length": 349
+  },
+  {
+    "column_name": "pic_note",
+    "populated_rows": 7,
+    "avg_text_length": "23.1",
+    "max_text_length": 39
+  },
+  {
+    "column_name": "plantgroupcode",
+    "populated_rows": 9539,
+    "avg_text_length": "9.1",
+    "max_text_length": 10
+  },
+  {
+    "column_name": "printedcontainercode",
+    "populated_rows": 9539,
+    "avg_text_length": "2.5",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "priority",
+    "populated_rows": 2879,
+    "avg_text_length": "1.2",
+    "max_text_length": 2
+  },
+  {
+    "column_name": "prisetby",
+    "populated_rows": 3076,
+    "avg_text_length": "2.1",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "priupdated",
+    "populated_rows": 3058,
+    "avg_text_length": "21.0",
+    "max_text_length": 22
+  },
+  {
+    "column_name": "ptravailable",
+    "populated_rows": 9505,
+    "avg_text_length": "2.5",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "ptronhand",
+    "populated_rows": 9539,
+    "avg_text_length": "2.5",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "ptrreviewed",
+    "populated_rows": 703,
+    "avg_text_length": "1.5",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "pullerresponsibility",
+    "populated_rows": 9520,
+    "avg_text_length": "8.0",
+    "max_text_length": 10
+  },
+  {
+    "column_name": "pulltagnote1",
+    "populated_rows": 1,
+    "avg_text_length": "3.0",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "qualitycode",
+    "populated_rows": 9539,
+    "avg_text_length": "1.0",
+    "max_text_length": 1
+  },
+  {
+    "column_name": "reversecommon",
+    "populated_rows": 9539,
+    "avg_text_length": "23.2",
+    "max_text_length": 48
+  },
+  {
+    "column_name": "s_lts",
+    "populated_rows": 7060,
+    "avg_text_length": "2.9",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "sales_note",
+    "populated_rows": 13,
+    "avg_text_length": "29.4",
+    "max_text_length": 71
+  },
+  {
+    "column_name": "salesnote",
+    "populated_rows": 556,
+    "avg_text_length": "18.4",
+    "max_text_length": 49
+  },
+  {
+    "column_name": "salesnotebegindate",
+    "populated_rows": 403,
+    "avg_text_length": "57.0",
+    "max_text_length": 57
+  },
+  {
+    "column_name": "saleyear",
+    "populated_rows": 9539,
+    "avg_text_length": "4.0",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "season",
+    "populated_rows": 9539,
+    "avg_text_length": "1.8",
+    "max_text_length": 2
+  },
+  {
+    "column_name": "season_available",
+    "populated_rows": 9504,
+    "avg_text_length": "2.8",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "season_demand",
+    "populated_rows": 3171,
+    "avg_text_length": "2.0",
+    "max_text_length": 4
+  },
+  {
+    "column_name": "season_oh",
+    "populated_rows": 9536,
+    "avg_text_length": "2.8",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "season_supply",
+    "populated_rows": 9467,
+    "avg_text_length": "2.8",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "si_lts",
+    "populated_rows": 7060,
+    "avg_text_length": "2.9",
+    "max_text_length": 5
+  },
+  {
+    "column_name": "sortnamevariety",
+    "populated_rows": 9539,
+    "avg_text_length": "19.5",
+    "max_text_length": 38
+  },
+  {
+    "column_name": "source",
+    "populated_rows": 9530,
+    "avg_text_length": "2.0",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "spec",
+    "populated_rows": 157,
+    "avg_text_length": "7.3",
+    "max_text_length": 19
+  },
+  {
+    "column_name": "specialpuller",
+    "populated_rows": 343,
+    "avg_text_length": "2.5",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "suspend",
+    "populated_rows": 238,
+    "avg_text_length": "7.0",
+    "max_text_length": 7
+  },
+  {
+    "column_name": "suspend_to",
+    "populated_rows": 723,
+    "avg_text_length": "2.0",
+    "max_text_length": 3
+  },
+  {
+    "column_name": "unique_id",
+    "populated_rows": 9539,
+    "avg_text_length": "38.4",
+    "max_text_length": 49
+  },
+  {
+    "column_name": "varietycode",
+    "populated_rows": 9539,
+    "avg_text_length": "6.0",
+    "max_text_length": 6
+  },
+  {
+    "column_name": "warehouseid",
+    "populated_rows": 9539,
+    "avg_text_length": "2.0",
+    "max_text_length": 2
+  },
+  {
+    "column_name": "warehousename",
+    "populated_rows": 9539,
+    "avg_text_length": "18.0",
+    "max_text_length": 18
+  }
+]

@@ -1060,13 +1060,14 @@ function reconcileInventoryAssignmentsInBatches_(context) {
   }
   throw new Error('ASSIGNMENT_RECONCILIATION_CALL_LIMIT');
 }
-function closeDatasetImportFence_(context, succeeded) {
+function closeDatasetImportFence_(context, succeeded, beforeFinish) {
   if (!context || context.closed) return;
   try {
     if (succeeded && context.keys && context.keys.includes('ph_master_inventory') &&
         context.canonicalKeys && context.canonicalKeys.includes('ph_master_inventory')) {
       reconcileInventoryAssignmentsInBatches_(context);
     }
+    if (succeeded && typeof beforeFinish === 'function') beforeFinish();
     const result = callDatasetImportFenceRpc_(succeeded ? 'finish_dataset_import_v1' : 'fail_dataset_import_v1', { p_run_id: context.runId });
     if (!result || result.ok !== true) throw new Error('DATASET_IMPORT_CLOSE_FAILED');
     context.closed = true;
@@ -2186,6 +2187,7 @@ function getSafeImportFailureCode_(error) {
   const explicitCode = String(error && (error.errorCode || error.error_code) || '').trim().toUpperCase();
   if (isImportSourceValidationErrorCode_(explicitCode)) return explicitCode;
   if (explicitCode === 'IMPORT_SOURCE_REJECTION_TRACKER_FAILED') return explicitCode;
+  if (explicitCode === 'MASTER_BULK_PUBLISHED_SOURCE_CHANGED') return explicitCode;
   const message = String(error && error.message || error || '');
   // Publish only a structured SQLSTATE, never database details or source rows.
   const databaseError = /^Supabase (?:upsert|delete) failed for [a-zA-Z0-9_]+ \(\d{3}\):\s*(\{[\s\S]*\})$/.exec(message);
@@ -6151,6 +6153,110 @@ function executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc,
   };
 }
 
+function canonicalizeMasterBulkPayloadValue_(value) {
+  if (Array.isArray(value)) return value.map(canonicalizeMasterBulkPayloadValue_);
+  if (!value || typeof value !== 'object') return value;
+  const result = {};
+  Object.keys(value).sort().forEach(function(key) {
+    result[key] = canonicalizeMasterBulkPayloadValue_(value[key]);
+  });
+  return result;
+}
+
+function masterBulkSha256Hex_(value) {
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(value || ''), Utilities.Charset.UTF_8);
+  return photoArchiveBytesToHex_(digest).toLowerCase();
+}
+
+function masterBulkRequestUuid_(runId, sourceDigest) {
+  const hex = masterBulkSha256Hex_(String(runId || '') + ':' + String(sourceDigest || ''));
+  const chars = hex.slice(0, 32).split('');
+  chars[12] = '5';
+  chars[16] = ((parseInt(chars[16], 16) & 3) | 8).toString(16);
+  const value = chars.join('');
+  return value.slice(0, 8) + '-' + value.slice(8, 12) + '-' + value.slice(12, 16) + '-' + value.slice(16, 20) + '-' + value.slice(20, 32);
+}
+
+function buildMasterBulkSnapshotPayload_(tableName, parsedFiles, payloadBuilderFunc, syncStartTime) {
+  const combinedStats = createDeltaSyncStats_();
+  const rowsById = new Map();
+  parsedFiles.forEach(function(entry) {
+    const results = payloadBuilderFunc(entry.rawData, tableName, [], syncStartTime, entry.fileName);
+    const fileStats = results && results.stats ? results.stats : createDeltaSyncStats_();
+    throwIfSnapshotSourceInvalid_(fileStats, results && results.totalRows, entry.fileName, tableName);
+    mergeDeltaSyncStats_(combinedStats, fileStats);
+    (results.upserts || []).forEach(function(sourceRow) {
+      const uniqueId = String(sourceRow && sourceRow.unique_id || '').trim();
+      if (!uniqueId) return;
+      const values = {};
+      Object.keys(sourceRow).forEach(function(key) {
+        if (key === 'assignedto') return;
+        values[key] = sourceRow[key];
+      });
+      const rawFields = getMasterItem6RawFieldMask_(sourceRow);
+      rowsById.set(uniqueId, { values: canonicalizeMasterBulkPayloadValue_(values), rawFields: rawFields });
+    });
+  });
+
+  throwIfSnapshotSourceInvalid_(combinedStats, combinedStats.sourceRows, tableName, tableName);
+  const rows = Array.from(rowsById.values());
+  if (!rows.length) throw createImportSourceValidationError_('IMPORT_SOURCE_NO_VALID_IDENTITIES', 'The complete master snapshot has no valid rows.');
+  const serializedRows = JSON.stringify(canonicalizeMasterBulkPayloadValue_(rows));
+  return {
+    rows: rows,
+    serializedRows: serializedRows,
+    sourceDigest: masterBulkSha256Hex_(serializedRows),
+    combinedStats: combinedStats
+  };
+}
+
+function validateMasterBulkSnapshotResponse_(response, runId, requestId, sourceDigest, sourceRows) {
+  const value = Array.isArray(response) && response.length === 1 ? response[0] : response;
+  const required = ['sourceRows', 'inserted', 'updated', 'deleted', 'unchanged'];
+  if (!value || value.published !== true || String(value.runId || '') !== String(runId || '')
+      || String(value.requestId || '') !== String(requestId || '')
+      || String(value.sourceDigest || '').toLowerCase() !== String(sourceDigest || '').toLowerCase()) {
+    throw new Error('MASTER_BULK_IMPORT_RESPONSE_IDENTITY_INVALID');
+  }
+  required.forEach(function(key) {
+    if (!Number.isSafeInteger(value[key]) || value[key] < 0) throw new Error('MASTER_BULK_IMPORT_RESPONSE_COUNT_INVALID');
+  });
+  if (value.sourceRows !== sourceRows || value.inserted + value.updated + value.unchanged !== sourceRows) {
+    throw new Error('MASTER_BULK_IMPORT_RESPONSE_TOTAL_INVALID');
+  }
+  return value;
+}
+
+function callMasterBulkSnapshotImport_(bulkPayload, runId) {
+  const requestId = masterBulkRequestUuid_(runId, bulkPayload.sourceDigest);
+  const rpcPayload = {
+    p_run_id: runId,
+    p_request_id: requestId,
+    p_rows: bulkPayload.rows,
+    p_source_digest: bulkPayload.sourceDigest
+  };
+  const response = withRetry_('Bulk master snapshot import', 3, 750, function() {
+    return callSupabaseRpc_('bulk_import_master_snapshot_v1', rpcPayload);
+  }, function(error) {
+    const message = String(error && error.message || error || '').toLowerCase();
+    return message.includes('timeout') || message.includes('timed out') || message.includes('network')
+      || message.includes('connection') || /\((429|500|502|503|504)\)/.test(message);
+  });
+  return validateMasterBulkSnapshotResponse_(response, runId, requestId, bulkPayload.sourceDigest, bulkPayload.rows.length);
+}
+
+function isCanonicalPhMasterBulkSnapshot_(tableName, processedFolderId) {
+  return String(tableName || '') === 'ph_master_inventory'
+    && String(processedFolderId || '') === String(FOLDERS.MASTER_PROCESSED || '');
+}
+
+function revalidateCanonicalMasterSnapshotSources_(parsedFiles) {
+  (parsedFiles || []).forEach(function(entry) {
+    if (!entry.sourceIdentity) throw new Error('MASTER_BULK_SOURCE_IDENTITY_UNAVAILABLE');
+    revalidateImportSourceIdentity_(entry.sourceIdentity, 'ph_master_inventory');
+  });
+}
+
 function filterMasterRawDataBySite_(rawData, siteCode) {
   const safeSite = normalizeSiteSplitSiteCode_(siteCode);
   if (!Array.isArray(rawData) || rawData.length < 1) return rawData;
@@ -6396,6 +6502,9 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
   let fatalErrorCode = '';
   let revisionFence = null;
   let evalReport2Reconciliation = null;
+  const canonicalPhMasterBulk = isCanonicalPhMasterBulkSnapshot_(tableName, processedFolderId);
+  let canonicalPhMasterPublished = false;
+  let masterBulkPayload = null;
 
   console.log(`[START] Processing snapshot batch: ${pendingFiles.length} file(s) -> Table: ${tableName}`);
 
@@ -6404,11 +6513,13 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       const fileName = file.getName();
       console.log(`[PARSE] ${fileName}`);
       try {
+        const sourceIdentity = canonicalPhMasterBulk ? getImportSourceIdentity_(file, tableName) : null;
+        if (canonicalPhMasterBulk && !sourceIdentity) throw new Error('MASTER_BULK_SOURCE_IDENTITY_UNAVAILABLE');
         const rawData = extractDataFromFile(file, dropFolderId);
         if (!rawData || rawData.length < 2) {
           throw createImportSourceValidationError_('IMPORT_SOURCE_EMPTY', `No data rows were found in ${fileName}.`);
         }
-        const entry = { file: file, fileName: fileName, rawData: rawData };
+        const entry = { file: file, fileName: fileName, rawData: rawData, sourceIdentity: sourceIdentity };
         if (isMasterInventoryTable_(tableName)) {
           entry.preview = previewMasterSnapshotFile_(rawData, tableName);
           throwIfSnapshotSourceInvalid_(entry.preview.stats, entry.preview.totalRows, fileName, tableName);
@@ -6465,10 +6576,16 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     let deletes = [];
 
     if (isMasterInventoryTable_(tableName)) {
-      const masterResults = executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc, syncStartTime);
-      mergeDeltaSyncStats_(combinedStats, masterResults.combinedStats);
-      upserts = masterResults.upserts || [];
-      deletes = masterResults.deletes || [];
+      if (canonicalPhMasterBulk) {
+        masterBulkPayload = buildMasterBulkSnapshotPayload_(tableName, parsedFiles, payloadBuilderFunc, syncStartTime);
+        mergeDeltaSyncStats_(combinedStats, masterBulkPayload.combinedStats);
+        upserts = masterBulkPayload.rows;
+      } else {
+        const masterResults = executeMasterSnapshotBatch_(tableName, parsedFiles, payloadBuilderFunc, syncStartTime);
+        mergeDeltaSyncStats_(combinedStats, masterResults.combinedStats);
+        upserts = masterResults.upserts || [];
+        deletes = masterResults.deletes || [];
+      }
     } else {
       const selectColumnsSet = {};
       parsedFiles.forEach(function(entry) {
@@ -6514,9 +6631,23 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       upserts: upsertCount
     }));
 
-    revisionFence = beginDatasetImportFenceIfNeeded_(tableName, upserts.length || deletes.length);
-    if (upserts.length > 0) pushToSupabase(tableName, upserts);
-    if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
+    if (canonicalPhMasterBulk) revalidateCanonicalMasterSnapshotSources_(parsedFiles);
+    revisionFence = beginDatasetImportFenceIfNeeded_(tableName,
+      canonicalPhMasterBulk ? true : (upserts.length || deletes.length));
+    if (canonicalPhMasterBulk) {
+      if (!revisionFence || !revisionFence.runId) throw new Error('MASTER_BULK_IMPORT_FENCE_UNAVAILABLE');
+      const bulkResult = callMasterBulkSnapshotImport_(masterBulkPayload, revisionFence.runId);
+      canonicalPhMasterPublished = true;
+      upsertCount = bulkResult.inserted + bulkResult.updated;
+      deleteCount = bulkResult.deleted;
+      combinedStats.insertedRows = bulkResult.inserted;
+      combinedStats.changedRows = bulkResult.updated;
+      combinedStats.unchangedRows = bulkResult.unchanged;
+      combinedStats.deletedRows = bulkResult.deleted;
+    } else {
+      if (upserts.length > 0) pushToSupabase(tableName, upserts);
+      if (deletes.length > 0) deleteFromSupabase(tableName, deletes);
+    }
 
     if (isMasterInventoryTable_(tableName)) {
       reconcileSeasonSalesOfficeAfterImport_(syncStartTime, 'master_inventory');
@@ -6542,7 +6673,17 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       }
     }
 
-    closeDatasetImportFence_(revisionFence, true);
+    closeDatasetImportFence_(revisionFence, true, canonicalPhMasterBulk && canonicalPhMasterPublished ? function() {
+      try {
+        revalidateCanonicalMasterSnapshotSources_(parsedFiles);
+      } catch (sourceError) {
+        const publishedSourceError = new Error(
+          'MASTER_BULK_PUBLISHED_SOURCE_CHANGED: the snapshot was published, but a source file changed before archival; the original file remains pending for retry.'
+        );
+        publishedSourceError.errorCode = 'MASTER_BULK_PUBLISHED_SOURCE_CHANGED';
+        throw publishedSourceError;
+      }
+    } : null);
     let namingSummary = null;
     if (isMasterInventoryTable_(tableName) && String(processedFolderId || '') === String(FOLDERS.MASTER_PROCESSED || '')) {
       namingSummary = moveAndNormalizeDriveAroundProcessedFiles_(parsedFiles, processedFolder, { nowIso: syncStartTime });

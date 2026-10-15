@@ -86193,6 +86193,46 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "bulk_import_master_snapshot_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_request_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_rows": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_run_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_digest": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "bunch_note_card_command_v1": {
       "oneOf": [
         {
@@ -92985,6 +93025,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "bloomscapes_pending_command": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "bulk_import_master_snapshot_v1": {
       "oneOf": [
         "json"
       ]
