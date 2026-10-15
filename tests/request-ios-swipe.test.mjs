@@ -156,7 +156,9 @@ test('Suspend Tag filters compose in one pass and retain cached content during r
   assert.match(html, /function applyRequestSuspendTagAssignedToFilter/);
   assert.match(html, /function applyRequestSuspendTagContSizeFilter/);
   assert.match(html, /function applyRequestSuspendTagDockFilter/);
-  assert.match(html, /const searchSuspendTagItems = applyRequestSuspendTagCommonNameSearchFilter\(allSuspendTagItems\);[\s\S]*const assignedSuspendTagItems = applyRequestSuspendTagAssignedToFilter\(searchSuspendTagItems\);[\s\S]*const contSizeSuspendTagItems = applyRequestSuspendTagContSizeFilter\(assignedSuspendTagItems\);[\s\S]*const suspendTagItems = applyRequestSuspendTagDockFilter\(contSizeSuspendTagItems\)/);
+  const plan = html.slice(html.indexOf('function buildSuspendTagRenderPlan('), html.indexOf('function getRequestSuspendTagSearchInputState('));
+  assert.match(plan, /const searchItems = applyRequestSuspendTagCommonNameSearchFilter\(allItems\);[\s\S]*const assignedItems = applyRequestSuspendTagAssignedToFilter\(searchItems\);[\s\S]*const contSizeItems = applyRequestSuspendTagContSizeFilter\(assignedItems\);[\s\S]*const filteredItems = applyRequestSuspendTagDockFilter\(contSizeItems\)/);
+  assert.match(plan, /buildRequestPagedRenderPlan\([\s\S]*filteredItems\)/);
   assert.match(html, /request-suspend-tag-contsize-filter/);
   assert.match(html, /request-suspend-tag-dock-filter/);
   assert.match(html, /request-suspend-tag-common-search/);
@@ -257,7 +259,8 @@ test('restoring an archived last-page row clamps to the last valid offset while 
   const helperFunction = html.slice(helperStart, helperEnd);
   const archiveRenderer = html.slice(html.indexOf('function renderRequestArchivePageHtml('), helperStart);
   assert.match(archiveRenderer, /Number\(state\.total\) > limit \|\| offset > 0/);
-  assert.match(archiveRenderer, /Number\(state\.total\) > 0[\s\S]*\$\{pager\}/);
+  assert.match(archiveRenderer, /id="request-archive-page-pager">\$\{pager\}/);
+  assert.match(archiveRenderer, /Number\(state\.total\) > 0 \? 'No rows on this page\.'/);
 
   async function runRestore({ total, offset, success }) {
     const row = { UNIQUE_ID: 'archived-row', COMMONNAME: 'Test Hosta', REQ_ARCHIVED: true };

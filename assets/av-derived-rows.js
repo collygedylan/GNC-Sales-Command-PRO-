@@ -23,6 +23,14 @@
     while (entries.size > MAX_ENTRIES) entries.delete(entries.keys().next().value);
   }
 
+  function cancelOtherJobs(scope, activeKey = '') {
+    const normalizedScope = String(scope || '').trim();
+    const normalizedKey = String(activeKey || '').trim();
+    for (const [key, job] of jobs) {
+      if (job.scope === normalizedScope && key !== normalizedKey) removeJob(key, job);
+    }
+  }
+
   function peek(key, scope) {
     const entry = entries.get(key);
     if (!entry || entry.scope !== scope) return null;
@@ -41,6 +49,7 @@
     if (!key || !scope || !sourceKey || !Array.isArray(rows) || typeof mapRow !== 'function') {
       return Promise.reject(new Error('AV_DERIVED_ROWS_INPUT_INVALID'));
     }
+    cancelOtherJobs(scope, key);
     const current = peek(key, scope);
     if (current && current.sourceKey === sourceKey) return Promise.resolve(current.rows);
     const active = jobs.get(key);
@@ -57,10 +66,11 @@
     jobs.set(key, job);
 
     const runSlice = () => {
-      if (jobs.get(key) !== job || !job.isCurrent()) { removeJob(key, job); return; }
-      const start = job.cursor;
-      const end = Math.min(job.rows.length, start + job.chunkSize);
+      if (jobs.get(key) !== job) { removeJob(key, job); return; }
       try {
+        if (!job.isCurrent()) { removeJob(key, job); return; }
+        const start = job.cursor;
+        const end = Math.min(job.rows.length, start + job.chunkSize);
         for (; job.cursor < end; job.cursor += 1) {
           const mapped = job.mapRow(job.rows[job.cursor], job.cursor);
           if (mapped !== null && mapped !== undefined) job.output.push(mapped);
@@ -99,5 +109,5 @@
     if (job) removeJob(normalized, job);
   }
 
-  root.AgMetricAvDerivedRows = Object.freeze({ peek, prepare, clearScope, invalidate });
+  root.AgMetricAvDerivedRows = Object.freeze({ peek, prepare, cancelOtherJobs, clearScope, invalidate });
 })(window);

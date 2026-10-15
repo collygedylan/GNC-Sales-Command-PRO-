@@ -7107,6 +7107,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
     <script src="./assets/live-sync-registry.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-adapters.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-coordinator.js?v=V2026.10.14.003"></script>
+    <script src="./assets/av-derived-rows.js?v=V2026.10.14.003"></script>
     <script src="./assets/request-submission.js?v=V2026.10.14.003&mapping=20261014"></script>
     <script src="./assets/ops-precision-pilot.js?v=V2026.10.14.003"></script>
     <script src="./assets/production-schedule.js?v=V2026.10.14.003"></script>
@@ -87094,16 +87095,24 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return nextRow;
         }
 
-        function getAvSalesInventorySourceRows() {
+        function selectAvSalesInventorySourceRows() {
             const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
             const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
-            if (shouldUseRepAvOpenDataset() && avRows.length) return applyAvOpenSalesWindowScope(applyRepU3VisibilityScope(avRows));
+            if (shouldUseRepAvOpenDataset() && avRows.length) return avRows;
             const masterReady = masterRows.length > 0 && (
                 isDatasetLoaded('master', 'full')
                 || masterRows.length > avRows.length
                 || !avRows.length
             );
-            return applyAvOpenSalesWindowScope(applyRepU3VisibilityScope(masterReady ? masterRows : (avRows.length ? avRows : masterRows)));
+            return masterReady ? masterRows : (avRows.length ? avRows : masterRows);
+        }
+
+        function getAvSalesInventorySourceRows(options = {}) {
+            const sourceRows = selectAvSalesInventorySourceRows();
+            const salesWindowRows = options && options.skipSalesWindow
+                ? sourceRows
+                : applyAvOpenSalesWindowScope(sourceRows);
+            return applyRepU3VisibilityScope(salesWindowRows);
         }
 
         function itemMatchesAvSalesBucket(item = null, bucket = activeAvSalesBucket, reserveRows = []) {
@@ -87119,32 +87128,89 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return itemMatchesAvCurrentSeasonBucket(item);
         }
 
-        function getAvSalesRowsForBucket(bucket = activeAvSalesBucket) {
+        function createAvSalesRowsDerivation(bucket = activeAvSalesBucket) {
             const safeBucket = normalizeAvSalesBucket(bucket);
             const reserveRows = getAvSalesReserveDemandRows(safeBucket);
             const reserveSeasonIndex = buildAvReserveSeasonIndex(reserveRows);
             const seen = new Set();
-            const decorateRows = (rows = [], requireOpenOrReserve = true) => (Array.isArray(rows) ? rows : []).reduce((result, row) => {
-                if (!row || shouldHideU3InventoryRowForRep(row)) return result;
+            const hotPriceIndex = safeBucket === 'hot-price' ? buildAvHotPriceIndex() : null;
+            const sourceRows = safeBucket === 'hot-price'
+                ? (Array.isArray(fullInventory) ? fullInventory : [])
+                : getAvSalesInventorySourceRows({ skipSalesWindow: true });
+            const requireOpenOrReserve = isAvCustomerSalesBucket(safeBucket);
+
+            const mapRow = (sourceRow) => {
+                if (!sourceRow || shouldHideU3InventoryRowForRep(sourceRow)) return null;
+                let row = sourceRow;
+                if (safeBucket === 'hot-price') {
+                    row = buildAvHotPriceRow(sourceRow, hotPriceIndex);
+                    if (!row) return null;
+                }
+                if (!itemMatchesAvOpenSalesWindow(row)) return null;
                 const season = getAvSalesSeasonValue(row);
                 const allowShiftRow = safeBucket === 'next-up' && season === 'S1';
-                if ((!allowShiftRow && isShiftDesigItemRow(row)) || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return result;
-                if (!AV_FILTER_SEASON_OPTIONS.includes(season)) return result;
+                if ((!allowShiftRow && isShiftDesigItemRow(row)) || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return null;
+                if (!AV_FILTER_SEASON_OPTIONS.includes(season)) return null;
                 const matchedReserveRows = getAvReserveRowsForSalesItem(row, reserveSeasonIndex);
                 const hasOpenStock = shouldIncludeMasterItemInAvOpenStock(row);
-                if (requireOpenOrReserve && !hasOpenStock && !matchedReserveRows.length) return result;
-                if (!itemMatchesAvSalesBucket(row, safeBucket, matchedReserveRows)) return result;
+                if (requireOpenOrReserve && !hasOpenStock && !matchedReserveRows.length) return null;
+                if (!itemMatchesAvSalesBucket(row, safeBucket, matchedReserveRows)) return null;
                 const uniqueKey = getAvReserveLocationUniqueKey(row) || String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.DOM_ID, `${getAvSalesItemCode(row)}|${firstNonEmptyValue(row && row.LOCATIONCODE, '')}|${firstNonEmptyValue(row && row.LOTCODE, '')}`));
-                if (uniqueKey && seen.has(uniqueKey)) return result;
+                if (uniqueKey && seen.has(uniqueKey)) return null;
                 if (uniqueKey) seen.add(uniqueKey);
-                result.push(decorateAvSalesReserveRow(row, matchedReserveRows));
-                return result;
-            }, []);
-            if (safeBucket === 'hot-price') {
-                return decorateRows(applyAvOpenSalesWindowScope(getAvHotPriceRows()), false);
-            }
-            const rows = decorateRows(getAvSalesInventorySourceRows(), isAvCustomerSalesBucket(safeBucket));
-            return sortAvOpenItems(rows, 'name');
+                return decorateAvSalesReserveRow(row, matchedReserveRows);
+            };
+
+            return {
+                sourceRows,
+                mapRow,
+                finalize: (rows) => safeBucket === 'hot-price' ? rows : sortAvOpenItems(rows, 'name')
+            };
+        }
+
+        function getAvSalesRowsForBucket(bucket = activeAvSalesBucket) {
+            const derivation = createAvSalesRowsDerivation(bucket);
+            const rows = [];
+            derivation.sourceRows.forEach((row) => {
+                const mapped = derivation.mapRow(row);
+                if (mapped !== null && mapped !== undefined) rows.push(mapped);
+            });
+            return derivation.finalize(rows);
+        }
+
+        function buildAvHotPriceIndex() {
+            const index = new Map();
+            (Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory : []).forEach((item) => {
+                const matchKey = getAvHotPriceMatchKey(item);
+                const hotPrice = getNormalizedAvHotPrice(firstNonEmptyValue(item && item.CAV_HOT_PRICE, item && item.HOT_PRICE, item && item.HOTPRICE, item && item.hot_price, ''));
+                if (!matchKey || !hotPrice || index.has(matchKey)) return;
+                index.set(matchKey, {
+                    hotPrice,
+                    cavItemcode: firstNonEmptyValue(item && item.CAV_ITEMCODE, item && item.cav_itemcode, item && item.ITEMCODE, item && item.itemcode, ''),
+                    cavFilename: firstNonEmptyValue(item && item.CAV_FILENAME, item && item.cav_filename, ''),
+                    cavLastUpdated: firstNonEmptyValue(item && item.CAV_LAST_UPDATED, item && item.cav_last_updated, '')
+                });
+            });
+            return index;
+        }
+
+        function buildAvHotPriceRow(item = null, index = null) {
+            const matchKey = getAvHotPriceMatchKey(item);
+            const match = matchKey && index instanceof Map ? index.get(matchKey) : null;
+            if (!match) return null;
+            const hotPrice = getNormalizedAvHotPrice(match.hotPrice || '');
+            if (!hotPrice || !AV_FILTER_SEASON_OPTIONS.includes(getNormalizedAvHotPriceSeason(item))) return null;
+            const nextItem = Object.assign({}, item, {
+                HOT_PRICE: hotPrice,
+                HOTPRICE: hotPrice,
+                CAV_HOT_PRICE: hotPrice,
+                CAV_ITEMCODE: firstNonEmptyValue(match.cavItemcode, ''),
+                CAV_FILENAME: firstNonEmptyValue(match.cavFilename, ''),
+                CAV_LAST_UPDATED: firstNonEmptyValue(match.cavLastUpdated, ''),
+                CAV_HOT_PRICE_MATCH_KEY: matchKey
+            });
+            nextItem._search = (String(item && item._search || '').trim() + ' ' + hotPrice + ' ' + firstNonEmptyValue(match.cavItemcode, '')).trim().toLowerCase();
+            return nextItem;
         }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
             if (tab === 'photos') return 'Photos';
@@ -87152,16 +87218,137 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
         function sortAvOpenItems(items, tab=activeAvOpenTab) {
             const collator = new Intl.Collator(undefined, { numeric: true });
-            const compareText = (left, right) => collator.compare(String(left || ''), String(right || ''));
-            const nextItems = [...items];
-            nextItems.sort((a, b) => {
-                const nameCompare = compareText(a.COMMONNAME, b.COMMONNAME);
-                if (nameCompare !== 0) return nameCompare;
-                const sizeCompare = compareText(a.CONTSIZE, b.CONTSIZE);
-                if (sizeCompare !== 0) return sizeCompare;
-                return compareText(a.LOCATIONCODE, b.LOCATIONCODE);
+            const compareText = (left, right) => collator.compare(left, right);
+            return (Array.isArray(items) ? items : []).map((item, index) => ({
+                item,
+                index,
+                name: String(item && item.COMMONNAME || ''),
+                size: String(item && item.CONTSIZE || ''),
+                location: String(item && item.LOCATIONCODE || '')
+            })).sort((a, b) => (
+                compareText(a.name, b.name)
+                || compareText(a.size, b.size)
+                || compareText(a.location, b.location)
+                || (a.index - b.index)
+            )).map((entry) => entry.item);
+        }
+
+        const avDerivedRowsArrayIds = new WeakMap();
+        let avDerivedRowsNextArrayId = 0;
+        let avDerivedRowsActiveScope = '';
+        let avDerivedRowsPendingSignature = '';
+        const AV_DERIVED_PREVIEW_SOURCE_LIMIT = 50;
+        const AV_DERIVED_ROWS_CHUNK_SIZE = 96;
+
+        function getAvDerivedRowsArrayId(rows = []) {
+            if (!Array.isArray(rows)) return 'none';
+            let id = avDerivedRowsArrayIds.get(rows);
+            if (!id) {
+                id = ++avDerivedRowsNextArrayId;
+                avDerivedRowsArrayIds.set(rows, id);
+            }
+            return `${id}:${rows.length}`;
+        }
+
+        function getAvSalesDerivationIdentity(bucket = activeAvSalesBucket) {
+            const safeBucket = normalizeAvSalesBucket(bucket);
+            const identityScope = typeof getSupabaseReadIdentityScope === 'function'
+                ? getSupabaseReadIdentityScope()
+                : JSON.stringify([currentUser || '', currentRole || safeRole || '']);
+            const scope = JSON.stringify([identityScope, getRepU3VisibilityScopeKey()]);
+            const logicalKey = JSON.stringify([
+                safeBucket,
+                shouldUseRepAvOpenDataset() ? 'rep-open' : 'shared-master',
+                String(currentUser || ''),
+                String(currentRole || safeRole || ''),
+                getRepU3VisibilityScopeKey(),
+                getConfiguredCurrentSeasonCode(),
+                String(getConfiguredCurrentSalesYearCode()),
+                selectedAvResRep || '',
+                selectedAvSalesRepName || '',
+                selectedAvRepCustomerKey || ''
+            ]);
+            const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
+            const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
+            const reserveRows = Array.isArray(reservesInventory) ? reservesInventory : [];
+            const hotPriceRows = Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory : [];
+            const sourceKey = JSON.stringify([
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('avOpen'),
+                getDatasetLoadSignature('reserves'),
+                getDatasetLoadSignature('avHotPriceKeys'),
+                getDatasetLoadSignature('warehouseAssignedItems'),
+                getAvDerivedRowsArrayId(masterRows),
+                getAvDerivedRowsArrayId(avRows),
+                getAvDerivedRowsArrayId(reserveRows),
+                getAvDerivedRowsArrayId(hotPriceRows)
+            ]);
+            return { key: logicalKey, scope, sourceKey, signature: `${scope}::${logicalKey}::${sourceKey}` };
+        }
+
+        function getAvSalesRowsForRendering(bucket = activeAvSalesBucket, identityInput = null) {
+            const service = window && window.AgMetricAvDerivedRows;
+            if (!service || typeof service.prepare !== 'function' || typeof service.peek !== 'function') {
+                return { rows: getAvSalesRowsForBucket(bucket), partial: false };
+            }
+            const safeBucket = normalizeAvSalesBucket(bucket);
+            const identity = identityInput && identityInput.key && identityInput.scope && identityInput.sourceKey
+                ? identityInput
+                : getAvSalesDerivationIdentity(safeBucket);
+            if (avDerivedRowsActiveScope && avDerivedRowsActiveScope !== identity.scope) {
+                service.clearScope(avDerivedRowsActiveScope);
+            }
+            avDerivedRowsActiveScope = identity.scope;
+            if (typeof service.cancelOtherJobs === 'function') service.cancelOtherJobs(identity.scope, identity.key);
+            const cached = service.peek(identity.key, identity.scope);
+            if (cached && cached.sourceKey === identity.sourceKey) return { rows: cached.rows, partial: false };
+
+            if (avDerivedRowsPendingSignature !== identity.signature) {
+                const derivation = createAvSalesRowsDerivation(safeBucket);
+                avDerivedRowsPendingSignature = identity.signature;
+                service.prepare({
+                    key: identity.key,
+                    scope: identity.scope,
+                    sourceKey: identity.sourceKey,
+                    rows: derivation.sourceRows,
+                    chunkSize: AV_DERIVED_ROWS_CHUNK_SIZE,
+                    mapRow: derivation.mapRow,
+                    finalize: derivation.finalize,
+                    isCurrent: () => {
+                        const current = getAvSalesDerivationIdentity(safeBucket);
+                        return current.key === identity.key
+                            && current.scope === identity.scope
+                            && current.sourceKey === identity.sourceKey;
+                    }
+                }).then((rows) => {
+                    if (!rows) return;
+                    const current = getAvSalesDerivationIdentity(safeBucket);
+                    if (current.signature !== identity.signature) return;
+                    avResolvedBaseStateKey = '';
+                    avResolvedBaseStateCache = null;
+                    if (activeAVTab === 'open' && isViewVisible('av')) scheduleAVRender(0, 28, true);
+                }).catch((error) => {
+                    const current = getAvSalesDerivationIdentity(safeBucket);
+                    if (current.signature === identity.signature) {
+                        avResolvedBaseStateKey = '';
+                        avResolvedBaseStateCache = null;
+                    }
+                    console.warn('AV inventory preparation failed; the last complete rows remain visible.', error);
+                }).finally(() => {
+                    if (avDerivedRowsPendingSignature === identity.signature) avDerivedRowsPendingSignature = '';
+                });
+            }
+
+            if (cached) return { rows: cached.rows, partial: true };
+            const previewDerivation = createAvSalesRowsDerivation(safeBucket);
+            const previewRows = previewDerivation.sourceRows.slice(0, AV_DERIVED_PREVIEW_SOURCE_LIMIT);
+            const rows = [];
+            previewRows.forEach((row) => {
+                const mapped = previewDerivation.mapRow(row);
+                if (mapped !== null && mapped !== undefined) rows.push(mapped);
             });
-            return nextItems;
+            return { rows: previewDerivation.finalize(rows), partial: true };
         }
 
         function getNormalizedAvHotPrice(value = '') {
@@ -89420,7 +89607,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getAvRawTabItems(tab = activeAVTab, options = {}) {
             const ignoreSecondaryTab = !!(options && options.ignoreSecondaryTab);
-            let items = getAvSalesRowsForBucket(activeAvSalesBucket);
+            let items = Array.isArray(options && options.salesRows)
+                ? options.salesRows
+                : getAvSalesRowsForBucket(activeAvSalesBucket);
             items = items.filter((item) => !isShiftDesigItemRow(item));
             if (!ignoreSecondaryTab && getAvPhotoMode() === 'photos') items = items.filter(avItemHasPhotos);
             return Array.isArray(items) ? items : [];
@@ -89509,8 +89698,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function buildResolvedAVBaseState(options = {}) {
             const term = getAvSearchTerm();
             const safeTab = String(activeAVTab || 'open').trim();
+            const usePreparedSalesRows = safeTab === 'open' && !!(options && options.usePreparedSalesRows);
+            const preparedIdentity = usePreparedSalesRows ? getAvSalesDerivationIdentity(activeAvSalesBucket) : null;
             const cacheKey = [
                 resolvedViewStateEpoch,
+                usePreparedSalesRows ? 'prepared-sales-rows' : 'synchronous-sales-rows',
+                preparedIdentity ? preparedIdentity.signature : '',
                 safeTab,
                 activeAvOpenTab,
                 activeAvHotPriceTab,
@@ -89540,13 +89733,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return avResolvedBaseStateCache;
             }
-            const filterBaseItems = getAvRawTabItems(safeTab);
+            const preparedSalesRows = usePreparedSalesRows ? getAvSalesRowsForRendering(activeAvSalesBucket, preparedIdentity) : null;
+            const filterBaseItems = getAvRawTabItems(safeTab, preparedSalesRows ? { salesRows: preparedSalesRows.rows } : {});
             const avFilterState = buildAvSharedFilterState(filterBaseItems);
             let items = avFilterState.filteredItems;
             const searchProfile = isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open';
             if (term) items = filterBySearch(items, term, searchProfile);
             avResolvedBaseStateKey = cacheKey;
-            avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState };
+            avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState, isPartial: !!(preparedSalesRows && preparedSalesRows.partial) };
             return avResolvedBaseStateCache;
         }
 
@@ -91236,7 +91430,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
-            const avState = getCurrentAVBaseItems();
+            const avState = getCurrentAVBaseItems({ usePreparedSalesRows: activeAVTab === 'open' });
             renderAvTopControls(avState.filterBaseItems || []);
             const term = avState.term;
             let items = avState.items;
@@ -91246,6 +91440,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : [];
 
             if (items.length === 0) {
+                if (avState.isPartial) {
+                    updateAVExportButton(0);
+                    renderAvPhotoOutreachPanel([]);
+                    setContainerHtmlWithSignature(container,
+                        '<div class="p-8 text-center text-gray-400" role="status">Preparing AV inventory…</div>',
+                        `av-preparing|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}`);
+                    crumb.innerText = 'Loading AV inventory';
+                    return;
+                }
                 const bucketOption = getAvSalesBucketOption();
                 const bucketLabel = bucketOption.emptyLabel || String(bucketOption.label || 'AV rows').toLowerCase();
                 const emptyLabel = getAvPhotoMode() === 'photos' ? `${bucketLabel} with photos` : bucketLabel;
@@ -91257,17 +91460,18 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return;
             }
 
-            updateAVExportButton(exportCount);
+            updateAVExportButton(avState.isPartial ? 0 : exportCount);
 
             if (activeAVTab === 'open') {
                 const sourceView = getAvPhotoMode() === 'photos' ? 'av-photo' : 'av';
                 const openExportContext = buildAVExportContext(items, term);
                 const openRows = openExportContext.rows;
                 const bucketLabel = getAvSalesBucketLabel();
-                const crumbText = getAvPhotoMode() === 'photos'
+                const fullCrumbText = getAvPhotoMode() === 'photos'
                     ? (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} Photos (${openRows.length} items)`)
                     : (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} (${openRows.length} items)`);
-                renderAvPhotoOutreachPanel(openRows);
+                const crumbText = avState.isPartial ? `${fullCrumbText} · Loading full inventory…` : fullCrumbText;
+                renderAvPhotoOutreachPanel(avState.isPartial ? [] : openRows);
                 const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
                 const browsePage = getClientBrowsePage('av', pageKey, openRows);
                 const pageFooter = renderClientBrowsePageFooter('av', browsePage.key, openRows.length, browsePage);
@@ -116939,7 +117143,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return;
             }
             if (activeReqTab === 'archived') {
-                if (!requestArchiveListState.loaded && !requestArchiveListState.loading) loadRequestArchivePage(0).catch(() => {});
+                if (!requestArchiveListState.loaded && !requestArchiveListState.loading && !requestArchiveListState.error) loadRequestArchivePage(0).catch(() => {});
                 const state = requestArchiveListState;
                 const html = renderRequestArchivePageHtml(state);
                 applyRequestRenderMarkup(container, crumb, 'Archived Requests', html,
@@ -149390,9 +149594,7 @@ C.14.043 C.15.000
             const pager = Number(state.total) > limit || offset > 0
                 ? `<div class="request-archive-pager"><button type="button" class="request-archive-control" ${offset ? '' : 'disabled'} onclick="return loadRequestArchivePage(${Math.max(0, offset - limit)}, true)">Previous</button><span>${displayPage} / ${pageCount} · ${Number(state.total)} rows</span><button type="button" class="request-archive-control" ${state.hasMore ? '' : 'disabled'} onclick="return loadRequestArchivePage(${offset + limit}, true)">Next</button></div>`
                 : `<div class="request-archive-pager">${Number(state.total) || 0} archived request${Number(state.total) === 1 ? '' : 's'}</div>`;
-            const list = rows.length ? `<div class="request-archive-list">${cards}</div>` : Number(state.total) > 0
-                ? '<div class="request-archive-empty">No rows on this page.</div>'
-                : '<div class="request-archive-empty">No archived request rows.</div>';
+            const list = rows.length ? `<div class="request-archive-list">${cards}</div>` : '';
             return `<div id="request-archive-page-list">${list}</div><div id="request-archive-page-pager">${pager}</div><div id="request-archive-status"></div>`;
         }
         function buildRequestArchivePageRenderSignature(state = requestArchiveListState) {
@@ -149423,6 +149625,9 @@ C.14.043 C.15.000
             } else if (state.loading) {
                 const message = state.refreshing ? 'Refreshing archived request rows…' : 'Loading archived request rows…';
                 html = `<div class="request-archive-empty" role="status">${message}</div>`;
+            } else if (state.loaded && !state.rows.length) {
+                const message = Number(state.total) > 0 ? 'No rows on this page.' : 'No archived request rows.';
+                html = `<div class="request-archive-empty">${message}</div>`;
             }
             if (status.dataset.requestArchiveStatus !== html) {
                 status.innerHTML = html;
@@ -149713,7 +149918,7 @@ C.14.043 C.15.000
                     const result = await syncRequestArchive(uid, entry.operation, entry.idempotencyKey, 1);
                     if (result.ok) {
                         clearPendingRequestArchive(uid);
-                        invalidateRequestArchivePages(entry.identityScope);
+                        if (entry.identityScope === getSupabaseReadIdentityScope()) invalidateRequestArchivePages();
                         continue;
                     }
                     const attempts = Math.min(3, entry.attempts + 1);

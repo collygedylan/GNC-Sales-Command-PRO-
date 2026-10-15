@@ -70,6 +70,7 @@ export function createRequestArchivePagesService<Row = unknown>(
   if (typeof readPage !== 'function') throw new Error('An archived request page reader is required.');
   const maxEntries = Math.max(1, Math.min(64, Math.floor(Number(options.maxEntries) || 12)));
   const pages = new Map<string, CachedPage<Row>>();
+  let generation = 0;
 
   const touch = (key: string, entry: CachedPage<Row>) => {
     pages.delete(key);
@@ -88,10 +89,16 @@ export function createRequestArchivePagesService<Row = unknown>(
     async read(scopeKey, offset, limit, signal) {
       const request = validatedRequest(scopeKey, offset, limit);
       if (signal?.aborted) throw abortError();
+      const key = archivePageKey(scopeKey, request.offset, request.limit);
+      const readGeneration = generation;
       const raw = await readPage(request, signal);
       if (signal?.aborted) throw abortError();
+      if (generation !== readGeneration) {
+        const error = new Error('Archived request page changed while it was loading.');
+        error.name = 'StaleArchivePageError';
+        throw error;
+      }
       const page = parseArchivePage<Row>(raw, request);
-      const key = archivePageKey(scopeKey, request.offset, request.limit);
       pages.delete(key);
       pages.set(key, { scopeKey, page });
       while (pages.size > maxEntries) pages.delete(pages.keys().next().value as string);
@@ -99,16 +106,20 @@ export function createRequestArchivePagesService<Row = unknown>(
     },
     invalidate(scopeKey, offset, limit) {
       if (scopeKey === undefined) {
+        generation += 1;
         pages.clear();
         return;
       }
+      generation += 1;
       if (offset !== undefined && limit !== undefined) {
-        pages.delete(archivePageKey(scopeKey, offset, limit));
+        const key = archivePageKey(scopeKey, offset, limit);
+        pages.delete(key);
         return;
       }
       for (const [key, entry] of pages) if (entry.scopeKey === scopeKey) pages.delete(key);
     },
     clear() {
+      generation += 1;
       pages.clear();
     },
   };

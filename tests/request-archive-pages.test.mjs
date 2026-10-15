@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { databaseBridge } from './helpers/database-bridge.mjs';
 import vm from 'node:vm';
+import { JSDOM } from 'jsdom';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const built = buildSync({ entryPoints: ['services/requestArchivePages.ts'], bundle: true,
@@ -55,6 +56,24 @@ test('archive page reader validates offset and metadata before caching', async (
   const service = createRequestArchivePagesService(async () => page(100, [{ unique_id: 'wrong-page' }], 200));
   await assert.rejects(service.read('profile:a', 0, 100), /offset/i);
   assert.equal(service.peek('profile:a', 0, 100), null);
+});
+
+test('archive cache preserves the server page metadata and rejects a late read after invalidation', async () => {
+  let resolveRead;
+  const service = createRequestArchivePagesService(() => new Promise(resolve => { resolveRead = resolve; }));
+  const controller = new AbortController();
+  const pending = service.read('profile:a', 50, 50, controller.signal);
+  service.invalidate('profile:a', 50, 50);
+  resolveRead({ offset: 50, limit: 50, total: 123, hasMore: true, rows: [{ unique_id: 'page-2' }] });
+  await assert.rejects(pending, error => error.name === 'StaleArchivePageError');
+  assert.equal(service.peek('profile:a', 50, 50), null);
+
+  const metadataService = createRequestArchivePagesService(async () => ({
+    offset: 50, limit: 50, total: 123, hasMore: true, rows: [{ unique_id: 'page-2' }],
+  }));
+  assert.deepEqual(await metadataService.read('profile:a', 50, 50), {
+    offset: 50, limit: 50, total: 123, hasMore: true, rows: [{ unique_id: 'page-2' }],
+  });
 });
 
 test('archive cache invalidation supports one page, one identity, and complete reset', async () => {
@@ -133,16 +152,97 @@ test('archive rendering keeps card identity signature stable during refresh and 
     'same-ID visible content changes invalidate card markup');
 });
 
+test('archived page refresh and failure keep the existing card DOM mounted while status and retry update', () => {
+  const dom = new JSDOM('<main id="request-content"></main><div id="request-crumb"></div>');
+  const context = vm.createContext({
+    Number, String, JSON, Math, document: dom.window.document, window: dom.window,
+    escapeHtml: value => String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('"', '&quot;'),
+    isIosPhoneRequestFlowView: () => false,
+    scheduleStickyRailOffsetSync: () => {},
+    incrementInternalPerfCounter: () => {},
+    getContainerRenderSignature: container => container.dataset.renderSignature || '',
+    setContainerHtmlWithSignature: (container, markup, signature) => {
+      if (container.dataset.renderSignature === signature) return false;
+      container.innerHTML = markup;
+      container.dataset.renderSignature = signature;
+      return true;
+    },
+  });
+  vm.runInContext([
+    extractFunction(html, 'renderRequestArchivePageHtml', 'function buildRequestArchivePageRenderSignature('),
+    extractFunction(html, 'buildRequestArchivePageRenderSignature', 'function syncRequestArchiveStatus('),
+    extractFunction(html, 'syncRequestArchiveStatus', 'function getRequestArchiveClampedPageOffset('),
+    extractFunction(html, 'syncRequestCrumb', 'function applyRequestRenderMarkup('),
+    extractFunction(html, 'applyRequestRenderMarkup', 'function renderRequestQueueFallbackCard('),
+  ].join('\n'), context);
+
+  const state = { rows: [{ UNIQUE_ID: 'a-1', COMMONNAME: 'Hosta', CONTSIZE: '1 gal', LOCATIONCODE: 'A1' }],
+    total: 101, offset: 0, limit: 100, hasMore: true, loading: false, refreshing: false, error: '' };
+  const container = dom.window.document.getElementById('request-content');
+  const crumb = dom.window.document.getElementById('request-crumb');
+  const render = () => {
+    const markup = context.renderRequestArchivePageHtml(state);
+    context.applyRequestRenderMarkup(container, crumb, 'Archived Requests', markup,
+      context.buildRequestArchivePageRenderSignature(state));
+    context.syncRequestArchiveStatus(container, state);
+  };
+  render();
+  const originalCard = container.querySelector('.request-archive-card');
+  const originalPager = container.querySelector('#request-archive-page-pager');
+  assert.ok(originalCard);
+  assert.match(originalPager.textContent, /1 \/ 2 · 101 rows/);
+
+  state.loading = true; state.refreshing = true;
+  render();
+  assert.equal(container.querySelector('.request-archive-card'), originalCard, 'refresh keeps the row node mounted');
+  assert.equal(container.querySelector('#request-archive-page-pager'), originalPager, 'refresh keeps pager nodes mounted');
+  assert.match(container.querySelector('#request-archive-status').textContent, /Refreshing/);
+  assert.doesNotMatch(container.querySelector('#request-archive-page-list').textContent, /Loading archived/);
+
+  state.loading = false; state.refreshing = false; state.error = 'Temporary failure';
+  render();
+  assert.equal(container.querySelector('.request-archive-card'), originalCard, 'failure preserves the stale card');
+  assert.equal(container.querySelector('#request-archive-page-pager'), originalPager);
+  assert.match(container.querySelector('#request-archive-status').textContent, /Temporary failure/);
+  assert.ok(container.querySelector('#request-archive-status button[onclick*="loadRequestArchivePage(0, true)"]'));
+
+  state.error = ''; state.rows = [{ ...state.rows[0], COMMONNAME: 'Updated Hosta' }];
+  render();
+  assert.notEqual(container.querySelector('.request-archive-card'), originalCard, 'same-ID server content updates the card DOM');
+  assert.match(container.querySelector('.request-archive-card').textContent, /Updated Hosta/);
+  dom.window.close();
+});
+
+test('archive scope key changes with account, data permission revision, role, and archive authorization', () => {
+  let identity = 'account-a';
+  let role = 'REP';
+  let permissionRevision = 'permission-1';
+  let allowed = true;
+  const context = vm.createContext({
+    String, JSON,
+    getSupabaseReadIdentityScope: () => identity,
+    currentUser: 'rep-a', get currentRole() { return role; }, safeRole: 'REP',
+    getProductionLiveSyncContext: () => ({ dataPermissionVersion: permissionRevision }),
+    canCurrentUserArchiveRequestRows: () => allowed,
+  });
+  vm.runInContext(extractFunction(html, 'getRequestArchivePageScopeKey', 'function getRequestArchivePagesService('), context);
+  const initial = context.getRequestArchivePageScopeKey();
+  identity = 'account-b'; assert.notEqual(context.getRequestArchivePageScopeKey(), initial);
+  identity = 'account-a'; permissionRevision = 'permission-2'; assert.notEqual(context.getRequestArchivePageScopeKey(), initial);
+  permissionRevision = 'permission-1'; role = 'MANAGER'; assert.notEqual(context.getRequestArchivePageScopeKey(), initial);
+  role = 'REP'; allowed = false; assert.notEqual(context.getRequestArchivePageScopeKey(), initial);
+});
+
 test('archive refresh errors retain the current page rows and offset for retry', async () => {
   const scopeKey = JSON.stringify(['account-a', 'rep-a', 'REP', 'permission-1', 'archive:allowed']);
   const state = { rows: [{ UNIQUE_ID: 'arch-1', COMMONNAME: 'Hosta' }], total: 101, offset: 0, limit: 100,
     hasMore: true, loading: false, refreshing: false, error: '', loaded: true, scopeKey, controller: null };
-  let rejectRead;
+  const reads = [];
   const events = [];
   const context = vm.createContext({
     Number, String, Math, JSON, AbortController, Promise,
     requestArchiveListState: state,
-    requestArchivePagesService: { clear() {}, peek: () => null, invalidate() {}, read: () => new Promise((_resolve, reject) => { rejectRead = reject; }) },
+    requestArchivePagesService: { clear() {}, peek: () => null, invalidate() {}, read: () => new Promise((resolve, reject) => { reads.push({ resolve, reject }); }) },
     canCurrentUserArchiveRequestRows: () => true,
     getSupabaseReadIdentityScope: () => 'account-a',
     currentUser: 'rep-a', currentRole: 'REP', safeRole: 'REP',
@@ -150,11 +250,12 @@ test('archive refresh errors retain the current page rows and offset for retry',
     resetRequestArchivePageState: () => {},
     isViewVisible: () => true, activeReqTab: 'archived',
     renderRequest: () => events.push('render'),
-    normalizeArchivedRequestRow: row => row,
+    buildSearchIndex: () => {},
     updateFooterRequestBadge: () => events.push('badge'),
     getRequestArchivePagesService: () => context.requestArchivePagesService,
   });
-  vm.runInContext(extractFunction(html, 'getRequestArchivePageScopeKey', 'function getRequestArchivePagesService(')
+  vm.runInContext(extractFunction(html, 'normalizeArchivedRequestRow', 'function renderRequestArchivePageHtml(')
+    + extractFunction(html, 'getRequestArchivePageScopeKey', 'function getRequestArchivePagesService(')
     + extractFunction(html, 'loadRequestArchivePage', 'function clearPendingRequestArchiveFlushTimer('), context);
 
   const pending = context.loadRequestArchivePage(0, true);
@@ -162,7 +263,7 @@ test('archive refresh errors retain the current page rows and offset for retry',
   assert.equal(context.requestArchiveListState.offset, 0);
   assert.equal(context.requestArchiveListState.loading, true);
   assert.equal(context.requestArchiveListState.refreshing, true);
-  rejectRead(new Error('Temporary network failure'));
+  reads[0].reject(new Error('Temporary network failure'));
   assert.equal(await pending, false);
   assert.equal(context.requestArchiveListState.rows[0].UNIQUE_ID, 'arch-1');
   assert.equal(context.requestArchiveListState.offset, 0);
@@ -170,4 +271,11 @@ test('archive refresh errors retain the current page rows and offset for retry',
   assert.equal(context.requestArchiveListState.error, 'Temporary network failure');
   assert.ok(events.includes('render'));
   assert.equal(events.includes('badge'), false);
+
+  const retry = context.loadRequestArchivePage(0, true);
+  assert.equal(context.requestArchiveListState.rows[0].UNIQUE_ID, 'arch-1', 'retry continues to show the retained page');
+  reads[1].resolve(page(0, [{ unique_id: 'arch-1', commonname: 'Hosta updated' }], 101));
+  assert.equal(await retry, true);
+  assert.equal(context.requestArchiveListState.error, '');
+  assert.equal(context.requestArchiveListState.rows[0].COMMONNAME, 'Hosta updated');
 });

@@ -4,7 +4,7 @@ import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
 // @test-group: @home-role
 
-const SYNTHETIC_MASTER_ROWS = 9539;
+const SYNTHETIC_MASTER_ROWS = 12000;
 const PREVIEW_PAGE_SIZE = 500;
 const PREVIEW_DISPLAY_ROW_LIMIT = 50;
 
@@ -447,7 +447,9 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     await page.waitForFunction((expectedRows: number) => window.eval(`getDatasetState('master').fieldCoverage === 'browse'
       && getDatasetState('master').rowCompleteness === 'complete'
       && fullInventory.length === ${expectedRows}
-      && productionLiveSyncVerifiedView === productionVerifiedViewKey()`), SYNTHETIC_MASTER_ROWS, { timeout: 30_000 });
+      && productionLiveSyncVerifiedView === productionVerifiedViewKey()
+      && !avDerivedRowsPendingSignature
+      && !buildResolvedAVBaseState({ usePreparedSalesRows: true }).isPartial`), SYNTHETIC_MASTER_ROWS, { timeout: 30_000 });
 
     const full = await timingEvidence(page);
     await captureMilestone('full-verification', full);

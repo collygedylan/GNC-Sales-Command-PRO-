@@ -28,7 +28,7 @@ function setup(options = {}) {
     showAppConfirm: async () => { if (options.confirmScopeChange) scope = 'user-b'; return options.confirm !== false; },
     showToast: (...args) => notices.push(args), closeAllRequestSwipes() {},
     triggerRequestRealtimeUiRefresh() {}, invalidateInventoryDomIdLookup() {},
-    refreshRequestViewAfterArchive() {}, persistCurrentCache() {},
+    refreshRequestViewAfterArchive() {}, persistCurrentCache() {}, invalidateRequestArchivePages() {},
     rebuildInventoryByIdMap: rows => new Map(rows.map(item => [item.UNIQUE_ID, item])),
     createRequestArchiveError: payload => Object.assign(new Error(payload.error || 'invalid response'), { status: payload.status || 0 }),
     waitForRequestArchiveRetry: async () => {},
