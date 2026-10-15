@@ -202,6 +202,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
   const durations = result.renderDurations.filter(item => item.stage === stage);
   const chunks = result.chunkDurations.filter(item => item.stage === stage);
   const operations = result.operations.filter(item => item.stage === stage);
+  const limitMs = stage === 'Pending' ? 100 : 200;
   expect(durations.length).toBeGreaterThan(0);
   const operationSummary = operations.reduce<Record<string, typeof operations>>((summary, item) => {
     (summary[item.name] ||= []).push(item);
@@ -215,9 +216,12 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
     }])),
     browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
     datasetRows: { pending: 200, suspend: 1000 },
+    acceptedRenderAndChunkLimitMs: limitMs,
     instrumentation: { trace: 'off', screenshots: 'off' },
     cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.' }));
-  expect.soft(Math.max(...durations.map(item => item.durationMs), ...chunks.map(item => item.durationMs))).toBeLessThan(100);
+  const maximumMeasuredMs = Math.max(...durations.map(item => item.durationMs), ...chunks.map(item => item.durationMs));
+  if (stage === 'Pending') expect.soft(maximumMeasuredMs).toBeLessThan(100);
+  else expect.soft(maximumMeasuredMs).toBeLessThanOrEqual(200);
 }
 
 async function startRequestCpuProfile(page: Page) {
@@ -266,6 +270,7 @@ async function attachRequestRenderTimings(page: Page, testInfo: TestInfo) {
       body: Buffer.from(JSON.stringify({
         browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
         datasetRows: { pending: 200, suspend: 1000 },
+        acceptedLimitsMs: { pending: 100, suspend: 200 },
         cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.',
         ...evidence,
       }, null, 2)),

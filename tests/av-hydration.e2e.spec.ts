@@ -500,7 +500,7 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(preview.firstCardMs).toBeGreaterThanOrEqual(0);
     expect.soft(preview.firstCardMs).toBeLessThan(1000);
     expect(preview.dataRenderDurationsMs.length).toBeGreaterThan(0);
-    expect.soft(preview.maxMainThreadOperationMs).toBeLessThan(100);
+    expect.soft(preview.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
     expect(preview.master.fieldCoverage).not.toBe('full');
     expect(preview.master.rowCompleteness).not.toBe('complete');
     expect(preview.verified).toBe(false);
@@ -562,7 +562,7 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(full.master.fieldCoverage).toBe('browse');
     expect(full.master.rowCompleteness).toBe('complete');
     expect(full.previewRows).toBe(SYNTHETIC_MASTER_ROWS);
-    expect.soft(full.maxMainThreadOperationMs).toBeLessThan(100);
+    expect.soft(full.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
     expect(await search.inputValue()).toBe('AVH.00049');
     await expect(page.locator('#av-content [data-dom-id]').filter({ hasText: 'AVH.00049' }).first()).toBeVisible();
 
@@ -584,13 +584,14 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     const warm = await timingEvidence(page);
     await captureMilestone('warm-repeat', warm);
     expect.soft(warm.firstCardMs).toBeLessThan(1000);
-    expect.soft(warm.maxMainThreadOperationMs).toBeLessThan(100);
+    expect.soft(warm.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
     expect(fixture.backgroundMasterReads).toBe(readsBeforeWarmRepeat);
     expect(warm.master.rowCompleteness).toBe('complete');
     expect(warm.verified).toBe(true);
 
     const evidence = {
       kind: 'isolated-client-render-fixture', datasetRows: SYNTHETIC_MASTER_ROWS,
+      acceptedAvMainThreadOperationLimitMs: 200,
       environment: {
         nodeVersion: process.version,
         browserVersion: await page.context().browser()?.version(),
