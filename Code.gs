@@ -1336,7 +1336,11 @@ function importHistoryContinuationResult_(tableName, error) {
     stagedRows: error.stagedRows || 0, totalRows: error.totalRows || 0, continuationPending: true };
 }
 
-function persistImportedFileHistory_(dataset, file, rawData, startedAt, expectedIdentity) {
+function persistImportedFileHistory_(dataset, file, rawData, startedAt, expectedIdentity, options) {
+  const checkWindow = function(stagedRows, totalRows) {
+    if (options && options.backgroundBackfill === true) assertImportHistoryBackfillWindow_(stagedRows, totalRows);
+  };
+  checkWindow(0, Math.max(0, rawData.length - 1));
   const route = getImportHistoryRoute_(dataset);
   const identity = expectedIdentity || getImportSourceIdentity_(file, route.tableName);
   if (!identity) throw new Error('IMPORT_HISTORY_SOURCE_IDENTITY_INVALID');
@@ -1344,6 +1348,7 @@ function persistImportedFileHistory_(dataset, file, rawData, startedAt, expected
   const snapshot = buildImportHistorySnapshot_(rawData);
   const sourceTime = identity.modifiedAt;
   if (!sourceTime) throw new Error('IMPORT_HISTORY_SOURCE_IDENTITY_INVALID');
+  checkWindow(0, snapshot.rowCount);
   const begun = callSupabaseRpc_('begin_import_history_v1', {
     p_dataset: dataset, p_file_id: identity.fileId, p_source_version: sourceTime + ':' + identity.size,
     p_file_name: String(file.getName()), p_report_date: getImportHistoryReportDate_(file), p_source_timestamp: sourceTime,
@@ -1361,6 +1366,7 @@ function persistImportedFileHistory_(dataset, file, rawData, startedAt, expected
         || manualSyncInvocationDeadlineMs_ > 0 && manualSyncInvocationDeadlineMs_ - Date.now() < 65000) {
       throw importHistoryContinuationError_(start, snapshot.rowCount);
     }
+    checkWindow(start, snapshot.rowCount);
     const rows = importHistoryChunk_(snapshot, start);
     const staged = callSupabaseRpc_('stage_import_history_rows_v1', { p_snapshot_id: begun.snapshotId, p_rows: rows });
     if (!staged || staged.snapshotId !== begun.snapshotId || !Number.isInteger(staged.acceptedRows)
@@ -1370,6 +1376,7 @@ function persistImportedFileHistory_(dataset, file, rawData, startedAt, expected
     heartbeatDatasetImportFence_();
   }
   revalidateImportSourceIdentity_(identity, route.tableName);
+  checkWindow(snapshot.rowCount, snapshot.rowCount);
   const result = callSupabaseRpc_('publish_import_history_v1', { p_snapshot_id: begun.snapshotId });
   if (!result || result.snapshotId !== begun.snapshotId || result.status !== 'ready'
       || result.rowCount !== snapshot.rowCount || result.stagedRows !== snapshot.rowCount) throw new Error('IMPORT_HISTORY_PUBLICATION_UNCONFIRMED');
@@ -1437,9 +1444,67 @@ function saveImportHistoryBackfillState_(state) {
   PropertiesService.getScriptProperties().setProperty(IMPORT_HISTORY_BACKFILL_KEY_, JSON.stringify(state));
 }
 
+const IMPORT_HISTORY_BACKFILL_TIME_ZONE_ = 'America/Chicago';
+const IMPORT_HISTORY_BACKFILL_PAUSED_KEY_ = 'IMPORT_HISTORY_BACKFILL_PAUSED_V1';
+const IMPORT_HISTORY_BACKFILL_RPC_HEADROOM_MS_ = 65000;
+
+function importHistoryNightWindow_(now) {
+  const date = now instanceof Date ? now : new Date(now == null ? Date.now() : now);
+  const clock = Utilities.formatDate(date, IMPORT_HISTORY_BACKFILL_TIME_ZONE_, 'HH:mm:ss').split(':').map(Number);
+  const second = clock[0] * 3600 + clock[1] * 60 + clock[2];
+  const allowed = second >= 23 * 3600 + 30 * 60 || second < 6 * 3600 + 15 * 60;
+  const secondsLeft = second < 6 * 3600 + 15 * 60
+    ? 6 * 3600 + 15 * 60 - second : 24 * 3600 - second + 6 * 3600 + 15 * 60;
+  return { allowed: allowed, remainingMs: allowed ? secondsLeft * 1000 - date.getMilliseconds() : 0 };
+}
+
+function nextImportHistoryNightStart_(now) {
+  const date = now instanceof Date ? now : new Date(now == null ? Date.now() : now);
+  const parts = Utilities.formatDate(date, IMPORT_HISTORY_BACKFILL_TIME_ZONE_, 'yyyy-MM-dd').split('-').map(Number);
+  const offsetMs = function(at) {
+    const value = Utilities.formatDate(at, IMPORT_HISTORY_BACKFILL_TIME_ZONE_, 'Z');
+    const sign = value.charAt(0) === '-' ? -1 : 1;
+    return sign * (Number(value.slice(1, 3)) * 60 + Number(value.slice(3, 5))) * 60000;
+  };
+  let localTarget = Date.UTC(parts[0], parts[1] - 1, parts[2], 23, 30);
+  let target = new Date(localTarget - offsetMs(date));
+  if (target.getTime() <= date.getTime()) localTarget += 24 * 3600000;
+  target = new Date(localTarget - offsetMs(new Date(localTarget - offsetMs(date))));
+  return target;
+}
+
+function isImportHistoryBackfillPaused_() {
+  return PropertiesService.getScriptProperties().getProperty(IMPORT_HISTORY_BACKFILL_PAUSED_KEY_) === 'true';
+}
+
+function pauseImportHistoryBackfill() {
+  PropertiesService.getScriptProperties().setProperty(IMPORT_HISTORY_BACKFILL_PAUSED_KEY_, 'true');
+  clearImportHistoryBackfillTrigger_();
+  return { schedulingStatus: 'paused', state: readImportHistoryBackfillState_() };
+}
+
+function configureImportHistoryNightlySchedule() {
+  PropertiesService.getScriptProperties().deleteProperty(IMPORT_HISTORY_BACKFILL_PAUSED_KEY_);
+  const state = startImportHistoryBackfill();
+  return { schedulingStatus: state && state.status === 'running' ? 'nightly' : state && state.status,
+    timeZone: IMPORT_HISTORY_BACKFILL_TIME_ZONE_, window: '23:30-06:15', state: state };
+}
+
+function assertImportHistoryBackfillWindow_(stagedRows, totalRows) {
+  const window = importHistoryNightWindow_();
+  if (isImportHistoryBackfillPaused_() || !window.allowed || window.remainingMs <= IMPORT_HISTORY_BACKFILL_RPC_HEADROOM_MS_) {
+    throw importHistoryContinuationError_(stagedRows || 0, totalRows || 0);
+  }
+}
+
 function scheduleImportHistoryBackfill_(delay) {
   clearImportHistoryBackfillTrigger_();
-  ScriptApp.newTrigger(IMPORT_HISTORY_BACKFILL_HANDLER_).timeBased().after(Math.max(60000, Number(delay) || 60000)).create();
+  if (isImportHistoryBackfillPaused_()) return;
+  const now = new Date();
+  let candidate = new Date(now.getTime() + Math.max(60000, Number(delay) || 60000));
+  const window = importHistoryNightWindow_(candidate);
+  if (!window.allowed || window.remainingMs <= IMPORT_HISTORY_BACKFILL_RPC_HEADROOM_MS_) candidate = nextImportHistoryNightStart_(now);
+  ScriptApp.newTrigger(IMPORT_HISTORY_BACKFILL_HANDLER_).timeBased().at(candidate).create();
 }
 
 function clearImportHistoryBackfillTrigger_() {
@@ -1467,6 +1532,11 @@ function startImportHistoryBackfill() {
 function getImportHistoryBackfillStatus() { return readImportHistoryBackfillState_(); }
 
 function runImportHistoryBackfillChunk_() {
+  const window = importHistoryNightWindow_();
+  if (isImportHistoryBackfillPaused_() || !window.allowed || window.remainingMs <= IMPORT_HISTORY_BACKFILL_RPC_HEADROOM_MS_) {
+    scheduleImportHistoryBackfill_(60000);
+    return { schedulingStatus: isImportHistoryBackfillPaused_() ? 'paused' : 'waiting-for-nightly-window', state: readImportHistoryBackfillState_() };
+  }
   const lock = LockService.getUserLock();
   if (!lock.tryLock(1000)) { scheduleImportHistoryBackfill_(60000); return { status: 'busy' }; }
   let state;
@@ -1520,9 +1590,10 @@ function runImportHistoryBackfillChunk_() {
       if (!inArchive) throw new Error('IMPORT_HISTORY_BACKFILL_SOURCE_MOVED');
       const identity = getImportSourceIdentity_(file, route.tableName);
       if (!identity) throw new Error('IMPORT_HISTORY_SOURCE_IDENTITY_INVALID');
+      assertImportHistoryBackfillWindow_(0, 0);
       const rawData = extractDataFromFile(file, route.archiveFolderId);
       revalidateImportSourceIdentity_(identity, route.tableName);
-      const result = persistImportedFileHistory_(dataset, file, rawData, startedAt, identity);
+      const result = persistImportedFileHistory_(dataset, file, rawData, startedAt, identity, { backgroundBackfill: true });
       revalidateImportSourceIdentity_(identity, route.tableName);
       state.filesAcknowledged += 1;
       state.rowsAcknowledged += result.rowCount;
