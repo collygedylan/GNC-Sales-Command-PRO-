@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "4072bc71b26817ce4646eb63171e10ae0f82ace5",
+  "commit": "d417f346c0633e40c46af088a5fbf6f17a1d5591",
   "release": "V2026.10.14.003",
   "files": [
     {
@@ -186,7 +186,7 @@
     {
       "path": "assets/assigned-items-table.js",
       "bytes": 258864,
-      "sha256": "90045562080a37263d24cae4bd05d5ae5f47c7d5b70cee347b236a467da1089c"
+      "sha256": "fa32dbed7f1ca72a71eed528cdda56bd25a80d38b3a393ac41824cc70b112e6a"
     },
     {
       "path": "assets/assigned-items.css",
@@ -435,8 +435,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8140137,
-      "sha256": "c12aaabf29f98fccf9ae1b791bc2de5a52600ac49e256c636de9c3d8aa747a09"
+      "bytes": 8153427,
+      "sha256": "dd5e5e2ad3c4e193948d520a99a7c2c5c41ae36c2a86b66e71b0c062ea09e423"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -640,8 +640,8 @@
     },
     {
       "path": "assets/live-tailwind-v2026082010.min.css",
-      "bytes": 102369,
-      "sha256": "53b32db1749b0ca06fbb0f50314fcecbfa50f0901b4ed88914d14b71c292dc5f"
+      "bytes": 102472,
+      "sha256": "34d43e31b24c08e595a9c59d132f6e7d52c99aa0558958e499b110b8d24cba2b"
     },
     {
       "path": "assets/location-code.js",
@@ -710,8 +710,8 @@
     },
     {
       "path": "assets/report-pages.js",
-      "bytes": 248518,
-      "sha256": "d7595e7c959d537520037babec6c424caac1fc6e639d8bb8f5e651386c9c6517"
+      "bytes": 262130,
+      "sha256": "00ecfbf0bbc4f62881971c7fbe38c95dc52e4c864d906e454fe917c57b738368"
     },
     {
       "path": "assets/request-submission.js",
@@ -800,8 +800,8 @@
     },
     {
       "path": "assets/vendor/supabase-browser-2.112.3.min.js",
-      "bytes": 1047663,
-      "sha256": "7f8db1004cbac25fa1c448c6bbc055d8db9a522cf60dc29d98322514b4ddff6b"
+      "bytes": 1049083,
+      "sha256": "3301d9050d4cdf20a2efbbc8c0d54894019fca27520e1869d280ac859d2bfec2"
     },
     {
       "path": "components/common/auraQueryPanel.js",
@@ -816,12 +816,12 @@
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "98af0278dd30073ffea3dfd0eacffbbe4a80a9cc3700f385f73f854454ce9ad6"
+      "sha256": "edf797db74d89ee020b029d104925146df0319502ec37a1558a0f9863ca45d0b"
     },
     {
-      "path": "deployments/4072bc71b26817ce4646eb63171e10ae0f82ace5.json",
+      "path": "deployments/d417f346c0633e40c46af088a5fbf6f17a1d5591.json",
       "bytes": 188,
-      "sha256": "98af0278dd30073ffea3dfd0eacffbbe4a80a9cc3700f385f73f854454ce9ad6"
+      "sha256": "edf797db74d89ee020b029d104925146df0319502ec37a1558a0f9863ca45d0b"
     },
     {
       "path": "index.html",
@@ -1096,7 +1096,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4807,
-      "sha256": "7a9cc9329068b63ffbb4895b8ec21fb6de3e6b4cdaf37bae53a744fad5adce61"
+      "sha256": "90b8d1dc812e7dadeba22799277ab3b37675b33704add6dcfb520acb90b9473b"
     },
     {
       "path": "v2/v2-cache-migration.js",
