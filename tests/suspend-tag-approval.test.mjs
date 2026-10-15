@@ -47,7 +47,7 @@ function scriptFunction(name) {
   const end=code.indexOf('\nfunction ',start+1); return code.slice(start,end<0?undefined:end);
 }
 function emailHarness() {
-  const sent=[], props=new Map(), receipts=new Map(); let releases=0;
+  const sent=[], tablePayloads=[], props=new Map(), receipts=new Map(); let releases=0;
   const ctx=vm.createContext({ Date, Object, String, encodeURIComponent,
     TextEncoder,
     Utilities:{
@@ -59,7 +59,7 @@ function emailHarness() {
       },
     },
     escapeEmailHtml_: value=>String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'),
-    buildRequestEmailTableItemsHtml_: data=>{ assert.equal(data.requestItems[0].req_qty,0); return '<table><tr><td>Request layout</td></tr></table>'; },
+    buildRequestEmailTableItemsHtml_: data=>{ tablePayloads.push(data); return '<table><tr><td>Request layout</td></tr></table>'; },
     LockService:{getScriptLock:()=>({tryLock:()=>true,releaseLock:()=>releases++})},
     getRequestDeliveryReceipt_: id=>receipts.get(id),findSentRequestDeliveryByMessageId_:()=>null,
     saveRequestDeliveryReceipt_:(id,result)=>receipts.set(id,result),
@@ -68,8 +68,28 @@ function emailHarness() {
     sendGmailApiMessage_: options=>{sent.push(options);return {ok:true,gmailMessageId:'gmail-1',threadId:'thread-1',recipients:[options.toList]};},
   });
   vm.runInContext(['encodeMimeHeaderWord_','encodeMimeBody_','buildSuspendTagApprovalEmail_','handleSignedSuspendTagDelivery_','buildMimeEmail_','formatMimeMailbox_'].map(scriptFunction).join('\n'),ctx);
-  return {ctx,sent,props,receipts,releases:()=>releases};
+  return {ctx,sent,tablePayloads,props,receipts,releases:()=>releases};
 }
+test('Email Rep packages the frozen customer, consignee, ordered quantity and all photos together',()=>{
+  for (const quantity of [0, 24]) {
+    const h=emailHarness();
+    const snapshot={...approval.snapshot, customername:'Customer A', consigneename:'Consignee B', quantityordered:quantity,
+      dock_photo_link:'https://example.test/first.jpg,https://example.test/second.jpg', dock_photo_name:'first.jpg,second.jpg'};
+    const model=h.ctx.buildSuspendTagApprovalEmail_({eventType:'suspend_tag_approval_requested',payload:{approval:{...approval,snapshot}}});
+    assert.equal(h.tablePayloads.length,1);
+    assert.equal(h.tablePayloads[0].folderId,'suspend-tag-'+approval.id);
+    assert.equal(h.tablePayloads[0].requestItems.length,1);
+    const item=h.tablePayloads[0].requestItems[0];
+    for (const field of ['customername','consigneename','quantityordered','dock_photo_link','dock_photo_name']) assert.equal(item[field],snapshot[field],field);
+    assert.equal(item.req_customer,'Customer A | Consignee B');
+    assert.equal(item.req_qty,quantity);
+    assert.equal(item.req_photo_link,snapshot.dock_photo_link);
+    assert.equal(item.req_photo_name,snapshot.dock_photo_name);
+    for (const text of ['Customer: Customer A','Consignee: Consignee B','Qty: '+quantity,'Photos: '+snapshot.dock_photo_link]) assert.ok(model.textBody.includes(text),text);
+    assert.equal(model.to,approval.rep_email);
+  }
+});
+
 test('Request-style email has the exact recipient, Reply-To, escaped details, photos and zero quantity',()=>{
   const h=emailHarness(), delivery={eventType:'suspend_tag_approval_requested',payload:{approval},messageIdHeader:'<request@test>'};
   const model=h.ctx.buildSuspendTagApprovalEmail_(delivery);
@@ -110,6 +130,8 @@ function workerHarness(options={}) {
 }
 test('delivery records email independently of push, and retry skips the confirmed email',async()=>{
   const h=workerHarness({pushFailure:true});assert.equal((await h.run()).body.failed,1);
+  const delivery=JSON.parse(JSON.parse(h.fetches.find(call=>call.url.includes('script.example.test')).input.body).deliveryJson);
+  assert.deepEqual(delivery.payload.approval.snapshot,approval.snapshot,'the protected server snapshot reaches the email driver intact');
   const email=h.calls.find(c=>c.name==='record_request_delivery_channel_result');assert.ok(email.args.p_channel_results.email);
   assert.ok(h.calls.some(c=>c.name==='fail_request_delivery_event'));
   const retry=workerHarness({event:{email_delivered_at:'2026-10-05T12:00:00Z'}});assert.equal((await retry.run()).body.delivered,1);

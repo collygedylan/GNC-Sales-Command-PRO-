@@ -242,6 +242,20 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   return { requests, replies, receipts, backendRows, card, done, complete, seed, refresh, assertClean };
 }
 
+async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
+  const customKeyboard = await page.evaluate((inputId) =>
+    (window as any).shouldPreferDetailMeasurementKeyboard()
+      && (window as any).isDetailMeasurementKeyboardInput(document.getElementById(inputId)), id);
+  if (!customKeyboard) {
+    await page.locator(`#${id}`).fill(value);
+    return;
+  }
+  await page.locator(`#${id}`).tap();
+  await page.locator('#detail-measurement-keyboard').getByRole('button', { name: 'Clear', exact: true }).first().tap({ timeout: 10000 });
+  for (const digit of value) await page.locator(`#detail-measurement-keyboard [data-key-token="${digit}"]`).tap();
+  await page.locator('#detail-measurement-keyboard [data-key-token="__done"]').tap();
+}
+
 test('Done waits for server acknowledgment, completes only that source and retains it, and survives refresh and app reload', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
@@ -477,6 +491,67 @@ test('an old completion response cannot hide a newer reopened version of the sou
 });
 
 
+test('detail Mark Done stays in detail until the global save is confirmed, then returns to Suspend', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+  test.setTimeout(120000);
+  const app = await harness(page, baseURL!);
+  let release!: () => void;
+  app.replies.push({ operation: 'complete', wait: new Promise<void>((resolve) => { release = resolve; }) });
+  await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await page.locator('#request-open-info-ok').tap();
+  await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+  await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
+  await setDetailMeasurement(page, 'req-spec', '24');
+  await setDetailMeasurement(page, 'req-match', '80');
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+
+  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#req-spec')).toHaveValue('24');
+  await expect(page.locator('#req-match')).toHaveValue('80');
+  expect(app.backendRows[0].DATE_COMPLETED).toBe('');
+
+  release();
+  await expect(page.locator('#toast-notification')).toContainText('Marked Done');
+  await expect(page.locator('#view-detail')).toBeHidden();
+  await expect(page.locator('#view-request')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.eval('activeReqTab'))).toBe('suspend-tag');
+  await expect(app.card()).toContainText('Completed — Ready to Email');
+  expect(app.backendRows[0].DOCK_SPEC).toBe('24');
+  expect(String(app.backendRows[0].MATCH)).toBe('80');
+  app.assertClean();
+});
+
+test('late detail completion acknowledgment does not override navigation away from Suspend', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+  test.setTimeout(120000);
+  const app = await harness(page, baseURL!);
+  let release!: () => void;
+  app.replies.push({ operation: 'complete', wait: new Promise<void>((resolve) => { release = resolve; }) });
+  await page.evaluate(() => window.eval("openDockSuspendDcRequestUpdate('dock_suspend_dc_browser-suspend-1')"));
+  await expect(page.locator('#request-open-info-modal')).toBeVisible();
+  await page.locator('#request-open-info-ok').tap();
+  await expect(page.locator('#req-btn-save-complete')).toBeVisible();
+  await page.waitForFunction(() => !(window as any).isDetailTransitionActive());
+  await setDetailMeasurement(page, 'req-spec', '24');
+  await setDetailMeasurement(page, 'req-match', '80');
+  if (await page.locator('.request-av-note-sheet__close').isVisible()) await page.locator('.request-av-note-sheet__close').tap();
+
+  await page.locator('#req-btn-save-complete').tap({ timeout: 10000 });
+  await expect.poll(() => app.requests.filter(request => request.body.operation === 'complete').length).toBe(1);
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await page.getByRole('button', { name: 'Home' }).tap();
+  await expect(page.locator('#view-home')).toBeVisible();
+
+  release();
+  await expect.poll(() => app.backendRows[0].DATE_COMPLETED).toBe(completionTime);
+  await expect(page.locator('#view-home')).toBeVisible();
+  await expect(page.locator('#view-detail')).toBeHidden();
+  expect(app.backendRows[0].DATE_COMPLETED).toBe(completionTime);
+  expect(app.backendRows[0].DOCK_SPEC).toBe('24');
+  app.assertClean();
+});
+
 test('detail Mark Done preserves failed form edits and only applies a confirmed save', {"tag":["@suspend-tag"]}, async ({page,baseURL})=>{
   test.setTimeout(120000);
   const app=await harness(page,baseURL!);
@@ -500,6 +575,8 @@ test('detail Mark Done preserves failed form edits and only applies a confirmed 
   await page.locator('#req-btn-save-complete').tap({timeout:10000});
   await expect.poll(()=>app.requests.filter(r=>r.body.operation==='complete').length).toBeGreaterThan(0);
   await expect(page.locator('#toast-notification')).toHaveAttribute('data-kind','error');
+  await expect(page.locator('#view-detail')).toBeVisible();
+  await expect(page.locator('#view-home')).toBeHidden();
   await expect(page.locator('#req-spec')).toHaveValue('24');
   expect(app.backendRows[0].DATE_COMPLETED).toBe('');
   await page.locator('#req-btn-save-complete').tap();

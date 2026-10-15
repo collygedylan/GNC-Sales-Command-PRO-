@@ -168696,6 +168696,10 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (!canCurrentUserWorkRequestItem(row, isComplete || options.completeSuspendTag ? 'complete' : 'edit')) return true;
             const button = document.getElementById('req-btn-save-complete');
             const completing = isComplete || options.completeSuspendTag;
+            const returnToRequestAfterCompletion = completing && !isSilentAutoSave
+                && activeItem === row && isViewVisible('detail')
+                && String(activeDetailSourceView || '').trim().toLowerCase() === 'request'
+                && String(lastView || '').trim().toLowerCase() === 'request';
             // Blur autosaves share the row coordinator. Disabling Mark Done
             // during a blur can swallow the user's subsequent tap on iOS.
             if (button && completing) button.disabled = true;
@@ -168729,6 +168733,13 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
                 restoreSuspendTagFormDraft();
                 if (applied && !isSilentAutoSave) showToast(isComplete ? 'Marked Done' : 'Saved', getSuspendTagStatus(row) === 'awaiting_rep' ? 'A fresh approval request is queued for the Sales Rep.' : isComplete ? 'Row remains in Que. Use Email Rep for Approval when ready.' : 'Suspend Tag review saved.');
+                if (applied && returnToRequestAfterCompletion && activeItem === row
+                    && isViewVisible('detail') && String(activeDetailSourceView || '').trim().toLowerCase() === 'request'
+                    && String(lastView || '').trim().toLowerCase() === 'request'
+                    && writeScope === getSupabaseReadIdentityScope()
+                    && (!writeNavigation || (!writeNavigation.aborted && writeNavigation === productionLiveSyncNavigation.signal))) {
+                    goBackFromDetail();
+                }
             } catch (error) { if (!isSilentAutoSave) showToast('Save Stopped', suspendTagErrorMessage(error), true); }
             finally { restoreSuspendTagFormDraft(); if (button && completing) { button.disabled = false; button.innerText = 'MARK DONE'; } }
             return true;
