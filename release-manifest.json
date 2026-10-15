@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "266a079f79a86b5c0a407b1edf807e241044fe30",
+  "commit": "69b2154548ea4c5fade3720a33e08509d9059ade",
   "release": "V2026.10.14.003",
   "files": [
     {
@@ -425,8 +425,8 @@
     },
     {
       "path": "assets/live-app-runtime-v2026082010.min.js",
-      "bytes": 8099696,
-      "sha256": "7efae74014ebad55722d21993d66cf4f4a6ec11fe73aff1935e22f28eb0348f8"
+      "bytes": 8111503,
+      "sha256": "2431ef8348ecc05cbac94ee55258f26ee9472cdfd0f0983283622c24ed8e2956"
     },
     {
       "path": "assets/live-app-styles-authority-v2026090503.css",
@@ -445,8 +445,8 @@
     },
     {
       "path": "assets/live-sync-coordinator.js",
-      "bytes": 43222,
-      "sha256": "aaef816aa33de1524325fa8bd90e892ed2f18bcabf4b5a9032eb0ac242548f64"
+      "bytes": 45057,
+      "sha256": "de51b0fb6ba7f239c8d0825fc11eccf3a2e54b4b980693ffc439e4efd1dac9cf"
     },
     {
       "path": "assets/live-sync-registry.js",
@@ -790,8 +790,8 @@
     },
     {
       "path": "assets/vendor/supabase-browser-2.112.3.min.js",
-      "bytes": 1043848,
-      "sha256": "c2bab2e3d380244a28430bd45bed8201b1daab1d2f562fd7880bc5a8136353c8"
+      "bytes": 1045440,
+      "sha256": "bf84f273be8291ce8e4d9f4547ef0533cfe66228ac19a6351ae8f39f7fe13599"
     },
     {
       "path": "components/common/auraQueryPanel.js",
@@ -806,12 +806,12 @@
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "fd980bc93b8047c025acf58c1c08926c8a01f0c8db6d3fe0812bf3e23906511e"
+      "sha256": "f12946049c7dc585f84c97b865f2652b3d41929cdce64d8fa8c58bc5fdfa12f2"
     },
     {
-      "path": "deployments/266a079f79a86b5c0a407b1edf807e241044fe30.json",
+      "path": "deployments/69b2154548ea4c5fade3720a33e08509d9059ade.json",
       "bytes": 188,
-      "sha256": "fd980bc93b8047c025acf58c1c08926c8a01f0c8db6d3fe0812bf3e23906511e"
+      "sha256": "f12946049c7dc585f84c97b865f2652b3d41929cdce64d8fa8c58bc5fdfa12f2"
     },
     {
       "path": "index.html",
@@ -1086,7 +1086,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4807,
-      "sha256": "e8d92e0640bf19ade7671de5f97bcf29163db1a087a2db2b56e4368f52b79a7d"
+      "sha256": "14d7c5e80a8e04d5088bed5917da8d16055fa1cc7013974b91546373be2b124e"
     },
     {
       "path": "v2/v2-cache-migration.js",
