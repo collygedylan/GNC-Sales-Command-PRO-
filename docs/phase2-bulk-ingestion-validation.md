@@ -25,16 +25,27 @@ First-run measurements start on a newly created disposable database after schema
 
 ## Validation status
 
-Phase 2 is halted under the three-consecutive-failure rule. No Phase 2 PR, merge, or production deployment has occurred. The implementation is preserved on `codex/bulk-postgres-ingestion` and is not ready for deployment.
+Phase 2 is halted after three consecutive full-volume HTTP failures under the operator-reset debugging limit. No Phase 2 PR, merge, or production deployment has occurred. The implementation is preserved on `codex/bulk-postgres-ingestion` and is not ready for deployment.
 
-- The full Node suite passed **3,079/3,079** tests. Tooling checks parsed **8 inline scripts and 13 shell assets** successfully.
-- The earlier focused database run passed **32/32** assertions. A subsequent review added a 33rd assertion for an omitted source priority and a corresponding live-value preservation fix; that expanded test has not passed yet.
+- The resumed full Node suite passed **3,084/3,084** tests. The earlier tooling check parsed **8 inline scripts and 13 shell assets** successfully; it has not been repeated after the pipeline changes.
+- The expanded focused database suite passed **33/33** assertions, including omitted-priority preservation. It passed again on the same disposable database after an HTTP failure, verifying that the repaired cleanup no longer poisons the next SQL fixture with a stale import lease.
+- Strict SQL lint passed with no errors. The new bulk migration release contract returned `installed=true` against the disposable database; its focused Node contract suites passed **66/66**, and deployment authorization tests passed **29/29**.
 - A fresh disposable HTTP stack replayed all **73** canonical migrations successfully.
 - The HTTP test then failed because it expected `BULK_MASTER_IMPORT_FENCE_LOST`, while the existing guard returned `MASTER_PRIORITY_HOLD_IMPORT_TOKEN_INVALID`. The test expectation was corrected.
 - Two subsequent focused SQL attempts failed during fixture setup, before assertions: first `MASTER_SNAPSHOT_NOT_READY`, then `MASTER_IMPORT_FENCE_EXPIRED`. The failed HTTP fixture left import-fence metadata behind; restoring only the disposable dataset readiness state was insufficient. These three consecutive test failures triggered the mandatory stop.
-- Full-size RPC latency, the expanded SQL assertions, full SQL regression, strict lint, and the historical migration replay remain unverified for this patch. No performance acceptance claim is made.
+- The original halt above was followed by an explicit operator reset and authorization to repair the fixture and update the Phase 2 deployment pipeline.
+- Resumed HTTP attempt 1 failed before writes because the revision fixture used `updated_at` instead of the actual `changed_at` column. This was corrected using the database schema.
+- Resumed HTTP attempt 2 completed the 9,539-row bulk insert within the 55-second assertion, then failed at downstream reconciliation with `SEASON_SALES_SETTINGS_INVALID`. The fixture lacked the required `current_season_salesyear` setting. Cleanup completed, and the subsequent 33 SQL assertions passed.
+- Resumed HTTP attempt 3 used complete F1/27 season settings and failed during the initial bulk RPC with PostgreSQL statement timeout (HTTP 500). The 55-second production gate remains unchanged. No performance acceptance claim is made from the earlier incomplete fixture.
+- Full SQL regression, historical migration replay, refreshed tooling/type checks, and all four full-size HTTP scenarios remain incomplete for this patch.
 
-Recovery requires a fresh disposable workspace and corrected HTTP fixture/fence cleanup before re-running validation. The release migration registry, strict temporary-table lint registration, and database-before-Apps-Script activation order still need a reviewed delivery change; no deployment scripts, workflows, or baseline helpers have been modified.
+## Resumed repair and remaining work
+
+The fail-import contract deliberately preserves interrupted readiness and a lease; restoring readiness alone cannot recover it. The HTTP fixture now tracks its own active runs, uses service-role context for direct fixture writes, removes only its owned lease/run metadata, restores captured revision rows before guarded cleanup, and checks the final state. It seeds and exactly restores the season setting, renews the lease during Season reconciliation batches, and clears its synthetic inventory, assignment, receipt, and reconciliation artifacts. Production fence functions were not weakened.
+
+With explicit operator approval, the release registry now includes the migration and its security/timeout/trigger checks, strict SQL lint knows the two temporary shapes, and Apps Script activation waits for successful backend publication of the exact commit. Frontend publication remains independent. These pipeline changes are local and have not been deployed.
+
+Next investigation must profile the complete bulk RPC with valid season settings and all existing protection/mirror triggers enabled before another full validation attempt. Also review the source-hash cache against an app edit that returns a shielded field to its previously imported value: a focused reproduction is still needed to confirm that an unchanged source snapshot performs the required acknowledgment. The current patch must not merge until the performance gate and complete regression suite pass.
 
 ## Publication and recovery
 

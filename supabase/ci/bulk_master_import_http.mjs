@@ -179,12 +179,45 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     return result.body;
   };
   const runIds = [];
+  const activeRunIds = new Set();
   const requestIds = [];
+  const seasonIdempotencyKeys = [];
   let failureTriggerInstalled = false;
   let shape;
   let tableColumns;
   let initial;
   let sourceByteCount;
+  let revisionSnapshot;
+  let seasonSettingsSnapshot;
+  let fenceDatasetKeys;
+  let revisionKeys;
+  let testFailure;
+
+  const setDisposableDbClaims = async () => {
+    await db.query("select set_config('request.jwt.claims', '{\"role\":\"service_role\"}', true)");
+    await db.query("select set_config('request.jwt.claim.role', 'service_role', true)");
+    await db.query("select set_config('request.headers', '{}', true)");
+  };
+  const withDisposableDbClaims = async callback => {
+    await db.query('begin');
+    try {
+      await setDisposableDbClaims();
+      const result = await callback();
+      await db.query('commit');
+      return result;
+    } catch (error) {
+      await db.query('rollback').catch(() => {});
+      throw error;
+    }
+  };
+  const restoreRevisionSnapshot = async () => {
+    const restored = await db.query(`update public.app_dataset_revisions as current
+      set revision = snapshot.revision, state = snapshot.state, changed_at = snapshot.changed_at
+      from jsonb_to_recordset($1::jsonb) as snapshot(key text, revision bigint, state text, changed_at timestamptz)
+      where current.key = snapshot.key returning current.key`, [JSON.stringify(revisionSnapshot || [])]);
+    assert.equal(restored.rowCount, revisionSnapshot?.length || 0,
+      'all captured PH import revision rows still exist for exact disposable-workspace restoration');
+  };
 
   try {
     shape = JSON.parse(readFileSync(new URL('../../tests/fixtures/bulk-master-import-shape.json', import.meta.url), 'utf8'));
@@ -192,6 +225,16 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       where table_schema='public' and table_name='ph_master_inventory' order by ordinal_position`);
     initial = sourceRowsFromProductionShape({ shape, columns: tableColumns });
     sourceByteCount = Buffer.byteLength(JSON.stringify(initial.rows));
+    fenceDatasetKeys = vm.runInContext("getDatasetImportFenceSources_('ph_master_inventory')", initial.context);
+    revisionKeys = [...new Set([
+      ...fenceDatasetKeys, 'ph_itemcode_default_owners', 'ph_inventory_row_assignments', 'ph_app_settings',
+    ])];
+    // Keep the revisions this fence can touch so expected fail-path coverage cannot
+    // poison later SQL checks in the verified disposable replay workspace.
+    revisionSnapshot = await query(`select key, revision, state, changed_at::text as changed_at
+      from public.app_dataset_revisions where key = any($1::text[]) order by key`, [revisionKeys]);
+    seasonSettingsSnapshot = await query(`select key, value, updated_by, updated_at::text as updated_at
+      from public.ph_app_settings where key='current_season_salesyear'`);
   } catch (error) {
     await db.end();
     throw error;
@@ -199,12 +242,12 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
 
   const begin = async () => {
     const runId = randomUUID();
-    runIds.push(runId);
-    const datasetKeys = vm.runInContext("getDatasetImportFenceSources_('ph_master_inventory')", initial.context);
     const result = await success('begin_dataset_import_v1', {
-      p_dataset_keys: datasetKeys, p_run_id: runId, p_canonical_keys: ['ph_master_inventory'],
+      p_dataset_keys: fenceDatasetKeys, p_run_id: runId, p_canonical_keys: ['ph_master_inventory'],
     });
     assert.equal(result.ok, true, 'the complete canonical PH fence must be active before bulk writes');
+    runIds.push(runId);
+    activeRunIds.add(runId);
     return runId;
   };
   const finish = async runId => {
@@ -216,10 +259,12 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     await reconcileAssignments(runId);
     const result = await success('finish_dataset_import_v1', { p_run_id: runId });
     assert.equal(result.ok, true);
+    activeRunIds.delete(runId);
   };
   const fail = async runId => {
-    const result = await success('fail_dataset_import_v1', { p_run_id: runId });
+    const result = await success('fail_dataset_import_v1', { p_run_id: runId }, { 'x-gnc-import-run-id': runId });
     assert.equal(result.ok, true);
+    activeRunIds.delete(runId);
   };
   const bulkPayload = (runId, source, requestId = randomUUID()) => {
     requestIds.push(requestId);
@@ -243,6 +288,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     const safeRevision = new Date().toISOString();
     const importRevision = `master_inventory:${safeRevision}`;
     const baseKey = `season-sales-${createHash('sha256').update(`master_inventory|${safeRevision}`).digest('base64url').slice(0, 80)}`;
+    seasonIdempotencyKeys.push(baseKey);
     const dry = await fencedSuccess('reconcile_season_sales_office_v1', {
       p_itemcodes: null, p_dry_run: true, p_import_revision: importRevision, p_idempotency_key: null,
     }, runId);
@@ -261,7 +307,10 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     const batchSize = 25;
     for (let offset = 0, batchIndex = 0; offset < scope.itemcodes.length; offset += batchSize, batchIndex++) {
       const batch = scope.itemcodes.slice(offset, offset + batchSize);
+      const heartbeat = await fencedSuccess('heartbeat_dataset_import_v1', { p_run_id: runId }, runId);
+      assert.equal(heartbeat.ok, true);
       const key = vm.runInContext('getSeasonSalesBatchIdempotencyKey_', initial.context)(baseKey, batchIndex, batch);
+      seasonIdempotencyKeys.push(key);
       const result = await fencedSuccess('reconcile_season_sales_office_v1', {
         p_itemcodes: batch, p_dry_run: false, p_import_revision: importRevision, p_idempotency_key: key,
       }, runId);
@@ -322,6 +371,21 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       .proconfig.includes('statement_timeout=55s'), 'the bulk RPC keeps its 55-second statement timeout');
     const initialLiveCount = Number((await queryValue('select count(*)::int as count from public.ph_master_inventory')).count);
     assert.equal(initialLiveCount, 0, 'the disposable canonical HTTP workspace must begin without live inventory rows');
+    // The season reconciliation is part of the canonical import contract and
+    // reads this application setting; seed a complete, test-only value and
+    // restore the exact original row in finally.
+    await withDisposableDbClaims(() => db.query(`insert into public.ph_app_settings(key, value, updated_by, updated_at)
+      values ('current_season_salesyear', '{"seasonCode":"F1","salesYear":"27"}'::jsonb, 'bulk_master_http_fixture', clock_timestamp())
+      on conflict (key) do update set value=excluded.value, updated_by=excluded.updated_by, updated_at=excluded.updated_at`));
+
+    // Seed the stale row before the canonical fence is active. The direct PG
+    // fixture connection has no PostgREST context, so set disposable service
+    // claims for this transaction without fabricating an import token.
+    const obsolete = { ...initial.rows[0].values, unique_id: 'GNC_BULK_BENCH_OBSOLETE', itemcode: 'GNC_BULK_BENCH_OBSOLETE_ITEM' };
+    await withDisposableDbClaims(() => db.query(
+      'insert into public.ph_master_inventory select (jsonb_populate_record(null::public.ph_master_inventory,$1::jsonb)).*',
+      [JSON.stringify(obsolete)],
+    ));
 
     const runId = await begin();
     const initialRequest = bulkPayload(runId, initial);
@@ -339,9 +403,8 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     const denied = await rpc('bulk_import_master_snapshot_v1', initialRequest, values.ANON_KEY);
     assert.ok([401, 403, 404].includes(denied.status), 'anon must not execute the service-only RPC');
 
-    const obsolete = { ...initial.rows[0].values, unique_id: 'GNC_BULK_BENCH_OBSOLETE', itemcode: 'GNC_BULK_BENCH_OBSOLETE_ITEM' };
-    await db.query('insert into public.ph_master_inventory select (jsonb_populate_record(null::public.ph_master_inventory,$1::jsonb)).*', [JSON.stringify(obsolete)]);
     const first = await measuredBulk(initialRequest, 'initial 9,539-row insert');
+    console.log(`[bulk-master-http] insert RPC ${Math.round(first.elapsedMs)}ms`);
     assert.deepEqual(first.result, {
       published: true, runId, requestId: initialRequest.p_request_id, sourceDigest: initial.sourceDigest,
       sourceRows: ROW_COUNT, inserted: ROW_COUNT, updated: 0, deleted: 1, unchanged: 0,
@@ -352,6 +415,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     const replay = await success('bulk_import_master_snapshot_v1', initialRequest);
     const replayElapsedMs = performance.now() - replayStart;
     assert.ok(replayElapsedMs < 55000, `exact replay RPC exceeded the 55-second database budget (${Math.round(replayElapsedMs)} ms)`);
+    console.log(`[bulk-master-http] exact replay RPC ${Math.round(replayElapsedMs)}ms`);
     assert.deepEqual(replay, first.result, 'an exact request retry replays the saved response after the import fence closes');
 
     const alteredRetry = {
@@ -364,8 +428,8 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     assert.match(errorText(altered.body), /BULK_MASTER_IMPORT_REQUEST_ID_REUSED/);
 
     const protectedId = initial.rows[0].values.unique_id;
-    await db.query(`update public.ph_master_inventory set holdstopcode='APP_HOLD', holdstopreason='Synthetic app hold',
-      locationnote='Synthetic app location note' where unique_id=$1`, [protectedId]);
+    await withDisposableDbClaims(() => db.query(`update public.ph_master_inventory set holdstopcode='APP_HOLD', holdstopreason='Synthetic app hold',
+      locationnote='Synthetic app location note' where unique_id=$1`, [protectedId]));
     const protectedBefore = await queryValue(`select holdstopcode, holdstopreason, locationnote
       from public.ph_master_inventory where unique_id=$1`, [protectedId]);
     assert.deepEqual(protectedBefore, {
@@ -376,6 +440,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     const changedRun = await begin();
     const changedRequest = bulkPayload(changedRun, changed);
     const changedResult = await measuredBulk(changedRequest, 'changed 9,539-row snapshot');
+    console.log(`[bulk-master-http] changed snapshot RPC ${Math.round(changedResult.elapsedMs)}ms`);
     assert.equal(changedResult.result.inserted, 0);
     assert.equal(changedResult.result.updated, ROW_COUNT);
     assert.equal(changedResult.result.deleted, 0);
@@ -389,6 +454,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     const unchangedRun = await begin();
     const unchangedRequest = bulkPayload(unchangedRun, unchanged);
     const unchangedResult = await measuredBulk(unchangedRequest, 'unchanged 9,539-row snapshot with fresh sync metadata');
+    console.log(`[bulk-master-http] unchanged snapshot RPC ${Math.round(unchangedResult.elapsedMs)}ms`);
     assert.equal(unchangedResult.result.inserted, 0);
     assert.equal(unchangedResult.result.updated, 0, 'last_updated and filename metadata do not force a business-row update');
     assert.equal(unchangedResult.result.unchanged, ROW_COUNT);
@@ -431,16 +497,114 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     await fail(atomicRun);
 
     console.log(`[bulk-master-http] ${ROW_COUNT} rows, ${initial.rows.length ? Object.keys(initial.rows[0].values).length : 0} normalized columns, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
+  } catch (error) {
+    testFailure = error;
+    throw error;
   } finally {
-    if (failureTriggerInstalled) {
-      await db.query('drop trigger if exists ci_bulk_master_atomic_failure on public.ph_master_inventory; drop function if exists private.ci_bulk_master_atomic_failure()').catch(() => {});
+    let cleanupError;
+    try {
+      if (failureTriggerInstalled) {
+        await db.query('drop trigger if exists ci_bulk_master_atomic_failure on public.ph_master_inventory; drop function if exists private.ci_bulk_master_atomic_failure()');
+      }
+      const unfinishedRunIds = [...activeRunIds];
+      for (const runId of unfinishedRunIds) {
+        const failed = await success('fail_dataset_import_v1', { p_run_id: runId }, { 'x-gnc-import-run-id': runId });
+        assert.equal(failed.ok, true, `unfinished harness import ${runId} is failed through the service-role HTTP path`);
+      }
+
+      // Fail finalization marks datasets interrupted. Clear only this harness's
+      // private fence rows and restore captured revisions before guarded table DML.
+      await db.query('begin');
+      await setDisposableDbClaims();
+      if (runIds.length) {
+        await db.query('delete from app_sync_private.import_leases where run_id = any($1::uuid[])', [runIds]);
+        await db.query('delete from app_sync_private.import_runs where id = any($1::uuid[])', [runIds]);
+      }
+      await restoreRevisionSnapshot();
+      await db.query('commit');
+
+      // Direct fixture cleanup runs with disposable service-role request context;
+      // it does not fabricate an import token or alter the public guard functions.
+      await db.query('begin');
+      await setDisposableDbClaims();
+      if (runIds.length) {
+        await db.query('delete from app_sync_private.ph_master_inventory_import_lineage_seen where run_id = any($1::uuid[])', [runIds]);
+        await db.query('delete from app_sync_private.ph_master_inventory_item6_alias_seen_v7 where run_id = any($1::uuid[])', [runIds]);
+        await db.query('delete from app_sync_private.ph_master_bulk_import_context_v1 where run_id = any($1::uuid[])', [runIds]);
+      }
+      await db.query("delete from app_sync_private.ph_master_bulk_import_source_v1 where canonical_unique_id like 'GNC_BULK_BENCH_%'");
+      await db.query("delete from app_sync_private.ph_master_inventory_source_baselines where canonical_unique_id like 'GNC_BULK_BENCH_%'");
+      await db.query("delete from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id like 'GNC_BULK_BENCH_%'");
+      await db.query("delete from private.ph_inventory_row_assignment_audit where master_unique_id like 'GNC_BULK_BENCH_%'");
+      await db.query("delete from public.ph_inventory_row_assignments where master_unique_id like 'GNC_BULK_BENCH_%'");
+      await db.query('delete from private.season_sales_office_idempotency where idempotency_key = any($1::text[])', [seasonIdempotencyKeys]);
+      await db.query(`delete from public.ph_season_sales_office_events event
+        using public.ph_season_sales_office_state state
+        where event.state_id = state.id and state.itemcode_normalized like 'GNC_BULK_BENCH_%'`);
+      await db.query("delete from public.ph_sales_office where unique_id like 'GNC_BULK_BENCH_%'");
+      await db.query("delete from public.ph_season_sales_office_state where itemcode_normalized like 'GNC_BULK_BENCH_%'");
+      await db.query('delete from app_sync_private.ph_master_bulk_import_receipts_v1 where request_id = any($1::uuid[])', [requestIds]);
+      await db.query("delete from public.ph_master_inventory where unique_id like 'GNC_BULK_BENCH_%'");
+      await db.query("delete from public.ph_app_settings where key='current_season_salesyear'");
+      if (seasonSettingsSnapshot.length) {
+        await db.query(`insert into public.ph_app_settings(key, value, updated_by, updated_at)
+          select key, value, updated_by, updated_at
+          from jsonb_to_recordset($1::jsonb) as snapshot(key text, value jsonb, updated_by text, updated_at timestamptz)`,
+        [JSON.stringify(seasonSettingsSnapshot)]);
+      }
+      await restoreRevisionSnapshot();
+      await db.query('commit');
+
+      assert.equal(Number((await queryValue('select count(*)::int as count from app_sync_private.import_runs where id = any($1::uuid[])', [runIds])).count), 0,
+        'all harness-owned import runs are removed');
+      assert.equal(Number((await queryValue('select count(*)::int as count from app_sync_private.import_leases where run_id = any($1::uuid[])', [runIds])).count), 0,
+        'all harness-owned import leases are removed');
+      assert.deepEqual(await query(`select key, revision, state, changed_at::text as changed_at from public.app_dataset_revisions
+        where key = any($1::text[]) order by key`, [revisionKeys]), revisionSnapshot,
+      'captured PH import revisions are restored exactly');
+      assert.deepEqual(await query(`select key, value, updated_by, updated_at::text as updated_at
+        from public.ph_app_settings where key='current_season_salesyear'`), seasonSettingsSnapshot,
+      'season settings are restored exactly');
+      assert.equal(Number((await queryValue("select count(*)::int as count from public.ph_master_inventory where unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic master inventory rows are removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_inventory_source_baselines where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic source baselines are removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic app edits are removed');
+      assert.equal(Number((await queryValue('select count(*)::int as count from app_sync_private.ph_master_bulk_import_receipts_v1 where request_id = any($1::uuid[])', [requestIds])).count), 0,
+        'harness-owned RPC receipts are removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_bulk_import_source_v1 where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic bulk source fingerprints are removed');
+      assert.equal(Number((await queryValue('select count(*)::int as count from app_sync_private.ph_master_inventory_import_lineage_seen where run_id = any($1::uuid[])', [runIds])).count), 0,
+        'harness lineage observations are removed');
+      assert.equal(Number((await queryValue('select count(*)::int as count from app_sync_private.ph_master_inventory_item6_alias_seen_v7 where run_id = any($1::uuid[])', [runIds])).count), 0,
+        'harness Item6 alias observations are removed');
+      assert.equal(Number((await queryValue('select count(*)::int as count from app_sync_private.ph_master_bulk_import_context_v1 where run_id = any($1::uuid[])', [runIds])).count), 0,
+        'harness bulk import context is removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_inventory_item6_source_v7 where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic Item6 source fingerprints are removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_inventory_item6_aliases_v7 where canonical_unique_id like 'GNC_BULK_BENCH_%' or imported_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic Item6 aliases are removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from public.ph_inventory_row_assignments where master_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic row assignments are removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from private.ph_inventory_row_assignment_audit where master_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic assignment audit entries are removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from public.ph_season_sales_office_state where itemcode_normalized like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic Season state is removed');
+      assert.equal(Number((await queryValue("select count(*)::int as count from public.ph_sales_office where unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
+        'synthetic Sales Office mirrors are removed');
+      assert.equal(Number((await queryValue('select count(*)::int as count from private.season_sales_office_idempotency where idempotency_key = any($1::text[])', [seasonIdempotencyKeys])).count), 0,
+        'harness Season reconciliation idempotency rows are removed');
+    } catch (error) {
+      cleanupError = error;
+      await db.query('rollback').catch(() => {});
+    } finally {
+      await db.end();
     }
-    if (runIds.length) await db.query('select public.fail_dataset_import_v1(id) from unnest($1::uuid[]) as id', [runIds]).catch(() => {});
-    await db.query("delete from app_sync_private.ph_master_inventory_source_baselines where canonical_unique_id like 'GNC_BULK_BENCH_%'").catch(() => {});
-    await db.query("delete from app_sync_private.ph_master_inventory_app_edits where canonical_unique_id like 'GNC_BULK_BENCH_%'").catch(() => {});
-    await db.query('delete from app_sync_private.ph_master_bulk_import_receipts_v1 where request_id = any($1::uuid[])', [requestIds]).catch(() => {});
-    await db.query("delete from public.ph_master_inventory where unique_id like 'GNC_BULK_BENCH_%'").catch(() => {});
-    await db.end();
+    if (cleanupError) {
+      if (testFailure && typeof testFailure === 'object') testFailure.cleanupError = cleanupError;
+      else throw new Error(`BULK_MASTER_HTTP_CLEANUP_FAILED: ${cleanupError.message}`, { cause: cleanupError });
+    }
   }
 }
 

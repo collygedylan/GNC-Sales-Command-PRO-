@@ -5,6 +5,9 @@ import { DATABASE_LINT_SCHEMAS } from './database-workspace.mjs';
 import { packageBin, repoRoot, run, runNode } from './tooling-process.mjs';
 
 const SUPPORTED = Object.freeze({
+  'public.bulk_import_master_snapshot_v1': Object.freeze({
+    args: ['uuid', 'uuid', 'jsonb', 'text'], declarations: ['v_rows jsonb;'],
+  }),
   'public.ph_refresh_hold_learning_itemcode_batch': Object.freeze({
     args: ['text', 'integer'], declarations: ['v_job_name text;', 'v_batch_size integer;'],
   }),

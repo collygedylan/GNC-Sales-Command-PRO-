@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
   decorateDefinitions,
   extractTempStatements,
@@ -18,6 +19,7 @@ const fixtureFunctions = () => [
   ['reconcile_season_sales_office_v1', 'text[], boolean, text, text', '', 'create temporary table season_items (itemcode text primary key) on commit drop;'],
   ['v2_refresh_hold_learning_profiles', '', '', 'create temporary table profile_stage on commit drop as select 1::integer as sample_count;'],
   ['v2_refresh_hold_stop_itemcode_episode_learning', 'date, date, integer', 'safe_start date;\nsafe_end date;', 'create temp table episode_files on commit drop as select safe_start as day where safe_end is null;'],
+  ['bulk_import_master_snapshot_v1', 'uuid, uuid, jsonb, text', 'v_rows jsonb;', 'create temp table bulk_stage on commit drop as select value from jsonb_array_elements(v_rows); create temp table bulk_map on commit drop as select * from pg_temp.bulk_stage;'],
 ].map(([name, args, declarations, ddl]) => {
   const body = (declarations ? 'DECLARE\n' + declarations + '\n' : '') + 'BEGIN\n  ' + ddl + '\nEND;';
   return { schema: 'public', name, arguments: args, argumentNames: [], body,
@@ -25,6 +27,21 @@ const fixtureFunctions = () => [
 });
 
 function encodeJson(value) { return Buffer.from(JSON.stringify(value)).toString('base64'); }
+
+test('bulk master migration exposes both temporary shapes to strict lint without executing source data', () => {
+  const migration = readFileSync(new URL('../supabase/migrations/20261015012249_bulk_master_snapshot_v1.sql', import.meta.url), 'utf8');
+  const definition = migration.slice(migration.indexOf('create or replace function public.bulk_import_master_snapshot_v1('));
+  const body = definition.split('as $function$')[1].split('$function$;')[0];
+  const [supported] = getSupportedFunctions([{
+    schema: 'public', name: 'bulk_import_master_snapshot_v1', arguments: 'uuid, uuid, jsonb, text',
+    argumentNames: ['p_run_id', 'p_request_id', 'p_rows', 'p_source_digest'], body, definition,
+  }], { allowMissing: true });
+  assert.deepEqual(supported.statements.map(statement => statement.name), ['ph_master_bulk_stage_v1', 'ph_master_bulk_map_v1']);
+  const probe = probeSql([supported]);
+  assert.match(probe, /v_rows jsonb;/);
+  assert.equal(probe.match(/WITH NO DATA;/g).length, 2);
+  assert.doesNotMatch(probe, /p_rows|bulk_import_master_snapshot_v1\(/);
+});
 
 test('temporary SQL extraction ignores comments and quoted dynamic DDL and makes CTAS planning data-free', () => {
   const body = "BEGIN\n" +
@@ -54,8 +71,8 @@ test('temporary SQL parser respects nested comments, dollar strings, and escape 
 
 test('source inventory validates exact function signatures, local declarations, and static temp DDL', () => {
   const functions = getSupportedFunctions(fixtureFunctions());
-  assert.equal(functions.length, 6);
-  assert.equal(functions.flatMap(item => item.statements).length, 6);
+  assert.equal(functions.length, 7);
+  assert.equal(functions.flatMap(item => item.statements).length, 8);
   assert.match(probeSql(functions), /WITH NO DATA/);
   assert.match(probeSql(functions), /create temporary table season_items/i);
   assert.throws(() => getSupportedFunctions(fixtureFunctions().slice(1)), /FUNCTION_SET_CHANGED/);
@@ -73,7 +90,7 @@ test('derived shapes produce exact pragmas and decoration inserts them after the
   })));
   const withPragmas = validateShapes(functions, shapes);
   const decorated = decorateDefinitions(withPragmas, 'extensions');
-  assert.equal(decorated.length, 6);
+  assert.equal(decorated.length, 7);
   assert.match(decorated[0].decorated, /BEGIN\s+PERFORM "extensions"\.plpgsql_check_pragma\('table: tmp_hl_batch\(id integer\)'\);/);
   assert.match(decorated[0].decorated, /limit v_batch_size/i);
   assert.match(decorated[0].original, /BEGIN\n/);
