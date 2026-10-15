@@ -175,7 +175,7 @@ test('cross-location confirmations retry only the failed pair and keep that over
   assert.equal(f.sync.getDisplayRow({ ...row('b'), ...secondPair }).holdstopreason, 'confirmed');
 });
 
-test('suspend cancels pending work; reconnect refreshes seeded pairs and account reset rejects late reads', async () => {
+test('suspend cancels pending work; reconnect awaits cohort refresh and account reset rejects late reads', async () => {
   let scope = 'lifecycle-a', calls = 0, release;
   const f = client(scope, async () => { calls++; return [row('a', { priority: '4' })]; }, { getScope: () => scope });
   f.sync.seed([row('a')]);

@@ -72,6 +72,7 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
   let snapshotsReady = false;
   let accessBoundaryApplied = false;
   let seasonSettingTouched = false;
+  let appliedRealtimeBoundary;
   let managerId = '';
   let deniedId = '';
   let fixture = null;
@@ -130,6 +131,19 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
         and not attribute.attisdropped and attribute.attacl is not null
         and acl.grantee=(select oid from pg_roles where rolname='authenticated')
       order by column_name,privilege_type,acl.is_grantable`),
+    otherRoleTablePrivileges: await query(`select acl.grantee::text as grantee,acl.grantor::text as grantor,
+        acl.privilege_type,acl.is_grantable from pg_class as relation
+      cross join lateral aclexplode(coalesce(relation.relacl,acldefault('r',relation.relowner))) as acl
+      where relation.oid='public.ph_master_inventory'::regclass
+        and acl.grantee<>(select oid from pg_roles where rolname='authenticated')
+      order by grantee,grantor,privilege_type,is_grantable`),
+    otherRoleColumnPrivileges: await query(`select attribute.attname as column_name,acl.grantee::text as grantee,
+        acl.grantor::text as grantor,acl.privilege_type,acl.is_grantable from pg_attribute as attribute
+      cross join lateral aclexplode(attribute.attacl) as acl
+      where attribute.attrelid='public.ph_master_inventory'::regclass and attribute.attnum>0
+        and not attribute.attisdropped and attribute.attacl is not null
+        and acl.grantee<>(select oid from pg_roles where rolname='authenticated')
+      order by column_name,grantee,grantor,privilege_type,is_grantable`),
     salesPolicy: await query(`select policyname,permissive,to_json(roles) as roles,cmd,qual,with_check from pg_policies
       where schemaname='public' and tablename='ph_master_inventory' and policyname='sales_rep_inventory_read_v1'`),
   });
@@ -171,6 +185,26 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
         as ${policy.permissive.toLowerCase()} for ${policy.cmd.toLowerCase()} to ${roles}${using}${check}`);
     }
   });
+  const verifyProductionRealtimeBoundary = async () => {
+    const matrix = await queryValue(`select has_table_privilege('authenticated','public.ph_master_inventory','SELECT') as full_select,
+      has_column_privilege('authenticated','public.ph_master_inventory','unique_id','SELECT') as unique_id_select,
+      has_column_privilege('authenticated','public.ph_master_inventory','itemcode','SELECT') as itemcode_select,
+      has_column_privilege('authenticated','public.ph_master_inventory','locationcode','SELECT') as locationcode_select,
+      has_column_privilege('authenticated','public.ph_master_inventory','priority','SELECT') as priority_select,
+      has_column_privilege('authenticated','public.ph_master_inventory','holdstopreason','SELECT') as holdstopreason_select,
+      exists(select 1 from pg_policies where schemaname='public' and tablename='ph_master_inventory'
+        and policyname='sales_rep_inventory_read_v1') as sales_policy`);
+    assert.deepEqual(matrix, { full_select: false, unique_id_select: true, itemcode_select: true,
+      locationcode_select: true, priority_select: false, holdstopreason_select: false, sales_policy: false },
+    'applied ACL matches the verified production identifier-only boundary');
+    const rowSecurity = await queryValue(`select relrowsecurity from pg_class where oid='public.ph_master_inventory'::regclass`);
+    assert.equal(rowSecurity.relrowsecurity, true, 'production realtime fixture retains row-level security');
+    const policies = await queryValue(`select coalesce(array_agg(policyname::text order by policyname::text),array[]::text[]) as names
+      from pg_policies where schemaname='public' and tablename='ph_master_inventory'`);
+    assert.deepEqual(policies.names, ['inventory_status_realtime_read_v1','scheduled_handover_active_session'],
+      'production realtime fixture retains only the approved status and handover policies');
+    return { matrix, policies: policies.names, rowSecurity: rowSecurity.relrowsecurity };
+  };
   const restoreRevisions = async () => {
     const result = await db.query(`update public.app_dataset_revisions as current
       set revision=snapshot.revision,state=snapshot.state,changed_at=snapshot.changed_at
@@ -250,28 +284,24 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
       await applyRealtimeAccessBoundary();
       accessSnapshot = snapshot;
       accessBoundaryApplied = true;
-      const matrix = await queryValue(`select has_table_privilege('authenticated','public.ph_master_inventory','SELECT') as full_select,
-        has_column_privilege('authenticated','public.ph_master_inventory','unique_id','SELECT') as unique_id_select,
-        has_column_privilege('authenticated','public.ph_master_inventory','itemcode','SELECT') as itemcode_select,
-        has_column_privilege('authenticated','public.ph_master_inventory','locationcode','SELECT') as locationcode_select,
-        has_column_privilege('authenticated','public.ph_master_inventory','priority','SELECT') as priority_select,
-        has_column_privilege('authenticated','public.ph_master_inventory','holdstopreason','SELECT') as holdstopreason_select,
-        exists(select 1 from pg_policies where schemaname='public' and tablename='ph_master_inventory'
-          and policyname='sales_rep_inventory_read_v1') as sales_policy`);
-      assert.deepEqual(matrix, { full_select: false, unique_id_select: true, itemcode_select: true,
-        locationcode_select: true, priority_select: false, holdstopreason_select: false, sales_policy: false },
-      'applied ACL and policy set matches the verified production realtime boundary');
+      const boundary = await verifyProductionRealtimeBoundary();
+      const activeAcl = await captureAccessBoundary();
+      assert.deepEqual(activeAcl.otherRoleTablePrivileges, snapshot.otherRoleTablePrivileges,
+        'applying the status fixture leaves every other role table grant unchanged');
+      assert.deepEqual(activeAcl.otherRoleColumnPrivileges, snapshot.otherRoleColumnPrivileges,
+        'applying the status fixture leaves every other role column grant unchanged');
       await restoreAccessBoundary();
       accessBoundaryApplied = false;
       assert.deepEqual(await captureAccessBoundary(), snapshot, 'direct table/column grants and sales policy restore exactly');
       console.log(JSON.stringify({ kind: 'realtime-av-acl-fixture-check', workspace: basename(workspace.absolute),
         salesPolicyRolesArray: true, directTableGrantCount: snapshot.tablePrivileges.length,
-        directColumnGrantCount: snapshot.columnPrivileges.length, productionPrivacyMatrix: matrix,
+        directColumnGrantCount: snapshot.columnPrivileges.length, productionPrivacyMatrix: boundary.matrix,
+        retainedRlsPolicies: boundary.policies, rowSecurity: boundary.rowSecurity,
+        otherRoleAclUnchanged: true,
         restoredSnapshotEqual: true }));
     } finally {
       if (accessBoundaryApplied) {
         await restoreAccessBoundary();
-        accessBoundaryApplied = false;
         assert.deepEqual(await captureAccessBoundary(), snapshot, 'error cleanup restored direct ACL/policy snapshot');
       }
       await db.end();
@@ -320,17 +350,12 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
     seasonSettingTouched = true;
     await applyRealtimeAccessBoundary();
     accessBoundaryApplied = true;
-    const appliedAcl = await queryValue(`select has_table_privilege('authenticated','public.ph_master_inventory','SELECT') as full_select,
-      has_column_privilege('authenticated','public.ph_master_inventory','unique_id','SELECT') as unique_id_select,
-      has_column_privilege('authenticated','public.ph_master_inventory','itemcode','SELECT') as itemcode_select,
-      has_column_privilege('authenticated','public.ph_master_inventory','locationcode','SELECT') as locationcode_select,
-      has_column_privilege('authenticated','public.ph_master_inventory','priority','SELECT') as priority_select,
-      has_column_privilege('authenticated','public.ph_master_inventory','holdstopreason','SELECT') as holdstopreason_select,
-      exists(select 1 from pg_policies where schemaname='public' and tablename='ph_master_inventory'
-        and policyname='sales_rep_inventory_read_v1') as sales_policy`);
-    assert.deepEqual(appliedAcl, { full_select: false, unique_id_select: true, itemcode_select: true,
-      locationcode_select: true, priority_select: false, holdstopreason_select: false, sales_policy: false },
-    'Realtime segment uses the verified production identifier-only ACL and session policy set');
+    appliedRealtimeBoundary = await verifyProductionRealtimeBoundary();
+    const activeAccessSnapshot = await captureAccessBoundary();
+    assert.deepEqual(activeAccessSnapshot.otherRoleTablePrivileges, accessSnapshot.otherRoleTablePrivileges,
+      'realtime fixture leaves every other role table grant unchanged');
+    assert.deepEqual(activeAccessSnapshot.otherRoleColumnPrivileges, accessSnapshot.otherRoleColumnPrivileges,
+      'realtime fixture leaves every other role column grant unchanged');
 
     const runId = randomUUID(); runIds.push(runId); activeRuns.add(runId);
     const began = await success('begin_dataset_import_v1', { p_dataset_keys: fenceKeys, p_run_id: runId, p_canonical_keys: ['ph_master_inventory'] });
@@ -446,12 +471,13 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
     assert.equal(planSummary.returnedRows, 500);
     reportProgress('sql-browse-plan', { role: 'service_role', executionMs: planSummary.executionMs,
       planningMs: planSummary.planningMs, rows: planSummary.returnedRows, indexNames: planSummary.indexNames,
-      sharedReadBlocks: planSummary.sharedReadBlocks, sharedHitBlocks: planSummary.sharedHitBlocks });
+      sharedReadBlocks: planSummary.sharedReadBlocks, sharedHitBlocks: planSummary.sharedHitBlocks, explain: plan });
     assert.ok(planSummary.executionMs < 100, `browse query plan exceeded 100 ms (${planSummary.executionMs.toFixed(2)} ms)`);
     const countPlanResult = await explainAsServiceRole('select count(*) from public.ph_master_inventory');
     const countPlan = countPlanResult.rows[0]['QUERY PLAN'][0];
     reportProgress('sql-count-plan', { role: 'service_role', executionMs: countPlan['Execution Time'],
-      sharedReadBlocks: countPlan.Plan['Shared Read Blocks'] || 0, sharedHitBlocks: countPlan.Plan['Shared Hit Blocks'] || 0 });
+      sharedReadBlocks: countPlan.Plan['Shared Read Blocks'] || 0, sharedHitBlocks: countPlan.Plan['Shared Hit Blocks'] || 0,
+      explain: countPlan });
     assert.ok(countPlan['Execution Time'] < 100,
       `exact-count query plan exceeded 100 ms (${countPlan['Execution Time'].toFixed(2)} ms)`);
     const pairPlanResult = await explainAsServiceRole(`select ${fullFields.map(field => `"${field}"`).join(',')}
@@ -459,14 +485,15 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
       order by unique_id asc limit 500 offset 0`, [pairRow.itemcode, pairRow.locationcode]);
     const pairPlan = pairPlanResult.rows[0]['QUERY PLAN'][0];
     reportProgress('sql-pair-plan', { role: 'service_role', executionMs: pairPlan['Execution Time'],
-      nodeType: pairPlan.Plan['Node Type'], indexNames: [...new Set(flattenPlan(pairPlan.Plan).map(node => node['Index Name']).filter(Boolean))] });
+      nodeType: pairPlan.Plan['Node Type'], indexNames: [...new Set(flattenPlan(pairPlan.Plan).map(node => node['Index Name']).filter(Boolean))],
+      explain: pairPlan });
     assert.ok(pairPlan['Execution Time'] < 100,
       `pair lookup SQL exceeded 100 ms (${pairPlan['Execution Time'].toFixed(2)} ms)`);
     const revisionPlanResult = await explainAsServiceRole(`select revision,state from public.app_dataset_revisions
       where key=$1 limit 1`, ['ph_master_inventory']);
     const revisionPlan = revisionPlanResult.rows[0]['QUERY PLAN'][0];
     reportProgress('sql-revision-plan', { role: 'service_role', executionMs: revisionPlan['Execution Time'],
-      nodeType: revisionPlan.Plan['Node Type'] });
+      nodeType: revisionPlan.Plan['Node Type'], explain: revisionPlan });
     assert.ok(revisionPlan['Execution Time'] < 100,
       `dataset readiness SQL exceeded 100 ms (${revisionPlan['Execution Time'].toFixed(2)} ms)`);
 
@@ -503,15 +530,28 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
     const eventDeadline = Date.now() + 10000;
     while ((!phoneEvents.length || !tabletEvents.length) && Date.now() < eventDeadline) await delay(20);
     const propagationMs = performance.now() - updateStart;
+    const allowedRealtimeFields = ['itemcode', 'locationcode', 'unique_id'];
+    const authorizedRealtimeKeysets = [phoneEvents[0], tabletEvents[0]].map(event => ({
+      old: Object.keys(event?.old || {}).sort(),
+      new: Object.keys(event?.new || {}).sort(),
+    }));
     reportProgress('realtime-propagation', { elapsedMs: Number(propagationMs.toFixed(2)),
-      authorizedSessionEventCounts: [phoneEvents.length, tabletEvents.length], deniedSessionEventCount: deniedEvents.length });
+      authorizedSessionEventCounts: [phoneEvents.length, tabletEvents.length], deniedSessionEventCount: deniedEvents.length,
+      authorizedPayloadKeysets: authorizedRealtimeKeysets });
     assert.equal(phoneEvents.length, 1, 'first authorized session receives the identity update once');
     assert.equal(tabletEvents.length, 1, 'second authorized session receives the identity update once');
     assert.equal(deniedEvents.length, 0, 'inactive account receives no identity event');
-    assert.equal(phoneEvents[0].new.unique_id, rowId);
-    assert.equal(tabletEvents[0].new.unique_id, rowId);
+    for (const [index, event] of [phoneEvents[0], tabletEvents[0]].entries()) {
+      assert.deepEqual(authorizedRealtimeKeysets[index].new, allowedRealtimeFields,
+        `authorized session ${index + 1} receives only the three realtime invalidation fields`);
+      assert.ok(authorizedRealtimeKeysets[index].old.every(field => allowedRealtimeFields.includes(field)),
+      `authorized session ${index + 1} old payload contains only allowed identity fields`);
+      assert.equal(event.new.unique_id, rowId);
+      if (Object.hasOwn(event.old || {}, 'unique_id')) {
+        assert.equal(event.old.unique_id, rowId, `authorized session ${index + 1} old payload identifies the updated row`);
+      }
+    }
     assert.equal(phoneEvents[0].new.locationcode, updatedLocation);
-    assert.equal(Object.hasOwn(phoneEvents[0].new, 'priority'), false, 'Realtime payload exposes no inventory decision fields');
     const closedRealtimeRun = await success('fail_dataset_import_v1', { p_run_id: realtimeRunId }, { 'x-gnc-import-run-id': realtimeRunId });
     assert.equal(closedRealtimeRun.ok, true); activeRuns.delete(realtimeRunId);
 
@@ -532,19 +572,21 @@ export async function runRealtimeAvHydrationRegression(workspaceRoot, options = 
       queryPlan: { measuredOperation: 'exact app-api master_page and pair lookup SELECT shapes; SET LOCAL ROLE service_role with service_role JWT claims',
         databaseRole: 'service_role',
         explainRoundTripMs: Number(explainElapsedMs.toFixed(2)), ...planSummary,
+        explainPlans: { browse: plan, count: countPlan, fullPair: pairPlan, datasetRevision: revisionPlan },
         pairLookupExecutionMs: pairPlan['Execution Time'], pairLookupNodeType: pairPlan.Plan['Node Type'],
         pairLookupIndexNames: [...new Set(flattenPlan(pairPlan.Plan).map(node => node['Index Name']).filter(Boolean))],
         datasetReadinessExecutionMs: revisionPlan['Execution Time'], datasetReadinessNodeType: revisionPlan.Plan['Node Type'],
         exactCountExecutionMs: countPlan['Execution Time'], exactCountSharedHitBlocks: countPlan.Plan['Shared Hit Blocks'] || 0,
         exactCountSharedReadBlocks: countPlan.Plan['Shared Read Blocks'] || 0 },
       realtime: { eventCountPerAuthorizedSession: [phoneEvents.length, tabletEvents.length], deniedEventCount: deniedEvents.length,
-        idOnlyUpdateToBothSessionsMs: Number(propagationMs.toFixed(2)), exposedFields: Object.keys(phoneEvents[0].new).sort() },
+        idOnlyUpdateToBothSessionsMs: Number(propagationMs.toFixed(2)), payloadKeysets: authorizedRealtimeKeysets },
       authorization: { managerInventoryReadStatus: firstPage.status, inactiveProfileInventoryReadStatus: deniedRead.status,
         managerRlsRows: 1, inactiveProfileRlsRows: 0 },
       realtimeAclFixture: { source: 'local canonical rollback fixture snapshot',
         applied: 'authenticated SELECT on unique_id,itemcode,locationcode; removed nonproduction sales_rep_inventory_read_v1 policy',
         capturedAuthenticatedTableAndColumnAcl: true, capturedNonproductionSalesPolicy: true,
-        cleanupRestoreAndExactComparisonExpected: accessBoundaryApplied },
+        rowSecurity: appliedRealtimeBoundary.rowSecurity, retainedPolicies: appliedRealtimeBoundary.policies,
+        otherRoleAclUnchanged: true, cleanupRestoreAndExactComparisonExpected: accessBoundaryApplied },
     }));
   } catch (error) {
     failure = error;

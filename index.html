@@ -36265,7 +36265,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let productionLiveSyncViewLoad = null;
         let productionLiveSyncNavigationGeneration = 0;
         function productionVerifiedViewKey(context = getProductionLiveSyncContext()) {
-            return JSON.stringify([context.scope, context.dataPermissionVersion || '', context.viewKey, context.adapters.map(adapter => [adapter.id, adapter.cacheKey])]);
+            const parts = [context.scope, context.dataPermissionVersion || '', context.viewKey,
+                (context.adapters || []).map(adapter => [adapter.id, adapter.cacheKey])];
+            if (Array.isArray(context.previewAdapterIds)) parts.push([...context.previewAdapterIds].sort());
+            return JSON.stringify(parts);
         }
 
         function canUseProductionLiveSync() {
@@ -36517,22 +36520,38 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 id: `core:${key}`, projection, cacheKey: JSON.stringify([key, definition.table, query, projection, season && [season.seasonCode, season.salesYear], ...(key === 'master' ? ['complete-identity-v3'] : [])]),
                 sourceKeys: window.AgMetricLiveSyncRegistry.getSourceKeys([`core:${key}`]),
                 stage: (options = {}) => withProductionLiveSyncSignal(options.signal, async (signal) => {
+                    const preparationScope = key === 'master' ? getSupabaseReadIdentityScope() : '';
+                    const preparationPermission = key === 'master'
+                        ? String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '') : '';
+                    const preparationSeason = key === 'master' ? currentMasterPreparationSeasonKey() : '';
                     const readOptions = {
                         signal,
-                        onFirstPage: options.preview ? (rows, meta) => options.preview({ key,
-                            payload: buildDatasetPayload(key, JSON.parse(JSON.stringify(rows))), rowCount: rows.length, partial: true, rowCompleteness: 'partial',
-                            projection: meta.projection, fieldCoverage: meta.fieldCoverage, columns: meta.columns }) : null
+                        onFirstPage: options.preview ? async (rows, meta) => {
+                            const isAvOpenPreview = key === 'master' && typeof getCurrentVisibleViewId === 'function'
+                                && getCurrentVisibleViewId() === 'av' && activeAVTab === 'open';
+                            const previewRows = isAvOpenPreview ? rows.slice(0, 50) : rows;
+                            const previewSnapshot = key === 'master'
+                                ? await prepareProductionMasterSnapshot(previewRows, { signal, identity: preparationScope,
+                                    permissionVersion: preparationPermission, seasonKey: preparationSeason, includeRawRows: false })
+                                : { payload: buildDatasetPayload(key, JSON.parse(JSON.stringify(previewRows))), rowCount: previewRows.length };
+                            return options.preview({ key, payload: previewSnapshot.payload, rowCount: previewSnapshot.rowCount,
+                                partial: true, rowCompleteness: 'partial', projection: meta.projection,
+                                fieldCoverage: meta.fieldCoverage, columns: meta.columns });
+                        } : null
                     };
                     const rows = key === 'master'
                         ? await fetchAllInventoryReadRows('master_page', { dataset: 'master', projection }, { ...readOptions, requireComplete: true, limit: 500, pageConcurrency })
                         : await fetchAllSupabaseRows(definition.table, query, { ...readOptions,
                             ...(key === 'suspendTag' ? { count: true, requireComplete: true } : {}) });
                     if (!Array.isArray(rows)) throw new Error(`${key} returned an invalid data snapshot.`);
-                    const rawRows = JSON.parse(JSON.stringify(rows));
                     const fieldCoverage = key === 'master' ? String(rows.readMeta?.fieldCoverage || '') : 'full';
                     const columns = key === 'master' ? (rows.readMeta?.columns || []) : [];
                     if (key === 'master') validateInventoryReadProjection({ projection, fieldCoverage, columns }, { projection });
-                    return { key, rawRows, payload: buildDatasetPayload(key, rows), rowCount: rows.length, projection, fieldCoverage, columns,
+                    const snapshot = key === 'master'
+                        ? await prepareProductionMasterSnapshot(rows, { signal, identity: preparationScope,
+                            permissionVersion: preparationPermission, seasonKey: preparationSeason })
+                        : { rawRows: JSON.parse(JSON.stringify(rows)), payload: buildDatasetPayload(key, rows), rowCount: rows.length };
+                    return { key, rawRows: snapshot.rawRows, payload: snapshot.payload, rowCount: snapshot.rowCount, projection, fieldCoverage, columns,
                         rowCompleteness: key === 'master' || key === 'suspendTag' ? 'complete' : 'unknown',
                         hlOrderInventory: key === 'master' && canUseHlOrder()
                             ? { rows, rowCompleteness: 'complete', owner: captureHlOrderOwnership() } : null };
@@ -36654,8 +36673,21 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 try { validateInventoryReadProjection(saved, { projection: adapter.projection }); }
                 catch (_) { return null; }
             }
+            let payload;
+            if (key === 'master') {
+                try {
+                    const prepared = await prepareProductionMasterSnapshot(rawRows, { identity: owner,
+                        permissionVersion: meta.dataPermissionVersion, seasonKey: currentMasterPreparationSeasonKey(), includeRawRows: false,
+                        signal: typeof productionLiveSyncNavigation !== 'undefined' ? productionLiveSyncNavigation.signal : null });
+                    if (owner !== getSupabaseReadIdentityScope()) return null;
+                    payload = prepared.payload;
+                } catch (error) {
+                    if (error?.code === 'DATASET_READ_SCOPE_CHANGED' || error?.code === 'REQUEST_ABORTED') return null;
+                    throw error;
+                }
+            } else payload = buildDatasetPayload(key, rawRows);
             return { meta: saved.meta, value: { key, rawRows, rowCount: rawRows.length, rowCompleteness: String(saved.rowCompleteness || ''),
-                payload: buildDatasetPayload(key, JSON.parse(JSON.stringify(rawRows))),
+                payload,
                 projection: String(saved.projection || ''), fieldCoverage: String(saved.fieldCoverage || ''), columns: Array.isArray(saved.columns) ? saved.columns : [],
                 hlOrderInventory: key === 'master' && canUseHlOrder() ? { rows: rawRows, rowCompleteness: String(saved.rowCompleteness || ''), owner: captureHlOrderOwnership() } : null } };
         }
@@ -36693,7 +36725,20 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 catch (_) { return null; }
             }
             noteVerifiedAt();
-            return { key, payload: buildDatasetPayload(key, JSON.parse(JSON.stringify(saved.rawRows))), rowCompleteness: String(saved.rowCompleteness || ''),
+            let payload;
+            if (key === 'master') {
+                try {
+                    const prepared = await prepareProductionMasterSnapshot(saved.rawRows, { identity: owner,
+                        permissionVersion: meta.dataPermissionVersion, seasonKey: currentMasterPreparationSeasonKey(), includeRawRows: false,
+                        signal: typeof productionLiveSyncNavigation !== 'undefined' ? productionLiveSyncNavigation.signal : null });
+                    if (owner !== getSupabaseReadIdentityScope()) return null;
+                    payload = prepared.payload;
+                } catch (error) {
+                    if (error?.code === 'DATASET_READ_SCOPE_CHANGED' || error?.code === 'REQUEST_ABORTED') return null;
+                    throw error;
+                }
+            } else payload = buildDatasetPayload(key, saved.rawRows);
+            return { key, payload, rowCompleteness: String(saved.rowCompleteness || ''),
                 projection: String(saved.projection || ''), fieldCoverage: String(saved.fieldCoverage || ''), columns: Array.isArray(saved.columns) ? saved.columns : [],
                 rowCount: saved.rowCount, cached: true };
         }
@@ -36712,7 +36757,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             // receipt reconciliation or write authorization is created here.
             if (!context.partialCohort) previewEntries.filter(({ adapter }) => adapter.id.startsWith('side:')).forEach(({ adapter, value }) => adapter.commit(value));
             previewEntries.filter(({ adapter }) => adapter.id.startsWith('core:')).forEach(({ value }) => Object.assign(payload, value.payload));
-            if (previewEntries.some(({ adapter }) => adapter.id.startsWith('core:'))) processAndLoadData(payload);
+            const masterPreview = context.partialCohort ? previewEntries.find(({ adapter }) => adapter.id === 'core:master') : null;
+            const masterPreviewRows = masterPreview?.value?.payload?.data;
+            const alreadyDisplayedPreparedMaster = !!(masterPreviewRows && masterPreviewRows === fullInventory
+                && getCurrentPreparedMasterRows(masterPreviewRows)?.avOpenRows === avOpenInventory);
+            if (previewEntries.some(({ adapter }) => adapter.id.startsWith('core:')) && !alreadyDisplayedPreparedMaster) processAndLoadData(payload);
             if (!hasCompletePreview) {
                 invalidateResolvedViewStateCaches();
                 scheduleProductionLiveSyncRender(true, { cachedPreview: true });
@@ -36726,7 +36775,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             productionDisplayGroups.add(displayKey);
             renderProductionDataFreshness(productionLiveSyncCoordinator.getStatus());
-            invalidateResolvedViewStateCaches();
+            if (!alreadyDisplayedPreparedMaster) invalidateResolvedViewStateCaches();
             scheduleProductionLiveSyncRender(true, { cachedPreview: true });
         }
 
@@ -41406,6 +41455,100 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             });
         }
 
+        var preparedMasterRows = new WeakMap();
+        const MASTER_PREPARATION_BATCH_SIZE = 64;
+
+        function currentMasterPreparationSeasonKey() {
+            const season = getCurrentAppSeasonSettings();
+            return JSON.stringify([season.seasonCode, season.salesYear]);
+        }
+
+        function assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal) {
+            if (signal?.aborted) throw Object.assign(new Error('Data preparation cancelled.'), { code: 'REQUEST_ABORTED' });
+            if (identity !== getSupabaseReadIdentityScope()
+                || permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')
+                || seasonKey !== currentMasterPreparationSeasonKey()) {
+                throw Object.assign(new Error('Inventory identity, permissions, or season changed while preparing data.'), { code: 'DATASET_READ_SCOPE_CHANGED' });
+            }
+        }
+
+        async function prepareProductionMasterSnapshot(sourceRows = [], options = {}) {
+            const rows = Array.isArray(sourceRows) ? sourceRows : [];
+            const identity = String(options.identity || getSupabaseReadIdentityScope());
+            const permissionVersion = String(options.permissionVersion ?? appAccessSnapshotState.snapshot?.dataPermissionVersion ?? '');
+            const seasonKey = String(options.seasonKey || currentMasterPreparationSeasonKey());
+            const signal = options.signal || null;
+            const rawRows = [];
+            const displayRows = [];
+            const avOpenRows = [];
+            const avOpenByMasterId = new Map();
+            const indexMaps = createMasterInventoryIndexMaps();
+            const limit = Number.isInteger(options.limit) ? Math.max(0, Math.min(rows.length, options.limit)) : rows.length;
+
+            for (let offset = 0; offset < limit; offset += MASTER_PREPARATION_BATCH_SIZE) {
+                assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                const batch = rows.slice(offset, Math.min(limit, offset + MASTER_PREPARATION_BATCH_SIZE));
+                // Cache/source rows and display rows have separate ownership. Copy
+                // bounded batches so neither formatters nor photos can mutate raw data.
+                if (options.includeRawRows !== false) rawRows.push(...JSON.parse(JSON.stringify(batch)));
+                const displayInput = JSON.parse(JSON.stringify(batch));
+                const formatted = formatFetchedRows(displayInput, 'ph_master_inventory');
+                formatted.forEach((item, index) => {
+                    item.DOM_ID = 'fi_' + (offset + index);
+                    buildSearchIndex(item);
+                    addMasterInventoryRowToIndexes(indexMaps, item);
+                    displayRows.push(item);
+                });
+                if (offset + MASTER_PREPARATION_BATCH_SIZE < limit) {
+                    await yieldToUiFrame();
+                    assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                }
+            }
+
+            assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+            applyMasterAppTabAssignments(displayRows);
+            const masterById = new Map(displayRows.map((item) => [String(item && item.UNIQUE_ID || '').trim(), item]));
+            for (let offset = 0; offset < displayRows.length; offset += MASTER_PREPARATION_BATCH_SIZE) {
+                assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                const end = Math.min(displayRows.length, offset + MASTER_PREPARATION_BATCH_SIZE);
+                for (let index = offset; index < end; index++) {
+                    const masterItem = displayRows[index];
+                    if (!masterItem || !shouldIncludeMasterItemInAvSeasonView(masterItem)) continue;
+                    const avItem = { ...masterItem };
+                    const uniqueId = String(avItem.UNIQUE_ID || '').trim();
+                    syncMasterFieldsToRow(masterById.get(uniqueId) || findLinkedMasterRow(avItem) || masterItem,
+                        avItem, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
+                    if (!isEvalScopedDataRowVisibleToCurrentUser(avItem)
+                        || !shouldIncludeMasterItemInAvSeasonView(avItem)) continue;
+                    avItem.DOM_ID = 'avo_' + (avItem.UNIQUE_ID || avOpenRows.length);
+                    avOpenByMasterId.set(String(avItem.UNIQUE_ID || '').trim(), avItem);
+                    avOpenRows.push(avItem);
+                }
+                if (end < displayRows.length) {
+                    await yieldToUiFrame();
+                    assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                }
+            }
+            preparedMasterRows.set(displayRows, { identity, permissionVersion, seasonKey, avOpenRows, avOpenByMasterId, indexMaps });
+            return { rawRows, payload: { data: displayRows }, rowCount: displayRows.length };
+        }
+
+        function getCurrentPreparedMasterRows(rows) {
+            if (!Array.isArray(rows) || !(preparedMasterRows instanceof WeakMap)) return null;
+            const prepared = preparedMasterRows.get(rows);
+            if (!prepared || prepared.identity !== getSupabaseReadIdentityScope()
+                || prepared.permissionVersion !== String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')
+                || prepared.seasonKey !== currentMasterPreparationSeasonKey()) return null;
+            return prepared;
+        }
+
+        function takePreparedMasterIndexMaps(prepared, rowsUnchanged = false) {
+            if (!rowsUnchanged || !prepared || !prepared.indexMaps) return null;
+            const indexes = prepared.indexMaps;
+            prepared.indexMaps = null;
+            return indexes;
+        }
+
         function hydrateReserveInventoryRow(item, idx) {
             const reserveFieldKeys = Object.keys(item || {}).filter((key) => String(key || '').trim() !== '');
             item.DOM_ID='res_'+idx;
@@ -43412,24 +43555,48 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return `${itemCode}__${locationCode}__${lotCode}__${sourceCode}`;
         }
 
-        function rebuildMasterInventoryIndexes() {
-            masterInventoryById = new Map();
-            masterInventoryByExactKey = new Map();
-            masterInventoryByItemCode = new Map();
-            masterInventoryByItemLocationOnHand = new Map();
-            fullInventory.forEach((item) => {
-                const uniqueId = String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim();
-                if (uniqueId) masterInventoryById.set(uniqueId, item);
-                const exactKey = getMasterInventoryExactKey(item);
-                if (exactKey && !masterInventoryByExactKey.has(exactKey)) masterInventoryByExactKey.set(exactKey, item);
-                const itemCode = getItemInquiryItemCode(item);
-                if (itemCode) {
-                    if (!masterInventoryByItemCode.has(itemCode)) masterInventoryByItemCode.set(itemCode, []);
-                    masterInventoryByItemCode.get(itemCode).push(item);
-                }
-                addInventoryCardLocationOnHand(masterInventoryByItemLocationOnHand, item);
-            });
+        function createMasterInventoryIndexMaps() {
+            return {
+                byId: new Map(),
+                byExactKey: new Map(),
+                byItemCode: new Map(),
+                byItemLocationOnHand: new Map()
+            };
+        }
+
+        function addMasterInventoryRowToIndexes(indexes, item) {
+            if (!indexes || !item) return indexes;
+            const uniqueId = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, '') || '').trim();
+            if (uniqueId) indexes.byId.set(uniqueId, item);
+            const exactKey = getMasterInventoryExactKey(item);
+            if (exactKey && !indexes.byExactKey.has(exactKey)) indexes.byExactKey.set(exactKey, item);
+            const itemCode = getItemInquiryItemCode(item);
+            if (itemCode) {
+                if (!indexes.byItemCode.has(itemCode)) indexes.byItemCode.set(itemCode, []);
+                indexes.byItemCode.get(itemCode).push(item);
+            }
+            addInventoryCardLocationOnHand(indexes.byItemLocationOnHand, item);
+            return indexes;
+        }
+
+        function buildMasterInventoryIndexMaps(items = []) {
+            const indexes = createMasterInventoryIndexMaps();
+            (Array.isArray(items) ? items : []).forEach(item => addMasterInventoryRowToIndexes(indexes, item));
+            return indexes;
+        }
+
+        function installMasterInventoryIndexMaps(indexes) {
+            if (!indexes) return false;
+            masterInventoryById = indexes.byId;
+            masterInventoryByExactKey = indexes.byExactKey;
+            masterInventoryByItemCode = indexes.byItemCode;
+            masterInventoryByItemLocationOnHand = indexes.byItemLocationOnHand;
             invalidateInventoryDomIdLookup();
+            return true;
+        }
+
+        function rebuildMasterInventoryIndexes() {
+            installMasterInventoryIndexMaps(buildMasterInventoryIndexMaps(fullInventory));
         }
 
         function invalidateMasterDerivedInventories() {
@@ -61348,17 +61515,26 @@ function toggleDriveQuickRequestItem(domId) {
 
         function processAndLoadData(res) {
             if (!res) return;
-            res = redactEvalSensitiveData(res);
-            if (res._fromCache === true) [res.data, res.requestsData].forEach(rows => (Array.isArray(rows) ? rows : []).forEach(clearCardLocationOnHandReceipt));
-            if (res._verifiedLiveSync === true) {
+            const preparedMasterAtEntry = Array.isArray(res.data) ? getCurrentPreparedMasterRows(res.data) : null;
+            const preparedDataAtEntry = preparedMasterAtEntry ? res.data : null;
+            if (preparedDataAtEntry) {
+                const payloadWithoutPreparedData = { ...res };
+                delete payloadWithoutPreparedData.data;
+                res = { ...redactEvalSensitiveData(payloadWithoutPreparedData), data: preparedDataAtEntry };
+            } else res = redactEvalSensitiveData(res);
+            if (res._fromCache === true) [res.data, res.requestsData, preparedMasterAtEntry?.avOpenRows]
+                .forEach(rows => (Array.isArray(rows) ? rows : []).forEach(clearCardLocationOnHandReceipt));
+            const hasKey = (key) => Object.prototype.hasOwnProperty.call(res, key);
+            const hasMaster = hasKey('data');
+            // Master publication stamps after invalidating the preceding snapshot.
+            if (res._verifiedLiveSync === true && !hasMaster) {
                 const receiptScope = String(res._locOnHandReceiptScope || '');
                 const receiptPermission = String(res._locOnHandReceiptPermission || '');
                 const receiptRevision = String(res._locOnHandReceiptRevision || '');
                 acceptCardLocationOnHandSourceReceipt(receiptScope, receiptPermission, receiptRevision);
-                [res.data, res.requestsData].forEach(rows => (Array.isArray(rows) ? rows : []).forEach(row => stampCardLocationOnHandReceipt(row, receiptScope, receiptPermission, receiptRevision)));
+                [res.data, res.requestsData, preparedMasterAtEntry?.avOpenRows]
+                    .forEach(rows => (Array.isArray(rows) ? rows : []).forEach(row => stampCardLocationOnHandReceipt(row, receiptScope, receiptPermission, receiptRevision)));
             }
-            const hasKey = (key) => Object.prototype.hasOwnProperty.call(res, key);
-            const hasMaster = hasKey('data');
             const hasCropRollDrive = hasKey('cropRollDriveData');
             const hasAvOpen = hasKey('avOpenData');
             const hasRequests = hasKey('requestsData');
@@ -61416,13 +61592,33 @@ function toggleDriveQuickRequestItem(domId) {
                     const receiptPermission = String(res._locOnHandReceiptPermission || '');
                     const receiptRevision = String(res._locOnHandReceiptRevision || '');
                     if (acceptCardLocationOnHandSourceReceipt(receiptScope, receiptPermission, receiptRevision, true)) {
-                        [res.data, res.requestsData].forEach(rows => (Array.isArray(rows) ? rows : []).forEach(row => stampCardLocationOnHandReceipt(row, receiptScope, receiptPermission, receiptRevision)));
+                    [res.data, res.requestsData, preparedMasterAtEntry?.avOpenRows]
+                        .forEach(rows => (Array.isArray(rows) ? rows : []).forEach(row => stampCardLocationOnHandReceipt(row, receiptScope, receiptPermission, receiptRevision)));
                     }
                 }
-                fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((row,idx)=>{const item=preserveConfirmedDriveEvidence(row);item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
-                applyMasterAppTabAssignments(fullInventory);
+                const prepared = getCurrentPreparedMasterRows(res.data);
+                let preparedRowsUnchanged = false;
+                if (prepared) {
+                    fullInventory = res.data;
+                    preparedRowsUnchanged = true;
+                    fullInventory.forEach((row, index) => {
+                        const preserved = preserveConfirmedDriveEvidence(row);
+                        if (preserved !== row) {
+                            preparedRowsUnchanged = false;
+                            preserved.DOM_ID = 'fi_' + index;
+                            fullInventory[index] = buildSearchIndex(normalizeRowPhotoFields(preserved));
+                            const avRow = prepared.avOpenByMasterId?.get(String(preserved.UNIQUE_ID || '').trim());
+                            if (avRow) syncMasterFieldsToRow(preserved, avRow, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
+                        }
+                    });
+                } else {
+                    fullInventory = scopeMasterInventoryRowsForCurrentUser(res.data || []).map((row,idx)=>{const item=preserveConfirmedDriveEvidence(row);item.DOM_ID='fi_'+idx;return buildSearchIndex(normalizeRowPhotoFields(item));});
+                    applyMasterAppTabAssignments(fullInventory);
+                }
                 avRuleClearOps = (res._fromCache || res._verifiedLiveSync) ? [] : collectMasterAvRuleClearOps(fullInventory);
-                rebuildMasterInventoryIndexes();
+                const preparedIndexes = prepared ? takePreparedMasterIndexMaps(prepared, preparedRowsUnchanged) : null;
+                if (preparedIndexes) installMasterInventoryIndexMaps(preparedIndexes);
+                else rebuildMasterInventoryIndexes();
                 hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
                 hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
                 invalidateMasterDerivedInventories();
@@ -61449,6 +61645,12 @@ function toggleDriveQuickRequestItem(domId) {
 
             const shouldRebuildAvOpenFromMaster = hasMaster && !hasAvOpen;
             if (hasAvOpen || shouldRebuildAvOpenFromMaster) {
+                const preparedMaster = hasMaster ? getCurrentPreparedMasterRows(res.data) : null;
+                const preparedAvOpen = shouldRebuildAvOpenFromMaster && preparedMaster?.avOpenRows;
+                if (preparedAvOpen) {
+                    avOpenInventory = preparedAvOpen;
+                    if (!changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
+                } else {
                 const masterById = hasMaster ? new Map(fullInventory.map((item) => [String(item.UNIQUE_ID || '').trim(), item])) : null;
                 const avOpenSource = (hasAvOpen
                     ? (res.avOpenData || [])
@@ -61473,6 +61675,7 @@ function toggleDriveQuickRequestItem(domId) {
                         return shouldIncludeMasterItemInAvSeasonView(item);
                     });
                 avOpenInventory = avOpenSource.map((item,idx)=>{item.DOM_ID='avo_'+(item.UNIQUE_ID || idx);return buildSearchIndex(normalizeRowPhotoFields(item));});
+                }
                 if (shouldRebuildAvOpenFromMaster && !changedDatasetKeys.includes('avOpen')) changedDatasetKeys.push('avOpen');
             }
             if (hasRequestHistory) {
@@ -86912,7 +87115,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return 'ALL Open Stock';
         }
         function sortAvOpenItems(items, tab=activeAvOpenTab) {
-            const compareText = (left, right) => String(left || '').localeCompare(String(right || ''), undefined, { numeric: true });
+            const collator = new Intl.Collator(undefined, { numeric: true });
+            const compareText = (left, right) => collator.compare(String(left || ''), String(right || ''));
             const nextItems = [...items];
             nextItems.sort((a, b) => {
                 const nameCompare = compareText(a.COMMONNAME, b.COMMONNAME);
@@ -87471,8 +87675,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return avSharedFilterOptionsCache;
             }
             normalizeAvSelectedSeasons();
+            const genusCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
             const genusOptions = [...new Set(baseItems.map((item) => getAvFilterGenusFacetValue(item)).filter(Boolean))]
-                .sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: 'base' }));
+                .sort((a, b) => genusCollator.compare(String(a), String(b)));
             const genusState = syncAvGenusSelectionState(genusOptions);
             const sizeOptions = [...new Set(baseItems.map((item) => getAvFilterContSizeFacetValue(item)).filter(Boolean))]
                 .sort(compareDrivePlantContSize);
@@ -87581,7 +87786,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 String(avColumnFilterValueSearchTerm || '').trim().toLowerCase(),
                 String(avColumnFilterFieldSearchTerm || '').trim().toLowerCase(),
                 state.detailFiltersCollapsed ? 'detail-filters-collapsed' : 'detail-filters-expanded',
-                getAvColumnFilterFields(Array.isArray(state.baseItems) ? state.baseItems : []).map((field) => field.key).join('|'),
+                avColumnFilterDropdownOpen ? getAvColumnFilterFields(Array.isArray(state.baseItems) ? state.baseItems : []).map((field) => field.key).join('|') : '',
                 buildAvColumnFilterStateKeyFromMap(avColumnFilterDrafts),
                 buildAvColumnFilterStateKey(),
                 Array.isArray(state.genusOptions) ? state.genusOptions.join('|') : '',
@@ -88408,8 +88613,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const sourceChoices = getAvViewChoices();
             const sourceOptionsHtml = buildAvSingleChoiceOptionsHtml(sourceChoices, getAvViewModeKey(), 'setAvSourceFilter');
             const photoOptionsHtml = buildAvSingleChoiceOptionsHtml(AV_PHOTO_VIEW_OPTIONS, getAvPhotoMode(), 'setAvPhotoMode');
-            const genusOptionsHtml = buildAvMultiChoiceOptionsHtml(state.filteredGenusOptions, selectedAvGenusNames, 'toggleAvGenusSelection', 'No matching genus.');
-            const contSizeOptionsHtml = buildAvMultiChoiceOptionsHtml(state.filteredSizeOptions, selectedAvContSizes, 'toggleAvContSizeSelection', 'No matching sizes.');
+            const genusOptionsHtml = avGenusFilterOpen && !collapseDetailFilters
+                ? buildAvMultiChoiceOptionsHtml(state.filteredGenusOptions, selectedAvGenusNames, 'toggleAvGenusSelection', 'No matching genus.') : '';
+            const contSizeOptionsHtml = avContSizeFilterOpen && !collapseDetailFilters
+                ? buildAvMultiChoiceOptionsHtml(state.filteredSizeOptions, selectedAvContSizes, 'toggleAvContSizeSelection', 'No matching sizes.') : '';
             const holdOptionsHtml = buildAvSingleChoiceOptionsHtml([
                 { value: 'all', label: 'All Rows', icon: 'ph-bold ph-list-checks' },
                 { value: 'hold', label: 'Holdstop Only', icon: 'ph-bold ph-warning-circle' },
@@ -90711,8 +90918,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function shouldUseChunkedAVOpenRender(rows = []) {
             if (!Array.isArray(rows)) return false;
-            const threshold = getIsAvPhotoSubview() ? 120 : 220;
-            return rows.length > threshold;
+            return rows.length > 12;
         }
 
         function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText, footerHtml = '') {
@@ -90722,23 +90928,19 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             clearChunkRenderTimersByKey('av');
             const token = avRenderChunkToken;
             const total = Array.isArray(rows) ? rows.length : 0;
-            const renderSignature = `${buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY'])}:page:${rows.length}`;
+            const renderSignature = `${buildRowsRenderSignature(`av-open|${sourceView}|${String(crumbText || '')}`, rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_CONSIGNEE_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT','AV_RESERVE_QTY_TOTAL'])}:page:${rows.length}`;
             const adaptiveConstrained = isAdaptivePerformanceMode();
             const adaptiveLevel = getAdaptivePerformanceLevel();
             const touchOptimized = adaptiveConstrained || isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const iosConstrained = isIOSDevice();
             const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
             const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
-            const chunkSize = adaptiveConstrained
-                ? (total > 1600 ? 10 : (total > 800 ? 14 : 20))
-                : (iosConstrained
-                ? (total > 1600 ? 16 : (total > 800 ? 20 : 24))
-                : (touchOptimized
-                ? (total > 1600 ? 32 : (total > 800 ? 42 : 54))
-                : (total > 1200 ? 52 : (total > 600 ? 68 : 88))));
-            const initialScreens = adaptiveConstrained ? 1.6 : (iosConstrained ? 2.2 : (touchOptimized ? 4.0 : 3.2));
-            const initialTarget = Math.min(total, Math.max(touchOptimized ? Math.max(iosConstrained ? 18 : 22, chunkSize * (iosConstrained ? 1 : 2)) : Math.max(32, chunkSize), Math.ceil((viewportHeight * initialScreens) / approxCardHeight)));
-            const perFrameLimit = adaptiveConstrained ? Math.max(chunkSize, adaptiveLevel >= 2 ? 12 : 18) : (iosConstrained ? Math.max(chunkSize, 12) : (touchOptimized ? Math.max(chunkSize, 52) : Math.max(chunkSize, 96)));
+            // A paginated view still needs a bounded first paint: generating all
+            // 100 rich cards synchronously blocks navigation and search input.
+            const chunkSize = adaptiveConstrained || iosConstrained ? 8 : 12;
+            const initialTarget = Math.min(total, Math.max(4,
+                Math.min(6, Math.ceil(viewportHeight / approxCardHeight))));
+            const perFrameLimit = chunkSize;
             const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
             let index = 0;
@@ -90757,7 +90959,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 return;
             }
-            if (iosConstrained && total <= IOS_CHUNK_SYNC_ROW_LIMIT) {
+            if (iosConstrained && total <= Math.min(IOS_CHUNK_SYNC_ROW_LIMIT, chunkSize)) {
                 let fullHtml = '';
                 rows.forEach((row, rowIndex) => {
                     fullHtml += generateCard(row, sourceView, 'status-teal', { rowIndex });
@@ -90770,7 +90972,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
-                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 10 });
+                const pacing = getChunkRenderPacing(targetCount, frameBudgetMs, { minBatch: 4 });
                 const batchTarget = pacing.batchTarget;
                 const timeBudget = pacing.timeBudget;
                 const startTime = useBudget && typeof performance !== 'undefined' && performance.now ? performance.now() : 0;
@@ -90787,7 +90989,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             setContainerHtml(container, renderBatch(initialTarget, false));
             const queueNextChunkFrame = () => {
                 if (token !== avRenderChunkToken) return;
-                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: (iosConstrained || adaptiveConstrained) ? 4 : 10 });
+                const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 4 });
                 const scheduleFrame = () => {
                     if (token !== avRenderChunkToken) return;
                     requestAnimationFrame(renderNextChunk);
@@ -90965,6 +91167,19 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
         }
 
+        function buildAVBrowsePageKey(prefix = '', rows = []) {
+            // Pagination depends on membership and order. Rich card fields are
+            // hashed only for the visible page by its renderer.
+            const safeRows = Array.isArray(rows) ? rows : [];
+            let hash = updateRenderSignatureHash(2166136261, prefix);
+            safeRows.forEach((row, index) => {
+                const identity = firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id,
+                    row && row.DOM_ID, row && row.dom_id, index);
+                hash = updateRenderSignatureHash(hash, `${String(identity).length}:${identity};`);
+            });
+            return `${normalizeRenderSignature(prefix)}:${safeRows.length}:${(hash >>> 0).toString(16)}`;
+        }
+
         function renderAV() {
             avRenderChunkToken += 1;
             cancelChunkRenderWorkForView('av');
@@ -91017,14 +91232,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     ? (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} Photos (${openRows.length} items)`)
                     : (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} (${openRows.length} items)`);
                 renderAvPhotoOutreachPanel(openRows);
-                const renderSignature = buildRowsRenderSignature(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_QTY_TOTAL']);
-                const browsePage = getClientBrowsePage('av', renderSignature, openRows);
+                const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
+                const browsePage = getClientBrowsePage('av', pageKey, openRows);
                 const pageFooter = renderClientBrowsePageFooter('av', browsePage.key, openRows.length, browsePage);
                 if (shouldUseChunkedAVOpenRender(browsePage.rows)) {
                     renderAVOpenCardsChunked(container, crumb, browsePage.rows, sourceView, crumbText, pageFooter);
                     return;
                 }
                 crumb.innerText = crumbText;
+                const renderSignature = buildRowsRenderSignature(pageKey, browsePage.rows, ['CAV_HOT_PRICE','CAV_ITEMCODE','CAV_HOT_PRICE_MATCH_KEY','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_QTY_TOTAL']);
                 setContainerHtmlWithSignature(container, `${browsePage.rows.map((i, rowIndex) => generateCard(i, sourceView, 'status-teal', { rowIndex })).join('')}${pageFooter}`, `${renderSignature}:page:${browsePage.pageIndex}`);
                 scheduleDeferredCardPhotoHydration(container);
                 return;
@@ -91034,8 +91250,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ? (term.length > 0 ? `Search Results (${reserveRows.length})` : `Reserve Location Photos (${reserveRows.length} items)`)
                 : (term.length > 0 ? `Search Results (${reserveRows.length})` : `All Reserve Locations (${reserveRows.length} items)`);
             const reserveSourceView = 'av';
-            const renderSignature = buildRowsRenderSignature(`av-reserves|${reserveSourceView}|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows, ['ITEMCODE','LOTCODE','LOCATIONCODE','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT']);
-            const reserveBrowsePage = getClientBrowsePage('av', renderSignature, reserveRows);
+            const pageKey = buildAVBrowsePageKey(`av-reserves|${reserveSourceView}|${activeAvReserveMode}|${term}|${crumbText}`, reserveRows);
+            const reserveBrowsePage = getClientBrowsePage('av', pageKey, reserveRows);
             const reservePageFooter = renderClientBrowsePageFooter('av', reserveBrowsePage.key, reserveRows.length, reserveBrowsePage);
             renderAvPhotoOutreachPanel([]);
             if (shouldUseChunkedAVOpenRender(reserveBrowsePage.rows)) {
@@ -91043,6 +91259,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return;
             }
             crumb.innerText = crumbText;
+            const renderSignature = buildRowsRenderSignature(pageKey, reserveBrowsePage.rows, ['ITEMCODE','LOTCODE','LOCATIONCODE','AV_RESERVE_CUSTOMER_PREVIEW','AV_RESERVE_SALESREP_PREVIEW','AV_RESERVE_ROW_COUNT','AV_RESERVE_CUSTOMER_COUNT']);
             setContainerHtmlWithSignature(container, `${reserveBrowsePage.rows.map((item, rowIndex) => generateCard(item, reserveSourceView, 'status-teal', { rowIndex })).join('')}${reservePageFooter}`, `${renderSignature}:page:${reserveBrowsePage.pageIndex}`);
             scheduleDeferredCardPhotoHydration(container);
             return;
@@ -152679,8 +152896,35 @@ ${folderNote ? `Folder Note: ${folderNote}
             return (Array.isArray(items) ? items : []).filter((item) => activeKeys.every((key) => doesDriveColumnFilterMatchItem(item, key)));
         }
 
+        let avColumnFilterFieldsCache = null;
         function getAvColumnFilterFields(items = []) {
-            return getDriveColumnFilterFields(items);
+            const safeItems = Array.isArray(items) ? items : [];
+            const owner = typeof getSupabaseReadIdentityScope === 'function' ? getSupabaseReadIdentityScope() : '';
+            const permission = String(appAccessSnapshotState?.snapshot?.dataPermissionVersion || '');
+            const epoch = Number(resolvedViewStateEpoch || 0);
+            const driveTab = String(activeDriveTab || '');
+            const cached = avColumnFilterFieldsCache;
+            if (cached && cached.items === safeItems && cached.epoch === epoch && cached.owner === owner
+                && cached.permission === permission && cached.driveTab === driveTab) {
+                return cached.fields.map(field => ({ ...field }));
+            }
+
+            // The Drive resolver already defines the canonical labels, allowed
+            // headers, sorting, and Assigned To rules. Give it one ordered union
+            // row so it normalizes each distinct source key only once.
+            const unionRow = Object.create(null);
+            const seenRawKeys = new Set();
+            safeItems.forEach(item => {
+                if (!item || typeof item !== 'object') return;
+                Object.keys(item).forEach(rawKey => {
+                    if (seenRawKeys.has(rawKey)) return;
+                    seenRawKeys.add(rawKey);
+                    Object.defineProperty(unionRow, rawKey, { value: true, enumerable: true, configurable: true });
+                });
+            });
+            const fields = getDriveColumnFilterFields([unionRow]);
+            avColumnFilterFieldsCache = { items: safeItems, epoch, owner, permission, driveTab, fields };
+            return fields.map(field => ({ ...field }));
         }
 
         function getAvColumnFilterFromMap(filterMap = {}, fieldKey = '') {

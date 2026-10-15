@@ -15,7 +15,9 @@ const names = new Set([
   'getMasterInventoryExactKey', 'getInventoryCardItemLocationKey', 'addInventoryCardLocationOnHand',
   'getCardLocationOnHandValue', 'isDatasetLoaded', 'getItemInquiryItemCode',
   'getCardLocationOnHandServerAggregate', 'clearAcceptedLocOnHandAggregates', 'invalidateLocOnHandAggregateRows', 'acceptCardLocationOnHandSourceReceipt', 'stampCardLocationOnHandReceipt', 'clearCardLocationOnHandReceipt',
-  'normalizeNcrInheritanceKeyPart', 'rebuildMasterInventoryIndexes', 'applyRowSyncSnapshot', 'syncMasterFieldsToRow', 'requestInventoryRead',
+  'normalizeNcrInheritanceKeyPart', 'createMasterInventoryIndexMaps', 'addMasterInventoryRowToIndexes',
+  'buildMasterInventoryIndexMaps', 'installMasterInventoryIndexMaps', 'rebuildMasterInventoryIndexes',
+  'applyRowSyncSnapshot', 'syncMasterFieldsToRow', 'requestInventoryRead',
 ]);
 const declarations = ast.body.filter(node => node.type === 'FunctionDeclaration' && names.has(node.id.name));
 for (const name of names) assert.ok(declarations.some(node => node.id.name === name), `source helper ${name} exists`);

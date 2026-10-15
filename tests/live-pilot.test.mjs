@@ -1110,7 +1110,7 @@ test('Historical Report preserves every requested worksheet column in source ord
 
 test('Item Inquiry uses the master ItemCode index and renders only the active responsive layout', () => {
   const indexBuilder = html.slice(
-    html.indexOf('function rebuildMasterInventoryIndexes'),
+    html.indexOf('function createMasterInventoryIndexMaps'),
     html.indexOf('function invalidateMasterDerivedInventories')
   );
   const inquiryRows = html.slice(
@@ -1122,7 +1122,7 @@ test('Item Inquiry uses the master ItemCode index and renders only the active re
     html.indexOf('function renderItemInquiryDetailPanel')
   );
   assert.match(html, /let masterInventoryByItemCode=new Map\(\)/);
-  assert.match(indexBuilder, /masterInventoryByItemCode\.get\(itemCode\)\.push\(item\)/);
+  assert.match(indexBuilder, /indexes\.byItemCode\.get\(itemCode\)\.push\(item\)/);
   assert.match(inquiryRows, /masterInventoryByItemCode\.get\(itemCode\) \|\| \[\]/);
   assert.doesNotMatch(inquiryRows, /const rows = \(Array\.isArray\(fullInventory\)/);
   assert.match(inquiryRenderer, /if \(isItemInquiryPhoneLayout\(\)\) return renderItemInquiryMobileWorkspace/);

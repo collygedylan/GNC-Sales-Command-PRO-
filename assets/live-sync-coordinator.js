@@ -389,6 +389,17 @@
                 const previous = applied.get(adapter.id);
                 return !previous || previous.cacheKey !== adapter.cacheKey;
             });
+            let lastPreview = null;
+            const emitPreview = (entries, partialCohort, revisions) => {
+                const samePreview = lastPreview
+                    && lastPreview.partialCohort === partialCohort
+                    && lastPreview.entries.length === entries.length
+                    && entries.every((entry, index) => lastPreview.entries[index].adapter === entry.adapter
+                        && lastPreview.entries[index].value === entry.value);
+                if (samePreview) return;
+                lastPreview = { entries, partialCohort };
+                options.previewSnapshots(entries, { ...ctx, partialCohort }, revisions);
+            };
             const appliedDisplayEntries = (ctx.adapters || []).map(adapter => {
                 const previous = applied.get(adapter.id);
                 return previous && previous.cacheKey === adapter.cacheKey ? { adapter, value: previous.value } : null;
@@ -411,7 +422,7 @@
                 }));
                 if (current() && displayEntries.length && displayEntries.every(Boolean)) {
                     const partialCohort = previewAdapters.length < visibleAdapters.length;
-                    options.previewSnapshots(displayEntries, { ...ctx, partialCohort }, null);
+                    emitPreview(displayEntries, partialCohort, null);
                 }
             }
             // A deferred cohort also verifies the foreground dependencies so it
@@ -467,7 +478,7 @@
                 display.set(adapter.id, { adapter, value });
                 if (previewAdapters.length && previewAdapters.every(item => display.get(item.id)?.value !== undefined)) {
                     const partialCohort = previewAdapters.length < visibleAdapters.length;
-                    options.previewSnapshots(previewAdapters.map(item => display.get(item.id)), { ...ctx, partialCohort }, before);
+                    emitPreview(previewAdapters.map(item => display.get(item.id)), partialCohort, before);
                 }
             };
             let failure = null, cursor = 0;

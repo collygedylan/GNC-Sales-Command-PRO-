@@ -532,7 +532,10 @@ for (const finalFailure of [false, true]) test(`progressive display precedes com
 test('a configured primary preview adapter displays before side adapters finish without committing early', async () => {
     const primaryGate = deferred(), sideGate = deferred(), shown = [], committed = [];
     const primary = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'],
-        stage: async ({ preview }) => { preview({ rows: ['first page'], partial: true }); await primaryGate.promise; return { rows: ['all rows'] }; },
+        stage: async ({ preview }) => {
+            preview({ rows: ['first page'], partial: true }); await primaryGate.promise;
+            preview({ rows: ['updated first page'], partial: true }); return { rows: ['all rows'] };
+        },
         commit: value => committed.push(value) };
     const side = { id: 'core:reserves', cacheKey: 'reserves/all', sourceKeys: ['reserves'],
         stage: async () => { await sideGate.promise; return { rows: ['reserves'] }; }, commit: value => committed.push(value) };
@@ -551,6 +554,9 @@ test('a configured primary preview adapter displays before side adapters finish 
     assert.equal(committed.length, 0, 'a partial display never commits or proves a cohort');
     primaryGate.resolve(); sideGate.resolve();
     assert.equal(await pending, true);
+    assert.equal(shown.length, 2, 'a changed master object previews; the side adapter does not replay that identical subset');
+    assert.deepEqual(shown[1][0].map(entry => entry.adapter.id), ['core:master']);
+    assert.deepEqual(shown[1][0][0].value.rows, ['updated first page']);
     assert.equal(committed.length, 1, 'the existing full-cohort commit runs only after every adapter and revision check completes');
     coordinator.reset();
 });
