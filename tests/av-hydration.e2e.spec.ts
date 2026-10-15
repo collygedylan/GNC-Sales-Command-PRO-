@@ -539,16 +539,24 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     releaseSideReads();
     fixture.releaseHeldMasterLaterPage();
     await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Up to date', { timeout: 30_000 });
-    await page.waitForFunction((expectedRows: number) => window.eval(`getDatasetState('master').fieldCoverage === 'browse'
+    await page.waitForFunction((expectedRows: number) => window.eval(`(() => {
+      const identity = getAvSalesDerivationIdentity(activeAvSalesBucket);
+      const prepared = window.AgMetricAvDerivedRows.peek(identity.key, identity.scope);
+      return getDatasetState('master').fieldCoverage === 'browse'
       && getDatasetState('master').rowCompleteness === 'complete'
       && fullInventory.length === ${expectedRows}
       && productionLiveSyncVerifiedView === productionVerifiedViewKey()
       && !avDerivedRowsPendingSignature
-      && !buildResolvedAVBaseState({ usePreparedSalesRows: true }).isPartial`), SYNTHETIC_MASTER_ROWS, { timeout: 30_000 });
+      && prepared && prepared.sourceKey === identity.sourceKey;
+    })()`), SYNTHETIC_MASTER_ROWS, { timeout: 30_000 });
 
     await page.waitForFunction(() => window.eval('!!window.__avHydrationTiming.completedLargeCacheKey'));
     const cachedRows = await page.evaluate(() => window.eval('loadCacheValue(window.__avHydrationTiming.completedLargeCacheKey).then(value => value?.rawRows?.length || 0)'));
     expect(cachedRows).toBe(SYNTHETIC_MASTER_ROWS);
+    const legacyCacheSaved = await page.evaluate(() => window.eval('runPersistCurrentCacheNow()'));
+    expect(legacyCacheSaved, 'legacy cache projection and storage must also remain bounded').toBe(true);
+    const legacyCachedRows = await page.evaluate(() => window.eval('loadCacheValue("latest_data").then(value => value?.data?.length || 0)'));
+    expect(legacyCachedRows).toBe(SYNTHETIC_MASTER_ROWS);
     const full = await timingEvidence(page);
     await captureMilestone('full-verification', full);
     expect(full.master.fieldCoverage).toBe('browse');

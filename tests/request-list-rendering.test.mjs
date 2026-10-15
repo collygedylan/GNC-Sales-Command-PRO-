@@ -114,11 +114,15 @@ test('Request chrome shares one queue-count snapshot across badge and tabs', () 
 
 test('Suspend filter shell builds filter markup once per render', () => {
   const calls = { render: 0, update: 0 };
+  const cardList = {};
+  const footerHost = {};
+  const resultsShell = { querySelector: selector => selector === '#request-suspend-tag-card-list' ? cardList
+    : selector === '#request-suspend-tag-footer' ? footerHost : null };
   const container = {
     mounted: false,
     querySelector(selector) {
       if (!this.mounted) return null;
-      return selector === '#request-suspend-tag-filter-shell' ? {} : selector === '#request-suspend-tag-results' ? {} : null;
+      return selector === '#request-suspend-tag-filter-shell' ? {} : selector === '#request-suspend-tag-results' ? resultsShell : null;
     }
   };
   const ctx = vm.createContext({
@@ -129,12 +133,51 @@ test('Suspend filter shell builds filter markup once per render', () => {
   });
   vm.runInContext(source('ensureRequestSuspendTagRenderShell'), ctx);
   const crumb = {};
-  ctx.ensureRequestSuspendTagRenderShell(container, crumb, 'Suspend Tag', [], [], [], [], []);
+  assert.equal(ctx.ensureRequestSuspendTagRenderShell(container, crumb, 'Suspend Tag', [], [], [], [], []), cardList);
   assert.equal(calls.render, 1);
   assert.equal(calls.update, 0);
-  ctx.ensureRequestSuspendTagRenderShell(container, crumb, 'Suspend Tag', [], [], [], [], []);
+  assert.equal(ctx.ensureRequestSuspendTagRenderShell(container, crumb, 'Suspend Tag', [], [], [], [], []), cardList);
   assert.equal(calls.render, 2);
   assert.equal(calls.update, 0);
+});
+
+test('Suspend pagination footer is mounted before deferred chunk completion', () => {
+  const calls = [];
+  let renderOptions;
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: (...args) => { calls.push('render'); renderOptions = args[6]; calls.push(`crumb:${args[4]}`); return true; },
+    generateCard: () => '<card>',
+    isDockSuspendDcRequestMirrorPreparationPending: () => false,
+    getPendingRequestChunkRenderOptions: options => options,
+    repairVisibleDockSuspendDcPlanstartCardTones: () => calls.push('tones'),
+    decorateRequestRows: () => calls.push('decorate'),
+    syncRequestBrowseFooter: (_container, markup) => calls.push(`footer:${markup}`),
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all',
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'suspend-signature',
+    footerMarkup: '<footer>Rows 1–100 of 1000</footer>', crumbText: 'Suspend Tag' };
+  assert.equal(ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag Filter', plan), true);
+  assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`]);
+  assert.equal(renderOptions.onCompleteAfterInteractive, true);
+  renderOptions.onComplete();
+  assert.deepEqual(calls, ['render', 'crumb:Suspend Tag Filter', `footer:${plan.footerMarkup}`, 'tones', 'decorate', `footer:${plan.footerMarkup}`]);
+});
+
+test('cold Suspend mirror preparation renders a loading state instead of an empty queue', () => {
+  let renderOptions;
+  const ctx = vm.createContext({
+    renderMarkupChunkedByKey: (...args) => { renderOptions = args[6]; return true; },
+    generateCard: () => '<card>', getPendingRequestChunkRenderOptions: options => options,
+    isDockSuspendDcRequestMirrorPreparationPending: () => true,
+    repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
+    requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all',
+  });
+  vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
+  ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', { rows: [], renderSignature: 'loading', footerMarkup: '' });
+  assert.match(renderOptions.emptyHtml, /Loading Suspend Tag rows/);
 });
 
 test('Suspend queue counts scan source status without constructing rich mirror rows', () => {
@@ -168,6 +211,7 @@ test('Dock Suspend source lookup is indexed by source snapshot and can be invali
     requestScopedItemsCacheKey: 'stale', requestScopedItemsCache: ['stale'],
     dockSuspendDcRequestMirrorRowsCacheKey: '', dockSuspendDcRequestMirrorRowsCacheSource: null,
     dockSuspendDcRequestMirrorRowsByIdCache: null, dockSuspendDcRequestMirrorRowsByDomIdCache: null,
+    dockSuspendDcRequestMirrorRowsPreparation: null,
     getDockSuspendDcSourceRows: () => ctx.sourceRows,
     getDockSuspendDcRequestSourceUid: item => item?.DOCK_SUSPEND_SOURCE_UID || '',
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') || '',
@@ -192,32 +236,78 @@ test('Dock Suspend source lookup is indexed by source snapshot and can be invali
   assert.equal(ctx.findDockSuspendDcRequestSourceRow({ DOCK_SUSPEND_SOURCE_UID: 'source-a' }).status, 'new snapshot');
 });
 
-test('Dock Suspend mirror rows reuse a revision-keyed cache and rebuild after source changes', () => {
-  const sourceRows = [{ UNIQUE_ID: 'source-a', SUSPEND: 'SUSPEND', SUSPENDTO: 'dc' }];
+test('Suspend mirrors prepare in bounded slices, publish atomically, retain same-scope rows, and cancel stale jobs', () => {
+  const sourceRows = Array.from({ length: 1000 }, (_, index) => ({ UNIQUE_ID: `source-${index}`, SUSPEND: 'SUSPEND', SUSPENDTO: 'dc' }));
   let builtRows = 0;
+  const timers = [];
+  const scheduled = [];
+  const identity = { scope: 'manager-scope' };
+  const setTimer = callback => { const timer = { callback, cleared: false }; timers.push(timer); return timer; };
+  const runNextTimer = () => {
+    while (timers.length) {
+      const timer = timers.shift();
+      if (!timer.cleared) { timer.callback(); return true; }
+    }
+    return false;
+  };
+  const drainTimers = () => { while (runNextTimer()) { /* Drain queued preparation slices. */ } };
   const ctx = vm.createContext({
-    sourceRows, socInventory: [], currentUser: 'manager', resolvedViewStateEpoch: 5, revision: 'r1',
+    sourceRows, socInventory: [], currentUser: 'manager', activeReqTab: 'suspend-tag', resolvedViewStateEpoch: 5, revision: 'r1',
     dockSuspendDcRequestSourceRowLookupCache: { sourceRows: null, revision: '', byId: new Map() },
     dockSuspendDcRequestMirrorRowsCacheKey: '', dockSuspendDcRequestMirrorRowsCacheSource: null,
     dockSuspendDcRequestMirrorRowsCache: [], dockSuspendDcRequestMirrorRowsByIdCache: null,
-    dockSuspendDcRequestMirrorRowsByDomIdCache: null,
+    dockSuspendDcRequestMirrorRowsByDomIdCache: null, dockSuspendDcRequestMirrorRowsCacheOwner: '',
+    dockSuspendDcRequestMirrorRowsPreparation: null, DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE: 64,
+    requestScopedItemsCacheKey: 'stale', requestScopedItemsCache: ['stale'],
     canCurrentUserViewDockSuspendDcRequests: () => true,
     getDockSuspendDcSourceRows: () => ctx.sourceRows,
     getDatasetLoadSignature: name => `${name}:${ctx.revision}`,
-    getSupabaseReadIdentityScope: () => 'manager-scope',
+    getSupabaseReadIdentityScope: () => identity.scope,
     normalizePushUsername: value => value,
+    setTimeout: setTimer, clearTimeout: timer => { if (timer) timer.cleared = true; },
+    isViewVisible: view => view === 'request',
+    scheduleRequestRender: (...args) => scheduled.push(args),
     isDockSuspendDcRequestSource: row => row.SUSPEND === 'SUSPEND' && row.SUSPENDTO === 'dc',
     buildDockSuspendDcRequestMirrorRow: row => { builtRows += 1; return row.SUSPEND === 'SUSPEND' && row.SUSPENDTO === 'dc' ? { UNIQUE_ID: `mirror-${row.UNIQUE_ID}` } : null; },
     firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') || '',
   });
-  vm.runInContext(`${source('getDockSuspendDcSourceRowLookupRevision')}\n${source('getDockSuspendDcRequestMirrorRows')}`, ctx);
-  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 1);
-  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 1);
-  assert.equal(builtRows, 1);
+  vm.runInContext(`${source('getDockSuspendDcSourceRowLookupRevision')}\n${source('getDockSuspendDcRequestMirrorRowsOwner')}\n${source('scheduleDockSuspendDcRequestMirrorRowsPreparation')}\n${source('getDockSuspendDcRequestMirrorRows')}`, ctx);
+  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 0, 'cold preparation does not expose a partial queue');
+  assert.equal(builtRows, 0, 'the first render does no row mapping synchronously');
+  runNextTimer();
+  assert.equal(builtRows, 64, 'each scheduled slice maps at most 64 rows');
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsCache.length, 0, 'partial slices are never published');
+  drainTimers();
+  assert.equal(builtRows, 1000);
+  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 1000);
+  assert.deepEqual(scheduled, [[0, 0, true]]);
+
+  const previousRows = ctx.dockSuspendDcRequestMirrorRowsCache;
   ctx.revision = 'r2';
-  ctx.sourceRows[0].SUSPENDTO = 'store';
-  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 0);
-  assert.equal(builtRows, 2);
+  ctx.sourceRows = Array.from({ length: 1000 }, (_, index) => ({ UNIQUE_ID: `replacement-${index}`, SUSPEND: 'SUSPEND', SUSPENDTO: 'dc' }));
+  assert.equal(ctx.getDockSuspendDcRequestMirrorRows()[0].UNIQUE_ID, previousRows[0].UNIQUE_ID, 'same-scope refresh keeps the previous complete rows visible');
+  runNextTimer();
+  assert.equal(builtRows, 1064);
+  ctx.revision = 'r3';
+  ctx.sourceRows = [{ UNIQUE_ID: 'latest-source', SUSPEND: 'SUSPEND', SUSPENDTO: 'dc' }];
+  runNextTimer();
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsCache, previousRows, 'a stale job cannot publish after source replacement');
+  assert.equal(ctx.getDockSuspendDcRequestMirrorRows()[0].UNIQUE_ID, previousRows[0].UNIQUE_ID);
+  drainTimers();
+  assert.equal(Array.from(ctx.getDockSuspendDcRequestMirrorRows(), row => row.UNIQUE_ID).join(','), 'mirror-latest-source');
+  assert.equal(ctx.requestScopedItemsCacheKey, '');
+  assert.equal(ctx.requestScopedItemsCache, null);
+  assert.equal(scheduled.length, 3, 'complete refreshes and stale-job recovery schedule a render');
+
+  identity.scope = 'manager-permission-version-2';
+  ctx.dockSuspendDcRequestMirrorRowsByIdCache = new Map([['old-account-row', {}]]);
+  ctx.dockSuspendDcRequestMirrorRowsByDomIdCache = new Map([['old-account-dom-row', {}]]);
+  assert.equal(ctx.getDockSuspendDcRequestMirrorRows().length, 0, 'a changed auth scope never receives previous-scope rows');
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsByIdCache, null);
+  assert.equal(ctx.dockSuspendDcRequestMirrorRowsByDomIdCache, null);
+  drainTimers();
+  assert.equal(Array.from(ctx.getDockSuspendDcRequestMirrorRows(), row => row.UNIQUE_ID).join(','), 'mirror-latest-source');
+  assert.equal(scheduled.length, 4);
 });
 
 test('Suspend keeps all filter totals while bounding cards and plan-start signatures to its page', () => {

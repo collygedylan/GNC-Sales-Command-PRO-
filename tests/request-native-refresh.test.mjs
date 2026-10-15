@@ -1059,8 +1059,8 @@ test('verified Request first display may bypass navigation grace without weakeni
 
 test('Pending Request refresh keeps commit anchoring and skips outer anchoring for empty or cancelled renders', () => {
   const source = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
-  assert.match(source, /view === 'request' && activeReqTab === 'pending'\s*\? null : captureProductionRefreshAnchor\(view\)/,
-    'only Pending Request defers anchor capture; the staged commit still captures its own anchor');
+  assert.match(source, /firstDisplay \|\| \(view === 'request' && activeReqTab === 'pending'\)\s*\? null : captureProductionRefreshAnchor\(view\)/,
+    'first displays need no prior anchor; Pending Request captures its anchor at the staged commit');
   const stage = extractFunction(html, 'stageProductionRefreshList', 'function cancelProductionRefresh(');
   assert.match(stage, /const anchor = captureProductionRefreshAnchor\(refresh\.view\)/);
   assert.match(stage, /restoreProductionRefreshAnchor\(anchor\)/);

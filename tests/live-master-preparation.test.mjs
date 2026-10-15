@@ -266,6 +266,102 @@ test('cancels private preparation on abort, permission changes, and season chang
   }
 });
 
+function createCachePersistenceHarness({ rows = 130, yieldToUiFrame = async () => {}, saveToCache = async () => true } = {}) {
+  const sourceRows = Array.from({ length: rows }, (_, index) => ({ id: `row-${index}`, privateValue: `secret-${index}` }));
+  const state = { epoch: 4, scope: 'identity-a', buildCalls: 0, saveCalls: [] };
+  const context = vm.createContext({
+    pendingCachePersist: true, lastCachePersistAt: 0, cacheSnapshotPreparationGeneration: 0,
+    resolvedViewStateEpoch: state.epoch,
+    getSupabaseReadIdentityScope: () => state.scope,
+    buildCacheSnapshot: options => {
+      assert.equal(options.deferRows, true, 'the full snapshot is gathered without synchronous row cloning');
+      state.buildCalls += 1;
+      return { status: 'success', data: sourceRows, requestsData: [{ id: 'request-row' }], meta: { generation: state.buildCalls } };
+    },
+    buildCacheRows: batch => batch.map(({ id }) => ({ id })),
+    yieldToUiFrame,
+    saveToCache: async snapshot => { state.saveCalls.push(snapshot); return saveToCache(snapshot); },
+    Date, Object, Array, Promise, Number, String, Error,
+  });
+  vm.runInContext(appFunction('prepareCurrentCacheSnapshot') + appFunction('runPersistCurrentCacheNow'), context);
+  return { context, state };
+}
+
+test('current cache snapshot preparation clones and redacts rows in bounded 64-row batches', async () => {
+  const batchSizes = [], options = [];
+  const harness = createCachePersistenceHarness({ rows: 130, yieldToUiFrame: async () => {} });
+  harness.context.buildCacheRows = batch => {
+    batchSizes.push(batch.length);
+    return batch.map(({ id }) => ({ id }));
+  };
+  harness.context.buildCacheSnapshot = received => {
+    options.push(received);
+    return { status: 'success', data: Array.from({ length: 130 }, (_, id) => ({ id: `data-${id}`, secret: true })),
+      requestsData: [{ id: 'request', secret: true }], meta: { generation: 1 } };
+  };
+  const snapshot = await harness.context.prepareCurrentCacheSnapshot(() => true);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(options)), [{ deferRows: true }]);
+  assert.deepEqual(batchSizes, [64, 64, 2, 1]);
+  assert.equal(snapshot.data.length, 130);
+  assert.equal(snapshot.data.every(row => !Object.hasOwn(row, 'secret')), true, 'row sanitization remains delegated to buildCacheRows');
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.requestsData)), [{ id: 'request' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.meta)), { generation: 1 });
+});
+
+test('current cache persistence cancels after a yield when identity or data epoch changes', async () => {
+  for (const changed of ['identity', 'epoch']) {
+    let signalYield;
+    let releaseYield;
+    const yieldStarted = new Promise(resolve => { signalYield = resolve; });
+    const yieldGate = new Promise(resolve => { releaseYield = resolve; });
+    let firstYield = true;
+    const harness = createCachePersistenceHarness({ yieldToUiFrame: () => {
+      if (!firstYield) return Promise.resolve();
+      firstYield = false;
+      signalYield();
+      return yieldGate;
+    } });
+    const persistence = harness.context.runPersistCurrentCacheNow();
+    await yieldStarted;
+    if (changed === 'identity') harness.state.scope = 'identity-b';
+    else harness.context.resolvedViewStateEpoch += 1;
+    releaseYield();
+
+    assert.equal(await persistence, false, `snapshot work stops after ${changed} changes`);
+    assert.equal(harness.state.saveCalls.length, 0, 'a stale snapshot is never written');
+  }
+});
+
+test('overlapping cache snapshot preparation writes only the newest generation', async () => {
+  let signalFirstYield;
+  let releaseFirstYield;
+  const firstYieldStarted = new Promise(resolve => { signalFirstYield = resolve; });
+  const firstYieldGate = new Promise(resolve => { releaseFirstYield = resolve; });
+  let firstYield = true;
+  const harness = createCachePersistenceHarness({ yieldToUiFrame: () => {
+    if (!firstYield) return Promise.resolve();
+    firstYield = false;
+    signalFirstYield();
+    return firstYieldGate;
+  } });
+
+  const older = harness.context.runPersistCurrentCacheNow();
+  await firstYieldStarted;
+  const newer = harness.context.runPersistCurrentCacheNow();
+  assert.equal(await newer, true);
+  releaseFirstYield();
+  assert.equal(await older, false);
+  assert.equal(harness.state.saveCalls.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.state.saveCalls[0].meta)), { generation: 2 });
+});
+
+test('cache persistence reports a failed cache write as false', async () => {
+  const harness = createCachePersistenceHarness({ rows: 1, saveToCache: async () => false });
+  assert.equal(await harness.context.runPersistCurrentCacheNow(), false);
+  assert.equal(harness.state.saveCalls.length, 1);
+});
+
 test('preview preparation honors its row limit and keeps cache, display, and source ownership separate', async () => {
   const harness = createHarness();
   const rows = Array.from({ length: 130 }, (_, index) => ({ UNIQUE_ID: `uid-${index}`, VALUE: index, nested: { value: index } }));

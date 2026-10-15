@@ -23,12 +23,28 @@ function createHarness() {
   return { api: context.window.AgMetricAvDerivedRows, flushOne: () => queued.shift()?.(), queued };
 }
 
+test('filter viewport cleanup does not retrigger its class observer for an already-cleared panel', () => {
+  const tokens = new Set(['excel-filter-panel', 'excel-filter-panel--viewport-safe']);
+  let mutations = 0;
+  const panel = { classList: { contains: token => tokens.has(token), remove: token => { mutations++; tokens.delete(token); } },
+    style: { removeProperty() {} } };
+  const context = vm.createContext({});
+  vm.runInContext(extractAppFunction('clearMobileExcelFilterViewportPanel'), context);
+  context.clearMobileExcelFilterViewportPanel(panel);
+  context.clearMobileExcelFilterViewportPanel(panel);
+  assert.equal(mutations, 1, 'the observer settles after removing the class once');
+  const sync = extractAppFunction('syncMobileExcelFilterViewportSafety');
+  assert.match(sync, /!document\.body\.classList\.contains\('mobile-excel-filter-panel-open'\)/);
+  assert.match(sync, /!panel\.classList\.contains\('excel-filter-panel--viewport-safe'\)/);
+});
+
 test('list search tokenizes its query once while preserving prefix and word-start results', () => {
   let tokenizations = 0;
   const context = { Array, Map, WeakMap, String, searchFilterCache: new WeakMap(), searchFilterCacheEpoch: 1,
     normalizeSearchValue: value => String(value).trim().toLowerCase(),
     tokenizeSearchValue: value => { tokenizations++; return String(value).toLowerCase().split(/\s+/).filter(Boolean); },
     getSearchValuesForProfile: row => row.values,
+    getSearchWordStartsForProfile: () => null,
     normalizedSearchTextHasWordStart: (value, term) => value.split(/\s+/).some(word => word.startsWith(term)),
     beginInternalPerfMeasure: () => 0, recordInternalPerfDuration() {}, incrementInternalPerfCounter() {}, trimInternalCacheMap() {} };
   vm.createContext(context);
@@ -40,6 +56,34 @@ test('list search tokenizes its query once while preserving prefix and word-star
     tokenizations = 0;
     assert.deepEqual(Array.from(context.filterBySearch(rows, term, 'av_open')), expected);
     assert.equal(tokenizations, 1);
+  }
+});
+
+test('cached AV profile word starts preserve prefix, punctuation, and multi-term search results', () => {
+  const context = { Array, Map, WeakMap, String, searchFilterCache: new WeakMap(), searchFilterCacheEpoch: 1,
+    normalizeSearchValue: value => String(value).trim().toLowerCase(),
+    tokenizeSearchValue: value => String(value).toLowerCase().split(/[^a-z0-9]+/).filter(Boolean),
+    getSearchValuesForProfile: row => row.values,
+    getSearchWordStartsForProfile: (row, profile) => row._searchProfileWordStarts?.[profile] || [],
+    normalizedSearchTextHasWordStart: (value, term) => String(value).toLowerCase().split(/[^a-z0-9]+/).some(word => word.startsWith(term)),
+    beginInternalPerfMeasure: () => 0, recordInternalPerfDuration() {}, incrementInternalPerfCounter() {}, trimInternalCacheMap() {} };
+  vm.createContext(context);
+  vm.runInContext(['doesSearchProfilePrefixMatch', 'matchesItemSearch', 'filterBySearch'].map(extractAppFunction).join('\n'), context);
+  const sourceRows = [
+    { values: ['Red Rose', 'AVH.00049'] },
+    { values: ['White Daisy', 'AVH.00050'] },
+    { values: ['Red-Rose Special', 'Blue/Green'] },
+    { values: ['Étoile d\'Or', 'Mixed 27.F1'] },
+    { values: ['Rosemary', 'AVH.00049B'] }
+  ];
+  const legacyRows = sourceRows.map(row => ({ ...row }));
+  const cachedRows = sourceRows.map(row => ({ ...row,
+    _searchProfileWordStarts: { av_open: [...new Set(row.values.flatMap(context.tokenizeSearchValue))] } }));
+  const terms = ['red', 'red rose', 'rose special', 'avh.49', '00049', '27 f1', 'etoile or', 'absent'];
+  for (const term of terms) {
+    const expected = legacyRows.filter(row => context.matchesItemSearch(row, term, 'av_open'));
+    const actual = Array.from(context.filterBySearch(cachedRows, term, 'av_open'));
+    assert.deepEqual(actual.map(row => row.values.join('|')), expected.map(row => row.values.join('|')), `search parity for ${term}`);
   }
 });
 
@@ -258,12 +302,39 @@ test('failed AV derivation clears only its current partial view cache so a later
   assert.equal(context.avDerivedRowsPendingSignature, '');
 });
 
+test('AV retries a cancelled source generation without reviving an old account or bucket', async () => {
+  for (const change of ['revision', 'account', 'bucket']) {
+    const original = { key: 'current', scope: 'actor-a', sourceKey: 'r1', signature: 'actor-a:current:r1' };
+    let identity = original, finish, renders = 0;
+    const context = vm.createContext({
+      window: { AgMetricAvDerivedRows: { peek: () => null, prepare: () => new Promise(resolve => { finish = resolve; }) } },
+      normalizeAvSalesBucket: value => String(value), getAvSalesDerivationIdentity: () => identity,
+      AV_DERIVED_ROWS_CHUNK_SIZE: 96, AV_DERIVED_PREVIEW_SOURCE_LIMIT: 50,
+      createAvSalesRowsDerivation: () => ({ sourceRows: [], mapRow: row => row, finalize: rows => rows }),
+      avDerivedRowsActiveScope: '', avDerivedRowsPendingSignature: '',
+      avResolvedBaseStateKey: 'preview', avResolvedBaseStateCache: { isPartial: true },
+      activeAVTab: 'open', activeAvSalesBucket: 'current', isViewVisible: () => true,
+      scheduleAVRender: () => { renders++; }, console: { warn() {} }
+    });
+    vm.runInContext(extractAppFunction('getAvSalesRowsForRendering'), context);
+    context.getAvSalesRowsForRendering('current');
+    identity = { ...original, sourceKey: 'r2', signature: 'actor-a:current:r2' };
+    if (change === 'account') identity = { ...identity, scope: 'actor-b' };
+    if (change === 'bucket') context.activeAvSalesBucket = 'next-up';
+    finish(null);
+    await nextEventLoopTurn();
+    assert.equal(renders, change === 'revision' ? 1 : 0, change);
+    assert.equal(context.avDerivedRowsPendingSignature, '');
+    if (change === 'revision') assert.equal(context.avResolvedBaseStateCache, null);
+  }
+});
+
 test('chunked AV derivation preserves bucket filtering, approval, deduplication, and sort parity', async () => {
   const rows = [
-    { UNIQUE_ID: 'b', COMMONNAME: 'Plant 10', CONTSIZE: '#2', LOCATIONCODE: 'A.2', SEASON: 'S1', inWindow: true, bucketMatch: true, S_LTS: '4' },
-    { UNIQUE_ID: 'a', COMMONNAME: 'Plant 2', CONTSIZE: '#1', LOCATIONCODE: 'A.1', SEASON: 'S1', inWindow: true, bucketMatch: true, S_LTS: '2' },
-    { UNIQUE_ID: 'duplicate', COMMONNAME: 'Plant 3', CONTSIZE: '#1', LOCATIONCODE: 'A.3', SEASON: 'S1', inWindow: true, bucketMatch: true, locationKey: 'same-location', S_LTS: '1' },
-    { UNIQUE_ID: 'duplicate-loser', COMMONNAME: 'Plant 4', CONTSIZE: '#1', LOCATIONCODE: 'A.4', SEASON: 'S1', inWindow: true, bucketMatch: true, locationKey: 'same-location', S_LTS: '1' },
+    { UNIQUE_ID: 'b', COMMONNAME: 'Plant 10', GENUSNAME: 'Quercus', CONTSIZE: '#2', LOCATIONCODE: 'A.2', SEASON: 'S1', inWindow: true, bucketMatch: true, S_LTS: '4' },
+    { UNIQUE_ID: 'a', COMMONNAME: 'Plant 2', GENUSNAME: 'Acer', CONTSIZE: '#1', LOCATIONCODE: 'A.1', SEASON: 'S1', inWindow: true, bucketMatch: true, S_LTS: '2' },
+    { UNIQUE_ID: 'duplicate', COMMONNAME: 'Plant 3', GENUSNAME: 'Rosa', CONTSIZE: '#1', LOCATIONCODE: 'A.3', SEASON: 'S1', inWindow: true, bucketMatch: true, locationKey: 'same-location', S_LTS: '1' },
+    { UNIQUE_ID: 'duplicate-loser', COMMONNAME: 'Plant 4', GENUSNAME: 'Prunus', CONTSIZE: '#1', LOCATIONCODE: 'A.4', SEASON: 'S1', inWindow: true, bucketMatch: true, locationKey: 'same-location', S_LTS: '1' },
     { UNIQUE_ID: 'outside-window', COMMONNAME: 'Outside', SEASON: 'S1', inWindow: false, bucketMatch: true, S_LTS: '1' },
     { UNIQUE_ID: 'invalid-approval', COMMONNAME: 'Approval', SEASON: 'S1', inWindow: true, bucketMatch: true, approvalHidden: true, S_LTS: '1' },
     { UNIQUE_ID: 'wrong-bucket', COMMONNAME: 'Other', SEASON: 'S1', inWindow: true, bucketMatch: false, S_LTS: '1' },
@@ -291,7 +362,15 @@ test('chunked AV derivation preserves bucket filtering, approval, deduplication,
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
     getAvSalesItemCode: row => String(row.ITEMCODE || ''), decorateAvSalesReserveRow: row => row,
     buildAvHotPriceIndex: () => new Map(),
-    getSearchValuesForProfile: (row, profile) => { row.preparedSearchProfile = profile; return []; },
+    getSearchWordStartsForProfile: (row, profile) => {
+      row.preparedSearchProfile = profile;
+      row._searchProfileWordStarts = { ...(row._searchProfileWordStarts || {}), [profile]: [String(row.COMMONNAME || '').toLowerCase()] };
+      return row._searchProfileWordStarts[profile];
+    },
+    avPreparedRawTabRows: new WeakMap(), resolvedViewStateEpoch: 7,
+    getAvFilterGenusFacetValue: row => String(row.GENUSNAME || '(Blank)').trim() || '(Blank)',
+    getAvFilterContSizeFacetValue: row => String(row.CONTSIZE || '-').trim() || '-',
+    avItemHasPhotos: row => !!row.hasPhoto,
   };
   vm.createContext(context);
   vm.runInContext(source, context);
@@ -301,6 +380,15 @@ test('chunked AV derivation preserves bucket filtering, approval, deduplication,
   const syncRows = syncDerivation.finalize(syncDerivation.sourceRows.map(syncDerivation.mapRow).filter(Boolean));
   assert.deepEqual(Array.from(syncRows, row => row.UNIQUE_ID), expected);
   assert.equal(syncRows.every(row => row.preparedSearchProfile === 'av_open'), true);
+  const prepared = context.avPreparedRawTabRows.get(syncRows);
+  assert.ok(prepared, 'the completed derived array carries prepared tab metadata');
+  assert.equal(prepared.epoch, context.resolvedViewStateEpoch);
+  assert.deepEqual(Array.from(prepared.all.rows, row => row.UNIQUE_ID), expected);
+  assert.deepEqual(Array.from(prepared.photos.rows, row => row.UNIQUE_ID), []);
+  assert.deepEqual(Array.from(prepared.all.genusOptions).sort(), ['Acer', 'Quercus', 'Rosa']);
+  assert.deepEqual(Array.from(prepared.all.sizeOptions).sort(), ['#1', '#2']);
+  assert.equal(context.avPreparedRawTabRows.get(prepared.all.rows).epoch, context.resolvedViewStateEpoch);
+  assert.deepEqual(Array.from(context.avPreparedRawTabRows.get(prepared.photos.rows).options.genusOptions), prepared.photos.genusOptions);
 
   const chunkedDerivation = context.createAvSalesRowsDerivation('current');
   const pending = context.window.AgMetricAvDerivedRows.prepare({
@@ -339,7 +427,11 @@ test('hot-price row batching preserves the matched source fields and season rule
     itemMatchesAvSalesBucket: () => true, getAvReserveLocationUniqueKey: row => row.UNIQUE_ID,
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
     getAvSalesItemCode: row => String(row.ITEMCODE || ''), decorateAvSalesReserveRow: row => row,
-    getSearchValuesForProfile: () => [],
+    getSearchWordStartsForProfile: row => row._search ? String(row._search).split(/\s+/).filter(Boolean) : [],
+    avPreparedRawTabRows: new WeakMap(), resolvedViewStateEpoch: 2,
+    getAvFilterGenusFacetValue: row => String(row.GENUSNAME || '(Blank)').trim() || '(Blank)',
+    getAvFilterContSizeFacetValue: row => String(row.CONTSIZE || '-').trim() || '-',
+    avItemHasPhotos: row => !!row.hasPhoto,
   };
   vm.createContext(context);
   vm.runInContext(extractAppFunction('buildAvHotPriceIndex')
@@ -378,4 +470,99 @@ test('AV prepares filter selections once and preserves all/custom/empty facet se
   }
   context.selectedAvGenusNames = new Set();
   assert.equal(rows.filter(context.createAvTopFilterPredicate()).length, 0);
+});
+
+test('prepared AV raw-tab rows preserve photo and shift membership while rejecting stale metadata', () => {
+  const rows = [
+    { UNIQUE_ID: 'plain', ITEMCODE: 'A', COMMONNAME: 'Oak', CONTSIZE: '#1', GENUSNAME: 'Quercus', SEASON: 'F1', inWindow: true, bucketMatch: true, S_LTS: '4' },
+    { UNIQUE_ID: 'photo', ITEMCODE: 'B', COMMONNAME: 'Maple', CONTSIZE: '#2', GENUSNAME: 'Acer', SEASON: 'F1', inWindow: true, bucketMatch: true, hasPhoto: true, S_LTS: '3' },
+    { UNIQUE_ID: 'shift', ITEMCODE: 'C', COMMONNAME: 'Shift', CONTSIZE: '#3', GENUSNAME: 'Rosa', SEASON: 'S1', DESIGITEM: 'SHFT', inWindow: true, bucketMatch: true, hasPhoto: true, S_LTS: '2' }
+  ];
+  const context = {
+    Map, Array, Number, String, Object, Set, WeakMap,
+    window: {}, activeAvSalesBucket: 'current', activeAVTab: 'open', activeAvOpenTab: 'name', activeAvPhotoMode: 'all',
+    resolvedViewStateEpoch: 11, avPreparedRawTabRows: new WeakMap(),
+    fullInventory: rows, avHotPriceKeysInventory: [], AV_FILTER_SEASON_OPTIONS: ['F1', 'S1'],
+    normalizeAvSalesBucket: value => String(value), getAvSalesReserveDemandRows: () => [], buildAvReserveSeasonIndex: () => ({}),
+    isAvCustomerSalesBucket: () => false, getAvSalesInventorySourceRows: () => rows,
+    shouldHideU3InventoryRowForRep: () => false, itemMatchesAvOpenSalesWindow: row => row.inWindow !== false,
+    getAvSalesSeasonValue: row => String(row.SEASON || ''), isShiftDesigItemRow: row => String(row.DESIGITEM || '').includes('SHFT'),
+    shouldHideNotOnInventoryApprovalRowFromInventory: () => false, getAvReserveRowsForSalesItem: () => [],
+    shouldIncludeMasterItemInAvOpenStock: row => Number(row.S_LTS) > 0, itemMatchesAvSalesBucket: row => !!row.bucketMatch,
+    getAvReserveLocationUniqueKey: row => row.UNIQUE_ID, firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
+    getAvSalesItemCode: row => String(row.ITEMCODE || ''), decorateAvSalesReserveRow: row => row,
+    getSearchWordStartsForProfile: (row, profile) => {
+      row._searchProfileWordStarts = { ...(row._searchProfileWordStarts || {}), [profile]: [String(row.COMMONNAME || '').toLowerCase()] };
+      return row._searchProfileWordStarts[profile];
+    },
+    getAvFilterGenusFacetValue: row => String(row.GENUSNAME || '(Blank)').trim() || '(Blank)',
+    getAvFilterContSizeFacetValue: row => String(row.CONTSIZE || '-').trim() || '-',
+    avItemHasPhotos: row => !!row.hasPhoto,
+    getAvSalesRowsForBucket: () => rows,
+    getAvPhotoMode: () => context.activeAvPhotoMode
+  };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  vm.runInContext(extractAppFunction('sortAvOpenItems') + extractAppFunction('createAvSalesRowsDerivation'), context);
+  const current = context.createAvSalesRowsDerivation('current');
+  const currentRows = current.finalize(current.sourceRows.map(current.mapRow).filter(Boolean));
+  const metadata = context.avPreparedRawTabRows.get(currentRows);
+  assert.deepEqual(Array.from(metadata.all.rows, row => row.UNIQUE_ID), ['photo', 'plain']);
+  assert.deepEqual(Array.from(metadata.photos.rows, row => row.UNIQUE_ID), ['photo']);
+
+  const nextUp = context.createAvSalesRowsDerivation('next-up');
+  const nextUpRows = nextUp.finalize(nextUp.sourceRows.map(nextUp.mapRow).filter(Boolean));
+  const nextUpMetadata = context.avPreparedRawTabRows.get(nextUpRows);
+  assert.ok(nextUpRows.some(row => row.UNIQUE_ID === 'shift'), 'next-up derivation retains its eligible shift row');
+  assert.equal(nextUpMetadata.all.rows.some(row => row.UNIQUE_ID === 'shift'), false, 'raw-tab metadata retains the existing non-shift rule');
+  assert.equal(nextUpMetadata.photos.rows.some(row => row.UNIQUE_ID === 'shift'), false);
+
+  vm.runInContext(extractAppFunction('getAvRawTabItems'), context);
+  context.activeAvPhotoMode = 'all';
+  assert.deepEqual(Array.from(context.getAvRawTabItems('open', { salesRows: currentRows }), row => row.UNIQUE_ID), ['photo', 'plain']);
+  context.activeAvPhotoMode = 'photos';
+  assert.deepEqual(Array.from(context.getAvRawTabItems('open', { salesRows: currentRows }), row => row.UNIQUE_ID), ['photo']);
+  context.avPreparedRawTabRows.set(currentRows, { ...metadata, epoch: context.resolvedViewStateEpoch - 1 });
+  assert.deepEqual(Array.from(context.getAvRawTabItems('open', { salesRows: currentRows }), row => row.UNIQUE_ID), ['photo'],
+    'a stale prepared entry falls back to equivalent ordinary photo filtering');
+});
+
+test('AV filter option generation consumes same-epoch prepared facets and scans on stale metadata', () => {
+  let genusReads = 0, sizeReads = 0, cachedHits = 0;
+  const rows = [{ GENUSNAME: 'Oak', CONTSIZE: '#1' }, { GENUSNAME: 'Maple', CONTSIZE: '#2' }];
+  const context = {
+    Array, Set, Intl, String, Number,
+    resolvedViewStateEpoch: 3, activeAVTab: 'open', activeAvOpenTab: 'name', activeAvHotPriceTab: '',
+    activeAvReserveMode: 'cards', activeAvSalesBucket: 'current', activeAvPhotoMode: 'all',
+    selectedAvResRep: '', selectedAvSalesRepName: '', selectedAvRepCustomerKey: '',
+    avSharedFilterOptionsCacheKey: '', avSharedFilterOptionsCache: null,
+    selectedAvSeasons: new Set(['F1']), selectedAvGenusNames: new Set(), selectedAvContSizes: new Set(),
+    avGenusSelectionMode: 'all', avContSizeSelectionMode: 'all', AV_FILTER_SEASON_OPTIONS: ['F1', 'S1'],
+    avPreparedRawTabRows: new WeakMap(),
+    getConfiguredCurrentSeasonCode: () => 'F1', getConfiguredCurrentSalesYearCode: () => '27',
+    getDatasetLoadSignature: key => `${key}:r1`, normalizeAvSelectedSeasons() {},
+    normalizeAvFacetCompareKey: value => String(value || '').trim().toLowerCase(),
+    getAvFilterGenusFacetValue: row => { genusReads += 1; return row.GENUSNAME || ''; },
+    getAvFilterContSizeFacetValue: row => { sizeReads += 1; return row.CONTSIZE || ''; },
+    syncAvGenusSelectionState: options => ({ options, selected: new Set(), mode: 'all' }),
+    syncAvContSizeSelectionState: options => ({ options, selected: new Set(), mode: 'all' }),
+    areAllAvSeasonsSelected: () => false, incrementInternalPerfCounter: name => { if (name === 'avFilterOptionsCacheHits') cachedHits += 1; },
+    compareDrivePlantContSize: (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })
+  };
+  context.avPreparedRawTabRows.set(rows, { epoch: 3, options: { genusOptions: ['Maple', 'Oak'], sizeOptions: ['#1', '#2'] } });
+  vm.createContext(context);
+  vm.runInContext(extractAppFunction('buildAvSharedFilterOptionsState'), context);
+  const prepared = context.buildAvSharedFilterOptionsState(rows);
+  assert.deepEqual(Array.from(prepared.genusOptions), ['Maple', 'Oak']);
+  assert.deepEqual(Array.from(prepared.sizeOptions), ['#1', '#2']);
+  assert.equal(genusReads + sizeReads, 0, 'same-epoch facet metadata avoids rescanning all rows');
+  context.buildAvSharedFilterOptionsState(rows);
+  assert.equal(cachedHits, 1, 'the ordinary options state cache remains active');
+
+  context.resolvedViewStateEpoch += 1;
+  context.avSharedFilterOptionsCacheKey = '';
+  const legacy = context.buildAvSharedFilterOptionsState(rows);
+  assert.deepEqual(Array.from(legacy.genusOptions).sort(), ['Maple', 'Oak']);
+  assert.deepEqual(Array.from(legacy.sizeOptions).sort(), ['#1', '#2']);
+  assert.equal(genusReads + sizeReads, 4, 'stale metadata falls back to recomputing facet values');
 });

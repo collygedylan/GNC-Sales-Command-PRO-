@@ -13978,7 +13978,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function clearMobileExcelFilterViewportPanel(panel) {
             if (!panel) return;
-            panel.classList.remove('excel-filter-panel--viewport-safe');
+            if (panel.classList.contains('excel-filter-panel--viewport-safe')) panel.classList.remove('excel-filter-panel--viewport-safe');
             panel.style.removeProperty('--filter-panel-fixed-top');
             panel.style.removeProperty('--filter-panel-fixed-bottom');
             panel.style.removeProperty('--filter-panel-fixed-left');
@@ -14042,7 +14042,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (document.body) document.body.classList.remove('mobile-excel-filter-panel-open');
                 return false;
             }
-            if (document.body) document.body.classList.add('mobile-excel-filter-panel-open');
+            if (document.body && !document.body.classList.contains('mobile-excel-filter-panel-open')) document.body.classList.add('mobile-excel-filter-panel-open');
             openPanels.forEach((panel) => {
                 const shell = panel.closest('.task-top-control-shell, .drive-filter-shell, .av-filter-shell, .crop-roll-filter-shell, .manager-crop-roll-review-filter-shell');
                 const criticalFilterShell = panel.closest('#view-crop-roll .crop-roll-filter-shell, #view-managers .manager-crop-roll-review-filter-shell');
@@ -14066,7 +14066,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     left = Math.max(12, Math.min(Math.round(triggerRect.left), metrics.layoutWidth - panelWidth - 12));
                     right = Math.max(12, metrics.layoutWidth - left - panelWidth);
                 }
-                panel.classList.add('excel-filter-panel--viewport-safe');
+                if (!panel.classList.contains('excel-filter-panel--viewport-safe')) panel.classList.add('excel-filter-panel--viewport-safe');
                 panel.style.setProperty('--filter-panel-fixed-top', `${top}px`);
                 panel.style.setProperty('--filter-panel-fixed-bottom', `${metrics.bottomInset}px`);
                 panel.style.setProperty('--filter-panel-fixed-left', `${left}px`);
@@ -32119,30 +32119,31 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return !NETWORK_VERIFIED_DATASET_KEYS.has(String(key || '').trim());
         }
 
-        function buildCacheSnapshot() {
-            const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
+        function buildCacheSnapshot(options = {}) {
+            const cacheRows = options.deferRows === true ? rows => rows : buildCacheRows;
+            const inlineReserveRows = cacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
             return {
                 status: 'success',
-                data: buildCacheRows(fullInventory),
-                cropRollDriveData: buildCacheRows(cropRollDriveInventory),
-                avOpenData: buildCacheRows(avOpenInventory),
-                requestsData: buildCacheRows(requestsInventory),
-                requestHistoryData: buildCacheRows(requestHistoryInventory),
-                salesCreditsData: buildCacheRows(salesCreditRequestsInventory),
-                inventoryEditRequestsData: buildCacheRows(inventoryEditRequestInventory),
+                data: cacheRows(fullInventory),
+                cropRollDriveData: cacheRows(cropRollDriveInventory),
+                avOpenData: cacheRows(avOpenInventory),
+                requestsData: cacheRows(requestsInventory),
+                requestHistoryData: cacheRows(requestHistoryInventory),
+                salesCreditsData: cacheRows(salesCreditRequestsInventory),
+                inventoryEditRequestsData: cacheRows(inventoryEditRequestInventory),
                 reservesData: inlineReserveRows,
-                customerRepMapData: buildCacheRows(customerRepMapRows),
-                socData: buildCacheRows(socInventory),
-                salesOfficeData: buildCacheRows(salesOfficeInventory.filter((item) => !isAcknowledgedSeasonSalesOfficeRow(item))),
-                flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
-                flyerFolderHistoryData: buildCacheRows(flyerFolderHistoryInventory),
-                growerScoutReportsData: buildCacheRows(growerScoutReportsInventory),
-                growerScoutAssetsData: buildCacheRows(growerScoutAssetsInventory),
-                warehouseAssignedItemsData: buildCacheRows(warehouseAssignedItemsInventory),
-                cavData: buildCacheRows(cavInventory),
-                cavAvBlankKeysData: buildCacheRows(cavAvBlankKeyInventory),
-                avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
-                avNotesData: buildCacheRows(avNotesDb),
+                customerRepMapData: cacheRows(customerRepMapRows),
+                socData: cacheRows(socInventory),
+                salesOfficeData: cacheRows(salesOfficeInventory.filter((item) => !isAcknowledgedSeasonSalesOfficeRow(item))),
+                flyerFolderRowsData: cacheRows(flyerFolderInventory),
+                flyerFolderHistoryData: cacheRows(flyerFolderHistoryInventory),
+                growerScoutReportsData: cacheRows(growerScoutReportsInventory),
+                growerScoutAssetsData: cacheRows(growerScoutAssetsInventory),
+                warehouseAssignedItemsData: cacheRows(warehouseAssignedItemsInventory),
+                cavData: cacheRows(cavInventory),
+                cavAvBlankKeysData: cacheRows(cavAvBlankKeyInventory),
+                avHotPriceKeysData: cacheRows(avHotPriceKeysInventory),
+                avNotesData: cacheRows(avNotesDb),
                 meta: {
                     cacheSchemaVersion: CACHE_SCHEMA_VERSION,
                     scopedUser: normalizeSessionIdentity(currentUser),
@@ -37223,7 +37224,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 // Pending Request lists either keep their identical DOM or
                 // capture their own anchor at staged commit time. Avoid a
                 // redundant pre-render geometry scan for that path.
-                const anchor = view === 'request' && activeReqTab === 'pending'
+                const anchor = firstDisplay || (view === 'request' && activeReqTab === 'pending')
                     ? null : captureProductionRefreshAnchor(view);
                 const refresh = { view, context: contextKey, generation,
                     token: Number(latestViewRenderTokensByView[view]) || bumpLatestViewRenderToken(view), pending: 0 };
@@ -42117,10 +42118,34 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             cachePersistIdleHandle = null;
         }
 
-        function runPersistCurrentCacheNow() {
+        var cacheSnapshotPreparationGeneration = 0;
+
+        async function prepareCurrentCacheSnapshot(isCurrent) {
+            const snapshot = buildCacheSnapshot({ deferRows: true });
+            for (const [key, rows] of Object.entries(snapshot)) {
+                if (!Array.isArray(rows)) continue;
+                const prepared = [];
+                for (let start = 0; start < rows.length; start += 64) {
+                    if (!isCurrent()) return null;
+                    prepared.push(...buildCacheRows(rows.slice(start, start + 64)));
+                    await yieldToUiFrame();
+                }
+                snapshot[key] = prepared;
+            }
+            return isCurrent() ? snapshot : null;
+        }
+
+        async function runPersistCurrentCacheNow() {
             pendingCachePersist = false;
             lastCachePersistAt = Date.now();
-            return saveToCache(buildCacheSnapshot()).catch(() => false);
+            const generation = ++cacheSnapshotPreparationGeneration;
+            const epoch = resolvedViewStateEpoch;
+            const scope = getSupabaseReadIdentityScope();
+            try {
+                const snapshot = await prepareCurrentCacheSnapshot(() => generation === cacheSnapshotPreparationGeneration
+                    && epoch === resolvedViewStateEpoch && scope === getSupabaseReadIdentityScope());
+                return snapshot ? await saveToCache(snapshot) : false;
+            } catch { return false; }
         }
 
         function queueIdleCachePersist() {
@@ -59643,6 +59668,8 @@ function toggleDriveQuickRequestItem(domId) {
         function matchesItemSearch(item, rawTerm, profileName = '', options = {}) {
             const terms = Array.isArray(options?.terms) ? options.terms : tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
+            const preparedWords = profileName && item?._searchProfileWordStarts?.[profileName];
+            if (Array.isArray(preparedWords)) return terms.every(term => preparedWords.some(word => word.startsWith(term)));
             const searchValues = getSearchValuesForProfile(item, profileName);
             if (!searchValues.length) return false;
             const prefixMatched = doesSearchProfilePrefixMatch(searchValues, terms);
@@ -87189,6 +87216,8 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return itemMatchesAvCurrentSeasonBucket(item);
         }
 
+        var avPreparedRawTabRows = new WeakMap();
+
         function createAvSalesRowsDerivation(bucket = activeAvSalesBucket) {
             const safeBucket = normalizeAvSalesBucket(bucket);
             const reserveRows = getAvSalesReserveDemandRows(safeBucket);
@@ -87199,6 +87228,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 ? (Array.isArray(fullInventory) ? fullInventory : [])
                 : getAvSalesInventorySourceRows({ skipSalesWindow: true });
             const requireOpenOrReserve = isAvCustomerSalesBucket(safeBucket);
+            const preparedEpoch = resolvedViewStateEpoch;
+            const rawGroups = {
+                all: { members: new Set(), genus: new Set(), sizes: new Set() },
+                photos: { members: new Set(), genus: new Set(), sizes: new Set() }
+            };
 
             const mapRow = (sourceRow) => {
                 if (!sourceRow || shouldHideU3InventoryRowForRep(sourceRow)) return null;
@@ -87222,14 +87256,35 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const decorated = decorateAvSalesReserveRow(row, matchedReserveRows);
                 // Prepare search text inside the bounded row derivation, before
                 // a search or a complete-cohort render needs it synchronously.
-                getSearchValuesForProfile(decorated, requireOpenOrReserve ? 'av_reserves' : 'av_open');
+                getSearchWordStartsForProfile(decorated, requireOpenOrReserve ? 'av_reserves' : 'av_open');
+                if (!isShiftDesigItemRow(decorated)) {
+                    const genus = getAvFilterGenusFacetValue(decorated);
+                    const size = getAvFilterContSizeFacetValue(decorated);
+                    const groups = avItemHasPhotos(decorated) ? [rawGroups.all, rawGroups.photos] : [rawGroups.all];
+                    groups.forEach(group => {
+                        group.members.add(decorated);
+                        if (genus) group.genus.add(genus);
+                        if (size) group.sizes.add(size);
+                    });
+                }
                 return decorated;
             };
 
             return {
                 sourceRows,
                 mapRow,
-                finalize: (rows) => safeBucket === 'hot-price' ? rows : sortAvOpenItems(rows, 'name')
+                finalize: (rows) => {
+                    const sorted = safeBucket === 'hot-price' ? rows : sortAvOpenItems(rows, 'name');
+                    const prepared = { epoch: preparedEpoch };
+                    Object.entries(rawGroups).forEach(([key, group]) => {
+                        const rawRows = sorted.filter(row => group.members.has(row));
+                        const options = { genusOptions: Array.from(group.genus), sizeOptions: Array.from(group.sizes) };
+                        prepared[key] = { rows: rawRows, ...options };
+                        avPreparedRawTabRows.set(rawRows, { epoch: preparedEpoch, options });
+                    });
+                    avPreparedRawTabRows.set(sorted, prepared);
+                    return sorted;
+                }
             };
         }
 
@@ -87388,8 +87443,20 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                             && current.sourceKey === identity.sourceKey;
                     }
                 }).then((rows) => {
-                    if (!rows) return;
                     const current = getAvSalesDerivationIdentity(safeBucket);
+                    if (!rows) {
+                        // A later dataset can invalidate a running derivation
+                        // after the view has already rendered its preview.
+                        if (avDerivedRowsPendingSignature === identity.signature
+                            && current.key === identity.key && current.scope === identity.scope
+                            && normalizeAvSalesBucket(activeAvSalesBucket) === safeBucket
+                            && activeAVTab === 'open' && isViewVisible('av')) {
+                            avResolvedBaseStateKey = '';
+                            avResolvedBaseStateCache = null;
+                            scheduleAVRender(0, 28, true);
+                        }
+                        return;
+                    }
                     if (current.signature !== identity.signature) return;
                     avResolvedBaseStateKey = '';
                     avResolvedBaseStateCache = null;
@@ -87979,10 +88046,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             normalizeAvSelectedSeasons();
             const genusCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-            const genusOptions = [...new Set(baseItems.map((item) => getAvFilterGenusFacetValue(item)).filter(Boolean))]
+            const prepared = avPreparedRawTabRows.get(baseItems);
+            const preparedOptions = prepared?.epoch === resolvedViewStateEpoch ? prepared.options : null;
+            const genusOptions = (preparedOptions ? preparedOptions.genusOptions.slice()
+                : [...new Set(baseItems.map((item) => getAvFilterGenusFacetValue(item)).filter(Boolean))])
                 .sort((a, b) => genusCollator.compare(String(a), String(b)));
             const genusState = syncAvGenusSelectionState(genusOptions);
-            const sizeOptions = [...new Set(baseItems.map((item) => getAvFilterContSizeFacetValue(item)).filter(Boolean))]
+            const sizeOptions = (preparedOptions ? preparedOptions.sizeOptions.slice()
+                : [...new Set(baseItems.map((item) => getAvFilterContSizeFacetValue(item)).filter(Boolean))])
                 .sort(compareDrivePlantContSize);
             const sizeState = syncAvContSizeSelectionState(sizeOptions);
             const nextState = {
@@ -89690,6 +89761,10 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             let items = Array.isArray(options && options.salesRows)
                 ? options.salesRows
                 : getAvSalesRowsForBucket(activeAvSalesBucket);
+            const prepared = avPreparedRawTabRows.get(items);
+            if (prepared?.epoch === resolvedViewStateEpoch && prepared.all && prepared.photos) {
+                return !ignoreSecondaryTab && getAvPhotoMode() === 'photos' ? prepared.photos.rows : prepared.all.rows;
+            }
             items = items.filter((item) => !isShiftDesigItemRow(item));
             if (!ignoreSecondaryTab && getAvPhotoMode() === 'photos') items = items.filter(avItemHasPhotos);
             return Array.isArray(items) ? items : [];
@@ -113795,6 +113870,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function invalidateDockSuspendDcSourceRowLookup(sourceRows = null) {
             const cache = dockSuspendDcRequestSourceRowLookupCache;
+            const mirrorPreparation = dockSuspendDcRequestMirrorRowsPreparation;
+            if (mirrorPreparation && mirrorPreparation.timer != null) clearTimeout(mirrorPreparation.timer);
+            dockSuspendDcRequestMirrorRowsPreparation = null;
             if (!sourceRows || Array.isArray(sourceRows) || cache.byId.has(getDockSuspendDcRequestSourceUid(sourceRows))) {
                 dockSuspendDcRequestSourceRowLookupCache = { sourceRows: null, revision: '', byId: new Map() };
             } else {
@@ -113816,8 +113894,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         const DOCK_SUSPEND_PLANSTART_ALIASES = Object.freeze(['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate', 'PLAN_START_DATE', 'plan_start_date']);
 
-        function getDockSuspendDcRequestPlanstartValue(item = null) {
-            const sourceRow = findDockSuspendDcRequestSourceRow(item);
+        function getDockSuspendDcRequestPlanstartValue(item = null, sourceOverride = null) {
+            const sourceRow = sourceOverride || findDockSuspendDcRequestSourceRow(item);
             const getAliasValue = (row = null) => {
                 if (!row || typeof row !== 'object') return '';
                 const snapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : null;
@@ -114055,6 +114133,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function buildDockSuspendDcRequestMirrorRow(item = null, indexHint = 0) {
             item = overlaySuspendTagReceipt(item);
             if (!item || !isDockSuspendDcRequestSource(item)) return null;
+            const suspendStatus = getSuspendTagStatus(item);
+            const isPending = suspendStatus === 'pending' || suspendStatus === 'denied';
             const sourceUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, indexHint) || '').trim();
             const mirrorUid = `dock_suspend_dc_${sourceUid || indexHint}`;
             const customerName = String(firstNonEmptyValue(item.CUSTOMERNAME, item.customername, item.CUSTOMER, item.customer, 'Dock Suspend') || '').trim() || 'Dock Suspend';
@@ -114082,8 +114162,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 REQ_CUSTOMER: reqCustomer,
                 REQUESTED_BY: assignedRepName,
                 ASSIGNEDTO: assignedToUser,
-                REQ_STATUS: getSuspendTagStatus(item) === 'pending' || getSuspendTagStatus(item) === 'denied' ? 'Pending' : 'Complete',
-                STATUS: getSuspendTagStatus(item) === 'pending' || getSuspendTagStatus(item) === 'denied' ? 'Pending' : 'Complete',
+                REQ_STATUS: isPending ? 'Pending' : 'Complete',
+                STATUS: isPending ? 'Pending' : 'Complete',
                 REQ_ARCHIVED: false,
                 REQUEST_HISTORY: false,
                 REQ_RESERVE: 'NO',
@@ -114102,7 +114182,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
             if (!row.MASTER_ID) row.MASTER_ID = firstNonEmptyValue(item.MASTER_UNIQUE_ID, item.master_unique_id, '');
             if (!row.MASTER_UNIQUE_ID) row.MASTER_UNIQUE_ID = firstNonEmptyValue(item.MASTER_ID, item.master_id, '');
-            const planstartValue = getDockSuspendDcRequestPlanstartValue(row);
+            const planstartValue = getDockSuspendDcRequestPlanstartValue(row, item);
             if (planstartValue !== null && planstartValue !== undefined && String(planstartValue).trim() !== '') {
                 row.PLANSTART = planstartValue;
                 row.planstart = planstartValue;
@@ -114110,39 +114190,114 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             syncDockSuspendDcRequestPhotoAliases(row, item);
             syncDockSuspendDcRequestQuantityAliases(row, item);
-            normalizeRowPhotoFields(row);
-            buildSearchIndex(row);
             return row;
         }
 
         let dockSuspendDcRequestMirrorRowsCacheKey = '';
         let dockSuspendDcRequestMirrorRowsCacheSource = null;
         let dockSuspendDcRequestMirrorRowsCache = [];
+        let dockSuspendDcRequestMirrorRowsCacheOwner = '';
+        let dockSuspendDcRequestMirrorRowsPreparation = null;
+        const DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE = 64;
+
+        function getDockSuspendDcRequestMirrorRowsOwner() {
+            return JSON.stringify([getSupabaseReadIdentityScope(), normalizePushUsername(currentUser)]);
+        }
+
+        function isDockSuspendDcRequestMirrorPreparationPending() {
+            return !!(dockSuspendDcRequestMirrorRowsPreparation
+                && dockSuspendDcRequestMirrorRowsPreparation.owner === getDockSuspendDcRequestMirrorRowsOwner());
+        }
+
+        function scheduleDockSuspendDcRequestMirrorRowsPreparation(sourceRows, revision, owner) {
+            const prior = dockSuspendDcRequestMirrorRowsPreparation;
+            if (prior && prior.timer != null) clearTimeout(prior.timer);
+            const job = { sourceRows, revision, owner, cursor: 0, rows: [], seen: new Set(), timer: null };
+            dockSuspendDcRequestMirrorRowsPreparation = job;
+            const isCurrent = () => dockSuspendDcRequestMirrorRowsPreparation === job
+                && canCurrentUserViewDockSuspendDcRequests()
+                && getDockSuspendDcRequestMirrorRowsOwner() === owner
+                && getDockSuspendDcSourceRows() === sourceRows
+                && getDockSuspendDcSourceRowLookupRevision(sourceRows) === revision;
+            const runSlice = () => {
+                job.timer = null;
+                if (!isCurrent()) {
+                    const wasCurrentJob = dockSuspendDcRequestMirrorRowsPreparation === job;
+                    if (wasCurrentJob) dockSuspendDcRequestMirrorRowsPreparation = null;
+                    if (wasCurrentJob && activeReqTab === 'suspend-tag' && isViewVisible('request')
+                        && canCurrentUserViewDockSuspendDcRequests()) scheduleRequestRender(0, 0, true);
+                    return;
+                }
+                const end = Math.min(sourceRows.length, job.cursor + DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE);
+                for (; job.cursor < end; job.cursor += 1) {
+                    const sourceRow = sourceRows[job.cursor];
+                    if (!isDockSuspendDcRequestSource(sourceRow)) continue;
+                    const row = buildDockSuspendDcRequestMirrorRow(sourceRow, job.cursor);
+                    if (!row) continue;
+                    const id = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+                    if (!id || job.seen.has(id)) continue;
+                    job.seen.add(id);
+                    job.rows.push(row);
+                }
+                if (job.cursor < sourceRows.length) {
+                    job.timer = setTimeout(runSlice, 0);
+                    return;
+                }
+                if (!isCurrent()) {
+                    const wasCurrentJob = dockSuspendDcRequestMirrorRowsPreparation === job;
+                    if (wasCurrentJob) dockSuspendDcRequestMirrorRowsPreparation = null;
+                    if (wasCurrentJob && activeReqTab === 'suspend-tag' && isViewVisible('request')
+                        && canCurrentUserViewDockSuspendDcRequests()) scheduleRequestRender(0, 0, true);
+                    return;
+                }
+                dockSuspendDcRequestMirrorRowsCacheKey = revision;
+                dockSuspendDcRequestMirrorRowsCacheSource = sourceRows;
+                dockSuspendDcRequestMirrorRowsCacheOwner = owner;
+                dockSuspendDcRequestMirrorRowsCache = job.rows;
+                dockSuspendDcRequestMirrorRowsByIdCache = null;
+                dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+                requestScopedItemsCacheKey = '';
+                requestScopedItemsCache = null;
+                dockSuspendDcRequestMirrorRowsPreparation = null;
+                if (activeReqTab === 'suspend-tag' && isViewVisible('request')) scheduleRequestRender(0, 0, true);
+            };
+            job.timer = setTimeout(runSlice, 0);
+        }
 
         function getDockSuspendDcRequestMirrorRows() {
             if (!canCurrentUserViewDockSuspendDcRequests()) return [];
-            const sourceRows = getDockSuspendDcSourceRows();
+            const sourceRowsValue = getDockSuspendDcSourceRows();
+            const sourceRows = Array.isArray(sourceRowsValue) ? sourceRowsValue : [];
             const cacheKey = getDockSuspendDcSourceRowLookupRevision(sourceRows);
+            const owner = getDockSuspendDcRequestMirrorRowsOwner();
+            if (dockSuspendDcRequestMirrorRowsCacheOwner && dockSuspendDcRequestMirrorRowsCacheOwner !== owner) {
+                const prior = dockSuspendDcRequestMirrorRowsPreparation;
+                if (prior && prior.timer != null) clearTimeout(prior.timer);
+                dockSuspendDcRequestMirrorRowsPreparation = null;
+                dockSuspendDcRequestMirrorRowsCacheKey = '';
+                dockSuspendDcRequestMirrorRowsCacheSource = null;
+                dockSuspendDcRequestMirrorRowsCache = [];
+                dockSuspendDcRequestMirrorRowsCacheOwner = '';
+                dockSuspendDcRequestMirrorRowsByIdCache = null;
+                dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+            }
             if (dockSuspendDcRequestMirrorRowsCacheSource === sourceRows
-                && dockSuspendDcRequestMirrorRowsCacheKey === cacheKey && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
+                && dockSuspendDcRequestMirrorRowsCacheKey === cacheKey
+                && dockSuspendDcRequestMirrorRowsCacheOwner === owner
+                && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
                 return dockSuspendDcRequestMirrorRowsCache.slice();
             }
-            dockSuspendDcRequestMirrorRowsByIdCache = null;
-            dockSuspendDcRequestMirrorRowsByDomIdCache = null;
-            const seen = new Set();
-            const rows = (Array.isArray(sourceRows) ? sourceRows : [])
-                .map((item, index) => buildDockSuspendDcRequestMirrorRow(item, index))
-                .filter((row) => {
-                    if (!row) return false;
-                    const id = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
-                    if (!id || seen.has(id)) return false;
-                    seen.add(id);
-                    return true;
-                });
-            dockSuspendDcRequestMirrorRowsCacheKey = cacheKey;
-            dockSuspendDcRequestMirrorRowsCacheSource = sourceRows;
-            dockSuspendDcRequestMirrorRowsCache = rows;
-            return rows.slice();
+            const prior = dockSuspendDcRequestMirrorRowsPreparation;
+            if (!prior || prior.sourceRows !== sourceRows || prior.revision !== cacheKey || prior.owner !== owner) {
+                scheduleDockSuspendDcRequestMirrorRowsPreparation(sourceRows, cacheKey, owner);
+            }
+            // The last complete set stays visible during refresh only inside
+            // the same authenticated scope. A cold view waits for the first
+            // complete slice set instead of presenting a partial queue.
+            return dockSuspendDcRequestMirrorRowsCacheOwner === owner
+                && Array.isArray(dockSuspendDcRequestMirrorRowsCache)
+                ? dockSuspendDcRequestMirrorRowsCache.slice()
+                : [];
         }
 
         function appendDockSuspendDcRequestMirrorRows(items = []) {
@@ -114664,17 +114819,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
             if (!container) return null;
             const filterShell = container.querySelector('#request-suspend-tag-filter-shell');
-            const resultsShell = container.querySelector('#request-suspend-tag-results');
+            let resultsShell = container.querySelector('#request-suspend-tag-results');
             const activeInput = document.activeElement && document.activeElement.id === 'request-suspend-tag-common-search';
             if (!filterShell || !resultsShell) {
-                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems)}</div><div id="request-suspend-tag-results"></div>`);
+                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems)}</div><div id="request-suspend-tag-results"><div id="request-suspend-tag-card-list" class="request-card-list--suspend-tag"></div><div id="request-suspend-tag-footer"></div></div>`);
+                resultsShell = container.querySelector('#request-suspend-tag-results');
             } else if (activeInput) {
                 updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             } else {
                 filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             }
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
-            return container.querySelector('#request-suspend-tag-results');
+            return resultsShell && resultsShell.querySelector('#request-suspend-tag-card-list') || resultsShell;
         }
 
         function scheduleRequestSuspendTagSearchRender(focusState = null) {
@@ -117304,6 +117460,31 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
         }
 
+        function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
+            const safePlan = plan && typeof plan === 'object' ? plan : {};
+            const emptyMessage = isDockSuspendDcRequestMirrorPreparationPending()
+                ? 'Loading Suspend Tag rows…'
+                : (requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
+                    ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.');
+            const didSchedule = renderMarkupChunkedByKey('request-main', cardContainer, crumb, safePlan.rows, crumbText,
+                (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
+                    renderSignature: safePlan.renderSignature,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
+                    onComplete: () => {
+                        repairVisibleDockSuspendDcPlanstartCardTones(rootContainer);
+                        decorateRequestRows();
+                        syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
+                    },
+                    onCompleteAfterInteractive: true,
+                    onCompleteDelayMs: 140
+                }));
+            // Pagination is independent of deferred card completion; keeping it
+            // beside the card host also prevents later chunks from inserting
+            // cards after the footer.
+            syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
+            return didSchedule;
+        }
+
         function renderRequest() {
             syncRequestRenderChrome();
             const container = document.getElementById('request-content');
@@ -117497,17 +117678,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const crumbText = `Suspend Tag${requestFilterSuffix}`;
                 const plan = buildSuspendTagRenderPlan(items);
                 const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, plan.allItems, plan.searchItems, plan.assignedItems, plan.contSizeItems, plan.items);
-                renderMarkupChunkedByKey('request-main', resultsContainer, crumb, plan.rows, crumbText, (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
-                    renderSignature: plan.renderSignature,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.'}</div>`,
-                    onComplete: () => {
-                        repairVisibleDockSuspendDcPlanstartCardTones(resultsContainer);
-                        decorateRequestRows();
-                        syncRequestBrowseFooter(resultsContainer, plan.footerMarkup);
-                    },
-                    onCompleteAfterInteractive: true,
-                    onCompleteDelayMs: 140
-                }));
+                const footerContainer = container.querySelector('#request-suspend-tag-footer') || resultsContainer;
+                renderSuspendTagPagedCards(resultsContainer, footerContainer, container, crumb, crumbText, plan);
                 return;
             }
 

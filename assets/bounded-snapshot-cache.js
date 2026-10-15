@@ -5,6 +5,8 @@
   const INTERNAL_KEY_PREFIX = '__agmetric_bounded_snapshot_cache_v1__';
   const ROW_CHUNK_SIZE = 128;
   const LARGE_SNAPSHOT_ROW_COUNT = 128;
+  const MAX_CHUNK_COUNT = 100000;
+  const MANIFEST_FIELDS = new Set([MARKER, 'metadata', 'arrays', 'arrayField', 'generation', 'chunkCount', 'rowCount']);
   const writeTailsByDatabase = new WeakMap();
 
   function chunkKey(cacheKey, generation, index) {
@@ -29,19 +31,37 @@
 
   function readManifest(value) {
     if (!value || typeof value !== 'object' || value[MARKER] !== true
-      || typeof value.generation !== 'string' || !Number.isInteger(value.chunkCount)
-      || value.chunkCount < 1 || !Number.isInteger(value.rowCount) || value.rowCount <= LARGE_SNAPSHOT_ROW_COUNT
-      || value.chunkCount !== Math.ceil(value.rowCount / ROW_CHUNK_SIZE)
       || !value.metadata || typeof value.metadata !== 'object' || Array.isArray(value.metadata)) {
       return null;
     }
-    return value;
+    // Accept manifests written by the first version, whose only chunked field
+    // was rawRows, as well as manifests that preserve multiple top-level arrays.
+    const arrays = Array.isArray(value.arrays) ? value.arrays
+      : [{ field: String(value.arrayField || 'rawRows'), generation: value.generation,
+        chunkCount: value.chunkCount, rowCount: value.rowCount }];
+    if (!arrays.length) return null;
+    const fields = new Set();
+    const normalizedArrays = [];
+    for (const descriptor of arrays) {
+      const field = String(descriptor && descriptor.field || '');
+      if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(field) || MANIFEST_FIELDS.has(field) || fields.has(field)
+        || typeof descriptor.generation !== 'string' || !descriptor.generation
+        || !Number.isSafeInteger(descriptor.chunkCount) || descriptor.chunkCount < 1 || descriptor.chunkCount > MAX_CHUNK_COUNT
+        || !Number.isSafeInteger(descriptor.rowCount) || descriptor.rowCount <= LARGE_SNAPSHOT_ROW_COUNT
+        || descriptor.chunkCount !== Math.ceil(descriptor.rowCount / ROW_CHUNK_SIZE)
+        || Object.prototype.hasOwnProperty.call(value.metadata, field)) return null;
+      fields.add(field);
+      normalizedArrays.push({ field, generation: descriptor.generation,
+        chunkCount: descriptor.chunkCount, rowCount: descriptor.rowCount });
+    }
+    return { ...value, arrays: normalizedArrays };
   }
 
   function previousChunkKeys(value, cacheKey) {
     const manifest = readManifest(value);
     if (!manifest) return [];
-    return Array.from({ length: manifest.chunkCount }, (_, index) => chunkKey(cacheKey, manifest.generation, index));
+    return manifest.arrays.flatMap(array => Array.from({ length: array.chunkCount }, (_, index) =>
+      chunkKey(cacheKey, array.generation, index)));
   }
 
   function enqueueWrite(db, storeName, cacheKey, operation) {
@@ -101,33 +121,41 @@
   }
 
   async function writeSnapshot(db, storeName, cacheKey, value) {
-    const rows = value && typeof value === 'object' && Array.isArray(value.rawRows) ? value.rawRows : null;
-    if (!rows || rows.length <= LARGE_SNAPSHOT_ROW_COUNT) {
+    const largeArrays = value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.entries(value).filter(([field, rows]) => !MANIFEST_FIELDS.has(field) && Array.isArray(rows) && rows.length > LARGE_SNAPSHOT_ROW_COUNT)
+      : [];
+    if (!largeArrays.length) {
       await publish(db, storeName, cacheKey, value);
       return true;
     }
 
-    const generation = generationId();
-    const chunkCount = Math.ceil(rows.length / ROW_CHUNK_SIZE);
     const writtenKeys = [];
     const metadata = { ...value };
-    delete metadata.rawRows;
+    const descriptors = largeArrays.map(([field, rows]) => {
+      delete metadata[field];
+      return { field, rows, generation: generationId(), chunkCount: Math.ceil(rows.length / ROW_CHUNK_SIZE), rowCount: rows.length };
+    });
     const manifest = {
       [MARKER]: true,
-      generation,
-      chunkCount,
-      rowCount: rows.length,
+      arrays: descriptors.map(({ field, generation, chunkCount, rowCount }) => ({ field, generation, chunkCount, rowCount })),
       metadata
     };
+    if (descriptors.length === 1 && descriptors[0].field === 'rawRows') {
+      const only = descriptors[0];
+      Object.assign(manifest, { arrayField: only.field, generation: only.generation,
+        chunkCount: only.chunkCount, rowCount: only.rowCount });
+    }
 
     try {
-      for (let index = 0; index < chunkCount; index += 1) {
-        const key = chunkKey(cacheKey, generation, index);
-        const chunk = rows.slice(index * ROW_CHUNK_SIZE, (index + 1) * ROW_CHUNK_SIZE);
-        await putChunk(db, storeName, key, chunk);
-        writtenKeys.push(key);
-        // Let rendering and input handlers run between bounded clone operations.
-        await new Promise(resolve => setTimeout(resolve, 0));
+      for (const descriptor of descriptors) {
+        for (let index = 0; index < descriptor.chunkCount; index += 1) {
+          const key = chunkKey(cacheKey, descriptor.generation, index);
+          const chunk = descriptor.rows.slice(index * ROW_CHUNK_SIZE, (index + 1) * ROW_CHUNK_SIZE);
+          await putChunk(db, storeName, key, chunk);
+          writtenKeys.push(key);
+          // Let rendering and input handlers run between bounded clone operations.
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
       }
       await publish(db, storeName, cacheKey, manifest);
       return true;
@@ -153,21 +181,31 @@
           else result = storedValue ?? null;
           return;
         }
-        const chunks = new Array(manifest.chunkCount);
-        let remaining = manifest.chunkCount;
-        for (let index = 0; index < manifest.chunkCount; index += 1) {
-          const request = store.get(chunkKey(cacheKey, manifest.generation, index));
-          request.onsuccess = () => {
-            if (!Array.isArray(request.result)) readFailed = true;
-            else chunks[index] = request.result;
-            remaining -= 1;
-            if (remaining === 0 && !readFailed) {
-              const rawRows = chunks.flat();
-              if (rawRows.length === manifest.rowCount) result = { ...manifest.metadata, rawRows };
-            }
-          };
-          request.onerror = () => { readFailed = true; };
-        }
+        const reconstructed = { ...manifest.metadata };
+        let remaining = manifest.arrays.reduce((count, array) => count + array.chunkCount, 0);
+        manifest.arrays.forEach(array => {
+          const chunks = new Array(array.chunkCount);
+          let remainingForArray = array.chunkCount;
+          for (let index = 0; index < array.chunkCount; index += 1) {
+            const request = store.get(chunkKey(cacheKey, array.generation, index));
+            request.onsuccess = () => {
+              if (!Array.isArray(request.result)) readFailed = true;
+              else chunks[index] = request.result;
+              remainingForArray -= 1;
+              remaining -= 1;
+              if (remainingForArray === 0 && !readFailed) {
+                const rows = chunks.flat();
+                if (rows.length !== array.rowCount) readFailed = true;
+                else reconstructed[array.field] = rows;
+              }
+              if (remaining === 0 && !readFailed) {
+                if (manifest.arrays.every(descriptor => Object.prototype.hasOwnProperty.call(reconstructed, descriptor.field))) result = reconstructed;
+                else readFailed = true;
+              }
+            };
+            request.onerror = () => { readFailed = true; };
+          }
+        });
       };
       manifestRequest.onerror = () => { readFailed = true; };
       await completed;

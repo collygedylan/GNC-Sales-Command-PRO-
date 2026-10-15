@@ -300,13 +300,13 @@ test('Request and Suspend hydrate paged lists within the render gate', { tag: ['
     // during background hydration, so a count-only wait can pass too early and
     // the explicit rerender below would cancel Suspend's scheduled render.
     await expect(page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-0000"]')).toBeVisible();
-    await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 1000/);
+    await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 1,?000/);
     await expect(page.locator('#request-content [data-request-uid]')).toHaveCount(100);
     await appEval(page, 'renderRequest()');
     await assertRequestRenderGate(page, 'Suspend');
-    await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 1000/);
+    await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 1,?000/);
     const pages = await page.locator('#request-content .browse-page-footer').allTextContents();
-    expect(pages.join(' ')).toMatch(/Rows 1[–-]100 of 1000/);
+    expect(pages.join(' ')).toMatch(/Rows 1[–-]100 of 1,?000/);
   } finally {
     try { await attachRequestRenderTimings(page, testInfo); }
     finally { await stopRequestCpuProfile(cpuProfile, testInfo); }

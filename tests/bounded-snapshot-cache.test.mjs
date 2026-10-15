@@ -186,6 +186,66 @@ test('large raw snapshots use bounded chunks and reconstruct the original cached
   assert.deepEqual(readChunkSizes, [128, 128, 44]);
 });
 
+test('legacy latest-data snapshots chunk every large top-level dataset array and reconstruct the same payload', async () => {
+  const db = new FakeDatabase();
+  const original = {
+    status: 'success',
+    data: Array.from({ length: 300 }, (_, index) => ({ id: `master-${index}`, value: index })),
+    avOpenData: Array.from({ length: 140 }, (_, index) => ({ id: `av-${index}` })),
+    cropRollDriveData: [{ id: 'small-inline' }],
+    meta: { cacheSchemaVersion: 25, scopedUser: 'manager-a' }
+  };
+  const readChunkSizes = [];
+  db.onGet = result => { if (Array.isArray(result)) readChunkSizes.push(result.length); };
+
+  assert.equal(await cache.write(db, 'cache', 'latest_data', original), true);
+  const manifest = db.records.get(keyToken('latest_data'));
+  assert.deepEqual(manifest.arrays.map(array => array.field), ['data', 'avOpenData']);
+  assert.equal(Object.prototype.hasOwnProperty.call(manifest.metadata, 'data'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(manifest.metadata, 'avOpenData'), false);
+  assert.deepEqual(plain(await cache.read(db, 'cache', 'latest_data')), original);
+  assert.deepEqual(readChunkSizes, [128, 128, 44, 128, 12]);
+});
+
+test('failed legacy data-array chunks keep the old payload and clean all unpublished array chunks', async () => {
+  const db = new FakeDatabase();
+  const oldSnapshot = { status: 'success', data: Array.from({ length: 260 }, (_, index) => ({ id: `old-${index}` })) };
+  const newSnapshot = { status: 'success', data: Array.from({ length: 260 }, (_, index) => ({ id: `new-${index}` })) };
+  assert.equal(await cache.write(db, 'cache', 'latest_data', oldSnapshot), true);
+  const oldManifest = db.records.get(keyToken('latest_data'));
+  let failed = false;
+  db.shouldFailPut = (_value, key) => {
+    if (!failed && Array.isArray(key) && key[3] === 1) {
+      failed = true;
+      return true;
+    }
+    return false;
+  };
+
+  assert.equal(await cache.write(db, 'cache', 'latest_data', newSnapshot), false);
+  assert.deepEqual(plain(await cache.read(db, 'cache', 'latest_data')), oldSnapshot);
+  assert.equal(db.records.get(keyToken('latest_data')).arrays[0].generation, oldManifest.arrays[0].generation);
+  assert.equal([...db.records.entries()].some(([key, value]) => key.startsWith('a:') && value?.[0]?.id?.startsWith('new-')), false,
+    'no chunk from the failed data generation remains stored');
+});
+
+test('legacy data chunks stay isolated by cache identity', async () => {
+  const db = new FakeDatabase();
+  const first = { data: Array.from({ length: 260 }, (_, index) => ({ id: `first-${index}` })) };
+  const second = { data: Array.from({ length: 260 }, (_, index) => ({ id: `second-${index}` })) };
+  assert.deepEqual(await Promise.all([
+    cache.write(db, 'cache', 'latest_data:first', first),
+    cache.write(db, 'cache', 'latest_data:second', second)
+  ]), [true, true]);
+
+  assert.deepEqual(plain(await cache.read(db, 'cache', 'latest_data:first')), first);
+  assert.deepEqual(plain(await cache.read(db, 'cache', 'latest_data:second')), second);
+  const chunkCacheKeys = [...db.records.keys()].filter(key => key.startsWith('a:'))
+    .map(key => JSON.parse(key.slice(2))[1]);
+  assert.ok(chunkCacheKeys.includes('latest_data:first'));
+  assert.ok(chunkCacheKeys.includes('latest_data:second'));
+});
+
 test('legacy values and empty raw-row snapshots remain inline and readable', async () => {
   const db = new FakeDatabase();
   const ordinary = { cachedAt: 'today', data: [{ id: 1 }] };
@@ -265,4 +325,25 @@ test('a missing chunk fails closed instead of returning partial rows', async () 
   db.remove(['__agmetric_bounded_snapshot_cache_v1__', 'master-key', manifest.generation, 1]);
 
   assert.equal(await cache.read(db, 'cache', 'master-key'), null);
+});
+
+test('malformed manifests with oversized or unsafe chunk counts fail closed', async () => {
+  for (const descriptor of [
+    { field: 'data', generation: 'oversized', chunkCount: 100001, rowCount: 100001 * 128 },
+    { field: 'data', generation: 'unsafe', chunkCount: Number.MAX_SAFE_INTEGER + 1, rowCount: Number.MAX_SAFE_INTEGER + 1 }
+  ]) {
+    const db = new FakeDatabase();
+    db.seed('master-key', {
+      __agMetricBoundedSnapshotCacheV1: true,
+      arrays: [descriptor],
+      metadata: {}
+    });
+    let chunkReads = 0;
+    db.onGet = (_value, key) => {
+      if (Array.isArray(key)) chunkReads += 1;
+    };
+
+    assert.equal(await cache.read(db, 'cache', 'master-key'), null);
+    assert.equal(chunkReads, 0, 'invalid counts are rejected before allocating or reading chunks');
+  }
 });
