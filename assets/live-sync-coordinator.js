@@ -116,7 +116,10 @@
             return Array.from(result.values());
         }
         function identity(ctx) {
-            return JSON.stringify([ctx.scope, ctx.dataPermissionVersion || '', ctx.viewKey, (ctx.adapters || []).map((item) => [item.id, item.cacheKey])]);
+            const parts = [ctx.scope, ctx.dataPermissionVersion || '', ctx.viewKey,
+                (ctx.adapters || []).map((item) => [item.id, item.cacheKey])];
+            if (Array.isArray(ctx.previewAdapterIds)) parts.push([...ctx.previewAdapterIds].sort());
+            return JSON.stringify(parts);
         }
         function stillCurrent(ctx, startedEpoch) {
             const next = options.getContext();
@@ -363,6 +366,19 @@
             };
             const adapters = descriptors(ctx, background);
             run.adapters = adapters;
+            const visibleAdapters = ctx.adapters || [];
+            let previewAdapters = visibleAdapters;
+            if (ctx.previewAdapterIds !== undefined) {
+                const requestedPreviewIds = ctx.previewAdapterIds;
+                const visibleIds = new Set(visibleAdapters.map(adapter => adapter.id));
+                if (!Array.isArray(requestedPreviewIds) || !requestedPreviewIds.length
+                    || requestedPreviewIds.some(id => typeof id !== 'string' || !id || !visibleIds.has(id))
+                    || new Set(requestedPreviewIds).size !== requestedPreviewIds.length) {
+                    throw new Error('The progressive preview adapter subset is invalid.');
+                }
+                const previewIdSet = new Set(requestedPreviewIds);
+                previewAdapters = visibleAdapters.filter(adapter => previewIdSet.has(adapter.id));
+            }
             if (!background) requested.clear();
             // A current, canonical access snapshot can authorize showing this
             // user's previously verified display cache while the revision RPC
@@ -385,7 +401,7 @@
             }
             if (!background && needsCachedDisplay && ctx.progressive && options.readDisplaySnapshot && options.previewSnapshots
                 && ctx.dataPermissionVersion && current()) {
-                const displayEntries = await Promise.all((ctx.adapters || []).map(async (adapter) => {
+                const displayEntries = await Promise.all(previewAdapters.map(async (adapter) => {
                     const meta = { contractVersion: 1, scope: ctx.scope, adapterId: adapter.id, cacheKey: adapter.cacheKey,
                         dataPermissionVersion: String(ctx.dataPermissionVersion) };
                     try {
@@ -394,7 +410,8 @@
                     } catch (_) { return null; }
                 }));
                 if (current() && displayEntries.length && displayEntries.every(Boolean)) {
-                    options.previewSnapshots(displayEntries, ctx, null);
+                    const partialCohort = previewAdapters.length < visibleAdapters.length;
+                    options.previewSnapshots(displayEntries, { ...ctx, partialCohort }, null);
                 }
             }
             // A deferred cohort also verifies the foreground dependencies so it
@@ -448,9 +465,9 @@
                 const old = display.get(adapter.id)?.value;
                 if (value.partial && old && !old.partial) return;
                 display.set(adapter.id, { adapter, value });
-                const visibleAdapters = ctx.adapters || [];
-                if (visibleAdapters.length && visibleAdapters.every(item => display.get(item.id)?.value !== undefined)) {
-                    options.previewSnapshots(visibleAdapters.map(item => display.get(item.id)), ctx, before);
+                if (previewAdapters.length && previewAdapters.every(item => display.get(item.id)?.value !== undefined)) {
+                    const partialCohort = previewAdapters.length < visibleAdapters.length;
+                    options.previewSnapshots(previewAdapters.map(item => display.get(item.id)), { ...ctx, partialCohort }, before);
                 }
             };
             let failure = null, cursor = 0;

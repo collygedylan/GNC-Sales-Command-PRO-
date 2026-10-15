@@ -1154,6 +1154,79 @@ test('progressive previews wait while Assigned Items has a low-stock draft or fo
     assert.equal(context.hasDraft(), true);
 });
 
+test('AV primary previews render inventory without promoting write proof or joined lookup data', () => {
+    const payloads = [], renders = [], groups = new Set();
+    const state = { fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedRevision: '' };
+    const context = { view: 'av', progressive: true, visible: true, partialCohort: true };
+    const ctx = { activeAVTab: 'open', hasProductionLiveSyncDraft: () => false,
+        confirmedArgosReclassLiveEditRevisions: new Map(), getArgosReclassLiveEditIdentityKey: () => 'actor',
+        productionDisplayGroups: groups, productionDisplaySnapshotTimes: new Map(), productionDisplayVerifiedAt: new Map(),
+        productionDisplayGroupKey: () => 'av-cohort', productionLiveSyncCoordinator: { getStatus: () => ({ state: 'Syncing' }) },
+        processAndLoadData: value => payloads.push(value), renderProductionDataFreshness() {}, invalidateResolvedViewStateCaches() {},
+        scheduleProductionLiveSyncRender: (...args) => renders.push(args), getDatasetState: () => state
+    };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('previewProductionSnapshots'), ctx);
+    const entries = [{ adapter: { id: 'core:master' }, value: { partial: true, payload: { data: [{ UNIQUE_ID: 'first-page' }] } } }];
+    ctx.previewProductionSnapshots(entries, context);
+    assert.equal(payloads.length, 1); assert.equal(renders.length, 1); assert.equal(groups.has('av-cohort'), true);
+    assert.equal(payloads[0]._fromCache, true); assert.equal(payloads[0]._locOnHandReceiptRevision, undefined);
+    assert.deepEqual(state, { fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedRevision: '' });
+    assert.equal(ctx.productionDisplayVerifiedAt.size, 0, 'a partial cohort has no complete verified timestamp');
+    ctx.activeAVTab = 'reserves'; ctx.previewProductionSnapshots(entries, context);
+    ctx.activeAVTab = 'open'; ctx.hasProductionLiveSyncDraft = () => true; ctx.previewProductionSnapshots(entries, context);
+    ctx.hasProductionLiveSyncDraft = () => false;
+    ctx.previewProductionSnapshots([{ adapter: { id: 'side:settings', commit() { throw new Error('partial side commit'); } }, value: {} }], context);
+    assert.equal(payloads.length, 1, 'tab changes, drafts and non-primary cohorts do not paint');
+});
+
+test('only AV Open opts into the primary preview subset and its tab belongs to context identity', () => {
+    const ctx = { currentUser: 'actor', currentRole: 'Manager', nativeAuthProfile: { id: 'actor' }, activeAVTab: 'open',
+        appAccessSnapshotState: { status: 'ready', stale: false, username: 'actor', snapshot: { dataPermissionVersion: 'policy' } },
+        getRequestCapabilityUsernameKey: value => value, document: { hidden: false, body: { classList: { contains: () => true } } },
+        productionLiveSyncNavigation: new AbortController(), navigator: { onLine: true }, canUseProductionLiveSync: () => true,
+        view: 'av', surfaces: [], getActiveManagerReportPageSurface: () => '', getCurrentLoginCacheScopeKey: () => 'actor',
+        getProductionLiveSyncSideContext: () => ({ view: ctx.view, surfaces: ctx.surfaces }),
+        productionLiveSyncSideAdapters: { getViewAdapters: () => [{ id: 'side:settings' }] },
+        RETIRED_DATASET_KEYS: new Set(), getProductionCoreLiveProjection: () => 'browse',
+        createProductionCoreLiveAdapter: key => ({ id: `core:${key}` }),
+        window: { AgMetricLiveSyncRegistry: { views: { av: { kind: 'data' }, drive: { kind: 'data' }, home: { kind: 'static' } },
+            getCoreKeys: view => view === 'home' ? [] : ['reserves', 'master'] } },
+        appendSuspendTagBackgroundCustomerRepMap() {}, productionLiveSyncNavigationGeneration: 1, observeHlOrderVerificationContext: value => value
+    };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('getProductionLiveSyncContext'), ctx);
+    const open = ctx.getProductionLiveSyncContext();
+    assert.deepEqual(Array.from(open.previewAdapterIds), ['core:master']);
+    assert.equal(open.adapters[0].id, 'core:master');
+    ctx.activeAVTab = 'reserves'; const reserves = ctx.getProductionLiveSyncContext();
+    assert.equal(reserves.previewAdapterIds, undefined); assert.notEqual(reserves.viewKey, open.viewKey);
+    ctx.activeAVTab = 'open'; ctx.surfaces = ['dialog:request']; assert.equal(ctx.getProductionLiveSyncContext().previewAdapterIds, undefined);
+    ctx.view = 'drive'; ctx.surfaces = []; assert.equal(ctx.getProductionLiveSyncContext().previewAdapterIds, undefined);
+});
+
+test('revision reads gate status refreshes only for current identity and matching data permissions', async () => {
+    const from = html.indexOf('readRevisions: (keys, options = {}) => withProductionLiveSyncSignal');
+    const to = html.indexOf('\n                readCachedSnapshot:', from);
+    assert.ok(from > 0 && to > from);
+    const source = html.slice(from + 'readRevisions: '.length, to).trim().replace(/,$/, '');
+    const readiness = [], gate = deferred();
+    let owner = 'actor-a';
+    const metadata = { contractVersion: 1, permissionVersion: 'policy-a', sources: [{ key: 'ph_master_inventory', revision: '7', state: 'ready' }] };
+    const ctx = { getSupabaseReadIdentityScope: () => owner, withProductionLiveSyncSignal: (_signal, action) => action(new AbortController().signal),
+        supabaseRpc: async () => metadata, inventoryStatusSync: { setSourceReady: value => readiness.push(value) },
+        appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'policy-a' } } };
+    vm.createContext(ctx); const read = vm.runInContext(`(${source})`, ctx);
+    await read(['ph_master_inventory']); assert.deepEqual(readiness, [true]);
+    metadata.sources[0].state = 'importing'; await read(['ph_master_inventory']);
+    metadata.sources[0].state = 'ready'; metadata.permissionVersion = 'policy-b'; await read(['ph_master_inventory']);
+    assert.deepEqual(readiness, [true, false, false]);
+    ctx.supabaseRpc = () => gate.promise;
+    const pending = read(['ph_master_inventory']); owner = 'actor-b'; gate.resolve(metadata); await pending;
+    assert.equal(readiness.length, 3, 'late metadata from the prior identity is discarded');
+    ctx.supabaseRpc = async () => { throw new Error('metadata timeout'); };
+    await assert.rejects(read(['ph_master_inventory']), /metadata timeout/);
+    assert.deepEqual(readiness, [true, false, false, false], 'failed metadata fences pair retries');
+});
+
 test('SIGNED_OUT watcher invalidates pending native recovery before clearing the session', () => {
     const calls = []; let callback;
     const ctx = { window: {}, nativeAuthProfile: { id: 'account-a' }, nativeAuthSessionActive: true, nativeAuthAccessToken: 'old',

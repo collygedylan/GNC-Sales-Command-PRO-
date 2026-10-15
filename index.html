@@ -36614,7 +36614,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 || view === 'home' && foregroundContext.surfaces.includes('home:sync-metadata') && adapters.length > 0;
             const progressive = hasDataCohort
                 && !foregroundContext.surfaces.some(id => id.startsWith('dialog:'));
-            if (progressive && view !== 'docks' && !(view === 'request' && foregroundContext.surfaces.includes('request:suspend-tag'))) {
+            const previewAdapterIds = progressive && view === 'av' && activeAVTab === 'open' ? ['core:master'] : undefined;
+            if (previewAdapterIds?.length) {
+                adapters.sort((a, b) => Number(previewAdapterIds.includes(b.id)) - Number(previewAdapterIds.includes(a.id)));
+            } else if (progressive && view !== 'docks' && !(view === 'request' && foregroundContext.surfaces.includes('request:suspend-tag'))) {
                 adapters.sort((a, b) => Number(a.id.startsWith('core:')) - Number(b.id.startsWith('core:')));
             }
             const foregroundIds = new Set(adapters.map(adapter => adapter.id));
@@ -36625,7 +36628,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             appendSuspendTagBackgroundCustomerRepMap(backgroundAdapters, foregroundIds, view, foregroundContext.surfaces,
                 () => createProductionCoreLiveAdapter('customerRepMap',
                     getProductionCoreLiveProjection('customerRepMap', view, foregroundContext), { pageConcurrency: 1 }));
-            return observeHlOrderVerificationContext({ ...foregroundContext, progressive, scope: context.scope, viewKey: JSON.stringify([view, foregroundContext.surfaces, productionLiveSyncNavigationGeneration]), visible, online: navigator.onLine !== false, adapters, backgroundAdapters });
+            return observeHlOrderVerificationContext({ ...foregroundContext, progressive, previewAdapterIds, scope: context.scope, viewKey: JSON.stringify([view, foregroundContext.surfaces, productionLiveSyncNavigationGeneration, view === 'av' ? activeAVTab : null]), visible, online: navigator.onLine !== false, adapters, backgroundAdapters });
         }
 
         function verifiedSnapshotCacheKey(meta) {
@@ -36697,6 +36700,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function previewProductionSnapshots(snapshots, context) {
             if (!context.progressive || !context.visible || hasProductionLiveSyncDraft()) return;
+            if (context.partialCohort && (context.view !== 'av' || activeAVTab !== 'open'
+                || snapshots.some(({ adapter }) => adapter.id !== 'core:master'))) return;
             const payload = { _verifiedLiveSync: true, _fromCache: true };
             const confirmedRevision = confirmedArgosReclassLiveEditRevisions.get(getArgosReclassLiveEditIdentityKey()) || '';
             const previewEntries = confirmedRevision
@@ -36705,7 +36710,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const hasCompletePreview = previewEntries.length === snapshots.length;
             // This is display state only. No inventory proof, complete-source flag,
             // receipt reconciliation or write authorization is created here.
-            previewEntries.filter(({ adapter }) => adapter.id.startsWith('side:')).forEach(({ adapter, value }) => adapter.commit(value));
+            if (!context.partialCohort) previewEntries.filter(({ adapter }) => adapter.id.startsWith('side:')).forEach(({ adapter, value }) => adapter.commit(value));
             previewEntries.filter(({ adapter }) => adapter.id.startsWith('core:')).forEach(({ value }) => Object.assign(payload, value.payload));
             if (previewEntries.some(({ adapter }) => adapter.id.startsWith('core:'))) processAndLoadData(payload);
             if (!hasCompletePreview) {
@@ -36715,7 +36720,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             const displayKey = productionDisplayGroupKey(context);
             const cachedTimes = snapshots.map(({ adapter }) => productionDisplaySnapshotTimes.get(`${displayKey}\u001f${adapter.id}`)).filter(Boolean);
-            if (cachedTimes.length === snapshots.length && cachedTimes.length) {
+            if (!context.partialCohort && cachedTimes.length === snapshots.length && cachedTimes.length) {
                 const oldest = cachedTimes.map(value => Date.parse(value)).reduce((min, value) => Math.min(min, value), Infinity);
                 if (Number.isFinite(oldest)) productionDisplayVerifiedAt.set(displayKey, new Date(oldest).toISOString());
             }
@@ -37233,7 +37238,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 clearTimeout: cancel => cancel(),
                 getContext: getProductionLiveSyncContext,
-                readRevisions: (keys, options = {}) => withProductionLiveSyncSignal(options.signal, (signal) => supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000, signal })),
+                readRevisions: (keys, options = {}) => withProductionLiveSyncSignal(options.signal, async (signal) => {
+                    const owner = getSupabaseReadIdentityScope();
+                    let metadata;
+                    try {
+                        metadata = await supabaseRpc('get_my_dataset_revisions_v1', { p_dataset_keys: keys }, { timeoutMs: 15000, signal });
+                    } catch (error) {
+                        if (keys.includes('ph_master_inventory') && owner === getSupabaseReadIdentityScope() && !signal.aborted) {
+                            inventoryStatusSync?.setSourceReady(false);
+                        }
+                        throw error;
+                    }
+                    if (keys.includes('ph_master_inventory') && owner === getSupabaseReadIdentityScope() && !signal.aborted) {
+                        const master = metadata?.sources?.find(source => source.key === 'ph_master_inventory');
+                        inventoryStatusSync?.setSourceReady(metadata?.contractVersion === 1
+                            && metadata.permissionVersion === appAccessSnapshotState.snapshot?.dataPermissionVersion
+                            && master?.state === 'ready' && /^\d+$/.test(String(master.revision)));
+                    }
+                    return metadata;
+                }),
                 readCachedSnapshot: readProductionVerifiedSnapshot,
                 readDisplaySnapshot: readProductionDisplaySnapshot,
                 previewSnapshots: previewProductionSnapshots,
@@ -37256,6 +37279,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 },
                 onStatus: (status) => {
                     if (!updateProductionLiveSyncProofFromStatus(status)) return;
+                    if (status.state === 'Offline' || status.unavailableSources?.includes('ph_master_inventory')) inventoryStatusSync?.setSourceReady(false);
                     if (applyCurrentVerifiedSyncTimestamp(status)) updateSyncDiagnostics();
                     captureHlOrderVerificationStatus(status);
                     renderProductionDataFreshness(status);
@@ -37355,8 +37379,15 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     const client = getSupabaseBrowserClient();
                     const statusSync = getInventoryStatusSync();
                     const statusScope = getSupabaseReadIdentityScope();
+                    statusSync?.setSourceReady(false);
                     const channel = client.channel(`dataset-revisions:${nativeAuthProfile.id}`)
-                        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' }, changed)
+                        .on('postgres_changes', { event: '*', schema: 'public', table: 'app_dataset_revisions' }, payload => {
+                            if (statusScope !== getSupabaseReadIdentityScope()) return;
+                            if ((payload.new?.key || payload.old?.key) === 'ph_master_inventory') {
+                                statusSync?.setSourceReady(payload.new?.state === 'ready');
+                            }
+                            changed(payload);
+                        })
                         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ph_master_inventory' }, payload => {
                             if (statusScope === getSupabaseReadIdentityScope()) statusSync?.handleUpdate(payload);
                         })

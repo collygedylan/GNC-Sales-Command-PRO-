@@ -69,6 +69,7 @@ test('realtime updates coalesce by pair and fetch canonical rows, with other acc
   let calls = 0;
   const f = client('user-c', async requestedPair => { calls++; return [row('server', { priority: '3' }), { ...row('other'), itemcode: 'OTHER' }]; });
   const other = client('user-d', async () => { throw new Error('other client must not fetch'); });
+  f.sync.seed([row('server')]);
   const cacheKey = key('user-c');
   await mutate(cacheKey, [row('server')], { revalidate: false });
   f.sync.handleUpdate({ new: row('server', { priority: '3' }) });
@@ -118,6 +119,7 @@ test('two active clients refresh only the broadcast pair and ignore payload stat
   const a = client('device-a', async p => { fetched.push(['a', p]); return [row('a', { priority: '4' })]; });
   const b = client('device-b', async p => { fetched.push(['b', p]); return [row('a', { priority: '4' })]; });
   const unrelated = JSON.stringify(['inventory-status', 'device-a', pair.itemcode, 'OTHER']);
+  a.sync.seed([row('a')]); b.sync.seed([row('a')]);
   await mutate(unrelated, ['untouched'], { revalidate: false });
   a.sync.handleUpdate({ new: row('a', { priority: 'untrusted' }) });
   b.sync.handleUpdate({ new: row('a', { priority: 'untrusted' }) });
@@ -183,7 +185,7 @@ test('suspend cancels pending work; reconnect refreshes seeded pairs and account
   assert.equal(calls, 0);
   f.sync.resume();
   await wait(5);
-  assert.equal(calls, 1);
+  assert.equal(calls, 0, 'reconnect waits for the authoritative cohort reconciliation');
   const late = client('late', () => new Promise(resolve => { release = resolve; }), { getScope: () => scope });
   late.sync.seed([row('a')]);
   const readRequest = late.sync.revalidate(pair);
@@ -192,4 +194,93 @@ test('suspend cancels pending work; reconnect refreshes seeded pairs and account
   await readRequest;
   assert.equal(late.confirmed.length, 0);
   assert.equal(await read(key('lifecycle-b')), undefined);
+});
+
+test('source fence suppresses pair reads, preserves optimism, and recovers bounded seeded notifications', async () => {
+  let calls = 0;
+  const f = client('source-fence', async () => { calls++; return [row('visible', { priority: '4' })]; });
+  f.sync.seed([row('visible')]);
+  const token = f.sync.begin([{ ...pair, unique_id: 'visible', priority: '4' }]);
+  f.sync.setSourceReady(false);
+  f.sync.handleUpdate({ new: row('visible') });
+  await wait(10);
+  assert.equal(calls, 0);
+  assert.equal(f.sync.getDisplayRow(row('visible')).priority, '4');
+  f.sync.setSourceReady(true);
+  await wait(10);
+  assert.equal(calls, 0, 'unconfirmed optimistic edits remain behind the mutation fence');
+  await f.sync.rollback(token);
+  f.sync.handleUpdate({ new: row('visible') });
+  await wait(10);
+  assert.equal(calls, 1);
+});
+
+test('explicit revalidation requested during a source fence is recovered after readiness returns', async () => {
+  let calls = 0;
+  const f = client('source-explicit-recovery', async () => { calls++; return [row('visible')]; });
+  f.sync.seed([row('visible')]);
+  f.sync.setSourceReady(false);
+  await f.sync.revalidate(pair);
+  assert.equal(calls, 0);
+  f.sync.setSourceReady(true);
+  await wait(10);
+  assert.equal(calls, 1);
+});
+
+test('import storm overflow skips per-pair recovery and leaves full cohort reconciliation authoritative', async () => {
+  let calls = 0;
+  const f = client('source-storm', async () => { calls++; return []; });
+  const rows = Array.from({ length: 80 }, (_, index) => row(`r${index}`, {
+    itemcode: `SKU.${index}`, locationcode: `LOC.${index}`,
+  }));
+  f.sync.seed(rows);
+  f.sync.setSourceReady(false);
+  for (const item of rows) f.sync.handleUpdate({ new: item });
+  f.sync.setSourceReady(true);
+  await wait(20);
+  assert.equal(calls, 0, 'more than 64 recovery pairs do not fan out into pair reads');
+});
+
+test('unseeded Realtime storm is ignored while the service keeps its default ready behavior', async () => {
+  let calls = 0;
+  const f = client('unseeded-storm', async () => { calls++; return []; });
+  for (let index = 0; index < 9539; index++) {
+    f.sync.handleUpdate({ new: row(`unseeded-${index}`, { itemcode: `SKU.${index}`, locationcode: `LOC.${index}` }) });
+  }
+  await wait(10);
+  assert.equal(calls, 0, 'Realtime events cannot create reads for pairs absent from the seeded visible set');
+});
+
+test('ready-state notification overflow discards the batch instead of issuing pair-read fanout', async () => {
+  let calls = 0;
+  const f = client('ready-storm', async () => { calls++; return []; });
+  const rows = Array.from({ length: 80 }, (_, index) => row(`visible-${index}`, {
+    itemcode: `SKU.${index}`, locationcode: `LOC.${index}`,
+  }));
+  f.sync.seed(rows);
+  for (const item of rows) f.sync.handleUpdate({ new: item });
+  await wait(20);
+  assert.equal(calls, 0, 'the capped debounce batch falls back to the authoritative cohort');
+});
+
+test('pair reads use at most four concurrent fetches while retaining coalesced old/new identity events', async () => {
+  let active = 0, maximum = 0;
+  const fetched = [];
+  const f = client('bounded-reads', async requestedPair => {
+    active++; maximum = Math.max(maximum, active); fetched.push(requestedPair);
+    await wait(3);
+    active--;
+    return [];
+  });
+  const rows = Array.from({ length: 9 }, (_, index) => row(`r${index}`, {
+    itemcode: `SKU.${index}`, locationcode: `LOC.${index}`,
+  }));
+  f.sync.seed(rows);
+  const moved = { ...rows[0], itemcode: 'SKU.MOVED', locationcode: 'LOC.MOVED' };
+  f.sync.seed([moved]);
+  for (const item of rows) f.sync.handleUpdate({ new: item });
+  f.sync.handleUpdate({ old: rows[0], new: moved });
+  await wait(100);
+  assert.equal(maximum, 4);
+  assert.equal(fetched.length, 10, 'old and new seeded pairs are each reconciled once');
 });
