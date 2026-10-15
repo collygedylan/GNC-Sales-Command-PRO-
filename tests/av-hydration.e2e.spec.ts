@@ -4,6 +4,10 @@ import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
 // @test-group: @home-role
 
+// Keep profiler, trace, and screenshot work out of acceptance measurements.
+// Set AV_CPU_PROFILE=1 only when collecting a diagnostic CPU profile.
+test.use({ trace: 'off', screenshot: 'off' });
+
 const SYNTHETIC_MASTER_ROWS = 12000;
 const PREVIEW_PAGE_SIZE = 500;
 const PREVIEW_DISPLAY_ROW_LIMIT = 50;
@@ -231,7 +235,10 @@ async function installAvTimingProbe(page: Page) {
         probe.searchResultAt = 0;
         probe.searchObserver?.disconnect();
         probe.searchObserver = new MutationObserver(captureSearchResult);
-        probe.searchObserver.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+        const avContainer = document.getElementById('av-content');
+        const avCrumb = document.getElementById('av-crumb');
+        if (avContainer) probe.searchObserver.observe(avContainer, { childList: true, subtree: true, attributes: true, characterData: true });
+        if (avCrumb) probe.searchObserver.observe(avCrumb, { childList: true, subtree: true, characterData: true });
         probe.longTaskObserver?.disconnect();
         probe.longTaskObserver = new PerformanceObserver(entries => {
           for (const entry of entries.getEntries()) probe.longTaskDurations.push(entry.duration);
@@ -251,9 +258,10 @@ async function installAvTimingProbe(page: Page) {
         };
         probe.observer?.disconnect();
         probe.observer = new MutationObserver(() => { if (!capture()) requestAnimationFrame(capture); });
-        probe.observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+        if (!avContainer) throw new Error('AV content container is unavailable');
+        probe.observer.observe(avContainer, { childList: true, subtree: true, attributes: true });
         requestAnimationFrame(capture);
-        probe.observer.observe(document.getElementById('av-content') || document.body, { childList: true, subtree: true, characterData: true });
+        probe.observer.observe(avContainer, { childList: true, subtree: true, characterData: true });
       }, { once: true, capture: true });
     };
     arm();
@@ -384,12 +392,15 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
   let cpuProfilerSession: CDPSession | null = null;
   let cpuProfilerStarted = false;
   let cpuProfileSummary: ReturnType<typeof summarizeCpuProfile> | null = null;
+  const cpuProfileEnabled = process.env.AV_CPU_PROFILE === '1';
   try {
-    cpuProfilerSession = await page.context().newCDPSession(page);
-    await cpuProfilerSession.send('Profiler.enable');
-    await cpuProfilerSession.send('Profiler.setSamplingInterval', { interval: 1000 });
-    await cpuProfilerSession.send('Profiler.start');
-    cpuProfilerStarted = true;
+    if (cpuProfileEnabled) {
+      cpuProfilerSession = await page.context().newCDPSession(page);
+      await cpuProfilerSession.send('Profiler.enable');
+      await cpuProfilerSession.send('Profiler.setSamplingInterval', { interval: 1000 });
+      await cpuProfilerSession.send('Profiler.start');
+      cpuProfilerStarted = true;
+    }
     await page.locator('#home-tile-av').click();
     await Promise.all([fixture.waitForHeldMasterLaterPage(), sideReadStarted]);
     await expect(page.locator('#av-content [data-dom-id]').first()).toBeVisible();
@@ -461,18 +472,23 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     await expect(page.locator('#av-content [data-dom-id]').filter({ hasText: 'AVH.00049' }).first()).toBeVisible();
 
     const readsBeforeWarmRepeat = fixture.backgroundMasterReads;
+    const warmCard = await page.locator('#av-content [data-dom-id]').first().elementHandle();
+    expect(warmCard, 'a completed AV card is available before navigating away').not.toBeNull();
+    const warmCardDomId = await warmCard!.getAttribute('data-dom-id');
     await page.locator('#global-header-inline-back').click();
     await expect(page.locator('#view-home')).toBeVisible();
     await page.evaluate(() => window.eval('__armAvHydrationTiming()'));
     await page.locator('#home-tile-av').click();
     await expect(page.locator('#av-content [data-dom-id]').first()).toBeVisible();
+    await expect.poll(async () => warmCard!.evaluate(node => node.isConnected
+      && node.isSameNode(document.querySelector('#av-content [data-dom-id]')))).toBe(true);
+    expect(await warmCard!.getAttribute('data-dom-id')).toBe(warmCardDomId);
     await expect.poll(async () => (await timingEvidence(page)).firstCardMs).not.toBeNull();
     await page.waitForFunction(() => window.eval(`productionLiveSyncVerifiedView === productionVerifiedViewKey()
       && getProductionLiveSyncCoordinator().getStatus().state === 'Up to date'`), null, { timeout: 10_000 });
     const warm = await timingEvidence(page);
     await captureMilestone('warm-repeat', warm);
     expect.soft(warm.firstCardMs).toBeLessThan(1000);
-    expect(warm.dataRenderDurationsMs.length).toBeGreaterThan(0);
     expect.soft(warm.maxMainThreadOperationMs).toBeLessThan(100);
     expect(fixture.backgroundMasterReads).toBe(readsBeforeWarmRepeat);
     expect(warm.master.rowCompleteness).toBe('complete');
@@ -484,8 +500,12 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
         nodeVersion: process.version,
         browserVersion: await page.context().browser()?.version(),
         viewport: page.viewportSize(),
+        trace: 'off',
+        screenshots: 'off',
+        cpuProfile: cpuProfileEnabled ? 'enabled by AV_CPU_PROFILE=1' : 'disabled for acceptance timing',
+        domObserverScope: '#av-content and #av-crumb; long-task observer remains page-wide for the main-thread gate',
         coldAssumptions: 'Fresh Playwright test context, cold fixture login, no-cache request headers, and service workers blocked by the home-role config.',
-        warmAssumptions: 'Same page context after full browse-cohort verification; repeat reuses the verified in-memory browse dataset.'
+        warmAssumptions: 'Same page context after full browse-cohort verification; the first card DOM node is retained and no new master read is allowed.'
       },
       firstPageLimit: masterPageLimits[0], coldPreview: preview, gatedState: gated, fullVerification: full,
       previewInteraction, warmRepeat: warm, heldSideReadCount: sideReadsHeld,

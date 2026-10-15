@@ -87313,6 +87313,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     sourceKey: identity.sourceKey,
                     rows: derivation.sourceRows,
                     chunkSize: AV_DERIVED_ROWS_CHUNK_SIZE,
+                    deferFirstSlice: true,
                     mapRow: derivation.mapRow,
                     finalize: derivation.finalize,
                     isCurrent: () => {
@@ -91163,13 +91164,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const adaptiveLevel = getAdaptivePerformanceLevel();
             const touchOptimized = adaptiveConstrained || isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const iosConstrained = isIOSDevice();
-            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
-            const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             // A paginated view still needs a bounded first paint: generating all
             // 100 rich cards synchronously blocks navigation and search input.
+            // Avoid a viewport read after the toolbar writes, and put the first
+            // cards through the same frame budget as every subsequent batch.
             const chunkSize = adaptiveConstrained || iosConstrained ? 8 : 12;
-            const initialTarget = Math.min(total, Math.max(4,
-                Math.min(6, Math.ceil(viewportHeight / approxCardHeight))));
+            const initialTarget = Math.min(total, 4);
             const perFrameLimit = chunkSize;
             const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
@@ -91211,12 +91211,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     html += generateCard(rows[rowIndex], sourceView, 'status-teal', { rowIndex });
                     index += 1;
                     rendered += 1;
-                    const minMeasuredRows = iosConstrained ? Math.max(3, Math.ceil(chunkSize / 3)) : Math.max(6, Math.ceil(chunkSize / 3));
-                    if (useBudget && rendered >= minMeasuredRows && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
+                    if (useBudget && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
             };
-            setContainerHtml(container, renderBatch(initialTarget, false));
+            let firstBatch = true;
             const queueNextChunkFrame = () => {
                 if (token !== avRenderChunkToken) return;
                 const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 4 });
@@ -91252,8 +91251,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
-                const html = renderBatch(perFrameLimit, true);
-                if (html) appendHtmlFragment(container, html);
+                const html = renderBatch(firstBatch ? initialTarget : perFrameLimit, true);
+                if (firstBatch) {
+                    setContainerHtml(container, html);
+                    firstBatch = false;
+                } else if (html) appendHtmlFragment(container, html);
                 if (index < total) queueNextChunkFrame();
                 else {
                     if (footerHtml) container.insertAdjacentHTML('beforeend', footerHtml);
@@ -114139,7 +114141,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return { value, label: formatRequestSuspendTagDockLabel(rawDock || value) };
         }
 
-        function compareRequestSuspendTagDockOptions(a, b) {
+        function compareRequestSuspendTagDockOptions(a, b, compareText = null) {
             const av = String(a && a.value || '');
             const bv = String(b && b.value || '');
             if (av === 'no-dock' && bv !== 'no-dock') return 1;
@@ -114149,7 +114151,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const an = Number((al.match(/\d+/) || [''])[0]);
             const bn = Number((bl.match(/\d+/) || [''])[0]);
             if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
-            return al.localeCompare(bl, undefined, { numeric: true, sensitivity: 'base' });
+            return compareText ? compareText(al, bl) : al.localeCompare(bl, undefined, { numeric: true, sensitivity: 'base' });
         }
 
         function getRequestSuspendTagDockFilterOptions(items = []) {
@@ -114294,22 +114296,28 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return safeItems.filter((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item).value === filterValue);
         }
 
-        function compareRequestSuspendTagRows(a, b) {
+        function compareRequestSuspendTagRows(a, b, collators = null) {
             const dockCompare = compareRequestSuspendTagDockOptions(
                 getRequestSuspendTagDockFilterOptionForItem(a),
-                getRequestSuspendTagDockFilterOptionForItem(b)
+                getRequestSuspendTagDockFilterOptionForItem(b),
+                collators && collators.text
             );
             if (dockCompare) return dockCompare;
-            const stopCompare = String(firstNonEmptyValue(a && a.STOPNUMBER, a && a.STOP, a && a.stopnumber, a && a.stop, '') || '')
-                .localeCompare(String(firstNonEmptyValue(b && b.STOPNUMBER, b && b.STOP, b && b.stopnumber, b && b.stop, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+            const compareText = collators ? collators.text : (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+            const stopCompare = compareText(String(firstNonEmptyValue(a && a.STOPNUMBER, a && a.STOP, a && a.stopnumber, a && a.stop, '') || ''),
+                String(firstNonEmptyValue(b && b.STOPNUMBER, b && b.STOP, b && b.stopnumber, b && b.stop, '') || ''));
             if (stopCompare) return stopCompare;
-            const locationCompare = compareLocationCodeValues(a && a.LOCATIONCODE, b && b.LOCATIONCODE);
+            const locationCompare = compareLocationCodeValues(a && a.LOCATIONCODE, b && b.LOCATIONCODE, collators && collators.location);
             if (locationCompare) return locationCompare;
-            return String(a && a.COMMONNAME || '').localeCompare(String(b && b.COMMONNAME || ''), undefined, { numeric: true, sensitivity: 'base' });
+            return compareText(String(a && a.COMMONNAME || ''), String(b && b.COMMONNAME || ''));
         }
 
         function buildSuspendTagRenderPlan(items) {
-            const allItems = getSuspendTagRequestItems(items).sort(compareRequestSuspendTagRows);
+            const collators = {
+                text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
+                location: new Intl.Collator(undefined, { numeric: true }).compare
+            };
+            const allItems = getSuspendTagRequestItems(items).sort((a, b) => compareRequestSuspendTagRows(a, b, collators));
             const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
             const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems);
             const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems);
@@ -116304,13 +116312,11 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function getPendingRequestChunkRenderOptions(options = {}) {
             const resolved = getRequestChunkRenderOptions(options);
-            const narrowScreen = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-                && window.matchMedia('(max-width: 639px)').matches;
             // Keep the first paint bounded; subsequent rows use the existing
             // budgeted chunks, completion checks, and cancellation tokens.
             return {
                 ...resolved,
-                initialRows: Number(resolved.initialRows) > 0 ? resolved.initialRows : (narrowScreen ? 4 : 8),
+                initialRows: Number(options.initialRows) > 0 ? options.initialRows : 2,
                 chunkSize: resolved.chunkSize ?? 8,
                 perFrameRows: resolved.perFrameRows ?? 8
             };
@@ -160661,7 +160667,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getTaskLocationBucket(item) { return LocationCode.base(item && (item.LOCATIONCODE || item.locationcode)) || 'UNASSIGNED'; }
 
-        function compareLocationCodeValues(a, b) {
+        function compareLocationCodeValues(a, b, compareText = null) {
             const normalize = (value) => String(value || '').trim().toUpperCase();
             const parse = (value) => {
                 const clean = normalize(value);
@@ -160675,7 +160681,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             const left = parse(a);
             const right = parse(b);
-            const blockCompare = left.block.localeCompare(right.block, undefined, { numeric: true });
+            const blockCompare = compareText ? compareText(left.block, right.block) : left.block.localeCompare(right.block, undefined, { numeric: true });
             if (blockCompare !== 0) return blockCompare;
             const maxLen = Math.max(left.parts.length, right.parts.length);
             for (let i = 0; i < maxLen; i++) {
@@ -160683,7 +160689,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const rightPart = Number.isFinite(right.parts[i]) ? right.parts[i] : -1;
                 if (leftPart !== rightPart) return leftPart - rightPart;
             }
-            return left.raw.localeCompare(right.raw, undefined, { numeric: true });
+            return compareText ? compareText(left.raw, right.raw) : left.raw.localeCompare(right.raw, undefined, { numeric: true });
         }
 
         function sortTaskLocationDetailItems(items = []) {

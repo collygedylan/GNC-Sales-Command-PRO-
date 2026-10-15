@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
+import { setImmediate as nextEventLoopTurn } from 'node:timers/promises';
 
 const source = readFileSync(new URL('../assets/av-derived-rows.js', import.meta.url), 'utf8');
 const appSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
@@ -21,6 +22,61 @@ function createHarness() {
   vm.runInNewContext(source, context);
   return { api: context.window.AgMetricAvDerivedRows, flushOne: () => queued.shift()?.(), queued };
 }
+
+test('render consumers can defer the first derivation slice and cancel before any row work', async () => {
+  const h = createHarness();
+  let mapped = 0;
+  const options = { key: 'view', scope: 'actor', sourceKey: 'r1', rows: [1, 2], deferFirstSlice: true,
+    mapRow: row => { mapped += 1; return row; } };
+  const cancelled = h.api.prepare(options);
+  assert.equal(mapped, 0);
+  h.api.clearScope('actor');
+  h.flushOne();
+  assert.equal(await cancelled, null);
+  assert.equal(mapped, 0);
+  const pending = h.api.prepare(options);
+  assert.equal(mapped, 0);
+  h.flushOne();
+  assert.deepEqual(Array.from(await pending), [1, 2]);
+  assert.equal(mapped, 2);
+});
+
+test('AV first cards use scheduled bounded frames and obsolete renders never replace the visible list', () => {
+  const frames = [], generated = [];
+  const container = { style: {}, classList: { add() {} }, html: 'previous', insertAdjacentHTML(_where, value) { this.html += value; } };
+  const context = { avRenderChunkToken: 0, window: {}, Date, Math, Array, String,
+    performance: { now: () => 0 }, beginInternalPerfMeasure: () => 0,
+    clearChunkRenderTimersByKey() {}, buildRowsRenderSignature: () => 'changed',
+    isAdaptivePerformanceMode: () => false, getAdaptivePerformanceLevel: () => 0,
+    isIOSDevice: () => false, isStandaloneApp: () => false,
+    CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 1000, getContainerRenderSignature: () => '',
+    getChunkRenderPacing: count => ({ batchTarget: count, timeBudget: 5, frameDelayMs: 0 }),
+    generateCard: row => { generated.push(row); return `[${row}]`; },
+    setContainerHtml: (target, value) => { target.html = value; },
+    appendHtmlFragment: (target, value) => { target.html += value; },
+    shouldHoldFollowupChunkFramesForInteraction: () => false,
+    isUserInLiveTouchScrollGesture: () => false,
+    scheduleChunkRenderTimeout: (_key, callback) => frames.push(callback),
+    requestAnimationFrame: callback => frames.push(callback),
+    setContainerRenderSignature: (target, value) => { target.signature = value; },
+    recordInternalPerfDuration() {} };
+  vm.createContext(context);
+  vm.runInContext(extractAppFunction('renderAVOpenCardsChunked'), context);
+  const rows = Array.from({ length: 50 }, (_, id) => id);
+  context.renderAVOpenCardsChunked(container, {}, rows, 'open', 'Rows', 'footer');
+  assert.equal(container.html, 'previous');
+  assert.equal(generated.length, 0, 'no rich cards are built in the synchronous render');
+  context.avRenderChunkToken += 1;
+  frames.shift()();
+  assert.equal(container.html, 'previous');
+  context.renderAVOpenCardsChunked(container, {}, rows, 'open', 'Rows', 'footer');
+  frames.shift()();
+  assert.equal(generated.length, 4);
+  while (frames.length) frames.shift()();
+  assert.equal(generated.length, 50);
+  assert.equal(container.html, rows.map(id => `[${id}]`).join('') + 'footer');
+  assert.equal(container.signature, 'changed:page:50');
+});
 
 test('AV derived rows publish atomically after bounded slices and reuse exact source revisions', async () => {
   const h = createHarness(), rows = Array.from({ length: 9_539 }, (_, id) => ({ id }));
@@ -139,6 +195,7 @@ test('production AV derivation identity separates data revisions, buckets, and p
 test('failed AV derivation clears only its current partial view cache so a later render retries', async () => {
   const identity = { key: 'actor:policy:current', scope: 'actor:policy', sourceKey: 'master:r1', signature: 'actor:policy::current::master:r1' };
   let prepareCalls = 0;
+  let scheduledRenders = 0;
   const context = {
     window: { AgMetricAvDerivedRows: {
       peek: () => null,
@@ -156,7 +213,7 @@ test('failed AV derivation clears only its current partial view cache so a later
     }),
     avDerivedRowsActiveScope: '', avDerivedRowsPendingSignature: '',
     avResolvedBaseStateKey: 'partial-state', avResolvedBaseStateCache: { isPartial: true },
-    activeAVTab: 'open', isViewVisible: () => true, scheduleAVRender() {},
+    activeAVTab: 'open', isViewVisible: () => true, scheduleAVRender() { scheduledRenders += 1; },
     console: { warn() {} },
   };
   vm.createContext(context);
@@ -165,14 +222,20 @@ test('failed AV derivation clears only its current partial view cache so a later
   const first = context.getAvSalesRowsForRendering('current', identity);
   assert.equal(first.partial, true);
   assert.equal(first.rows[0].id, 'preview');
-  await Promise.resolve();
-  await Promise.resolve();
+  // A user-triggered render runs in a later task, after then/catch/finally
+  // settle. Counting individual microtasks can resume before finally.
+  await nextEventLoopTurn();
   assert.equal(context.avResolvedBaseStateKey, '', 'the failed current derivation invalidates the cached partial base state');
   assert.equal(context.avResolvedBaseStateCache, null);
+  assert.equal(context.avDerivedRowsPendingSignature, '', 'settlement releases the in-flight retry guard');
+  assert.equal(prepareCalls, 1, 'failure does not start an automatic retry loop');
+  assert.equal(scheduledRenders, 0, 'the current preview remains displayed until a later render');
 
   context.getAvSalesRowsForRendering('current', identity);
   assert.equal(prepareCalls, 2, 'a later render retries the same source revision');
-  await Promise.resolve();
+  await nextEventLoopTurn();
+  assert.equal(scheduledRenders, 1, 'successful preparation schedules the completed rows');
+  assert.equal(context.avDerivedRowsPendingSignature, '');
 });
 
 test('chunked AV derivation preserves bucket filtering, approval, deduplication, and sort parity', async () => {

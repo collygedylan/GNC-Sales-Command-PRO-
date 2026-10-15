@@ -42,6 +42,26 @@ function fixture() {
 
 const rows = (count) => Array.from({ length: count }, (_, i) => ({ UNIQUE_ID: `request-${i}`, LOCATIONCODE: String(i).padStart(5, '0'), label: `Row ${i}` }));
 
+test('reused Suspend collators preserve dock, stop, location, and Unicode name ordering', () => {
+  const ctx = vm.createContext({
+    firstNonEmptyValue: (...values) => values.find(value => value !== null && value !== undefined && value !== '') || '',
+    getRequestSuspendTagDockFilterOptionForItem: row => ({ value: row.dock, label: row.dock })
+  });
+  for (const name of ['compareRequestSuspendTagDockOptions', 'compareLocationCodeValues', 'compareRequestSuspendTagRows']) {
+    vm.runInContext(source(name), ctx);
+  }
+  const collators = { text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
+    location: new Intl.Collator(undefined, { numeric: true }).compare };
+  const data = Array.from({ length: 120 }, (_, id) => ({
+    id, dock: ['Dock 2', 'Dock 10', 'no-dock'][id % 3], STOPNUMBER: ['', '2', '10'][id % 3],
+    LOCATIONCODE: ['A.2', 'A.10', 'B.2.1', 'A.2.1', 'A-2'][id % 5],
+    COMMONNAME: ['Érable 2', 'érable 10', 'Oak 3', 'Oak 12'][id % 4]
+  }));
+  const original = data.slice().sort((a, b) => ctx.compareRequestSuspendTagRows(a, b));
+  const optimized = data.slice().sort((a, b) => ctx.compareRequestSuspendTagRows(a, b, collators));
+  assert.deepEqual(optimized.map(row => row.id), original.map(row => row.id));
+});
+
 test('Pending computes rich card signatures for only its 100-row page at production scale', () => {
   const ctx = fixture();
   const plan = ctx.buildPendingRequestRenderPlan(rows(9539));

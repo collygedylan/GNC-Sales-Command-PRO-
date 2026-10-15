@@ -3,6 +3,9 @@ import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
 // @test-group: @home-role
 
+// Keep profiler, trace, and screenshot work out of acceptance measurements.
+test.use({ trace: 'off', screenshot: 'off' });
+
 type FixtureRow = Record<string, string | number | boolean>;
 type AppApiBody = {
   action?: string;
@@ -61,6 +64,13 @@ async function installRequestListFixture(page: Page, baseURL: string) {
     username: 'dylan_collyge',
     role: 'ADMIN',
     beforeNavigate: async () => {
+      await page.route('**/rest/v1/rpc/get_request_capabilities', async (route: Route) => {
+        return route.fulfill({ status: 200, contentType: 'application/json',
+          headers: { 'access-control-allow-origin': '*' },
+          body: JSON.stringify({ contract_version: 2, username: 'dylan_collyge', scope: 'global',
+            can_create_general: false, can_create_av: false, can_view_queue: true,
+            can_take_photo: false, can_edit: true, can_complete: true, can_archive: true }) });
+      });
       await page.route('**/functions/v1/app-api', async (route: Route) => {
         const request = route.request();
         const body = (request.postDataJSON() || {}) as AppApiBody;
@@ -149,7 +159,9 @@ async function assertRequestRenderGate(page: Page) {
   expect(durations.length).toBeGreaterThan(0);
   console.log('REQUEST_LIST_RENDER_MEASUREMENT', JSON.stringify({ renderMs: durations, chunkMs: chunks,
     browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
-    datasetRows: { pending: 200, suspend: 1000 }, cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.' }));
+    datasetRows: { pending: 200, suspend: 1000 },
+    instrumentation: { trace: 'off', screenshots: 'off' },
+    cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.' }));
   expect(Math.max(...durations, ...chunks)).toBeLessThan(100);
 }
 

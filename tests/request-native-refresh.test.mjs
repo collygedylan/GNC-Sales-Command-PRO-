@@ -689,7 +689,7 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   const onComplete = () => {};
   const input = { renderSignature: 'all-rows-signature:page:0', onComplete };
   const desktop = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(desktop.initialRows, 8);
+  assert.equal(desktop.initialRows, 2);
   assert.equal(desktop.renderSignature, input.renderSignature);
   assert.equal(desktop.onComplete, onComplete);
   assert.equal(desktop.onCompleteAfterInteractive, true);
@@ -698,7 +698,7 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   assert.equal(ctx.getPendingRequestChunkRenderOptions({ initialRows: 3 }).initialRows, 3, 'explicit pacing remains authoritative');
   ctx.window = { matchMedia: query => { assert.equal(query, '(max-width: 639px)'); return { matches: true }; } };
   const narrow = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(narrow.initialRows, 4);
+  assert.equal(narrow.initialRows, 2);
   assert.equal(narrow.chunkSize, 8);
   assert.equal(narrow.perFrameRows, 8);
   assert.equal(narrow.onComplete, onComplete);
@@ -708,12 +708,12 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   assert.equal(explicit.perFrameRows, 1);
   ios = true;
   const phone = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(phone.initialRows, 6);
+  assert.equal(phone.initialRows, 2);
   assert.equal(phone.iosSyncRowLimit, 80);
   assert.equal(phone.verifyRowSelector, '[data-request-uid]');
   assert.equal(phone.completionDeadlineMs, 1200);
   level = 2;
-  assert.equal(ctx.getPendingRequestChunkRenderOptions(input).initialRows, 4);
+  assert.equal(ctx.getPendingRequestChunkRenderOptions(input).initialRows, 2);
   assert.equal(input.initialRows, undefined, 'caller options are not mutated');
 });
 

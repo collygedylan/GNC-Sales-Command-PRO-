@@ -92,7 +92,10 @@
       }
     };
 
-    runSlice();
+    // Rendering consumers already have a bounded preview. Let it paint before
+    // starting the full cohort, while retaining synchronous small-job callers.
+    if (input.deferFirstSlice === true) job.timer = schedule(runSlice);
+    else runSlice();
     return job.promise;
   }
 

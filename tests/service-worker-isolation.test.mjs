@@ -123,6 +123,24 @@ test('fresh install precaches the exact versioned runtime requested by the compi
   assert.equal(await navigation.response.text(), 'CURRENT SHELL', 'offline navigation upgrades shell and runtime together');
 });
 
+test('Phase 4 installs the AV scheduler and isolates new list code from the previous static cache', async () => {
+  const h = harness();
+  const build = h.evaluate('APP_SHELL_BUILD');
+  const oldCacheName = `ag-data-v4.3-rebuild-${build}-scope-r1`;
+  const runtime = `/assets/live-app-runtime-v2026082010.min.js?v=${encodeURIComponent(build)}`;
+  await (await h.caches.open(oldCacheName)).put(runtime, new Response('OLD LIST RUNTIME'));
+  assert.notEqual(h.evaluate('CACHE_NAME'), oldCacheName);
+  h.setFetch(async () => new Response('NEW LIST CODE'));
+  await h.dispatch('install');
+  h.setFetch(async () => { throw new Error('offline'); });
+  for (const path of [runtime, '/assets/av-derived-rows.js']) {
+    const result = await h.dispatch('fetch', { request: request(path, { destination: 'script' }) });
+    assert.equal(await result.response.text(), 'NEW LIST CODE');
+  }
+  assert.equal(await (await (await h.caches.open(oldCacheName)).match(runtime)).text(), 'OLD LIST RUNTIME',
+    'installation does not overwrite a running old worker cache before activation');
+});
+
 test('all split AURA modules bypass shared service-worker storage', async () => {
   const h = harness();
   for (const file of ['assets/aura-voice', 'components/common/auraVoiceWidget', 'components/common/auraQueryPanel', 'services/auraVoiceService', 'services/auraConversation', 'utils/auraIntentParser', 'utils/auraLingo']) {
