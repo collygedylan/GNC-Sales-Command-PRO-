@@ -18,7 +18,7 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
   let controller: AbortController | undefined;
   let repController: AbortController | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let editing = false, reps: RepOption[] = [], listRevision = '';
+  let editing = false, reps: RepOption[] = [], listRevision = '', repsRevision = '';
   let displayedPage: MappingPage | undefined;
   const assignments = createCustomerRepAssignments(transport, identityScope);
   const drafts = new Map<string, string>();
@@ -132,8 +132,8 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
       const result = await assignments.list({ action: 'customer-rep-map', operation: 'list', page, pageSize: 50, filters: {...filters}, sort, direction },controller.signal);
       if (disposed || ticket !== generation) return;
       error.textContent = '';
-      assignments.storePage(cacheKey,result); const revisionChanged=!!listRevision&&listRevision!==result.revision; if (revisionChanged) reps=[]; listRevision=result.revision;
-      paint(result); if (revisionChanged||!reps.length) void loadReps();
+      assignments.storePage(cacheKey,result); const revisionChanged=!!listRevision&&listRevision!==result.revision; if (revisionChanged) { reps=[]; repsRevision=''; } listRevision=result.revision;
+      paint(result); if (revisionChanged||!reps.length||repsRevision!==result.revision) void loadReps();
     } catch (reason) { if (!disposed && ticket === generation) { status.textContent = cached ? 'Showing saved results. Refresh to retry.' : ''; error.textContent = reason instanceof Error ? reason.message : 'Mappings unavailable. Select Refresh to retry.'; } }
   }
   function paint(result: MappingPage) {
@@ -160,12 +160,13 @@ export function mountCustomerRepMapping(root: HTMLElement, transport: MappingTra
   }
   async function loadReps() {
     repController?.abort(); const repsController=new AbortController(); repController=repsController;
-    try { const loaded=await assignments.reps(repsController.signal); if(disposed||repsController.signal.aborted)return; reps=loaded; repError.textContent=''; if (displayedPage && !editing) paint(displayedPage); }
+    try { const loaded=await assignments.reps(repsController.signal); if(disposed||repsController.signal.aborted)return; reps=loaded; repsRevision=assignments.getRevision(); repError.textContent=''; if (displayedPage && !editing) paint(displayedPage); }
     catch(reason) { if(!disposed&&!repsController.signal.aborted&&repController===repsController){repError.textContent=reason instanceof Error?reason.message:'Sales rep choices unavailable. Select Retry reps to retry.'; const retry=element('button','Retry reps'); retry.type='button'; retry.onclick=()=>void loadReps(); repError.append(retry);} }
   }
   refresh.onclick = () => { void load(); }; statusSelect.onchange = () => { filters.status = statusSelect.value; page = 0; void load(); };
   const changed = () => { if (editing) error.textContent = 'Mappings changed while editing. Saving will verify this row is still current.'; else void load(); };
   root.addEventListener('mapping-revision', changed);
+  void loadReps();
   void load();
   return () => { disposed = true; generation++; clearTimeout(timer); controller?.abort(); repController?.abort(); assignments.dispose(); root.removeEventListener('mapping-revision', changed); root.replaceChildren(); };
 }

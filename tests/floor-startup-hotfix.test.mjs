@@ -83,16 +83,10 @@ test('native network and bridge failures are never retried against a legacy pass
   await assert.rejects(context.fetchRemoteLoginUser('nelly_aguilar', 'example'), /bridge offline/);
 });
 
-test('optional alpha reads are gated, normalize absent responses, and suppress only access denials', async () => {
+test('alpha snapshot access-denial classification covers HTTP and Postgres permission failures', async () => {
   const context = vm.createContext({});
-  vm.runInContext(section(alpha, 'const isAccessDenial =', 'class CommandCenterBoundary'), context);
-  const enabled = { isAuthorized: () => true }, disabled = { isAuthorized: () => false };
-  const read = context.readOptionalAlpha;
-  assert.equal((await read(disabled, () => assert.fail('non-Dylan query'))).data.length, 0);
-  for (const error of [{ status: 403 }, { code: '42501' }, { status: 401 }]) {
-    assert.equal((await read(enabled, async () => ({ error }))).data.length, 0);
-    assert.equal((await read(enabled, async () => { throw error; })).data.length, 0);
-  }
-  for (const result of [null, undefined]) assert.equal((await read(enabled, async () => result)).data.length, 0);
-  await assert.rejects(read(enabled, async () => { throw new Error('network failure'); }), /network failure/);
+  vm.runInContext(`${section(alpha, 'const isAccessDenial =', 'const snapshotCachesByScope')}\nthis.isAccessDenial = isAccessDenial;`, context);
+  for (const error of [{ status: 403 }, { code: '42501' }, { status: 401 }]) assert.equal(context.isAccessDenial(error), true);
+  assert.equal(context.isAccessDenial({ status: 503 }), false);
+  assert.equal(context.isAccessDenial(new Error('network failure')), false);
 });

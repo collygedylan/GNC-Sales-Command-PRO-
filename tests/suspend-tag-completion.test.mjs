@@ -78,9 +78,15 @@ function harness(options = {}) {
     mergePhotoCsvList: values => [...new Set(values.flatMap(value => String(value || '').split(',').filter(Boolean)))].join(','),
     dockSuspendDcRequestMirrorRowsCacheKey: 'stale', requestScopedItemsCacheKey: 'stale',
     requestsInventory: [mirror], currentSource: row,
+    optimisticCompletedRowIds: new Set(),
+    getItemUniqueId: item => typeof item === 'string' ? item : item?.UNIQUE_ID || item?.unique_id || '',
+    invalidateResolvedViewStateCaches() {},
   };
   vm.createContext(ctx);
-  vm.runInContext(`${workflow}\n${helpers}\n${handler}`, ctx);
+  ctx.window.localStorage = ctx.localStorage;
+  vm.runInContext(readFileSync(new URL('../assets/queue-completion-state.js', import.meta.url), 'utf8'), ctx);
+  const completions = between('let queueCompletionState = null;', 'function trackOptimisticCompletedRows(');
+  vm.runInContext(`${completions}\n${workflow}\n${helpers}\n${handler}`, ctx);
   return { ctx, row, mirror, calls, toasts, storage };
 }
 
@@ -96,7 +102,7 @@ test('native Save verifies only its row and succeeds while the whole view is unv
   assert.equal(vm.runInContext('suspendTagRowWrites.size', h.ctx), 0);
 });
 
-test('Done applies canonical inventory evidence before returning and keeps the tag visible', async () => {
+test('Done applies canonical inventory evidence and removes the row from the active Que', async () => {
   const inventoryRow = { unique_id: 'master-1', photo_link: 'new.jpg', match: '40', av_rule_photo_updated_at: '2026-10-14T11:00:00Z' };
   const h = harness({ api: () => ({ ...acknowledgement(), inventoryRow }) });
   assert.equal(await h.ctx.runSuspendTagRowCommand('complete', h.mirror), true);
@@ -104,6 +110,7 @@ test('Done applies canonical inventory evidence before returning and keeps the t
   assert.equal(h.ctx.inventoryReconciliation?.[0].canonicalConfirmed, true);
   assert.equal(h.row.SUSPEND, 'SUSPEND');
   assert.equal(h.row.SUSPEND_TO, 'DC');
+  assert.equal(h.ctx.isOptimisticallyCompletedRow(h.mirror), true);
 });
 
 test('Complete Tag waits for confirmation, permits pending approval, and removes eligibility without emailing', async () => {

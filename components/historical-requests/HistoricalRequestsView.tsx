@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import useSWR, { SWRConfig, type Cache, type State } from 'swr';
+import { SWRConfig, type Cache, type State } from 'swr';
+import { useRevisionedSnapshot } from '../../services/useRevisionedSnapshot';
 import type {
   HistoricalRequestGroup,
   HistoricalRequestRow,
@@ -14,7 +15,7 @@ type Level = 'reps' | 'customers' | 'requests';
 type PageResult = { data?: HistoricalRequestsPage; error?: Error; isLoading: boolean; retry(): void };
 
 function keyFor(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery) {
-  return JSON.stringify([bridge.scopeKey, bridge.role, bridge.revisionKey, query.operation, query.repKey, query.recordKind, query.dateFrom, query.dateTo, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
+  return JSON.stringify([bridge.scopeKey, bridge.role, query.operation, query.repKey, query.recordKind, query.dateFrom, query.dateTo, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
 }
 
 function redactFinancials(page: HistoricalRequestsPage): HistoricalRequestsPage {
@@ -31,7 +32,7 @@ function redactFinancials(page: HistoricalRequestsPage): HistoricalRequestsPage 
 function usePage(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery | null): PageResult {
   const controllers = useRef(new Map<string, AbortController>());
   const key = query ? keyFor(bridge, query) : null;
-  const result = useSWR<HistoricalRequestsPage>(key, async () => {
+  const result = useRevisionedSnapshot<HistoricalRequestsPage>(key, bridge.revisionKey, async () => {
     if (!query) throw new Error('Historical requests query is unavailable.');
     const controller = new AbortController();
     if (key) {

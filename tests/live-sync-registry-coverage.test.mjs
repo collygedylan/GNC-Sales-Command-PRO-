@@ -44,6 +44,8 @@ function harness() {
     getActiveSpreadCountType: () => 'spread', normalizeProductivityUsername: value => value,
     normalizeInventoryOfficeApprovalType: value => value,
     getRoleAccessState: () => ({ isAdmin: !context.evalRole, isEval: context.evalRole, isRep: false }),
+    canManageCustomerRepMappings: () => context.managerAccess?.canManageCustomerRepMappings !== false,
+    getManagersToolAccess: () => ({ canManageCompanyDirectory: true, canViewProductionSchedule: true, canViewHrCommand: true, ...(context.managerAccess || {}) }),
     isAlwaysDriveCardOptionsUser: () => false,
     getActiveEvalSimpleTaskFilterValue: () => context.activeTaskView,
     isInventoryChecksApprovalTaskView: value => value === 'inventory-checks',
@@ -120,6 +122,40 @@ test('manager customer mapping uses a revision-only adapter and user revisions m
     'paged assignment UI must not hydrate the complete customer mapping table');
   assert.deepEqual(Array.from(registry.getSourceKeys(adapters)), ['ph_customer_consignee_sales_reps']);
   assert.deepEqual(Array.from(registry.getSourceKeys(['side:users'])), ['ph_app_users']);
+});
+
+test('company directory, Production Schedule, and HR use their exact source revision signals', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  const expected = {
+    'managers:company-directory': ['ph_company_directory_contacts', 'ph_company_directory_blocks', 'ph_company_directory_beds', 'ph_company_directory_codes'],
+    'managers:production-schedule': ['production_schedule_active'],
+    'managers:hr-command': ['core_employees', 'hr_job_codes', 'labor_timesheets', 'ph_department_calendar_events']
+  };
+  for (const [surface, sources] of Object.entries(expected)) {
+    const ids = Array.from(registry.getViewAdapters('managers', { surfaces: [surface] }));
+    assert.equal(ids.length, 1, surface);
+    assert.deepEqual(Array.from(registry.getSourceKeys(ids)), sources, surface);
+  }
+  assert.equal(registry.adapters['side:companyDirectoryRevision'].sourceKeys.length, 4);
+  assert.deepEqual(Array.from(registry.side.hrCommandRevision), expected['managers:hr-command']);
+});
+
+test('manager revision surfaces are selected only for their authorized active tabs', () => {
+  const context = harness();
+  context.document = { activeElement: {}, body: { classList: { contains: () => false } }, getElementById: () => null };
+  context.view = 'managers';
+  for (const [tab, surface] of [
+    [context.MANAGER_COMPANY_DIRECTORY_VIEW, 'managers:company-directory'],
+    [context.MANAGER_PRODUCTION_SCHEDULE_VIEW, 'managers:production-schedule'],
+    [context.MANAGER_HR_COMMAND_VIEW, 'managers:hr-command']
+  ]) {
+    context.activeHomeTab = tab;
+    assert.ok(context.getProductionLiveSyncSideContext().surfaces.includes(surface), surface);
+  }
+  context.managerAccess = { canManageCompanyDirectory: false, canViewProductionSchedule: false, canViewHrCommand: false };
+  for (const surface of ['managers:company-directory', 'managers:production-schedule', 'managers:hr-command']) {
+    assert.ok(!context.getProductionLiveSyncSideContext().surfaces.includes(surface), surface);
+  }
 });
 
 test('Eval2 LowStock preview keeps the actual coordinator cohort stable', async () => {

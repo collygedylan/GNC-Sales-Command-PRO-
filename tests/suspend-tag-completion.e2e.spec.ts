@@ -66,7 +66,7 @@ function buildConfirmedInventoryRow(source: FixtureRow, patch: Record<string, un
  * Only identity/data-loading boundaries are supplied. Backend state lives in
  * this test process across refresh/reload; no customer record is ever changed.
  */
-async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean; inventoryUnavailable?: boolean } = {}) {
+async function harness(page: Page, baseURL: string, rows = fixtures, options: { search?: string; expired?: boolean; inventoryUnavailable?: boolean; native?: boolean } = {}) {
   const origin = new URL(baseURL).origin;
   const backendRows = structuredClone(rows);
   const receipts = new Map<string, Record<string, unknown>>();
@@ -77,6 +77,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   const runtimeResponses: string[] = [];
   const inventoryLookupCalls: Array<{ params: Record<string, unknown>; status: number }> = [];
   const replies: Reply[] = [];
+  let nativeRevision = 1;
   await page.addInitScript(expired => { (window as any).__suspendTestAuthReady = !expired; }, !!options.expired);
   const corsHeaders = {
     'access-control-allow-origin': '*',
@@ -93,6 +94,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: corsHeaders });
+    if (options.native && url.pathname === '/rest/v1/rpc/get_my_dataset_revisions_v1' && request.method() === 'POST') {
+      const body = request.postDataJSON();
+      if (!Array.isArray(body.p_dataset_keys) || Object.keys(body).some(key => key !== 'p_dataset_keys')) throw new Error('Unexpected revision read');
+      return fulfill(route, { contractVersion: 1, permissionVersion: 'suspend-fixture-access-1', serverTime: new Date().toISOString(),
+        sources: body.p_dataset_keys.map((key: string) => ({ key, revision: String(nativeRevision), state: 'ready' })) });
+    }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST' && request.postDataJSON()?.action === 'suspend_tag') {
       const body=request.postDataJSON();
       const input=body.payload || {};
@@ -188,6 +195,12 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         blockedReadOnlyAppApiCalls.push(`${body.action}:${body.operation || body.dataset}`);
         if (body.action === 'dataset_read') {
           const params = body.params as Record<string, any>;
+          if (options.native && body.dataset === 'suspend_tag') {
+            const source = backendRows.map(row => Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])));
+            const rows = source.slice(params.offset, params.offset + params.limit);
+            return fulfill(route, { ok: true, data: { rows, total: source.length, offset: params.offset, limit: params.limit,
+              hasMore: params.offset + rows.length < source.length } });
+          }
           return fulfill(route, { ok: true, data: { rows: [], total: 0, offset: params.offset, limit: params.limit, hasMore: false } });
         }
         return fulfill(route, { ok: true, data: { filename: null, last_updated: null } });
@@ -249,6 +262,7 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
         requestSuspendTagAssignedToFilter = 'all';
         requestSuspendTagContSizeFilter = 'all';
         requestSuspendTagDockFilter = 'all';
+        requestSuspendTagStatusFilter = 'active';
         showOnlyPrimaryView('request');
         invalidateResolvedViewStateCaches();
         renderRequest();
@@ -258,6 +272,25 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   };
   await page.goto('/?post_deploy_access_canary=1&suspend_tag_canary=1' + (options.search || ''), { waitUntil: 'load' });
   await seed();
+  if (options.native) {
+    await page.evaluate(() => window.eval(`(() => {
+      nativeAuthSessionActive = true;
+      nativeAuthProfile = { id: 'synthetic-suspend-live-sync', username: 'dylan_collyge', role: 'ADMIN', active: true };
+      nativeAuthAccessToken = 'synthetic-not-a-real-token';
+      appAccessSnapshotState = {
+        status: 'ready', stale: false, errorCode: '', loadedAt: Date.now(), username: currentUser,
+        snapshot: normalizeAppAccessSnapshot({
+          contractVersion: APP_ACCESS_CONTRACT_VERSION, enforcementMode: 'enforced',
+          username: currentUser, role: currentRole, dataPermissionVersion: 'suspend-fixture-access-1',
+          permissions: [{ permissionKey: 'module.request.view', kind: 'module', moduleKey: 'request', allowed: true }]
+        }, currentUser)
+      };
+      setRoleAccessReadyState(true);
+      resetProductionLiveSync();
+      getProductionLiveSyncCoordinator().check('suspend-fixture-entry');
+    })()`));
+    await expect(page.locator('#live-data-freshness')).toContainText('Up to date');
+  }
   expect(runtimeResponses, 'must exercise the deferred production-built runtime').toHaveLength(1);
   const card = (row: FixtureRow = rows[0]) => page.locator(`#request-content [data-request-uid="dock_suspend_dc_${row.UNIQUE_ID}"]`);
   const done = (row: FixtureRow = rows[0]) => card(row).locator('button[onclick*="completeDockSuspendDcRequestFromCard"]');
@@ -272,12 +305,22 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
       window.eval('processAndLoadData({suspendTagData:structuredClone(window.__suspendCompletionFixtureRows),_fromCache:true}); renderRequest();');
     }, nextRows);
   };
+  const showStatus = async (status: 'active' | 'completed') => {
+    const filters = page.locator('#request-suspend-tag-filter-shell .mobile-browse-filters');
+    if (await filters.count() && await filters.getAttribute('open') === null) await filters.locator('summary').click();
+    await page.locator('#request-suspend-tag-status-filter').selectOption(status);
+  };
+  const nativeRefresh = async (nextRows: FixtureRow[]) => {
+    backendRows.splice(0, backendRows.length, ...structuredClone(nextRows));
+    nativeRevision++;
+    await page.evaluate(() => window.eval(`getProductionLiveSyncCoordinator().check('suspend-fixture-revision')`));
+  };
   const assertClean = () => {
     expect(unexpectedMutations, 'Done must not issue generic PATCH/DELETE, email or stock writes').toEqual([]);
     expect(blockedReadOnlyAppApiCalls.filter((call) => call !== 'inventory_read:source_freshness' && ![...safeDatasetReads].some((dataset) => call === `dataset_read:${dataset}`))).toEqual([]);
     expect(pageErrors, 'completion must not throw unhandled browser errors').toEqual([]);
   };
-  return { requests, replies, receipts, backendRows, inventoryLookupCalls, card, done, complete, seed, refresh, assertClean };
+  return { requests, replies, receipts, backendRows, inventoryLookupCalls, card, done, complete, seed, refresh, nativeRefresh, showStatus, assertClean };
 }
 
 async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', value: string) {
@@ -294,35 +337,115 @@ async function setDetailMeasurement(page: Page, id: 'req-spec' | 'req-match', va
   await page.locator('#detail-measurement-keyboard [data-key-token="__done"]').tap();
 }
 
-test('Done waits for server acknowledgment, completes only that source and retains it, and survives refresh and app reload', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
+test('Done immediately leaves the active queue, survives stale refresh and reload, and preserves completed approval work', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   let release!: () => void;
   app.replies.push({ wait: new Promise<void>((resolve) => { release = resolve; }) });
   await app.complete();
   await expect.poll(() => app.requests.length).toBe(1);
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.done()).toBeDisabled();
+  await expect(app.card()).toHaveCount(0);
+  await app.refresh(fixtures);
+  await expect(app.card()).toHaveCount(0);
+  await expect(page.locator('#request-content')).not.toContainText('Keep my value');
   await expect(page.locator('#toast-notification')).not.toContainText('Suspend Tag row completed.');
   expect(app.backendRows[0].DATE_COMPLETED).toBe('');
   expect(app.requests[0].body.payload.sourceUid).toBe(fixtures[0].UNIQUE_ID);
   expect(new Date(app.requests[0].body.payload.expectedLastUpdated).toISOString()).toBe(sourceRevision);
   expect(app.requests[0].body.commandId).toMatch(/^[0-9a-f-]{36}$/i);
   release();
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect.poll(() => app.receipts.size).toBe(1);
+  await expect(app.card()).toHaveCount(0);
   await expect(app.card(fixtures[1])).toHaveCount(1);
   await app.refresh();
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect(app.card()).toHaveCount(0);
   await page.reload({ waitUntil: 'load' });
   await app.seed();
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect(app.card()).toHaveCount(0);
   await expect(app.done(fixtures[1])).toBeVisible();
+  await app.showStatus('completed');
+  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect(app.card().getByRole('button', { name: 'Email Rep for Approval', exact: true })).toBeVisible();
   expect(app.backendRows[0].PTRONHAND).toBe('40');
   expect(app.backendRows[0].PTRAVAILABLE).toBe('30');
   expect(app.backendRows[1].DATE_COMPLETED).toBe('');
   expect(app.requests).toHaveLength(1);
+  app.assertClean();
+});
+
+test('pastel Suspend cards keep readable text in both themes without removing weekday color', {"tag":["@suspend-tag"]}, async ({ page, baseURL }, info) => {
+  const rows = fixtures.map((row, index) => ({ ...row, PLANSTART: index ? '2026-10-13' : '2026-10-12' }));
+  const app = await harness(page, baseURL!, rows);
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(mode => {
+      document.body.classList.toggle('dark-mode', mode === 'dark');
+      document.body.dataset.opsTheme = mode;
+    }, theme);
+    const evidence = await page.locator('#request-content .app-suspend-tag-compact-card').evaluateAll(cards => {
+      const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+      const context = canvas.getContext('2d', { willReadFrequently: true })!;
+      const rgba = (value: string) => {
+        // Computed Tailwind colors can be oklch()/color(srgb), not rgb bytes.
+        // Let the browser resolve the CSS color before calculating WCAG luminance.
+        context.clearRect(0, 0, 1, 1); context.fillStyle = value; context.fillRect(0, 0, 1, 1);
+        const values = context.getImageData(0, 0, 1, 1).data;
+        return [values[0], values[1], values[2], values[3] / 255];
+      };
+      const composite = (paint: number[], base: number[]) => paint.slice(0, 3).map((value, i) => value * paint[3] + base[i] * (1 - paint[3]));
+      const luminance = (value: number[]) => value.map(n => n / 255).map(n => n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4).reduce((sum, n, i) => sum + n * [.2126, .7152, .0722][i], 0);
+      const surfaces = (element: Element) => {
+        const ancestors: Element[] = [];
+        for (let ancestor: Element | null = element; ancestor; ancestor = ancestor.parentElement) ancestors.unshift(ancestor);
+        let colors = [[255, 255, 255]];
+        for (const ancestor of ancestors) {
+          const style = getComputedStyle(ancestor);
+          colors = colors.map(color => composite(rgba(style.backgroundColor), color));
+          // A transparent backgroundColor does not describe a painted gradient.
+          // Check every endpoint and composite translucent child fills against it.
+          const stops = style.backgroundImage.match(/(?:rgba?|hsla?|color|oklch|oklab|lab|lch)\([^)]+\)/g);
+          if (stops?.length) colors = colors.flatMap(color => stops.map(stop => composite(rgba(stop), color)));
+        }
+        return colors;
+      };
+      return cards.map(card => {
+        const samples: Array<{ text: string; color: string; background: number[]; ratio: number }> = [];
+        const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT);
+        let text: Node | null;
+        while ((text = walker.nextNode())) {
+          const element = text.parentElement;
+          if (!text.textContent?.trim() || !element || element.closest('button,.app-suspend-tag-actions,.app-drive-card-reclass') || !element.getClientRects().length) continue;
+          for (const surface of surfaces(element)) {
+            const foreground = luminance(composite(rgba(getComputedStyle(element).color), surface));
+            const background = luminance(surface);
+            samples.push({ text: text.textContent.trim().slice(0, 60), color: getComputedStyle(element).color,
+              background: surface, ratio: (Math.max(foreground, background) + .05) / (Math.min(foreground, background) + .05) });
+          }
+        }
+        return { tone: card.getAttribute('data-planstart-tone'), background: getComputedStyle(card).backgroundImage,
+          textCount: samples.length, minimumContrast: Math.min(...samples.map(sample => sample.ratio)),
+          weakest: samples.sort((a, b) => a.ratio - b.ratio).slice(0, 3) };
+      });
+    });
+    expect(evidence).toHaveLength(2);
+    expect(evidence[0].background).not.toBe(evidence[1].background);
+    await info.attach(`suspend-${theme}-contrast`, { body: JSON.stringify(evidence), contentType: 'application/json' });
+    for (const card of evidence) { expect(card.textCount).toBeGreaterThan(5); expect(card.minimumContrast, JSON.stringify(card.weakest)).toBeGreaterThanOrEqual(4.5); }
+  }
+  app.assertClean();
+});
+
+test('background Suspend revision preserves card identity and layout while updating its content', {"tag":["@suspend-tag"]}, async ({ page, baseURL }, info) => {
+  const app = await harness(page, baseURL!, fixtures, { native: true });
+  const card = app.card();
+  await expect(card).toBeVisible();
+  const beforeNode = await card.elementHandle();
+  const before = await card.boundingBox();
+  await app.nativeRefresh(fixtures.map(row => ({ ...row, COMMONNAME: String(row.COMMONNAME).replace('fixture', 'updated') })));
+  await expect(card).toContainText('Suspend browser updated 1');
+  expect(await beforeNode?.evaluate(node => node.isConnected)).toBe(true);
+  const after = await card.boundingBox();
+  expect(before).not.toBeNull(); expect(after).not.toBeNull();
+  for (const field of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after![field] - before![field])).toBeLessThanOrEqual(1);
+  await info.attach('suspend-background-dom-stability', { body: JSON.stringify({ before, after, retainedNode: true }), contentType: 'application/json' });
   app.assertClean();
 });
 
@@ -431,11 +554,11 @@ test('double activation sends one completion even through a stale rerendered but
   await expect.poll(() => app.requests.length).toBe(1);
   await page.evaluate((uid) => window.eval(`void completeDockSuspendDcRequestFromCard(${JSON.stringify('dock_suspend_dc_' + uid)}, null)`), fixtures[0].UNIQUE_ID);
   await expect(page.locator('#app-prompt-dialog')).toBeHidden();
-  await expect(app.card()).toHaveCount(1);
+  await expect(app.card()).toHaveCount(0);
   expect(app.requests).toHaveLength(1);
   release();
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect.poll(() => app.receipts.size).toBe(1);
+  await expect(app.card()).toHaveCount(0);
   expect(app.receipts.size).toBe(1);
   app.assertClean();
 });
@@ -452,8 +575,8 @@ test('lost response leaves row actionable and retry after reload reuses the pers
   await page.reload({ waitUntil: 'load' });
   await app.seed(fixtures);
   await app.complete();
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect.poll(() => app.requests.length).toBe(2);
+  await expect(app.card()).toHaveCount(0);
   expect(app.requests).toHaveLength(2);
   expect(app.requests[1].body.commandId).toBe(token);
   expect(app.receipts.size).toBe(1);
@@ -502,11 +625,10 @@ test('malformed or mismatched acknowledgment never marks the row completed', {"t
 test('a stale snapshot cannot restore Done, but a newer reopened source stays visible', {"tag":["@suspend-tag"]}, async ({ page, baseURL }) => {
   const app = await harness(page, baseURL!);
   await app.complete();
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect.poll(() => app.receipts.size).toBe(1);
+  await expect(app.card()).toHaveCount(0);
   await app.refresh(fixtures);
-  await expect(app.card()).toHaveCount(1);
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect(app.card()).toHaveCount(0);
   const reopened = fixtures.map((row) => ({ ...row, LAST_UPDATED: '2026-09-08T16:00:00.000Z' }));
   await app.refresh(reopened);
   await expect(app.done()).toBeVisible();
@@ -554,7 +676,7 @@ test('detail Mark Done stays in detail until the global save is confirmed, then 
   await expect(page.locator('#view-detail')).toBeHidden();
   await expect(page.locator('#view-request')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.eval('activeReqTab'))).toBe('suspend-tag');
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect(app.card()).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.eval('Object.keys(getDockSuspendCompletionState().receipts).length'))).toBe(1);
   expect(app.backendRows[0].DOCK_SPEC).toBe('24');
   expect(String(app.backendRows[0].MATCH)).toBe('80');
@@ -580,7 +702,7 @@ test('detail Mark Done completes and returns to Suspend when background inventor
   await expect(page.locator('#view-detail')).toBeHidden();
   await expect(page.locator('#view-request')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.eval('activeReqTab'))).toBe('suspend-tag');
-  await expect(app.card()).toContainText('Completed — Ready to Email');
+  await expect(app.card()).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => window.eval('Object.keys(getDockSuspendCompletionState().receipts).length'))).toBe(1);
   expect(app.backendRows[0].DOCK_SPEC).toBe('24');
   expect(String(app.backendRows[0].MATCH)).toBe('80');
@@ -675,6 +797,9 @@ test('manual first email, denial preserves work, and re-completion starts a fres
   test.setTimeout(120000); // Two complete mobile approval rounds.
   const app=await harness(page,baseURL!);
   await app.complete();
+  await expect.poll(() => app.receipts.size).toBe(1);
+  await expect(app.card()).toHaveCount(0);
+  await app.showStatus('completed');
   await expect(app.card()).toContainText('Completed — Ready to Email');
   expect(app.requests.map(r=>r.body.operation)).toEqual(['complete']);
   await app.card().getByRole('button',{name:'Email Rep for Approval',exact:true}).tap();
@@ -690,11 +815,15 @@ test('manual first email, denial preserves work, and re-completion starts a fres
   await dialog.getByRole('button',{name:'Deny',exact:true}).tap();
   await expect(dialog).toContainText('All data and photos are retained');
   await dialog.getByRole('button',{name:'Close',exact:true}).tap();
+  await app.showStatus('active');
   await app.refresh();
   await expect(app.card()).toContainText('Denied / Needs Changes');
   expect(app.backendRows[0].DOCK_PHOTO_LINK).toBe(fixtures[0].DOCK_PHOTO_LINK);
   expect(app.backendRows[0].AV_NOTE).toBe(fixtures[0].AV_NOTE);
   await app.complete();
+  await expect.poll(() => app.backendRows[0].SUSPEND_TAG_STATUS).toBe('awaiting_rep');
+  await expect(app.card()).toHaveCount(0);
+  await app.showStatus('completed');
   await expect(app.card()).toContainText('Awaiting Rep');
   expect(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID).not.toBe(firstId);
   await page.evaluate(id=>window.eval('void openSuspendTagApproval('+JSON.stringify(id)+',"approve")'),String(app.backendRows[0].SUSPEND_TAG_APPROVAL_ID));

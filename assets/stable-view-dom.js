@@ -25,6 +25,7 @@
   function updateAttributes(current, next, focused) {
     const editing = current === focused;
     for (const attribute of Array.from(current.attributes)) {
+      if (attribute.name === 'data-preserve-dom') continue;
       if (editing && ['value', 'checked', 'selected'].includes(attribute.name)) continue;
       if (!next.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
     }
@@ -44,17 +45,27 @@
     const element = /** @type {Element} */ (current);
     const incoming = /** @type {Element} */ (next);
     const island = element.hasAttribute('data-preserve-dom') || islandIds.has(element.id);
+    const dirty = element === focused
+      || ('defaultValue' in element && element.value !== element.defaultValue)
+      || ('defaultChecked' in element && element.checked !== element.defaultChecked)
+      || (element.tagName === 'SELECT' && Array.from(element.options).some(option => option.selected !== option.defaultSelected));
+    const draft = dirty && 'value' in element ? element.value : undefined;
+    const checked = dirty && 'checked' in element ? element.checked : undefined;
+    const expanded = element.tagName === 'DETAILS' ? element.open : undefined;
     updateAttributes(element, incoming, focused);
     // React owns island children. A missing island is still removed by its parent.
     if (island) return;
     reconcileChildren(element, incoming, focused);
-    if (element !== focused && 'value' in element && 'value' in incoming && element.tagName !== 'INPUT') {
+    if (!dirty && 'value' in element && 'value' in incoming && element.tagName !== 'INPUT') {
       element.value = incoming.value;
     }
-    if (element !== focused && element.tagName === 'INPUT' && element.getAttribute('type') !== 'file') {
+    if (!dirty && element.tagName === 'INPUT' && element.getAttribute('type') !== 'file') {
       element.value = incoming.value;
       element.checked = incoming.checked;
     }
+    if (draft !== undefined && element.getAttribute('type') !== 'file') element.value = draft;
+    if (checked !== undefined) element.checked = checked;
+    if (expanded !== undefined) element.open = expanded;
   }
 
   /** @param {Node} parent @param {Node} incoming @param {Element | null} focused */

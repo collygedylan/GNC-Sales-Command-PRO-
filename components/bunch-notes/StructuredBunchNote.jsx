@@ -3,9 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { crewTags, crewColors, flagColors, operationalTokens, normalizeNote, orderNote, moveEntry, moveLine, freeformLine } from './model.mjs';
 
 export function OperationalText({ value }) {
-  return <span className="bn-operational-text">{operationalTokens(value).map((part, i) => part.color
-    ? <mark key={i} style={{ background: flagColors[part.color][0], color: flagColors[part.color][1] }}>{part.text}</mark>
-    : <React.Fragment key={i}>{part.text}</React.Fragment>)}</span>;
+  return <span className="bn-operational-text">{operationalTokens(value).map(part => part.color
+    ? <mark key={part.key} style={{ background: flagColors[part.color][0], color: flagColors[part.color][1] }}>{part.text}</mark>
+    : <React.Fragment key={part.key}>{part.text}</React.Fragment>)}</span>;
 }
 export function CrewBadge({ tag }) {
   const index = crewTags.indexOf(String(tag).toUpperCase());

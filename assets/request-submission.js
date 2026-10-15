@@ -78,6 +78,7 @@
      * @property {Record<string, unknown>} baseValues
      * @property {Record<string, unknown>} dirtyValues
      * @property {boolean} complete
+     * @property {'local-command'} [intentPolicy]
      * @property {boolean} [legacy]
      */
 
@@ -98,10 +99,10 @@
             || !Object.prototype.hasOwnProperty.call(canonical.values, field))) {
             return { status: 'review-required', reason: 'incomplete-base', conflictFields: [] };
         }
-        // Completion is an explicit command. Retry that status against the latest
-        // version without asking the operator to resolve a stale status snapshot.
-        // Independently edited photos/specs retain their normal conflict checks.
-        const conflictFields = fields.filter(field => !(draft.complete && field === 'req_status' && draft.dirtyValues[field] === 'Complete')
+        // A confirmed user command owns its narrow dirty patch. Untouched remote
+        // fields never enter that patch; normal editing retains conflict review.
+        const conflictFields = fields.filter(field => !(draft.complete && (draft.intentPolicy === 'local-command'
+            || field === 'req_status' && draft.dirtyValues[field] === 'Complete'))
             && draft.baseValues[field] !== canonical.values[field]
             && draft.dirtyValues[field] !== canonical.values[field]);
         const rebasedValues = Object.fromEntries(fields

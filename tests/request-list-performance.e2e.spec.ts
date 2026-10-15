@@ -16,6 +16,12 @@ type AppApiBody = {
   params?: { offset?: number; limit?: number };
 };
 type ArchiveMode = 'ok' | 'fail' | 'hold';
+type CustomerMappingWarmup = {
+  rowCount?: number;
+  startupMode?: 'cold' | 'restored';
+  beforeOptionsResponse?: () => Promise<void>;
+  beforeLogin?: () => Promise<void>;
+};
 
 function makeRequestRows(prefix: string, count: number, archived = false): FixtureRow[] {
   return Array.from({ length: count }, (_, index) => ({
@@ -51,11 +57,20 @@ async function appEval<T>(page: Page, source: string): Promise<T> {
   return page.evaluate(expression => window.eval(expression) as T, source);
 }
 
-async function installRequestListFixture(page: Page, baseURL: string) {
+async function installRequestListFixture(page: Page, baseURL: string, customerMappingWarmup?: CustomerMappingWarmup) {
   const pendingRows = makeRequestRows('pending', 200);
   const suspendRows = makeRequestRows('suspend', 1000);
   const archiveRows = makeRequestRows('archive', 1000, true);
+  const customerMappingRows = Array.from({ length: Math.max(1, Number(customerMappingWarmup?.rowCount) || 1) }, (_, index) => ({
+    unique_id: `mapping-${String(index).padStart(5, '0')}`,
+    salesrepid: 'BENCH.REP', salesrepname: 'Abbey Burka',
+    customeridentityid: `C${String(index).padStart(6, '0')}`, customername: `Benchmark Customer ${String(index).padStart(5, '0')}`,
+    consigneeid: `D${String(index).padStart(6, '0')}`, consigneename: `Benchmark Dock ${String(index).padStart(5, '0')}`,
+    customerstatus: 'A', consigneestatus: 'A', territorycode: '', territorydesc: '',
+  }));
+  let customerMappingRevision = 'customer-map-r1';
   const apiCalls: string[] = [];
+  const customerOptionCalls: string[] = [];
   let archiveMode: ArchiveMode = 'ok';
   let releaseArchiveRead: (() => void) | null = null;
   let heldArchiveRead: Promise<void> | null = null;
@@ -63,7 +78,34 @@ async function installRequestListFixture(page: Page, baseURL: string) {
   const fixture = await installHlOrderFixture(page, baseURL, {
     username: 'dylan_collyge',
     role: 'ADMIN',
+    startupMode: customerMappingWarmup?.startupMode,
+    appPermissions: customerMappingWarmup ? [
+      { permissionKey: 'module.po-management.view', kind: 'module', moduleKey: 'po-management', allowed: true },
+      { permissionKey: 'module.request.view', kind: 'module', moduleKey: 'request', allowed: true },
+    ] : undefined,
+    beforeLogin: customerMappingWarmup?.beforeLogin,
     beforeNavigate: async () => {
+      if (customerMappingWarmup) {
+        await page.route('**/rest/v1/ph_customer_consignee_sales_reps**', async (route: Route) => {
+          const request = route.request();
+          const url = new URL(request.url());
+          const range = request.headers().range || '0-999';
+          const [startText, endText] = range.split('-');
+          const start = Math.max(0, Number(url.searchParams.get('offset')) || Number(startText) || 0);
+          const limit = Math.max(1, Number(url.searchParams.get('limit')) || (Number(endText) - Number(startText) + 1) || 1000);
+          const end = Math.min(customerMappingRows.length, start + limit);
+          const rows = customerMappingRows.slice(start, end);
+          return route.fulfill({ status: 200, contentType: 'application/json',
+            headers: { 'access-control-allow-origin': '*', 'content-range': `${start}-${Math.max(start, end - 1)}/${customerMappingRows.length}` },
+            body: JSON.stringify(rows) });
+        });
+        await page.route('**/rest/v1/ph_app_users**', async (route: Route) => {
+          if (route.request().method() !== 'GET') return route.fulfill({ status: 403, contentType: 'application/json', body: JSON.stringify({ error: 'Fixture is read only.' }) });
+          return route.fulfill({ status: 200, contentType: 'application/json',
+            headers: { 'access-control-allow-origin': '*', 'content-range': '0-0/1' },
+            body: JSON.stringify([{ username: 'abbey_burka', display_name: 'Abbey Burka', role: 'REP' }]) });
+        });
+      }
       await page.route('**/rest/v1/rpc/get_request_capabilities', async (route: Route) => {
         return route.fulfill({ status: 200, contentType: 'application/json',
           headers: { 'access-control-allow-origin': '*' },
@@ -75,6 +117,21 @@ async function installRequestListFixture(page: Page, baseURL: string) {
         const request = route.request();
         const body = (request.postDataJSON() || {}) as AppApiBody;
         if (request.method() !== 'POST') return route.fallback();
+
+        if (customerMappingWarmup && body.action === 'customer-rep-map' && body.operation === 'options') {
+          const details = request.postDataJSON() as { page?: number; pageSize?: number; salesrepId?: string };
+          const pageNumber = Math.max(0, Number(details.page) || 0);
+          const pageSize = Math.max(1, Math.min(200, Number(details.pageSize) || 200));
+          const repRows = details.salesrepId === 'BENCH.REP' ? customerMappingRows : [];
+          const rows = repRows.slice(pageNumber * pageSize, (pageNumber + 1) * pageSize);
+          if (details.salesrepId === 'BENCH.REP') {
+            customerOptionCalls.push(`${pageNumber}:${rows.length}`);
+            if (pageNumber === 0) await customerMappingWarmup.beforeOptionsResponse?.();
+          }
+          return route.fulfill({ status: 200, contentType: 'application/json',
+            headers: { 'access-control-allow-origin': '*' },
+            body: JSON.stringify({ ok: true, revision: customerMappingRevision, total: repRows.length, rows }) });
+        }
 
         if (body.action === 'dataset_read' && (body.dataset === 'request_queue' || body.dataset === 'suspend_tag')) {
           const sourceRows = body.dataset === 'request_queue' ? pendingRows : suspendRows;
@@ -114,6 +171,11 @@ async function installRequestListFixture(page: Page, baseURL: string) {
   return {
     fixture,
     apiCalls,
+    customerOptionCalls,
+    updateFirstCustomerMapping(name: string, revision: string) {
+      customerMappingRows[0].customername = name;
+      customerMappingRevision = revision;
+    },
     setArchiveMode(mode: ArchiveMode) { archiveMode = mode; },
     updateFirstArchiveRow(name: string) { archiveRows[0].commonname = name; },
     releaseArchiveRead() {
@@ -202,7 +264,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
   const durations = result.renderDurations.filter(item => item.stage === stage);
   const chunks = result.chunkDurations.filter(item => item.stage === stage);
   const operations = result.operations.filter(item => item.stage === stage);
-  const limitMs = stage === 'Pending' ? 100 : 200;
+  const limitMs = stage === 'Pending' ? 100 : 150;
   expect(durations.length).toBeGreaterThan(0);
   const operationSummary = operations.reduce<Record<string, typeof operations>>((summary, item) => {
     (summary[item.name] ||= []).push(item);
@@ -221,7 +283,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
     cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.' }));
   const maximumMeasuredMs = Math.max(...durations.map(item => item.durationMs), ...chunks.map(item => item.durationMs));
   if (stage === 'Pending') expect.soft(maximumMeasuredMs).toBeLessThan(100);
-  else expect.soft(maximumMeasuredMs).toBeLessThanOrEqual(200);
+  else expect.soft(maximumMeasuredMs).toBeLessThanOrEqual(150);
 }
 
 async function startRequestCpuProfile(page: Page) {
@@ -270,7 +332,7 @@ async function attachRequestRenderTimings(page: Page, testInfo: TestInfo) {
       body: Buffer.from(JSON.stringify({
         browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
         datasetRows: { pending: 200, suspend: 1000 },
-        acceptedLimitsMs: { pending: 100, suspend: 200 },
+        acceptedLimitsMs: { pending: 100, suspend: 150 },
         cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.',
         ...evidence,
       }, null, 2)),
@@ -282,6 +344,202 @@ async function attachRequestRenderTimings(page: Page, testInfo: TestInfo) {
     });
   }
 }
+
+test('cold Request startup stays locked until 12,000 customer choices are warm, then Select Customer paints under 50 ms', { tag: ['@home-role'] }, async ({ page, baseURL }) => {
+  if (!baseURL) throw new Error('The Request customer picker fixture requires a base URL.');
+  let releaseOptions!: () => void;
+  const optionsGate = new Promise<void>(resolve => { releaseOptions = resolve; });
+  let signalOptionsStarted!: () => void;
+  const optionsStarted = new Promise<void>(resolve => { signalOptionsStarted = resolve; });
+  let startupObservation: {
+    loginVisible: boolean; shellHidden: boolean; modalHidden: boolean; progressText: string;
+    currentUser: string; currentRole: string; nativeAuthSessionActive: boolean; appAccessStatus: string;
+    appAccessStale: boolean; appAccessUsername: string; roleAccessReady: boolean;
+    requestAllowed: boolean; requestScopedAllowed: boolean; homeApplied: boolean;
+  } | null = null;
+  const observedCustomerReads: Array<{ method: string; path: string; detail?: string; status?: number; failure?: string; count?: number; elapsedMs?: number }> = [];
+  const browserErrors: string[] = [];
+  const diagnosticStartedAt = Date.now();
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (/customer|app-api|revision|source/.test(url.pathname)) {
+      const body = request.postDataJSON?.() as Record<string, unknown> | null;
+      const detail = request.method() === 'POST' ? [body?.action, body?.operation, body?.dataset, body?.salesrepId].filter(Boolean).join(':')
+        : [request.headers()['range'] || '', url.searchParams.get('select') || ''].filter(Boolean).join(':');
+      const entry = observedCustomerReads.find(item => item.method === request.method() && item.path === url.pathname && item.detail === detail);
+      if (entry) entry.count = Number(entry.count || 1) + 1;
+      else if (observedCustomerReads.length < 80) observedCustomerReads.push({ method: request.method(), path: url.pathname, detail, count: 1, elapsedMs: Date.now() - diagnosticStartedAt });
+    }
+  });
+  page.on('requestfinished', async request => {
+    const url = new URL(request.url());
+    if (!/customer|app-api|revision|source/.test(url.pathname)) return;
+    try {
+      const status = (await request.response())?.status();
+      const entry = [...observedCustomerReads].reverse().find(item => item.method === request.method() && item.path === url.pathname && item.status === undefined && !item.failure);
+      if (entry && status !== undefined) entry.status = status;
+    } catch { /* Diagnostic only. */ }
+  });
+  page.on('requestfailed', request => {
+    const url = new URL(request.url());
+    if (!/customer|app-api|revision|source/.test(url.pathname)) return;
+    const entry = [...observedCustomerReads].reverse().find(item => item.method === request.method() && item.path === url.pathname && item.status === undefined && !item.failure);
+    if (entry) entry.failure = request.failure()?.errorText || 'request failed';
+  });
+  page.on('pageerror', error => browserErrors.push(error.message));
+  const setupPromise = installRequestListFixture(page, baseURL, {
+    rowCount: 12000,
+    startupMode: 'cold',
+      beforeLogin: async () => {
+        await page.waitForFunction(() => window.eval('typeof initializeAppAccessSnapshot === "function" && typeof prepareRequestModalChoicesForStartup === "function"'), null, { timeout: 15_000 });
+        await page.evaluate(() => window.eval(`(() => {
+          const probe = window.__requestStartupProbe = [];
+          const snapshot = () => ({ user: String(currentUser || ''), role: String(currentRole || ''), nativeAuth: nativeAuthSessionActive === true,
+            accessStatus: String(appAccessSnapshotState?.status || ''), accessStale: appAccessSnapshotState?.stale === true,
+            accessUsername: String(appAccessSnapshotState?.username || ''), roleReady: document.body?.classList.contains('role-access-ready') === true,
+            requestAllowed: typeof canAccessView === 'function' && canAccessView('request'),
+            requestScopedAllowed: typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess(),
+            mapRows: Array.isArray(customerRepMapRows) ? customerRepMapRows.length : -1,
+            mapFull: typeof isDatasetLoaded === 'function' && isDatasetLoaded('customerRepMap', 'full'),
+            reps: typeof getAllowedRequestModalRepOptions === 'function' ? getAllowedRequestModalRepOptions().map(option => option.label).slice(0, 5) : [] });
+          const originalAccess = initializeAppAccessSnapshot;
+          initializeAppAccessSnapshot = async function(...args) {
+            const startedAt = performance.now(); probe.push({ type: 'access-start', at: startedAt, args: args[0] || null, state: snapshot() });
+            try { const value = await originalAccess.apply(this, args); probe.push({ type: 'access-end', at: performance.now(), elapsedMs: performance.now() - startedAt, state: snapshot(), hasValue: !!value }); return value; }
+            catch (error) { probe.push({ type: 'access-error', at: performance.now(), elapsedMs: performance.now() - startedAt, message: String(error?.message || error), state: snapshot() }); throw error; }
+          };
+          const originalWarmup = prepareRequestModalChoicesForStartup;
+          prepareRequestModalChoicesForStartup = async function(...args) {
+            const startedAt = performance.now(); probe.push({ type: 'warmup-start', at: startedAt, args, state: snapshot() });
+            try { const value = await originalWarmup.apply(this, args); probe.push({ type: 'warmup-end', at: performance.now(), elapsedMs: performance.now() - startedAt, ready: value, state: snapshot() }); return value; }
+            catch (error) { probe.push({ type: 'warmup-error', at: performance.now(), elapsedMs: performance.now() - startedAt, message: String(error?.message || error), state: snapshot() }); throw error; }
+          };
+          const originalSchedule = scheduleRequestModalReferencePrefetch;
+          scheduleRequestModalReferencePrefetch = function(...args) { probe.push({ type: 'scheduled-prefetch', at: performance.now(), args, state: snapshot() }); return originalSchedule.apply(this, args); };
+          return true;
+        })()`));
+      },
+    beforeOptionsResponse: async () => {
+      startupObservation = await page.evaluate(() => ({
+        loginVisible: !!document.getElementById('view-login')?.getClientRects().length,
+        shellHidden: !!document.getElementById('app-wrapper')?.classList.contains('hidden'),
+        modalHidden: !!document.getElementById('request-rep-modal')?.classList.contains('hidden'),
+        progressText: String(document.getElementById('login-progress-label')?.textContent || ''),
+        currentUser: String(currentUser || ''), currentRole: String(currentRole || ''),
+        nativeAuthSessionActive: nativeAuthSessionActive === true,
+        appAccessStatus: String(appAccessSnapshotState?.status || ''), appAccessStale: appAccessSnapshotState?.stale === true,
+        appAccessUsername: String(appAccessSnapshotState?.username || ''),
+        roleAccessReady: document.body?.classList.contains('role-access-ready') === true,
+        requestAllowed: typeof canAccessView === 'function' && canAccessView('request'),
+        requestScopedAllowed: typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess(),
+        homeApplied: hasAppliedInitialHomeView === true,
+        startupProbe: window.__requestStartupProbe || [],
+      }));
+      signalOptionsStarted();
+      await optionsGate;
+    },
+  });
+  const optionRequestStarted = await Promise.race([
+    optionsStarted.then(() => true),
+    page.waitForTimeout(10000).then(() => false),
+  ]);
+  if (!optionRequestStarted) {
+    const startupState = await page.evaluate(() => window.eval(`JSON.stringify({
+      currentUser: currentUser || '', currentRole: currentRole || '', nativeAuthSessionActive: !!nativeAuthSessionActive,
+      currentUserIsCsrAssistant: typeof isCsrRequestAssistantUser === 'function' ? isCsrRequestAssistantUser() : null,
+      allowedRequestReps: typeof getAllowedRequestModalRepOptions === 'function' ? getAllowedRequestModalRepOptions().map(option => option.label).slice(0, 5) : [],
+      requestRepDirectory: { ready: !!requestModalRepUserOptionsReady, loading: !!requestModalRepUserOptionsLoading,
+        count: requestModalRepUserOptions?.length ?? -1 },
+      mappedRepOptions: requestMappedRepOptions?.map(option => ({ label: option.label, salesrepId: option.salesrepId })).slice(0, 5) ?? [],
+      abbeyId: typeof getRequestSelectedSalesrepId === 'function' ? getRequestSelectedSalesrepId('Abbey Burka') : '',
+      requestAccess: typeof canAccessView === 'function' ? canAccessView('request') : null,
+      scopedAccess: typeof canUseRequestRepScopedAccess === 'function' ? canUseRequestRepScopedAccess() : null,
+      bodyRoleReady: !!document.body?.classList.contains('role-access-ready'),
+      appAccessState: appAccessSnapshotState?.status || '', appAccessStale: !!appAccessSnapshotState?.stale,
+      requestCapability: getRequestCapabilities?.() || null,
+      mappingRows: Array.isArray(customerRepMapRows) ? customerRepMapRows.length : -1,
+      modalCache: requestMappingRpcCache?.size ?? -1,
+      mappingDataset: (() => { const state = getDatasetState('customerRepMap') || {}; return {
+        initialLoaded: !!state.initialLoaded, fullLoaded: !!state.fullLoaded, loading: !!state.loading,
+        initialPromise: !!state.initialPromise, fullPromise: !!state.fullPromise, error: String(state.error || ''),
+      }; })(),
+      coordinator: (() => { const live = getProductionLiveSyncCoordinator?.(); return {
+        status: live?.getStatus?.() || null, statistics: live?.getStatistics?.() || null,
+      }; })(),
+      prefetchOwner: prefetchRequestModalCustomerOptions.owner || '',
+      prefetchCompletedOwner: prefetchRequestModalCustomerOptions.completedOwner || '',
+    })`));
+    throw new Error(`Request customer mapping prefetch did not start: ${startupState}; requests=${JSON.stringify(observedCustomerReads)}; browserErrors=${JSON.stringify(browserErrors)}`);
+  }
+  expect(startupObservation, `First customer-options request observed startup state: ${JSON.stringify(startupObservation)}`)
+    .toMatchObject({ loginVisible: true, shellHidden: true, modalHidden: true });
+  expect(startupObservation?.progressText).toMatch(/Preparing Request customer choices/i);
+  await page.waitForTimeout(160);
+  const heldObservation = await page.evaluate(() => ({
+    loginVisible: !!document.getElementById('view-login')?.getClientRects().length,
+    shellHidden: !!document.getElementById('app-wrapper')?.classList.contains('hidden'),
+    modalVisible: !!document.getElementById('request-rep-modal')?.getClientRects().length,
+  }));
+  expect(heldObservation).toEqual({ loginVisible: true, shellHidden: true, modalVisible: false });
+  releaseOptions();
+  const fixture = await setupPromise;
+  expect(fixture.customerOptionCalls).toHaveLength(60);
+  expect(fixture.customerOptionCalls[0]).toBe('0:200');
+  expect(fixture.customerOptionCalls.at(-1)).toBe('59:200');
+  expect(fixture.customerOptionCalls.reduce((sum, entry) => sum + Number(entry.split(':')[1]), 0)).toBe(12000);
+
+  const selection = await page.evaluate(() => window.eval(`(() => {
+    const modalStarted = performance.now();
+    showRequestModalBase();
+    return new Promise((resolve, reject) => requestAnimationFrame(() => {
+      const elapsedToModalFrameMs = performance.now() - modalStarted;
+      const rep = Array.from(document.querySelectorAll('#rep-list-container .request-rep-option'))
+        .find(button => button.textContent.includes('Abbey Burka'));
+      if (!rep) { reject(new Error('BENCHMARK_REP_NOT_RENDERED')); return; }
+      const selectionStarted = performance.now();
+      rep.click();
+      const syncDurationMs = performance.now() - selectionStarted;
+      requestAnimationFrame(() => resolve({
+        elapsedToModalFrameMs,
+        elapsedToCustomerFrameMs: performance.now() - selectionStarted,
+        syncDurationMs,
+        customerHeading: document.querySelector('#existing-folder-container .request-step-header h3')?.textContent || '',
+        firstCustomer: document.querySelector('#existing-folder-container .request-choice-card .request-choice-title')?.textContent || '',
+        customerLoading: document.querySelector('#existing-folder-container .request-empty-state')?.textContent || '',
+        visibleCount: document.querySelectorAll('#existing-folder-container .request-choice-card').length,
+      }));
+    }));
+  })()`));
+  console.log('REQUEST_CUSTOMER_PICKER_MEASUREMENT', JSON.stringify({
+    browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
+    mappingRows: 12000, optionsPages: 60, cache: 'cold startup prefetch completed before shell became interactive',
+    startupLockMs: 160, selection, limitMs: 50, instrumentation: { trace: 'off', screenshots: 'off' },
+  }));
+  expect(selection).toMatchObject({ customerHeading: 'Select Customer' });
+  expect(selection.elapsedToModalFrameMs).toBeLessThan(50);
+  expect(selection.customerLoading).toBe('');
+  expect(selection.firstCustomer).toBe('Benchmark Customer 00000');
+  expect(selection.visibleCount).toBeGreaterThan(0);
+  expect(selection.elapsedToCustomerFrameMs).toBeLessThan(50);
+
+  const card = page.locator('#existing-folder-container .request-choice-card').first();
+  const originalCard = await card.elementHandle();
+  expect(originalCard).not.toBeNull();
+  const originalGeometry = await card.evaluate(node => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  });
+  fixture.updateFirstCustomerMapping('Benchmark Customer 99999', 'customer-map-r2');
+  await page.evaluate(() => window.eval('ensureRequestModalCustomerOptionsReady(true)'));
+  await expect.poll(() => page.evaluate(() => window.eval('requestModalCustomerOptionsReady === true'))).toBe(true);
+  expect(await originalCard?.evaluate(node => node.isConnected)).toBe(true);
+  expect(await card.textContent()).toContain('Benchmark Customer 99999');
+  const refreshedGeometry = await card.evaluate(node => {
+    const rect = node.getBoundingClientRect();
+    return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+  });
+  expect(refreshedGeometry).toEqual(originalGeometry);
+});
 
 test('Request and Suspend hydrate paged lists within the render gate', { tag: ['@home-role'] }, async ({ page, baseURL }, testInfo) => {
   if (!baseURL) throw new Error('The request list fixture requires a base URL.');

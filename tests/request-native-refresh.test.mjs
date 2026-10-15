@@ -728,6 +728,7 @@ function productionListFixture({ key = 'request-main', tab = 'pending', signatur
   };
   const refresh = { pending: 0, containers: new Set() };
   const ctx = {
+    window: {},
     productionLiveSyncActiveRender: refresh,
     activeReqTab: tab,
     document: { createElement: () => { calls.created++; return { childNodes: [], querySelectorAll: () => ({ length: 0 }) }; } },

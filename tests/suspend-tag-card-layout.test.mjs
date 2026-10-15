@@ -6,6 +6,19 @@ import { JSDOM } from 'jsdom';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
 const css = readFileSync(new URL('../assets/ops-precision-pilot.css', import.meta.url), 'utf8');
+
+test('pastel Suspend cards use dark text in both themes without recoloring buttons', t => {
+  const styles = html.match(/<style id="suspend-card-contrast">([\s\S]*?)<\/style>/)?.[1];
+  assert.ok(styles);
+  const dom = new JSDOM(`<style>.text-white { color: white; } button { color: white; background: #166534; } ${styles}</style><div id="request-content"><article role="button" class="app-suspend-tag-compact-card app-planstart-tuesday"><h3 class="text-white">Tree</h3><p class="text-white"><span>Customer</span></p><button><span>Done</span></button></article></div>`);
+  t.after(() => dom.window.close());
+  for (const dark of [false, true]) {
+    dom.window.document.documentElement.classList.toggle('dark', dark);
+    for (const selector of ['h3', 'p', 'p span']) assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector(selector)).color, 'rgb(17, 24, 39)');
+    assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('button')).color, 'rgb(255, 255, 255)');
+    assert.equal(dom.window.getComputedStyle(dom.window.document.querySelector('button span')).color, 'rgb(255, 255, 255)');
+  }
+});
 function extract(name) {
   const start = html.indexOf(`        function ${name}(`);
   assert.ok(start >= 0, name);

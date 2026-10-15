@@ -29,6 +29,9 @@
         // This adapter is intentionally revision-only: Customer Assignments
         // owns a server-paged list and must not hydrate the full mapping table.
         customerMappingRevision: ['ph_customer_consignee_sales_reps'],
+        companyDirectoryRevision: ['ph_company_directory_contacts', 'ph_company_directory_blocks', 'ph_company_directory_beds', 'ph_company_directory_codes'],
+        productionScheduleRevision: ['production_schedule_active'],
+        hrCommandRevision: ['core_employees', 'hr_job_codes', 'labor_timesheets', 'ph_department_calendar_events'],
         avOptionEval: ['ph_av_option_eval_requests'],
         evalWork: ['ph_eval_work', 'ph_eval_work_origin_rows', 'ph_eval_work_events', 'ph_request_delivery_outbox'],
         bunchNotes: ['bunch_note_private.jobs', 'bunch_note_private.previews'],
@@ -133,7 +136,9 @@
         'moves:crop-roll': data(['master'], ['cropRoll']),
         'managers:orders': data([], ['managerOrders']),
         'managers:customer-rep-map': data([], ['customerMappingRevision']),
-        'managers:customer-rep-map': data([], ['customerMappingRevision']),
+        'managers:company-directory': data([], ['companyDirectoryRevision']),
+        'managers:production-schedule': data([], ['productionScheduleRevision']),
+        'managers:hr-command': data([], ['hrCommandRevision']),
         'managers:moves': data(['salesOffice', 'master', 'requests', 'inventoryEditRequests']),
         'managers:inventory-checks': data(['master', 'inventoryEditRequests']),
         'managers:assigned-items-export': data(['master', 'warehouseAssignedItems'], ['itemLowStockTargets']),

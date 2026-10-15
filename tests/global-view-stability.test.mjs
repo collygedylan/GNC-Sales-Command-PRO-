@@ -84,3 +84,20 @@ test('duplicate incoming identifiers never collapse visible rows', () => {
   assert.deepEqual(Array.from(f.container.children, node => node.textContent), ['One', 'Two']);
   f.dom.window.close();
 });
+
+test('mounted islands retain their ownership marker through repeated legacy shells', () => {
+  const f = fixture('<div id="custom-island" data-preserve-dom><button>Mounted</button></div>');
+  const button = f.container.querySelector('button');
+  for (let pass = 0; pass < 2; pass++) f.context.setContainerHtml(f.container, '<div id="custom-island"></div>');
+  assert.equal(f.container.querySelector('button'), button);
+  f.dom.window.close();
+});
+
+test('blurred drafts and expanded details survive unrelated background text changes', () => {
+  const f = fixture('<article id="a"><input value="saved"><details><summary>More</summary>Before</details></article>');
+  const input = f.container.querySelector('input'); input.value = 'unsaved';
+  const details = f.container.querySelector('details'); details.open = true;
+  f.context.setContainerHtml(f.container, '<article id="a"><input value="server"><details><summary>More</summary>After</details></article>');
+  assert.equal(input.value, 'unsaved'); assert.equal(details.open, true);
+  assert.match(details.textContent, /After/); f.dom.window.close();
+});

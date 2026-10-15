@@ -133,6 +133,7 @@ export function createProductionSchedulePage() {
     stopTimer('status'); stopTimer('search'); abortReads();
     observer?.disconnect(); observer = null;
     lifecycle?.abort(); lifecycle = null;
+    root?.removeAttribute('data-preserve-dom');
     root = null; client = null;
   }
 
@@ -477,7 +478,7 @@ export function createProductionSchedulePage() {
       snapshot = null; sheets = []; activeSheetId = null; run = null; pageError = ''; busy = false;
       bySheet.clear(); rowsCache.clear(); detailRowsCache.clear(); abortDetailReads();
     }
-    root = element; client = createProductionScheduleClient(request);
+    root = element; root.dataset.preserveDom = 'true'; client = createProductionScheduleClient(request);
     lifecycle = new AbortController();
     root.addEventListener('click', onClick, { signal: lifecycle.signal });
     root.addEventListener('input', onInput, { signal: lifecycle.signal });
@@ -493,7 +494,11 @@ export function createProductionSchedulePage() {
     void loadMetadata();
   }
 
-  return { mount, unmount };
+  function refresh() {
+    if (root && client) void loadMetadata();
+  }
+
+  return { mount, unmount, refresh };
 }
 
 if (typeof window !== 'undefined') window.GncProductionSchedule = createProductionSchedulePage();

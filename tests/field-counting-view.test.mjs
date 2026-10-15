@@ -137,3 +137,20 @@ test('aborts the old owner read when the field island changes account', async ()
   await screen.findByRole('option', { name: /Block A/ });
   assert.equal(firstSignal.aborted, true);
 });
+
+test('a background revision keeps connected count rows and unsaved input while refreshing', async () => {
+  const rendered = render(React.createElement(FieldCountingView, { bridge: bridge('refresh-owner', 'r1') }));
+  await chooseLocation();
+  const input = screen.getByLabelText('Count Beta, lot-b');
+  fireEvent.change(input, { target: { value: '13' } });
+  let finish;
+  rendered.rerender(React.createElement(FieldCountingView, { bridge: bridge('refresh-owner', 'r2', {
+    readSnapshot: query => new Promise(resolve => { finish = () => resolve(makeSnapshot(query, 'r2')); })
+  }) }));
+  await waitFor(() => assert.ok(finish));
+  assert.equal(screen.getByLabelText('Count Beta, lot-b'), input);
+  assert.equal(input.value, '13');
+  await React.act(async () => finish());
+  assert.equal(screen.getByLabelText('Count Beta, lot-b'), input);
+  assert.equal(input.value, '13');
+});

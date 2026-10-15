@@ -6987,7 +6987,21 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
 #global-header-inline-back:popover-open{position:fixed!important;inset:calc(env(safe-area-inset-top,0px) + 12px) auto auto 12px!important;margin:0!important;display:flex!important;min-width:44px;min-height:44px;background:var(--ops-surface,#fff);border:1px solid var(--ops-border,#bcd9cd);border-radius:12px;color:var(--ops-brand-strong,#007a4d)}
 .location-base-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:72px;margin:0 0 12px;padding:16px;border:1px solid var(--ops-border,#bbdbc9);border-radius:var(--ops-radius-md,12px);background:var(--ops-surface,#fff);color:var(--ops-text,#18372b);text-align:left;cursor:pointer;touch-action:manipulation}
 .location-base-card strong,.location-base-card small{display:block}.location-base-card strong{font-size:1.3rem;color:var(--ops-brand-strong,#007a4d)}
-</style></head>
+</style>
+    <style id="suspend-card-contrast">
+        /* Weekday surfaces remain pastel in either theme. Keep action colors independent. */
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] {
+            color: #111827; --ops-text: #111827; --ops-text-muted: #374151;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"]
+        :not(button, button *, .app-suspend-tag-actions *, .app-drive-card-reclass *, input, textarea, select) {
+            color: #111827 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(input:not([type="checkbox"]), textarea, select) {
+            color: #111827 !important; background-color: #ffffff !important;
+        }
+    </style>
+</head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
     <script>
       (function applyRememberedThemeToBody() {
@@ -7105,6 +7119,8 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
     <script src="./assets/inventory-list-contract.js?v=V2026.10.14.003"></script>
     <script src="./assets/login-network-trace.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-registry.js?v=V2026.10.14.003"></script>
+    <script src="./assets/manager-source-live-events.js?v=V2026.10.14.003"></script>
+    <script src="./assets/customer-mapping-live-events.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-adapters.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-coordinator.js?v=V2026.10.14.003"></script>
     <script src="./assets/av-derived-rows.js?v=V2026.10.14.003"></script>
@@ -9505,9 +9521,13 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 }
                 const client = getSupabaseBrowserClient();
                 if (!client) throw new Error('The authenticated database client is unavailable.');
+                const readIdentity = getSupabaseReadIdentityScope();
+                const dataPermissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
                 const handle = module.mountCommandCenter(host, mode, {
                     client,
                     profileId: String(nativeAuthProfile.id),
+                    cacheScope: JSON.stringify([readIdentity, dataPermissionVersion]),
+                    getCacheScope: () => JSON.stringify([getSupabaseReadIdentityScope(), String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')]),
                     isAuthorized: isAuraWidgetAuthorized,
                     callApi: (payload, signal) => callAuraAppApi(payload, { signal })
                 });
@@ -32838,6 +32858,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         let requestModalCustomerOptionsByRepCache = new Map();
         let requestExistingFolderGroupsCacheKey = '';
         let requestExistingFolderGroupsCache = [];
+        let requestExistingFolderGroupsByRepCache = new Map();
+        let requestModalCustomerOptionRowsCache = new Map();
         let requestModalCustomerOptionsLoading = false;
         let requestModalCustomerOptionsReady = false;
         let requestModalCustomerOptionsError = '';
@@ -33442,7 +33464,14 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (view === 'sales-inventory' && inventoryMainTab === 'production' && productionInventoryTab === 'counting') add('sales-inventory:counting');
             if (view === 'moves' && activeMovesTab === 'office' && normalizeInventoryOfficeApprovalType(activeInventoryOfficeApprovalType) === 'crop-roll') add('moves:crop-roll');
             if (view === 'managers') {
-                add(`managers:${activeHomeTab}`);
+                const managerToolAccess = getManagersToolAccess();
+                const restrictedTab = activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW || activeHomeTab === MANAGER_COMPANY_DIRECTORY_VIEW
+                    || activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW || activeHomeTab === MANAGER_HR_COMMAND_VIEW;
+                const managerTabAuthorized = activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW ? canManageCustomerRepMappings()
+                    : activeHomeTab === MANAGER_COMPANY_DIRECTORY_VIEW ? managerToolAccess.canManageCompanyDirectory
+                        : activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW ? managerToolAccess.canViewProductionSchedule
+                            : activeHomeTab === MANAGER_HR_COMMAND_VIEW ? managerToolAccess.canViewHrCommand : !restrictedTab;
+                if (managerTabAuthorized) add(`managers:${activeHomeTab}`);
                 if (activeHomeTab === MANAGER_EVAL_REPORTS_VIEW) add('managers:eval-reports');
                 if (activeHomeTab === MANAGER_ASSIGNED_ITEMS_EXPORT_VIEW) add('managers:assigned-items-export');
                 if (isCropRollManagerReviewActive()) add('managers:crop-roll');
@@ -33499,6 +33528,25 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const array = api.rows;
             const read = async (table, query = 'select=*', options = {}) => array(await fetchAllSupabaseRows(table, query, { signal: options.signal, count: options.requireComplete === true, requireComplete: options.requireComplete === true }), table);
             const stateReady = (state, values) => Object.assign(state, values, { loaded: true, loading: false, error: '', lastLoadedAt: Date.now() });
+            const managerSourceScope = () => JSON.stringify([getSupabaseReadIdentityScope(), String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')]);
+            const emitManagerSourceRefresh = (surface, authorized, sources) => {
+                const eventContext = getProductionLiveSyncSideContext();
+                return window.GncManagerSourceLiveEvents?.dispatch(window, {
+                    authorized: authorized === true,
+                    visible: !document.hidden && document.body.classList.contains('role-access-ready')
+                        && eventContext.view === 'managers' && activeHomeTab === surface,
+                    view: eventContext.view, tab: surface, sources
+                }) === true;
+            };
+            const emitCommunicationSourceRefresh = (surface, sources) => {
+                const root = document.getElementById('alpha-communications-root');
+                const visible = !document.hidden && document.body.classList.contains('role-access-ready')
+                    && getCurrentVisibleViewId() === 'communication';
+                return window.GncManagerSourceLiveEvents?.dispatch(root, {
+                    authorized: isAuraWidgetAuthorized() && canAccessView('communication'),
+                    visible, view: 'communication', tab: surface, sources
+                }) === true;
+            };
             const bindings = {
                 ...Object.fromEntries(Object.entries({ reportEval1:'eval1', reportEval2:'eval2', reportNcr:'ncr', reportAssigned:'assigned-items', reportSeason:'season-priority', reportApproval:'approval' }).map(([id, surface]) => ['side:' + id, {
                     enabled:() => useManagerReportPages(surface),
@@ -33536,6 +33584,58 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         dashboardSyncMetadataOwner = JSON.stringify([getSupabaseReadIdentityScope(), String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')]);
                         updateDashboardSyncSummary();
                     }
+                },
+                'side:customerMappingRevision': {
+                    enabled: () => canManageCustomerRepMappings(),
+                    scope: managerSourceScope,
+                    stage: async (ctx) => {
+                        const response = await postAppFunctionJson(APP_API_FUNCTION_URL, {
+                            action: 'customer-rep-map', operation: 'list', page: 0, pageSize: 1,
+                            filters: {}, sort: 'customername', direction: 'asc'
+                        }, { timeoutMs: 20000, label: 'Customer assignment revision', signal: ctx.signal });
+                        if (response?.ok !== true || !/^\d+$/.test(String(response.revision ?? ''))) {
+                            throw new Error('Customer assignment revision is unavailable.');
+                        }
+                        return { revision: String(response.revision) };
+                    },
+                    commit: (value) => {
+                        const root = document.getElementById('manager-customer-rep-map-root');
+                        window.GncCustomerMappingLiveEvents?.dispatch(root, {
+                            authorized: canManageCustomerRepMappings(),
+                            visible: !document.hidden && getCurrentVisibleViewId() === 'managers'
+                                && activeHomeTab === MANAGER_CUSTOMER_REP_MAP_VIEW,
+                            view: 'managers', tab: 'customer-rep-map', revision: value?.revision
+                        });
+                    }
+                },
+                'side:companyDirectoryRevision': {
+                    enabled: () => getManagersToolAccess().canManageCompanyDirectory === true,
+                    scope: managerSourceScope,
+                    // The coordinator has already validated these source revisions;
+                    // the module event performs the permission-scoped row reload.
+                    stage: async () => ({ verified: true }),
+                    commit: () => emitManagerSourceRefresh('company-directory', getManagersToolAccess().canManageCompanyDirectory,
+                        window.GncManagerSourceLiveEvents?.sourcesFor('company-directory') || [])
+                },
+                'side:productionScheduleRevision': {
+                    enabled: () => getManagersToolAccess().canViewProductionSchedule === true,
+                    scope: managerSourceScope,
+                    // The active-snapshot adapter refreshes metadata only after the
+                    // coordinator confirms a new publication revision.
+                    stage: async () => ({ verified: true }),
+                    commit: () => {
+                        if (getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_PRODUCTION_SCHEDULE_VIEW
+                            && getManagersToolAccess().canViewProductionSchedule) window.GncProductionSchedule?.refresh?.();
+                    }
+                },
+                'side:hrCommandRevision': {
+                    enabled: () => getManagersToolAccess().canViewHrCommand === true,
+                    scope: managerSourceScope,
+                    // HR reads remain in the authorized component and its RLS-aware
+                    // service; this adapter only wakes that existing refresh path.
+                    stage: async () => ({ verified: true }),
+                    commit: () => emitManagerSourceRefresh('hr-command', getManagersToolAccess().canViewHrCommand,
+                        window.GncManagerSourceLiveEvents?.sourcesFor('hr-command') || [])
                 },
                 'side:driveReserves': createDriveDemandBinding('reserves', read),
                 'side:driveOpenOrders': createDriveDemandBinding('open-orders', read),
@@ -33728,12 +33828,18 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     commit: (value) => {
                         chatConversations = value.conversations; chatParticipants = value.participants; chatMessages = value.messages; chatDataLoaded = true;
                         if (activeChatConversationId && !value.ids.includes(activeChatConversationId)) activeChatConversationId = '';
+                        emitCommunicationSourceRefresh('communications-chat',
+                            window.GncManagerSourceLiveEvents?.sourcesFor('communications-chat') || []);
                         // Read receipts and notifications belong to explicit user activity, not passive hydration.
                     }
                 },
                 'side:calendar': {
                     stage: async (ctx) => (await read(DEPARTMENT_CALENDAR_EVENTS_TABLE, 'select=*&order=start_at.asc', ctx)).map(normalizeDepartmentCalendarEvent).filter(Boolean),
-                    commit: (events) => { stateReady(departmentCalendarState, { events }); }
+                    commit: (events) => {
+                        stateReady(departmentCalendarState, { events });
+                        emitCommunicationSourceRefresh('communications-calendar',
+                            window.GncManagerSourceLiveEvents?.sourcesFor('communications-calendar') || []);
+                    }
                 },
                 'side:weather': {
                     stage: async () => {
@@ -37706,7 +37812,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (!window.AgMetricQueueCompletion || !scope) return null;
             if (!queueCompletionState || queueCompletionScope !== scope) {
                 queueCompletionScope = scope;
-                queueCompletionState = window.AgMetricQueueCompletion.create({ scope, storage: window.localStorage });
+                let storage;
+                try { storage = window.localStorage; } catch { /* Session receipts still prevent stale resurrection. */ }
+                queueCompletionState = window.AgMetricQueueCompletion.create({ scope, storage });
                 optimisticCompletedRowIds.clear();
             }
             return queueCompletionState;
@@ -37720,13 +37828,17 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function confirmQueueCompletion(itemOrId = null) {
-            getQueueCompletionState()?.confirm(getQueueCompletionKey(itemOrId));
+            getQueueCompletionState()?.confirm(getQueueCompletionKey(itemOrId), getQueueCompletionVersion(itemOrId));
             invalidateResolvedViewStateCaches();
+        }
+
+        function getQueueCompletionVersion(item = null) {
+            return Number(item && typeof item === 'object' && (item.suspend_tag_version ?? item.SUSPEND_TAG_VERSION ?? item.row_version ?? item.ROW_VERSION)) || 0;
         }
 
         function isOptimisticallyCompletedRow(itemOrId = null) {
             const uniqueId = getItemUniqueId(itemOrId);
-            return !!(uniqueId && (getQueueCompletionState()?.has(getQueueCompletionKey(itemOrId)) || optimisticCompletedRowIds.has(uniqueId)));
+            return !!(uniqueId && (getQueueCompletionState()?.has(getQueueCompletionKey(itemOrId), getQueueCompletionVersion(itemOrId)) || optimisticCompletedRowIds.has(uniqueId)));
         }
 
         function trackOptimisticCompletedRows(values = []) {
@@ -40732,6 +40844,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 requestDylanSalesRepValue: String(requestDylanSalesRepValue || '').trim(),
                 requestDylanLocationValue: String(requestDylanLocationValue || '').trim(),
                 requestSuspendTagDockFilter: normalizeRequestSuspendTagDockFilterValue(requestSuspendTagDockFilter),
+                requestSuspendTagStatusFilter: requestSuspendTagStatusFilter === 'completed' ? 'completed' : 'active',
                 requestSuspendTagContSizeFilter: normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter),
                 requestSuspendTagAssignedToFilter: normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter),
                 requestSuspendTagCommonNameSearchTerm: String(requestSuspendTagCommonNameSearchTerm || '').trim()
@@ -40759,6 +40872,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             requestDylanSalesRepValue = String(snapshot.requestDylanSalesRepValue || '').trim();
             requestDylanLocationValue = String(snapshot.requestDylanLocationValue || '').trim();
             requestSuspendTagDockFilter = normalizeRequestSuspendTagDockFilterValue(snapshot.requestSuspendTagDockFilter);
+            requestSuspendTagStatusFilter = snapshot.requestSuspendTagStatusFilter === 'completed' ? 'completed' : 'active';
             requestSuspendTagContSizeFilter = normalizeRequestSuspendTagContSizeFilterValue(snapshot.requestSuspendTagContSizeFilter);
             requestSuspendTagAssignedToFilter = normalizeRequestSuspendTagAssignedToFilterValue(snapshot.requestSuspendTagAssignedToFilter);
             requestSuspendTagCommonNameSearchTerm = String(snapshot.requestSuspendTagCommonNameSearchTerm || '').trim();
@@ -57641,6 +57755,12 @@ function toggleDriveQuickRequestItem(domId) {
             if (!force && requestModalRepUserOptionsLoadPromise) return requestModalRepUserOptionsLoadPromise;
             requestModalRepUserOptionsLoading = true;
             requestModalRepUserOptionsError = '';
+            if (useSharedDirectory && assignableAppUsersLoaded && Array.isArray(assignableAppUsers)) {
+                requestModalRepUserOptions = mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS,
+                    assignableAppUsers.map((row) => normalizeRequestRepUserOption({ ...row,
+                        display_name: firstNonEmptyValue(row && row.display_name, row && row.displayName, row && row.display, '') })).filter(Boolean));
+                requestModalRepUserOptionsReady = requestModalRepUserOptions.length > 0;
+            }
             const loadPromise = (async () => {
                 let rows;
                 if (useSharedDirectory) {
@@ -57654,23 +57774,24 @@ function toggleDriveQuickRequestItem(domId) {
                     rows = await supabaseFetch('ph_app_users', 'GET', null, 'select=username,role&order=username.asc&limit=1000');
                 }
                 if (owner !== getRequestModalLookupOwnerSignature()) return [];
-                    const directoryRepOptions = (Array.isArray(rows) ? rows : []).map(normalizeRequestRepUserOption).filter(Boolean);
-                    const options = mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, directoryRepOptions);
-                    requestModalRepUserOptions = options;
-                    requestModalRepUserOptionsReady = options.length > 0;
-                    requestModalRepUserOptionsError = options.length ? '' : 'No configured sales reps were found.';
-                    return options;
+                const directoryRepOptions = (Array.isArray(rows) ? rows : []).map(normalizeRequestRepUserOption).filter(Boolean);
+                const options = mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, directoryRepOptions);
+                requestModalRepUserOptions = options;
+                requestModalRepUserOptionsReady = options.length > 0;
+                requestModalRepUserOptionsError = options.length ? '' : 'No configured sales reps were found.';
+                return options;
             })().catch((error) => {
-                    if (owner === getRequestModalLookupOwnerSignature()) {
-                        requestModalRepUserOptions = [];
-                        requestModalRepUserOptionsReady = false;
-                        requestModalRepUserOptionsError = 'Could not load active REP users. Request submit is blocked until the list loads.';
-                    }
-                    throw error;
-                }).finally(() => {
+                if (owner === getRequestModalLookupOwnerSignature()) {
+                    if (!requestModalRepUserOptionsReady) requestModalRepUserOptions = [];
+                    requestModalRepUserOptionsError = 'Could not load active REP users. Request submit is blocked until the list loads.';
+                }
+                throw error;
+            }).finally(() => {
+                if (requestModalRepUserOptionsLoadPromise === loadPromise) {
                     requestModalRepUserOptionsLoading = false;
-                    if (requestModalRepUserOptionsLoadPromise === loadPromise) requestModalRepUserOptionsLoadPromise = null;
-                });
+                    requestModalRepUserOptionsLoadPromise = null;
+                }
+            });
             requestModalRepUserOptionsLoadPromise = loadPromise;
             return loadPromise;
         }
@@ -57860,6 +57981,120 @@ function toggleDriveQuickRequestItem(domId) {
             return requestModalCustomerOptionsReady ? getRequestModalCustomerOptionsForRep(tempSelectedReqRep) : [];
         }
 
+        function loadRequestModalCustomerOptionsForRep(repName = '', force = false, isCurrent = () => true) {
+            const signature = getRequestModalCustomerMappingCacheSignature();
+            const salesrepId = getRequestSelectedSalesrepId(repName);
+            if (!salesrepId) return Promise.reject(new Error('Choose an unambiguous mapped Sales Rep ID before selecting a customer.'));
+            const cached = requestMappingRpcCache.get(salesrepId);
+            if (!force && cached?.signature === signature && Array.isArray(cached.rows)) return Promise.resolve(cached);
+            const loads = loadRequestModalCustomerOptionsForRep.inflight || (loadRequestModalCustomerOptionsForRep.inflight = new Map());
+            const inflightKey = JSON.stringify([salesrepId, signature]);
+            if (loads.has(inflightKey)) return loads.get(inflightKey);
+            const load = (async () => {
+                let rows = [], revision = null, total = null;
+                for (let page = 0; page <= 1000; page++) {
+                    if (typeof isCurrent === 'function' && !isCurrent()) return null;
+                    if (signature !== getRequestModalCustomerMappingCacheSignature()) throw new Error('Customer mappings changed during loading. Refresh to retry.');
+                    const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'customer-rep-map', operation: 'options', salesrepId, page, pageSize: 200 }, { timeoutMs: 30000, label: 'Request customers' });
+                    if (result?.ok !== true || !Array.isArray(result.rows) || result.rows.length > 200 || !Number.isSafeInteger(result.total) || result.total < 0 || typeof result.revision !== 'string') throw new Error('Customer mapping response is invalid. Refresh before submitting.');
+                    if (revision !== null && (revision !== result.revision || total !== result.total)) throw new Error('Customer mappings changed during loading. Refresh to retry.');
+                    revision = result.revision; total = result.total;
+                    if (!result.rows.every(row => isActiveRequestCustomerMapping(row) && String(row.salesrepid).trim() === salesrepId)) throw new Error('Customer mapping response did not match the selected rep.');
+                    rows.push(...result.rows);
+                    if (rows.length >= total) { if (rows.length !== total) throw new Error('Customer mapping page count is invalid.'); break; }
+                    if (!result.rows.length || page === 1000) throw new Error('Customer mappings could not be loaded completely.');
+                }
+                if (typeof isCurrent === 'function' && !isCurrent()) return null;
+                if (signature !== getRequestModalCustomerMappingCacheSignature()) throw new Error('Customer mappings changed during loading. Refresh to retry.');
+                const identities = rows.map(row => JSON.stringify([row.salesrepid, row.customeridentityid, row.consigneeid]));
+                if (new Set(identities).size !== rows.length) throw new Error('Customer mapping identities are ambiguous.');
+                const entry = { rows, revision, signature };
+                requestMappingRpcCache.set(salesrepId, entry);
+                requestModalCustomerOptionRowsCache.delete(salesrepId);
+                getRequestModalCustomerOptionsForRep(repName);
+                const preparedGroups = buildExistingRequestFolderCustomerGroups(repName);
+                const groupCacheKey = JSON.stringify([salesrepId, signature, revision, getExistingRequestFolderRowsSignature(repName)]);
+                requestExistingFolderGroupsByRepCache.set(groupCacheKey, preparedGroups);
+                while (requestExistingFolderGroupsByRepCache.size > 32) {
+                    requestExistingFolderGroupsByRepCache.delete(requestExistingFolderGroupsByRepCache.keys().next().value);
+                }
+                return entry;
+            })();
+            loads.set(inflightKey, load);
+            return load.finally(() => { if (loads.get(inflightKey) === load) loads.delete(inflightKey); });
+        }
+
+        function prefetchRequestModalCustomerOptions() {
+            const owner = getRequestModalLookupOwnerSignature();
+            if (prefetchRequestModalCustomerOptions.completedOwner === owner) return Promise.resolve(true);
+            if (prefetchRequestModalCustomerOptions.owner === owner && prefetchRequestModalCustomerOptions.promise) return prefetchRequestModalCustomerOptions.promise;
+            const promise = (async () => {
+                if (!currentUser || !(typeof canAccessView === 'function' && canAccessView('request'))
+                    && !(typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess())) return false;
+                const [repDirectoryReady, customerMapReady] = await Promise.all([
+                    isCsrRequestAssistantUser() ? ensureRequestRepUserOptionsReady() : Promise.resolve(requestModalRepUserOptions),
+                    ensureDatasetLoaded('customerRepMap', 'full')
+                ]);
+                if (owner !== getRequestModalLookupOwnerSignature() || customerMapReady !== true
+                    || !isDatasetLoaded('customerRepMap', 'full') || !Array.isArray(customerRepMapRows)) return false;
+                if (isCsrRequestAssistantUser() && repDirectoryReady === false) return false;
+                const allowed = typeof getAllowedRequestModalRepOptions === 'function' ? getAllowedRequestModalRepOptions() : [];
+                const byId = new Map();
+                allowed.forEach(option => {
+                    const name = String(option && option.label || '').trim();
+                    const id = getRequestSelectedSalesrepId(name);
+                    if (id && !byId.has(id)) byId.set(id, name);
+                });
+                const priorityName = String((isRequestRepPickerLockedForCurrentUser() && getLockedRequestRepNameForCurrentUser())
+                    || getDefaultRequestRepName() || tempSelectedReqRep || '').trim();
+                const priorityId = priorityName ? getRequestSelectedSalesrepId(priorityName) : '';
+                const queue = Array.from(byId.entries()).sort(([left], [right]) => left === priorityId ? -1 : right === priorityId ? 1 : left.localeCompare(right));
+                let cursor = 0;
+                let allLoaded = true;
+                const worker = async () => {
+                    while (cursor < queue.length && owner === getRequestModalLookupOwnerSignature()) {
+                        const [id, name] = queue[cursor++];
+                        try { await loadRequestModalCustomerOptionsForRep(name || id); } catch (_) { allLoaded = false; }
+                    }
+                };
+                await Promise.all(Array.from({ length: Math.min(2, queue.length) }, worker));
+                return owner === getRequestModalLookupOwnerSignature() && allLoaded;
+            })();
+            prefetchRequestModalCustomerOptions.owner = owner;
+            const trackedPromise = promise.then((ready) => {
+                if (ready) prefetchRequestModalCustomerOptions.completedOwner = owner;
+                return ready;
+            }).finally(() => {
+                if (prefetchRequestModalCustomerOptions.promise === trackedPromise) prefetchRequestModalCustomerOptions.promise = null;
+            });
+            prefetchRequestModalCustomerOptions.promise = trackedPromise;
+            return trackedPromise;
+        }
+
+        function scheduleRequestModalReferencePrefetch(attempt = 0, owner = getRequestModalLookupOwnerSignature()) {
+            setTimeout(() => {
+                if (!currentUser || owner !== getRequestModalLookupOwnerSignature()) return;
+                const accessState = appAccessSnapshotState || {};
+                if ((accessState.status !== 'ready' || accessState.stale) && attempt < 12) {
+                    scheduleRequestModalReferencePrefetch(attempt + 1, owner);
+                    return;
+                }
+                if (accessState.status !== 'ready' || accessState.stale) return;
+                prefetchRequestModalCustomerOptions().catch(() => {});
+            }, attempt === 0 ? 0 : 350);
+        }
+
+        async function prepareRequestModalChoicesForStartup(timeoutMs = 5000) {
+            let timeoutId = 0;
+            const warmup = prefetchRequestModalCustomerOptions().then((ready) => ready ? 'ready' : 'unavailable', () => 'unavailable');
+            const timeout = new Promise((resolve) => {
+                timeoutId = window.setTimeout(() => resolve('timeout'), Math.max(250, Number(timeoutMs) || 5000));
+            });
+            const result = await Promise.race([warmup, timeout]);
+            window.clearTimeout(timeoutId);
+            return result === 'ready';
+        }
+
         function ensureRequestModalCustomerOptionsReady(force = false) {
             if (!force) {
                 buildRequestModalCustomerOptionsCache();
@@ -57872,30 +58107,15 @@ function toggleDriveQuickRequestItem(domId) {
             requestModalCustomerOptionsLoading = true;
             requestModalCustomerOptionsReady = false;
             requestModalCustomerOptionsError = '';
-            requestModalCustomerOptionsLoadPromise = (async () => {
+            const loadPromise = (async () => {
                 await ensureDatasetLoaded('customerRepMap', 'full', { force });
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration) return false;
                 const id = getRequestSelectedSalesrepId(rep);
-                const signature = getRequestModalCustomerMappingCacheSignature();
-                if (!id) throw new Error('Choose an unambiguous mapped Sales Rep ID before selecting a customer.');
-                let rows = [], revision = null, total = null;
-                for (let page = 0; page <= 1000; page++) {
-                    const result = await postAppFunctionJson(APP_API_FUNCTION_URL, { action: 'customer-rep-map', operation: 'options', salesrepId: id, page, pageSize: 200 }, { timeoutMs: 30000, label: 'Request customers' });
-                    if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration || rep !== tempSelectedReqRep) return false;
-                    if (result?.ok !== true || !Array.isArray(result.rows) || result.rows.length > 200 || !Number.isSafeInteger(result.total) || result.total < 0 || typeof result.revision !== 'string') throw new Error('Customer mapping response is invalid. Refresh before submitting.');
-                    if (revision !== null && (revision !== result.revision || total !== result.total)) throw new Error('Customer mappings changed during loading. Refresh to retry.');
-                    revision = result.revision; total = result.total;
-                    if (!result.rows.every(row => isActiveRequestCustomerMapping(row) && String(row.salesrepid).trim() === id)) throw new Error('Customer mapping response did not match the selected rep.');
-                    rows.push(...result.rows);
-                    if (rows.length >= total) { if (rows.length !== total) throw new Error('Customer mapping page count is invalid.'); break; }
-                    if (!result.rows.length || page === 1000) throw new Error('Customer mappings could not be loaded completely.');
-                }
-                if (signature !== getRequestModalCustomerMappingCacheSignature()) throw new Error('Customer mappings changed during loading. Refresh to retry.');
-                const identities = rows.map(row => JSON.stringify([row.salesrepid, row.customeridentityid, row.consigneeid]));
-                if (new Set(identities).size !== rows.length) throw new Error('Customer mapping identities are ambiguous.');
-                requestMappingRpcCache.set(id, { rows, revision, signature });
+                const entry = await loadRequestModalCustomerOptionsForRep(rep, force,
+                    () => requestGeneration === requestModalAsyncGeneration && generation === requestMappingReadGeneration && rep === tempSelectedReqRep);
+                if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration || rep !== tempSelectedReqRep) return false;
                 tempSelectedReqSalesrepId = id;
-                requestModalCustomerOptionsCacheKey = id + ':' + revision;
+                requestModalCustomerOptionsCacheKey = id + ':' + entry.revision;
                 requestExistingFolderGroupsCacheKey = '';
                 requestModalCustomerGroupCacheKey = '';
                 requestModalCustomerOptionsReady = true;
@@ -57915,20 +58135,27 @@ function toggleDriveQuickRequestItem(domId) {
                     if (requestGeneration === requestModalAsyncGeneration && document.getElementById('existing-folder-container')) renderExistingRequestFolderPicker();
                 }
             });
-            return requestModalCustomerOptionsLoadPromise;
+            requestModalCustomerOptionsLoadPromise = loadPromise;
+            return loadPromise;
         }
         function getRequestModalCustomerOptionsForRep(repName = '') {
             const id = getRequestSelectedSalesrepId(repName);
             if (!id) return [];
+            const signature = getRequestModalCustomerMappingCacheSignature();
+            const cachedOptions = requestModalCustomerOptionRowsCache.get(id);
+            if (cachedOptions?.signature === signature && Array.isArray(cachedOptions.rows)) return cachedOptions.rows;
             const cached = requestMappingRpcCache.get(id);
-            const rows = cached?.signature === getRequestModalCustomerMappingCacheSignature() ? cached.rows
+            const rows = cached?.signature === signature ? cached.rows
                 : isRequestModalCustomerMapReady() ? customerRepMapRows : [];
             const options = new Map();
             (rows || []).forEach(row => {
                 if (!isActiveRequestCustomerMapping(row) || String(firstNonEmptyValue(row.SALESREPID, row.salesrepid, '')).trim() !== id) return;
                 appendCustomerRepMapOption(options, row);
             });
-            return mergeRequestModalCustomerOptions(Array.from(options.values()));
+            const merged = mergeRequestModalCustomerOptions(Array.from(options.values()));
+            requestModalCustomerOptionRowsCache.set(id, { signature, rows: merged });
+            while (requestModalCustomerOptionRowsCache.size > 32) requestModalCustomerOptionRowsCache.delete(requestModalCustomerOptionRowsCache.keys().next().value);
+            return merged;
         }
         function getRequestModalActiveTextState() {
             const modal = document.getElementById('request-rep-modal');
@@ -58122,7 +58349,8 @@ function toggleDriveQuickRequestItem(domId) {
             requestModalCustomerOptionsReady = areRequestModalCustomerDatasetsReady();
             requestModalCustomerOptionsError = '';
             buildRequestModalCustomerOptionsCache(true);
-            ensureRequestModalCustomerOptionsReady();
+            if (repPickerLocked && tempSelectedReqRep) ensureRequestModalCustomerOptionsReady();
+            else prefetchRequestModalCustomerOptions().catch(() => {});
             const repOptionsPromise = isCsrRequestAssistantUser() ? ensureRequestRepUserOptionsReady() : null;
             if (repPickerLocked) {
                 renderExistingRequestFolderPicker();
@@ -60692,6 +60920,7 @@ function toggleDriveQuickRequestItem(domId) {
             repairAppShellScrollState('login-shell-open', { resetGestureState: true });
             syncRoleAccessUi(getRoleAccessState());
             applyRolePermissions();
+            runAfterShellInteractive(() => scheduleRequestModalReferencePrefetch(), touchShell ? 180 : 40);
             ensureHomeDashboardReadyAfterLogin('login-shell-open');
             if (loginView) loginView.style.display = 'none';
             ensureHomeDashboardReadyAfterLogin('login-shell-open');
@@ -61043,9 +61272,26 @@ function toggleDriveQuickRequestItem(domId) {
                     throw new Error('Your access could not be verified. Please retry login.');
                 }
                 applyCurrentUserMasterInventoryScope();
+                // The access snapshot above is authoritative. Mark role access
+                // ready while the login surface still covers the app so the
+                // live-sync coordinator can safely hydrate startup lookups.
+                setRoleAccessReadyState(true);
                 registerAppFilterStatePersistence();
                 restorePersistedAppFilterStateForCurrentUser();
                 clearLoginCachePrefetch();
+                if (canAccessView('request') || (typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess())) {
+                    setLoginProgress(Math.max(currentProgress, 82), 'Preparing Request customer choices...');
+                    try {
+                        const ready = await prepareRequestModalChoicesForStartup();
+                        if (!ready) console.warn('Request customer choices are still warming; they will retry after sign-in.');
+                    } catch (error) { console.warn('Request customer choices will retry after sign-in.', error); }
+                    if (loginOwner !== nativeAuthProfile?.id || loginAuthEpoch !== productionLiveSyncReadAuthEpoch || currentUser !== user) {
+                        const activeAccessVerified = appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale
+                            && appAccessSnapshotState.username === getRequestCapabilityUsernameKey(currentUser);
+                        if (!activeAccessVerified) setRoleAccessReadyState(false);
+                        return;
+                    }
+                }
                 openAppShellAfterLogin(false);
                 initializeCartUi();
                 updateGlobalActionBar();
@@ -61059,7 +61305,23 @@ function toggleDriveQuickRequestItem(domId) {
                 return;
             }
             await (window.GncLoginTrace?.measure('request-capabilities', readCapabilities) ?? readCapabilities());
-            initializeAppAccessSnapshot({ reason: isRestoredSession ? 'restored-login' : 'login' }).catch(() => {});
+            const startupAccessUser = currentUser;
+            const startupAccessLoad = initializeAppAccessSnapshot({ reason: isRestoredSession ? 'restored-login' : 'login' });
+            const startupAccessReady = await Promise.race([
+                startupAccessLoad.then(() => appAccessSnapshotState.status === 'ready' && !appAccessSnapshotState.stale
+                    && appAccessSnapshotState.username === getRequestCapabilityUsernameKey(startupAccessUser)),
+                delayMs(900).then(() => false)
+            ]);
+            if (startupAccessReady && currentUser === startupAccessUser) {
+                applyCurrentUserMasterInventoryScope();
+                setRoleAccessReadyState(true);
+                if (canAccessView('request') || (typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess())) {
+                    setLoginProgress(Math.max(currentProgress, 82), 'Preparing Request customer choices...');
+                    try { await prepareRequestModalChoicesForStartup(); }
+                    catch (error) { console.warn('Request customer choices will retry after sign-in.', error); }
+                    if (currentUser !== startupAccessUser) return;
+                }
+            }
             await loadEvalWorkAssignments(false);
             const roleAccess = getRoleAccessState();
             applyCurrentUserMasterInventoryScope();
@@ -114452,8 +114714,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return !isDockSuspendDcRequestMirrorRow(item);
         }
 
-        function getSuspendTagRequestItems(items = []) {
-            return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource);
+        let requestSuspendTagStatusFilter = 'active';
+        function getSuspendTagRequestItems(items = [], statusFilter = 'active') {
+            return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource)
+                .filter(item => statusFilter === 'completed'
+                    ? ['completed', 'awaiting_rep', 'approved'].includes(getSuspendTagStatus(item))
+                    : ['pending', 'denied'].includes(getSuspendTagStatus(item)) && !isOptimisticallyCompletedRow(item));
         }
 
         function countPendingSuspendTagQueueItems(items = [], sourceRows = []) {
@@ -114469,6 +114735,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 if (!isDockSuspendDcRequestSource(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
                 const sourceUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
                 if (!sourceUid || countedSourceIds.has(sourceUid)) return;
+                if (getQueueCompletionState()?.has('suspend:' + sourceUid + ':' + getDockSuspendCompletionRevision(row), getQueueCompletionVersion(row))) return;
                 countedSourceIds.add(sourceUid);
                 count += 1;
             });
@@ -114733,12 +115000,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
                 location: new Intl.Collator(undefined, { numeric: true }).compare
             };
-            const allItems = sortRequestSuspendTagRows(getSuspendTagRequestItems(items), collators);
+            const allItems = sortRequestSuspendTagRows(getSuspendTagRequestItems(items, requestSuspendTagStatusFilter), collators);
             const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
             const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems);
             const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems);
             const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems);
             const filterKey = JSON.stringify([
+                requestSuspendTagStatusFilter,
                 normalizeSearchValue(requestSuspendTagCommonNameSearchTerm),
                 normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter),
                 normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter),
@@ -114827,14 +115095,17 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 <button id="request-suspend-tag-common-clear" type="button" class="${searchTerm ? '' : 'hidden'}" onclick="event.stopPropagation();return clearRequestSuspendTagCommonNameSearch(event)" aria-label="Clear common name search"><i class="ph-bold ph-x"></i></button>
             </span></label>`;
             const assignedHtml = canFilterAssigned ? `<label class="workflow-control"><span>Assigned To</span><select id="request-suspend-tag-assigned-filter" onchange="return setRequestSuspendTagAssignedToFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedAssignedValue === 'all' ? ' selected' : ''}>All Users (${escapeHtml(String(safeSearchItems.length))})</option>${optionMarkup(assignedOptions, selectedAssignedValue)}</select></label>` : '';
+            const statusHtml = `<label class="workflow-control"><span>Show</span><select id="request-suspend-tag-status-filter" onchange="return setRequestSuspendTagStatusFilter(this.value)" onclick="event.stopPropagation()"><option value="active"${requestSuspendTagStatusFilter === 'active' ? ' selected' : ''}>Active</option><option value="completed"${requestSuspendTagStatusFilter === 'completed' ? ' selected' : ''}>Completed &amp; approvals</option></select></label>`;
             const contSizeHtml = `<label class="workflow-control"><span>Container Size</span><select id="request-suspend-tag-contsize-filter" onchange="return setRequestSuspendTagContSizeFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedContSizeValue === 'all' ? ' selected' : ''}>All Sizes (${escapeHtml(String(safeAssignedItems.length))})</option>${optionMarkup(contSizeOptions, selectedContSizeValue)}</select></label>`;
             const dockHtml = `<label class="workflow-control"><span>Dock</span><select id="request-suspend-tag-dock-filter" onchange="return setRequestSuspendTagDockFilter(this.value)" onclick="event.stopPropagation()"><option value="all"${selectedDockValue === 'all' ? ' selected' : ''}>All Docks (${escapeHtml(String(safeContSizeItems.length))})</option>${optionMarkup(dockOptions, selectedDockValue)}</select></label>`;
             const clearHtml = `<button id="request-suspend-tag-clear-filters" type="button" class="workflow-control-action${hasAnyFilter ? '' : ' hidden'}" onclick="return clearRequestSuspendTagFilters(event)"><i class="ph-bold ph-x-circle"></i><span>Clear Filters</span></button>`;
             const countHtml = `<div id="request-suspend-tag-filter-count" class="sr-only">${escapeHtml(countLabel)}${hasAnyFilter ? `<span>${escapeHtml(String(safeAllItems.length))} total rows</span>` : ''}</div>`;
-            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${commonSearchHtml}${assignedHtml}${contSizeHtml}${dockHtml}</div>`;
+            return `<div class="request-view-filters" role="group" aria-label="Suspend filters"><div class="request-view-filter-summary">${countHtml}${clearHtml}</div>${statusHtml}${commonSearchHtml}${assignedHtml}${contSizeHtml}${dockHtml}</div>`;
         }
 
         function updateRequestSuspendTagFiltersInPlace(allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
+            const statusSelect = document.getElementById('request-suspend-tag-status-filter');
+            if (statusSelect) statusSelect.value = requestSuspendTagStatusFilter;
             const input = document.getElementById('request-suspend-tag-common-search');
             const searchTerm = getRequestSuspendTagCommonNameSearchTerm();
             if (input && document.activeElement !== input && String(input.value || '') !== searchTerm) input.value = searchTerm;
@@ -114978,6 +115249,16 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 requestAnimationFrame(restore);
                 setTimeout(restore, 0);
             }
+            schedulePersistAppFilterState(120);
+            return false;
+        }
+
+        function setRequestSuspendTagStatusFilter(value = 'active') {
+            requestSuspendTagStatusFilter = value === 'completed' ? 'completed' : 'active';
+            requestScopedItemsCacheKey = '';
+            clearSelection();
+            markViewDirty('request');
+            renderRequest();
             schedulePersistAppFilterState(120);
             return false;
         }
@@ -116451,7 +116732,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (activeReqTab === 'pending') {
                 items = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             } else if (activeReqTab === 'suspend-tag') {
-                items = applyRequestSuspendTagDockFilter(applyRequestSuspendTagContSizeFilter(applyRequestSuspendTagAssignedToFilter(applyRequestSuspendTagCommonNameSearchFilter(getSuspendTagRequestItems(items)))));
+                items = applyRequestSuspendTagDockFilter(applyRequestSuspendTagContSizeFilter(applyRequestSuspendTagAssignedToFilter(applyRequestSuspendTagCommonNameSearchFilter(getSuspendTagRequestItems(items, requestSuspendTagStatusFilter)))));
             } else if (activeReqTab === 'reps') {
                 items = mergeRequestHistoryRowsForRequestFolders(items);
                 items = items.filter(i => isRegularRequestQueueItem(i) && doesRequestRepMatchValue(getRequestAssignedRep(i), selectedReqRepView) && !i.REQ_ARCHIVED);
@@ -141563,7 +141844,7 @@ C.14.043 C.15.000
         });
         window.addEventListener('online', () => { if (isManagerSeasonPriorityVisible()) loadManagerSeasonPriority(true); });
 
-        const managerCompanyDirectoryState = { kind: 'contacts', query: '', filterValue: '', reviewOnly: false, contacts: [], blocks: [], beds: [], codes: [], loading: false, error: '', formOpen: false, editing: null };
+        const managerCompanyDirectoryState = { kind: 'contacts', query: '', filterValue: '', reviewOnly: false, page: 0, pageSize: 50, contacts: [], blocks: [], beds: [], codes: [], loading: false, loaded: false, loadGeneration: 0, error: '', formOpen: false, editing: null };
         const managerCompanyDirectoryMeta = {
             contacts: { table: 'ph_company_directory_contacts', title: 'Employee contacts', columns: [['name','Name'],['department','Department'],['extension','Extension'],['cell_number','Cell'],['home_number','Home'],['location','Location']], fields: [['name','Name',true],['department','Department',false],['extension','Extension',false],['cell_number','Cell number',false],['home_number','Home number',false],['location','Location',true]] },
             blocks: { table: 'ph_company_directory_beds', title: 'Blocks & beds', columns: [['block_letter','Block'],['bed_identifier','Bed'],['capacity','Capacity']], fields: [['block_letter','Block',true],['bed_identifier','Bed identifier',true],['capacity','Bed capacity',true,'number']] },
@@ -141577,16 +141858,26 @@ C.14.043 C.15.000
             const filterField = state.kind === 'contacts' ? 'location' : state.kind === 'blocks' ? 'block_letter' : 'department_reference';
             const filterLabel = state.kind === 'contacts' ? 'location' : state.kind === 'blocks' ? 'block' : 'department';
             const filterOptions = [...new Set(list.map(row => String(row[filterField] || '').trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b));
-            const rows = list.filter(row => (!state.reviewOnly || row.needs_review === true) && (!state.filterValue || String(row[filterField] || '') === state.filterValue) && (!q || Object.values(row).some(value => String(value ?? '').toLowerCase().includes(q))));
+            const matchingRows = list.filter(row => (!state.reviewOnly || row.needs_review === true) && (!state.filterValue || String(row[filterField] || '') === state.filterValue) && (!q || Object.values(row).some(value => String(value ?? '').toLowerCase().includes(q))));
+            const pageCount = Math.max(1, Math.ceil(matchingRows.length / state.pageSize));
+            state.page = Math.min(Math.max(0, Number(state.page) || 0), pageCount - 1);
+            const pageStart = state.page * state.pageSize;
+            const pageRows = matchingRows.slice(pageStart, pageStart + state.pageSize);
             const options = { contacts: 'Employee contacts', blocks: 'Blocks & beds', codes: 'Production codes' };
             const totals = state.kind === 'blocks' ? `<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 mb-3">${state.blocks.map(block => { const beds = state.beds.filter(bed => bed.block_letter === block.letter); const total = beds.reduce((sum, bed) => sum + Number(bed.capacity || 0), 0); return `<div class="rounded-xl border border-emerald-100 bg-white px-3 py-2"><strong class="block text-xs">${companyDirectoryEsc(block.name)}</strong><span class="text-[11px] text-slate-500">${beds.length} beds · ${total.toLocaleString()} total</span><label class="mt-2 grid gap-1 text-[10px] font-bold text-slate-500">Block label<input data-company-directory-block-name="${companyDirectoryEsc(block.letter)}" value="${companyDirectoryEsc(block.name)}" class="min-h-8 rounded border px-2 text-xs font-medium"></label><button type="button" data-company-directory-block-delete="${companyDirectoryEsc(block.letter)}" class="mt-2 rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-700">Delete block</button></div>`; }).join('')}<button type="button" data-company-directory-block-add class="min-h-20 rounded-xl border border-dashed border-emerald-300 bg-emerald-50 text-sm font-bold text-emerald-800">＋ Add block</button></div>` : '';
-            const tableRows = rows.map(row => `<tr>${meta.columns.map(([key]) => `<td>${companyDirectoryEsc(row[key] ?? '—')}</td>`).join('')}<td class="whitespace-nowrap"><button type="button" data-company-directory-edit="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-emerald-200 px-2 py-1 text-xs font-bold">Edit</button> <button type="button" data-company-directory-delete="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">Delete</button></td></tr>`).join('');
+            const tableRows = pageRows.map(row => `<tr>${meta.columns.map(([key]) => `<td>${companyDirectoryEsc(row[key] ?? '—')}</td>`).join('')}<td class="whitespace-nowrap"><button type="button" data-company-directory-edit="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-emerald-200 px-2 py-1 text-xs font-bold">Edit</button> <button type="button" data-company-directory-delete="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">Delete</button></td></tr>`).join('');
             const form = state.formOpen ? `<div class="fixed inset-0 z-[10000] grid place-items-center bg-slate-950/60 p-3" data-company-directory-scrim><form data-company-directory-form class="max-h-[90dvh] w-full max-w-xl overflow-auto rounded-2xl bg-white p-4 shadow-2xl"><div class="mb-4 flex items-center justify-between"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">${state.editing ? 'Edit record' : 'New record'}</div><h3 class="text-lg font-black">${meta.title}</h3></div><button type="button" data-company-directory-close aria-label="Close" class="rounded-lg border px-3 py-2">×</button></div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2">${meta.fields.map(([key,label,required,type]) => `<label class="grid gap-1 text-xs font-bold text-slate-700">${label}${state.kind === 'blocks' && key === 'block_letter' ? `<select name="${key}" required class="min-h-10 rounded-lg border px-3">${'ABCDEFGHIJKL'.split('').map(letter => `<option value="${letter}" ${state.editing?.[key] === letter ? 'selected' : ''}>Block ${letter}</option>`).join('')}</select>` : `<input name="${key}" type="${type || 'text'}" ${required ? 'required' : ''} ${type === 'number' ? 'min="0.01" step="0.01"' : ''} value="${companyDirectoryEsc(state.editing?.[key] ?? '')}" class="min-h-10 rounded-lg border px-3">`}</label>`).join('')}</div>${state.error ? `<p role="alert" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</p>` : ''}<div class="mt-4 flex justify-end gap-2"><button type="button" data-company-directory-close class="min-h-10 rounded-xl border px-4 text-sm font-bold">Cancel</button><button class="min-h-10 rounded-xl bg-emerald-700 px-4 text-sm font-black text-white">Save record</button></div></form></div>` : '';
-            return `<section class="rounded-2xl border border-emerald-100 bg-white p-3 sm:p-4"><header class="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Production reference data · Dylan</div><h2 class="text-lg font-black text-slate-900">Company Directory</h2></div><button type="button" data-company-directory-refresh class="min-h-10 rounded-xl border border-emerald-200 px-3 text-sm font-bold text-emerald-800" ${state.loading ? 'disabled' : ''}>Refresh</button><button type="button" data-company-directory-add class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">＋ Add ${state.kind === 'blocks' ? 'bed row' : 'record'}</button></header><div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[12rem_12rem_minmax(10rem,1fr)]"><select data-company-directory-kind aria-label="Directory category" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm font-bold">${Object.entries(options).map(([key,label]) => `<option value="${key}" ${state.kind === key ? 'selected' : ''}>${label}</option>`).join('')}</select><select data-company-directory-filter aria-label="Filter by ${filterLabel}" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm"><option value="">All ${filterLabel}s</option>${filterOptions.map(value => `<option value="${companyDirectoryEsc(value)}" ${state.filterValue === value ? 'selected' : ''}>${companyDirectoryEsc(value)}</option>`).join('')}</select><input data-company-directory-search aria-label="Search directory" value="${companyDirectoryEsc(state.query)}" placeholder="Search names, departments, extensions, locations, codes…" class="min-h-10 rounded-xl border border-emerald-100 px-3 text-sm"><label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600"><input data-company-directory-review type="checkbox" ${state.reviewOnly ? 'checked' : ''}>Needs review</label></div>${totals}${state.error && !state.formOpen ? `<div role="alert" class="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</div>` : ''}<div class="max-h-[65dvh] overflow-auto rounded-xl border border-slate-200"><table class="w-full min-w-[700px] border-collapse text-left text-xs"><thead class="sticky top-0 bg-emerald-50 text-[10px] uppercase tracking-wide text-emerald-900"><tr>${meta.columns.map(([,label]) => `<th class="px-3 py-2">${label}</th>`).join('')}<th class="px-3 py-2">Actions</th></tr></thead><tbody>${state.loading ? `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">Loading directory…</td></tr>` : tableRows || `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">No matching records.</td></tr>`}</tbody></table></div><div class="pt-2 text-[11px] text-slate-500">${rows.length} records</div></section>${form}`;
+            const rangeStart = matchingRows.length ? pageStart + 1 : 0;
+            const rangeEnd = Math.min(pageStart + state.pageSize, matchingRows.length);
+            const pagination = `<nav aria-label="Company directory pagination" class="flex flex-wrap items-center justify-between gap-2 pt-3 text-xs text-slate-600"><span>${matchingRows.length.toLocaleString()} records · Showing ${rangeStart.toLocaleString()}–${rangeEnd.toLocaleString()} · Page ${state.page + 1} of ${pageCount}</span><div class="flex gap-2"><button type="button" data-company-directory-page="previous" aria-label="Previous page" class="min-h-9 rounded-lg border border-emerald-200 px-3 font-bold text-emerald-800" ${state.page === 0 ? 'disabled' : ''}>Previous</button><button type="button" data-company-directory-page="next" aria-label="Next page" class="min-h-9 rounded-lg border border-emerald-200 px-3 font-bold text-emerald-800" ${state.page >= pageCount - 1 ? 'disabled' : ''}>Next</button></div></nav>`;
+            return `<section class="rounded-2xl border border-emerald-100 bg-white p-3 sm:p-4"><header class="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Production reference data · Dylan</div><h2 class="text-lg font-black text-slate-900">Company Directory</h2></div><button type="button" data-company-directory-refresh class="min-h-10 rounded-xl border border-emerald-200 px-3 text-sm font-bold text-emerald-800" ${state.loading ? 'disabled' : ''}>Refresh</button><button type="button" data-company-directory-add class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">＋ Add ${state.kind === 'blocks' ? 'bed row' : 'record'}</button></header><div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[12rem_12rem_minmax(10rem,1fr)]"><select data-company-directory-kind aria-label="Directory category" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm font-bold">${Object.entries(options).map(([key,label]) => `<option value="${key}" ${state.kind === key ? 'selected' : ''}>${label}</option>`).join('')}</select><select data-company-directory-filter aria-label="Filter by ${filterLabel}" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm"><option value="">All ${filterLabel}s</option>${filterOptions.map(value => `<option value="${companyDirectoryEsc(value)}" ${state.filterValue === value ? 'selected' : ''}>${companyDirectoryEsc(value)}</option>`).join('')}</select><input data-company-directory-search aria-label="Search directory" value="${companyDirectoryEsc(state.query)}" placeholder="Search names, departments, extensions, locations, codes…" class="min-h-10 rounded-xl border border-emerald-100 px-3 text-sm"><label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600"><input data-company-directory-review type="checkbox" ${state.reviewOnly ? 'checked' : ''}>Needs review</label></div>${totals}${state.error && !state.formOpen ? `<div role="alert" class="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</div>` : ''}<div class="max-h-[65dvh] overflow-auto rounded-xl border border-slate-200"><table class="w-full min-w-[700px] border-collapse text-left text-xs"><thead class="sticky top-0 bg-emerald-50 text-[10px] uppercase tracking-wide text-emerald-900"><tr>${meta.columns.map(([,label]) => `<th class="px-3 py-2">${label}</th>`).join('')}<th class="px-3 py-2">Actions</th></tr></thead><tbody>${state.loading && !state.loaded ? `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">Loading directory…</td></tr>` : tableRows || `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">No matching records.</td></tr>`}</tbody></table></div>${pagination}</section>${form}`;
         }
         async function loadCompanyDirectory(root) {
             const state = managerCompanyDirectoryState;
-            state.loading = true; state.error = ''; root.innerHTML = renderCompanyDirectoryPanel();
+            if (!root || !getManagersToolAccess().canManageCompanyDirectory) return;
+            const generation = state.loadGeneration = Number(state.loadGeneration || 0) + 1;
+            state.loading = true; state.error = '';
+            if (!state.loaded) root.innerHTML = renderCompanyDirectoryPanel();
             try {
                 const [contacts, blocks, beds, codes] = await Promise.all([
                     supabaseFetch('ph_company_directory_contacts','GET',null,'select=*&order=name.asc'),
@@ -141594,22 +141885,35 @@ C.14.043 C.15.000
                     supabaseFetch('ph_company_directory_beds','GET',null,'select=*&order=block_letter.asc,bed_identifier.asc'),
                     supabaseFetch('ph_company_directory_codes','GET',null,'select=*&order=code.asc')
                 ]);
-                state.contacts=Array.isArray(contacts)?contacts:[]; state.blocks=Array.isArray(blocks)?blocks:[]; state.beds=Array.isArray(beds)?beds:[]; state.codes=Array.isArray(codes)?codes:[];
-            } catch (error) { state.error = error?.message || 'Unable to load the company directory.'; }
-            finally { state.loading = false; root.innerHTML = renderCompanyDirectoryPanel(); }
+                if (generation !== state.loadGeneration || !root.isConnected || !getManagersToolAccess().canManageCompanyDirectory) return;
+                state.contacts=Array.isArray(contacts)?contacts:[]; state.blocks=Array.isArray(blocks)?blocks:[]; state.beds=Array.isArray(beds)?beds:[]; state.codes=Array.isArray(codes)?codes:[]; state.loaded=true;
+            } catch (error) { if (generation === state.loadGeneration) state.error = error?.message || 'Unable to load the company directory.'; }
+            finally { if (generation === state.loadGeneration) { state.loading = false; if (root.isConnected && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_COMPANY_DIRECTORY_VIEW) root.innerHTML = renderCompanyDirectoryPanel(); } }
         }
         function mountCompanyDirectoryPanel(root) {
             if (!root || root.dataset.companyDirectoryMounted === 'true') return;
-            root.dataset.companyDirectoryMounted='true';
+            root.dataset.companyDirectoryMounted='true'; root.dataset.preserveDom='true';
             const state=managerCompanyDirectoryState;
             const redraw=()=>{ root.innerHTML=renderCompanyDirectoryPanel(); };
-            root.addEventListener('input', event => { if (event.target.matches('[data-company-directory-search]')) { state.query=event.target.value; const cursor=event.target.selectionStart; redraw(); const input=root.querySelector('[data-company-directory-search]'); input?.focus(); input?.setSelectionRange(cursor,cursor); } });
-            root.addEventListener('change', event => { if (event.target.matches('[data-company-directory-kind]')) { state.kind=event.target.value; state.query=''; state.filterValue=''; void loadCompanyDirectory(root); } else if(event.target.matches('[data-company-directory-filter]')) { state.filterValue=event.target.value; redraw(); } else if(event.target.matches('[data-company-directory-review]')) { state.reviewOnly=event.target.checked; redraw(); } });
+            root.addEventListener('gnc-manager-source-revision', event => {
+                if (event.detail?.surface !== 'company-directory' || !getManagersToolAccess().canManageCompanyDirectory) return;
+                if (state.formOpen || root.contains(document.activeElement)) { state.refreshPending=true; return; }
+                void loadCompanyDirectory(root);
+            });
+            root.addEventListener('focusout', () => setTimeout(() => {
+                if (state.refreshPending && !state.formOpen && !root.contains(document.activeElement)) {
+                    state.refreshPending=false; void loadCompanyDirectory(root);
+                }
+            }, 0));
+            root.addEventListener('input', event => { if (event.target.matches('[data-company-directory-search]')) { state.query=event.target.value; state.page=0; const cursor=event.target.selectionStart; redraw(); const input=root.querySelector('[data-company-directory-search]'); input?.focus(); input?.setSelectionRange(cursor,cursor); } });
+            root.addEventListener('change', event => { if (event.target.matches('[data-company-directory-kind]')) { state.kind=event.target.value; state.query=''; state.filterValue=''; state.page=0; void loadCompanyDirectory(root); } else if(event.target.matches('[data-company-directory-filter]')) { state.filterValue=event.target.value; state.page=0; redraw(); } else if(event.target.matches('[data-company-directory-review]')) { state.reviewOnly=event.target.checked; state.page=0; redraw(); } });
             root.addEventListener('click', async event => {
                 const target=event.target.closest('button'); if (!target) return;
+                const pageAction=target.dataset.companyDirectoryPage;
+                if (pageAction) { state.page=Math.max(0,state.page+(pageAction==='next'?1:-1)); redraw(); return; }
                 if (target.matches('[data-company-directory-refresh]')) { await loadCompanyDirectory(root); return; }
                 if (target.matches('[data-company-directory-add]')) { state.editing=null; state.formOpen=true; state.error=''; redraw(); return; }
-                if (target.matches('[data-company-directory-close]') || event.target.matches('[data-company-directory-scrim]')) { state.formOpen=false; state.error=''; redraw(); return; }
+                if (target.matches('[data-company-directory-close]') || event.target.matches('[data-company-directory-scrim]')) { state.formOpen=false; state.error=''; redraw(); if(state.refreshPending){state.refreshPending=false;void loadCompanyDirectory(root);} return; }
                 if (target.matches('[data-company-directory-block-add]')) { const next='ABCDEFGHIJKL'.split('').find(letter=>!state.blocks.some(block=>block.letter===letter)); if(!next){state.error='All blocks A through L already exist.';redraw();return;} try { await supabaseFetch('ph_company_directory_blocks','POST',{letter:next,name:`Block ${next}`},''); await loadCompanyDirectory(root); } catch(error) { state.error=error?.message||'Block creation failed.'; redraw(); } return; }
                 const blockDelete=target.dataset.companyDirectoryBlockDelete;
                 if(blockDelete){ const count=state.beds.filter(bed=>bed.block_letter===blockDelete).length; if(!window.confirm(`Delete Block ${blockDelete} and all ${count} bed rows? This cannot be undone.`))return; try { await supabaseFetch('ph_company_directory_blocks','DELETE',null,`letter=eq.${encodeURIComponent(blockDelete)}`); await loadCompanyDirectory(root); } catch(error) { state.error=error?.message||'Block deletion failed.'; redraw(); } return; }
@@ -148598,13 +148902,17 @@ C.14.043 C.15.000
             });
             const visibleOptions = getRequestModalVisibleOptions(`rep:${val || 'all'}`, filteredOptions);
             const html = visibleOptions.rows.map((option) => {
-                return `<button class="request-choice-card request-rep-option" ${buildFastInvokeAttrs('selectRepForRequest', [option.label, option.salesrepId || ''], 'Select sales rep ' + option.label)}><i class="request-choice-icon ph-bold ph-user"></i><span class="request-choice-title truncate">${esc(option.label)}${option.salesrepId ? `<span class="request-choice-meta block">Sales Rep ID ${esc(option.salesrepId)}</span>` : ''}</span></button>`;
+                return `<button class="request-choice-card request-rep-option" data-render-key="request-rep:${esc(option.salesrepId || option.token)}" ${buildFastInvokeAttrs('selectRepForRequest', [option.label, option.salesrepId || ''], 'Select sales rep ' + option.label)}><i class="request-choice-icon ph-bold ph-user"></i><span class="request-choice-title truncate">${esc(option.label)}${option.salesrepId ? `<span class="request-choice-meta block">Sales Rep ID ${esc(option.salesrepId)}</span>` : ''}</span></button>`;
             }).join('') + buildRequestModalMoreResultsHtml(visibleOptions);
-            container.innerHTML = html || (repPickerLocked
+            const repListHtml = html || (repPickerLocked
                 ? `<div class="request-empty-state">Requests are locked to ${esc(getLockedRequestRepNameForCurrentUser() || 'your login')}.</div>`
                 : (csrPicker
                     ? `<div class="request-empty-state">No matching active REP users found.</div>`
                     : `<div class="request-empty-state">No matching sales reps found.</div>`));
+            const repListTemplate = document.createElement('template');
+            repListTemplate.innerHTML = repListHtml;
+            if (window.AgMetricStableViewDom) window.AgMetricStableViewDom.apply(container, repListTemplate.content);
+            else container.innerHTML = repListHtml;
             customBtn.classList.add('hidden');
         }
 
@@ -148628,6 +148936,14 @@ C.14.043 C.15.000
                 if (isRequestRowArchivedForCompletion(item)) return false;
                 return doesRequestRepMatchValue(firstNonEmptyValue(item.REQUESTED_BY, item.requested_by, item.SALESREPNAME, item.SALESREP, ''), safeRep);
             });
+        }
+
+        function getExistingRequestFolderRowsSignature(repName = '') {
+            return getExistingRequestFolderRepRows(repName).map((row) => [
+                firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, ''),
+                firstNonEmptyValue(row && row.REQUEST_FOLDER, row && row.request_folder, ''),
+                firstNonEmptyValue(row && row.REQ_ARCHIVED, row && row.req_archived, false)
+            ].join(':')).join('|');
         }
 
         function parseExistingRequestFolderMetadata(folderId = '', rows = []) {
@@ -148670,24 +148986,24 @@ C.14.043 C.15.000
         }
 
         function buildExistingRequestFolderCustomerGroups(repName = '') {
-            const customerMap = new Map();
             const canonicalRepName = resolveCanonicalRequestRepName(repName) || String(repName || '').trim();
             const existingRows = getExistingRequestFolderRepRows(repName);
+            const mappingSignature = getRequestModalCustomerMappingCacheSignature();
+            const salesrepId = getRequestSelectedSalesrepId(repName);
+            const rowSignature = getExistingRequestFolderRowsSignature(repName);
+            const cacheKey = JSON.stringify([salesrepId, mappingSignature, normalizeRepMatchToken(canonicalRepName), rowSignature]);
+            const durableKey = JSON.stringify([salesrepId, mappingSignature, requestMappingRpcCache.get(salesrepId)?.revision || '', rowSignature]);
+            const precomputedGroups = requestExistingFolderGroupsByRepCache.get(durableKey);
+            if (Array.isArray(precomputedGroups)) {
+                requestExistingFolderGroupsCacheKey = cacheKey;
+                requestExistingFolderGroupsCache = precomputedGroups;
+                return precomputedGroups;
+            }
+            if (cacheKey === requestExistingFolderGroupsCacheKey && Array.isArray(requestExistingFolderGroupsCache)) return requestExistingFolderGroupsCache;
+            const customerMap = new Map();
             const mappedRows = canUseRequestMappedFoldersForCurrentUser()
                 ? getRequestModalCustomerOptionsForRep(repName).map(option => ({ ...option, customername: option.customerName, consigneename: option.consigneeName, consigneeid: option.consigneeidentityid, salesrepid: option.request_selected_salesrep_id }))
                 : [];
-            const rowSignature = existingRows.map((row) => [
-                firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, ''),
-                firstNonEmptyValue(row && row.REQUEST_FOLDER, row && row.request_folder, ''),
-                firstNonEmptyValue(row && row.REQ_ARCHIVED, row && row.req_archived, false)
-            ].join(':')).join('|');
-            const mapSignature = mappedRows.map((row) => [
-                row.salesrepid, row.customeridentityid, row.consigneeid,
-                getCustomerRepMapCustomerValue(row),
-                getCustomerRepMapConsigneeValue(row)
-            ].join(':')).join('|');
-            const cacheKey = `${getRequestSelectedSalesrepId(repName)}|${requestModalCustomerOptionsCacheKey}|${normalizeRepMatchToken(canonicalRepName)}|${rowSignature}|${mapSignature}`;
-            if (cacheKey === requestExistingFolderGroupsCacheKey && Array.isArray(requestExistingFolderGroupsCache)) return requestExistingFolderGroupsCache;
             const ensureCustomerGroup = (customerName = '', consigneeName = '', customerId = '') => {
                 const customerLabel = getRequestCustomerFolderLabel(customerName, consigneeName);
                 const customerKey = (customerId ? `id:${customerId}` : normalizeRequestCustomerFolderKey(customerName || customerLabel)) || normalizeRepMatchToken(customerName || customerLabel) || 'unknown';
@@ -148781,6 +149097,8 @@ C.14.043 C.15.000
             }).sort((a, b) => String(a.label || '').localeCompare(String(b.label || ''), undefined, { numeric: true, sensitivity: 'base' }));
             requestExistingFolderGroupsCacheKey = cacheKey;
             requestExistingFolderGroupsCache = groups;
+            requestExistingFolderGroupsByRepCache.set(durableKey, groups);
+            while (requestExistingFolderGroupsByRepCache.size > 32) requestExistingFolderGroupsByRepCache.delete(requestExistingFolderGroupsByRepCache.keys().next().value);
             return groups;
         }
 
@@ -148993,7 +149311,7 @@ C.14.043 C.15.000
                     visibleGroups.rows.forEach((group) => {
                         const label = String(group.label || 'Unknown').trim();
                         const consigneeCount = Number(group.consigneeCount || (Array.isArray(group.consignees) ? group.consignees.length : 0)) || 0;
-                        html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectExistingRequestCustomer', [group.key], 'Open customer ' + label)}><i class="request-choice-icon ph-fill ph-users"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${esc(label)}</span><span class="request-choice-meta">${consigneeCount} consignee${consigneeCount === 1 ? '' : 's'} | ${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
+                        html += `<button class="request-choice-card mb-2" data-render-key="request-customer:${esc(group.key)}" ${buildFastInvokeAttrs('selectExistingRequestCustomer', [group.key], 'Open customer ' + label)}><i class="request-choice-icon ph-fill ph-users"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${esc(label)}</span><span class="request-choice-meta">${consigneeCount} consignee${consigneeCount === 1 ? '' : 's'} | ${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
                     });
                     html += buildRequestModalMoreResultsHtml(visibleGroups);
                 } else if (requestModalCustomerOptionsLoading) {
@@ -149014,7 +149332,7 @@ C.14.043 C.15.000
                 if (filteredConsignees.length) {
                     visibleConsignees.rows.forEach((group) => {
                         const label = String(group.consigneeLabel || 'No Consignee').trim();
-                        html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectExistingRequestConsignee', [group.key], 'Open consignee ' + label)}><i class="request-choice-icon ph-fill ph-map-pin"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${esc(label)}</span><span class="request-choice-meta">${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
+                        html += `<button class="request-choice-card mb-2" data-render-key="request-consignee:${esc(group.key)}" ${buildFastInvokeAttrs('selectExistingRequestConsignee', [group.key], 'Open consignee ' + label)}><i class="request-choice-icon ph-fill ph-map-pin"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${esc(label)}</span><span class="request-choice-meta">${group.folderCount} folder${group.folderCount === 1 ? '' : 's'} | ${group.rowCount} row${group.rowCount === 1 ? '' : 's'}</span></div></button>`;
                     });
                     html += buildRequestModalMoreResultsHtml(visibleConsignees);
                 } else {
@@ -149034,7 +149352,7 @@ C.14.043 C.15.000
                     visibleFolders.rows.forEach((folder) => {
                         const meta = folder.meta || parseExistingRequestFolderMetadata(folder.folderId, folder.rows);
                         const folderLabel = meta.requestIdLabel || folder.folderId;
-                        html += `<button class="request-choice-card mb-2" ${buildFastInvokeAttrs('selectExistingRequestFolder', [folder.folderId, pairLabel], 'Open folder ' + folderLabel)}><i class="request-choice-icon ph-fill ph-folder"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${esc(folderLabel)}</span><span class="request-choice-meta">Date: ${esc(meta.dateLabel || '-')} | Request #: ${esc(meta.requestNumber || folder.folderId)}</span><span class="request-choice-meta">${folder.rows.length} row${folder.rows.length === 1 ? '' : 's'} | Append to existing</span></div></button>`;
+                        html += `<button class="request-choice-card mb-2" data-render-key="request-folder:${esc(folder.folderId)}" ${buildFastInvokeAttrs('selectExistingRequestFolder', [folder.folderId, pairLabel], 'Open folder ' + folderLabel)}><i class="request-choice-icon ph-fill ph-folder"></i><div class="flex flex-col min-w-0"><span class="request-choice-title truncate">${esc(folderLabel)}</span><span class="request-choice-meta">Date: ${esc(meta.dateLabel || '-')} | Request #: ${esc(meta.requestNumber || folder.folderId)}</span><span class="request-choice-meta">${folder.rows.length} row${folder.rows.length === 1 ? '' : 's'} | Append to existing</span></div></button>`;
                     });
                     html += buildRequestModalMoreResultsHtml(visibleFolders);
                 } else {
@@ -149047,7 +149365,10 @@ C.14.043 C.15.000
                 html += `<button class="request-primary-action request-folder-create-action" ${createAttrs}>+ CREATE NEW FOLDER</button>`;
             }
             html += `</div>`;
-            container.innerHTML = html;
+            const pickerTemplate = document.createElement('template');
+            pickerTemplate.innerHTML = html;
+            if (window.AgMetricStableViewDom) window.AgMetricStableViewDom.apply(container, pickerTemplate.content);
+            else container.innerHTML = html;
             restoreExistingRequestPickerSearchFocus(focusSnapshot);
             return true;
         }
@@ -168626,10 +168947,17 @@ ${folderNote ? `Folder Note: ${folderNote}
         async function runSuspendTagRowCommand(operation, mirror, patch = {}, expectedRevision = getDockSuspendCompletionRevision(mirror), options = {}) {
             if (['save', 'complete', 'close'].includes(operation) && !options.serialized) {
                 const navigationSignal = canUseProductionLiveSync() ? productionLiveSyncNavigation.signal : null;
-                return serializeSuspendTagRowWrite(mirror, () => {
+                const completion = ['complete', 'close'].includes(operation) ? getQueueCompletionState() : null;
+                const completionKey = completion ? getQueueCompletionKey(mirror) : '';
+                if (completion && !completion.begin(completionKey, getQueueCompletionVersion(mirror))) return false;
+                if (completion) refreshLocalDockSuspendDcRequestState('suspend-tag-completing', mirror);
+                try { return await serializeSuspendTagRowWrite(mirror, () => {
                     if (navigationSignal && (navigationSignal.aborted || navigationSignal !== productionLiveSyncNavigation.signal)) throw staleSupabaseReadScopeError();
                     return runSuspendTagRowCommand(operation, mirror, patch, expectedRevision, { ...options, serialized: true });
-                });
+                }); } finally {
+                    completion?.rollback(completionKey);
+                    if (completion) refreshLocalDockSuspendDcRequestState('suspend-tag-completion-settled', mirror);
+                }
             }
             const photoOnly = operation === 'save' && Object.keys(patch).length === 2
                 && Object.keys(patch).every(key => ['dock_photo_link', 'dock_photo_name'].includes(key))
@@ -168680,6 +169008,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                     'suspend_tag_version', 'dock_photo_link', 'dock_photo_name'].map(key => [key, result.row[key]])) : result.row;
                 state.receipts[JSON.stringify([sourceUid,expectedRevision])] = { row:receiptRow,completedAt:result.row.date_completed,savedAt:Date.now() };
                 delete state.pending[key]; persistDockSuspendCompletionState(state);
+                if (['complete', 'close'].includes(operation) && receiptScope === getSupabaseReadIdentityScope()) {
+                    getQueueCompletionState()?.confirm(getQueueCompletionKey(mirror), result.row.suspend_tag_version);
+                }
                 if (writeProof && (writeProof.owner !== getSupabaseReadIdentityScope()
                     || writeProof.navigationSignal.aborted || writeProof.navigationSignal !== productionLiveSyncNavigation.signal
                     || writeProof.view !== getCurrentVisibleViewId()
@@ -168965,7 +169296,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     openDockSuspendDcRequestUpdate(uniqueId);
                     return false;
                 }
-                if (!await showAppConfirm('Mark this Suspend Tag row done? It will remain visible in Que.', { title: 'Complete Suspend Tag', confirmLabel: 'Mark Done', cancelLabel: 'Keep Pending' })) return false;
+                if (!await showAppConfirm('Mark this Suspend Tag row done and remove it from the active Que?', { title: 'Complete Suspend Tag', confirmLabel: 'Mark Done', cancelLabel: 'Keep Pending' })) return false;
                 if (actionNavigation && (actionNavigation.aborted || actionNavigation !== productionLiveSyncNavigation.signal)) return false;
                 if (button) button.disabled = true;
                 try {
@@ -169383,7 +169714,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 }
             }
             rowSaveKey = getRowSaveCoordinatorKey(prefix, itemToSave);
-            if (prefix === 'req-' && isRequestWorkConflictBlocked(itemToSave) && !(options && options.requestWorkDraftRetry)) {
+            if (prefix === 'req-' && !isComplete && isRequestWorkConflictBlocked(itemToSave) && !(options && options.requestWorkDraftRetry)) {
                 captureBlockedRequestWorkFormDraft(itemToSave);
                 updateRequestWorkConflictReview(itemToSave);
                 return { skipped: true, reason: 'request-version-conflict-review-required' };
@@ -169408,7 +169739,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             if (isCurrentView && isComplete && btnComp) btnComp.innerText = 'SAVING...';
 
             const executeSave = async () => {
-                if (prefix === 'req-' && isRequestWorkConflictBlocked(itemToSave) && !(saveOptions && saveOptions.requestWorkDraftRetry)) {
+                if (prefix === 'req-' && !isComplete && isRequestWorkConflictBlocked(itemToSave) && !(saveOptions && saveOptions.requestWorkDraftRetry)) {
                     captureBlockedRequestWorkFormDraft(itemToSave);
                     updateRequestWorkConflictReview(itemToSave);
                     return { skipped: true, reason: 'request-version-conflict-review-required' };
@@ -170292,6 +170623,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     Object.assign(itemToSave, remoteRow);
                     normalizeRowPhotoFields(itemToSave);
                     buildSearchIndex(itemToSave);
+                    confirmQueueCompletion(itemToSave);
                     upsertRealtimeRow(requestsInventory, itemToSave, 'ph_active_request');
                     refreshRealtimeDetailLookupIndexes('ph_active_request');
                     requestViewLiveSyncSignature = buildRequestLiveSyncSignature(requestsInventory);
@@ -170565,7 +170897,10 @@ ${folderNote ? `Folder Note: ${folderNote}
                             else refreshDetailState();
                         }
                     }
-                    if (canOptimisticallyCompleteQueueRow) clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
+                    if (canOptimisticallyCompleteQueueRow) {
+                        confirmQueueCompletion(itemToSave);
+                        clearOptimisticCompletedRows([itemToSave.UNIQUE_ID]);
+                    }
                     if (isComplete && btnComp) btnComp.innerText = 'MARK DONE';
                     if (prefix === 'req-' && isComplete) {
                         closeRequestPublishModal('cancel');
@@ -171013,7 +171348,8 @@ ${folderNote ? `Folder Note: ${folderNote}
             const baseVersion = prior && prior.requestId === requestId && Number(prior.baseVersion) > 0
                 ? Number(prior.baseVersion)
                 : Math.max(1, Number(firstNonEmptyValue(item && item.ROW_VERSION, item && item.row_version, 1)) || 1);
-            return { requestId, baseVersion, baseValues: base, dirtyValues: dirty, complete: !!(complete || (prior && prior.complete)), legacy: false, updatedAt: new Date().toISOString() };
+            return { requestId, baseVersion, baseValues: base, dirtyValues: dirty, complete: !!(complete || (prior && prior.complete)),
+                ...(complete || prior?.complete && prior.intentPolicy === 'local-command' ? { intentPolicy: 'local-command' } : {}), legacy: false, updatedAt: new Date().toISOString() };
         }
 
         async function fetchCanonicalRequestWorkRow(requestId = '') {
@@ -171041,7 +171377,9 @@ ${folderNote ? `Folder Note: ${folderNote}
             const blockedDraft = draft && typeof draft === 'object'
                 ? { ...draft, legacy: !draft.baseVersion || !draft.baseValues, conflictPlan: plan || { status: 'review-required', reason: 'canonical-row-unavailable', conflictFields: [], canonical: null }, conflictChoices: {}, conflictedAt: new Date().toISOString(), conflictAttempt: attempt }
                 : { requestId, legacy: true, dirtyValues: {}, conflictPlan: { status: 'review-required', reason: 'legacy-or-invalid-draft', conflictFields: [], canonical: canonical || null }, conflictedAt: new Date().toISOString(), conflictAttempt: attempt };
-            persistRequestWorkDraft(item, blockedDraft, { autoRetryBlocked: true, conflictType: 'request-work', lastConflictMessage: String(error && error.message || error || 'REQUEST_VERSION_CONFLICT') });
+            persistRequestWorkDraft(item, blockedDraft, { autoRetryBlocked: true,
+                conflictType: draft?.complete && draft.intentPolicy === 'local-command' ? 'request-completion' : 'request-work',
+                lastConflictMessage: String(error && error.message || error || 'REQUEST_VERSION_CONFLICT') });
             updateRequestWorkConflictReview(item);
             reportSemanticHealthEvent('request_version_conflict', 'request_save', 'REQUEST_VERSION_CONFLICT', { requestId, attempt });
             return blockedDraft;
@@ -171505,7 +171843,8 @@ ${folderNote ? `Folder Note: ${folderNote}
                             const nextDraft = draft || { requestId, baseVersion: 0, baseValues: null, dirtyValues: getRequestWorkValuesFromRow(row), complete, legacy: true };
                             const blocked = await blockRequestWorkConflict(row, nextDraft, reconciliation.canonical || null,
                                 reconciliation.error || new Error('REQUEST_VERSION_CONFLICT'), attempt);
-                            entry.requestWorkDraft = blocked; entry.autoRetryBlocked = true; entry.conflictType = 'request-work';
+                            entry.requestWorkDraft = blocked; entry.autoRetryBlocked = true;
+                            entry.conflictType = blocked.complete && blocked.intentPolicy === 'local-command' ? 'request-completion' : 'request-work';
                             cacheChanged = true;
                             const local = findRequestInventoryRowByUniqueId(requestId);
                             if (local) { if (!blocked.legacy) applyRequestWorkValuesToItem(local, blocked.dirtyValues); updateRequestWorkConflictReview(local); }
@@ -171519,6 +171858,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         const requestWorkValuesAtResponse = getRequestWorkFormValues(local || row) || {};
                         if (local && formatted) Object.assign(local, formatted);
                         if (formatted) {
+                            if (complete && isRequestComplete(formatted)) confirmQueueCompletion(formatted);
                             if (draft) finalizeRequestWorkDraftAfterSuccess(local || row, reconciliation.draft, { ...(reconciliation.draft.dirtyValues || {}) }, formatted, requestWorkFormValuesAtDispatch, requestWorkCacheEntryTimestampAtDispatch, requestWorkValuesAtResponse);
                             else { delete pendingEdits[requestId]; cacheChanged = true; }
                             await deleteAcknowledgedRequestBlobs(requestId).catch(() => {});
@@ -171530,7 +171870,9 @@ ${folderNote ? `Folder Note: ${folderNote}
                             const legacyDraft = draft || { requestId, baseVersion: 0, baseValues: null, dirtyValues: getRequestWorkValuesFromRow(row), complete, legacy: true };
                             const canonical = await fetchCanonicalRequestWorkRow(requestId).catch(() => null);
                             entry.requestWorkDraft = await blockRequestWorkConflict(row, legacyDraft, canonical, error, attempt);
-                            entry.autoRetryBlocked = true; entry.conflictType = 'request-work'; entry.conflictedAt = new Date().toISOString();
+                            entry.autoRetryBlocked = true;
+                            entry.conflictType = legacyDraft.complete && legacyDraft.intentPolicy === 'local-command' ? 'request-completion' : 'request-work';
+                            entry.conflictedAt = new Date().toISOString();
                             cacheChanged = true;
                         }
                     }

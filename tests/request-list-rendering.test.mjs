@@ -153,7 +153,7 @@ test('Suspend pagination footer is mounted before deferred chunk completion', ()
     decorateRequestRows: () => calls.push('decorate'),
     syncRequestBrowseFooter: (_container, markup) => calls.push(`footer:${markup}`),
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
-    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
   });
   vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
   const plan = { rows: [{ UNIQUE_ID: 'suspend-1' }], renderSignature: 'suspend-signature',
@@ -173,7 +173,7 @@ test('cold Suspend mirror preparation renders a loading state instead of an empt
     isDockSuspendDcRequestMirrorPreparationPending: () => true,
     repairVisibleDockSuspendDcPlanstartCardTones() {}, decorateRequestRows() {}, syncRequestBrowseFooter() {},
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
-    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
   });
   vm.runInContext(source('renderSuspendTagPagedCards'), ctx);
   ctx.renderSuspendTagPagedCards({}, {}, {}, null, 'Suspend Tag', { rows: [], renderSignature: 'loading', footerMarkup: '' });
@@ -185,7 +185,7 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
   const captured = [];
   const ctx = vm.createContext({
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
-    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'dock:99',
+    requestSuspendTagStatusFilter: 'active', requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'dock:99',
     getSuspendTagRequestItems: items => items.slice(),
     sortRequestSuspendTagRows: items => items.slice(),
     applyRequestSuspendTagCommonNameSearchFilter: items => items,
@@ -220,8 +220,12 @@ test('Suspend filtered-empty render signature changes when mirror preparation fi
 
 test('Suspend queue counts scan source status without constructing rich mirror rows', () => {
   let mirrorBuilds = 0;
+  const hiddenSources = new Set();
   const ctx = vm.createContext({
-    getSuspendTagRequestItems: items => items.filter(row => row.DOCK_SUSPEND_DC_REQUEST),
+    getSuspendTagRequestItems: items => items.filter(row => row.DOCK_SUSPEND_DC_REQUEST && !hiddenSources.has(row.DOCK_SUSPEND_SOURCE_UID)),
+    getQueueCompletionState: () => ({ has: key => hiddenSources.has(key.split(':')[1]) }),
+    getDockSuspendCompletionRevision: () => 'import-1',
+    getQueueCompletionVersion: () => 0,
     getDockSuspendDcRequestSourceUid: row => row.DOCK_SUSPEND_SOURCE_UID || row.UNIQUE_ID,
     isDockSuspendDcRequestSource: row => row.SUSPEND === 'SUSPEND' && row.SUSPENDTO === 'dc',
     getSuspendTagStatus: row => row.status,
@@ -238,6 +242,8 @@ test('Suspend queue counts scan source status without constructing rich mirror r
   const count = ctx.countPendingSuspendTagQueueItems([existingMirror], sourceRows);
   assert.equal(count, 999);
   assert.equal(mirrorBuilds, 0);
+  hiddenSources.add('source-0');
+  assert.equal(ctx.countPendingSuspendTagQueueItems([existingMirror], sourceRows), 998, 'stale source rows cannot restore an optimistically removed badge count');
 });
 
 test('Dock Suspend source lookup is indexed by source snapshot and can be invalidated after row mutation', () => {
@@ -353,7 +359,7 @@ test('Suspend keeps all filter totals while bounding cards and plan-start signat
   const planstartReads = [];
   Object.assign(ctx, {
     requestSuspendTagCommonNameSearchTerm: '', requestSuspendTagAssignedToFilter: 'all',
-    requestSuspendTagContSizeFilter: 'all', requestSuspendTagDockFilter: 'all',
+    requestSuspendTagContSizeFilter: 'all', requestSuspendTagStatusFilter: 'active', requestSuspendTagDockFilter: 'all',
     getSuspendTagRequestItems: values => values.slice(),
     compareRequestSuspendTagRows: (a, b) => a.LOCATIONCODE.localeCompare(b.LOCATIONCODE),
     applyRequestSuspendTagCommonNameSearchFilter: values => values,

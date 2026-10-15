@@ -4,23 +4,32 @@
   function create({ scope, storage }) {
     const key = `agmetric:queue-completions:v1:${scope}`;
     const pending = new Set();
-    const confirmed = new Set();
+    const confirmed = new Map();
     try {
       const saved = JSON.parse(storage?.getItem(key) || '[]');
-      if (Array.isArray(saved)) for (const id of saved) if (typeof id === 'string' && id.length < 512) confirmed.add(id);
+      if (Array.isArray(saved)) for (const entry of saved) {
+        const [id, version] = Array.isArray(entry) ? entry : [entry, 0];
+        if (typeof id === 'string' && id.length < 512) confirmed.set(id, Number(version) || 0);
+      }
     } catch { /* Storage is optional; the session still protects optimistic rows. */ }
     return Object.freeze({
-      /** @param {string} id */
-      begin(id) {
-        if (!id || pending.has(id) || confirmed.has(id)) return false;
+      /** @param {string} id @param {number} [version] */
+      begin(id, version = 0) {
+        if (!id || pending.has(id) || (confirmed.has(id) && !(version > confirmed.get(id) && confirmed.get(id) > 0))) return false;
+        confirmed.delete(id);
         pending.add(id); return true;
       },
-      /** @param {string} id */
-      has(id) { return pending.has(id) || confirmed.has(id); },
-      /** @param {string} id */
-      confirm(id) {
+      /** A later server version can explicitly reopen work; stale reads cannot.
+       * @param {string} id @param {number} [version] */
+      has(id, version = 0) {
+        if (pending.has(id)) return true;
+        const acknowledged = confirmed.get(id);
+        return acknowledged !== undefined && !(version > acknowledged && acknowledged > 0);
+      },
+      /** @param {string} id @param {number} [version] */
+      confirm(id, version = 0) {
         if (!id) return;
-        pending.delete(id); confirmed.add(id);
+        pending.delete(id); confirmed.set(id, Number(version) || 0);
         // Only confirmed identities are durable. No row data or unfinished writes.
         try { storage?.setItem(key, JSON.stringify([...confirmed])); } catch { /* Keep session receipt. */ }
       },

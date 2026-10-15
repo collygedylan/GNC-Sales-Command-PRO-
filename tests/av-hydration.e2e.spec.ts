@@ -45,7 +45,7 @@ function syntheticMasterRows() {
 
 async function installAvTimingProbe(page: Page) {
   const installed = await page.evaluate(() => window.eval(`(() => {
-    const probe = window.__avHydrationTiming = { startedAt: 0, startedEpochMs: 0, firstCardAt: 0, firstCardEpochMs: 0, renderDurations: [], chunkCallbackDurations: [], renderStages: [], renderSubOperations: [], activeRenderId: 0, renderIdCounter: 0, processSubOperations: [], activeProcessId: 0, processIdCounter: 0, processLoads: [], liveRenderSchedules: [], longTaskDurations: [], longTasks: [], slowSyncOperations: [], slowAsyncOperations: [],
+    const probe = window.__avHydrationTiming = { startedAt: 0, startedEpochMs: 0, firstCardAt: 0, firstCardEpochMs: 0, renderDurations: [], chunkCallbackDurations: [], chunkCallbackWindows: [], renderStages: [], renderSubOperations: [], activeRenderId: 0, renderIdCounter: 0, processSubOperations: [], activeProcessId: 0, processIdCounter: 0, processLoads: [], liveRenderSchedules: [], longTaskDurations: [], longTasks: [], slowSyncOperations: [], slowAsyncOperations: [],
       searchStartedAt: 0, searchResultAt: 0, observer: null, searchObserver: null, longTaskObserver: null };
     const SLOW_OPERATION_THRESHOLD_MS = 10;
     const MAX_SLOW_OPERATION_RECORDS = 100;
@@ -99,7 +99,11 @@ async function installAvTimingProbe(page: Page) {
       if (probe.startedAt && callback.name === 'renderNextChunk') {
         const started = performance.now();
         try { callback.call(window, timestamp); }
-        finally { probe.chunkCallbackDurations.push(performance.now() - started); }
+        finally {
+          const ended = performance.now();
+          probe.chunkCallbackDurations.push(ended - started);
+          probe.chunkCallbackWindows.push({ startedAt: started, endedAt: ended });
+        }
         return;
       }
       callback.call(window, timestamp);
@@ -293,6 +297,7 @@ async function installAvTimingProbe(page: Page) {
         probe.firstCardEpochMs = 0;
         probe.renderDurations = [];
         probe.chunkCallbackDurations = [];
+        probe.chunkCallbackWindows = [];
         probe.renderStages = [];
         probe.renderSubOperations = [];
         probe.activeRenderId = 0;
@@ -352,12 +357,31 @@ async function installAvTimingProbe(page: Page) {
 async function timingEvidence(page: Page) {
   return page.evaluate(() => window.eval(`(() => {
     const probe = window.__avHydrationTiming;
+    const renderWindows = (probe?.renderStages || []).map(stage => [stage.startedAt, stage.startedAt + stage.durationMs]);
+    const chunkWindows = (probe?.chunkCallbackWindows || []).map(window => [window.startedAt, window.endedAt]);
+    const renderIntervals = [...renderWindows, ...chunkWindows]
+      .filter(interval => Number.isFinite(interval[0]) && Number.isFinite(interval[1]) && interval[1] > interval[0])
+      .sort((left, right) => left[0] - right[0]);
+    const nonRenderLongTaskDurationsMs = (probe?.longTasks || []).map(task => {
+      const taskStart = task.startTime, taskEnd = task.endTime;
+      let covered = 0, activeStart = null, activeEnd = null;
+      for (const [windowStart, windowEnd] of renderIntervals) {
+        const start = Math.max(taskStart, windowStart), end = Math.min(taskEnd, windowEnd);
+        if (end <= start) continue;
+        if (activeEnd === null) { activeStart = start; activeEnd = end; }
+        else if (start <= activeEnd) activeEnd = Math.max(activeEnd, end);
+        else { covered += activeEnd - activeStart; activeStart = start; activeEnd = end; }
+      }
+      if (activeEnd !== null) covered += activeEnd - activeStart;
+      return Math.max(0, task.durationMs - covered);
+    });
     return {
       firstCardMs: probe?.firstCardAt && probe?.startedAt ? probe.firstCardAt - probe.startedAt : null,
       startedEpochMs: Number(probe?.startedEpochMs) || null,
       firstCardEpochMs: Number(probe?.firstCardEpochMs) || null,
       dataRenderDurationsMs: Array.isArray(probe?.renderDurations) ? probe.renderDurations.slice() : [],
       chunkCallbackDurationsMs: Array.isArray(probe?.chunkCallbackDurations) ? probe.chunkCallbackDurations.slice() : [],
+      chunkCallbackWindows: Array.isArray(probe?.chunkCallbackWindows) ? probe.chunkCallbackWindows.slice() : [],
       renderStages: Array.isArray(probe?.renderStages) ? probe.renderStages.slice() : [],
       renderSubOperations: Array.isArray(probe?.renderSubOperations) ? probe.renderSubOperations.slice() : [],
       processSubOperations: Array.isArray(probe?.processSubOperations) ? probe.processSubOperations.slice() : [],
@@ -365,6 +389,7 @@ async function timingEvidence(page: Page) {
       liveRenderSchedules: Array.isArray(probe?.liveRenderSchedules) ? probe.liveRenderSchedules.slice() : [],
       longTaskDurationsMs: Array.isArray(probe?.longTaskDurations) ? probe.longTaskDurations.slice() : [],
       longTasks: Array.isArray(probe?.longTasks) ? probe.longTasks.slice() : [],
+      nonRenderLongTaskDurationsMs,
       slowSyncOperations: Array.isArray(probe?.slowSyncOperations) ? probe.slowSyncOperations.slice() : [],
       slowAsyncOperations: Array.isArray(probe?.slowAsyncOperations) ? probe.slowAsyncOperations.slice() : [],
       maxMainThreadOperationMs: Math.max(0, ...(probe?.renderDurations || []), ...(probe?.chunkCallbackDurations || []), ...(probe?.longTaskDurations || [])),
@@ -500,7 +525,8 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(preview.firstCardMs).toBeGreaterThanOrEqual(0);
     expect.soft(preview.firstCardMs).toBeLessThan(1000);
     expect(preview.dataRenderDurationsMs.length).toBeGreaterThan(0);
-    expect.soft(preview.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
+    expect.soft(Math.max(0, ...preview.dataRenderDurationsMs, ...preview.chunkCallbackDurationsMs)).toBeLessThanOrEqual(150);
+    expect.soft(Math.max(0, ...preview.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(100);
     expect(preview.master.fieldCoverage).not.toBe('full');
     expect(preview.master.rowCompleteness).not.toBe('complete');
     expect(preview.verified).toBe(false);
@@ -562,7 +588,8 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(full.master.fieldCoverage).toBe('browse');
     expect(full.master.rowCompleteness).toBe('complete');
     expect(full.previewRows).toBe(SYNTHETIC_MASTER_ROWS);
-    expect.soft(full.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
+    expect.soft(Math.max(0, ...full.dataRenderDurationsMs, ...full.chunkCallbackDurationsMs)).toBeLessThanOrEqual(150);
+    expect.soft(Math.max(0, ...full.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(100);
     expect(await search.inputValue()).toBe('AVH.00049');
     await expect(page.locator('#av-content [data-dom-id]').filter({ hasText: 'AVH.00049' }).first()).toBeVisible();
 
@@ -584,14 +611,16 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     const warm = await timingEvidence(page);
     await captureMilestone('warm-repeat', warm);
     expect.soft(warm.firstCardMs).toBeLessThan(1000);
-    expect.soft(warm.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
+    expect.soft(Math.max(0, ...warm.dataRenderDurationsMs, ...warm.chunkCallbackDurationsMs)).toBeLessThanOrEqual(150);
+    expect.soft(Math.max(0, ...warm.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(100);
     expect(fixture.backgroundMasterReads).toBe(readsBeforeWarmRepeat);
     expect(warm.master.rowCompleteness).toBe('complete');
     expect(warm.verified).toBe(true);
 
     const evidence = {
       kind: 'isolated-client-render-fixture', datasetRows: SYNTHETIC_MASTER_ROWS,
-      acceptedAvMainThreadOperationLimitMs: 200,
+      acceptedAvDomRenderLimitMs: 150,
+      acceptedBackgroundLongTaskLimitMs: 100,
       environment: {
         nodeVersion: process.version,
         browserVersion: await page.context().browser()?.version(),

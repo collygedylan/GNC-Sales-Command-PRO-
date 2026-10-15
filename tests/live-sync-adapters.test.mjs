@@ -7,6 +7,7 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const registrySource = readFileSync(new URL('../assets/live-sync-registry.js', import.meta.url), 'utf8');
 const adapterSource = readFileSync(new URL('../assets/live-sync-adapters.js', import.meta.url), 'utf8');
 const coordinatorSource = readFileSync(new URL('../assets/live-sync-coordinator.js', import.meta.url), 'utf8');
+const managerEventsSource = readFileSync(new URL('../assets/manager-source-live-events.js', import.meta.url), 'utf8');
 const demandDetailSource = readFileSync(new URL('../assets/drive-demand-detail.js', import.meta.url), 'utf8');
 const start = html.indexOf('function createProductionLiveSyncSideAdapters()');
 const end = html.indexOf('async function loadAvOptionEvalRequests(', start);
@@ -35,6 +36,7 @@ function harness(sourceFactory = factorySource) {
     const calls = [];
     const rows = [{ unique_id: 'new', source_unique_id: 'new', id: 'new', tripnumber: 'T1', issueSourceUniqueId: 'new', allocationUniqueId: 'new', UNIQUE_ID: 'new', conversationId: 'new' }];
     const ctx = { SalesWorkspace: {isView:()=>true,stageRefresh:async()=>{calls.push(['api','sales_credit','sources']);return {rows};},applyRefresh(){}}, BunchNote: {scope:()=>'', stage:async()=>({account:'dylan_collyge',jobs:rows}),commit(){},render(){}}, Date, Object, Array, Map, Set, String, Number, JSON, Promise, encodeURIComponent, console, calls, window: {},
+        document: { hidden: false, body: { classList: { contains: () => true } }, getElementById: () => null },
         fetchAllSupabaseRows: async (table, query) => { calls.push(['GET', table, query]); return table === 'ph_crop_roll_runs' ? [] : rows; },
         fetchAuthenticatedSupabaseReadPage: async (table, query, options) => { calls.push(['PAGE', table, query, options]); return { rows: [{ filename: `${table}.xlsx`, last_updated: '2026-10-13T12:00:00Z' }], total: 1 }; },
         fetchPoManagementRows: async () => { calls.push(['GET', 'po']); return rows; },
@@ -67,7 +69,7 @@ function harness(sourceFactory = factorySource) {
             if (name === 'get_eval_item_low_stock_targets_v1') return [];
             return {};
         },
-        postAppFunctionJson: async (_url, payload) => { calls.push(['api', payload.action, payload.operation || 'read']); return {ok:true, rows, hasMore:false}; },
+        postAppFunctionJson: async (_url, payload) => { calls.push(['api', payload.action, payload.operation || 'read']); return {ok:true, rows, hasMore:false, revision:'1'}; },
         postGoogleScriptRawJsonPayload: async (payload) => { calls.push(['script', payload.type]); return { ok: true, rows }; },
         parseRemoteAppSeasonSettingsRow: () => ({ seasonCode: 'F1', salesYear: '27' }),
         writeLocalAppSeasonSettings: (value) => { ctx.settings = value; },
@@ -91,6 +93,12 @@ function harness(sourceFactory = factorySource) {
         getProductivityHistoryState: () => ctx.productivityState, getArgosInventoryTransactionActorEmail: () => '',
         invalidateDockWorkflowResolvedState() {}, rebuildSpreadCountIndexes() {}, invalidateManagerEvalReportCache() {},
         currentUser: 'dylan_collyge', currentRole: 'ADMIN', currentUserDisplay: 'Dylan', managersSearchTerm: '',
+        activeHomeTab: 'dashboard', MANAGER_CUSTOMER_REP_MAP_VIEW: 'customer-rep-map',
+        MANAGER_PRODUCTION_SCHEDULE_VIEW: 'production-schedule',
+        canManageCustomerRepMappings: () => true,
+        getManagersToolAccess: () => ({ canManageCompanyDirectory: true, canViewProductionSchedule: true, canViewHrCommand: true }),
+        getProductionLiveSyncSideContext: () => ({ view: 'managers' }),
+        GncProductionSchedule: { refresh() { calls.push(['schedule', 'refresh']); } },
         resolvedViewStateEpoch: 0, datasetLoadSignatures: { master: '1', warehouseAssignedItems: '1' },
         getDatasetLoadSignature: key => ctx.datasetLoadSignatures[key] || '',
         managerItemLowStockCodeKeyCache: null,
@@ -131,9 +139,11 @@ function harness(sourceFactory = factorySource) {
     ctx.isKaylaLimitedAccessManagerUser = () => false;
     vm.createContext(ctx);
     vm.runInContext(`${registrySource}\n${adapterSource}`, ctx);
+    vm.runInContext(managerEventsSource, ctx);
     ctx.window.SalesWorkspace = ctx.SalesWorkspace;
     ctx.window.AgMetricLiveSyncRegistry = ctx.AgMetricLiveSyncRegistry;
     ctx.window.AgMetricLiveSyncAdapters = ctx.AgMetricLiveSyncAdapters;
+    ctx.window.GncManagerSourceLiveEvents = ctx.GncManagerSourceLiveEvents;
     vm.runInContext(demandDetailSource, ctx);
     ctx.window.AgMetricDriveDemandDetail = ctx.AgMetricDriveDemandDetail;
     vm.runInContext(`${demandBindingSource}\n${targetCodesSource}\n${targetKeySource}\n${sourceFactory}`, ctx);
@@ -196,7 +206,7 @@ test('every side adapter executes a read-only stage and a synchronous commit', a
     for (const call of h.calls) {
         assert.ok(['GET', 'PAGE', 'RPC', 'dock', 'eval', 'location', 'shear', 'codex', 'script', 'api'].includes(call[0]), JSON.stringify(call));
         if (['dock', 'eval', 'location', 'shear'].includes(call[0])) assert.ok(['list', 'get'].includes(call[1]), JSON.stringify(call));
-        if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read','report_read_v2:metadata'].includes(call[1]+':'+call[2]), JSON.stringify(call));
+        if (call[0] === 'api') assert.ok(['sales_credit:sources','production_workflow:list','inventory_transaction_history:read','report_read_v2:metadata','customer-rep-map:list'].includes(call[1]+':'+call[2]), JSON.stringify(call));
         if (call[1] === 'bloomscapes_pending_command') assert.equal(call[2].p_action, 'state');
     }
     assert.equal(h.ctx.shearListState.draft, 'keep me');
@@ -605,6 +615,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261015165733_import_history_routing.sql',
       '20261015183500_handover_master_assignment_fast_path.sql',
       '20261015192500_bulk_context_index_plan.sql',
+      '20261015213506_manager_module_revision_signals.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

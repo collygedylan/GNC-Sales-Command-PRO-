@@ -237,6 +237,27 @@ test('assignments use cached canonical reps, UUID mutations and preserve drafts 
   unmount();dom.window.close();
 });
 
+test('customer assignment rep catalog prefetches concurrently and survives a same-session remount',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const root=dom.window.document.getElementById('root'),firstOperations=[];let secondRepCalls=0;
+  const repsResult={ok:true,rows:[{salesrepId:'01',salesrepName:'Morgan Smith'}],total:1,page:0,pageSize:100,revision:'catalog-r1'};
+  const pageResult={ok:true,rows:[{...row,revision:'catalog-r1',hasOverride:false}],total:1,page:0,pageSize:50,revision:'catalog-r1',canEdit:true};
+  const first=dom.window.MappingEditor.mountCustomerRepMapping(root,async payload=>{
+    firstOperations.push(payload.operation);
+    return payload.operation==='reps'?repsResult:pageResult;
+  },()=>{},'manager:catalog-cache');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.deepEqual(firstOperations.slice(0,2),['reps','list'],'rep choices begin warming without waiting for the first page');
+  first();
+  const second=dom.window.MappingEditor.mountCustomerRepMapping(root,async payload=>{
+    if(payload.operation==='reps'){secondRepCalls++;return repsResult;}
+    return pageResult;
+  },()=>{},'manager:catalog-cache');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(secondRepCalls,0,'the authenticated session and unchanged dataset revision reuse the small rep catalog');
+  second();dom.window.close();
+});
+
 test('rep catalog validation rejects S99 and noncanonical or forged names',async()=>{
   const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
   const root=dom.window.document.getElementById('root');
