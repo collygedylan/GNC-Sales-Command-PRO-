@@ -602,6 +602,7 @@ test('every registered physical source has a database revision contract', () => 
       '20261014205926_transpose_imported_salesrep_names.sql',
       '20261014214542_customer_assignment_overrides.sql',
       '20261015012249_bulk_master_snapshot_v1.sql',
+      '20261015165733_import_history_routing.sql',
     ], 'active migrations contain the baseline and current live app features');
     const baseline = migrations.map((name) => readFileSync(new URL(name, directory), 'utf8')).join('\n');
     // The schema-only baseline omits seed rows. Historical migrations remain

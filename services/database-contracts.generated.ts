@@ -86159,6 +86159,88 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "begin_import_history_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_columns": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "array": "string"
+                  },
+                  "null"
+                ]
+              }
+            },
+            "p_dataset": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_rows": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_file_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_file_name": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_report_date": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_hash": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_timestamp": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_source_version": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "bloomscapes_pending_command": {
       "oneOf": [
         {
@@ -87902,6 +87984,40 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "get_import_history_rows_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_after_row": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_limit": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_snapshot_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "get_item_inquiry_coverage_v1": {
       "oneOf": [
         {
@@ -88758,6 +88874,49 @@ export const contracts: RuntimeContracts<Database> = {
       "oneOf": [
         {
           "object": {
+            "p_limit": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            }
+          }
+        }
+      ]
+    },
+    "list_import_history_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_before_date": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_before_sequence": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              },
+              "optional": true
+            },
+            "p_dataset": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
             "p_limit": {
               "schema": {
                 "oneOf": [
@@ -89997,6 +90156,22 @@ export const contracts: RuntimeContracts<Database> = {
               }
             },
             "p_reason": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "publish_import_history_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_snapshot_id": {
               "schema": {
                 "oneOf": [
                   "string",
@@ -92003,6 +92178,30 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "stage_import_history_rows_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_rows": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_snapshot_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "submit_eval_work_legacy_v1": {
       "oneOf": [
         {
@@ -93020,6 +93219,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "begin_eval_item_low_stock_import_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "begin_import_history_v1": {
       "oneOf": [
         "json"
       ]
@@ -98281,6 +98485,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "get_import_history_rows_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "get_item_inquiry_coverage_v1": {
       "oneOf": [
         "json"
@@ -98845,6 +99054,11 @@ export const contracts: RuntimeContracts<Database> = {
         "json"
       ]
     },
+    "list_import_history_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
     "manager_ncr_outbox_metadata_v1": {
       "oneOf": [
         "json"
@@ -99388,6 +99602,11 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "publish_access_control_policy_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "publish_import_history_v1": {
       "oneOf": [
         "json"
       ]
@@ -102924,6 +103143,11 @@ export const contracts: RuntimeContracts<Database> = {
             "null"
           ]
         }
+      ]
+    },
+    "stage_import_history_rows_v1": {
+      "oneOf": [
+        "json"
       ]
     },
     "submit_eval_work_legacy_v1": {

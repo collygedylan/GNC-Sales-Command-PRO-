@@ -1254,12 +1254,302 @@ function getMasterItem6ChunkFieldMask_(rows) {
   return MASTER_ITEM6_FIELD_MASK_FIELDS_.filter(function(field) { return intersection.has(field); });
 }
 
-function runSOCOnly() { return processLatestFileOnlyFolder(FOLDERS.SOC_DROP, FOLDERS.SOC_PROCESSED, getRuntimeSiteSplitTableName_('ph_soc_master', 'PH'), buildStandardPayload, { deltaMode: true }); }
-function runDriveAroundOnly() {
-  return processSnapshotBatchFolder(FOLDERS.MASTER_DROP, FOLDERS.MASTER_PROCESSED, 'ph_master_inventory', buildMasterPayload);
-}
+function runSOCOnly() { return runRoutedDropImport_('soc'); }
+function runDriveAroundOnly() { return runRoutedDropImport_('drive'); }
 function runDriveAroundHistoryOnly() { return syncDriveAroundHistoricalFileIndex_({ parseRows: true }); }
-function runReservesOnly() { return processLatestFileOnlyFolder(FOLDERS.RESERVES_DROP, FOLDERS.RESERVES_PROCESSED, getRuntimeSiteSplitTableName_('ph_reserves', 'PH'), buildStandardPayload, { deltaMode: true }); }
+function runReservesOnly() { return runRoutedDropImport_('reserves'); }
+
+// Historical snapshots never read or update live app-owned inventory fields.
+// Positional values retain duplicate source headers and every original column.
+const IMPORT_HISTORY_CHUNK_SIZE_ = 500;
+const IMPORT_HISTORY_BUDGET_MS_ = 180000;
+const IMPORT_HISTORY_BACKFILL_KEY_ = 'IMPORT_HISTORY_BACKFILL_V1';
+const IMPORT_HISTORY_BACKFILL_HANDLER_ = 'runImportHistoryBackfillChunk_';
+
+function getImportHistoryRoute_(dataset) {
+  const routes = {
+    drive: { dropFolderId: FOLDERS.MASTER_DROP, archiveFolderId: FOLDERS.MASTER_PROCESSED, tableName: 'ph_master_inventory' },
+    soc: { dropFolderId: FOLDERS.SOC_DROP, archiveFolderId: FOLDERS.SOC_PROCESSED, tableName: getRuntimeSiteSplitTableName_('ph_soc_master', 'PH') },
+    reserves: { dropFolderId: FOLDERS.RESERVES_DROP, archiveFolderId: FOLDERS.RESERVES_PROCESSED, tableName: getRuntimeSiteSplitTableName_('ph_reserves', 'PH') }
+  };
+  if (!Object.prototype.hasOwnProperty.call(routes, dataset)) throw new Error('IMPORT_HISTORY_DATASET_INVALID');
+  return routes[dataset];
+}
+
+function parseImportHistoryFilenameTimestamp_(name) {
+  const match = String(name || '').match(/(20\d{12})(?=\.[^.]+$)/);
+  if (!match) return null;
+  const value = match[1];
+  const parts = [Number(value.slice(0, 4)), Number(value.slice(4, 6)), Number(value.slice(6, 8)),
+    Number(value.slice(8, 10)), Number(value.slice(10, 12)), Number(value.slice(12, 14))];
+  const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], parts[3], parts[4], parts[5]));
+  return date.getUTCFullYear() === parts[0] && date.getUTCMonth() + 1 === parts[1] && date.getUTCDate() === parts[2]
+    && date.getUTCHours() === parts[3] && date.getUTCMinutes() === parts[4] && date.getUTCSeconds() === parts[5] ? value : null;
+}
+
+function getImportHistoryReportDate_(file) {
+  const timestamp = parseImportHistoryFilenameTimestamp_(file.getName());
+  if (timestamp) return timestamp.slice(0, 4) + '-' + timestamp.slice(4, 6) + '-' + timestamp.slice(6, 8);
+  return parseDriveAroundReportDateString_(file.getName()) || formatDriveAroundCanonicalDate_(
+    getDriveFileDateObjectSafe_(file, 'getDateCreated') || getDriveFileDateObjectSafe_(file, 'getLastUpdated'));
+}
+
+function importHistoryRowValues_(row, width) {
+  if (!Array.isArray(row) || row.length > width) throw new Error('IMPORT_HISTORY_ROW_WIDTH_INVALID');
+  return Array.from({ length: width }, function(_, index) {
+    const value = row[index];
+    if (value == null) return null;
+    if (value instanceof Date && !isNaN(value.getTime())) return value.toISOString();
+    if (typeof value === 'string' || typeof value === 'boolean' || typeof value === 'number' && Number.isFinite(value)) return value;
+    throw new Error('IMPORT_HISTORY_CELL_INVALID');
+  });
+}
+
+function importHistoryChunk_(snapshot, start) {
+  return snapshot.rawData.slice(start + 1, start + 1 + IMPORT_HISTORY_CHUNK_SIZE_).map(function(row, offset) {
+    return { row_number: start + offset + 1, values: importHistoryRowValues_(row, snapshot.columns.length) };
+  });
+}
+
+function buildImportHistorySnapshot_(rawData) {
+  if (!Array.isArray(rawData) || !Array.isArray(rawData[0]) || !rawData[0].length) throw new Error('IMPORT_HISTORY_HEADER_INVALID');
+  const columns = rawData[0].map(function(value) { return value == null ? '' : String(value); });
+  const snapshot = { columns: columns, rowCount: rawData.length - 1, rawData: rawData, sourceHash: '' };
+  const chunkHashes = [];
+  for (let start = 0; start < snapshot.rowCount; start += IMPORT_HISTORY_CHUNK_SIZE_) {
+    chunkHashes.push(masterBulkSha256Hex_(JSON.stringify(importHistoryChunk_(snapshot, start))));
+  }
+  snapshot.sourceHash = masterBulkSha256Hex_(JSON.stringify({ format: 'positional-v1', columns: columns, chunks: chunkHashes }));
+  return snapshot;
+}
+
+function importHistoryContinuationError_(stagedRows, totalRows) {
+  const error = new Error('IMPORT_HISTORY_CONTINUATION_PENDING');
+  error.errorCode = 'IMPORT_HISTORY_CONTINUATION_PENDING';
+  error.stagedRows = stagedRows;
+  error.totalRows = totalRows;
+  return error;
+}
+
+function importHistoryContinuationResult_(tableName, error) {
+  return { tableName: tableName, filesProcessed: 0, failedFiles: 0, failedFileNames: [], failedFileErrors: [],
+    stagedRows: error.stagedRows || 0, totalRows: error.totalRows || 0, continuationPending: true };
+}
+
+function persistImportedFileHistory_(dataset, file, rawData, startedAt, expectedIdentity) {
+  const route = getImportHistoryRoute_(dataset);
+  const identity = expectedIdentity || getImportSourceIdentity_(file, route.tableName);
+  if (!identity) throw new Error('IMPORT_HISTORY_SOURCE_IDENTITY_INVALID');
+  const startTime = Number(startedAt) || Date.now();
+  const snapshot = buildImportHistorySnapshot_(rawData);
+  const sourceTime = identity.modifiedAt;
+  if (!sourceTime) throw new Error('IMPORT_HISTORY_SOURCE_IDENTITY_INVALID');
+  const begun = callSupabaseRpc_('begin_import_history_v1', {
+    p_dataset: dataset, p_file_id: identity.fileId, p_source_version: sourceTime + ':' + identity.size,
+    p_file_name: String(file.getName()), p_report_date: getImportHistoryReportDate_(file), p_source_timestamp: sourceTime,
+    p_expected_rows: snapshot.rowCount, p_columns: snapshot.columns, p_source_hash: snapshot.sourceHash
+  });
+  if (!begun || !begun.snapshotId || Number(begun.rowCount) !== snapshot.rowCount
+      || !Number.isInteger(begun.stagedRows) || begun.stagedRows < 0 || begun.stagedRows > snapshot.rowCount
+      || !['staging', 'ready'].includes(begun.status)) throw new Error('IMPORT_HISTORY_BEGIN_UNCONFIRMED');
+  if (begun.status === 'ready') {
+    revalidateImportSourceIdentity_(identity, route.tableName);
+    return begun;
+  }
+  for (let start = begun.stagedRows; start < snapshot.rowCount;) {
+    if (Date.now() - startTime >= IMPORT_HISTORY_BUDGET_MS_
+        || manualSyncInvocationDeadlineMs_ > 0 && manualSyncInvocationDeadlineMs_ - Date.now() < 65000) {
+      throw importHistoryContinuationError_(start, snapshot.rowCount);
+    }
+    const rows = importHistoryChunk_(snapshot, start);
+    const staged = callSupabaseRpc_('stage_import_history_rows_v1', { p_snapshot_id: begun.snapshotId, p_rows: rows });
+    if (!staged || staged.snapshotId !== begun.snapshotId || !Number.isInteger(staged.acceptedRows)
+        || staged.acceptedRows < 0 || staged.acceptedRows > rows.length
+        || staged.stagedRows !== start + rows.length) throw new Error('IMPORT_HISTORY_STAGE_UNCONFIRMED');
+    start += rows.length;
+    heartbeatDatasetImportFence_();
+  }
+  revalidateImportSourceIdentity_(identity, route.tableName);
+  const result = callSupabaseRpc_('publish_import_history_v1', { p_snapshot_id: begun.snapshotId });
+  if (!result || result.snapshotId !== begun.snapshotId || result.status !== 'ready'
+      || result.rowCount !== snapshot.rowCount || result.stagedRows !== snapshot.rowCount) throw new Error('IMPORT_HISTORY_PUBLICATION_UNCONFIRMED');
+  return result;
+}
+
+function listRoutedDropFiles_(route) {
+  const folder = getDriveFolderByIdWithRetry_(route.dropFolderId, 'Routed import source');
+  const iterator = listDriveFilesWithRetry_(folder, 'Routed import source');
+  const files = [];
+  while (iterator.hasNext()) {
+    const file = iterator.next();
+    if (!String(file.getName()).startsWith('TEMP_') && isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType())) files.push(file);
+  }
+  return files.sort(function(a, b) {
+    const key = function(file) { return parseImportHistoryFilenameTimestamp_(file.getName())
+      || Utilities.formatDate(file.getLastUpdated(), DRIVE_AROUND_CANONICAL_TIMEZONE, 'yyyyMMddHHmmss'); };
+    return key(a).localeCompare(key(b)) || String(a.getId()).localeCompare(String(b.getId()));
+  });
+}
+
+function assertRoutedPendingSourceSelection_(dataset, expectedIdentity) {
+  const route = getImportHistoryRoute_(dataset);
+  const selected = listRoutedDropFiles_(route)[0];
+  if (!selected || !importSourceIdentityMatches_(expectedIdentity, getImportSourceIdentity_(selected, route.tableName))) {
+    throw createImportPrewriteDeferralError_('IMPORT_SOURCE_SELECTION_CHANGED', 'source_selection');
+  }
+}
+
+function runRoutedDropImport_(dataset) {
+  // Launch the one-time archive backfill on the first scheduled live sync.
+  // A trigger-creation failure must not interrupt a current live import.
+  try { if (!readImportHistoryBackfillState_()) startImportHistoryBackfill(); }
+  catch (error) { console.warn('[IMPORT HISTORY] BACKFILL_SCHEDULING_FAILED'); }
+  return withDatasetImportProcessorLock_(function() {
+    const route = getImportHistoryRoute_(dataset);
+    const files = listRoutedDropFiles_(route);
+    // One complete source per invocation bounds Google execution time. The
+    // existing manual-sync continuation resumes the next oldest file, so the
+    // newest source becomes the final live snapshot and none is skipped.
+    if (!files.length) return { tableName: route.tableName, filesProcessed: 0, failedFiles: 0 };
+    const options = { deltaMode: true, historyDataset: dataset, historyFileId: String(files[0].getId()) };
+    const result = dataset === 'drive'
+      ? processSnapshotBatchFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildMasterPayload, options)
+      : processLatestFileOnlyFolderLocked_(route.dropFolderId, route.archiveFolderId, route.tableName, buildStandardPayload, options);
+    if (!result.failedFiles && !result.fatalFailure && result.filesProcessed > 0 && listRoutedDropFiles_(route).length) result.continuationPending = true;
+    return result;
+  });
+}
+
+function readImportHistoryBackfillState_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(IMPORT_HISTORY_BACKFILL_KEY_);
+  if (!raw) return null;
+  let state;
+  try { state = JSON.parse(raw); } catch (ignored) { throw new Error('IMPORT_HISTORY_BACKFILL_STATE_INVALID'); }
+  if (!state || !['running', 'complete', 'failed'].includes(state.status)
+      || !Number.isInteger(state.datasetIndex) || state.datasetIndex < 0 || state.datasetIndex > 3
+      || typeof state.currentFileId !== 'string' || typeof state.continuationToken !== 'string'
+      || !Number.isInteger(state.failures) || state.failures < 0) throw new Error('IMPORT_HISTORY_BACKFILL_STATE_INVALID');
+  return state;
+}
+
+function saveImportHistoryBackfillState_(state) {
+  state.updatedAt = new Date().toISOString();
+  PropertiesService.getScriptProperties().setProperty(IMPORT_HISTORY_BACKFILL_KEY_, JSON.stringify(state));
+}
+
+function scheduleImportHistoryBackfill_(delay) {
+  clearImportHistoryBackfillTrigger_();
+  ScriptApp.newTrigger(IMPORT_HISTORY_BACKFILL_HANDLER_).timeBased().after(Math.max(60000, Number(delay) || 60000)).create();
+}
+
+function clearImportHistoryBackfillTrigger_() {
+  ScriptApp.getProjectTriggers().forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === IMPORT_HISTORY_BACKFILL_HANDLER_) ScriptApp.deleteTrigger(trigger);
+  });
+}
+
+function startImportHistoryBackfill() {
+  const lock = LockService.getUserLock();
+  if (!lock.tryLock(1000)) throw new Error('IMPORT_HISTORY_BACKFILL_BUSY');
+  try {
+    let state = readImportHistoryBackfillState_();
+    if (state && state.status !== 'running') return state;
+    if (!state) {
+      state = { status: 'running', datasetIndex: 0, currentFileId: '', continuationToken: '',
+        filesAcknowledged: 0, rowsAcknowledged: 0, failures: 0, errorCode: '', startedAt: new Date().toISOString() };
+      saveImportHistoryBackfillState_(state);
+    }
+    scheduleImportHistoryBackfill_(60000);
+    return state;
+  } finally { lock.releaseLock(); }
+}
+
+function getImportHistoryBackfillStatus() { return readImportHistoryBackfillState_(); }
+
+function runImportHistoryBackfillChunk_() {
+  const lock = LockService.getUserLock();
+  if (!lock.tryLock(1000)) { scheduleImportHistoryBackfill_(60000); return { status: 'busy' }; }
+  let state;
+  try {
+    state = readImportHistoryBackfillState_();
+    if (!state) return state;
+    if (state.status !== 'running') {
+      clearImportHistoryBackfillTrigger_();
+      return state;
+    }
+    // Arm a watchdog before any slow Drive, parsing, or RPC work. If Apps
+    // Script hard-terminates this execution, the one-shot trigger remains and
+    // resumes the saved file/chunk cursor. Normal completion below replaces
+    // it with the next cadence; caught failures replace it with backoff.
+    scheduleImportHistoryBackfill_(5 * 60000);
+    const startedAt = Date.now();
+    const dataset = ['drive', 'soc', 'reserves'][state.datasetIndex];
+    if (!dataset) throw new Error('IMPORT_HISTORY_BACKFILL_DATASET_INVALID');
+    const route = getImportHistoryRoute_(dataset);
+    if (!state.currentFileId) {
+      let iterator;
+      if (state.continuationToken) {
+        try { iterator = DriveApp.continueFileIterator(state.continuationToken); }
+        catch (ignored) {
+          // An expired Drive cursor restarts enumeration. Immutable file/hash
+          // identities make already acknowledged snapshots harmless replays.
+          state.continuationToken = '';
+        }
+      }
+      if (!iterator) iterator = listDriveFilesWithRetry_(getDriveFolderByIdWithRetry_(route.archiveFolderId, 'History archive'), 'History archive');
+      let scanned = 0;
+      while (iterator.hasNext() && scanned++ < 100 && Date.now() - startedAt < 30000) {
+        const file = iterator.next();
+        state.continuationToken = iterator.getContinuationToken();
+        if (String(file.getName()).startsWith('TEMP_') || !isDriveAroundHistoricalFileSupported_(file.getName(), file.getMimeType())) continue;
+        state.currentFileId = String(file.getId());
+        break;
+      }
+      if (!state.currentFileId && !iterator.hasNext()) {
+        state.datasetIndex += 1;
+        state.continuationToken = '';
+        if (state.datasetIndex === 3) state.status = 'complete';
+      }
+      saveImportHistoryBackfillState_(state);
+    }
+    if (state.currentFileId) {
+      const file = DriveApp.getFileById(state.currentFileId);
+      const parents = file.getParents();
+      let inArchive = false;
+      while (parents.hasNext()) if (String(parents.next().getId()) === route.archiveFolderId) inArchive = true;
+      if (!inArchive) throw new Error('IMPORT_HISTORY_BACKFILL_SOURCE_MOVED');
+      const identity = getImportSourceIdentity_(file, route.tableName);
+      if (!identity) throw new Error('IMPORT_HISTORY_SOURCE_IDENTITY_INVALID');
+      const rawData = extractDataFromFile(file, route.archiveFolderId);
+      revalidateImportSourceIdentity_(identity, route.tableName);
+      const result = persistImportedFileHistory_(dataset, file, rawData, startedAt, identity);
+      revalidateImportSourceIdentity_(identity, route.tableName);
+      state.filesAcknowledged += 1;
+      state.rowsAcknowledged += result.rowCount;
+      state.currentFileId = '';
+      state.failures = 0;
+      state.errorCode = '';
+      saveImportHistoryBackfillState_(state);
+    }
+    if (state.status === 'running') scheduleImportHistoryBackfill_(60000);
+    else clearImportHistoryBackfillTrigger_();
+    return state;
+  } catch (error) {
+    if (!state) throw error;
+    if (error && error.errorCode === 'IMPORT_HISTORY_CONTINUATION_PENDING') {
+      state.stagedRows = error.stagedRows;
+      state.totalRows = error.totalRows;
+    } else {
+      state.failures += 1;
+      state.errorCode = getSafeImportFailureCode_(error);
+      if (state.failures >= 3) state.status = 'failed';
+    }
+    saveImportHistoryBackfillState_(state);
+    if (state.status === 'running') scheduleImportHistoryBackfill_(5 * 60000);
+    else clearImportHistoryBackfillTrigger_();
+    return state;
+  } finally { lock.releaseLock(); }
+}
 function runCustomerRepMapOnly() { return processCustomerRepMapSnapshot_(); }
 function runWarehouseAssignedItemsOnly() { return syncWarehouseAssignedItemsSheet_(WAREHOUSE_ASSIGNED_ITEMS_SHEET_ID, FOLDERS.WAREHOUSE_ASSIGNED_ITEMS_SOURCE, WAREHOUSE_EFFECTIVE_ASSIGNMENTS_TABLE); }
 function validateSeasonSalesReconciliationPlan_(plan, stageCode) {
@@ -2845,13 +3135,16 @@ function resolveDriveAroundCanonicalDate_(file, options) {
   const safeOptions = options || {};
   const fileName = String(file && typeof file.getName === 'function' ? file.getName() : '').trim();
   const isMachineName = isDriveAroundMachineNamedFile_(fileName);
-  const parsedFileNameDate = parseDriveAroundReportDateString_(fileName);
+  const embeddedTimestamp = parseImportHistoryFilenameTimestamp_(fileName);
+  const parsedFileNameDate = embeddedTimestamp
+    ? embeddedTimestamp.slice(0, 4) + '-' + embeddedTimestamp.slice(4, 6) + '-' + embeddedTimestamp.slice(6, 8)
+    : parseDriveAroundReportDateString_(fileName);
   const createdDate = getDriveFileDateObjectSafe_(file, 'getDateCreated');
   const modifiedDate = getDriveFileDateObjectSafe_(file, 'getLastUpdated');
   const fallbackDate = safeOptions.fallbackDate instanceof Date && !isNaN(safeOptions.fallbackDate.getTime())
     ? safeOptions.fallbackDate
     : null;
-  if (parsedFileNameDate && !isMachineName) {
+  if (parsedFileNameDate && (!isMachineName || embeddedTimestamp)) {
     return {
       canonicalDate: parsedFileNameDate,
       canonicalDateSource: 'filename',
@@ -5863,6 +6156,14 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     return String(a.getName() || '').localeCompare(String(b.getName() || ''));
   });
 
+  if (options && options.historyDataset) {
+    const route = getImportHistoryRoute_(options.historyDataset);
+    if (route.dropFolderId !== dropFolderId || route.archiveFolderId !== processedFolderId || route.tableName !== tableName) throw new Error('IMPORT_HISTORY_ROUTE_MISMATCH');
+    const pinned = pendingFiles.find(function(file) { return String(file.getId()) === options.historyFileId; });
+    if (!pinned) throw createImportPrewriteDeferralError_('IMPORT_SOURCE_SELECTION_CHANGED', 'source_selection');
+    pendingFiles.splice(0, pendingFiles.length, pinned);
+  }
+
   const newestFile = pendingFiles[0];
   const checkpointingEnabled = isCheckpointedLatestImportTable_(tableName);
   let sourceIdentity = null;
@@ -5949,7 +6250,8 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     }));
     assertImportTimeBudget_('prewrite_validation', IMPORT_READ_FINALIZATION_RESERVE_MS_);
     if (sourceIdentity) {
-      assertLatestPendingSourceSelection_(dropFolderId, sourceIdentity, tableName);
+      if (options && options.historyDataset) assertRoutedPendingSourceSelection_(options.historyDataset, sourceIdentity);
+      else assertLatestPendingSourceSelection_(dropFolderId, sourceIdentity, tableName);
       revalidateImportSourceIdentity_(sourceIdentity, tableName);
     }
     setManualSyncImportPhase_(tableName, 'prepared', rawData.length, rawData.length);
@@ -5974,6 +6276,10 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
     // before publication/archive. A changed source must remain pending for a
     // canonical replay; writePhaseStarted ensures this fails the fence.
     if (sourceIdentity) revalidateImportSourceIdentity_(sourceIdentity, tableName);
+    if (options && options.historyDataset) {
+      persistImportedFileHistory_(options.historyDataset, newestFile, rawData, 0, sourceIdentity);
+      if (sourceIdentity) revalidateImportSourceIdentity_(sourceIdentity, tableName);
+    }
     setManualSyncImportPhase_(tableName, 'publication', totalRows, totalRows);
     closeDatasetImportFence_(revisionFence, true);
     setManualSyncImportPhase_(tableName, 'archiving', totalRows, totalRows);
@@ -5988,6 +6294,7 @@ function processLatestFileOnlyFolderLocked_(dropFolderId, processedFolderId, tab
       throw createImportPrewriteDeferralError_('IMPORT_PREPARATION_DEFERRED', 'preparation_read');
     }
     failDatasetImportFence_(revisionFence);
+    if (err && err.errorCode === 'IMPORT_HISTORY_CONTINUATION_PENDING') return importHistoryContinuationResult_(tableName, err);
     const errorMessage = err && err.message ? err.message : String(err);
     upsertCount = 0;
     deleteCount = 0;
@@ -6490,6 +6797,13 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     return String(a.getName() || '').localeCompare(String(b.getName() || ''));
   });
 
+  if (options && options.historyDataset) {
+    const route = getImportHistoryRoute_(options.historyDataset);
+    if (route.dropFolderId !== dropFolderId || route.archiveFolderId !== processedFolderId || route.tableName !== tableName) throw new Error('IMPORT_HISTORY_ROUTE_MISMATCH');
+    const pinned = pendingFiles.find(function(file) { return String(file.getId()) === options.historyFileId; });
+    if (!pinned) throw createImportPrewriteDeferralError_('IMPORT_SOURCE_SELECTION_CHANGED', 'source_selection');
+    pendingFiles.splice(0, pendingFiles.length, pinned);
+  }
   const syncStartTime = new Date().toISOString();
   const parsedFiles = [];
   const failedFiles = [];
@@ -6632,6 +6946,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     }));
 
     if (canonicalPhMasterBulk) revalidateCanonicalMasterSnapshotSources_(parsedFiles);
+    if (options && options.historyDataset) assertRoutedPendingSourceSelection_(options.historyDataset, parsedFiles[0].sourceIdentity);
     revisionFence = beginDatasetImportFenceIfNeeded_(tableName,
       canonicalPhMasterBulk ? true : (upserts.length || deletes.length));
     if (canonicalPhMasterBulk) {
@@ -6673,6 +6988,9 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
       }
     }
 
+    if (options && options.historyDataset) {
+      parsedFiles.forEach(function(entry) { persistImportedFileHistory_(options.historyDataset, entry.file, entry.rawData, 0, entry.sourceIdentity); });
+    }
     closeDatasetImportFence_(revisionFence, true, canonicalPhMasterBulk && canonicalPhMasterPublished ? function() {
       try {
         revalidateCanonicalMasterSnapshotSources_(parsedFiles);
@@ -6698,6 +7016,7 @@ function processSnapshotBatchFolderLocked_(dropFolderId, processedFolderId, tabl
     importSucceeded = true;
   } catch (err) {
     failDatasetImportFence_(revisionFence);
+    if (err && err.errorCode === 'IMPORT_HISTORY_CONTINUATION_PENDING') return importHistoryContinuationResult_(tableName, err);
     const errorMessage = err && err.message ? err.message : String(err);
     const caughtErrorCode = getSafeImportFailureCode_(err);
     fatalFailure = !isImportSourceValidationErrorCode_(err && err.errorCode);
