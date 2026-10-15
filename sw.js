@@ -10,7 +10,7 @@ const NAVIGATION_NETWORK_TIMEOUT_MS = 3200;
 const INSTALL_ASSET_TIMEOUT_MS = 8500;
 const INSTALL_REMOTE_ASSET_TIMEOUT_MS = 4500;
 // A fresh root cache cannot inherit a /v2 response cached by the older broad worker.
-const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1';
+const CACHE_NAME = 'ag-data-v4.3-rebuild-' + APP_SHELL_BUILD + '-scope-r1-lists-r1';
 const IMAGE_CACHE_NAME = 'ag-data-runtime-images-v2';
 const IMAGE_CACHE_METADATA_NAME = 'ag-data-runtime-image-metadata-v2';
 const IMAGE_CACHE_METADATA_URL = './__gnc_image_cache_metadata__';
@@ -101,6 +101,8 @@ const ASSETS_TO_CACHE = [
   './assets/live-sync-coordinator.js',
   './assets/request-submission.js',
   './assets/inventory-list-contract.js',
+  './assets/av-derived-rows.js',
+  './assets/bounded-snapshot-cache.js',
   './assets/live-tailwind-v2026082010.min.css',
   './assets/live-app-runtime-v2026082010.min.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
   './assets/live-app-styles-base-v2026090503.css',
