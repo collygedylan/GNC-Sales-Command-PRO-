@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "d417f346c0633e40c46af088a5fbf6f17a1d5591",
+  "commit": "4718efb3000202bf5312ccef38e48655e55c9940",
   "release": "V2026.10.14.003",
   "files": [
     {
@@ -816,12 +816,12 @@
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "edf797db74d89ee020b029d104925146df0319502ec37a1558a0f9863ca45d0b"
+      "sha256": "f18baddfa73b883b5c4c5e5274ba61c91adc4c0ac8e5ab2e6378a10a9f875272"
     },
     {
-      "path": "deployments/d417f346c0633e40c46af088a5fbf6f17a1d5591.json",
+      "path": "deployments/4718efb3000202bf5312ccef38e48655e55c9940.json",
       "bytes": 188,
-      "sha256": "edf797db74d89ee020b029d104925146df0319502ec37a1558a0f9863ca45d0b"
+      "sha256": "f18baddfa73b883b5c4c5e5274ba61c91adc4c0ac8e5ab2e6378a10a9f875272"
     },
     {
       "path": "index.html",
@@ -1096,7 +1096,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4807,
-      "sha256": "90b8d1dc812e7dadeba22799277ab3b37675b33704add6dcfb520acb90b9473b"
+      "sha256": "3f437c4b74751b3e541c11ec14682217d6f2544a5e7cc507aa0360e30505d639"
     },
     {
       "path": "v2/v2-cache-migration.js",
