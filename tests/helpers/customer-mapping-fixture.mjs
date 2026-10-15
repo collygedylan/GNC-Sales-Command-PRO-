@@ -7,14 +7,15 @@ export function mappingBrowserBundle() {
 export function requestMappingFunctions() {
   const html = fs.readFileSync('index.html','utf8');
   const names = ['normalizeRepMatchToken','normalizeRepDisplayOrder','getRepNameLookupTokens','getRequestRepMatchTokens','doesRequestRepMatchValue',
-    'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName',
+    'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName','isRequestRepRoleValue','normalizeRequestRepUserOption','ensureRequestRepUserOptionsReady','getRequestModalLookupOwnerSignature','getRequestModalCustomerMappingCacheSignature',
     'getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
     'isActiveRequestCustomerMapping','buildRequestModalCustomerOptionsCache','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
     'isCurrentRequestCustomerContext','buildRequestCustomerPickerGroups','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
   return names.map(name => {
-    const start = html.indexOf(`        function ${name}(`);
+    let start = html.indexOf(`        function ${name}(`);
+    if (start < 0) start = html.indexOf(`        async function ${name}(`);
     if (start < 0) throw new Error('Missing Request mapping function ' + name);
     const tail = html.slice(start); const end = tail.slice(20).search(/\n        (?:async )?function /);
     if (end < 0) throw new Error('Missing function boundary ' + name);
@@ -37,6 +38,12 @@ var mappingRevision='1',resolvedViewStateEpoch=0;
 var getDatasetLoadSignature=key=>String(key)==='customerRepMap'?'customerRepMap:'+mappingRevision:String(key)+':1';
 var REQUEST_MODAL_REP_OPTIONS=['Rep One','Rep Two','Molly Dixon'].map(label=>{const token=normalizeRepMatchToken(label);return {label,token,collapsedToken:token.replace(/\\s+/g,'')};});
 var requestModalRepUserOptions=[],requestMappedRepSource=null,requestMappedRepRevision='',requestMappedRepOptions=[];
+var requestModalRepUserOptionsReady=false,requestModalRepUserOptionsLoadPromise=null,requestModalRepUserOptionsLoading=false,requestModalRepUserOptionsError='';
+var getSupabaseReadIdentityScope=()=> 'identity-1',appAccessSnapshotState={snapshot:{dataPermissionVersion:'perm-1'}};
+var normalizeRoleAccessToken=value=>String(value||'').trim().toUpperCase(),normalizePushUsername=value=>String(value||'').trim().toLowerCase();
+var resolveStaticRequestRepLabel=()=>'';
+var isCsrRequestAssistantUser=()=>true,shouldUseProductionLiveSyncSideLoad=()=>false,supabaseFetch=async()=>[];
+var assignableAppUsers=[],assignableAppUsersLoaded=false,ensureProductionLiveSyncSideData=async()=>true;
 var isRequestModalCustomerMapReady=()=>true;
 var tempSelectedReqRep='Rep One',tempRequestCustomerSelectedContext=null,tempRequestCustomerSelectedFinalLabel='';
 var customerRepMapRows=[],reservesInventory=[],toasts=[],qtyCalls=[],tempSelectedReqSalesrepId='',requestMappingRpcCache=new Map();

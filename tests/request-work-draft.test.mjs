@@ -25,6 +25,14 @@ test('disjoint remote edits rebase a narrow request patch to canonical version',
     assert.deepEqual({ ...plan.patch }, { req_spec: 'local spec' });
 });
 
+test('intentional Done status rebases without a Keep my value conflict', () => {
+    const completion = { ...draft({ req_status: 'Complete' }, true), baseValues: { req_status: 'Pending', req_spec: 'old spec' } };
+    const plan = planRequestWorkConflictRebase(completion, canonical(7, { req_status: 'In Progress', req_spec: 'new spec' }));
+    assert.equal(plan.status, 'rebase');
+    assert.equal(plan.expectedVersion, 7);
+    assert.deepEqual({ ...plan.patch }, { req_status: 'Complete' });
+});
+
 test('overlapping edits require explicit per-field choices and retain completion intent', () => {
     const conflicted = draft({ req_spec: 'local spec', req_comments: 'local comments' }, true);
     const result = planRequestWorkConflictRebase(conflicted, canonical(6, { req_spec: 'remote spec', req_comments: 'base comments' }));

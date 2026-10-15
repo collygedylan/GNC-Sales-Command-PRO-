@@ -73,3 +73,48 @@ test('directory revision changes during a single-page RPC read reject stale choi
  assert.equal(c.requestMappingRpcCache.size,0);
  assert.match(c.requestModalCustomerOptionsError,/changed during loading/);
 });
+
+test('CSR rep choices reuse the revision-coordinated app-user directory',async()=>{
+ const c=fixture(async()=>{throw new Error('Direct duplicate read should not run');});
+ let coordinatedReads=0;
+ c.shouldUseProductionLiveSyncSideLoad=()=>true;
+ c.ensureProductionLiveSyncSideData=async(id,force)=>{
+  assert.equal(id,'users'); assert.equal(force,false); coordinatedReads++;
+  c.assignableAppUsers=[
+   {username:'rep_one',display:'Rep One',role:'REP'},
+   {username:'manager_one',display:'Manager One',role:'MANAGER'},
+  ];
+  c.assignableAppUsersLoaded=true;
+  return true;
+ };
+ const options=await c.ensureRequestRepUserOptionsReady();
+ assert.deepEqual(options.map(option=>option.label),['Molly Dixon','Rep One','Rep Two']);
+ assert.equal(options.some(option=>option.username==='manager_one'),false);
+ assert.equal(coordinatedReads,1);
+});
+
+test('CSR rep option cache is cleared when authenticated data scope changes',async()=>{
+ const c=fixture(async()=>({ok:true,rows:[{username:'rep_one',role:'REP'}]}));
+ let directReads=0;
+ c.shouldUseProductionLiveSyncSideLoad=()=>false;
+ c.supabaseFetch=async()=>{directReads++;return [{username:'rep_one',role:'REP'}];};
+ await c.ensureRequestRepUserOptionsReady();
+ c.requestModalRepUserOptionsReady=true;
+ c.getSupabaseReadIdentityScope=()=> 'identity-2';
+ await c.ensureRequestRepUserOptionsReady();
+ assert.equal(directReads,2);
+});
+
+test('mapping option cache is scoped to the current authenticated identity and permission version',async()=>{
+ let calls=0;
+ const rows=[mappingFixtureRow];
+ const c=fixture(async()=>{calls++;return {ok:true,rows,total:1,revision:'9'};});
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ assert.equal(calls,1);
+ c.identityScope='other-session';
+ c.getSupabaseReadIdentityScope=()=>c.identityScope;
+ assert.equal(c.buildRequestModalCustomerOptionsCache().length,0);
+ assert.equal(c.requestModalCustomerOptionsReady,false);
+ assert.equal(await c.ensureRequestModalCustomerOptionsReady(),true);
+ assert.equal(calls,2);
+});

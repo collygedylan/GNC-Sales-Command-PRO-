@@ -98,7 +98,11 @@
             || !Object.prototype.hasOwnProperty.call(canonical.values, field))) {
             return { status: 'review-required', reason: 'incomplete-base', conflictFields: [] };
         }
-        const conflictFields = fields.filter(field => draft.baseValues[field] !== canonical.values[field]
+        // Completion is an explicit command. Retry that status against the latest
+        // version without asking the operator to resolve a stale status snapshot.
+        // Independently edited photos/specs retain their normal conflict checks.
+        const conflictFields = fields.filter(field => !(draft.complete && field === 'req_status' && draft.dirtyValues[field] === 'Complete')
+            && draft.baseValues[field] !== canonical.values[field]
             && draft.dirtyValues[field] !== canonical.values[field]);
         const rebasedValues = Object.fromEntries(fields
             .filter(field => draft.dirtyValues[field] !== canonical.values[field])

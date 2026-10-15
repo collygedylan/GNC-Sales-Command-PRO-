@@ -7109,6 +7109,8 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
     <script src="./assets/live-sync-coordinator.js?v=V2026.10.14.003"></script>
     <script src="./assets/av-derived-rows.js?v=V2026.10.14.003"></script>
     <script src="./assets/bounded-snapshot-cache.js?v=V2026.10.14.003"></script>
+    <script src="./assets/stable-view-dom.js?v=V2026.10.14.003"></script>
+    <script src="./assets/queue-completion-state.js?v=V2026.10.14.003"></script>
     <script src="./assets/request-submission.js?v=V2026.10.14.003&mapping=20261014"></script>
     <script src="./assets/ops-precision-pilot.js?v=V2026.10.14.003"></script>
     <script src="./assets/production-schedule.js?v=V2026.10.14.003"></script>
@@ -37018,7 +37020,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         return;
                     }
                     clearSupersededContainerChunkState(container, key, supersededChunkState, stagedChunkToken);
-                    container.replaceChildren(...staged.childNodes);
+                    if (window.AgMetricStableViewDom) window.AgMetricStableViewDom.apply(container, staged);
+                    else container.replaceChildren(...staged.childNodes);
                     setContainerRenderSignature(container, getContainerRenderSignature(staged));
                     if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
                     if (options.onComplete) options.onComplete();
@@ -37696,15 +37699,42 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return completedAt !== '';
         }
 
+        let queueCompletionState = null;
+        let queueCompletionScope = '';
+        function getQueueCompletionState() {
+            const scope = getSupabaseReadIdentityScope();
+            if (!window.AgMetricQueueCompletion || !scope) return null;
+            if (!queueCompletionState || queueCompletionScope !== scope) {
+                queueCompletionScope = scope;
+                queueCompletionState = window.AgMetricQueueCompletion.create({ scope, storage: window.localStorage });
+                optimisticCompletedRowIds.clear();
+            }
+            return queueCompletionState;
+        }
+
+        function getQueueCompletionKey(itemOrId = null) {
+            if (itemOrId && typeof itemOrId === 'object' && isDockSuspendDcRequestMirrorRow(itemOrId)) {
+                return 'suspend:' + getDockSuspendDcRequestSourceUid(itemOrId) + ':' + getDockSuspendCompletionRevision(itemOrId);
+            }
+            return 'row:' + getItemUniqueId(itemOrId);
+        }
+
+        function confirmQueueCompletion(itemOrId = null) {
+            getQueueCompletionState()?.confirm(getQueueCompletionKey(itemOrId));
+            invalidateResolvedViewStateCaches();
+        }
+
         function isOptimisticallyCompletedRow(itemOrId = null) {
             const uniqueId = getItemUniqueId(itemOrId);
-            return !!(uniqueId && optimisticCompletedRowIds.has(uniqueId));
+            return !!(uniqueId && (getQueueCompletionState()?.has(getQueueCompletionKey(itemOrId)) || optimisticCompletedRowIds.has(uniqueId)));
         }
 
         function trackOptimisticCompletedRows(values = []) {
+            const completionState = getQueueCompletionState();
             let didChange = false;
             normalizeUniqueIdList(values).forEach((uniqueId) => {
                 if (optimisticCompletedRowIds.has(uniqueId)) return;
+                completionState?.begin(getQueueCompletionKey(uniqueId));
                 optimisticCompletedRowIds.add(uniqueId);
                 didChange = true;
             });
@@ -37715,6 +37745,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let didChange = false;
             normalizeUniqueIdList(values).forEach((uniqueId) => {
                 if (!optimisticCompletedRowIds.has(uniqueId)) return;
+                getQueueCompletionState()?.rollback(getQueueCompletionKey(uniqueId));
                 optimisticCompletedRowIds.delete(uniqueId);
                 didChange = true;
             });
@@ -57575,6 +57606,17 @@ function toggleDriveQuickRequestItem(domId) {
             return mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, requestModalRepUserOptions, requestMappedRepOptions);
         }
 
+        function getRequestModalLookupOwnerSignature() {
+            let identity = '';
+            try { identity = typeof getSupabaseReadIdentityScope === 'function' ? String(getSupabaseReadIdentityScope() || '') : ''; } catch (_) {}
+            const permissionVersion = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+            return JSON.stringify([identity, permissionVersion]);
+        }
+
+        function getRequestModalCustomerMappingCacheSignature() {
+            return JSON.stringify([getDatasetLoadSignature('customerRepMap'), getRequestModalLookupOwnerSignature()]);
+        }
+
         function isCsrRequestAssistantUser() {
             const access = getRoleAccessState();
             return !!((access && access.isSalesAssistant && !access.isAdmin) || canUseGlobalRequestAccess());
@@ -57582,32 +57624,55 @@ function toggleDriveQuickRequestItem(domId) {
 
         async function ensureRequestRepUserOptionsReady(force = false) {
             if (!isCsrRequestAssistantUser() && !force) return requestModalRepUserOptions;
-            if (!force && requestModalRepUserOptionsReady && Array.isArray(requestModalRepUserOptions) && requestModalRepUserOptions.length) {
+            const owner = getRequestModalLookupOwnerSignature();
+            if (ensureRequestRepUserOptionsReady.cacheOwner !== owner) {
+                ensureRequestRepUserOptionsReady.cacheOwner = owner;
+                requestModalRepUserOptionsReady = false;
+                requestModalRepUserOptions = [];
+                requestModalRepUserOptionsError = '';
+                requestModalRepUserOptionsLoadPromise = null;
+            }
+            const useSharedDirectory = typeof shouldUseProductionLiveSyncSideLoad === 'function'
+                && shouldUseProductionLiveSyncSideLoad()
+                && typeof ensureProductionLiveSyncSideData === 'function';
+            if (!force && !useSharedDirectory && requestModalRepUserOptionsReady && Array.isArray(requestModalRepUserOptions) && requestModalRepUserOptions.length) {
                 return requestModalRepUserOptions;
             }
             if (!force && requestModalRepUserOptionsLoadPromise) return requestModalRepUserOptionsLoadPromise;
             requestModalRepUserOptionsLoading = true;
             requestModalRepUserOptionsError = '';
-            requestModalRepUserOptionsLoadPromise = supabaseFetch('ph_app_users', 'GET', null, 'select=username,role&order=username.asc&limit=1000')
-                .then((rows) => {
+            const loadPromise = (async () => {
+                let rows;
+                if (useSharedDirectory) {
+                    const ready = await ensureProductionLiveSyncSideData('users', force);
+                    if (!ready || !assignableAppUsersLoaded || !Array.isArray(assignableAppUsers)) {
+                        throw new Error('The current app user directory is unavailable. Retry loading the Request rep list.');
+                    }
+                    rows = assignableAppUsers.map((row) => ({ ...row,
+                        display_name: firstNonEmptyValue(row && row.display_name, row && row.displayName, row && row.display, '') }));
+                } else {
+                    rows = await supabaseFetch('ph_app_users', 'GET', null, 'select=username,role&order=username.asc&limit=1000');
+                }
+                if (owner !== getRequestModalLookupOwnerSignature()) return [];
                     const directoryRepOptions = (Array.isArray(rows) ? rows : []).map(normalizeRequestRepUserOption).filter(Boolean);
                     const options = mergeRequestModalRepOptions(REQUEST_MODAL_REP_OPTIONS, directoryRepOptions);
                     requestModalRepUserOptions = options;
-                    requestModalRepUserOptionsReady = true;
+                    requestModalRepUserOptionsReady = options.length > 0;
                     requestModalRepUserOptionsError = options.length ? '' : 'No configured sales reps were found.';
                     return options;
-                })
-                .catch((error) => {
-                    requestModalRepUserOptions = [];
-                    requestModalRepUserOptionsReady = false;
-                    requestModalRepUserOptionsError = 'Could not load active REP users. Request submit is blocked until the list loads.';
+            })().catch((error) => {
+                    if (owner === getRequestModalLookupOwnerSignature()) {
+                        requestModalRepUserOptions = [];
+                        requestModalRepUserOptionsReady = false;
+                        requestModalRepUserOptionsError = 'Could not load active REP users. Request submit is blocked until the list loads.';
+                    }
                     throw error;
-                })
-                .finally(() => {
+                }).finally(() => {
                     requestModalRepUserOptionsLoading = false;
-                    requestModalRepUserOptionsLoadPromise = null;
+                    if (requestModalRepUserOptionsLoadPromise === loadPromise) requestModalRepUserOptionsLoadPromise = null;
                 });
-            return requestModalRepUserOptionsLoadPromise;
+            requestModalRepUserOptionsLoadPromise = loadPromise;
+            return loadPromise;
         }
 
         function resolveCanonicalRequestRepName(repName = '') {
@@ -57634,7 +57699,7 @@ function toggleDriveQuickRequestItem(domId) {
         function isRequestModalCustomerMapReady() {
             const id = getRequestSelectedSalesrepId();
             const cached = requestMappingRpcCache.get(id);
-            return !!id && !!cached && cached.signature === getDatasetLoadSignature('customerRepMap');
+            return !!id && !!cached && cached.signature === getRequestModalCustomerMappingCacheSignature();
         }
         function refreshRequestModalCustomerStepIfVisible() {
             if (tempRequestCustomerSelectedContext && !isCurrentRequestCustomerContext(tempRequestCustomerSelectedContext)) {
@@ -57779,7 +57844,7 @@ function toggleDriveQuickRequestItem(domId) {
 
 
         function buildRequestModalCustomerOptionsCache(force = false) {
-            const signature = getDatasetLoadSignature('customerRepMap');
+            const signature = getRequestModalCustomerMappingCacheSignature();
             for (const [id, cached] of requestMappingRpcCache) {
                 if (cached.signature !== signature) requestMappingRpcCache.delete(id);
             }
@@ -57811,7 +57876,7 @@ function toggleDriveQuickRequestItem(domId) {
                 await ensureDatasetLoaded('customerRepMap', 'full', { force });
                 if (requestGeneration !== requestModalAsyncGeneration || generation !== requestMappingReadGeneration) return false;
                 const id = getRequestSelectedSalesrepId(rep);
-                const signature = getDatasetLoadSignature('customerRepMap');
+                const signature = getRequestModalCustomerMappingCacheSignature();
                 if (!id) throw new Error('Choose an unambiguous mapped Sales Rep ID before selecting a customer.');
                 let rows = [], revision = null, total = null;
                 for (let page = 0; page <= 1000; page++) {
@@ -57825,7 +57890,7 @@ function toggleDriveQuickRequestItem(domId) {
                     if (rows.length >= total) { if (rows.length !== total) throw new Error('Customer mapping page count is invalid.'); break; }
                     if (!result.rows.length || page === 1000) throw new Error('Customer mappings could not be loaded completely.');
                 }
-                if (signature !== getDatasetLoadSignature('customerRepMap')) throw new Error('Customer mappings changed during loading. Refresh to retry.');
+                if (signature !== getRequestModalCustomerMappingCacheSignature()) throw new Error('Customer mappings changed during loading. Refresh to retry.');
                 const identities = rows.map(row => JSON.stringify([row.salesrepid, row.customeridentityid, row.consigneeid]));
                 if (new Set(identities).size !== rows.length) throw new Error('Customer mapping identities are ambiguous.');
                 requestMappingRpcCache.set(id, { rows, revision, signature });
@@ -57856,7 +57921,7 @@ function toggleDriveQuickRequestItem(domId) {
             const id = getRequestSelectedSalesrepId(repName);
             if (!id) return [];
             const cached = requestMappingRpcCache.get(id);
-            const rows = cached?.signature === getDatasetLoadSignature('customerRepMap') ? cached.rows
+            const rows = cached?.signature === getRequestModalCustomerMappingCacheSignature() ? cached.rows
                 : isRequestModalCustomerMapReady() ? customerRepMapRows : [];
             const options = new Map();
             (rows || []).forEach(row => {
@@ -91017,6 +91082,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const template = document.createElement('template');
             template.innerHTML = html;
+            if (typeof productionLiveSyncRendering !== 'undefined' && productionLiveSyncRendering
+                && window.AgMetricStableViewDom && container.childNodes.length) {
+                window.AgMetricStableViewDom.apply(container, template.content);
+                setContainerUiState(container, 'content');
+                tuneNativeImagePerformance(container);
+                scheduleDeferredCardPhotoHydration(container);
+                queueAvCardPhotoHydration(container, 80);
+                return;
+            }
             if (typeof container.replaceChildren === 'function') {
                 container.replaceChildren(template.content);
             } else {
@@ -169372,7 +169446,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const previousReqStatus = itemToSave.REQ_STATUS;
                 const previousRequestViewState = prefix === 'req-' ? captureRequestViewState() : null;
                 const detailWasVisible = !!(document.getElementById('view-detail') && !document.getElementById('view-detail').classList.contains('hidden'));
-                const canOptimisticallyCompleteQueueRow = isComplete && ['ssn-', 'lsn-', 'na-'].includes(prefix);
+                const canOptimisticallyCompleteQueueRow = isComplete && ['req-', 'ssn-', 'lsn-', 'na-'].includes(prefix);
                 let nextRequestId = null;
                 let nextTaskId = null;
                 let didOptimisticClose = false;
@@ -170582,7 +170656,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                                 itemToSave.row_version,
                                 1
                             )) || 1);
-                            let requestPatch = saveOptions.requestWorkDraftRetry && requestWorkDraft
+                            let requestPatch = (saveOptions.requestWorkDraftRetry || isComplete) && requestWorkDraft
                                 ? buildNarrowRequestWorkRpcPatch(requestWorkDraft.dirtyValues, itemToSave)
                                 : {
                                 ...payload,
@@ -170652,6 +170726,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                             });
                             normalizeRowPhotoFields(itemToSave);
                             buildSearchIndex(itemToSave);
+                            if (isComplete && hasRequestCompletionState(itemToSave)) confirmQueueCompletion(itemToSave);
                             if (acknowledgedRequestWorkDraft) finalizeRequestWorkDraftAfterSuccess(itemToSave, acknowledgedRequestWorkDraft, acknowledgedRequestWorkValues, formattedServerRow, requestWorkFormValuesAtDispatch, requestWorkCacheEntryTimestampAtDispatch, requestWorkValuesAtResponse);
                             requestMasterUpdateResult = { updated: true, atomic: true };
                             const atomicRequestArtifacts = completionArtifacts || buildCompletionArtifacts();
@@ -170741,7 +170816,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                     pauseRequestViewLiveSync(REQUEST_LIVE_SYNC_PAUSE_AFTER_LOCAL_SAVE_MS);
                 }
 
-                if (isComplete && prefix !== 'req-') {
+                if (isComplete) {
                     completionArtifacts = buildCompletionArtifacts();
                     itemToSave.DATE_COMPLETED = payload.date_completed;
                     itemToSave.date_completed = payload.date_completed;

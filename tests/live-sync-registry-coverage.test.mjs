@@ -113,6 +113,15 @@ test('manager low-stock summaries load only for Assigned Items consumers', () =>
   assert.ok(!registry.getViewAdapters('managers', { surfaces: eval2Surfaces }).includes('side:itemLowStockTargets'));
 });
 
+test('manager customer mapping uses a revision-only adapter and user revisions match their protected table', () => {
+  const registry = harness().AgMetricLiveSyncRegistry;
+  const adapters = Array.from(registry.getViewAdapters('managers', { surfaces: ['managers:customer-rep-map'] }));
+  assert.deepEqual(adapters, ['side:customerMappingRevision'],
+    'paged assignment UI must not hydrate the complete customer mapping table');
+  assert.deepEqual(Array.from(registry.getSourceKeys(adapters)), ['ph_customer_consignee_sales_reps']);
+  assert.deepEqual(Array.from(registry.getSourceKeys(['side:users'])), ['ph_app_users']);
+});
+
 test('Eval2 LowStock preview keeps the actual coordinator cohort stable', async () => {
   const context = harness(), registry = context.AgMetricLiveSyncRegistry;
   context.view = 'managers';
