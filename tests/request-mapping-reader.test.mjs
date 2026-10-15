@@ -4,7 +4,7 @@ import vm from 'node:vm';
 import { requestMappingFunctions, requestMappingSetup, mappingFixtureRow } from './helpers/customer-mapping-fixture.mjs';
 
 function fixture(fetchPage) {
- const c=vm.createContext({document:{getElementById:()=>null},APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>true,postAppFunctionJson:fetchPage,refreshRequestModalCustomerStepIfVisible:()=>{},resetRequestCustomerSelectionState:()=>{c.tempRequestCustomerSelectedContext=null;},renderExistingRequestFolderPicker:()=>{}});
+ const c=vm.createContext({document:{getElementById:()=>null},window:{setTimeout,clearTimeout},APP_API_FUNCTION_URL:'https://example.invalid',ensureDatasetLoaded:async()=>true,postAppFunctionJson:fetchPage,refreshRequestModalCustomerStepIfVisible:()=>{},resetRequestCustomerSelectionState:()=>{c.tempRequestCustomerSelectedContext=null;},renderExistingRequestFolderPicker:()=>{}});
  vm.runInContext(requestMappingSetup+'\n'+requestMappingFunctions()+`\nvar requestModalAsyncGeneration=0,requestMappingReadGeneration=0,requestModalCustomerOptionsLoadPromise=null,requestModalCustomerOptionsLoading=false,requestModalCustomerOptionsReady=false,requestModalCustomerOptionsError='',requestExistingFolderGroupsCacheKey='';`,c);
  c.isRequestModalCustomerMapReady=()=>{
   const id=c.getRequestSelectedSalesrepId(),cached=c.requestMappingRpcCache.get(id);
@@ -141,6 +141,39 @@ test('startup prefetch warms only allowed rep IDs and puts the current default f
  assert.equal(maxActive<=2,true);
  assert.deepEqual(Array.from(c.requestMappingRpcCache.keys()).sort(),['01','02']);
  assert.equal(calls.includes('99'),false);
+});
+
+test('cold startup retries a stale lookup only after its permission scope changes',async()=>{
+ const c=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
+ let attempts=0;
+ c.prefetchRequestModalCustomerOptions=async()=>{
+  attempts++;
+  if(attempts===1){c.getSupabaseReadIdentityScope=()=> 'identity-after-access';return false;}
+  c.prefetchRequestModalCustomerOptions.completedOwner=c.getRequestModalCustomerMappingCacheSignature();
+  return true;
+ };
+ assert.equal(await c.prepareRequestModalChoicesForStartup(250),true);
+ assert.equal(attempts,2);
+});
+
+test('cold startup does not retry a stable failed scope or a logged-out session',async()=>{
+ const stable=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
+ let stableAttempts=0;
+ stable.prefetchRequestModalCustomerOptions=async()=>{stableAttempts++;return false;};
+ assert.equal(await stable.prepareRequestModalChoicesForStartup(250),false);
+ assert.equal(stableAttempts,1);
+
+ const loggedOut=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
+ let logoutAttempts=0;
+ loggedOut.prefetchRequestModalCustomerOptions=async()=>{logoutAttempts++;loggedOut.currentUser='';return false;};
+ assert.equal(await loggedOut.prepareRequestModalChoicesForStartup(250),false);
+ assert.equal(logoutAttempts,1);
+});
+
+test('cold startup retains a finite timeout when a lookup never settles',async()=>{
+ const c=fixture(async()=>({ok:true,rows:[mappingFixtureRow],total:1,revision:'r1'}));
+ c.prefetchRequestModalCustomerOptions=()=>new Promise(()=>{});
+ assert.equal(await c.prepareRequestModalChoicesForStartup(250),false);
 });
 
 test('modal mapping ensure reuses a prefetched page set without another API read',async()=>{

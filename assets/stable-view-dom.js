@@ -25,7 +25,8 @@
   function updateAttributes(current, next, focused) {
     const editing = current === focused;
     for (const attribute of Array.from(current.attributes)) {
-      if (attribute.name === 'data-preserve-dom') continue;
+      if (attribute.name === 'data-preserve-dom'
+        || (current.hasAttribute('data-preserve-dom') && /^data-.+-mounted$/.test(attribute.name))) continue;
       if (editing && ['value', 'checked', 'selected'].includes(attribute.name)) continue;
       if (!next.hasAttribute(attribute.name)) current.removeAttribute(attribute.name);
     }

@@ -1214,3 +1214,18 @@ test('anchor restoration avoids forced layout on the fallback and preserves offs
   assert.match(scheduler, /!refresh\.retainedRequestList\) restoreProductionRefreshAnchor\(anchor\)/,
     'the exact unchanged Request list retained in the staging helper skips redundant anchor measurement');
 });
+
+test('refresh anchors use stable row identifiers before shared action labels', () => {
+  const cards = ['first', 'second'].map((id, index) => ({
+    getAttribute: key => ({ 'data-request-uid': id, 'aria-label': 'Open photo editor', onclick: 'openCard(event)' })[key],
+    getBoundingClientRect: () => ({ top: 100 + index * 200, bottom: 280 + index * 200 })
+  }));
+  const root = { querySelectorAll: () => cards };
+  const scroller = { getBoundingClientRect: () => ({ top: 80, bottom: 800 }), scrollTop: 0 };
+  const ctx = { VIEW_LOAD_UI: { request: { container: 'request-content' } }, lastUserInteractionAt: 0, lastScrollAt: 0,
+    document: { getElementById: id => id === 'request-content' ? root : scroller } };
+  vm.createContext(ctx);
+  vm.runInContext(extractFunction(html, 'captureProductionRefreshAnchor', 'function restoreProductionRefreshAnchor('), ctx);
+  const anchors = ctx.captureProductionRefreshAnchor('request').anchors;
+  assert.deepEqual(Array.from(anchors, a => [a.attribute, a.value]), [['data-request-uid', 'first'], ['data-request-uid', 'second']]);
+});

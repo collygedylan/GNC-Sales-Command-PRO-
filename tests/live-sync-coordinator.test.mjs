@@ -603,6 +603,25 @@ test('progressive display does not wait for an extra requested startup dependenc
     gate.resolve(); assert.equal(await pending, true); coordinator.reset();
 });
 
+test('an ensure arriving during an active cycle is staged before it reports success', async () => {
+    const gate = deferred(); let baseReads = 0, extraReads = 0;
+    const base = { id: 'core:base', cacheKey: 'base/all', sourceKeys: ['base'],
+        stage: async () => { baseReads++; await gate.promise; return ['base']; }, commit() {} };
+    const context = { scope: 'a', viewKey: 'home', visible: true, online: true, adapters: [base] };
+    const extra = { id: 'side:startup', cacheKey: 'startup/all', sourceKeys: ['startup'],
+        stage: async () => { extraReads++; return ['startup']; }, commit() {} };
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }) });
+    const baseLoad = coordinator.check(); await settle();
+    assert.equal(baseReads, 1, 'the first cycle is paused inside the base adapter');
+    const requestedLoad = coordinator.ensure(extra);
+    gate.resolve();
+    assert.equal(await baseLoad, true);
+    assert.equal(await requestedLoad, true, 'ensure must not report success until its requested adapter is applied');
+    assert.equal(extraReads, 1);
+    coordinator.reset();
+});
+
 test('same-permission display cache previews before revisions without creating current proof', async () => {
     const shown = [], order = [];
     const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => ({ rows: ['fresh'] }), commit() {} };

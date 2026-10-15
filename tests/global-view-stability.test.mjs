@@ -93,6 +93,17 @@ test('mounted islands retain their ownership marker through repeated legacy shel
   f.dom.window.close();
 });
 
+test('mounted legacy islands retain initialization markers without freezing wrapper classes', () => {
+  const f = fixture('<div id="directory" class="old" data-preserve-dom data-company-directory-mounted="true"><button>Mounted</button></div>');
+  const root = f.container.firstElementChild;
+  const button = root.firstElementChild;
+  f.context.setContainerHtml(f.container, '<div id="directory" class="new"></div>');
+  assert.equal(root.dataset.companyDirectoryMounted, 'true');
+  assert.equal(root.className, 'new');
+  assert.equal(root.firstElementChild, button);
+  f.dom.window.close();
+});
+
 test('blurred drafts and expanded details survive unrelated background text changes', () => {
   const f = fixture('<article id="a"><input value="saved"><details><summary>More</summary>Before</details></article>');
   const input = f.container.querySelector('input'); input.value = 'unsaved';

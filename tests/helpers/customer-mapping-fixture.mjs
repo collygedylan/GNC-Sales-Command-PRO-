@@ -10,7 +10,7 @@ export function requestMappingFunctions() {
     'buildRequestModalRepOption','mergeRequestModalRepOptions','getAllRequestModalRepOptions','resolveCanonicalRequestRepName','isRequestRepRoleValue','normalizeRequestRepUserOption','ensureRequestRepUserOptionsReady','getRequestModalLookupOwnerSignature','getRequestModalCustomerMappingCacheSignature',
     'getRequestSelectedSalesrepId','getRequestCustomerContext','buildRequestModalCustomerSearchOption','requestCustomerOptionKey','getCustomerRepMapRepValue',
     'getCustomerRepMapCustomerValue','getCustomerRepMapConsigneeValue','appendCustomerRepMapOption','mergeRequestModalCustomerOptions',
-    'isActiveRequestCustomerMapping','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
+    'isActiveRequestCustomerMapping','buildRequestModalCustomerOptionsCache','loadRequestModalCustomerOptionsForRep','prefetchRequestModalCustomerOptions','scheduleRequestModalReferencePrefetch','prepareRequestModalChoicesForStartup','getRequestModalCustomerOptionsForRep','ensureRequestModalCustomerOptionsReady',
     'isCurrentRequestCustomerContext','buildRequestCustomerPickerGroups','getExistingRequestFolderRepRows','getExistingRequestFolderRowsSignature','buildExistingRequestFolderCustomerGroups','createNewRequestFolderForSelectedExistingPair','processCustStep',
     'isRequestCustomerMappingError','getRequestOutboxFailureStatus'];
   return names.map(name => {
@@ -41,7 +41,7 @@ var isDatasetLoaded=()=>true;
 var REQUEST_MODAL_REP_OPTIONS=['Rep One','Rep Two','Molly Dixon'].map(label=>{const token=normalizeRepMatchToken(label);return {label,token,collapsedToken:token.replace(/\\s+/g,'')};});
 var requestModalRepUserOptions=[],requestMappedRepSource=null,requestMappedRepRevision='',requestMappedRepOptions=[];
 var requestModalRepUserOptionsReady=false,requestModalRepUserOptionsLoadPromise=null,requestModalRepUserOptionsLoading=false,requestModalRepUserOptionsError='';
-var getSupabaseReadIdentityScope=()=> 'identity-1',appAccessSnapshotState={snapshot:{dataPermissionVersion:'perm-1'}};
+var getSupabaseReadIdentityScope=()=> 'identity-1',appAccessSnapshotState={status:'ready',stale:false,snapshot:{dataPermissionVersion:'perm-1'}};
 var normalizeRoleAccessToken=value=>String(value||'').trim().toUpperCase(),normalizePushUsername=value=>String(value||'').trim().toLowerCase();
 var resolveStaticRequestRepLabel=()=>'';
 var isCsrRequestAssistantUser=()=>true,shouldUseProductionLiveSyncSideLoad=()=>false,supabaseFetch=async()=>[];

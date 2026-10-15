@@ -7000,6 +7000,23 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
         #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(input:not([type="checkbox"]), textarea, select) {
             color: #111827 !important; background-color: #ffffff !important;
         }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"]
+        :is(.bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not(button, button *) {
+            background-color: #f3f4f6 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-white:not(button, button *) {
+            background-color: #ffffff !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .app-card-qty-chip {
+            background: #ecfdf5 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-emerald-50:not(button, button *) { background-color: #ecfdf5 !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-blue-50:not(button, button *) { background-color: #eff6ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-sky-50:not(button, button *) { background-color: #f0f9ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-violet-50:not(button, button *) { background-color: #f5f3ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-purple-50:not(button, button *) { background-color: #faf5ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-amber-50:not(button, button *) { background-color: #fffbeb !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(.bg-red-50,.bg-red-100):not(button, button *) { background-color: #fee2e2 !important; }
     </style>
 </head>
 <body class="bg-gray-50 overflow-hidden ops-precision-pilot ag-premium-skin premium-skin-v16" data-ops-theme="light">
@@ -7126,6 +7143,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
     <script src="./assets/av-derived-rows.js?v=V2026.10.14.003"></script>
     <script src="./assets/bounded-snapshot-cache.js?v=V2026.10.14.003"></script>
     <script src="./assets/stable-view-dom.js?v=V2026.10.14.003"></script>
+    <script src="./assets/company-directory-cache.js?v=V2026.10.14.003"></script>
     <script src="./assets/queue-completion-state.js?v=V2026.10.14.003"></script>
     <script src="./assets/request-submission.js?v=V2026.10.14.003&mapping=20261014"></script>
     <script src="./assets/ops-precision-pilot.js?v=V2026.10.14.003"></script>
@@ -37036,7 +37054,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const scroller = document.getElementById('main-scroll-area');
             if (!root || !scroller) return null;
             const bounds = scroller.getBoundingClientRect();
-            const attributes = ['id', 'data-drive-demand-row', 'data-manager-eval2-selection-key', 'data-hl-order-id', 'data-hl-group', 'data-hl-restock-item', 'data-uid', 'data-id', 'data-itemcode', 'onclick', 'aria-label'];
+            const attributes = ['id', 'data-request-uid', 'data-dom-id', 'data-inventory-id', 'data-row-id', 'data-drive-demand-row', 'data-manager-eval2-selection-key', 'data-hl-order-id', 'data-hl-group', 'data-hl-restock-item', 'data-uid', 'data-id', 'data-itemcode', 'onclick', 'aria-label'];
             const cards = Array.from(root.querySelectorAll('.app-smart-card,.item-row,.drill-item,.manager-eval2-item-card,.request-swipe-row,.app-drive-compact-card,[data-drive-demand-row],[data-hl-order-id],[data-hl-group],[data-hl-restock-item],.performance-windowed-list > [role="button"][onclick]'));
             const visible = cards.findIndex(card => card.getBoundingClientRect().bottom > bounds.top && card.getBoundingClientRect().top < bounds.bottom);
             const anchors = visible < 0 ? [] : cards.slice(Math.max(0, visible - 1), visible + 3).map(card => {
@@ -37620,6 +37638,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         function resetProductionLiveSync() {
             resetRequestArchivePageState();
+            companyDirectoryCache.clear();
+            Object.assign(managerCompanyDirectoryState, { owner: '', contacts: [], blocks: [], beds: [], codes: [], loaded: false, loading: false, formOpen: false, editing: null });
+            managerCompanyDirectoryState.loadGeneration++;
             inventoryStatusSync?.reset();
             inventoryStatusRenderedCards.clear();
             inventoryStatusPendingSaves.forEach(entry => clearTimeout(entry.timer));
@@ -58025,9 +58046,9 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function prefetchRequestModalCustomerOptions() {
-            const owner = getRequestModalLookupOwnerSignature();
-            if (prefetchRequestModalCustomerOptions.completedOwner === owner) return Promise.resolve(true);
-            if (prefetchRequestModalCustomerOptions.owner === owner && prefetchRequestModalCustomerOptions.promise) return prefetchRequestModalCustomerOptions.promise;
+            const lookupOwner = getRequestModalLookupOwnerSignature();
+            if (prefetchRequestModalCustomerOptions.completedOwner === getRequestModalCustomerMappingCacheSignature()) return Promise.resolve(true);
+            if (prefetchRequestModalCustomerOptions.owner === lookupOwner && prefetchRequestModalCustomerOptions.promise) return prefetchRequestModalCustomerOptions.promise;
             const promise = (async () => {
                 if (!currentUser || !(typeof canAccessView === 'function' && canAccessView('request'))
                     && !(typeof canUseRequestRepScopedAccess === 'function' && canUseRequestRepScopedAccess())) return false;
@@ -58035,8 +58056,11 @@ function toggleDriveQuickRequestItem(domId) {
                     isCsrRequestAssistantUser() ? ensureRequestRepUserOptionsReady() : Promise.resolve(requestModalRepUserOptions),
                     ensureDatasetLoaded('customerRepMap', 'full')
                 ]);
-                if (owner !== getRequestModalLookupOwnerSignature() || customerMapReady !== true
+                if (lookupOwner !== getRequestModalLookupOwnerSignature() || customerMapReady !== true
                     || !isDatasetLoaded('customerRepMap', 'full') || !Array.isArray(customerRepMapRows)) return false;
+                const mappingOwner = getRequestModalCustomerMappingCacheSignature();
+                if (lookupOwner !== getRequestModalLookupOwnerSignature()
+                    || mappingOwner !== getRequestModalCustomerMappingCacheSignature()) return false;
                 if (isCsrRequestAssistantUser() && repDirectoryReady === false) return false;
                 const allowed = typeof getAllowedRequestModalRepOptions === 'function' ? getAllowedRequestModalRepOptions() : [];
                 const byId = new Map();
@@ -58052,18 +58076,20 @@ function toggleDriveQuickRequestItem(domId) {
                 let cursor = 0;
                 let allLoaded = true;
                 const worker = async () => {
-                    while (cursor < queue.length && owner === getRequestModalLookupOwnerSignature()) {
+                    while (cursor < queue.length && lookupOwner === getRequestModalLookupOwnerSignature()
+                        && mappingOwner === getRequestModalCustomerMappingCacheSignature()) {
                         const [id, name] = queue[cursor++];
                         try { await loadRequestModalCustomerOptionsForRep(name || id); } catch (_) { allLoaded = false; }
                     }
                 };
                 await Promise.all(Array.from({ length: Math.min(2, queue.length) }, worker));
-                return owner === getRequestModalLookupOwnerSignature() && allLoaded;
+                return { ready: lookupOwner === getRequestModalLookupOwnerSignature()
+                    && mappingOwner === getRequestModalCustomerMappingCacheSignature() && allLoaded, mappingOwner };
             })();
-            prefetchRequestModalCustomerOptions.owner = owner;
-            const trackedPromise = promise.then((ready) => {
-                if (ready) prefetchRequestModalCustomerOptions.completedOwner = owner;
-                return ready;
+            prefetchRequestModalCustomerOptions.owner = lookupOwner;
+            const trackedPromise = promise.then((result) => {
+                if (result && result.ready) prefetchRequestModalCustomerOptions.completedOwner = result.mappingOwner;
+                return result === true || !!(result && result.ready);
             }).finally(() => {
                 if (prefetchRequestModalCustomerOptions.promise === trackedPromise) prefetchRequestModalCustomerOptions.promise = null;
             });
@@ -58085,14 +58111,31 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         async function prepareRequestModalChoicesForStartup(timeoutMs = 5000) {
-            let timeoutId = 0;
-            const warmup = prefetchRequestModalCustomerOptions().then((ready) => ready ? 'ready' : 'unavailable', () => 'unavailable');
-            const timeout = new Promise((resolve) => {
-                timeoutId = window.setTimeout(() => resolve('timeout'), Math.max(250, Number(timeoutMs) || 5000));
-            });
-            const result = await Promise.race([warmup, timeout]);
-            window.clearTimeout(timeoutId);
-            return result === 'ready';
+            const duration = Math.max(250, Number(timeoutMs) || 5000);
+            const deadline = Date.now() + duration;
+            while (Date.now() < deadline) {
+                const attemptOwner = getRequestModalLookupOwnerSignature();
+                const remaining = Math.max(0, deadline - Date.now());
+                let timeoutId = 0;
+                const warmup = Promise.resolve().then(() => prefetchRequestModalCustomerOptions())
+                    .then(Boolean, () => false);
+                const timeout = new Promise(resolve => {
+                    timeoutId = window.setTimeout(() => resolve(false), remaining);
+                });
+                const ready = await Promise.race([warmup, timeout]);
+                window.clearTimeout(timeoutId);
+                const currentOwner = getRequestModalLookupOwnerSignature();
+                if (ready && prefetchRequestModalCustomerOptions.completedOwner === getRequestModalCustomerMappingCacheSignature()) return true;
+                // A startup permission snapshot can land while the directory request is in flight.
+                // The stale result is correctly discarded; retry only for that changed authorization scope.
+                if (currentOwner === attemptOwner || !currentUser) return false;
+                const accessState = appAccessSnapshotState || {};
+                if (accessState.status !== 'ready' || accessState.stale) return false;
+                const expectedUsername = typeof getRequestCapabilityUsernameKey === 'function'
+                    ? getRequestCapabilityUsernameKey(currentUser) : '';
+                if (expectedUsername && accessState.username !== expectedUsername) return false;
+            }
+            return false;
         }
 
         function ensureRequestModalCustomerOptionsReady(force = false) {
@@ -61147,6 +61190,7 @@ function toggleDriveQuickRequestItem(domId) {
             warmupPlan.initialQueue.forEach((item) => {
                 queueDatasetLoad(item.key, item.mode, item.delay);
             });
+            if (getManagersToolAccess().canManageCompanyDirectory) void loadCompanyDirectory(null);
             return warmupPlan;
         }
 
@@ -115183,7 +115227,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             } else if (activeInput) {
                 updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             } else {
-                filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
+                const filterMarkup = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
+                if (typeof window !== 'undefined' && window.AgMetricStableViewDom) {
+                    const next = document.createElement('template');
+                    next.innerHTML = filterMarkup;
+                    window.AgMetricStableViewDom.apply(filterShell, next.content);
+                } else filterShell.innerHTML = filterMarkup;
             }
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
             return resultsShell && resultsShell.querySelector('#request-suspend-tag-card-list') || resultsShell;
@@ -117828,15 +117877,29 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
             const safePlan = plan && typeof plan === 'object' ? plan : {};
+            // Side-data completion can schedule an ordinary tracked render after
+            // the revision coordinator finishes. Keep existing cards connected
+            // through that path too, and publish only the complete latest page.
+            const retainCards = safePlan.rows?.length && cardContainer?.querySelector?.('[data-request-uid]')
+                && window.AgMetricStableViewDom;
+            const renderTarget = retainCards ? document.createElement('div') : cardContainer;
+            const generation = (Number(cardContainer?.__suspendPageGeneration) || 0) + 1;
+            if (cardContainer) cardContainer.__suspendPageGeneration = generation;
             const emptyMessage = isDockSuspendDcRequestMirrorPreparationPending()
                 ? 'Loading Suspend Tag rows…'
                 : (requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
                     ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.');
-            const didSchedule = renderMarkupChunkedByKey('request-main', cardContainer, crumb, safePlan.rows, crumbText,
+            const didSchedule = renderMarkupChunkedByKey('request-main', renderTarget, crumb, safePlan.rows, crumbText,
                 (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
+                    _backgroundStage: !!retainCards,
                     renderSignature: safePlan.renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
                     onComplete: () => {
+                        if (retainCards) {
+                            if (!cardContainer.isConnected || cardContainer.__suspendPageGeneration !== generation) return;
+                            window.AgMetricStableViewDom.apply(cardContainer, renderTarget);
+                            setContainerRenderSignature(cardContainer, getContainerRenderSignature(renderTarget));
+                        }
                         repairVisibleDockSuspendDcPlanstartCardTones(rootContainer);
                         decorateRequestRows();
                         syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
@@ -141844,7 +141907,19 @@ C.14.043 C.15.000
         });
         window.addEventListener('online', () => { if (isManagerSeasonPriorityVisible()) loadManagerSeasonPriority(true); });
 
-        const managerCompanyDirectoryState = { kind: 'contacts', query: '', filterValue: '', reviewOnly: false, page: 0, pageSize: 50, contacts: [], blocks: [], beds: [], codes: [], loading: false, loaded: false, loadGeneration: 0, error: '', formOpen: false, editing: null };
+        const companyDirectoryCache = window.GncCompanyDirectoryCache.create();
+        const managerCompanyDirectoryState = { owner: '', kind: 'contacts', query: '', filterValue: '', reviewOnly: false, page: 0, pageSize: 50, contacts: [], blocks: [], beds: [], codes: [], loading: false, loaded: false, loadGeneration: 0, error: '', formOpen: false, editing: null };
+        function getCompanyDirectoryOwner() {
+            return JSON.stringify([getSupabaseReadIdentityScope(), getProductionLiveSyncContext().dataPermissionVersion || '', getManagersToolAccess().canManageCompanyDirectory]);
+        }
+        function getCompanyDirectoryState() {
+            const state = managerCompanyDirectoryState, owner = getCompanyDirectoryOwner();
+            if (state.owner !== owner) {
+                Object.assign(state, { owner, query: '', filterValue: '', page: 0, contacts: [], blocks: [], beds: [], codes: [], loaded: false, loading: false, error: '', formOpen: false, editing: null, refreshPending: false });
+                state.loadGeneration++;
+            }
+            return state;
+        }
         const managerCompanyDirectoryMeta = {
             contacts: { table: 'ph_company_directory_contacts', title: 'Employee contacts', columns: [['name','Name'],['department','Department'],['extension','Extension'],['cell_number','Cell'],['home_number','Home'],['location','Location']], fields: [['name','Name',true],['department','Department',false],['extension','Extension',false],['cell_number','Cell number',false],['home_number','Home number',false],['location','Location',true]] },
             blocks: { table: 'ph_company_directory_beds', title: 'Blocks & beds', columns: [['block_letter','Block'],['bed_identifier','Bed'],['capacity','Capacity']], fields: [['block_letter','Block',true],['bed_identifier','Bed identifier',true],['capacity','Bed capacity',true,'number']] },
@@ -141852,7 +141927,7 @@ C.14.043 C.15.000
         };
         function companyDirectoryEsc(value) { return typeof esc === 'function' ? esc(value == null ? '' : String(value)) : String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
         function renderCompanyDirectoryPanel() {
-            const state = managerCompanyDirectoryState, meta = managerCompanyDirectoryMeta[state.kind];
+            const state = getCompanyDirectoryState(), meta = managerCompanyDirectoryMeta[state.kind];
             const list = state[state.kind] === undefined ? [] : state.kind === 'blocks' ? state.beds : state[state.kind];
             const q = state.query.trim().toLowerCase();
             const filterField = state.kind === 'contacts' ? 'location' : state.kind === 'blocks' ? 'block_letter' : 'department_reference';
@@ -141865,7 +141940,7 @@ C.14.043 C.15.000
             const pageRows = matchingRows.slice(pageStart, pageStart + state.pageSize);
             const options = { contacts: 'Employee contacts', blocks: 'Blocks & beds', codes: 'Production codes' };
             const totals = state.kind === 'blocks' ? `<div class="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6 mb-3">${state.blocks.map(block => { const beds = state.beds.filter(bed => bed.block_letter === block.letter); const total = beds.reduce((sum, bed) => sum + Number(bed.capacity || 0), 0); return `<div class="rounded-xl border border-emerald-100 bg-white px-3 py-2"><strong class="block text-xs">${companyDirectoryEsc(block.name)}</strong><span class="text-[11px] text-slate-500">${beds.length} beds · ${total.toLocaleString()} total</span><label class="mt-2 grid gap-1 text-[10px] font-bold text-slate-500">Block label<input data-company-directory-block-name="${companyDirectoryEsc(block.letter)}" value="${companyDirectoryEsc(block.name)}" class="min-h-8 rounded border px-2 text-xs font-medium"></label><button type="button" data-company-directory-block-delete="${companyDirectoryEsc(block.letter)}" class="mt-2 rounded border border-red-200 px-2 py-1 text-[10px] font-bold text-red-700">Delete block</button></div>`; }).join('')}<button type="button" data-company-directory-block-add class="min-h-20 rounded-xl border border-dashed border-emerald-300 bg-emerald-50 text-sm font-bold text-emerald-800">＋ Add block</button></div>` : '';
-            const tableRows = pageRows.map(row => `<tr>${meta.columns.map(([key]) => `<td>${companyDirectoryEsc(row[key] ?? '—')}</td>`).join('')}<td class="whitespace-nowrap"><button type="button" data-company-directory-edit="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-emerald-200 px-2 py-1 text-xs font-bold">Edit</button> <button type="button" data-company-directory-delete="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">Delete</button></td></tr>`).join('');
+            const tableRows = pageRows.map(row => `<tr data-row-id="${companyDirectoryEsc(row.id)}">${meta.columns.map(([key]) => `<td>${companyDirectoryEsc(row[key] ?? '—')}</td>`).join('')}<td class="whitespace-nowrap"><button type="button" data-company-directory-edit="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-emerald-200 px-2 py-1 text-xs font-bold">Edit</button> <button type="button" data-company-directory-delete="${companyDirectoryEsc(row.id)}" class="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-700">Delete</button></td></tr>`).join('');
             const form = state.formOpen ? `<div class="fixed inset-0 z-[10000] grid place-items-center bg-slate-950/60 p-3" data-company-directory-scrim><form data-company-directory-form class="max-h-[90dvh] w-full max-w-xl overflow-auto rounded-2xl bg-white p-4 shadow-2xl"><div class="mb-4 flex items-center justify-between"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">${state.editing ? 'Edit record' : 'New record'}</div><h3 class="text-lg font-black">${meta.title}</h3></div><button type="button" data-company-directory-close aria-label="Close" class="rounded-lg border px-3 py-2">×</button></div><div class="grid grid-cols-1 gap-3 sm:grid-cols-2">${meta.fields.map(([key,label,required,type]) => `<label class="grid gap-1 text-xs font-bold text-slate-700">${label}${state.kind === 'blocks' && key === 'block_letter' ? `<select name="${key}" required class="min-h-10 rounded-lg border px-3">${'ABCDEFGHIJKL'.split('').map(letter => `<option value="${letter}" ${state.editing?.[key] === letter ? 'selected' : ''}>Block ${letter}</option>`).join('')}</select>` : `<input name="${key}" type="${type || 'text'}" ${required ? 'required' : ''} ${type === 'number' ? 'min="0.01" step="0.01"' : ''} value="${companyDirectoryEsc(state.editing?.[key] ?? '')}" class="min-h-10 rounded-lg border px-3">`}</label>`).join('')}</div>${state.error ? `<p role="alert" class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</p>` : ''}<div class="mt-4 flex justify-end gap-2"><button type="button" data-company-directory-close class="min-h-10 rounded-xl border px-4 text-sm font-bold">Cancel</button><button class="min-h-10 rounded-xl bg-emerald-700 px-4 text-sm font-black text-white">Save record</button></div></form></div>` : '';
             const rangeStart = matchingRows.length ? pageStart + 1 : 0;
             const rangeEnd = Math.min(pageStart + state.pageSize, matchingRows.length);
@@ -141873,22 +141948,32 @@ C.14.043 C.15.000
             return `<section class="rounded-2xl border border-emerald-100 bg-white p-3 sm:p-4"><header class="mb-3 flex flex-wrap items-center justify-between gap-2"><div><div class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Production reference data · Dylan</div><h2 class="text-lg font-black text-slate-900">Company Directory</h2></div><button type="button" data-company-directory-refresh class="min-h-10 rounded-xl border border-emerald-200 px-3 text-sm font-bold text-emerald-800" ${state.loading ? 'disabled' : ''}>Refresh</button><button type="button" data-company-directory-add class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-700 px-3 text-sm font-black text-white">＋ Add ${state.kind === 'blocks' ? 'bed row' : 'record'}</button></header><div class="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-[12rem_12rem_minmax(10rem,1fr)]"><select data-company-directory-kind aria-label="Directory category" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm font-bold">${Object.entries(options).map(([key,label]) => `<option value="${key}" ${state.kind === key ? 'selected' : ''}>${label}</option>`).join('')}</select><select data-company-directory-filter aria-label="Filter by ${filterLabel}" class="min-h-10 rounded-xl border border-emerald-100 bg-white px-3 text-sm"><option value="">All ${filterLabel}s</option>${filterOptions.map(value => `<option value="${companyDirectoryEsc(value)}" ${state.filterValue === value ? 'selected' : ''}>${companyDirectoryEsc(value)}</option>`).join('')}</select><input data-company-directory-search aria-label="Search directory" value="${companyDirectoryEsc(state.query)}" placeholder="Search names, departments, extensions, locations, codes…" class="min-h-10 rounded-xl border border-emerald-100 px-3 text-sm"><label class="inline-flex items-center gap-2 text-xs font-bold text-slate-600"><input data-company-directory-review type="checkbox" ${state.reviewOnly ? 'checked' : ''}>Needs review</label></div>${totals}${state.error && !state.formOpen ? `<div role="alert" class="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-800">${companyDirectoryEsc(state.error)}</div>` : ''}<div class="max-h-[65dvh] overflow-auto rounded-xl border border-slate-200"><table class="w-full min-w-[700px] border-collapse text-left text-xs"><thead class="sticky top-0 bg-emerald-50 text-[10px] uppercase tracking-wide text-emerald-900"><tr>${meta.columns.map(([,label]) => `<th class="px-3 py-2">${label}</th>`).join('')}<th class="px-3 py-2">Actions</th></tr></thead><tbody>${state.loading && !state.loaded ? `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">Loading directory…</td></tr>` : tableRows || `<tr><td class="px-3 py-5 text-slate-500" colspan="${meta.columns.length+1}">No matching records.</td></tr>`}</tbody></table></div>${pagination}</section>${form}`;
         }
         async function loadCompanyDirectory(root) {
-            const state = managerCompanyDirectoryState;
-            if (!root || !getManagersToolAccess().canManageCompanyDirectory) return;
+            const state = getCompanyDirectoryState();
+            if (!getManagersToolAccess().canManageCompanyDirectory) return;
+            const owner = state.owner;
+            const cached = companyDirectoryCache.peek(owner);
+            if (cached) Object.assign(state, cached, { loaded: true });
             const generation = state.loadGeneration = Number(state.loadGeneration || 0) + 1;
             state.loading = true; state.error = '';
-            if (!state.loaded) root.innerHTML = renderCompanyDirectoryPanel();
+            if (root && !state.loaded) root.innerHTML = renderCompanyDirectoryPanel();
             try {
-                const [contacts, blocks, beds, codes] = await Promise.all([
-                    supabaseFetch('ph_company_directory_contacts','GET',null,'select=*&order=name.asc'),
-                    supabaseFetch('ph_company_directory_blocks','GET',null,'select=*&order=letter.asc'),
-                    supabaseFetch('ph_company_directory_beds','GET',null,'select=*&order=block_letter.asc,bed_identifier.asc'),
-                    supabaseFetch('ph_company_directory_codes','GET',null,'select=*&order=code.asc')
-                ]);
-                if (generation !== state.loadGeneration || !root.isConnected || !getManagersToolAccess().canManageCompanyDirectory) return;
-                state.contacts=Array.isArray(contacts)?contacts:[]; state.blocks=Array.isArray(blocks)?blocks:[]; state.beds=Array.isArray(beds)?beds:[]; state.codes=Array.isArray(codes)?codes:[]; state.loaded=true;
-            } catch (error) { if (generation === state.loadGeneration) state.error = error?.message || 'Unable to load the company directory.'; }
-            finally { if (generation === state.loadGeneration) { state.loading = false; if (root.isConnected && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_COMPANY_DIRECTORY_VIEW) root.innerHTML = renderCompanyDirectoryPanel(); } }
+                const snapshot = await companyDirectoryCache.refresh(owner, (table, query) => supabaseFetch(table, 'GET', null, query));
+                if (generation !== state.loadGeneration || owner !== getCompanyDirectoryOwner() || !getManagersToolAccess().canManageCompanyDirectory) return;
+                Object.assign(state, snapshot, { loaded: true });
+            } catch (error) {
+                if (generation === state.loadGeneration && owner === getCompanyDirectoryOwner()) {
+                    if ([401, 403].includes(Number(error?.status)) || error?.code === '42501') Object.assign(state, { contacts: [], blocks: [], beds: [], codes: [], loaded: false, formOpen: false, editing: null });
+                    state.error = error?.message || 'Unable to load the company directory.';
+                }
+            } finally {
+                if (generation === state.loadGeneration && owner === getCompanyDirectoryOwner()) {
+                    state.loading = false;
+                    if (root?.isConnected && getCurrentVisibleViewId() === 'managers' && activeHomeTab === MANAGER_COMPANY_DIRECTORY_VIEW) {
+                        const next = document.createElement('template'); next.innerHTML = renderCompanyDirectoryPanel();
+                        window.AgMetricStableViewDom.apply(root, next.content);
+                    }
+                }
+            }
         }
         function mountCompanyDirectoryPanel(root) {
             if (!root || root.dataset.companyDirectoryMounted === 'true') return;

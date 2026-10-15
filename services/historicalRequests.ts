@@ -206,6 +206,27 @@ function isGroupValue(row: HistoricalRequestGroup | HistoricalRequestRow): row i
   return 'requestCount' in row;
 }
 
+export async function readHistoricalReportingDirectory(bridge: HistoricalRequestsBridge, repKey?: string, signal?: AbortSignal) {
+  async function readAll(operation: 'reps' | 'customers') {
+    const rows: HistoricalRequestGroup[] = [];
+    let revision = '';
+    for (let page = 0; ; page++) {
+      const data = await bridge.read({ operation, recordKind: 'all',
+        ...(operation === 'customers' && repKey ? { repKey } : {}), page, pageSize: 100 }, signal);
+      if (data.scope !== 'all' || !data.financials) {
+        throw Object.assign(new Error('Reporting scope changed. Refresh the report.'), { status: 403 });
+      }
+      if (revision && revision !== data.revision) throw new Error('Reporting source data changed. Refresh the report.');
+      revision = data.revision;
+      rows.push(...data.rows.filter(isGroupValue));
+      if (rows.length >= data.total) return rows;
+      if (!data.rows.length || page >= 10000) throw new Error('The complete reporting directory could not be read.');
+    }
+  }
+  const [reps, customers] = await Promise.all([readAll('reps'), readAll('customers')]);
+  return { reps, customers };
+}
+
 export function createHistoricalRequestsBridge({
   scopeKey, revisionKey, role, transport,
 }: { scopeKey: string; revisionKey: string; role: string; transport: HistoricalRequestsTransport }): HistoricalRequestsBridge {

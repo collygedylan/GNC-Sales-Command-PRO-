@@ -2,6 +2,7 @@ import { expect, test, type Page, type Route } from '@playwright/test';
 // @test-group: @suspend-tag,suspend
 
 import { confirmedDriveEvidence, driveEvidenceColumns } from '../services/driveEvidence.ts';
+import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
 
 
 type FixtureRow = Record<string, string | number>;
@@ -138,6 +139,37 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
     }
     if (url.pathname === '/functions/v1/app-api' && request.method() === 'POST') {
       const body = request.postDataJSON() || {};
+      if (options.native && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_page'
+        && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
+        && typeof body.params?.uniqueId === 'string' && body.params.limit === 1 && body.params.offset === 0
+        && Object.keys(body).sort().join(',') === 'action,operation,params'
+        && Object.keys(body.params).sort().join(',') === 'dataset,limit,offset,projection,uniqueId') {
+        const matching = backendRows.filter(row => `master-${row.UNIQUE_ID}` === body.params.uniqueId);
+        const rows = matching.map(row => inventoryReadFixture.fromFixtureShape({
+          ...Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])),
+          ...buildConfirmedInventoryRow(row, {}), loc_match_qty: '0' }));
+        return fulfill(route, { ok: true, data: inventoryReadFixture.readMasterPage(rows, body.params) });
+      }
+      if (options.native && ['sales_credit', 'request_history'].includes(body.action) && body.operation === 'compatibility'
+        && Object.keys(body).sort().join(',') === 'action,operation,payload'
+        && !request.headers()['idempotency-key'] && body.payload?.status === 'all'
+        && body.payload?.cursor === null && body.payload?.limit === 100
+        && Object.keys(body.payload).sort().join(',') === 'cursor,limit,status') {
+        return fulfill(route, { ok: true, data: { rows: [], nextCursor: null } });
+      }
+      if (options.native && !options.inventoryUnavailable && body.action === 'inventory_read' && body.operation === 'master_page'
+        && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
+        && typeof body.params?.itemCode === 'string' && typeof body.params?.locationCode === 'string'
+        && body.params.limit === 500 && body.params.offset === 0
+        && Object.keys(body).sort().join(',') === 'action,operation,params'
+        && Object.keys(body.params).sort().join(',') === 'dataset,itemCode,limit,locationCode,offset,projection') {
+        const matching = backendRows.filter(row => row.ITEMCODE === body.params.itemCode && row.LOCATIONCODE === body.params.locationCode);
+        const rows = matching.map(row => inventoryReadFixture.fromFixtureShape({
+          ...Object.fromEntries(Object.entries(row).map(([key, value]) => [key.toLowerCase(), value])),
+          ...buildConfirmedInventoryRow(row, {}), loc_match_qty: '0' }));
+        inventoryLookupCalls.push({ params: body.params, status: 200 });
+        return fulfill(route, { ok: true, data: inventoryReadFixture.readMasterPage(rows, body.params) });
+      }
       if (options.inventoryUnavailable && url.hostname === 'kzrnyjsosryejjejliii.supabase.co'
         && body.action === 'inventory_read' && body.operation === 'master_page'
         && body.params?.dataset === 'lookup' && body.params?.projection === 'full'
@@ -422,7 +454,7 @@ test('pastel Suspend cards keep readable text in both themes without removing we
         }
         return { tone: card.getAttribute('data-planstart-tone'), background: getComputedStyle(card).backgroundImage,
           textCount: samples.length, minimumContrast: Math.min(...samples.map(sample => sample.ratio)),
-          weakest: samples.sort((a, b) => a.ratio - b.ratio).slice(0, 3) };
+          weakest: samples.sort((a, b) => a.ratio - b.ratio).filter(sample => sample.ratio < 4.5) };
       });
     });
     expect(evidence).toHaveLength(2);
@@ -437,15 +469,42 @@ test('background Suspend revision preserves card identity and layout while updat
   const app = await harness(page, baseURL!, fixtures, { native: true });
   const card = app.card();
   await expect(card).toBeVisible();
+  // Wait for the real hydration read before isolating the subsequent revision.
+  // Otherwise the baseline itself changes from unknown to verified inventory.
+  await expect.poll(() => app.inventoryLookupCalls.filter(call => call.status === 200).length).toBeGreaterThanOrEqual(2);
+  await expect.poll(() => page.evaluate(() => window.eval(`
+    Array.from(suspendTagReclassLoads.values()).filter(entry => entry.row && !entry.promise && !entry.error).length
+  `))).toBe(2);
+  await expect(card.locator('[data-suspend-tag-reclass-uid]')).toHaveCount(0);
   const beforeNode = await card.elementHandle();
   const before = await card.boundingBox();
+  await page.evaluate(() => window.eval(`(() => {
+    const original = document.querySelector('#request-content [data-request-uid]');
+    window.__suspendRemovalLog = [];
+    const record = (node, operation) => {
+      if (original && original.isConnected && node.contains(original)) window.__suspendRemovalLog.push({ operation, id: node.id, stack: new Error().stack });
+    };
+    const inner = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+    Object.defineProperty(Element.prototype, 'innerHTML', { ...inner, set(value) { record(this, 'innerHTML'); inner.set.call(this, value); } });
+    const replace = Element.prototype.replaceChildren;
+    Element.prototype.replaceChildren = function(...nodes) { record(this, 'replaceChildren'); return replace.apply(this, nodes); };
+    const remove = Node.prototype.removeChild;
+    Node.prototype.removeChild = function(node) { record(node, 'removeChild'); return remove.call(this, node); };
+    const scroll = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollTop');
+    Object.defineProperty(Element.prototype, 'scrollTop', { ...scroll, set(value) {
+      if (this.id === 'main-scroll-area') window.__suspendRemovalLog.push({ operation: 'scrollTop', value, stack: new Error().stack });
+      scroll.set.call(this, value);
+    } });
+  })()`));
   await app.nativeRefresh(fixtures.map(row => ({ ...row, COMMONNAME: String(row.COMMONNAME).replace('fixture', 'updated') })));
   await expect(card).toContainText('Suspend browser updated 1');
-  expect(await beforeNode?.evaluate(node => node.isConnected)).toBe(true);
+  const removals = await page.evaluate(() => window.eval('window.__suspendRemovalLog'));
+  await info.attach('suspend-dom-removal-diagnostics', { body: JSON.stringify(removals), contentType: 'application/json' });
+  expect(await beforeNode?.evaluate(node => node.isConnected), JSON.stringify(removals)).toBe(true);
   const after = await card.boundingBox();
   expect(before).not.toBeNull(); expect(after).not.toBeNull();
-  for (const field of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after![field] - before![field])).toBeLessThanOrEqual(1);
   await info.attach('suspend-background-dom-stability', { body: JSON.stringify({ before, after, retainedNode: true }), contentType: 'application/json' });
+  for (const field of ['x', 'y', 'width', 'height'] as const) expect(Math.abs(after![field] - before![field])).toBeLessThanOrEqual(1);
   app.assertClean();
 });
 
