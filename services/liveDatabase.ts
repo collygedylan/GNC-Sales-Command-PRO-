@@ -9,6 +9,7 @@ import { inquiryFieldEdits, validateReclassEditableFieldProposals } from './recl
 import { mountCustomerRepMapping } from './customerRepMapping';
 import { historicalRequestsQuery } from './historicalRequests';
 import { createInventoryStatusSync } from './inventoryStatusSync';
+import { createRequestArchivePagesService, type RequestArchivePageReader } from './requestArchivePages';
 export { tableName, rpcName, validateQuery, tableRequest } from './databaseRest';
 type Profile = Pick<Database['public']['Tables']['profiles']['Row'], 'id' | 'legacy_user_id' | 'username' | 'display_name' | 'role' | 'division' | 'language' | 'disabled_at' | 'locked_until' | 'must_change_password' | 'passkey_pilot'>;
 export function databaseClient(url: string, key: string, options?: SupabaseClientOptions<'public'>) {
@@ -22,6 +23,9 @@ export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout) {
     reclassShearedProposal,
     confirmedReclassLiveEditsFromResult,
     createInventoryStatusSync,
+    createRequestArchivePagesService(readPage: RequestArchivePageReader) {
+      return createRequestArchivePagesService(readPage);
+    },
     inquiryFieldEdits, validateReclassEditableFieldProposals,
     mountCustomerRepMapping,
     async readHistoricalRequests(client: SupabaseClient<Database>, input: unknown, signal?: AbortSignal) {

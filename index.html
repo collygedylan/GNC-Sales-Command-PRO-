@@ -37018,23 +37018,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return requestLocationCollator.compare(String(left || ''), String(right || ''));
         }
 
+        function buildRequestBrowseMembershipKey(mode, items) {
+            return JSON.stringify([mode, items.map(getItemUniqueId)]);
+        }
+
+        function buildRequestPagedRenderPlan(mode, crumbText, items) {
+            const membershipKey = buildRequestBrowseMembershipKey(mode, items);
+            const browsePage = getClientBrowsePage('request', membershipKey, items);
+            const renderKey = buildRequestChunkRenderKey(mode, crumbText, browsePage.rows);
+            return {
+                empty: !items.length, crumbText, items, rows: browsePage.rows,
+                pageIndex: Number(browsePage.pageIndex), renderKey,
+                renderSignature: `${renderKey}:page:${Number(browsePage.pageIndex)}:source:${browsePage.key}`,
+                footerMarkup: renderClientBrowsePageFooter('request', browsePage.key, items.length, browsePage)
+            };
+        }
+
         function buildPendingRequestRenderPlan(items) {
             const crumbText = 'All Request Que';
             const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
             pendingItems.sort((a, b) => compareRequestLocationCodes(a.LOCATIONCODE, b.LOCATIONCODE));
-            const renderKey = buildRequestChunkRenderKey('request:pending', crumbText, pendingItems);
-            const browsePage = getClientBrowsePage('request', renderKey, pendingItems);
-            return {
-                empty: false,
-                crumbText,
-                items: pendingItems,
-                rows: browsePage.rows,
-                pageIndex: Number(browsePage.pageIndex),
-                renderKey,
-                renderSignature: `${renderKey}:page:${Number(browsePage.pageIndex)}`,
-                footerMarkup: renderClientBrowsePageFooter('request', browsePage.key, pendingItems.length, browsePage)
-            };
+            return buildRequestPagedRenderPlan('request:pending', crumbText, pendingItems);
         }
 
         function getRequestPendingReuseContextSnapshot(context = null) {
@@ -37482,6 +37487,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function resetProductionLiveSync() {
+            resetRequestArchivePageState();
             inventoryStatusSync?.reset();
             inventoryStatusRenderedCards.clear();
             inventoryStatusPendingSaves.forEach(entry => clearTimeout(entry.timer));
@@ -40418,7 +40424,37 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
 
-        let requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, error: '', loaded: false, controller: null };
+        let requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, refreshing: false, error: '', loaded: false, scopeKey: '', controller: null };
+        let requestArchivePagesService = null;
+        function getRequestArchivePageScopeKey() {
+            const context = typeof getProductionLiveSyncContext === 'function' ? getProductionLiveSyncContext() : null;
+            return JSON.stringify([
+                getSupabaseReadIdentityScope(),
+                String(currentUser || ''),
+                String(currentRole || safeRole || ''),
+                String(context && context.dataPermissionVersion || ''),
+                canCurrentUserArchiveRequestRows() ? 'archive:allowed' : 'archive:denied'
+            ]);
+        }
+        function getRequestArchivePagesService() {
+            if (requestArchivePagesService) return requestArchivePagesService;
+            const database = window && window.GncDatabase;
+            if (!database || typeof database.createRequestArchivePagesService !== 'function') throw new Error('Archived request pages are unavailable.');
+            requestArchivePagesService = database.createRequestArchivePagesService(async ({ offset, limit }, signal) =>
+                callRequestArchiveApi({ operation: 'list', offset, limit }, { signal }));
+            return requestArchivePagesService;
+        }
+        function resetRequestArchivePageState() {
+            const previousScope = requestArchiveListState && requestArchiveListState.scopeKey;
+            if (requestArchiveListState && requestArchiveListState.controller) requestArchiveListState.controller.abort();
+            requestArchivePagesService?.clear();
+            requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, refreshing: false, error: '', loaded: false, scopeKey: '', controller: null };
+            return previousScope || '';
+        }
+        function invalidateRequestArchivePages(scopeKey = requestArchiveListState.scopeKey || getRequestArchivePageScopeKey()) {
+            if (requestArchivePagesService && scopeKey) requestArchivePagesService.invalidate(scopeKey);
+            if (requestArchiveListState.scopeKey === scopeKey) requestArchiveListState.loaded = false;
+        }
         let requestArchiveUndo = { uid: '', expiresAt: 0, timer: null };
         const requestArchiveInFlightByUid = new Map();
         const requestQueueRemovalInFlight = new Set();
@@ -83952,7 +83988,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             });
             if (nextTab === 'bunch-notes') { BunchNote.backQueue(); void BunchNote.refresh(); return scheduled; }
             if (nextTab === 'archived') {
-                loadRequestArchivePage(0).catch((error) => console.warn('Archived request page failed', error));
+                loadRequestArchivePage(0, true).catch((error) => console.warn('Archived request page failed', error));
                 return scheduled;
             }
             if (nextTab === 'eval-work') {
@@ -114068,6 +114104,27 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return String(a && a.COMMONNAME || '').localeCompare(String(b && b.COMMONNAME || ''), undefined, { numeric: true, sensitivity: 'base' });
         }
 
+        function buildSuspendTagRenderPlan(items) {
+            const allItems = getSuspendTagRequestItems(items).sort(compareRequestSuspendTagRows);
+            const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
+            const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems);
+            const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems);
+            const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems);
+            const filterKey = JSON.stringify([
+                normalizeSearchValue(requestSuspendTagCommonNameSearchTerm),
+                normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter),
+                normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter),
+                requestSuspendTagDockFilter
+            ]);
+            const plan = buildRequestPagedRenderPlan(`request:suspend-tag:${filterKey}`, 'Suspend Tag', filteredItems);
+            const planstartSignature = plan.rows.map((item) => {
+                const info = getDockSuspendDcRequestPlanstartInfo(item);
+                return [getItemUniqueId(item), info.value, info.tone, info.valid];
+            });
+            return { ...plan, allItems, searchItems, assignedItems, contSizeItems,
+                renderSignature: `${plan.renderSignature}:planstart:${JSON.stringify(planstartSignature)}` };
+        }
+
         function getRequestSuspendTagSearchInputState(event = null) {
             const target = event && event.target ? event.target : document.getElementById('request-suspend-tag-common-search');
             if (!target || String(target.id || '') !== 'request-suspend-tag-common-search') return null;
@@ -116050,8 +116107,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return {
                 ...resolved,
                 initialRows: Number(resolved.initialRows) > 0 ? resolved.initialRows : (narrowScreen ? 4 : 8),
-                chunkSize: resolved.chunkSize ?? (narrowScreen ? 8 : undefined),
-                perFrameRows: resolved.perFrameRows ?? (narrowScreen ? 8 : undefined)
+                chunkSize: resolved.chunkSize ?? 8,
+                perFrameRows: resolved.perFrameRows ?? 8
             };
         }
 
@@ -116886,7 +116943,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const state = requestArchiveListState;
                 const html = renderRequestArchivePageHtml(state);
                 applyRequestRenderMarkup(container, crumb, 'Archived Requests', html,
-                    `request:archived:${state.loading ? 'loading' : 'ready'}:${state.error}:${state.offset}:${state.total}:${state.rows.map((row) => row.unique_id).join('|')}`);
+                    buildRequestArchivePageRenderSignature(state));
+                syncRequestArchiveStatus(container, state);
                 return;
             }
             if (ensureViewDataForRender('request')) return;
@@ -117045,31 +117103,19 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
             if (activeReqTab === 'suspend-tag') {
                 const crumbText = `Suspend Tag${requestFilterSuffix}`;
-                const allSuspendTagItems = getSuspendTagRequestItems(items).sort(compareRequestSuspendTagRows);
-                const searchSuspendTagItems = applyRequestSuspendTagCommonNameSearchFilter(allSuspendTagItems);
-                const assignedSuspendTagItems = applyRequestSuspendTagAssignedToFilter(searchSuspendTagItems);
-                const contSizeSuspendTagItems = applyRequestSuspendTagContSizeFilter(assignedSuspendTagItems);
-                const suspendTagItems = applyRequestSuspendTagDockFilter(contSizeSuspendTagItems);
-                const searchKey = normalizeSearchValue(requestSuspendTagCommonNameSearchTerm);
-                const assignedKey = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
-                const contSizeKey = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
-                const planstartSignature = suspendTagItems.map((item) => {
-                    const info = getDockSuspendDcRequestPlanstartInfo(item);
-                    return `${String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim()}:${info.value}:${info.tone}:${info.valid ? 1 : 0}`;
-                }).join('|');
-                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${assignedKey}:${contSizeKey}:${requestSuspendTagDockFilter}:${searchKey}:${planstartSignature}`, `${crumbText}|${assignedKey}|${contSizeKey}|${requestSuspendTagDockFilter}|${searchKey}|${planstartSignature}`, suspendTagItems);
-                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allSuspendTagItems, searchSuspendTagItems, assignedSuspendTagItems, contSizeSuspendTagItems, suspendTagItems);
-                renderMarkupChunkedByKey('request-main', resultsContainer, crumb, suspendTagItems, crumbText, (item) => generateCard(item, 'request', 'status-red'), {
-                    approxCardHeight: 360,
-                    renderSignature: renderKey,
+                const plan = buildSuspendTagRenderPlan(items);
+                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, plan.allItems, plan.searchItems, plan.assignedItems, plan.contSizeItems, plan.items);
+                renderMarkupChunkedByKey('request-main', resultsContainer, crumb, plan.rows, crumbText, (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
+                    renderSignature: plan.renderSignature,
                     emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.'}</div>`,
                     onComplete: () => {
                         repairVisibleDockSuspendDcPlanstartCardTones(resultsContainer);
                         decorateRequestRows();
+                        syncRequestBrowseFooter(resultsContainer, plan.footerMarkup);
                     },
                     onCompleteAfterInteractive: true,
                     onCompleteDelayMs: 140
-                });
+                }));
                 return;
             }
 
@@ -144244,7 +144290,7 @@ C.14.043 C.15.000
                 requestQueueRemovedByScope.set(scope, removed);
                 rebuildRequestInventoryIndexes();
                 invalidateInventoryDomIdLookup();
-                requestArchiveListState.loaded = false;
+                invalidateRequestArchivePages();
                 refreshRequestViewAfterArchive();
                 persistCurrentCache();
                 triggerRequestRealtimeUiRefresh(0);
@@ -144294,7 +144340,7 @@ C.14.043 C.15.000
             item.REQ_ARCHIVED = true;
             buildSearchIndex(item);
             queuePendingRequestArchive(requestUid, 'archive', idempotencyKey);
-            requestArchiveListState.loaded = false;
+            invalidateRequestArchivePages(actionIdentityScope === getSupabaseReadIdentityScope() ? requestArchiveListState.scopeKey : '');
             closeAllRequestSwipes();
             refreshRequestViewAfterArchive();
             persistCurrentCache();
@@ -144360,7 +144406,7 @@ C.14.043 C.15.000
             if (result.ok) {
                 clearPendingRequestArchive(id);
                 clearRequestArchiveUndo();
-                requestArchiveListState.loaded = false;
+                invalidateRequestArchivePages(actionIdentityScope === getSupabaseReadIdentityScope() ? requestArchiveListState.scopeKey : '');
                 if (isViewVisible('request') && activeReqTab === 'archived') {
                     requestArchiveListState.offset = getRequestArchiveClampedPageOffset(requestArchiveListState.total, requestArchiveListState.limit, requestArchiveListState.offset);
                     loadRequestArchivePage(requestArchiveListState.offset, true).catch(() => {});
@@ -149331,8 +149377,6 @@ C.14.043 C.15.000
             return row;
         }
         function renderRequestArchivePageHtml(state = requestArchiveListState) {
-            if (state.loading) return '<div class="request-archive-empty" role="status">Loading archived request rows…</div>';
-            if (state.error) return `<div class="request-archive-empty request-archive-empty--error" role="alert">${escapeHtml(state.error)}<button type="button" class="request-archive-control" onclick="return loadRequestArchivePage(${Number(state.offset) || 0}, true)">Retry</button></div>`;
             const rows = Array.isArray(state.rows) ? state.rows : [];
             const cards = rows.map((row) => {
                 const uid = String(row.UNIQUE_ID || '');
@@ -149346,10 +149390,45 @@ C.14.043 C.15.000
             const pager = Number(state.total) > limit || offset > 0
                 ? `<div class="request-archive-pager"><button type="button" class="request-archive-control" ${offset ? '' : 'disabled'} onclick="return loadRequestArchivePage(${Math.max(0, offset - limit)}, true)">Previous</button><span>${displayPage} / ${pageCount} · ${Number(state.total)} rows</span><button type="button" class="request-archive-control" ${state.hasMore ? '' : 'disabled'} onclick="return loadRequestArchivePage(${offset + limit}, true)">Next</button></div>`
                 : `<div class="request-archive-pager">${Number(state.total) || 0} archived request${Number(state.total) === 1 ? '' : 's'}</div>`;
-            if (rows.length) return `<div class="request-archive-list">${cards}</div>${pager}`;
-            return Number(state.total) > 0
-                ? `<div class="request-archive-empty">No rows on this page.</div>${pager}`
+            const list = rows.length ? `<div class="request-archive-list">${cards}</div>` : Number(state.total) > 0
+                ? '<div class="request-archive-empty">No rows on this page.</div>'
                 : '<div class="request-archive-empty">No archived request rows.</div>';
+            return `<div id="request-archive-page-list">${list}</div><div id="request-archive-page-pager">${pager}</div><div id="request-archive-status"></div>`;
+        }
+        function buildRequestArchivePageRenderSignature(state = requestArchiveListState) {
+            const rows = Array.isArray(state && state.rows) ? state.rows : [];
+            return `request:archived:${JSON.stringify([
+                Number(state && state.offset) || 0,
+                Number(state && state.total) || 0,
+                Number(state && state.limit) || 100,
+                !!(state && state.hasMore),
+                rows.map((row) => [
+                    String(row && row.UNIQUE_ID || ''),
+                    String(row && row.COMMONNAME || ''),
+                    String(row && row.CONTSIZE || ''),
+                    String(row && row.LOCATIONCODE || ''),
+                    String(row && row.LOTCODE || ''),
+                    String(row && row.ITEMCODE || ''),
+                    String(row && (row.REQ_CUSTOMER || row.CUSTOMERNAME) || ''),
+                    String(row && row.REQ_QTY || '')
+                ])
+            ])}`;
+        }
+        function syncRequestArchiveStatus(container, state = requestArchiveListState) {
+            const status = container && container.querySelector('#request-archive-status');
+            if (!status) return false;
+            let html = '';
+            if (state.error) {
+                html = `<div class="request-archive-empty request-archive-empty--error" role="alert">${escapeHtml(state.error)}<button type="button" class="request-archive-control" onclick="return loadRequestArchivePage(${Number(state.offset) || 0}, true)">Retry</button></div>`;
+            } else if (state.loading) {
+                const message = state.refreshing ? 'Refreshing archived request rows…' : 'Loading archived request rows…';
+                html = `<div class="request-archive-empty" role="status">${message}</div>`;
+            }
+            if (status.dataset.requestArchiveStatus !== html) {
+                status.innerHTML = html;
+                status.dataset.requestArchiveStatus = html;
+            }
+            return true;
         }
         function getRequestArchiveClampedPageOffset(total = 0, limit = 100, currentOffset = 0) {
             const safeTotal = Math.max(0, Number(total) || 0);
@@ -149359,24 +149438,72 @@ C.14.043 C.15.000
             return Math.min(safeOffset, lastPageOffset);
         }
         async function loadRequestArchivePage(offset = 0, force = false) {
-            if (!canCurrentUserArchiveRequestRows()) return false;
-            const safeOffset = Math.max(0, Number(offset) || 0);
+            if (!canCurrentUserArchiveRequestRows()) {
+                resetRequestArchivePageState();
+                return false;
+            }
+            const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+            const scopeKey = getRequestArchivePageScopeKey();
+            if (requestArchiveListState.scopeKey && requestArchiveListState.scopeKey !== scopeKey) resetRequestArchivePageState();
             if (requestArchiveListState.loaded && requestArchiveListState.offset === safeOffset && !force) return true;
             if (requestArchiveListState.loading && requestArchiveListState.offset === safeOffset && !force) return false;
             if (requestArchiveListState.controller) requestArchiveListState.controller.abort();
             const controller = new AbortController();
-            requestArchiveListState = { ...requestArchiveListState, offset: safeOffset, loading: true, error: '', controller };
+            let service;
+            let cachedPage = null;
+            try {
+                service = getRequestArchivePagesService();
+                cachedPage = service.peek(scopeKey, safeOffset, 100);
+            } catch (error) {
+                requestArchiveListState = { ...requestArchiveListState, loading: false, refreshing: false, error: String(error && error.message || 'Archived requests are unavailable.'), controller: null };
+                if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
+                return false;
+            }
+            const samePage = requestArchiveListState.scopeKey === scopeKey && requestArchiveListState.offset === safeOffset;
+            const retainedPage = samePage && requestArchiveListState.loaded
+                ? { rows: requestArchiveListState.rows, total: requestArchiveListState.total, offset: requestArchiveListState.offset, limit: requestArchiveListState.limit, hasMore: requestArchiveListState.hasMore }
+                : cachedPage;
+            requestArchiveListState = {
+                rows: retainedPage ? retainedPage.rows.map((row) => normalizeArchivedRequestRow(row)).filter(Boolean) : [],
+                total: retainedPage ? retainedPage.total : 0,
+                offset: safeOffset,
+                limit: retainedPage ? retainedPage.limit : 100,
+                hasMore: retainedPage ? retainedPage.hasMore : false,
+                loading: true,
+                refreshing: !!(retainedPage && retainedPage.rows.length),
+                error: '',
+                loaded: !!retainedPage,
+                scopeKey,
+                controller
+            };
             if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
             try {
-                const data = await callRequestArchiveApi({ operation: 'list', offset: safeOffset, limit: 100 }, { signal: controller.signal });
-                if (controller.signal.aborted || !Array.isArray(data.rows) || Number(data.offset) !== safeOffset || !Number.isInteger(Number(data.total))) return false;
-                requestArchiveListState = { rows: data.rows.map(normalizeArchivedRequestRow).filter(Boolean), total: Math.max(0, Number(data.total) || 0), offset: safeOffset, limit: Math.min(500, Math.max(1, Number(data.limit) || 100)), hasMore: !!data.hasMore, loading: false, error: '', loaded: true, controller: null };
+                const data = await service.read(scopeKey, safeOffset, 100, controller.signal);
+                if (controller.signal.aborted || requestArchiveListState.controller !== controller
+                    || requestArchiveListState.scopeKey !== scopeKey || data.offset !== safeOffset) return false;
+                requestArchiveListState = {
+                    rows: data.rows.map((row) => normalizeArchivedRequestRow(row)).filter(Boolean),
+                    total: data.total,
+                    offset: data.offset,
+                    limit: data.limit,
+                    hasMore: data.hasMore,
+                    loading: false,
+                    refreshing: false,
+                    error: '',
+                    loaded: true,
+                    scopeKey,
+                    controller: null
+                };
                 if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
                 updateFooterRequestBadge();
                 return true;
             } catch (error) {
-                if (controller.signal.aborted || error && error.name === 'AbortError') return false;
-                requestArchiveListState = { ...requestArchiveListState, loading: false, error: String(error && error.message || 'Archived requests are unavailable.'), loaded: false, controller: null };
+                if (controller.signal.aborted || error && error.name === 'AbortError'
+                    || requestArchiveListState.controller !== controller || requestArchiveListState.scopeKey !== scopeKey) return false;
+                const retained = requestArchiveListState;
+                requestArchiveListState = { ...retained, loading: false, refreshing: false,
+                    error: String(error && error.message || 'Archived requests are unavailable.'),
+                    loaded: !!retained.loaded, controller: null };
                 if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
                 return false;
             }
@@ -149584,7 +149711,11 @@ C.14.043 C.15.000
                     }
                     if (requestArchiveDeniedIds.has(`${getSupabaseReadIdentityScope()}:${uid}`)) { clearPendingRequestArchive(uid); continue; }
                     const result = await syncRequestArchive(uid, entry.operation, entry.idempotencyKey, 1);
-                    if (result.ok) { clearPendingRequestArchive(uid); continue; }
+                    if (result.ok) {
+                        clearPendingRequestArchive(uid);
+                        invalidateRequestArchivePages(entry.identityScope);
+                        continue;
+                    }
                     const attempts = Math.min(3, entry.attempts + 1);
                     if (!isRequestArchiveTerminalFailure(result.error) && attempts < 3) {
                         const delay = computePendingRequestArchiveRetryDelay(attempts);

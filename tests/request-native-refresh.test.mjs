@@ -134,6 +134,7 @@ function pendingRequestReuseFixture() {
     reconcileRequestDrillState: values => ({ changed: false, items: values }),
     isRequestPendingVisible: () => true,
     isRegularRequestQueueItem: () => true,
+    getItemUniqueId: row => row.UNIQUE_ID,
     buildRequestChunkRenderKey: (_mode, _crumb, items) => items.map(item => `${item.id}:${item.label}`).join('|'),
     getClientBrowsePage: (_view, key, items) => ({
       key, rows: ctx.visibleRows || items, pageIndex: ctx.pageIndex || 0

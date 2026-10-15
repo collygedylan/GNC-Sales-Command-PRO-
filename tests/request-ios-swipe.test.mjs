@@ -266,6 +266,7 @@ test('restoring an archived last-page row clamps to the last valid offset while 
       String, Number, Math, Promise, Map,
       getSupabaseReadIdentityScope: () => 'scope-a',
       requestArchiveListState: { rows: [row], total, offset, limit: 100, hasMore: false, loaded: true, controller: null },
+      invalidateRequestArchivePages: () => {},
       canCurrentUserArchiveRequestRow: () => true,
       makeRequestArchiveIdempotencyKey: () => 'request-key',
       queuePendingRequestArchive: () => {},
