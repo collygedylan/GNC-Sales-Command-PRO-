@@ -32,6 +32,9 @@ const REQUIRED_SOURCE_FIELDS = Object.freeze([
   'itemcode', 'commonname', 'contsize', 'locationcode', 'lotcode', 'source', 'warehouseid',
   'desigitem', 'desigcust', 'desigloc', 'priority', 'holdstopcode', 'holdstopreason',
 ]);
+const HANDOVER_TRANSITION_KEY = 'kayla_knepp_to_nelly_aguilar_20261002';
+const HANDOVER_SUCCESSOR_ID = '961b0a0f-11a6-4db5-b066-582f772ab8e7';
+const EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT = 24;
 
 function appScriptContext() {
   const code = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');
@@ -187,10 +190,19 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
   let tableColumns;
   let initial;
   let sourceByteCount;
+  let masterImportFieldCount;
+  let masterProductionTriggerCount;
   let revisionSnapshot;
   let seasonSettingsSnapshot;
   let fenceDatasetKeys;
   let revisionKeys;
+  let handoverSnapshot;
+  let handoverStateCaptured = false;
+  let handoverScheduleTouched = false;
+  const syntheticHandoverProfileId = randomUUID();
+  const syntheticHandoverEmail = `kayla.bulk-fixture.${syntheticHandoverProfileId}@local.invalid`;
+  let syntheticHandoverUserCreated = false;
+  let syntheticHandoverProfileCreated = false;
   let testFailure;
   let testFailed = false;
 
@@ -212,28 +224,70 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     }
   };
   const restoreRevisionSnapshot = async () => {
-    const restored = await db.query(`update public.app_dataset_revisions as current
-      set revision = snapshot.revision, state = snapshot.state, changed_at = snapshot.changed_at
+    const snapshotKeys = (revisionSnapshot || []).map(row => row.key);
+    await db.query(`delete from public.app_dataset_revisions current
+      where not (current.key = any($1::text[]))`, [snapshotKeys]);
+    const restored = await db.query(`insert into public.app_dataset_revisions(key,revision,state,changed_at)
+      select snapshot.key,snapshot.revision,snapshot.state,snapshot.changed_at
       from jsonb_to_recordset($1::jsonb) as snapshot(key text, revision bigint, state text, changed_at timestamptz)
-      where current.key = snapshot.key returning current.key`, [JSON.stringify(revisionSnapshot || [])]);
+      on conflict(key) do update set revision=excluded.revision,state=excluded.state,changed_at=excluded.changed_at
+      returning key`, [JSON.stringify(revisionSnapshot || [])]);
     assert.equal(restored.rowCount, revisionSnapshot?.length || 0,
-      'all captured PH import revision rows still exist for exact disposable-workspace restoration');
+      'all captured dataset revision rows are restored exactly after fixture triggers');
+  };
+  const restoreHandoverFixture = async () => {
+    if (!handoverStateCaptured) return;
+    if (handoverScheduleTouched) {
+      await db.query(`delete from private.scheduled_account_handover_audit_v1
+        where transition_key=$1 and event_key like 'future:ph_master_inventory:GNC_BULK_BENCH_%'`,
+      [HANDOVER_TRANSITION_KEY]);
+      if (handoverSnapshot) {
+        await db.query(`update private.scheduled_account_handover_v1
+          set departing_profile_id=$2::uuid,successor_profile_id=$3::uuid,effective_at=$4::timestamptz
+          where transition_key=$1`, [HANDOVER_TRANSITION_KEY, handoverSnapshot.departing_profile_id,
+          handoverSnapshot.successor_profile_id, handoverSnapshot.effective_at]);
+      } else {
+        await db.query('delete from private.scheduled_account_handover_v1 where transition_key=$1', [HANDOVER_TRANSITION_KEY]);
+      }
+    }
+    if (syntheticHandoverProfileCreated) {
+      await db.query('delete from public.profiles where id=$1::uuid', [syntheticHandoverProfileId]);
+    }
+    if (syntheticHandoverUserCreated) {
+      await db.query('delete from auth.users where id=$1::uuid', [syntheticHandoverProfileId]);
+    }
   };
 
   try {
     shape = JSON.parse(readFileSync(new URL('../../tests/fixtures/bulk-master-import-shape.json', import.meta.url), 'utf8'));
     tableColumns = await query(`select column_name, data_type from information_schema.columns
       where table_schema='public' and table_name='ph_master_inventory' order by ordinal_position`);
+    assert.equal(tableColumns.length, 213, 'the disposable schema includes all 213 production master columns');
     initial = sourceRowsFromProductionShape({ shape, columns: tableColumns });
+    masterImportFieldCount = Object.keys(initial.rows[0].values).length;
+    assert.equal(masterImportFieldCount, 171,
+      'the importer exercises all 171 production fields it currently emits');
     sourceByteCount = Buffer.byteLength(JSON.stringify(initial.rows));
+    const triggerState = await queryValue(`select count(*)::int as total,
+        count(*) filter (where tgenabled <> 'D')::int as enabled,
+        count(*) filter (where tgname='scheduled_handover_normalize_assignment')::int as handover,
+        count(*) filter (where tgname='scheduled_handover_normalize_assignment' and tgenabled <> 'D')::int as handover_enabled
+      from pg_trigger where tgrelid='public.ph_master_inventory'::regclass and not tgisinternal`);
+    assert.equal(triggerState.total, EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
+      'the HTTP benchmark contains every expected production master trigger');
+    assert.equal(triggerState.enabled, EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT,
+      'all production master triggers are enabled during the HTTP benchmark');
+    assert.equal(triggerState.handover, 1, 'the scheduled assignment handover trigger is installed');
+    assert.equal(triggerState.handover_enabled, 1, 'the scheduled assignment handover trigger is enabled');
+    masterProductionTriggerCount = triggerState.total;
+
     fenceDatasetKeys = vm.runInContext("getDatasetImportFenceSources_('ph_master_inventory')", initial.context);
-    revisionKeys = [...new Set([
-      ...fenceDatasetKeys, 'ph_itemcode_default_owners', 'ph_inventory_row_assignments', 'ph_app_settings',
-    ])];
-    // Keep the revisions this fence can touch so expected fail-path coverage cannot
-    // poison later SQL checks in the verified disposable replay workspace.
+    // Snapshot the small revision catalog before the synthetic departing profile
+    // is inserted: its production profile refresh trigger can touch dependencies
+    // outside the master import fence, and cleanup must not poison later SQL checks.
     revisionSnapshot = await query(`select key, revision, state, changed_at::text as changed_at
-      from public.app_dataset_revisions where key = any($1::text[]) order by key`, [revisionKeys]);
+      from public.app_dataset_revisions order by key`);
+    revisionKeys = revisionSnapshot.map(row => row.key);
     seasonSettingsSnapshot = await query(`select key, value, updated_by, updated_at::text as updated_at
       from public.ph_app_settings where key='current_season_salesyear'`);
   } catch (error) {
@@ -372,6 +426,59 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       .proconfig.includes('statement_timeout=55s'), 'the bulk RPC keeps its 55-second statement timeout');
     const initialLiveCount = Number((await queryValue('select count(*)::int as count from public.ph_master_inventory')).count);
     assert.equal(initialLiveCount, 0, 'the disposable canonical HTTP workspace must begin without live inventory rows');
+    handoverSnapshot = await queryValue(`select departing_profile_id::text as departing_profile_id,
+        successor_profile_id::text as successor_profile_id, effective_at::text as effective_at
+      from private.scheduled_account_handover_v1 where transition_key=$1`, [HANDOVER_TRANSITION_KEY]) || null;
+    handoverStateCaptured = true;
+    const existingSyntheticIdentity = await queryValue('select id::text as id from public.profiles where id=$1::uuid',
+      [syntheticHandoverProfileId]);
+    assert.equal(existingSyntheticIdentity, undefined, 'the synthetic departing profile UUID is unique');
+    assert.equal(await queryValue(`select id from public.profiles where lower(btrim(username))='kayla_knepp'`), undefined,
+      'the disposable canonical fixture has no departing account that could collide with the synthetic identity');
+    const successor = await queryValue(`select id::text as id from public.profiles
+      where id=$1::uuid and lower(btrim(username))='nelly_aguilar'`, [HANDOVER_SUCCESSOR_ID]);
+    assert.equal(successor?.id, HANDOVER_SUCCESSOR_ID, 'the canonical synthetic successor identity is present');
+
+    syntheticHandoverProfileCreated = true;
+    const syntheticUser = await db.query(`insert into auth.users(id,aud,role,email,encrypted_password,email_confirmed_at,
+        raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
+      values($1::uuid,'authenticated','authenticated',$2,'',clock_timestamp(),
+        '{"provider":"email","providers":["email"],"fixture":true}'::jsonb,
+        '{"fixture":"bulk-master-http-handover"}'::jsonb,clock_timestamp(),clock_timestamp())
+      on conflict(id) do nothing`, [syntheticHandoverProfileId, syntheticHandoverEmail]);
+    syntheticHandoverUserCreated = syntheticUser.rowCount === 1;
+    await db.query(`insert into public.profiles(id,username,display_name,role,must_change_password)
+      values($1::uuid,'kayla_knepp','Synthetic Bulk Handover Source','Admin',false)
+      on conflict(id) do update set username=excluded.username,display_name=excluded.display_name,
+        role=excluded.role,must_change_password=excluded.must_change_password`, [syntheticHandoverProfileId]);
+
+    handoverScheduleTouched = true;
+    if (handoverSnapshot) {
+      await db.query(`update private.scheduled_account_handover_v1
+        set departing_profile_id=$2::uuid,successor_profile_id=$3::uuid
+        where transition_key=$1`, [HANDOVER_TRANSITION_KEY, syntheticHandoverProfileId, HANDOVER_SUCCESSOR_ID]);
+    } else {
+      await db.query(`insert into private.scheduled_account_handover_v1(
+        transition_key,departing_profile_id,successor_profile_id,effective_at)
+        values($1,$2::uuid,$3::uuid,'2026-10-03 04:00:00+00'::timestamptz)`,
+      [HANDOVER_TRANSITION_KEY, syntheticHandoverProfileId, HANDOVER_SUCCESSOR_ID]);
+    }
+    const activeHandover = await queryValue(`select h.departing_profile_id::text as departing_profile_id,
+        h.successor_profile_id::text as successor_profile_id,
+        h.effective_at <= clock_timestamp() as is_due,
+        lower(btrim(source.username)) as departing_username,
+        lower(btrim(successor.username)) as successor_username
+      from private.scheduled_account_handover_v1 h
+      join public.profiles source on source.id=h.departing_profile_id
+      join public.profiles successor on successor.id=h.successor_profile_id
+      where h.transition_key=$1`, [HANDOVER_TRANSITION_KEY]);
+    assert.deepEqual(activeHandover, {
+      departing_profile_id: syntheticHandoverProfileId,
+      successor_profile_id: HANDOVER_SUCCESSOR_ID,
+      is_due: true,
+      departing_username: 'kayla_knepp',
+      successor_username: 'nelly_aguilar',
+    }, 'the exact scheduled handover is due and active in the disposable benchmark');
     // The season reconciliation is part of the canonical import contract and
     // reads this application setting; seed a complete, test-only value and
     // restore the exact original row in finally.
@@ -497,7 +604,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
     failureTriggerInstalled = false;
     await fail(atomicRun);
 
-    console.log(`[bulk-master-http] ${ROW_COUNT} rows, ${initial.rows.length ? Object.keys(initial.rows[0].values).length : 0} normalized columns, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
+    console.log(`[bulk-master-http] ${ROW_COUNT} rows, ${tableColumns.length} production columns, ${masterImportFieldCount} importer fields, ${masterProductionTriggerCount} enabled production triggers including due handover, ${(sourceByteCount / 1024 / 1024).toFixed(2)} MiB request; insert ${Math.round(first.elapsedMs)}ms, changed ${Math.round(changedResult.elapsedMs)}ms, unchanged ${Math.round(unchangedResult.elapsedMs)}ms, exact replay ${Math.round(replayElapsedMs)}ms; local disposable Docker/Postgres, shared OS cache (cold-cache state not controlled).`);
   } catch (error) {
     testFailure = error;
     testFailed = true;
@@ -546,6 +653,7 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       await db.query("delete from public.ph_season_sales_office_state where itemcode_normalized like 'GNC_BULK_BENCH_%'");
       await db.query('delete from app_sync_private.ph_master_bulk_import_receipts_v1 where request_id = any($1::uuid[])', [requestIds]);
       await db.query("delete from public.ph_master_inventory where unique_id like 'GNC_BULK_BENCH_%'");
+      await restoreHandoverFixture();
       await db.query("delete from public.ph_app_settings where key='current_season_salesyear'");
       if (seasonSettingsSnapshot.length) {
         await db.query(`insert into public.ph_app_settings(key, value, updated_by, updated_at)
@@ -566,6 +674,23 @@ export async function runBulkMasterImportHttpRegression(workspaceRoot) {
       assert.deepEqual(await query(`select key, value, updated_by, updated_at::text as updated_at
         from public.ph_app_settings where key='current_season_salesyear'`), seasonSettingsSnapshot,
       'season settings are restored exactly');
+      if (handoverStateCaptured) {
+        const restoredHandover = await queryValue(`select departing_profile_id::text as departing_profile_id,
+            successor_profile_id::text as successor_profile_id,effective_at::text as effective_at
+          from private.scheduled_account_handover_v1 where transition_key=$1`, [HANDOVER_TRANSITION_KEY]);
+        assert.deepEqual(restoredHandover, handoverSnapshot || undefined,
+          'the pre-existing handover schedule is restored exactly or the fixture-created row is removed');
+        assert.equal(Number((await queryValue('select count(*)::int as count from public.profiles where id=$1::uuid',
+          [syntheticHandoverProfileId])).count), 0, 'the synthetic departing profile is removed');
+        if (syntheticHandoverUserCreated) {
+          assert.equal(Number((await queryValue('select count(*)::int as count from auth.users where id=$1::uuid',
+            [syntheticHandoverProfileId])).count), 0, 'the synthetic departing auth user is removed');
+        }
+        assert.equal(Number((await queryValue(`select count(*)::int as count
+          from private.scheduled_account_handover_audit_v1 where transition_key=$1
+            and event_key like 'future:ph_master_inventory:GNC_BULK_BENCH_%'`,
+        [HANDOVER_TRANSITION_KEY])).count), 0, 'synthetic handover audit entries are removed');
+      }
       assert.equal(Number((await queryValue("select count(*)::int as count from public.ph_master_inventory where unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
         'synthetic master inventory rows are removed');
       assert.equal(Number((await queryValue("select count(*)::int as count from app_sync_private.ph_master_inventory_source_baselines where canonical_unique_id like 'GNC_BULK_BENCH_%'")).count), 0,
