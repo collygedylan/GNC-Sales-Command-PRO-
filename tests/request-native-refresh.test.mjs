@@ -134,6 +134,7 @@ function pendingRequestReuseFixture() {
     reconcileRequestDrillState: values => ({ changed: false, items: values }),
     isRequestPendingVisible: () => true,
     isRegularRequestQueueItem: () => true,
+    getItemUniqueId: row => row.UNIQUE_ID,
     buildRequestChunkRenderKey: (_mode, _crumb, items) => items.map(item => `${item.id}:${item.label}`).join('|'),
     getClientBrowsePage: (_view, key, items) => ({
       key, rows: ctx.visibleRows || items, pageIndex: ctx.pageIndex || 0
@@ -688,7 +689,7 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   const onComplete = () => {};
   const input = { renderSignature: 'all-rows-signature:page:0', onComplete };
   const desktop = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(desktop.initialRows, 8);
+  assert.equal(desktop.initialRows, 2);
   assert.equal(desktop.renderSignature, input.renderSignature);
   assert.equal(desktop.onComplete, onComplete);
   assert.equal(desktop.onCompleteAfterInteractive, true);
@@ -697,7 +698,7 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   assert.equal(ctx.getPendingRequestChunkRenderOptions({ initialRows: 3 }).initialRows, 3, 'explicit pacing remains authoritative');
   ctx.window = { matchMedia: query => { assert.equal(query, '(max-width: 639px)'); return { matches: true }; } };
   const narrow = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(narrow.initialRows, 4);
+  assert.equal(narrow.initialRows, 2);
   assert.equal(narrow.chunkSize, 8);
   assert.equal(narrow.perFrameRows, 8);
   assert.equal(narrow.onComplete, onComplete);
@@ -707,12 +708,12 @@ test('Pending Request bounds its first paint while preserving iOS pacing and com
   assert.equal(explicit.perFrameRows, 1);
   ios = true;
   const phone = ctx.getPendingRequestChunkRenderOptions(input);
-  assert.equal(phone.initialRows, 6);
+  assert.equal(phone.initialRows, 2);
   assert.equal(phone.iosSyncRowLimit, 80);
   assert.equal(phone.verifyRowSelector, '[data-request-uid]');
   assert.equal(phone.completionDeadlineMs, 1200);
   level = 2;
-  assert.equal(ctx.getPendingRequestChunkRenderOptions(input).initialRows, 4);
+  assert.equal(ctx.getPendingRequestChunkRenderOptions(input).initialRows, 2);
   assert.equal(input.initialRows, undefined, 'caller options are not mutated');
 });
 
@@ -1058,8 +1059,8 @@ test('verified Request first display may bypass navigation grace without weakeni
 
 test('Pending Request refresh keeps commit anchoring and skips outer anchoring for empty or cancelled renders', () => {
   const source = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
-  assert.match(source, /view === 'request' && activeReqTab === 'pending'\s*\? null : captureProductionRefreshAnchor\(view\)/,
-    'only Pending Request defers anchor capture; the staged commit still captures its own anchor');
+  assert.match(source, /firstDisplay \|\| \(view === 'request' && activeReqTab === 'pending'\)\s*\? null : captureProductionRefreshAnchor\(view\)/,
+    'first displays need no prior anchor; Pending Request captures its anchor at the staged commit');
   const stage = extractFunction(html, 'stageProductionRefreshList', 'function cancelProductionRefresh(');
   assert.match(stage, /const anchor = captureProductionRefreshAnchor\(refresh\.view\)/);
   assert.match(stage, /restoreProductionRefreshAnchor\(anchor\)/);

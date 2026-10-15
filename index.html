@@ -7107,6 +7107,8 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
     <script src="./assets/live-sync-registry.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-adapters.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-coordinator.js?v=V2026.10.14.003"></script>
+    <script src="./assets/av-derived-rows.js?v=V2026.10.14.003"></script>
+    <script src="./assets/bounded-snapshot-cache.js?v=V2026.10.14.003"></script>
     <script src="./assets/request-submission.js?v=V2026.10.14.003&mapping=20261014"></script>
     <script src="./assets/ops-precision-pilot.js?v=V2026.10.14.003"></script>
     <script src="./assets/production-schedule.js?v=V2026.10.14.003"></script>
@@ -13976,7 +13978,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function clearMobileExcelFilterViewportPanel(panel) {
             if (!panel) return;
-            panel.classList.remove('excel-filter-panel--viewport-safe');
+            if (panel.classList.contains('excel-filter-panel--viewport-safe')) panel.classList.remove('excel-filter-panel--viewport-safe');
             panel.style.removeProperty('--filter-panel-fixed-top');
             panel.style.removeProperty('--filter-panel-fixed-bottom');
             panel.style.removeProperty('--filter-panel-fixed-left');
@@ -14040,7 +14042,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                 if (document.body) document.body.classList.remove('mobile-excel-filter-panel-open');
                 return false;
             }
-            if (document.body) document.body.classList.add('mobile-excel-filter-panel-open');
+            if (document.body && !document.body.classList.contains('mobile-excel-filter-panel-open')) document.body.classList.add('mobile-excel-filter-panel-open');
             openPanels.forEach((panel) => {
                 const shell = panel.closest('.task-top-control-shell, .drive-filter-shell, .av-filter-shell, .crop-roll-filter-shell, .manager-crop-roll-review-filter-shell');
                 const criticalFilterShell = panel.closest('#view-crop-roll .crop-roll-filter-shell, #view-managers .manager-crop-roll-review-filter-shell');
@@ -14064,7 +14066,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
                     left = Math.max(12, Math.min(Math.round(triggerRect.left), metrics.layoutWidth - panelWidth - 12));
                     right = Math.max(12, metrics.layoutWidth - left - panelWidth);
                 }
-                panel.classList.add('excel-filter-panel--viewport-safe');
+                if (!panel.classList.contains('excel-filter-panel--viewport-safe')) panel.classList.add('excel-filter-panel--viewport-safe');
                 panel.style.setProperty('--filter-panel-fixed-top', `${top}px`);
                 panel.style.setProperty('--filter-panel-fixed-bottom', `${metrics.bottomInset}px`);
                 panel.style.setProperty('--filter-panel-fixed-left', `${left}px`);
@@ -18621,6 +18623,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function acceptCardLocationOnHandSourceReceipt(scope = '', permission = '', revision = '', allowAfterInvalidation = false) {
+            const accepted = acceptedLocOnHandAggregateReceipt;
+            if (accepted.valid && accepted.scope === scope && accepted.permission === permission && accepted.revision === revision) return true;
             const next = { scope:String(scope || ''), permission:String(permission || ''), revision:String(revision || '').trim() };
             if (!next.scope || !next.permission || !/^[1-9]\d*$/.test(next.revision)) return false;
             const current = acceptedLocOnHandAggregateReceipt;
@@ -21304,9 +21308,13 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                     syncMasterFieldsToSalesOfficeRow(canonicalMaster, row);
                 }
             });
+            let updatedSocRows = false;
             socInventory.forEach((row) => {
-                if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
+                if (!sameLinkedRow(row)) return;
+                applyLinkedRowCatalogData(row);
+                updatedSocRows = true;
             });
+            if (updatedSocRows) invalidateDockSuspendDcSourceRowLookup(socInventory);
             reservesInventory.forEach((row) => {
                 if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
@@ -31621,6 +31629,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function saveCacheValue(cacheKey, data) {
             try{
                 const db=await openDB();
+                if (window.AgMetricBoundedSnapshotCache) return await window.AgMetricBoundedSnapshotCache.write(db, STORE_NAME, cacheKey, data);
                 const tx=db.transaction(STORE_NAME,"readwrite");
                 tx.objectStore(STORE_NAME).put(data,cacheKey);
                 return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); });
@@ -31630,6 +31639,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function loadCacheValue(cacheKey) {
             try{
                 const db=await openDB();
+                if (window.AgMetricBoundedSnapshotCache) return redactEvalSensitiveData(await window.AgMetricBoundedSnapshotCache.read(db, STORE_NAME, cacheKey));
                 return new Promise((resolve,reject)=>{
                     const tx=db.transaction(STORE_NAME,"readonly");
                     const request=tx.objectStore(STORE_NAME).get(cacheKey);
@@ -32109,30 +32119,31 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
             return !NETWORK_VERIFIED_DATASET_KEYS.has(String(key || '').trim());
         }
 
-        function buildCacheSnapshot() {
-            const inlineReserveRows = buildCacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
+        function buildCacheSnapshot(options = {}) {
+            const cacheRows = options.deferRows === true ? rows => rows : buildCacheRows;
+            const inlineReserveRows = cacheRows(reservesInventory.slice(0, INLINE_CACHE_RESERVE_LIMIT));
             return {
                 status: 'success',
-                data: buildCacheRows(fullInventory),
-                cropRollDriveData: buildCacheRows(cropRollDriveInventory),
-                avOpenData: buildCacheRows(avOpenInventory),
-                requestsData: buildCacheRows(requestsInventory),
-                requestHistoryData: buildCacheRows(requestHistoryInventory),
-                salesCreditsData: buildCacheRows(salesCreditRequestsInventory),
-                inventoryEditRequestsData: buildCacheRows(inventoryEditRequestInventory),
+                data: cacheRows(fullInventory),
+                cropRollDriveData: cacheRows(cropRollDriveInventory),
+                avOpenData: cacheRows(avOpenInventory),
+                requestsData: cacheRows(requestsInventory),
+                requestHistoryData: cacheRows(requestHistoryInventory),
+                salesCreditsData: cacheRows(salesCreditRequestsInventory),
+                inventoryEditRequestsData: cacheRows(inventoryEditRequestInventory),
                 reservesData: inlineReserveRows,
-                customerRepMapData: buildCacheRows(customerRepMapRows),
-                socData: buildCacheRows(socInventory),
-                salesOfficeData: buildCacheRows(salesOfficeInventory.filter((item) => !isAcknowledgedSeasonSalesOfficeRow(item))),
-                flyerFolderRowsData: buildCacheRows(flyerFolderInventory),
-                flyerFolderHistoryData: buildCacheRows(flyerFolderHistoryInventory),
-                growerScoutReportsData: buildCacheRows(growerScoutReportsInventory),
-                growerScoutAssetsData: buildCacheRows(growerScoutAssetsInventory),
-                warehouseAssignedItemsData: buildCacheRows(warehouseAssignedItemsInventory),
-                cavData: buildCacheRows(cavInventory),
-                cavAvBlankKeysData: buildCacheRows(cavAvBlankKeyInventory),
-                avHotPriceKeysData: buildCacheRows(avHotPriceKeysInventory),
-                avNotesData: buildCacheRows(avNotesDb),
+                customerRepMapData: cacheRows(customerRepMapRows),
+                socData: cacheRows(socInventory),
+                salesOfficeData: cacheRows(salesOfficeInventory.filter((item) => !isAcknowledgedSeasonSalesOfficeRow(item))),
+                flyerFolderRowsData: cacheRows(flyerFolderInventory),
+                flyerFolderHistoryData: cacheRows(flyerFolderHistoryInventory),
+                growerScoutReportsData: cacheRows(growerScoutReportsInventory),
+                growerScoutAssetsData: cacheRows(growerScoutAssetsInventory),
+                warehouseAssignedItemsData: cacheRows(warehouseAssignedItemsInventory),
+                cavData: cacheRows(cavInventory),
+                cavAvBlankKeysData: cacheRows(cavAvBlankKeyInventory),
+                avHotPriceKeysData: cacheRows(avHotPriceKeysInventory),
+                avNotesData: cacheRows(avNotesDb),
                 meta: {
                     cacheSchemaVersion: CACHE_SCHEMA_VERSION,
                     scopedUser: normalizeSessionIdentity(currentUser),
@@ -37018,23 +37029,28 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return requestLocationCollator.compare(String(left || ''), String(right || ''));
         }
 
+        function buildRequestBrowseMembershipKey(mode, items) {
+            return JSON.stringify([mode, items.map(getItemUniqueId)]);
+        }
+
+        function buildRequestPagedRenderPlan(mode, crumbText, items) {
+            const membershipKey = buildRequestBrowseMembershipKey(mode, items);
+            const browsePage = getClientBrowsePage('request', membershipKey, items);
+            const renderKey = buildRequestChunkRenderKey(mode, crumbText, browsePage.rows);
+            return {
+                empty: !items.length, crumbText, items, rows: browsePage.rows,
+                pageIndex: Number(browsePage.pageIndex), renderKey,
+                renderSignature: `${renderKey}:page:${Number(browsePage.pageIndex)}:source:${browsePage.key}`,
+                footerMarkup: renderClientBrowsePageFooter('request', browsePage.key, items.length, browsePage)
+            };
+        }
+
         function buildPendingRequestRenderPlan(items) {
             const crumbText = 'All Request Que';
             const pendingItems = items.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem);
             if (!pendingItems.length) return { empty: true, crumbText, items: [], rows: [], pageIndex: 0, renderKey: '', renderSignature: '', footerMarkup: '' };
             pendingItems.sort((a, b) => compareRequestLocationCodes(a.LOCATIONCODE, b.LOCATIONCODE));
-            const renderKey = buildRequestChunkRenderKey('request:pending', crumbText, pendingItems);
-            const browsePage = getClientBrowsePage('request', renderKey, pendingItems);
-            return {
-                empty: false,
-                crumbText,
-                items: pendingItems,
-                rows: browsePage.rows,
-                pageIndex: Number(browsePage.pageIndex),
-                renderKey,
-                renderSignature: `${renderKey}:page:${Number(browsePage.pageIndex)}`,
-                footerMarkup: renderClientBrowsePageFooter('request', browsePage.key, pendingItems.length, browsePage)
-            };
+            return buildRequestPagedRenderPlan('request:pending', crumbText, pendingItems);
         }
 
         function getRequestPendingReuseContextSnapshot(context = null) {
@@ -37096,9 +37112,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function syncRequestRenderChrome() {
-            updateFooterRequestBadge();
+            activeReqTab = normalizeRequestTabValue(activeReqTab);
+            const queueCounts = getRequestTabQueueCounts();
+            updateFooterRequestBadge(queueCounts);
             updateFooterChatBadge();
-            syncRequestTabButtons();
+            syncRequestTabButtons(queueCounts);
             syncRequestHeaderSearchChrome();
         }
 
@@ -37206,7 +37224,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 // Pending Request lists either keep their identical DOM or
                 // capture their own anchor at staged commit time. Avoid a
                 // redundant pre-render geometry scan for that path.
-                const anchor = view === 'request' && activeReqTab === 'pending'
+                const anchor = firstDisplay || (view === 'request' && activeReqTab === 'pending')
                     ? null : captureProductionRefreshAnchor(view);
                 const refresh = { view, context: contextKey, generation,
                     token: Number(latestViewRenderTokensByView[view]) || bumpLatestViewRenderToken(view), pending: 0 };
@@ -37482,6 +37500,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function resetProductionLiveSync() {
+            resetRequestArchivePageState();
             inventoryStatusSync?.reset();
             inventoryStatusRenderedCards.clear();
             inventoryStatusPendingSaves.forEach(entry => clearTimeout(entry.timer));
@@ -40311,11 +40330,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 'eval-work': 0
             };
             try {
-                const baseItems = getScopedRequestItems(requestsInventory);
+                const baseItems = getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: false });
                 // Category badges describe each authorized queue. A saved filter
                 // from another view must not change its count or hide its work.
                 counts.pending = baseItems.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem).length;
-                counts['suspend-tag'] = getSuspendTagRequestItems(baseItems).filter(row => ['pending','denied'].includes(getSuspendTagStatus(row))).length;
+                const suspendSourceRows = canCurrentUserViewDockSuspendDcRequests() ? getDockSuspendDcSourceRows() : [];
+                counts['suspend-tag'] = countPendingSuspendTagQueueItems(baseItems, suspendSourceRows);
                 counts.moves = getApprovedMoveRequestRowsForCurrentUser(baseItems).length;
             } catch (error) {
                 console.warn('Request tab queue count failed', error);
@@ -40337,10 +40357,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return counts;
         }
 
-        function getRequestQueueAlertCount() {
-            const counts = getRequestTabQueueCounts();
+        function getRequestQueueAlertCount(counts = null) {
+            const snapshot = counts || getRequestTabQueueCounts();
             return ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list', 'eval-work']
-                .reduce((total, key) => total + Math.max(0, Number(counts[key]) || 0), 0);
+                .reduce((total, key) => total + Math.max(0, Number(snapshot[key]) || 0), 0);
         }
 
         function formatRequestTabCount(count = 0) {
@@ -40393,7 +40413,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         const requestCategoryToolbarMarkupByNode = new WeakMap();
-        function renderRequestCategoryToolbar() {
+        function renderRequestCategoryToolbar(counts = null) {
             const toolbar = document.getElementById('request-filter-toolbar');
             if (!toolbar) return false;
             if (requestSalesRepsManagerMode && activeReqTab === 'reps') {
@@ -40402,7 +40422,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 toolbar.dataset.toolbarSingleRow = 'true';
                 return true;
             }
-            const counts = getRequestTabQueueCounts();
+            counts = counts || getRequestTabQueueCounts();
             const categories = getAuthorizedRequestCategories();
             const categoryButtonsHtml = categories.map((category) => {
                 const count = Math.max(0, Number(counts[category]) || 0);
@@ -40418,7 +40438,37 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return true;
         }
 
-        let requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, error: '', loaded: false, controller: null };
+        let requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, refreshing: false, error: '', loaded: false, scopeKey: '', controller: null };
+        let requestArchivePagesService = null;
+        function getRequestArchivePageScopeKey() {
+            const context = typeof getProductionLiveSyncContext === 'function' ? getProductionLiveSyncContext() : null;
+            return JSON.stringify([
+                getSupabaseReadIdentityScope(),
+                String(currentUser || ''),
+                String(currentRole || safeRole || ''),
+                String(context && context.dataPermissionVersion || ''),
+                canCurrentUserArchiveRequestRows() ? 'archive:allowed' : 'archive:denied'
+            ]);
+        }
+        function getRequestArchivePagesService() {
+            if (requestArchivePagesService) return requestArchivePagesService;
+            const database = window && window.GncDatabase;
+            if (!database || typeof database.createRequestArchivePagesService !== 'function') throw new Error('Archived request pages are unavailable.');
+            requestArchivePagesService = database.createRequestArchivePagesService(async ({ offset, limit }, signal) =>
+                callRequestArchiveApi({ operation: 'list', offset, limit }, { signal }));
+            return requestArchivePagesService;
+        }
+        function resetRequestArchivePageState() {
+            const previousScope = requestArchiveListState && requestArchiveListState.scopeKey;
+            if (requestArchiveListState && requestArchiveListState.controller) requestArchiveListState.controller.abort();
+            requestArchivePagesService?.clear();
+            requestArchiveListState = { rows: [], total: 0, offset: 0, limit: 100, hasMore: false, loading: false, refreshing: false, error: '', loaded: false, scopeKey: '', controller: null };
+            return previousScope || '';
+        }
+        function invalidateRequestArchivePages(scopeKey = requestArchiveListState.scopeKey || getRequestArchivePageScopeKey()) {
+            if (requestArchivePagesService && scopeKey) requestArchivePagesService.invalidate(scopeKey);
+            if (requestArchiveListState.scopeKey === scopeKey) requestArchiveListState.loaded = false;
+        }
         let requestArchiveUndo = { uid: '', expiresAt: 0, timer: null };
         const requestArchiveInFlightByUid = new Map();
         const requestQueueRemovalInFlight = new Set();
@@ -40557,7 +40607,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return 'pending';
         }
 
-        function syncRequestTabButtons() {
+        function syncRequestTabButtons(counts = null) {
             activeReqTab = normalizeRequestTabValue(activeReqTab);
             const access = getRoleAccessState();
             const pendingTab = document.getElementById('tab-req-pending');
@@ -40586,8 +40636,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (recountTab) recountTab.classList.toggle('active', activeReqTab === 'recount');
             if (shearListTab) shearListTab.classList.toggle('active', activeReqTab === 'shear-list');
             if (evalWorkTab) evalWorkTab.classList.toggle('active', activeReqTab === 'eval-work');
-            updateRequestTabButtonLabels();
-            renderRequestCategoryToolbar();
+            counts = counts || getRequestTabQueueCounts();
+            updateRequestTabButtonLabels(counts);
+            renderRequestCategoryToolbar(counts);
         }
 
         function forcePendingRequestRoot(options = {}) {
@@ -41472,6 +41523,39 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
         }
 
+        async function prepareMasterSeasonAssignments(items, assertCurrent) {
+            const winners = new Map();
+            const eligibleRows = [];
+            for (let index = 0; index < items.length; index++) {
+                const item = items[index];
+                if (item && !isWorkflowProtectedAppTabAssignment(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, ''))) {
+                    const code = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, 'UNKNOWN')).trim().toUpperCase();
+                    if (code && code !== 'UNKNOWN') {
+                        if (hasUsableEndCapFolderValue(firstNonEmptyValue(item.END_CAP_FOLDER, item.end_cap_folder, ''))) item.APP_TAB_ASSIGNMENT = 'endcap';
+                        else {
+                            // Stable pairwise selection has the same first-winner
+                            // tie behavior as the synchronous sorted group.
+                            winners.set(code, pickSeasonWinnerCandidate([winners.get(code), item].filter(Boolean)));
+                            eligibleRows.push({ item, code });
+                        }
+                    }
+                }
+                if ((index + 1) % MASTER_PREPARATION_BATCH_SIZE === 0 && index + 1 < items.length) {
+                    await yieldToUiFrame();
+                    assertCurrent();
+                }
+            }
+            for (let index = 0; index < eligibleRows.length; index++) {
+                const { item, code } = eligibleRows[index];
+                const winner = winners.get(code);
+                applySeasonLocationAssignmentFields(item, winner && item.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location');
+                if ((index + 1) % MASTER_PREPARATION_BATCH_SIZE === 0 && index + 1 < eligibleRows.length) {
+                    await yieldToUiFrame();
+                    assertCurrent();
+                }
+            }
+        }
+
         async function prepareProductionMasterSnapshot(sourceRows = [], options = {}) {
             const rows = Array.isArray(sourceRows) ? sourceRows : [];
             const identity = String(options.identity || getSupabaseReadIdentityScope());
@@ -41483,6 +41567,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const avOpenRows = [];
             const avOpenByMasterId = new Map();
             const indexMaps = createMasterInventoryIndexMaps();
+            const inheritanceCandidates = { ncr: [], moved: [] };
             const limit = Number.isInteger(options.limit) ? Math.max(0, Math.min(rows.length, options.limit)) : rows.length;
 
             for (let offset = 0; offset < limit; offset += MASTER_PREPARATION_BATCH_SIZE) {
@@ -41497,6 +41582,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     item.DOM_ID = 'fi_' + (offset + index);
                     buildSearchIndex(item);
                     addMasterInventoryRowToIndexes(indexMaps, item);
+                    // Collect broad, immutable source candidates during bounded
+                    // preparation; current eligibility is still checked at commit.
+                    if (hasNcrLocationNote(item)) inheritanceCandidates.ncr.push(item);
+                    if (isMovedSeasonAvSourceSeason(item)) inheritanceCandidates.moved.push(item);
                     displayRows.push(item);
                 });
                 if (offset + MASTER_PREPARATION_BATCH_SIZE < limit) {
@@ -41506,7 +41595,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
 
             assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
-            applyMasterAppTabAssignments(displayRows);
+            await prepareMasterSeasonAssignments(displayRows, () => assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal));
+            assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
             const masterById = new Map(displayRows.map((item) => [String(item && item.UNIQUE_ID || '').trim(), item]));
             for (let offset = 0; offset < displayRows.length; offset += MASTER_PREPARATION_BATCH_SIZE) {
                 assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
@@ -41529,7 +41619,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
                 }
             }
-            preparedMasterRows.set(displayRows, { identity, permissionVersion, seasonKey, avOpenRows, avOpenByMasterId, indexMaps });
+            preparedMasterRows.set(displayRows, { identity, permissionVersion, seasonKey, avOpenRows, avOpenByMasterId, indexMaps, inheritanceCandidates });
             return { rawRows, payload: { data: displayRows }, rowCount: displayRows.length };
         }
 
@@ -42028,10 +42118,34 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             cachePersistIdleHandle = null;
         }
 
-        function runPersistCurrentCacheNow() {
+        var cacheSnapshotPreparationGeneration = 0;
+
+        async function prepareCurrentCacheSnapshot(isCurrent) {
+            const snapshot = buildCacheSnapshot({ deferRows: true });
+            for (const [key, rows] of Object.entries(snapshot)) {
+                if (!Array.isArray(rows)) continue;
+                const prepared = [];
+                for (let start = 0; start < rows.length; start += 64) {
+                    if (!isCurrent()) return null;
+                    prepared.push(...buildCacheRows(rows.slice(start, start + 64)));
+                    await yieldToUiFrame();
+                }
+                snapshot[key] = prepared;
+            }
+            return isCurrent() ? snapshot : null;
+        }
+
+        async function runPersistCurrentCacheNow() {
             pendingCachePersist = false;
             lastCachePersistAt = Date.now();
-            return saveToCache(buildCacheSnapshot()).catch(() => false);
+            const generation = ++cacheSnapshotPreparationGeneration;
+            const epoch = resolvedViewStateEpoch;
+            const scope = getSupabaseReadIdentityScope();
+            try {
+                const snapshot = await prepareCurrentCacheSnapshot(() => generation === cacheSnapshotPreparationGeneration
+                    && epoch === resolvedViewStateEpoch && scope === getSupabaseReadIdentityScope());
+                return snapshot ? await saveToCache(snapshot) : false;
+            } catch { return false; }
         }
 
         function queueIdleCachePersist() {
@@ -43458,6 +43572,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (safeTableName === 'ph_soc_master') {
                 socInventoryById = rebuildInventoryByIdMap(socInventory);
+                invalidateDockSuspendDcSourceRowLookup(socInventory);
                 invalidateLookup();
                 return;
             }
@@ -44525,6 +44640,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function hydrateNcrCurrentCropRowsFromSources(options = {}) {
             if (!Array.isArray(fullInventory) || !fullInventory.length) return 0;
             const now = new Date();
+            const candidates = Array.isArray(options.candidates) ? options.candidates : fullInventory;
+            const targets = candidates.filter((target) => isNcrCurrentCropInheritanceTarget(target, now));
+            if (!targets.length) return 0;
             const sourcesByLocation = new Map();
             fullInventory.forEach((source) => {
                 const key = getNcrCurrentCropLocationKey(source);
@@ -44535,8 +44653,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let changed = 0;
             let remoteCount = 0;
             const maxRemote = Math.max(0, Number(options && options.maxRemote) || 10);
-            fullInventory.forEach((target) => {
-                if (!isNcrCurrentCropInheritanceTarget(target, now)) return;
+            targets.forEach((target) => {
                 const candidates = sourcesByLocation.get(getNcrCurrentCropLocationKey(target)) || [];
                 let bestSource = null;
                 let bestScore = -1;
@@ -44562,9 +44679,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function hydrateMovedSeasonCurrentRowsFromSources(options = {}) {
             if (!Array.isArray(fullInventory) || !fullInventory.length) return 0;
             const sourcesByKey = new Map();
-            fullInventory.forEach((source) => {
+            const candidates = Array.isArray(options.candidates) ? options.candidates : fullInventory;
+            candidates.forEach((source) => {
+                if (!isMovedSeasonAvSourceSeason(source)) return;
                 const key = getMovedSeasonAvInheritanceKey(source);
-                if (!key || !hasNcrReusableCropData(source) || !isMovedSeasonAvSourceSeason(source)) return;
+                if (!key || !hasNcrReusableCropData(source)) return;
                 if (!sourcesByKey.has(key)) sourcesByKey.set(key, []);
                 sourcesByKey.get(key).push(source);
             });
@@ -55096,7 +55215,7 @@ let avTopControlsRenderToken = 0;
             }, Math.max(0, Number(delay) || 0));
         }
 
-        function updateFooterRequestBadge() {
+        function updateFooterRequestBadge(counts = null) {
             const button = document.getElementById('footer-request-btn');
             const badge = document.getElementById('footer-request-badge');
             if (!button || !badge) return;
@@ -55107,7 +55226,7 @@ let avTopControlsRenderToken = 0;
                 updateFooterNavState();
                 return;
             }
-            const queueCount = getRequestQueueAlertCount();
+            const queueCount = getRequestQueueAlertCount(counts);
             if (queueCount > 0) {
                 badge.innerText = '!';
                 badge.classList.remove('hidden');
@@ -59547,8 +59666,10 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function matchesItemSearch(item, rawTerm, profileName = '', options = {}) {
-            const terms = tokenizeSearchValue(rawTerm);
+            const terms = Array.isArray(options?.terms) ? options.terms : tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
+            const preparedWords = profileName && item?._searchProfileWordStarts?.[profileName];
+            if (Array.isArray(preparedWords)) return terms.every(term => preparedWords.some(word => word.startsWith(term)));
             const searchValues = getSearchValuesForProfile(item, profileName);
             if (!searchValues.length) return false;
             const prefixMatched = doesSearchProfilePrefixMatch(searchValues, terms);
@@ -59573,10 +59694,13 @@ function toggleDriveQuickRequestItem(domId) {
                 return cacheBucket.get(cacheKey);
             }
             const searchStartedAt = beginInternalPerfMeasure();
-            const prefixItems = scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName, { prefixOnly: true }));
+            const terms = tokenizeSearchValue(normalizedTerm);
+            const prefixOptions = { prefixOnly: true, terms };
+            const fallbackOptions = { terms };
+            const prefixItems = scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName, prefixOptions));
             const filteredItems = prefixItems.length
                 ? prefixItems
-                : scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName));
+                : scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName, fallbackOptions));
             recordInternalPerfDuration('searchRenderDurations', searchStartedAt, String(profileName || 'default').trim() || 'default');
             cacheBucket.set(cacheKey, filteredItems);
             trimInternalCacheMap(cacheBucket);
@@ -61601,7 +61725,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (prepared) {
                     fullInventory = res.data;
                     preparedRowsUnchanged = true;
-                    fullInventory.forEach((row, index) => {
+                    if (confirmedDriveEvidenceRows.size) fullInventory.forEach((row, index) => {
                         const preserved = preserveConfirmedDriveEvidence(row);
                         if (preserved !== row) {
                             preparedRowsUnchanged = false;
@@ -61619,8 +61743,9 @@ function toggleDriveQuickRequestItem(domId) {
                 const preparedIndexes = prepared ? takePreparedMasterIndexMaps(prepared, preparedRowsUnchanged) : null;
                 if (preparedIndexes) installMasterInventoryIndexMaps(preparedIndexes);
                 else rebuildMasterInventoryIndexes();
-                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
-                hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
+                const inheritanceCandidates = preparedIndexes ? prepared.inheritanceCandidates : null;
+                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.ncr });
+                hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.moved });
                 invalidateMasterDerivedInventories();
             }
 
@@ -83952,7 +84077,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             });
             if (nextTab === 'bunch-notes') { BunchNote.backQueue(); void BunchNote.refresh(); return scheduled; }
             if (nextTab === 'archived') {
-                loadRequestArchivePage(0).catch((error) => console.warn('Archived request page failed', error));
+                loadRequestArchivePage(0, true).catch((error) => console.warn('Archived request page failed', error));
                 return scheduled;
             }
             if (nextTab === 'eval-work') {
@@ -87058,16 +87183,24 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return nextRow;
         }
 
-        function getAvSalesInventorySourceRows() {
+        function selectAvSalesInventorySourceRows() {
             const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
             const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
-            if (shouldUseRepAvOpenDataset() && avRows.length) return applyAvOpenSalesWindowScope(applyRepU3VisibilityScope(avRows));
+            if (shouldUseRepAvOpenDataset() && avRows.length) return avRows;
             const masterReady = masterRows.length > 0 && (
                 isDatasetLoaded('master', 'full')
                 || masterRows.length > avRows.length
                 || !avRows.length
             );
-            return applyAvOpenSalesWindowScope(applyRepU3VisibilityScope(masterReady ? masterRows : (avRows.length ? avRows : masterRows)));
+            return masterReady ? masterRows : (avRows.length ? avRows : masterRows);
+        }
+
+        function getAvSalesInventorySourceRows(options = {}) {
+            const sourceRows = selectAvSalesInventorySourceRows();
+            const salesWindowRows = options && options.skipSalesWindow
+                ? sourceRows
+                : applyAvOpenSalesWindowScope(sourceRows);
+            return applyRepU3VisibilityScope(salesWindowRows);
         }
 
         function itemMatchesAvSalesBucket(item = null, bucket = activeAvSalesBucket, reserveRows = []) {
@@ -87083,32 +87216,121 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return itemMatchesAvCurrentSeasonBucket(item);
         }
 
-        function getAvSalesRowsForBucket(bucket = activeAvSalesBucket) {
+        var avPreparedRawTabRows = new WeakMap();
+
+        function createAvSalesRowsDerivation(bucket = activeAvSalesBucket) {
             const safeBucket = normalizeAvSalesBucket(bucket);
             const reserveRows = getAvSalesReserveDemandRows(safeBucket);
             const reserveSeasonIndex = buildAvReserveSeasonIndex(reserveRows);
             const seen = new Set();
-            const decorateRows = (rows = [], requireOpenOrReserve = true) => (Array.isArray(rows) ? rows : []).reduce((result, row) => {
-                if (!row || shouldHideU3InventoryRowForRep(row)) return result;
+            const hotPriceIndex = safeBucket === 'hot-price' ? buildAvHotPriceIndex() : null;
+            const sourceRows = safeBucket === 'hot-price'
+                ? (Array.isArray(fullInventory) ? fullInventory : [])
+                : getAvSalesInventorySourceRows({ skipSalesWindow: true });
+            const requireOpenOrReserve = isAvCustomerSalesBucket(safeBucket);
+            const preparedEpoch = resolvedViewStateEpoch;
+            const rawGroups = {
+                all: { members: new Set(), genus: new Set(), sizes: new Set() },
+                photos: { members: new Set(), genus: new Set(), sizes: new Set() }
+            };
+
+            const mapRow = (sourceRow) => {
+                if (!sourceRow || shouldHideU3InventoryRowForRep(sourceRow)) return null;
+                let row = sourceRow;
+                if (safeBucket === 'hot-price') {
+                    row = buildAvHotPriceRow(sourceRow, hotPriceIndex);
+                    if (!row) return null;
+                }
+                if (!itemMatchesAvOpenSalesWindow(row)) return null;
                 const season = getAvSalesSeasonValue(row);
                 const allowShiftRow = safeBucket === 'next-up' && season === 'S1';
-                if ((!allowShiftRow && isShiftDesigItemRow(row)) || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return result;
-                if (!AV_FILTER_SEASON_OPTIONS.includes(season)) return result;
+                if ((!allowShiftRow && isShiftDesigItemRow(row)) || shouldHideNotOnInventoryApprovalRowFromInventory(row)) return null;
+                if (!AV_FILTER_SEASON_OPTIONS.includes(season)) return null;
                 const matchedReserveRows = getAvReserveRowsForSalesItem(row, reserveSeasonIndex);
                 const hasOpenStock = shouldIncludeMasterItemInAvOpenStock(row);
-                if (requireOpenOrReserve && !hasOpenStock && !matchedReserveRows.length) return result;
-                if (!itemMatchesAvSalesBucket(row, safeBucket, matchedReserveRows)) return result;
+                if (requireOpenOrReserve && !hasOpenStock && !matchedReserveRows.length) return null;
+                if (!itemMatchesAvSalesBucket(row, safeBucket, matchedReserveRows)) return null;
                 const uniqueKey = getAvReserveLocationUniqueKey(row) || String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.DOM_ID, `${getAvSalesItemCode(row)}|${firstNonEmptyValue(row && row.LOCATIONCODE, '')}|${firstNonEmptyValue(row && row.LOTCODE, '')}`));
-                if (uniqueKey && seen.has(uniqueKey)) return result;
+                if (uniqueKey && seen.has(uniqueKey)) return null;
                 if (uniqueKey) seen.add(uniqueKey);
-                result.push(decorateAvSalesReserveRow(row, matchedReserveRows));
-                return result;
-            }, []);
-            if (safeBucket === 'hot-price') {
-                return decorateRows(applyAvOpenSalesWindowScope(getAvHotPriceRows()), false);
-            }
-            const rows = decorateRows(getAvSalesInventorySourceRows(), isAvCustomerSalesBucket(safeBucket));
-            return sortAvOpenItems(rows, 'name');
+                const decorated = decorateAvSalesReserveRow(row, matchedReserveRows);
+                // Prepare search text inside the bounded row derivation, before
+                // a search or a complete-cohort render needs it synchronously.
+                getSearchWordStartsForProfile(decorated, requireOpenOrReserve ? 'av_reserves' : 'av_open');
+                if (!isShiftDesigItemRow(decorated)) {
+                    const genus = getAvFilterGenusFacetValue(decorated);
+                    const size = getAvFilterContSizeFacetValue(decorated);
+                    const groups = avItemHasPhotos(decorated) ? [rawGroups.all, rawGroups.photos] : [rawGroups.all];
+                    groups.forEach(group => {
+                        group.members.add(decorated);
+                        if (genus) group.genus.add(genus);
+                        if (size) group.sizes.add(size);
+                    });
+                }
+                return decorated;
+            };
+
+            return {
+                sourceRows,
+                mapRow,
+                finalize: (rows) => {
+                    const sorted = safeBucket === 'hot-price' ? rows : sortAvOpenItems(rows, 'name');
+                    const prepared = { epoch: preparedEpoch };
+                    Object.entries(rawGroups).forEach(([key, group]) => {
+                        const rawRows = sorted.filter(row => group.members.has(row));
+                        const options = { genusOptions: Array.from(group.genus), sizeOptions: Array.from(group.sizes) };
+                        prepared[key] = { rows: rawRows, ...options };
+                        avPreparedRawTabRows.set(rawRows, { epoch: preparedEpoch, options });
+                    });
+                    avPreparedRawTabRows.set(sorted, prepared);
+                    return sorted;
+                }
+            };
+        }
+
+        function getAvSalesRowsForBucket(bucket = activeAvSalesBucket) {
+            const derivation = createAvSalesRowsDerivation(bucket);
+            const rows = [];
+            derivation.sourceRows.forEach((row) => {
+                const mapped = derivation.mapRow(row);
+                if (mapped !== null && mapped !== undefined) rows.push(mapped);
+            });
+            return derivation.finalize(rows);
+        }
+
+        function buildAvHotPriceIndex() {
+            const index = new Map();
+            (Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory : []).forEach((item) => {
+                const matchKey = getAvHotPriceMatchKey(item);
+                const hotPrice = getNormalizedAvHotPrice(firstNonEmptyValue(item && item.CAV_HOT_PRICE, item && item.HOT_PRICE, item && item.HOTPRICE, item && item.hot_price, ''));
+                if (!matchKey || !hotPrice || index.has(matchKey)) return;
+                index.set(matchKey, {
+                    hotPrice,
+                    cavItemcode: firstNonEmptyValue(item && item.CAV_ITEMCODE, item && item.cav_itemcode, item && item.ITEMCODE, item && item.itemcode, ''),
+                    cavFilename: firstNonEmptyValue(item && item.CAV_FILENAME, item && item.cav_filename, ''),
+                    cavLastUpdated: firstNonEmptyValue(item && item.CAV_LAST_UPDATED, item && item.cav_last_updated, '')
+                });
+            });
+            return index;
+        }
+
+        function buildAvHotPriceRow(item = null, index = null) {
+            const matchKey = getAvHotPriceMatchKey(item);
+            const match = matchKey && index instanceof Map ? index.get(matchKey) : null;
+            if (!match) return null;
+            const hotPrice = getNormalizedAvHotPrice(match.hotPrice || '');
+            if (!hotPrice || !AV_FILTER_SEASON_OPTIONS.includes(getNormalizedAvHotPriceSeason(item))) return null;
+            const nextItem = Object.assign({}, item, {
+                HOT_PRICE: hotPrice,
+                HOTPRICE: hotPrice,
+                CAV_HOT_PRICE: hotPrice,
+                CAV_ITEMCODE: firstNonEmptyValue(match.cavItemcode, ''),
+                CAV_FILENAME: firstNonEmptyValue(match.cavFilename, ''),
+                CAV_LAST_UPDATED: firstNonEmptyValue(match.cavLastUpdated, ''),
+                CAV_HOT_PRICE_MATCH_KEY: matchKey
+            });
+            nextItem._search = (String(item && item._search || '').trim() + ' ' + hotPrice + ' ' + firstNonEmptyValue(match.cavItemcode, '')).trim().toLowerCase();
+            return nextItem;
         }
         function getAvOpenTabLabel(tab=activeAvOpenTab) {
             if (tab === 'photos') return 'Photos';
@@ -87116,16 +87338,150 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         }
         function sortAvOpenItems(items, tab=activeAvOpenTab) {
             const collator = new Intl.Collator(undefined, { numeric: true });
-            const compareText = (left, right) => collator.compare(String(left || ''), String(right || ''));
-            const nextItems = [...items];
-            nextItems.sort((a, b) => {
-                const nameCompare = compareText(a.COMMONNAME, b.COMMONNAME);
-                if (nameCompare !== 0) return nameCompare;
-                const sizeCompare = compareText(a.CONTSIZE, b.CONTSIZE);
-                if (sizeCompare !== 0) return sizeCompare;
-                return compareText(a.LOCATIONCODE, b.LOCATIONCODE);
+            const compareText = (left, right) => collator.compare(left, right);
+            return (Array.isArray(items) ? items : []).map((item, index) => ({
+                item,
+                index,
+                name: String(item && item.COMMONNAME || ''),
+                size: String(item && item.CONTSIZE || ''),
+                location: String(item && item.LOCATIONCODE || '')
+            })).sort((a, b) => (
+                compareText(a.name, b.name)
+                || compareText(a.size, b.size)
+                || compareText(a.location, b.location)
+                || (a.index - b.index)
+            )).map((entry) => entry.item);
+        }
+
+        const avDerivedRowsArrayIds = new WeakMap();
+        let avDerivedRowsNextArrayId = 0;
+        let avDerivedRowsActiveScope = '';
+        let avDerivedRowsPendingSignature = '';
+        const AV_DERIVED_PREVIEW_SOURCE_LIMIT = 50;
+        const AV_DERIVED_ROWS_CHUNK_SIZE = 96;
+
+        function getAvDerivedRowsArrayId(rows = []) {
+            if (!Array.isArray(rows)) return 'none';
+            let id = avDerivedRowsArrayIds.get(rows);
+            if (!id) {
+                id = ++avDerivedRowsNextArrayId;
+                avDerivedRowsArrayIds.set(rows, id);
+            }
+            return `${id}:${rows.length}`;
+        }
+
+        function getAvSalesDerivationIdentity(bucket = activeAvSalesBucket) {
+            const safeBucket = normalizeAvSalesBucket(bucket);
+            const identityScope = typeof getSupabaseReadIdentityScope === 'function'
+                ? getSupabaseReadIdentityScope()
+                : JSON.stringify([currentUser || '', currentRole || safeRole || '']);
+            const scope = JSON.stringify([identityScope, getRepU3VisibilityScopeKey()]);
+            const logicalKey = JSON.stringify([
+                safeBucket,
+                shouldUseRepAvOpenDataset() ? 'rep-open' : 'shared-master',
+                String(currentUser || ''),
+                String(currentRole || safeRole || ''),
+                getRepU3VisibilityScopeKey(),
+                getConfiguredCurrentSeasonCode(),
+                String(getConfiguredCurrentSalesYearCode()),
+                selectedAvResRep || '',
+                selectedAvSalesRepName || '',
+                selectedAvRepCustomerKey || ''
+            ]);
+            const masterRows = Array.isArray(fullInventory) ? fullInventory : [];
+            const avRows = Array.isArray(avOpenInventory) ? avOpenInventory : [];
+            const reserveRows = Array.isArray(reservesInventory) ? reservesInventory : [];
+            const hotPriceRows = Array.isArray(avHotPriceKeysInventory) ? avHotPriceKeysInventory : [];
+            const sourceKey = JSON.stringify([
+                resolvedViewStateEpoch,
+                getDatasetLoadSignature('master'),
+                getDatasetLoadSignature('avOpen'),
+                getDatasetLoadSignature('reserves'),
+                getDatasetLoadSignature('avHotPriceKeys'),
+                getDatasetLoadSignature('warehouseAssignedItems'),
+                getAvDerivedRowsArrayId(masterRows),
+                getAvDerivedRowsArrayId(avRows),
+                getAvDerivedRowsArrayId(reserveRows),
+                getAvDerivedRowsArrayId(hotPriceRows)
+            ]);
+            return { key: logicalKey, scope, sourceKey, signature: `${scope}::${logicalKey}::${sourceKey}` };
+        }
+
+        function getAvSalesRowsForRendering(bucket = activeAvSalesBucket, identityInput = null) {
+            const service = window && window.AgMetricAvDerivedRows;
+            if (!service || typeof service.prepare !== 'function' || typeof service.peek !== 'function') {
+                return { rows: getAvSalesRowsForBucket(bucket), partial: false };
+            }
+            const safeBucket = normalizeAvSalesBucket(bucket);
+            const identity = identityInput && identityInput.key && identityInput.scope && identityInput.sourceKey
+                ? identityInput
+                : getAvSalesDerivationIdentity(safeBucket);
+            if (avDerivedRowsActiveScope && avDerivedRowsActiveScope !== identity.scope) {
+                service.clearScope(avDerivedRowsActiveScope);
+            }
+            avDerivedRowsActiveScope = identity.scope;
+            if (typeof service.cancelOtherJobs === 'function') service.cancelOtherJobs(identity.scope, identity.key);
+            const cached = service.peek(identity.key, identity.scope);
+            if (cached && cached.sourceKey === identity.sourceKey) return { rows: cached.rows, partial: false };
+
+            if (avDerivedRowsPendingSignature !== identity.signature) {
+                const derivation = createAvSalesRowsDerivation(safeBucket);
+                avDerivedRowsPendingSignature = identity.signature;
+                service.prepare({
+                    key: identity.key,
+                    scope: identity.scope,
+                    sourceKey: identity.sourceKey,
+                    rows: derivation.sourceRows,
+                    chunkSize: AV_DERIVED_ROWS_CHUNK_SIZE,
+                    deferFirstSlice: true,
+                    mapRow: derivation.mapRow,
+                    finalize: derivation.finalize,
+                    isCurrent: () => {
+                        const current = getAvSalesDerivationIdentity(safeBucket);
+                        return current.key === identity.key
+                            && current.scope === identity.scope
+                            && current.sourceKey === identity.sourceKey;
+                    }
+                }).then((rows) => {
+                    const current = getAvSalesDerivationIdentity(safeBucket);
+                    if (!rows) {
+                        // A later dataset can invalidate a running derivation
+                        // after the view has already rendered its preview.
+                        if (avDerivedRowsPendingSignature === identity.signature
+                            && current.key === identity.key && current.scope === identity.scope
+                            && normalizeAvSalesBucket(activeAvSalesBucket) === safeBucket
+                            && activeAVTab === 'open' && isViewVisible('av')) {
+                            avResolvedBaseStateKey = '';
+                            avResolvedBaseStateCache = null;
+                            scheduleAVRender(0, 28, true);
+                        }
+                        return;
+                    }
+                    if (current.signature !== identity.signature) return;
+                    avResolvedBaseStateKey = '';
+                    avResolvedBaseStateCache = null;
+                    if (activeAVTab === 'open' && isViewVisible('av')) scheduleAVRender(0, 28, true);
+                }).catch((error) => {
+                    const current = getAvSalesDerivationIdentity(safeBucket);
+                    if (current.signature === identity.signature) {
+                        avResolvedBaseStateKey = '';
+                        avResolvedBaseStateCache = null;
+                    }
+                    console.warn('AV inventory preparation failed; the last complete rows remain visible.', error);
+                }).finally(() => {
+                    if (avDerivedRowsPendingSignature === identity.signature) avDerivedRowsPendingSignature = '';
+                });
+            }
+
+            if (cached) return { rows: cached.rows, partial: true };
+            const previewDerivation = createAvSalesRowsDerivation(safeBucket);
+            const previewRows = previewDerivation.sourceRows.slice(0, AV_DERIVED_PREVIEW_SOURCE_LIMIT);
+            const rows = [];
+            previewRows.forEach((row) => {
+                const mapped = previewDerivation.mapRow(row);
+                if (mapped !== null && mapped !== undefined) rows.push(mapped);
             });
-            return nextItems;
+            return { rows: previewDerivation.finalize(rows), partial: true };
         }
 
         function getNormalizedAvHotPrice(value = '') {
@@ -87426,6 +87782,20 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return true;
         }
 
+        function createAvTopFilterPredicate() {
+            normalizeAvSelectedSeasons();
+            const seasons = new Set(selectedAvSeasons);
+            const facetKeys = (selected, mode) => String(mode || 'all').trim().toLowerCase() === 'custom'
+                ? new Set((selected instanceof Set ? Array.from(selected) : []).map(normalizeAvFacetCompareKey).filter(Boolean))
+                : null;
+            const genusKeys = facetKeys(selectedAvGenusNames, avGenusSelectionMode);
+            const sizeKeys = facetKeys(selectedAvContSizes, avContSizeSelectionMode);
+            return (item) => seasons.has(getAvFilterSeasonValue(item))
+                && itemMatchesAvHoldFilter(item)
+                && (!genusKeys || genusKeys.has(normalizeAvFacetCompareKey(getAvFilterGenusFacetValue(item))))
+                && (!sizeKeys || sizeKeys.has(normalizeAvFacetCompareKey(getAvFilterContSizeFacetValue(item))));
+        }
+
         function getAvGenusSummaryLabel(options = []) {
             const normalizedOptions = Array.isArray(options) ? options : [];
             const selectedCount = selectedAvGenusNames.size;
@@ -87676,10 +88046,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             normalizeAvSelectedSeasons();
             const genusCollator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-            const genusOptions = [...new Set(baseItems.map((item) => getAvFilterGenusFacetValue(item)).filter(Boolean))]
+            const prepared = avPreparedRawTabRows.get(baseItems);
+            const preparedOptions = prepared?.epoch === resolvedViewStateEpoch ? prepared.options : null;
+            const genusOptions = (preparedOptions ? preparedOptions.genusOptions.slice()
+                : [...new Set(baseItems.map((item) => getAvFilterGenusFacetValue(item)).filter(Boolean))])
                 .sort((a, b) => genusCollator.compare(String(a), String(b)));
             const genusState = syncAvGenusSelectionState(genusOptions);
-            const sizeOptions = [...new Set(baseItems.map((item) => getAvFilterContSizeFacetValue(item)).filter(Boolean))]
+            const sizeOptions = (preparedOptions ? preparedOptions.sizeOptions.slice()
+                : [...new Set(baseItems.map((item) => getAvFilterContSizeFacetValue(item)).filter(Boolean))])
                 .sort(compareDrivePlantContSize);
             const sizeState = syncAvContSizeSelectionState(sizeOptions);
             const nextState = {
@@ -87727,7 +88101,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 filteredItems = avSharedFilteredRowsCache.slice();
             } else {
                 filteredItems = applyAvColumnFiltersToItems(optionState.baseItems.slice())
-                    .filter((item) => itemMatchesAvTopFilterSelections(item));
+                    .filter(createAvTopFilterPredicate());
                 avSharedFilteredRowsCacheKey = filteredRowsCacheKey;
                 avSharedFilteredRowsCache = filteredItems.slice();
             }
@@ -89384,7 +89758,13 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function getAvRawTabItems(tab = activeAVTab, options = {}) {
             const ignoreSecondaryTab = !!(options && options.ignoreSecondaryTab);
-            let items = getAvSalesRowsForBucket(activeAvSalesBucket);
+            let items = Array.isArray(options && options.salesRows)
+                ? options.salesRows
+                : getAvSalesRowsForBucket(activeAvSalesBucket);
+            const prepared = avPreparedRawTabRows.get(items);
+            if (prepared?.epoch === resolvedViewStateEpoch && prepared.all && prepared.photos) {
+                return !ignoreSecondaryTab && getAvPhotoMode() === 'photos' ? prepared.photos.rows : prepared.all.rows;
+            }
             items = items.filter((item) => !isShiftDesigItemRow(item));
             if (!ignoreSecondaryTab && getAvPhotoMode() === 'photos') items = items.filter(avItemHasPhotos);
             return Array.isArray(items) ? items : [];
@@ -89473,8 +89853,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
         function buildResolvedAVBaseState(options = {}) {
             const term = getAvSearchTerm();
             const safeTab = String(activeAVTab || 'open').trim();
+            const usePreparedSalesRows = safeTab === 'open' && !!(options && options.usePreparedSalesRows);
+            const preparedIdentity = usePreparedSalesRows ? getAvSalesDerivationIdentity(activeAvSalesBucket) : null;
             const cacheKey = [
                 resolvedViewStateEpoch,
+                usePreparedSalesRows ? 'prepared-sales-rows' : 'synchronous-sales-rows',
+                preparedIdentity ? preparedIdentity.signature : '',
                 safeTab,
                 activeAvOpenTab,
                 activeAvHotPriceTab,
@@ -89504,13 +89888,14 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return avResolvedBaseStateCache;
             }
-            const filterBaseItems = getAvRawTabItems(safeTab);
+            const preparedSalesRows = usePreparedSalesRows ? getAvSalesRowsForRendering(activeAvSalesBucket, preparedIdentity) : null;
+            const filterBaseItems = getAvRawTabItems(safeTab, preparedSalesRows ? { salesRows: preparedSalesRows.rows } : {});
             const avFilterState = buildAvSharedFilterState(filterBaseItems);
             let items = avFilterState.filteredItems;
             const searchProfile = isAvCustomerSalesBucket(activeAvSalesBucket) ? 'av_reserves' : 'av_open';
             if (term) items = filterBySearch(items, term, searchProfile);
             avResolvedBaseStateKey = cacheKey;
-            avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState };
+            avResolvedBaseStateCache = { items, term, filterBaseItems, avFilterState, isPartial: !!(preparedSalesRows && preparedSalesRows.partial) };
             return avResolvedBaseStateCache;
         }
 
@@ -90918,7 +91303,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function shouldUseChunkedAVOpenRender(rows = []) {
             if (!Array.isArray(rows)) return false;
-            return rows.length > 12;
+            // Even a filtered single card can contain rich photo/control markup.
+            // Keep it out of the publication/status/anchor restoration turn.
+            return rows.length > 0;
         }
 
         function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText, footerHtml = '') {
@@ -90933,13 +91320,12 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             const adaptiveLevel = getAdaptivePerformanceLevel();
             const touchOptimized = adaptiveConstrained || isIOSDevice() || isStandaloneApp() || !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
             const iosConstrained = isIOSDevice();
-            const viewportHeight = Math.max(640, Math.round((window.visualViewport && window.visualViewport.height) || window.innerHeight || document.documentElement.clientHeight || 640));
-            const approxCardHeight = sourceView === 'reserves_drill' ? 255 : (getIsAvPhotoSubview() ? 230 : 245);
             // A paginated view still needs a bounded first paint: generating all
             // 100 rich cards synchronously blocks navigation and search input.
+            // Avoid a viewport read after the toolbar writes, and put the first
+            // cards through the same frame budget as every subsequent batch.
             const chunkSize = adaptiveConstrained || iosConstrained ? 8 : 12;
-            const initialTarget = Math.min(total, Math.max(4,
-                Math.min(6, Math.ceil(viewportHeight / approxCardHeight))));
+            const initialTarget = Math.min(total, 4);
             const perFrameLimit = chunkSize;
             const frameBudgetMs = adaptiveConstrained ? (adaptiveLevel >= 2 ? 1.8 : 2.6) : (iosConstrained ? IOS_CHUNK_FRAME_BUDGET_MS : (touchOptimized ? 5.0 : 5.5));
             const interactionHoldDeadline = Date.now() + CHUNK_RENDER_INTERACTION_HOLD_MAX_MS;
@@ -90959,16 +91345,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 return;
             }
-            if (iosConstrained && total <= Math.min(IOS_CHUNK_SYNC_ROW_LIMIT, chunkSize)) {
-                let fullHtml = '';
-                rows.forEach((row, rowIndex) => {
-                    fullHtml += generateCard(row, sourceView, 'status-teal', { rowIndex });
-                });
-                setContainerHtmlWithSignature(container, `${fullHtml}${footerHtml}`, renderSignature);
-                container.style.minHeight = '';
-                recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
-                return;
-            }
             const renderBatch = (targetCount, useBudget) => {
                 let html = '';
                 let rendered = 0;
@@ -90981,12 +91357,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                     html += generateCard(rows[rowIndex], sourceView, 'status-teal', { rowIndex });
                     index += 1;
                     rendered += 1;
-                    const minMeasuredRows = iosConstrained ? Math.max(3, Math.ceil(chunkSize / 3)) : Math.max(6, Math.ceil(chunkSize / 3));
-                    if (useBudget && rendered >= minMeasuredRows && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
+                    if (useBudget && typeof performance !== 'undefined' && performance.now && (performance.now() - startTime) >= timeBudget) break;
                 }
                 return html;
             };
-            setContainerHtml(container, renderBatch(initialTarget, false));
+            let firstBatch = true;
             const queueNextChunkFrame = () => {
                 if (token !== avRenderChunkToken) return;
                 const pacing = getChunkRenderPacing(perFrameLimit, frameBudgetMs, { minBatch: 4 });
@@ -91022,8 +91397,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             };
             const renderNextChunk = () => {
                 if (token !== avRenderChunkToken) return;
-                const html = renderBatch(perFrameLimit, true);
-                if (html) appendHtmlFragment(container, html);
+                const html = renderBatch(firstBatch ? initialTarget : perFrameLimit, true);
+                if (firstBatch) {
+                    setContainerHtml(container, html);
+                    firstBatch = false;
+                } else if (html) appendHtmlFragment(container, html);
                 if (index < total) queueNextChunkFrame();
                 else {
                     if (footerHtml) container.insertAdjacentHTML('beforeend', footerHtml);
@@ -91200,7 +91578,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             }
             const container = document.getElementById('av-content');
             const crumb = document.getElementById('av-crumb');
-            const avState = getCurrentAVBaseItems();
+            const avState = getCurrentAVBaseItems({ usePreparedSalesRows: activeAVTab === 'open' });
             renderAvTopControls(avState.filterBaseItems || []);
             const term = avState.term;
             let items = avState.items;
@@ -91210,6 +91588,15 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 : [];
 
             if (items.length === 0) {
+                if (avState.isPartial) {
+                    updateAVExportButton(0);
+                    renderAvPhotoOutreachPanel([]);
+                    setContainerHtmlWithSignature(container,
+                        '<div class="p-8 text-center text-gray-400" role="status">Preparing AV inventory…</div>',
+                        `av-preparing|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}`);
+                    crumb.innerText = 'Loading AV inventory';
+                    return;
+                }
                 const bucketOption = getAvSalesBucketOption();
                 const bucketLabel = bucketOption.emptyLabel || String(bucketOption.label || 'AV rows').toLowerCase();
                 const emptyLabel = getAvPhotoMode() === 'photos' ? `${bucketLabel} with photos` : bucketLabel;
@@ -91221,17 +91608,18 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 return;
             }
 
-            updateAVExportButton(exportCount);
+            updateAVExportButton(avState.isPartial ? 0 : exportCount);
 
             if (activeAVTab === 'open') {
                 const sourceView = getAvPhotoMode() === 'photos' ? 'av-photo' : 'av';
                 const openExportContext = buildAVExportContext(items, term);
                 const openRows = openExportContext.rows;
                 const bucketLabel = getAvSalesBucketLabel();
-                const crumbText = getAvPhotoMode() === 'photos'
+                const fullCrumbText = getAvPhotoMode() === 'photos'
                     ? (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} Photos (${openRows.length} items)`)
                     : (term.length > 0 ? `Search Results (${openRows.length})` : `${bucketLabel} (${openRows.length} items)`);
-                renderAvPhotoOutreachPanel(openRows);
+                const crumbText = avState.isPartial ? `${fullCrumbText} · Loading full inventory…` : fullCrumbText;
+                renderAvPhotoOutreachPanel(avState.isPartial ? [] : openRows);
                 const pageKey = buildAVBrowsePageKey(`av-open|${sourceView}|${activeAvSalesBucket}|${activeAvPhotoMode}|${term}|${crumbText}`, openRows);
                 const browsePage = getClientBrowsePage('av', pageKey, openRows);
                 const pageFooter = renderClientBrowsePageFooter('av', browsePage.key, openRows.length, browsePage);
@@ -113459,20 +113847,55 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return uniqueId.indexOf('dock_suspend_dc_') === 0 ? uniqueId.slice('dock_suspend_dc_'.length) : uniqueId;
         }
 
+        function getDockSuspendDcSourceRowLookupRevision(sourceRows = getDockSuspendDcSourceRows()) {
+            const dataset = sourceRows === socInventory ? 'soc' : 'suspendTag';
+            return JSON.stringify([dataset, getDatasetLoadSignature(dataset), resolvedViewStateEpoch,
+                getSupabaseReadIdentityScope(), normalizePushUsername(currentUser)]);
+        }
+
+        let dockSuspendDcRequestSourceRowLookupCache = { sourceRows: null, revision: '', byId: new Map() };
+        function getDockSuspendDcSourceRowLookup(sourceRows = getDockSuspendDcSourceRows()) {
+            const rows = Array.isArray(sourceRows) ? sourceRows : [];
+            const revision = getDockSuspendDcSourceRowLookupRevision(sourceRows);
+            const cache = dockSuspendDcRequestSourceRowLookupCache;
+            if (cache.sourceRows === sourceRows && cache.revision === revision && cache.byId instanceof Map) return cache.byId;
+            const byId = new Map();
+            rows.forEach((row) => {
+                const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (uid && !byId.has(uid)) byId.set(uid, row);
+            });
+            dockSuspendDcRequestSourceRowLookupCache = { sourceRows, revision, byId };
+            return byId;
+        }
+
+        function invalidateDockSuspendDcSourceRowLookup(sourceRows = null) {
+            const cache = dockSuspendDcRequestSourceRowLookupCache;
+            const mirrorPreparation = dockSuspendDcRequestMirrorRowsPreparation;
+            if (mirrorPreparation && mirrorPreparation.timer != null) clearTimeout(mirrorPreparation.timer);
+            dockSuspendDcRequestMirrorRowsPreparation = null;
+            if (!sourceRows || Array.isArray(sourceRows) || cache.byId.has(getDockSuspendDcRequestSourceUid(sourceRows))) {
+                dockSuspendDcRequestSourceRowLookupCache = { sourceRows: null, revision: '', byId: new Map() };
+            } else {
+                dockSuspendDcRequestSourceRowLookupCache.revision = '';
+            }
+            dockSuspendDcRequestMirrorRowsCacheKey = '';
+            dockSuspendDcRequestMirrorRowsCacheSource = null;
+            dockSuspendDcRequestMirrorRowsByIdCache = null;
+            dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+            requestScopedItemsCacheKey = '';
+            requestScopedItemsCache = null;
+        }
+
         function findDockSuspendDcRequestSourceRow(item = null) {
             const sourceUid = getDockSuspendDcRequestSourceUid(item);
             if (!sourceUid) return null;
-            const scopedRows = getDockSuspendDcSourceRows();
-            if (scopedRows !== socInventory) return scopedRows.find(row => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === sourceUid) || null;
-            return socInventoryById.get(sourceUid)
-                || (Array.isArray(socInventory) ? socInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === sourceUid) : null)
-                || null;
+            return getDockSuspendDcSourceRowLookup().get(sourceUid) || null;
         }
 
         const DOCK_SUSPEND_PLANSTART_ALIASES = Object.freeze(['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate', 'PLAN_START_DATE', 'plan_start_date']);
 
-        function getDockSuspendDcRequestPlanstartValue(item = null) {
-            const sourceRow = findDockSuspendDcRequestSourceRow(item);
+        function getDockSuspendDcRequestPlanstartValue(item = null, sourceOverride = null) {
+            const sourceRow = sourceOverride || findDockSuspendDcRequestSourceRow(item);
             const getAliasValue = (row = null) => {
                 if (!row || typeof row !== 'object') return '';
                 const snapshot = row.SNAPSHOT && typeof row.SNAPSHOT === 'object' ? row.SNAPSHOT : null;
@@ -113710,6 +114133,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function buildDockSuspendDcRequestMirrorRow(item = null, indexHint = 0) {
             item = overlaySuspendTagReceipt(item);
             if (!item || !isDockSuspendDcRequestSource(item)) return null;
+            const suspendStatus = getSuspendTagStatus(item);
+            const isPending = suspendStatus === 'pending' || suspendStatus === 'denied';
             const sourceUid = String(firstNonEmptyValue(item.UNIQUE_ID, item.unique_id, indexHint) || '').trim();
             const mirrorUid = `dock_suspend_dc_${sourceUid || indexHint}`;
             const customerName = String(firstNonEmptyValue(item.CUSTOMERNAME, item.customername, item.CUSTOMER, item.customer, 'Dock Suspend') || '').trim() || 'Dock Suspend';
@@ -113737,8 +114162,8 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 REQ_CUSTOMER: reqCustomer,
                 REQUESTED_BY: assignedRepName,
                 ASSIGNEDTO: assignedToUser,
-                REQ_STATUS: getSuspendTagStatus(item) === 'pending' || getSuspendTagStatus(item) === 'denied' ? 'Pending' : 'Complete',
-                STATUS: getSuspendTagStatus(item) === 'pending' || getSuspendTagStatus(item) === 'denied' ? 'Pending' : 'Complete',
+                REQ_STATUS: isPending ? 'Pending' : 'Complete',
+                STATUS: isPending ? 'Pending' : 'Complete',
                 REQ_ARCHIVED: false,
                 REQUEST_HISTORY: false,
                 REQ_RESERVE: 'NO',
@@ -113757,7 +114182,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             };
             if (!row.MASTER_ID) row.MASTER_ID = firstNonEmptyValue(item.MASTER_UNIQUE_ID, item.master_unique_id, '');
             if (!row.MASTER_UNIQUE_ID) row.MASTER_UNIQUE_ID = firstNonEmptyValue(item.MASTER_ID, item.master_id, '');
-            const planstartValue = getDockSuspendDcRequestPlanstartValue(row);
+            const planstartValue = getDockSuspendDcRequestPlanstartValue(row, item);
             if (planstartValue !== null && planstartValue !== undefined && String(planstartValue).trim() !== '') {
                 row.PLANSTART = planstartValue;
                 row.planstart = planstartValue;
@@ -113765,39 +114190,114 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
             syncDockSuspendDcRequestPhotoAliases(row, item);
             syncDockSuspendDcRequestQuantityAliases(row, item);
-            normalizeRowPhotoFields(row);
-            buildSearchIndex(row);
             return row;
         }
 
         let dockSuspendDcRequestMirrorRowsCacheKey = '';
+        let dockSuspendDcRequestMirrorRowsCacheSource = null;
         let dockSuspendDcRequestMirrorRowsCache = [];
+        let dockSuspendDcRequestMirrorRowsCacheOwner = '';
+        let dockSuspendDcRequestMirrorRowsPreparation = null;
+        const DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE = 64;
+
+        function getDockSuspendDcRequestMirrorRowsOwner() {
+            return JSON.stringify([getSupabaseReadIdentityScope(), normalizePushUsername(currentUser)]);
+        }
+
+        function isDockSuspendDcRequestMirrorPreparationPending() {
+            return !!(dockSuspendDcRequestMirrorRowsPreparation
+                && dockSuspendDcRequestMirrorRowsPreparation.owner === getDockSuspendDcRequestMirrorRowsOwner());
+        }
+
+        function scheduleDockSuspendDcRequestMirrorRowsPreparation(sourceRows, revision, owner) {
+            const prior = dockSuspendDcRequestMirrorRowsPreparation;
+            if (prior && prior.timer != null) clearTimeout(prior.timer);
+            const job = { sourceRows, revision, owner, cursor: 0, rows: [], seen: new Set(), timer: null };
+            dockSuspendDcRequestMirrorRowsPreparation = job;
+            const isCurrent = () => dockSuspendDcRequestMirrorRowsPreparation === job
+                && canCurrentUserViewDockSuspendDcRequests()
+                && getDockSuspendDcRequestMirrorRowsOwner() === owner
+                && getDockSuspendDcSourceRows() === sourceRows
+                && getDockSuspendDcSourceRowLookupRevision(sourceRows) === revision;
+            const runSlice = () => {
+                job.timer = null;
+                if (!isCurrent()) {
+                    const wasCurrentJob = dockSuspendDcRequestMirrorRowsPreparation === job;
+                    if (wasCurrentJob) dockSuspendDcRequestMirrorRowsPreparation = null;
+                    if (wasCurrentJob && activeReqTab === 'suspend-tag' && isViewVisible('request')
+                        && canCurrentUserViewDockSuspendDcRequests()) scheduleRequestRender(0, 0, true);
+                    return;
+                }
+                const end = Math.min(sourceRows.length, job.cursor + DOCK_SUSPEND_MIRROR_PREPARATION_CHUNK_SIZE);
+                for (; job.cursor < end; job.cursor += 1) {
+                    const sourceRow = sourceRows[job.cursor];
+                    if (!isDockSuspendDcRequestSource(sourceRow)) continue;
+                    const row = buildDockSuspendDcRequestMirrorRow(sourceRow, job.cursor);
+                    if (!row) continue;
+                    const id = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
+                    if (!id || job.seen.has(id)) continue;
+                    job.seen.add(id);
+                    job.rows.push(row);
+                }
+                if (job.cursor < sourceRows.length) {
+                    job.timer = setTimeout(runSlice, 0);
+                    return;
+                }
+                if (!isCurrent()) {
+                    const wasCurrentJob = dockSuspendDcRequestMirrorRowsPreparation === job;
+                    if (wasCurrentJob) dockSuspendDcRequestMirrorRowsPreparation = null;
+                    if (wasCurrentJob && activeReqTab === 'suspend-tag' && isViewVisible('request')
+                        && canCurrentUserViewDockSuspendDcRequests()) scheduleRequestRender(0, 0, true);
+                    return;
+                }
+                dockSuspendDcRequestMirrorRowsCacheKey = revision;
+                dockSuspendDcRequestMirrorRowsCacheSource = sourceRows;
+                dockSuspendDcRequestMirrorRowsCacheOwner = owner;
+                dockSuspendDcRequestMirrorRowsCache = job.rows;
+                dockSuspendDcRequestMirrorRowsByIdCache = null;
+                dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+                requestScopedItemsCacheKey = '';
+                requestScopedItemsCache = null;
+                dockSuspendDcRequestMirrorRowsPreparation = null;
+                if (activeReqTab === 'suspend-tag' && isViewVisible('request')) scheduleRequestRender(0, 0, true);
+            };
+            job.timer = setTimeout(runSlice, 0);
+        }
 
         function getDockSuspendDcRequestMirrorRows() {
             if (!canCurrentUserViewDockSuspendDcRequests()) return [];
-            const sourceRows = getDockSuspendDcSourceRows();
-            const cacheKey = [
-                resolvedViewStateEpoch,
-                getDatasetLoadSignature(sourceRows === socInventory ? 'soc' : 'suspendTag'),
-                buildDockSuspendDcRequestMirrorSignature(sourceRows),
-                normalizePushUsername(currentUser)
-            ].join('|');
-            if (dockSuspendDcRequestMirrorRowsCacheKey === cacheKey && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
+            const sourceRowsValue = getDockSuspendDcSourceRows();
+            const sourceRows = Array.isArray(sourceRowsValue) ? sourceRowsValue : [];
+            const cacheKey = getDockSuspendDcSourceRowLookupRevision(sourceRows);
+            const owner = getDockSuspendDcRequestMirrorRowsOwner();
+            if (dockSuspendDcRequestMirrorRowsCacheOwner && dockSuspendDcRequestMirrorRowsCacheOwner !== owner) {
+                const prior = dockSuspendDcRequestMirrorRowsPreparation;
+                if (prior && prior.timer != null) clearTimeout(prior.timer);
+                dockSuspendDcRequestMirrorRowsPreparation = null;
+                dockSuspendDcRequestMirrorRowsCacheKey = '';
+                dockSuspendDcRequestMirrorRowsCacheSource = null;
+                dockSuspendDcRequestMirrorRowsCache = [];
+                dockSuspendDcRequestMirrorRowsCacheOwner = '';
+                dockSuspendDcRequestMirrorRowsByIdCache = null;
+                dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+            }
+            if (dockSuspendDcRequestMirrorRowsCacheSource === sourceRows
+                && dockSuspendDcRequestMirrorRowsCacheKey === cacheKey
+                && dockSuspendDcRequestMirrorRowsCacheOwner === owner
+                && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
                 return dockSuspendDcRequestMirrorRowsCache.slice();
             }
-            const seen = new Set();
-            const rows = (Array.isArray(sourceRows) ? sourceRows : [])
-                .map((item, index) => buildDockSuspendDcRequestMirrorRow(item, index))
-                .filter((row) => {
-                    if (!row) return false;
-                    const id = String(firstNonEmptyValue(row.UNIQUE_ID, row.unique_id, '') || '').trim();
-                    if (!id || seen.has(id)) return false;
-                    seen.add(id);
-                    return true;
-                });
-            dockSuspendDcRequestMirrorRowsCacheKey = cacheKey;
-            dockSuspendDcRequestMirrorRowsCache = rows;
-            return rows.slice();
+            const prior = dockSuspendDcRequestMirrorRowsPreparation;
+            if (!prior || prior.sourceRows !== sourceRows || prior.revision !== cacheKey || prior.owner !== owner) {
+                scheduleDockSuspendDcRequestMirrorRowsPreparation(sourceRows, cacheKey, owner);
+            }
+            // The last complete set stays visible during refresh only inside
+            // the same authenticated scope. A cold view waits for the first
+            // complete slice set instead of presenting a partial queue.
+            return dockSuspendDcRequestMirrorRowsCacheOwner === owner
+                && Array.isArray(dockSuspendDcRequestMirrorRowsCache)
+                ? dockSuspendDcRequestMirrorRowsCache.slice()
+                : [];
         }
 
         function appendDockSuspendDcRequestMirrorRows(items = []) {
@@ -113815,13 +114315,30 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function findDockSuspendDcRequestMirrorRowByUniqueId(uid = '') {
             const safeUid = String(uid || '').trim();
             if (!safeUid) return null;
-            return getDockSuspendDcRequestMirrorRows().find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === safeUid) || null;
+            return dockSuspendDcRequestMirrorRowsById().get(safeUid) || null;
         }
 
         function findDockSuspendDcRequestMirrorRowByDomId(domId = '') {
             const safeDomId = String(domId || '').trim();
             if (!safeDomId) return null;
-            return getDockSuspendDcRequestMirrorRows().find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === safeDomId) || null;
+            return dockSuspendDcRequestMirrorRowsByDomId().get(safeDomId) || null;
+        }
+
+        let dockSuspendDcRequestMirrorRowsByIdCache = null;
+        let dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+        function dockSuspendDcRequestMirrorRowsById() {
+            if (!canCurrentUserViewDockSuspendDcRequests()) return new Map();
+            const rows = getDockSuspendDcRequestMirrorRows();
+            if (dockSuspendDcRequestMirrorRowsByIdCache) return dockSuspendDcRequestMirrorRowsByIdCache;
+            dockSuspendDcRequestMirrorRowsByIdCache = new Map(rows.map(row => [String(row.UNIQUE_ID || row.unique_id || '').trim(), row]));
+            return dockSuspendDcRequestMirrorRowsByIdCache;
+        }
+        function dockSuspendDcRequestMirrorRowsByDomId() {
+            if (!canCurrentUserViewDockSuspendDcRequests()) return new Map();
+            const rows = getDockSuspendDcRequestMirrorRows();
+            if (dockSuspendDcRequestMirrorRowsByDomIdCache) return dockSuspendDcRequestMirrorRowsByDomIdCache;
+            dockSuspendDcRequestMirrorRowsByDomIdCache = new Map(rows.map(row => [String(row.DOM_ID || row.dom_id || '').trim(), row]));
+            return dockSuspendDcRequestMirrorRowsByDomIdCache;
         }
 
         function getDockSuspendDcRequestMirrorUidForRow(item = null) {
@@ -113853,6 +114370,25 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function getSuspendTagRequestItems(items = []) {
             return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource);
+        }
+
+        function countPendingSuspendTagQueueItems(items = [], sourceRows = []) {
+            const countedSourceIds = new Set();
+            let count = 0;
+            getSuspendTagRequestItems(items).forEach((row) => {
+                if (!['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
+                const sourceUid = getDockSuspendDcRequestSourceUid(row);
+                if (sourceUid) countedSourceIds.add(sourceUid);
+                count += 1;
+            });
+            (Array.isArray(sourceRows) ? sourceRows : []).forEach((row) => {
+                if (!isDockSuspendDcRequestSource(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
+                const sourceUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (!sourceUid || countedSourceIds.has(sourceUid)) return;
+                countedSourceIds.add(sourceUid);
+                count += 1;
+            });
+            return count;
         }
 
         function getRequestSuspendTagDockRaw(item = null) {
@@ -113899,7 +114435,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return { value, label: formatRequestSuspendTagDockLabel(rawDock || value) };
         }
 
-        function compareRequestSuspendTagDockOptions(a, b) {
+        function compareRequestSuspendTagDockOptions(a, b, compareText = null) {
             const av = String(a && a.value || '');
             const bv = String(b && b.value || '');
             if (av === 'no-dock' && bv !== 'no-dock') return 1;
@@ -113909,7 +114445,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             const an = Number((al.match(/\d+/) || [''])[0]);
             const bn = Number((bl.match(/\d+/) || [''])[0]);
             if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn;
-            return al.localeCompare(bl, undefined, { numeric: true, sensitivity: 'base' });
+            return compareText ? compareText(al, bl) : al.localeCompare(bl, undefined, { numeric: true, sensitivity: 'base' });
         }
 
         function getRequestSuspendTagDockFilterOptions(items = []) {
@@ -114054,18 +114590,83 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return safeItems.filter((item) => getRequestSuspendTagAssignedToFilterOptionForItem(item).value === filterValue);
         }
 
-        function compareRequestSuspendTagRows(a, b) {
+        function compareRequestSuspendTagRows(a, b, collators = null) {
             const dockCompare = compareRequestSuspendTagDockOptions(
                 getRequestSuspendTagDockFilterOptionForItem(a),
-                getRequestSuspendTagDockFilterOptionForItem(b)
+                getRequestSuspendTagDockFilterOptionForItem(b),
+                collators && collators.text
             );
             if (dockCompare) return dockCompare;
-            const stopCompare = String(firstNonEmptyValue(a && a.STOPNUMBER, a && a.STOP, a && a.stopnumber, a && a.stop, '') || '')
-                .localeCompare(String(firstNonEmptyValue(b && b.STOPNUMBER, b && b.STOP, b && b.stopnumber, b && b.stop, '') || ''), undefined, { numeric: true, sensitivity: 'base' });
+            const compareText = collators ? collators.text : (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+            const stopCompare = compareText(String(firstNonEmptyValue(a && a.STOPNUMBER, a && a.STOP, a && a.stopnumber, a && a.stop, '') || ''),
+                String(firstNonEmptyValue(b && b.STOPNUMBER, b && b.STOP, b && b.stopnumber, b && b.stop, '') || ''));
             if (stopCompare) return stopCompare;
-            const locationCompare = compareLocationCodeValues(a && a.LOCATIONCODE, b && b.LOCATIONCODE);
+            const locationCompare = compareLocationCodeValues(a && a.LOCATIONCODE, b && b.LOCATIONCODE, collators && collators.location);
             if (locationCompare) return locationCompare;
-            return String(a && a.COMMONNAME || '').localeCompare(String(b && b.COMMONNAME || ''), undefined, { numeric: true, sensitivity: 'base' });
+            return compareText(String(a && a.COMMONNAME || ''), String(b && b.COMMONNAME || ''));
+        }
+
+        function sortRequestSuspendTagRows(items = [], collators = null) {
+            const textCompare = collators ? collators.text : (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+            const locationCompare = collators ? collators.location : (left, right) => left.localeCompare(right, undefined, { numeric: true });
+            const decorated = (Array.isArray(items) ? items : []).map((item, index) => {
+                const locationRaw = String(item && item.LOCATIONCODE || '').trim().toUpperCase();
+                const match = locationRaw.match(/^([A-Z]+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$/);
+                return {
+                    item, index,
+                    dock: getRequestSuspendTagDockFilterOptionForItem(item),
+                    stop: String(firstNonEmptyValue(item && item.STOPNUMBER, item && item.STOP, item && item.stopnumber, item && item.stop, '') || ''),
+                    location: {
+                        raw: locationRaw,
+                        block: match ? (match[1] || '') : locationRaw,
+                        parts: match ? [match[2], match[3], match[4]].filter(part => part !== undefined).map(part => parseInt(part, 10)) : []
+                    },
+                    commonName: String(item && item.COMMONNAME || '')
+                };
+            });
+            decorated.sort((left, right) => {
+                const dockCompare = compareRequestSuspendTagDockOptions(left.dock, right.dock, textCompare);
+                if (dockCompare) return dockCompare;
+                const stopCompare = textCompare(left.stop, right.stop);
+                if (stopCompare) return stopCompare;
+                const blockCompare = textCompare(left.location.block, right.location.block);
+                if (blockCompare) return blockCompare;
+                const partCount = Math.max(left.location.parts.length, right.location.parts.length);
+                for (let index = 0; index < partCount; index++) {
+                    const leftPart = Number.isFinite(left.location.parts[index]) ? left.location.parts[index] : -1;
+                    const rightPart = Number.isFinite(right.location.parts[index]) ? right.location.parts[index] : -1;
+                    if (leftPart !== rightPart) return leftPart - rightPart;
+                }
+                const rawCompare = locationCompare(left.location.raw, right.location.raw);
+                if (rawCompare) return rawCompare;
+                return textCompare(left.commonName, right.commonName) || left.index - right.index;
+            });
+            return decorated.map(entry => entry.item);
+        }
+
+        function buildSuspendTagRenderPlan(items) {
+            const collators = {
+                text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
+                location: new Intl.Collator(undefined, { numeric: true }).compare
+            };
+            const allItems = sortRequestSuspendTagRows(getSuspendTagRequestItems(items), collators);
+            const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
+            const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems);
+            const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems);
+            const filteredItems = applyRequestSuspendTagDockFilter(contSizeItems);
+            const filterKey = JSON.stringify([
+                normalizeSearchValue(requestSuspendTagCommonNameSearchTerm),
+                normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter),
+                normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter),
+                requestSuspendTagDockFilter
+            ]);
+            const plan = buildRequestPagedRenderPlan(`request:suspend-tag:${filterKey}`, 'Suspend Tag', filteredItems);
+            const planstartSignature = plan.rows.map((item) => {
+                const info = getDockSuspendDcRequestPlanstartInfo(item);
+                return [getItemUniqueId(item), info.value, info.tone, info.valid];
+            });
+            return { ...plan, allItems, searchItems, assignedItems, contSizeItems,
+                renderSignature: `${plan.renderSignature}:planstart:${JSON.stringify(planstartSignature)}` };
         }
 
         function getRequestSuspendTagSearchInputState(event = null) {
@@ -114218,18 +114819,18 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allItems = [], searchItems = [], assignedItems = [], contSizeItems = [], visibleItems = []) {
             if (!container) return null;
             const filterShell = container.querySelector('#request-suspend-tag-filter-shell');
-            const resultsShell = container.querySelector('#request-suspend-tag-results');
+            let resultsShell = container.querySelector('#request-suspend-tag-results');
             const activeInput = document.activeElement && document.activeElement.id === 'request-suspend-tag-common-search';
             if (!filterShell || !resultsShell) {
-                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems)}</div><div id="request-suspend-tag-results"></div>`);
+                setContainerHtml(container, `<div id="request-suspend-tag-filter-shell">${renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems)}</div><div id="request-suspend-tag-results"><div id="request-suspend-tag-card-list" class="request-card-list--suspend-tag"></div><div id="request-suspend-tag-footer"></div></div>`);
+                resultsShell = container.querySelector('#request-suspend-tag-results');
             } else if (activeInput) {
                 updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             } else {
                 filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
-                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             }
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
-            return container.querySelector('#request-suspend-tag-results');
+            return resultsShell && resultsShell.querySelector('#request-suspend-tag-card-list') || resultsShell;
         }
 
         function scheduleRequestSuspendTagSearchRender(focusState = null) {
@@ -114382,14 +114983,15 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 .join('\u001E');
         }
 
-        function getScopedRequestItems(items = requestsInventory) {
+        function getScopedRequestItems(items = requestsInventory, options = {}) {
             const sourceItems = Array.isArray(items) ? items : [];
             const roleAccess = getRoleAccessState();
             const capabilities = getRequestCapabilities();
             const requestScopeMode = capabilities ? capabilities.scope : 'none';
             const hasGlobalRequestAccess = requestScopeMode === 'global';
             const canUseCache = items === requestsInventory;
-            const includeDockSuspendMirrorRows = canUseCache && canCurrentUserViewDockSuspendDcRequests();
+            const includeDockSuspendMirrorRows = canUseCache && options.includeDockSuspendMirrorRows !== false && canCurrentUserViewDockSuspendDcRequests();
+            const useResultCache = canUseCache;
             const cacheKey = canUseCache ? [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('requests'),
@@ -114401,7 +115003,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 currentUser,
                 currentUserDisplay
             ].join('|') : '';
-            if (canUseCache && requestScopedItemsCacheKey === cacheKey && Array.isArray(requestScopedItemsCache)) {
+            if (useResultCache && requestScopedItemsCacheKey === cacheKey && Array.isArray(requestScopedItemsCache)) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return requestScopedItemsCache.slice();
             }
@@ -114418,7 +115020,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (includeDockSuspendMirrorRows) {
                 nextItems = appendDockSuspendDcRequestMirrorRows(nextItems);
             }
-            if (canUseCache) {
+            if (useResultCache) {
                 requestScopedItemsCacheKey = cacheKey;
                 requestScopedItemsCache = nextItems.slice();
             }
@@ -116043,15 +116645,13 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function getPendingRequestChunkRenderOptions(options = {}) {
             const resolved = getRequestChunkRenderOptions(options);
-            const narrowScreen = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-                && window.matchMedia('(max-width: 639px)').matches;
             // Keep the first paint bounded; subsequent rows use the existing
             // budgeted chunks, completion checks, and cancellation tokens.
             return {
                 ...resolved,
-                initialRows: Number(resolved.initialRows) > 0 ? resolved.initialRows : (narrowScreen ? 4 : 8),
-                chunkSize: resolved.chunkSize ?? (narrowScreen ? 8 : undefined),
-                perFrameRows: resolved.perFrameRows ?? (narrowScreen ? 8 : undefined)
+                initialRows: Number(options.initialRows) > 0 ? options.initialRows : 2,
+                chunkSize: resolved.chunkSize ?? 8,
+                perFrameRows: resolved.perFrameRows ?? 8
             };
         }
 
@@ -116860,6 +117460,31 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             }
         }
 
+        function renderSuspendTagPagedCards(cardContainer, footerContainer, rootContainer, crumb, crumbText, plan) {
+            const safePlan = plan && typeof plan === 'object' ? plan : {};
+            const emptyMessage = isDockSuspendDcRequestMirrorPreparationPending()
+                ? 'Loading Suspend Tag rows…'
+                : (requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all'
+                    ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.');
+            const didSchedule = renderMarkupChunkedByKey('request-main', cardContainer, crumb, safePlan.rows, crumbText,
+                (item) => generateCard(item, 'request', 'status-red'), getPendingRequestChunkRenderOptions({
+                    renderSignature: safePlan.renderSignature,
+                    emptyHtml: `<div class="p-8 text-center text-gray-400">${emptyMessage}</div>`,
+                    onComplete: () => {
+                        repairVisibleDockSuspendDcPlanstartCardTones(rootContainer);
+                        decorateRequestRows();
+                        syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
+                    },
+                    onCompleteAfterInteractive: true,
+                    onCompleteDelayMs: 140
+                }));
+            // Pagination is independent of deferred card completion; keeping it
+            // beside the card host also prevents later chunks from inserting
+            // cards after the footer.
+            syncRequestBrowseFooter(footerContainer, safePlan.footerMarkup);
+            return didSchedule;
+        }
+
         function renderRequest() {
             syncRequestRenderChrome();
             const container = document.getElementById('request-content');
@@ -116882,18 +117507,24 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 return;
             }
             if (activeReqTab === 'archived') {
-                if (!requestArchiveListState.loaded && !requestArchiveListState.loading) loadRequestArchivePage(0).catch(() => {});
+                if (!requestArchiveListState.loaded && !requestArchiveListState.loading && !requestArchiveListState.error) loadRequestArchivePage(0).catch(() => {});
                 const state = requestArchiveListState;
                 const html = renderRequestArchivePageHtml(state);
                 applyRequestRenderMarkup(container, crumb, 'Archived Requests', html,
-                    `request:archived:${state.loading ? 'loading' : 'ready'}:${state.error}:${state.offset}:${state.total}:${state.rows.map((row) => row.unique_id).join('|')}`);
+                    buildRequestArchivePageRenderSignature(state));
+                syncRequestArchiveStatus(container, state);
                 return;
             }
             if (ensureViewDataForRender('request')) return;
             scheduleRequestRenderSideData();
             bumpChunkRenderTokenByKey('request-main');
 
-            const baseRequestItems = getScopedRequestItems(requestsInventory);
+            // Dock Suspend mirrors belong only to Suspend's rendered dataset.
+            // Pending, reps, and other request tabs discard them downstream, so
+            // avoid materializing the rich 1,000-row mirror set for those views.
+            const baseRequestItems = getScopedRequestItems(requestsInventory, {
+                includeDockSuspendMirrorRows: activeReqTab === 'suspend-tag'
+            });
             const legacyViewerPanel = document.getElementById('request-dylan-filter-panel');
             if (legacyViewerPanel) {
                 legacyViewerPanel.innerHTML = '';
@@ -117045,31 +117676,10 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
             if (activeReqTab === 'suspend-tag') {
                 const crumbText = `Suspend Tag${requestFilterSuffix}`;
-                const allSuspendTagItems = getSuspendTagRequestItems(items).sort(compareRequestSuspendTagRows);
-                const searchSuspendTagItems = applyRequestSuspendTagCommonNameSearchFilter(allSuspendTagItems);
-                const assignedSuspendTagItems = applyRequestSuspendTagAssignedToFilter(searchSuspendTagItems);
-                const contSizeSuspendTagItems = applyRequestSuspendTagContSizeFilter(assignedSuspendTagItems);
-                const suspendTagItems = applyRequestSuspendTagDockFilter(contSizeSuspendTagItems);
-                const searchKey = normalizeSearchValue(requestSuspendTagCommonNameSearchTerm);
-                const assignedKey = normalizeRequestSuspendTagAssignedToFilterValue(requestSuspendTagAssignedToFilter);
-                const contSizeKey = normalizeRequestSuspendTagContSizeFilterValue(requestSuspendTagContSizeFilter);
-                const planstartSignature = suspendTagItems.map((item) => {
-                    const info = getDockSuspendDcRequestPlanstartInfo(item);
-                    return `${String(firstNonEmptyValue(item && item.UNIQUE_ID, item && item.unique_id, '') || '').trim()}:${info.value}:${info.tone}:${info.valid ? 1 : 0}`;
-                }).join('|');
-                const renderKey = buildRequestChunkRenderKey(`request:suspend-tag:${assignedKey}:${contSizeKey}:${requestSuspendTagDockFilter}:${searchKey}:${planstartSignature}`, `${crumbText}|${assignedKey}|${contSizeKey}|${requestSuspendTagDockFilter}|${searchKey}|${planstartSignature}`, suspendTagItems);
-                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, allSuspendTagItems, searchSuspendTagItems, assignedSuspendTagItems, contSizeSuspendTagItems, suspendTagItems);
-                renderMarkupChunkedByKey('request-main', resultsContainer, crumb, suspendTagItems, crumbText, (item) => generateCard(item, 'request', 'status-red'), {
-                    approxCardHeight: 360,
-                    renderSignature: renderKey,
-                    emptyHtml: `<div class="p-8 text-center text-gray-400">${requestSuspendTagCommonNameSearchTerm || requestSuspendTagAssignedToFilter !== 'all' || requestSuspendTagContSizeFilter !== 'all' || requestSuspendTagDockFilter !== 'all' ? 'No suspend tag rows match these filters.' : 'No suspend tag rows.'}</div>`,
-                    onComplete: () => {
-                        repairVisibleDockSuspendDcPlanstartCardTones(resultsContainer);
-                        decorateRequestRows();
-                    },
-                    onCompleteAfterInteractive: true,
-                    onCompleteDelayMs: 140
-                });
+                const plan = buildSuspendTagRenderPlan(items);
+                const resultsContainer = ensureRequestSuspendTagRenderShell(container, crumb, crumbText, plan.allItems, plan.searchItems, plan.assignedItems, plan.contSizeItems, plan.items);
+                const footerContainer = container.querySelector('#request-suspend-tag-footer') || resultsContainer;
+                renderSuspendTagPagedCards(resultsContainer, footerContainer, container, crumb, crumbText, plan);
                 return;
             }
 
@@ -144244,7 +144854,7 @@ C.14.043 C.15.000
                 requestQueueRemovedByScope.set(scope, removed);
                 rebuildRequestInventoryIndexes();
                 invalidateInventoryDomIdLookup();
-                requestArchiveListState.loaded = false;
+                invalidateRequestArchivePages();
                 refreshRequestViewAfterArchive();
                 persistCurrentCache();
                 triggerRequestRealtimeUiRefresh(0);
@@ -144294,7 +144904,7 @@ C.14.043 C.15.000
             item.REQ_ARCHIVED = true;
             buildSearchIndex(item);
             queuePendingRequestArchive(requestUid, 'archive', idempotencyKey);
-            requestArchiveListState.loaded = false;
+            invalidateRequestArchivePages(actionIdentityScope === getSupabaseReadIdentityScope() ? requestArchiveListState.scopeKey : '');
             closeAllRequestSwipes();
             refreshRequestViewAfterArchive();
             persistCurrentCache();
@@ -144360,7 +144970,7 @@ C.14.043 C.15.000
             if (result.ok) {
                 clearPendingRequestArchive(id);
                 clearRequestArchiveUndo();
-                requestArchiveListState.loaded = false;
+                invalidateRequestArchivePages(actionIdentityScope === getSupabaseReadIdentityScope() ? requestArchiveListState.scopeKey : '');
                 if (isViewVisible('request') && activeReqTab === 'archived') {
                     requestArchiveListState.offset = getRequestArchiveClampedPageOffset(requestArchiveListState.total, requestArchiveListState.limit, requestArchiveListState.offset);
                     loadRequestArchivePage(requestArchiveListState.offset, true).catch(() => {});
@@ -146659,6 +147269,7 @@ C.14.043 C.15.000
         }
 
         function invalidateSuspendTagInventoryRows(item = null) {
+            invalidateDockSuspendDcSourceRowLookup(item);
             if (!item || typeof item !== 'object') {
                 suspendTagReclassLoads.clear();
                 return;
@@ -149331,8 +149942,6 @@ C.14.043 C.15.000
             return row;
         }
         function renderRequestArchivePageHtml(state = requestArchiveListState) {
-            if (state.loading) return '<div class="request-archive-empty" role="status">Loading archived request rows…</div>';
-            if (state.error) return `<div class="request-archive-empty request-archive-empty--error" role="alert">${escapeHtml(state.error)}<button type="button" class="request-archive-control" onclick="return loadRequestArchivePage(${Number(state.offset) || 0}, true)">Retry</button></div>`;
             const rows = Array.isArray(state.rows) ? state.rows : [];
             const cards = rows.map((row) => {
                 const uid = String(row.UNIQUE_ID || '');
@@ -149346,10 +149955,46 @@ C.14.043 C.15.000
             const pager = Number(state.total) > limit || offset > 0
                 ? `<div class="request-archive-pager"><button type="button" class="request-archive-control" ${offset ? '' : 'disabled'} onclick="return loadRequestArchivePage(${Math.max(0, offset - limit)}, true)">Previous</button><span>${displayPage} / ${pageCount} · ${Number(state.total)} rows</span><button type="button" class="request-archive-control" ${state.hasMore ? '' : 'disabled'} onclick="return loadRequestArchivePage(${offset + limit}, true)">Next</button></div>`
                 : `<div class="request-archive-pager">${Number(state.total) || 0} archived request${Number(state.total) === 1 ? '' : 's'}</div>`;
-            if (rows.length) return `<div class="request-archive-list">${cards}</div>${pager}`;
-            return Number(state.total) > 0
-                ? `<div class="request-archive-empty">No rows on this page.</div>${pager}`
-                : '<div class="request-archive-empty">No archived request rows.</div>';
+            const list = rows.length ? `<div class="request-archive-list">${cards}</div>` : '';
+            return `<div id="request-archive-page-list">${list}</div><div id="request-archive-page-pager">${pager}</div><div id="request-archive-status"></div>`;
+        }
+        function buildRequestArchivePageRenderSignature(state = requestArchiveListState) {
+            const rows = Array.isArray(state && state.rows) ? state.rows : [];
+            return `request:archived:${JSON.stringify([
+                Number(state && state.offset) || 0,
+                Number(state && state.total) || 0,
+                Number(state && state.limit) || 100,
+                !!(state && state.hasMore),
+                rows.map((row) => [
+                    String(row && row.UNIQUE_ID || ''),
+                    String(row && row.COMMONNAME || ''),
+                    String(row && row.CONTSIZE || ''),
+                    String(row && row.LOCATIONCODE || ''),
+                    String(row && row.LOTCODE || ''),
+                    String(row && row.ITEMCODE || ''),
+                    String(row && (row.REQ_CUSTOMER || row.CUSTOMERNAME) || ''),
+                    String(row && row.REQ_QTY || '')
+                ])
+            ])}`;
+        }
+        function syncRequestArchiveStatus(container, state = requestArchiveListState) {
+            const status = container && container.querySelector('#request-archive-status');
+            if (!status) return false;
+            let html = '';
+            if (state.error) {
+                html = `<div class="request-archive-empty request-archive-empty--error" role="alert">${escapeHtml(state.error)}<button type="button" class="request-archive-control" onclick="return loadRequestArchivePage(${Number(state.offset) || 0}, true)">Retry</button></div>`;
+            } else if (state.loading) {
+                const message = state.refreshing ? 'Refreshing archived request rows…' : 'Loading archived request rows…';
+                html = `<div class="request-archive-empty" role="status">${message}</div>`;
+            } else if (state.loaded && !state.rows.length) {
+                const message = Number(state.total) > 0 ? 'No rows on this page.' : 'No archived request rows.';
+                html = `<div class="request-archive-empty">${message}</div>`;
+            }
+            if (status.dataset.requestArchiveStatus !== html) {
+                status.innerHTML = html;
+                status.dataset.requestArchiveStatus = html;
+            }
+            return true;
         }
         function getRequestArchiveClampedPageOffset(total = 0, limit = 100, currentOffset = 0) {
             const safeTotal = Math.max(0, Number(total) || 0);
@@ -149359,24 +150004,72 @@ C.14.043 C.15.000
             return Math.min(safeOffset, lastPageOffset);
         }
         async function loadRequestArchivePage(offset = 0, force = false) {
-            if (!canCurrentUserArchiveRequestRows()) return false;
-            const safeOffset = Math.max(0, Number(offset) || 0);
+            if (!canCurrentUserArchiveRequestRows()) {
+                resetRequestArchivePageState();
+                return false;
+            }
+            const safeOffset = Math.max(0, Math.floor(Number(offset) || 0));
+            const scopeKey = getRequestArchivePageScopeKey();
+            if (requestArchiveListState.scopeKey && requestArchiveListState.scopeKey !== scopeKey) resetRequestArchivePageState();
             if (requestArchiveListState.loaded && requestArchiveListState.offset === safeOffset && !force) return true;
             if (requestArchiveListState.loading && requestArchiveListState.offset === safeOffset && !force) return false;
             if (requestArchiveListState.controller) requestArchiveListState.controller.abort();
             const controller = new AbortController();
-            requestArchiveListState = { ...requestArchiveListState, offset: safeOffset, loading: true, error: '', controller };
+            let service;
+            let cachedPage = null;
+            try {
+                service = getRequestArchivePagesService();
+                cachedPage = service.peek(scopeKey, safeOffset, 100);
+            } catch (error) {
+                requestArchiveListState = { ...requestArchiveListState, loading: false, refreshing: false, error: String(error && error.message || 'Archived requests are unavailable.'), controller: null };
+                if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
+                return false;
+            }
+            const samePage = requestArchiveListState.scopeKey === scopeKey && requestArchiveListState.offset === safeOffset;
+            const retainedPage = samePage && requestArchiveListState.loaded
+                ? { rows: requestArchiveListState.rows, total: requestArchiveListState.total, offset: requestArchiveListState.offset, limit: requestArchiveListState.limit, hasMore: requestArchiveListState.hasMore }
+                : cachedPage;
+            requestArchiveListState = {
+                rows: retainedPage ? retainedPage.rows.map((row) => normalizeArchivedRequestRow(row)).filter(Boolean) : [],
+                total: retainedPage ? retainedPage.total : 0,
+                offset: safeOffset,
+                limit: retainedPage ? retainedPage.limit : 100,
+                hasMore: retainedPage ? retainedPage.hasMore : false,
+                loading: true,
+                refreshing: !!(retainedPage && retainedPage.rows.length),
+                error: '',
+                loaded: !!retainedPage,
+                scopeKey,
+                controller
+            };
             if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
             try {
-                const data = await callRequestArchiveApi({ operation: 'list', offset: safeOffset, limit: 100 }, { signal: controller.signal });
-                if (controller.signal.aborted || !Array.isArray(data.rows) || Number(data.offset) !== safeOffset || !Number.isInteger(Number(data.total))) return false;
-                requestArchiveListState = { rows: data.rows.map(normalizeArchivedRequestRow).filter(Boolean), total: Math.max(0, Number(data.total) || 0), offset: safeOffset, limit: Math.min(500, Math.max(1, Number(data.limit) || 100)), hasMore: !!data.hasMore, loading: false, error: '', loaded: true, controller: null };
+                const data = await service.read(scopeKey, safeOffset, 100, controller.signal);
+                if (controller.signal.aborted || requestArchiveListState.controller !== controller
+                    || requestArchiveListState.scopeKey !== scopeKey || data.offset !== safeOffset) return false;
+                requestArchiveListState = {
+                    rows: data.rows.map((row) => normalizeArchivedRequestRow(row)).filter(Boolean),
+                    total: data.total,
+                    offset: data.offset,
+                    limit: data.limit,
+                    hasMore: data.hasMore,
+                    loading: false,
+                    refreshing: false,
+                    error: '',
+                    loaded: true,
+                    scopeKey,
+                    controller: null
+                };
                 if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
                 updateFooterRequestBadge();
                 return true;
             } catch (error) {
-                if (controller.signal.aborted || error && error.name === 'AbortError') return false;
-                requestArchiveListState = { ...requestArchiveListState, loading: false, error: String(error && error.message || 'Archived requests are unavailable.'), loaded: false, controller: null };
+                if (controller.signal.aborted || error && error.name === 'AbortError'
+                    || requestArchiveListState.controller !== controller || requestArchiveListState.scopeKey !== scopeKey) return false;
+                const retained = requestArchiveListState;
+                requestArchiveListState = { ...retained, loading: false, refreshing: false,
+                    error: String(error && error.message || 'Archived requests are unavailable.'),
+                    loaded: !!retained.loaded, controller: null };
                 if (isViewVisible('request') && activeReqTab === 'archived') renderRequest();
                 return false;
             }
@@ -149584,7 +150277,11 @@ C.14.043 C.15.000
                     }
                     if (requestArchiveDeniedIds.has(`${getSupabaseReadIdentityScope()}:${uid}`)) { clearPendingRequestArchive(uid); continue; }
                     const result = await syncRequestArchive(uid, entry.operation, entry.idempotencyKey, 1);
-                    if (result.ok) { clearPendingRequestArchive(uid); continue; }
+                    if (result.ok) {
+                        clearPendingRequestArchive(uid);
+                        if (entry.identityScope === getSupabaseReadIdentityScope()) invalidateRequestArchivePages();
+                        continue;
+                    }
                     const attempts = Math.min(3, entry.attempts + 1);
                     if (!isRequestArchiveTerminalFailure(result.error) && attempts < 3) {
                         const delay = computePendingRequestArchiveRetryDelay(attempts);
@@ -160325,7 +161022,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function getTaskLocationBucket(item) { return LocationCode.base(item && (item.LOCATIONCODE || item.locationcode)) || 'UNASSIGNED'; }
 
-        function compareLocationCodeValues(a, b) {
+        function compareLocationCodeValues(a, b, compareText = null) {
             const normalize = (value) => String(value || '').trim().toUpperCase();
             const parse = (value) => {
                 const clean = normalize(value);
@@ -160339,7 +161036,7 @@ ${folderNote ? `Folder Note: ${folderNote}
             };
             const left = parse(a);
             const right = parse(b);
-            const blockCompare = left.block.localeCompare(right.block, undefined, { numeric: true });
+            const blockCompare = compareText ? compareText(left.block, right.block) : left.block.localeCompare(right.block, undefined, { numeric: true });
             if (blockCompare !== 0) return blockCompare;
             const maxLen = Math.max(left.parts.length, right.parts.length);
             for (let i = 0; i < maxLen; i++) {
@@ -160347,7 +161044,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                 const rightPart = Number.isFinite(right.parts[i]) ? right.parts[i] : -1;
                 if (leftPart !== rightPart) return leftPart - rightPart;
             }
-            return left.raw.localeCompare(right.raw, undefined, { numeric: true });
+            return compareText ? compareText(left.raw, right.raw) : left.raw.localeCompare(right.raw, undefined, { numeric: true });
         }
 
         function sortTaskLocationDetailItems(items = []) {
@@ -167093,6 +167790,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function refreshLocalDockSuspendDcRequestState(reason = 'dock-suspend-request', changedRow = null) {
+            invalidateDockSuspendDcSourceRowLookup(changedRow);
             const changedDatasetKeys = getDatasetKeysForTable('ph_soc_master');
             const preserveDetail = isViewVisible('detail') && isDockSuspendDcRequestMirrorRow(activeItem);
             const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys).filter(view => !preserveDetail || view !== 'detail');
@@ -167678,7 +168376,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     }
                 });
-                dockSuspendDcRequestMirrorRowsCacheKey = ''; requestScopedItemsCacheKey = '';
+                invalidateDockSuspendDcSourceRowLookup(current || source); requestScopedItemsCacheKey = '';
                 if (['save', 'complete', 'close'].includes(operation)) invalidateSuspendTagInventoryRows(current || source);
                 refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
                 if (['save', 'complete', 'close'].includes(operation)) {
@@ -168086,6 +168784,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function applyDockSuspendDcRequestRemovedState(row = null, completedAt = '', isMirrorRow = false) {
+            if (!isMirrorRow) invalidateDockSuspendDcSourceRowLookup(row);
             applyDockSuspendDcRequestHandledState(row, completedAt, isMirrorRow);
             clearDockSuspendDcRequestSuspendState(row);
             if (isMirrorRow) setDockSuspendDcRequestMirrorHidden(row, true);
@@ -168116,6 +168815,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function restoreDockSuspendDcRequestHandledState(row = null, snapshot = null) {
             if (!row || !snapshot) return;
+            invalidateDockSuspendDcSourceRowLookup(row);
             Object.keys(snapshot).forEach((key) => {
                 row[key] = snapshot[key];
             });

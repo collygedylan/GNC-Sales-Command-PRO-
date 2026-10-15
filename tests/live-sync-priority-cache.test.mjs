@@ -417,7 +417,7 @@ test('initial verified content skips the background render debounce and retains 
         ['ready', false, false, 150, false],
         ['ready', true, true, 0, false]
     ]) {
-        let callback, delay, renderOptions, renders = 0;
+        let callback, delay, renderOptions, renders = 0, anchorReads = 0;
         const context = { productionLiveSyncRenderTimer: null, productionLiveSyncDraftChanged: false,
             productionLiveSyncRendering: false, VIEW_LOAD_UI: { drive: { container: 'drive-content' } },
             productionVerifiedViewKey: () => 'visit', getCurrentVisibleViewId: () => 'drive', getContainerUiState: () => state,
@@ -427,6 +427,7 @@ test('initial verified content skips the background render debounce and retains 
             setTimeout: (fn, ms) => { callback = fn; delay = ms; return 1; }, clearTimeout() {},
             markViewDirty() {}, renderViewContent: () => { renders++; } };
         installRefreshRenderFixture(context);
+        context.captureProductionRefreshAnchor = () => { anchorReads++; return null; };
         context.scheduleTypingAwareUiRender = (_key, fn, ms, _typingDelay, options) => {
             callback = fn; delay = ms; renderOptions = options;
         };
@@ -441,6 +442,8 @@ test('initial verified content skips the background render debounce and retains 
         assert.equal(renderOptions.allowWhileTouching, undefined);
         assert.equal(renderOptions.allowWhileScrolling, undefined);
         callback(); assert.equal(renders, 1);
+        assert.equal(anchorReads, cachedPreview && state === 'loading' ? 0 : 1,
+            'a first display has no previous cards to measure or restore');
     }
 });
 

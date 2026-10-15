@@ -14,6 +14,87 @@ const indexEnd = html.indexOf('function rebuildMasterInventoryIndexes() {', inde
 assert.ok(indexStart >= 0 && indexEnd > indexStart, 'shared master index helpers should exist');
 const indexSource = html.slice(indexStart, indexEnd);
 
+function appFunction(name) {
+  const start = html.search(new RegExp(`(?:async )?function ${name}\\(`));
+  const next = html.slice(start + 1).search(/\r?\n        (?:async )?function \w+\(/);
+  assert.ok(start >= 0 && next > 0, name);
+  return html.slice(start, start + next + 1);
+}
+
+test('bounded season assignment matches synchronous groups including ties, exclusions, and duplicate IDs', async () => {
+  let yields = 0;
+  const ctx = vm.createContext({ Map, Set, Array, String, Number,
+    MASTER_PREPARATION_BATCH_SIZE: 64, yieldToUiFrame: async () => { yields++; },
+    firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
+    isWorkflowProtectedAppTabAssignment: value => value === 'protected',
+    hasUsableEndCapFolderValue: value => !!value,
+    isMasterSeasonWinnerBaseCandidate: row => !!row && row.eligible !== false,
+    compareSeasonWinnerCandidates: (a, b) => b.quantity - a.quantity || String(a.UNIQUE_ID).localeCompare(b.UNIQUE_ID),
+    applySeasonLocationAssignmentFields: (row, value) => { row.APP_TAB_ASSIGNMENT = value; },
+  });
+  vm.runInContext(appFunction('pickSeasonWinnerCandidate') + appFunction('assignSeasonWinnersForItemGroups')
+    + appFunction('prepareMasterSeasonAssignments'), ctx);
+  const input = Array.from({ length: 200 }, (_, id) => ({ UNIQUE_ID: `uid-${id % 180}`, ITEMCODE: `item-${id % 3}`,
+    quantity: id % 4, eligible: id % 5 !== 0, APP_TAB_ASSIGNMENT: id % 9 ? 'location' : 'protected',
+    END_CAP_FOLDER: id % 11 ? '' : 'endcap' }));
+  input.push(null, { UNIQUE_ID: 'unknown', ITEMCODE: 'UNKNOWN' });
+  const synchronous = structuredClone(input), bounded = structuredClone(input);
+  ctx.assignSeasonWinnersForItemGroups(synchronous);
+  let checks = 0;
+  await ctx.prepareMasterSeasonAssignments(bounded, () => { checks++; });
+  assert.deepEqual(bounded, synchronous);
+  assert.ok(yields > 2);
+  assert.equal(checks, yields);
+});
+
+test('inheritance scans skip absent NCR targets and irrelevant moved-season sources', () => {
+  const source = { id: 'source', key: 'same', reusable: true, sourceSeason: true, score: 2 };
+  const target = { id: 'target', key: 'same', target: true };
+  const ctx = vm.createContext({ Map, Set, Array, Date, Number, Math,
+    fullInventory: Array.from({ length: 12000 }, (_, id) => ({ id })),
+    isNcrCurrentCropInheritanceTarget: row => !!row.target,
+    getNcrCurrentCropLocationKey: () => { throw new Error('No target requires source indexing'); },
+    isMovedSeasonAvSourceSeason: row => !!row.sourceSeason,
+    getMovedSeasonAvInheritanceKey: () => { throw new Error('Non-source seasons require no expensive key lookup'); },
+  });
+  vm.runInContext(appFunction('hydrateNcrCurrentCropRowsFromSources') + appFunction('hydrateMovedSeasonCurrentRowsFromSources'), ctx);
+  assert.equal(ctx.hydrateNcrCurrentCropRowsFromSources(), 0);
+  assert.equal(ctx.hydrateMovedSeasonCurrentRowsFromSources(), 0);
+  let applied = 0;
+  Object.assign(ctx, { fullInventory: [source, target],
+    getNcrCurrentCropLocationKey: row => row.key,
+    hasNcrReusableCropData: row => !!row.reusable,
+    isNcrFutureOrMoveUpSourceForCurrent: row => !!row.sourceSeason,
+    scoreNcrCurrentCropSource: row => row.score,
+    applyNcrCurrentCropInheritance: (row, selected, options) => {
+      assert.equal(row, target); assert.equal(selected, source); assert.equal(options.remote, false); applied++; return true;
+    }, queueNcrCurrentCropInheritanceUiRefresh() {} });
+  assert.equal(ctx.hydrateNcrCurrentCropRowsFromSources(), 1);
+  assert.equal(applied, 1);
+  ctx.isNcrCurrentCropInheritanceTarget = () => { throw new Error('An empty prepared candidate set needs no full scan'); };
+  ctx.isMovedSeasonAvSourceSeason = () => { throw new Error('An empty prepared candidate set needs no full scan'); };
+  assert.equal(ctx.hydrateNcrCurrentCropRowsFromSources({ candidates: [] }), 0);
+  assert.equal(ctx.hydrateMovedSeasonCurrentRowsFromSources({ candidates: [] }), 0);
+});
+
+test('repeated aggregate receipts reuse validated identity while stale and invalidated revisions remain rejected', () => {
+  const accepted = { scope: 'identity-a', permission: 'permission-a', revision: '12', valid: true };
+  let invalidations = 0;
+  const context = vm.createContext({ acceptedLocOnHandAggregateReceipt: accepted, String, BigInt,
+    clearAcceptedLocOnHandAggregates: () => { invalidations++; context.acceptedLocOnHandAggregateReceipt.valid = false; } });
+  vm.runInContext(appFunction('acceptCardLocationOnHandSourceReceipt'), context);
+  for (let index = 0; index < 12000; index++) {
+    assert.equal(context.acceptCardLocationOnHandSourceReceipt('identity-a', 'permission-a', '12'), true);
+  }
+  assert.equal(context.acceptedLocOnHandAggregateReceipt, accepted, 'batch stamping does not allocate and revalidate the same receipt per row');
+  assert.equal(context.acceptCardLocationOnHandSourceReceipt('identity-a', 'permission-a', '11'), false);
+  accepted.valid = false;
+  assert.equal(context.acceptCardLocationOnHandSourceReceipt('identity-a', 'permission-a', '12'), false);
+  assert.equal(context.acceptCardLocationOnHandSourceReceipt('identity-a', 'permission-a', '12', true), true);
+  assert.equal(context.acceptCardLocationOnHandSourceReceipt('identity-a', 'permission-b', '12'), true);
+  assert.equal(invalidations, 1);
+});
+
 function createHarness({ onYield = () => {} } = {}) {
   let identity = 'identity-a';
   let permission = 'permission-a';
@@ -22,9 +103,15 @@ function createHarness({ onYield = () => {} } = {}) {
     appAccessSnapshotState: { snapshot: { dataPermissionVersion: permission } },
     getSupabaseReadIdentityScope: () => identity,
     getCurrentAppSeasonSettings: () => season,
-    formatFetchedRows: (rows) => rows.map((row) => ({ ...row, SOURCE_TABLE: 'ph_master_inventory', normalized: true })),
+    formatFetchedRows: (rows) => rows.map((row) => ({ ...row, ITEMCODE: row?.ITEMCODE || row?.UNIQUE_ID, SOURCE_TABLE: 'ph_master_inventory', normalized: true })),
     buildSearchIndex: (row) => { row._searchCandidates = [row.UNIQUE_ID]; return row; },
     applyMasterAppTabAssignments: (rows) => rows.forEach((row) => { row.APP_TAB_ASSIGNMENT = 'season'; }),
+    hasNcrLocationNote: row => !!row.NCR,
+    isMovedSeasonAvSourceSeason: row => !!row.MOVED,
+    isWorkflowProtectedAppTabAssignment: value => value === 'protected',
+    hasUsableEndCapFolderValue: value => !!value,
+    pickSeasonWinnerCandidate: rows => rows[0],
+    applySeasonLocationAssignmentFields: (row, assignment) => { row.APP_TAB_ASSIGNMENT = assignment; },
     shouldIncludeMasterItemInAvSeasonView: () => true,
     isEvalScopedDataRowVisibleToCurrentUser: () => true,
     syncMasterFieldsToRow: (master, target, keys) => {
@@ -73,7 +160,7 @@ test('prepares master display and AV candidates in bounded batches without shari
     nested: { source: 'unchanged' }, photo: { link: `photo-${index}` } }));
   const result = await harness.api.prepare(input);
 
-  assert.equal(yields, 4, 'display formatting and AV projection yield at the 64-row batch boundaries');
+  assert.equal(yields, 8, 'formatting, winner selection, assignment, and AV projection yield at 64-row boundaries');
   assert.equal(result.rowCount, 130);
   assert.equal(result.rawRows.length, 130);
   assert.notEqual(result.payload.data, input);
@@ -113,6 +200,17 @@ test('prepared master indexes preserve full-rebuild duplicate and missing-key se
   for (const key of ['byId', 'byExactKey', 'byItemCode', 'byItemLocationOnHand']) {
     assert.deepEqual(JSON.parse(JSON.stringify(Array.from(preparedIndexes[key]))), JSON.parse(JSON.stringify(Array.from(rebuilt[key]))), `${key} matches ordinary full rebuild`);
   }
+});
+
+test('preparation collects broad inheritance candidates without changing rows or relaxing commit eligibility', async () => {
+  const harness = createHarness();
+  const result = await harness.api.prepare([{ UNIQUE_ID: 'ncr', NCR: true }, { UNIQUE_ID: 'moved', MOVED: true }, { UNIQUE_ID: 'normal' }]);
+  const prepared = harness.api.current(result.payload.data);
+  assert.deepEqual(Array.from(prepared.inheritanceCandidates.ncr), [result.payload.data[0]]);
+  assert.deepEqual(Array.from(prepared.inheritanceCandidates.moved), [result.payload.data[1]]);
+  assert.match(html, /const inheritanceCandidates = preparedIndexes \? prepared\.inheritanceCandidates : null/,
+    'replaced evidence or previously consumed indexes must use a fresh full scan');
+  assert.match(appFunction('hydrateNcrCurrentCropRowsFromSources'), /candidates\.filter\(\(target\) => isNcrCurrentCropInheritanceTarget\(target, now\)\)/);
 });
 
 test('prepared indexes are consumed once and replaced-row publications fall back to rebuild', async () => {
@@ -166,6 +264,102 @@ test('cancels private preparation on abort, permission changes, and season chang
       error => error.code === (reason === 'abort' ? 'REQUEST_ABORTED' : 'DATASET_READ_SCOPE_CHANGED'));
     assert.equal(rows.some(row => Object.hasOwn(row, 'DOM_ID')), false, 'cancelled preparation never mutates source rows');
   }
+});
+
+function createCachePersistenceHarness({ rows = 130, yieldToUiFrame = async () => {}, saveToCache = async () => true } = {}) {
+  const sourceRows = Array.from({ length: rows }, (_, index) => ({ id: `row-${index}`, privateValue: `secret-${index}` }));
+  const state = { epoch: 4, scope: 'identity-a', buildCalls: 0, saveCalls: [] };
+  const context = vm.createContext({
+    pendingCachePersist: true, lastCachePersistAt: 0, cacheSnapshotPreparationGeneration: 0,
+    resolvedViewStateEpoch: state.epoch,
+    getSupabaseReadIdentityScope: () => state.scope,
+    buildCacheSnapshot: options => {
+      assert.equal(options.deferRows, true, 'the full snapshot is gathered without synchronous row cloning');
+      state.buildCalls += 1;
+      return { status: 'success', data: sourceRows, requestsData: [{ id: 'request-row' }], meta: { generation: state.buildCalls } };
+    },
+    buildCacheRows: batch => batch.map(({ id }) => ({ id })),
+    yieldToUiFrame,
+    saveToCache: async snapshot => { state.saveCalls.push(snapshot); return saveToCache(snapshot); },
+    Date, Object, Array, Promise, Number, String, Error,
+  });
+  vm.runInContext(appFunction('prepareCurrentCacheSnapshot') + appFunction('runPersistCurrentCacheNow'), context);
+  return { context, state };
+}
+
+test('current cache snapshot preparation clones and redacts rows in bounded 64-row batches', async () => {
+  const batchSizes = [], options = [];
+  const harness = createCachePersistenceHarness({ rows: 130, yieldToUiFrame: async () => {} });
+  harness.context.buildCacheRows = batch => {
+    batchSizes.push(batch.length);
+    return batch.map(({ id }) => ({ id }));
+  };
+  harness.context.buildCacheSnapshot = received => {
+    options.push(received);
+    return { status: 'success', data: Array.from({ length: 130 }, (_, id) => ({ id: `data-${id}`, secret: true })),
+      requestsData: [{ id: 'request', secret: true }], meta: { generation: 1 } };
+  };
+  const snapshot = await harness.context.prepareCurrentCacheSnapshot(() => true);
+
+  assert.deepEqual(JSON.parse(JSON.stringify(options)), [{ deferRows: true }]);
+  assert.deepEqual(batchSizes, [64, 64, 2, 1]);
+  assert.equal(snapshot.data.length, 130);
+  assert.equal(snapshot.data.every(row => !Object.hasOwn(row, 'secret')), true, 'row sanitization remains delegated to buildCacheRows');
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.requestsData)), [{ id: 'request' }]);
+  assert.deepEqual(JSON.parse(JSON.stringify(snapshot.meta)), { generation: 1 });
+});
+
+test('current cache persistence cancels after a yield when identity or data epoch changes', async () => {
+  for (const changed of ['identity', 'epoch']) {
+    let signalYield;
+    let releaseYield;
+    const yieldStarted = new Promise(resolve => { signalYield = resolve; });
+    const yieldGate = new Promise(resolve => { releaseYield = resolve; });
+    let firstYield = true;
+    const harness = createCachePersistenceHarness({ yieldToUiFrame: () => {
+      if (!firstYield) return Promise.resolve();
+      firstYield = false;
+      signalYield();
+      return yieldGate;
+    } });
+    const persistence = harness.context.runPersistCurrentCacheNow();
+    await yieldStarted;
+    if (changed === 'identity') harness.state.scope = 'identity-b';
+    else harness.context.resolvedViewStateEpoch += 1;
+    releaseYield();
+
+    assert.equal(await persistence, false, `snapshot work stops after ${changed} changes`);
+    assert.equal(harness.state.saveCalls.length, 0, 'a stale snapshot is never written');
+  }
+});
+
+test('overlapping cache snapshot preparation writes only the newest generation', async () => {
+  let signalFirstYield;
+  let releaseFirstYield;
+  const firstYieldStarted = new Promise(resolve => { signalFirstYield = resolve; });
+  const firstYieldGate = new Promise(resolve => { releaseFirstYield = resolve; });
+  let firstYield = true;
+  const harness = createCachePersistenceHarness({ yieldToUiFrame: () => {
+    if (!firstYield) return Promise.resolve();
+    firstYield = false;
+    signalFirstYield();
+    return firstYieldGate;
+  } });
+
+  const older = harness.context.runPersistCurrentCacheNow();
+  await firstYieldStarted;
+  const newer = harness.context.runPersistCurrentCacheNow();
+  assert.equal(await newer, true);
+  releaseFirstYield();
+  assert.equal(await older, false);
+  assert.equal(harness.state.saveCalls.length, 1);
+  assert.deepEqual(JSON.parse(JSON.stringify(harness.state.saveCalls[0].meta)), { generation: 2 });
+});
+
+test('cache persistence reports a failed cache write as false', async () => {
+  const harness = createCachePersistenceHarness({ rows: 1, saveToCache: async () => false });
+  assert.equal(await harness.context.runPersistCurrentCacheNow(), false);
+  assert.equal(harness.state.saveCalls.length, 1);
 });
 
 test('preview preparation honors its row limit and keeps cache, display, and source ownership separate', async () => {

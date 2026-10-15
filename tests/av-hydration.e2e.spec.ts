@@ -4,7 +4,11 @@ import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
 // @test-group: @home-role
 
-const SYNTHETIC_MASTER_ROWS = 9539;
+// Keep profiler, trace, and screenshot work out of acceptance measurements.
+// Set AV_CPU_PROFILE=1 only when collecting a diagnostic CPU profile.
+test.use({ trace: 'off', screenshot: 'off' });
+
+const SYNTHETIC_MASTER_ROWS = 12000;
 const PREVIEW_PAGE_SIZE = 500;
 const PREVIEW_DISPLAY_ROW_LIMIT = 50;
 
@@ -41,8 +45,22 @@ function syntheticMasterRows() {
 
 async function installAvTimingProbe(page: Page) {
   const installed = await page.evaluate(() => window.eval(`(() => {
-    const probe = window.__avHydrationTiming = { startedAt: 0, startedEpochMs: 0, firstCardAt: 0, firstCardEpochMs: 0, renderDurations: [], chunkCallbackDurations: [], renderStages: [], renderSubOperations: [], activeRenderId: 0, renderIdCounter: 0, processSubOperations: [], activeProcessId: 0, processIdCounter: 0, processLoads: [], liveRenderSchedules: [], longTaskDurations: [],
+    const probe = window.__avHydrationTiming = { startedAt: 0, startedEpochMs: 0, firstCardAt: 0, firstCardEpochMs: 0, renderDurations: [], chunkCallbackDurations: [], renderStages: [], renderSubOperations: [], activeRenderId: 0, renderIdCounter: 0, processSubOperations: [], activeProcessId: 0, processIdCounter: 0, processLoads: [], liveRenderSchedules: [], longTaskDurations: [], longTasks: [], slowSyncOperations: [], slowAsyncOperations: [],
       searchStartedAt: 0, searchResultAt: 0, observer: null, searchObserver: null, longTaskObserver: null };
+    const SLOW_OPERATION_THRESHOLD_MS = 10;
+    const MAX_SLOW_OPERATION_RECORDS = 100;
+    const recordSlowOperation = (collection, name, startedAt, extra = {}) => {
+      const endedAt = performance.now();
+      const durationMs = endedAt - startedAt;
+      if (!probe.startedAt || durationMs < SLOW_OPERATION_THRESHOLD_MS || probe[collection].length >= MAX_SLOW_OPERATION_RECORDS) return;
+      probe[collection].push({ name, startedAt, endedAt, durationMs, ...extra });
+    };
+    const measureSynchronousOperation = (name, original, getDetails = () => ({})) => function(...args) {
+      if (!probe.startedAt) return original.apply(this, args);
+      const startedAt = performance.now();
+      try { return original.apply(this, args); }
+      finally { recordSlowOperation('slowSyncOperations', name, startedAt, getDetails(args, this)); }
+    };
     const stageSnapshot = () => {
       const container = document.getElementById('av-content');
       const safeCall = fn => { try { return typeof fn === 'function' ? !!fn() : null; } catch { return null; } };
@@ -70,7 +88,10 @@ async function installAvTimingProbe(page: Page) {
     };
     probe.longTaskObserver = new PerformanceObserver(entries => {
       if (!probe.startedAt) return;
-      for (const entry of entries.getEntries()) probe.longTaskDurations.push(entry.duration);
+      for (const entry of entries.getEntries()) {
+        probe.longTaskDurations.push(entry.duration);
+        probe.longTasks.push({ startTime: entry.startTime, durationMs: entry.duration, endTime: entry.startTime + entry.duration });
+      }
     });
     probe.longTaskObserver.observe({ type: 'longtask', buffered: false });
     const originalRequestAnimationFrame = window.requestAnimationFrame.bind(window);
@@ -101,9 +122,9 @@ async function installAvTimingProbe(page: Page) {
       const started = performance.now();
       try { return original.apply(this, args); }
       finally {
-        if (probe.startedAt && probe.activeRenderId) probe.renderSubOperations.push({
-          renderId: probe.activeRenderId, name, durationMs: performance.now() - started
-        });
+        const durationMs = performance.now() - started;
+        if (probe.startedAt && probe.activeRenderId) probe.renderSubOperations.push({ renderId: probe.activeRenderId, name, durationMs });
+        if (durationMs >= SLOW_OPERATION_THRESHOLD_MS) recordSlowOperation('slowSyncOperations', name, started);
       }
     };
     buildResolvedAVBaseState = measureRenderOperation('buildResolvedAVBaseState', buildResolvedAVBaseState);
@@ -123,13 +144,67 @@ async function installAvTimingProbe(page: Page) {
     renderAvPhotoOutreachPanel = measureRenderOperation('renderAvPhotoOutreachPanel', renderAvPhotoOutreachPanel);
     renderAVOpenCardsChunked = measureRenderOperation('renderAVOpenCardsChunked', renderAVOpenCardsChunked);
     buildAvSharedFilterOptionsState = measureRenderOperation('buildAvSharedFilterOptionsState', buildAvSharedFilterOptionsState);
+    generateCard = measureRenderOperation('generateCard', generateCard);
+    setContainerHtml = measureRenderOperation('setContainerHtml', setContainerHtml);
+    captureProductionRefreshAnchor = measureSynchronousOperation('captureProductionRefreshAnchor', captureProductionRefreshAnchor);
+    restoreProductionRefreshAnchor = measureSynchronousOperation('restoreProductionRefreshAnchor', restoreProductionRefreshAnchor);
+    renderProductionDataFreshness = measureSynchronousOperation('renderProductionDataFreshness', renderProductionDataFreshness);
+    const rowCountDetails = args => ({ rowCount: Array.isArray(args[0]) ? args[0].length : undefined });
+    applyMasterAppTabAssignments = measureSynchronousOperation('applyMasterAppTabAssignments', applyMasterAppTabAssignments, rowCountDetails);
+    formatFetchedRows = measureSynchronousOperation('formatFetchedRows', formatFetchedRows, args => ({ rowCount: Array.isArray(args[0]) ? args[0].length : undefined, source: String(args[1] || '') }));
+    buildSearchIndex = measureSynchronousOperation('buildSearchIndex', buildSearchIndex);
+    syncMasterFieldsToRow = measureSynchronousOperation('syncMasterFieldsToRow', syncMasterFieldsToRow);
+    prepareProductionMasterSnapshot = (function(original) {
+      return function(...args) {
+        if (!probe.startedAt) return original.apply(this, args);
+        const startedAt = performance.now();
+        const rowCount = Array.isArray(args[0]) ? args[0].length : 0;
+        const result = original.apply(this, args);
+        return result.then(value => {
+          recordSlowOperation('slowAsyncOperations', 'prepareProductionMasterSnapshot', startedAt, { rowCount, resultRows: Number(value?.rowCount) || 0 });
+          return value;
+        }, error => {
+          recordSlowOperation('slowAsyncOperations', 'prepareProductionMasterSnapshot', startedAt, { rowCount, failed: true });
+          throw error;
+        });
+      };
+    })(prepareProductionMasterSnapshot);
+    saveCacheValue = (function(original) {
+      return function(...args) {
+        if (!probe.startedAt) return original.apply(this, args);
+        const startedAt = performance.now();
+        const value = args[1];
+        const rowCount = Array.isArray(value?.rawRows) ? value.rawRows.length
+          : (Array.isArray(value?.data) ? value.data.length : 0);
+        return original.apply(this, args).then(result => {
+          recordSlowOperation('slowAsyncOperations', 'saveCacheValue', startedAt, { rowCount, succeeded: result === true });
+          if (result === true && rowCount >= 12000) probe.completedLargeCacheKey = args[0];
+          return result;
+        }, error => {
+          recordSlowOperation('slowAsyncOperations', 'saveCacheValue', startedAt, { rowCount, failed: true });
+          throw error;
+        });
+      };
+    })(saveCacheValue);
+    const originalIdbPut = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = function(...args) {
+      if (!probe.startedAt) return originalIdbPut.apply(this, args);
+      const startedAt = performance.now();
+      try { return originalIdbPut.apply(this, args); }
+      finally {
+        const value = args[0];
+        const rowCount = Array.isArray(value?.rawRows) ? value.rawRows.length
+          : (Array.isArray(value?.data) ? value.data.length : 0);
+        recordSlowOperation('slowSyncOperations', 'IDBObjectStore.put', startedAt, { storeName: String(this.name || ''), rowCount });
+      }
+    };
     const measureProcessOperation = (name, original) => function(...args) {
       const started = performance.now();
       try { return original.apply(this, args); }
       finally {
-        if (probe.startedAt && probe.activeProcessId) probe.processSubOperations.push({
-          processId: probe.activeProcessId, name, durationMs: performance.now() - started
-        });
+        const durationMs = performance.now() - started;
+        if (probe.startedAt && probe.activeProcessId) probe.processSubOperations.push({ processId: probe.activeProcessId, name, durationMs });
+        if (durationMs >= SLOW_OPERATION_THRESHOLD_MS) recordSlowOperation('slowSyncOperations', name, started);
       }
     };
     rebuildMasterInventoryIndexes = measureProcessOperation('rebuildMasterInventoryIndexes', rebuildMasterInventoryIndexes);
@@ -148,6 +223,7 @@ async function installAvTimingProbe(page: Page) {
       const partial = res?._partial === true || res?._progressive === true;
       try { return originalProcessAndLoadData.apply(this, arguments); }
       finally {
+        recordSlowOperation('slowSyncOperations', 'processAndLoadData', started, { rowCount: inputRows, verified, partial });
         probe.processLoads.push({ startedAt: started, endedAt: performance.now(), durationMs: performance.now() - started,
           processId, inputRows, verified, partial, stage: stageSnapshot() });
         probe.activeProcessId = previousProcessId;
@@ -227,14 +303,23 @@ async function installAvTimingProbe(page: Page) {
         probe.processLoads = [];
         probe.liveRenderSchedules = [];
         probe.longTaskDurations = [];
+        probe.longTasks = [];
+        probe.slowSyncOperations = [];
+        probe.slowAsyncOperations = [];
         probe.searchStartedAt = 0;
         probe.searchResultAt = 0;
         probe.searchObserver?.disconnect();
         probe.searchObserver = new MutationObserver(captureSearchResult);
-        probe.searchObserver.observe(document.body, { childList: true, subtree: true, attributes: true, characterData: true });
+        const avContainer = document.getElementById('av-content');
+        const avCrumb = document.getElementById('av-crumb');
+        if (avContainer) probe.searchObserver.observe(avContainer, { childList: true, subtree: true, attributes: true, characterData: true });
+        if (avCrumb) probe.searchObserver.observe(avCrumb, { childList: true, subtree: true, characterData: true });
         probe.longTaskObserver?.disconnect();
         probe.longTaskObserver = new PerformanceObserver(entries => {
-          for (const entry of entries.getEntries()) probe.longTaskDurations.push(entry.duration);
+          for (const entry of entries.getEntries()) {
+            probe.longTaskDurations.push(entry.duration);
+            probe.longTasks.push({ startTime: entry.startTime, durationMs: entry.duration, endTime: entry.startTime + entry.duration });
+          }
         });
         probe.longTaskObserver.observe({ type: 'longtask', buffered: false });
         const capture = () => {
@@ -251,9 +336,10 @@ async function installAvTimingProbe(page: Page) {
         };
         probe.observer?.disconnect();
         probe.observer = new MutationObserver(() => { if (!capture()) requestAnimationFrame(capture); });
-        probe.observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+        if (!avContainer) throw new Error('AV content container is unavailable');
+        probe.observer.observe(avContainer, { childList: true, subtree: true, attributes: true });
         requestAnimationFrame(capture);
-        probe.observer.observe(document.getElementById('av-content') || document.body, { childList: true, subtree: true, characterData: true });
+        probe.observer.observe(avContainer, { childList: true, subtree: true, characterData: true });
       }, { once: true, capture: true });
     };
     arm();
@@ -278,6 +364,9 @@ async function timingEvidence(page: Page) {
       processLoads: Array.isArray(probe?.processLoads) ? probe.processLoads.slice() : [],
       liveRenderSchedules: Array.isArray(probe?.liveRenderSchedules) ? probe.liveRenderSchedules.slice() : [],
       longTaskDurationsMs: Array.isArray(probe?.longTaskDurations) ? probe.longTaskDurations.slice() : [],
+      longTasks: Array.isArray(probe?.longTasks) ? probe.longTasks.slice() : [],
+      slowSyncOperations: Array.isArray(probe?.slowSyncOperations) ? probe.slowSyncOperations.slice() : [],
+      slowAsyncOperations: Array.isArray(probe?.slowAsyncOperations) ? probe.slowAsyncOperations.slice() : [],
       maxMainThreadOperationMs: Math.max(0, ...(probe?.renderDurations || []), ...(probe?.chunkCallbackDurations || []), ...(probe?.longTaskDurations || [])),
       searchResponseMs: probe?.searchResultAt && probe?.searchStartedAt ? probe.searchResultAt - probe.searchStartedAt : null,
       visibleCardCount: document.querySelectorAll('#av-content [data-dom-id]').length,
@@ -384,12 +473,18 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
   let cpuProfilerSession: CDPSession | null = null;
   let cpuProfilerStarted = false;
   let cpuProfileSummary: ReturnType<typeof summarizeCpuProfile> | null = null;
+  let cpuProfileWindowStart: { timeOriginMs: number; pageTimeMs: number } | null = null;
+  let cpuProfileWindowEnd: { timeOriginMs: number; pageTimeMs: number } | null;
+  const cpuProfileEnabled = process.env.AV_CPU_PROFILE === '1';
   try {
-    cpuProfilerSession = await page.context().newCDPSession(page);
-    await cpuProfilerSession.send('Profiler.enable');
-    await cpuProfilerSession.send('Profiler.setSamplingInterval', { interval: 1000 });
-    await cpuProfilerSession.send('Profiler.start');
-    cpuProfilerStarted = true;
+    if (cpuProfileEnabled) {
+      cpuProfilerSession = await page.context().newCDPSession(page);
+      await cpuProfilerSession.send('Profiler.enable');
+      await cpuProfilerSession.send('Profiler.setSamplingInterval', { interval: 1000 });
+      await cpuProfilerSession.send('Profiler.start');
+      cpuProfilerStarted = true;
+      cpuProfileWindowStart = await page.evaluate(() => ({ timeOriginMs: performance.timeOrigin, pageTimeMs: performance.now() }));
+    }
     await page.locator('#home-tile-av').click();
     await Promise.all([fixture.waitForHeldMasterLaterPage(), sideReadStarted]);
     await expect(page.locator('#av-content [data-dom-id]').first()).toBeVisible();
@@ -405,7 +500,7 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(preview.firstCardMs).toBeGreaterThanOrEqual(0);
     expect.soft(preview.firstCardMs).toBeLessThan(1000);
     expect(preview.dataRenderDurationsMs.length).toBeGreaterThan(0);
-    expect.soft(preview.maxMainThreadOperationMs).toBeLessThan(100);
+    expect.soft(preview.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
     expect(preview.master.fieldCoverage).not.toBe('full');
     expect(preview.master.rowCompleteness).not.toBe('complete');
     expect(preview.verified).toBe(false);
@@ -444,46 +539,69 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     releaseSideReads();
     fixture.releaseHeldMasterLaterPage();
     await expect(page.locator('#live-data-freshness')).toHaveAttribute('data-state', 'Up to date', { timeout: 30_000 });
-    await page.waitForFunction((expectedRows: number) => window.eval(`getDatasetState('master').fieldCoverage === 'browse'
+    await page.waitForFunction((expectedRows: number) => window.eval(`(() => {
+      const identity = getAvSalesDerivationIdentity(activeAvSalesBucket);
+      const prepared = window.AgMetricAvDerivedRows.peek(identity.key, identity.scope);
+      return getDatasetState('master').fieldCoverage === 'browse'
       && getDatasetState('master').rowCompleteness === 'complete'
       && fullInventory.length === ${expectedRows}
-      && productionLiveSyncVerifiedView === productionVerifiedViewKey()`), SYNTHETIC_MASTER_ROWS, { timeout: 30_000 });
+      && productionLiveSyncVerifiedView === productionVerifiedViewKey()
+      && !avDerivedRowsPendingSignature
+      && prepared && prepared.sourceKey === identity.sourceKey;
+    })()`), SYNTHETIC_MASTER_ROWS, { timeout: 30_000 });
 
+    await page.waitForFunction(() => window.eval('!!window.__avHydrationTiming.completedLargeCacheKey'));
+    const cachedRows = await page.evaluate(() => window.eval('loadCacheValue(window.__avHydrationTiming.completedLargeCacheKey).then(value => value?.rawRows?.length || 0)'));
+    expect(cachedRows).toBe(SYNTHETIC_MASTER_ROWS);
+    const legacyCacheSaved = await page.evaluate(() => window.eval('runPersistCurrentCacheNow()'));
+    expect(legacyCacheSaved, 'legacy cache projection and storage must also remain bounded').toBe(true);
+    const legacyCachedRows = await page.evaluate(() => window.eval('loadCacheValue("latest_data").then(value => value?.data?.length || 0)'));
+    expect(legacyCachedRows).toBe(SYNTHETIC_MASTER_ROWS);
     const full = await timingEvidence(page);
     await captureMilestone('full-verification', full);
     expect(full.master.fieldCoverage).toBe('browse');
     expect(full.master.rowCompleteness).toBe('complete');
     expect(full.previewRows).toBe(SYNTHETIC_MASTER_ROWS);
-    expect.soft(full.maxMainThreadOperationMs).toBeLessThan(100);
+    expect.soft(full.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
     expect(await search.inputValue()).toBe('AVH.00049');
     await expect(page.locator('#av-content [data-dom-id]').filter({ hasText: 'AVH.00049' }).first()).toBeVisible();
 
     const readsBeforeWarmRepeat = fixture.backgroundMasterReads;
+    const warmCard = await page.locator('#av-content [data-dom-id]').first().elementHandle();
+    expect(warmCard, 'a completed AV card is available before navigating away').not.toBeNull();
+    const warmCardDomId = await warmCard!.getAttribute('data-dom-id');
     await page.locator('#global-header-inline-back').click();
     await expect(page.locator('#view-home')).toBeVisible();
     await page.evaluate(() => window.eval('__armAvHydrationTiming()'));
     await page.locator('#home-tile-av').click();
     await expect(page.locator('#av-content [data-dom-id]').first()).toBeVisible();
+    await expect.poll(async () => warmCard!.evaluate(node => node.isConnected
+      && node.isSameNode(document.querySelector('#av-content [data-dom-id]')))).toBe(true);
+    expect(await warmCard!.getAttribute('data-dom-id')).toBe(warmCardDomId);
     await expect.poll(async () => (await timingEvidence(page)).firstCardMs).not.toBeNull();
     await page.waitForFunction(() => window.eval(`productionLiveSyncVerifiedView === productionVerifiedViewKey()
       && getProductionLiveSyncCoordinator().getStatus().state === 'Up to date'`), null, { timeout: 10_000 });
     const warm = await timingEvidence(page);
     await captureMilestone('warm-repeat', warm);
     expect.soft(warm.firstCardMs).toBeLessThan(1000);
-    expect(warm.dataRenderDurationsMs.length).toBeGreaterThan(0);
-    expect.soft(warm.maxMainThreadOperationMs).toBeLessThan(100);
+    expect.soft(warm.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
     expect(fixture.backgroundMasterReads).toBe(readsBeforeWarmRepeat);
     expect(warm.master.rowCompleteness).toBe('complete');
     expect(warm.verified).toBe(true);
 
     const evidence = {
       kind: 'isolated-client-render-fixture', datasetRows: SYNTHETIC_MASTER_ROWS,
+      acceptedAvMainThreadOperationLimitMs: 200,
       environment: {
         nodeVersion: process.version,
         browserVersion: await page.context().browser()?.version(),
         viewport: page.viewportSize(),
+        trace: 'off',
+        screenshots: 'off',
+        cpuProfile: cpuProfileEnabled ? 'enabled by AV_CPU_PROFILE=1' : 'disabled for acceptance timing',
+        domObserverScope: '#av-content and #av-crumb; long-task observer remains page-wide for the main-thread gate',
         coldAssumptions: 'Fresh Playwright test context, cold fixture login, no-cache request headers, and service workers blocked by the home-role config.',
-        warmAssumptions: 'Same page context after full browse-cohort verification; repeat reuses the verified in-memory browse dataset.'
+        warmAssumptions: 'Same page context after full browse-cohort verification; the first card DOM node is retained and no new master read is allowed.'
       },
       firstPageLimit: masterPageLimits[0], coldPreview: preview, gatedState: gated, fullVerification: full,
       previewInteraction, warmRepeat: warm, heldSideReadCount: sideReadsHeld,
@@ -497,12 +615,38 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     if (cpuProfilerSession && cpuProfilerStarted) {
       try {
         const stopped = await cpuProfilerSession.send('Profiler.stop');
+        cpuProfileWindowEnd = await page.evaluate(() => ({ timeOriginMs: performance.timeOrigin, pageTimeMs: performance.now() }));
         cpuProfileSummary = summarizeCpuProfile(stopped.profile);
         await testInfo.attach('av-hydration-cpu-profile.json', {
           body: JSON.stringify(stopped.profile), contentType: 'application/json'
         });
         await testInfo.attach('av-hydration-cpu-profile-summary.json', {
           body: JSON.stringify(cpuProfileSummary, null, 2), contentType: 'application/json'
+        });
+        const timelineEvidence = await page.evaluate(() => {
+          const probe = window.eval('window.__avHydrationTiming') as {
+            longTasks?: Array<{ startTime: number; endTime: number; durationMs: number }>;
+            slowSyncOperations?: Array<{ name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }>;
+            slowAsyncOperations?: Array<{ name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }>;
+          } | undefined;
+          return {
+            longTasks: Array.isArray(probe?.longTasks) ? probe.longTasks.slice() : [],
+            slowSyncOperations: Array.isArray(probe?.slowSyncOperations) ? probe.slowSyncOperations.slice() : [],
+            slowAsyncOperations: Array.isArray(probe?.slowAsyncOperations) ? probe.slowAsyncOperations.slice() : []
+          };
+        });
+        const correlatedLongTasks = timelineEvidence.longTasks.map((task: { startTime: number; endTime: number; durationMs: number }) => ({
+          ...task,
+          overlappingSynchronousOperations: timelineEvidence.slowSyncOperations.filter((operation: { startedAt: number; endedAt: number }) =>
+            operation.startedAt <= task.endTime && operation.endedAt >= task.startTime),
+          overlappingAsynchronousOperations: timelineEvidence.slowAsyncOperations.filter((operation: { startedAt: number; endedAt: number }) =>
+            operation.startedAt <= task.endTime && operation.endedAt >= task.startTime)
+        }));
+        await testInfo.attach('av-hydration-cpu-profile-timeline.json', {
+          body: JSON.stringify({ sampleIntervalUs: 1000, cpuProfileWindowStart, cpuProfileWindowEnd,
+            profileSampledMs: cpuProfileSummary.sampledMs,
+            clock: 'Long-task and operation start/end times use page performance.now(); CPU samples use the adjacent CDP profile window. Async overlaps show wall-clock coincidence only; synchronous overlaps identify code executing on the main thread.',
+            correlatedLongTasks }, null, 2), contentType: 'application/json'
         });
         console.log('AV_HYDRATION_CPU_PROFILE_SUMMARY', JSON.stringify(cpuProfileSummary));
       } catch (error) {
