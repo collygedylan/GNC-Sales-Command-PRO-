@@ -59,6 +59,13 @@ test('direct Eval2 full-snapshot ensures use bounded master-page concurrency', a
     window:{AgMetricLiveSyncRegistry:{getSourceKeys:() => ['ph_master_inventory']}},
     DATASET_DEFINITIONS:{master:{table:'ph_master_inventory',fullQuery:'select=*',initialQuery:'select=*'}},
     RETIRED_DATASET_KEYS:new Set(),
+    getSupabaseReadIdentityScope:() => 'manager-scope',
+    appAccessSnapshotState:{snapshot:{dataPermissionVersion:'manager-policy'}},
+    currentMasterPreparationSeasonKey:() => 'F1:2026',
+    prepareProductionMasterSnapshot:async (rows, options = {}) => ({
+      rawRows:options.includeRawRows === false ? [] : JSON.parse(JSON.stringify(rows)),
+      payload:{data:rows}, rowCount:rows.length
+    }),
     getCurrentAppSeasonSettings:() => ({seasonCode:'F1',salesYear:2026}),
     getCurrentVisibleViewId:() => 'managers', activeHomeTab:'eval2', MANAGER_EVAL_REPORTS_2_VIEW:'eval2',
     getProductionLiveSyncCoordinator:() => ({ensure:value => { adapter = value; return Promise.resolve(true); }}),

@@ -34,6 +34,141 @@ function extractAppFunction(name) {
     return html.slice(match.index, end);
 }
 
+test('AV sorting preserves numeric locale order with one reusable collator per sort', () => {
+    let collators = 0;
+    const ctx = { Intl: { Collator: function(locale, options) {
+        collators += 1;
+        return new Intl.Collator(locale, options);
+    } }, activeAvOpenTab: 'name' };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('sortAvOpenItems'), ctx);
+    const rows = ['Plant 10', 'plant 2', 'Érable', 'Åcer', 'Plant 2', 'Plant 2'].map((COMMONNAME, index) => ({
+        COMMONNAME, CONTSIZE: index % 2 ? '#10' : '#2', LOCATIONCODE: `A.${10 - index}`,
+    }));
+    const compare = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, { numeric: true });
+    const expected = rows.slice().sort((a, b) => compare(a.COMMONNAME, b.COMMONNAME)
+        || compare(a.CONTSIZE, b.CONTSIZE) || compare(a.LOCATIONCODE, b.LOCATIONCODE));
+    assert.deepEqual(Array.from(ctx.sortAvOpenItems(rows)), expected);
+    assert.equal(collators, 1, 'collation settings are constructed once, not for every row comparison');
+    assert.notEqual(ctx.sortAvOpenItems(rows), rows, 'sorting retains source ownership');
+});
+
+test('closed AV filter controls skip hidden option markup and header scans', () => {
+    const controls = extractAppFunction('renderAvTopControls');
+    assert.match(controls, /const genusOptionsHtml = avGenusFilterOpen && !collapseDetailFilters\s*\? buildAvMultiChoiceOptionsHtml/);
+    assert.match(controls, /const contSizeOptionsHtml = avContSizeFilterOpen && !collapseDetailFilters\s*\? buildAvMultiChoiceOptionsHtml/);
+    assert.match(extractAppFunction('buildAvTopControlsSignature'), /avColumnFilterDropdownOpen\s*\? getAvColumnFilterFields/);
+});
+
+test('AV page keys use ordered membership while visible card signatures retain content changes', () => {
+    const ctx = { firstNonEmptyValue: (...values) => values.find(value => value != null && value !== '') };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('normalizeRenderSignature')
+        + extractAppFunction('updateRenderSignatureHash')
+        + extractAppFunction('buildAVBrowsePageKey'), ctx);
+    const rows = [{ UNIQUE_ID: 'a', COMMONNAME: 'A' }, { UNIQUE_ID: 'b', COMMONNAME: 'B' }];
+    const original = ctx.buildAVBrowsePageKey('open', rows);
+    assert.equal(ctx.buildAVBrowsePageKey('open', rows.map(row => ({ ...row, LOCATIONNOTE: 'new note' }))), original);
+    assert.notEqual(ctx.buildAVBrowsePageKey('open', rows.slice().reverse()), original);
+    assert.notEqual(ctx.buildAVBrowsePageKey('photos', rows), original);
+    assert.notEqual(ctx.buildAVBrowsePageKey('open', rows.slice(0, 1)), original);
+    const render = extractAppFunction('renderAV');
+    assert.match(render, /buildRowsRenderSignature\(pageKey, browsePage\.rows/);
+    assert.match(render, /buildRowsRenderSignature\(pageKey, reserveBrowsePage\.rows/);
+});
+
+function avCardChunkFixture({ ios = false, total = 100 } = {}) {
+    const generated = [], batches = [], frames = [], footers = [];
+    const container = { classList: { add() {} }, style: {}, signature: '',
+        insertAdjacentHTML: (_position, markup) => footers.push(markup) };
+    const crumb = {};
+    const ctx = {
+        avRenderChunkToken: 0, CHUNK_RENDER_INTERACTION_HOLD_MAX_MS: 1000,
+        IOS_CHUNK_FRAME_BUDGET_MS: 4, IOS_CHUNK_SYNC_ROW_LIMIT: 48,
+        window: { innerHeight: 800, matchMedia: () => ({ matches: false }) },
+        document: { documentElement: { clientHeight: 800 } }, performance: { now: () => 0 },
+        beginInternalPerfMeasure: () => 0, recordInternalPerfDuration() {}, incrementInternalPerfCounter() {},
+        clearChunkRenderTimersByKey() {},
+        buildRowsRenderSignature: (prefix, rows, fields = []) => JSON.stringify([prefix,
+            rows.map(row => [row.id, ...fields.map(field => row[field])])]),
+        isAdaptivePerformanceMode: () => false, getAdaptivePerformanceLevel: () => 0,
+        isIOSDevice: () => ios, isStandaloneApp: () => false, getIsAvPhotoSubview: () => false,
+        getContainerRenderSignature: target => target.signature,
+        setContainerRenderSignature: (target, signature) => { target.signature = signature; },
+        setContainerHtml: (_target, markup) => { batches.push(markup); },
+        setContainerHtmlWithSignature: (target, markup, signature) => { batches.push(markup); target.signature = signature; },
+        appendHtmlFragment: (_target, markup) => { batches.push(markup); },
+        generateCard: (row, source, status, options) => {
+            generated.push({ id: row.id, source, status, rowIndex: options.rowIndex });
+            return `<card>${row.id}</card>`;
+        },
+        getChunkRenderPacing: target => ({ batchTarget: target, timeBudget: 5, frameDelayMs: 0 }),
+        requestAnimationFrame: callback => frames.push(callback),
+        scheduleChunkRenderTimeout: (_key, callback) => frames.push(callback),
+        shouldHoldFollowupChunkFramesForInteraction: () => false,
+        isUserInLiveTouchScrollGesture: () => false, getIosChunkFrameDelay: () => 0,
+    };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('shouldUseChunkedAVOpenRender')
+        + extractAppFunction('renderAVOpenCardsChunked'), ctx);
+    const rows = Array.from({ length: total }, (_value, id) => ({ id }));
+    const start = () => ctx.renderAVOpenCardsChunked(container, crumb, rows, 'av', 'AV rows', '<footer/>');
+    const flush = () => {
+        let callbacks = 0;
+        while (frames.length) {
+            assert.ok(callbacks++ < 1000, 'chunk queue must finish');
+            frames.shift()();
+        }
+    };
+    return { ctx, rows, generated, batches, footers, container, crumb, start, flush };
+}
+
+test('AV paginated cards render in bounded batches while preserving every row and footer', () => {
+    for (const ios of [false, true]) {
+        for (const total of [20, 100]) {
+            const fixture = avCardChunkFixture({ ios, total });
+            assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows), true);
+            assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows.slice(0, 12)), false);
+            fixture.start();
+            assert.equal(fixture.generated.length, 4, 'first paint fills the viewport without synchronously rendering extra screens');
+            assert.equal(fixture.footers.length, 0, 'footer waits for the full page');
+            fixture.flush();
+            assert.deepEqual(fixture.generated.map(row => row.id), fixture.rows.map(row => row.id));
+            assert.deepEqual(fixture.generated.map(row => row.rowIndex), fixture.rows.map(row => row.id));
+            assert.ok(fixture.batches.every(markup => (markup.match(/<card>/g) || []).length <= (ios ? 8 : 12)));
+            assert.deepEqual(fixture.footers, ['<footer/>']);
+            assert.equal(fixture.crumb.innerText, 'AV rows');
+            assert.ok(fixture.container.signature);
+        }
+    }
+});
+
+test('AV navigation cancellation stops pending card batches and footer publication', () => {
+    const fixture = avCardChunkFixture();
+    fixture.start();
+    const initialCount = fixture.generated.length;
+    fixture.ctx.avRenderChunkToken += 1;
+    fixture.flush();
+    assert.equal(fixture.generated.length, initialCount);
+    assert.deepEqual(fixture.footers, []);
+    assert.equal(fixture.container.signature, '');
+});
+
+test('chunked AV cards refresh when customer reserve summaries change', () => {
+    const fixture = avCardChunkFixture();
+    fixture.start(); fixture.flush();
+    const initial = fixture.generated.length;
+    fixture.start(); fixture.flush();
+    assert.equal(fixture.generated.length, initial, 'unchanged visible page keeps its existing cards');
+    for (const field of ['AV_RESERVE_CUSTOMER_PREVIEW', 'AV_RESERVE_CONSIGNEE_PREVIEW',
+        'AV_RESERVE_SALESREP_PREVIEW', 'AV_RESERVE_ROW_COUNT', 'AV_RESERVE_CUSTOMER_COUNT', 'AV_RESERVE_QTY_TOTAL']) {
+        const previous = fixture.generated.length;
+        fixture.rows[0][field] = 'updated';
+        fixture.start(); fixture.flush();
+        assert.equal(fixture.generated.length, previous + fixture.rows.length, `${field} invalidates the visible cards`);
+    }
+});
+
 function dashboardMetadataFixture() {
     const calls = [];
     const ctx = { Error, Object, String, Number, Array, Set, Map, Math, JSON, Promise, Date, encodeURIComponent, AbortController,
@@ -594,6 +729,12 @@ test('AV and inventory resolve to one identical authoritative read descriptor', 
             ctx.inventoryRead = { operation, params };
             return { rows: [], total: 0, projection: params.projection, fieldCoverage: params.projection, columns: params.projection === 'full' ? inventoryContract.physicalColumns : inventoryContract.columns };
         }, yieldToUiFrame: async () => {}, buildDatasetPayload: (key, rows) => ({ key, rows }),
+        getSupabaseReadIdentityScope: () => 'owner', appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'policy-a' } },
+        currentMasterPreparationSeasonKey: () => 'season-a',
+        prepareProductionMasterSnapshot: async (rows, options = {}) => ({
+            rawRows: options.includeRawRows === false ? [] : JSON.parse(JSON.stringify(rows)),
+            payload: { data: rows }, rowCount: rows.length
+        }),
         canUseHlOrder: () => false }; // This original AV fixture is outside the Dylan-only HL surface.
     vm.createContext(ctx); vm.runInContext(extractAppFunction('validateInventoryReadProjection'), ctx); vm.runInContext(html.slice(from, to), ctx);
     const master = ctx.createProductionCoreLiveAdapter('master'), av = ctx.createProductionCoreLiveAdapter('avOpen');
@@ -1112,7 +1253,11 @@ test('progressive disk display accepts an older revision only with the same acco
     const meta = { contractVersion: 1, scope: 'account-a', adapterId: 'core:master', cacheKey: 'master/all', dataPermissionVersion: 'permission-a', signature: JSON.stringify(['permission-a', ['master', '2', 'ready']]) };
     let saved = { format: 'verified-raw-v1', meta: { ...meta, signature: JSON.stringify(['permission-a', ['master', '1', 'ready']]) }, rawRows: [{ id: 'old-row' }], rowCount: 1,
         projection: 'browse', fieldCoverage: 'browse', columns: inventoryContract.columns };
-    const ctx = { JSON, Array, Map, getSupabaseReadIdentityScope: () => 'account-a', productionDisplaySnapshotTimes: new Map(),
+    const ctx = { JSON, Array, Map, getSupabaseReadIdentityScope: () => 'account-a',
+        appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'permission-a' } },
+        currentMasterPreparationSeasonKey: () => 'season-a',
+        prepareProductionMasterSnapshot: async (rows) => ({ payload: { data: rows }, rowCount: rows.length }),
+        productionDisplaySnapshotTimes: new Map(),
         productionDisplayGroupKey: () => 'cohort', loadCacheValue: async () => saved,
         verifiedSnapshotCacheKey: () => 'scope-key', buildDatasetPayload: (_, rows) => ({ data: rows }),
         window: { AgMetricInventoryList: inventoryContract } };
@@ -1152,6 +1297,168 @@ test('progressive previews wait while Assigned Items has a low-stock draft or fo
     context.getManagerItemLowStockTargetsState = () => ({ drafts: new Map(), saving: new Set() });
     context.document.activeElement = { matches: selector => selector === 'input[data-low-stock-override]' };
     assert.equal(context.hasDraft(), true);
+});
+
+test('AV primary previews render inventory without promoting write proof or joined lookup data', () => {
+    const payloads = [], renders = [], invalidations = [], freshness = [], groups = new Set();
+    const state = { fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedRevision: '' };
+    const context = { view: 'av', progressive: true, visible: true, partialCohort: true };
+    const preparedMasterRows = [{ UNIQUE_ID: 'first-page' }], preparedAvRows = [{ UNIQUE_ID: 'av-first-page' }];
+    const preparedMaster = { avOpenRows: preparedAvRows };
+    const ctx = { activeAVTab: 'open', fullInventory: preparedMasterRows, avOpenInventory: preparedAvRows,
+        getCurrentPreparedMasterRows: rows => rows === preparedMasterRows && ctx.avOpenInventory === preparedAvRows ? preparedMaster : null,
+        hasProductionLiveSyncDraft: () => false,
+        confirmedArgosReclassLiveEditRevisions: new Map(), getArgosReclassLiveEditIdentityKey: () => 'actor',
+        productionDisplayGroups: groups, productionDisplaySnapshotTimes: new Map(), productionDisplayVerifiedAt: new Map(),
+        productionDisplayGroupKey: () => 'av-cohort', productionLiveSyncCoordinator: { getStatus: () => ({ state: 'Syncing' }) },
+        processAndLoadData: value => payloads.push(value), renderProductionDataFreshness: status => freshness.push(status),
+        invalidateResolvedViewStateCaches: () => invalidations.push('invalidated'),
+        scheduleProductionLiveSyncRender: (...args) => renders.push(args), getDatasetState: () => state
+    };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('previewProductionSnapshots'), ctx);
+    const entries = [{ adapter: { id: 'core:master' }, value: { partial: true, payload: { data: preparedMasterRows } } }];
+    ctx.previewProductionSnapshots(entries, context);
+    assert.equal(payloads.length, 0, 'the exact current prepared arrays are already displayed');
+    assert.equal(invalidations.length, 0, 'reusing the prepared arrays keeps resolved view state intact');
+    assert.equal(renders.length, 1, 'the display still schedules its AV render');
+    assert.deepEqual(freshness, [{ state: 'Syncing' }], 'reuse still publishes the current freshness status');
+    assert.equal(groups.has('av-cohort'), true);
+    assert.deepEqual(state, { fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedRevision: '' });
+    assert.equal(ctx.productionDisplayVerifiedAt.size, 0, 'a partial cohort has no complete verified timestamp');
+
+    const newRows = [{ UNIQUE_ID: 'new-preview' }];
+    ctx.previewProductionSnapshots([{ adapter: { id: 'core:master' }, value: { partial: true, payload: { data: newRows } } }], context);
+    assert.equal(payloads.length, 1, 'a new array still goes through master preparation and publication');
+    assert.equal(payloads[0]._fromCache, true); assert.equal(payloads[0]._locOnHandReceiptRevision, undefined);
+    assert.equal(invalidations.length, 1, 'new display data invalidates resolved view state');
+    assert.equal(renders.length, 2);
+    assert.deepEqual(freshness, [{ state: 'Syncing' }, { state: 'Syncing' }]);
+    assert.deepEqual(state, { fullLoaded: false, rowCompleteness: 'unknown', liveVerifiedRevision: '' }, 'preview data never promotes proof');
+
+    ctx.activeAVTab = 'reserves'; ctx.previewProductionSnapshots(entries, context);
+    ctx.activeAVTab = 'open'; ctx.hasProductionLiveSyncDraft = () => true; ctx.previewProductionSnapshots(entries, context);
+    ctx.hasProductionLiveSyncDraft = () => false;
+    ctx.previewProductionSnapshots([{ adapter: { id: 'side:settings', commit() { throw new Error('partial side commit'); } }, value: {} }], context);
+    assert.equal(payloads.length, 1, 'tab changes, drafts and non-primary cohorts do not paint');
+    assert.equal(invalidations.length, 1);
+});
+
+test('only AV Open opts into the primary preview subset and its tab belongs to context identity', () => {
+    const ctx = { currentUser: 'actor', currentRole: 'Manager', nativeAuthProfile: { id: 'actor' }, activeAVTab: 'open',
+        appAccessSnapshotState: { status: 'ready', stale: false, username: 'actor', snapshot: { dataPermissionVersion: 'policy' } },
+        getRequestCapabilityUsernameKey: value => value, document: { hidden: false, body: { classList: { contains: () => true } } },
+        productionLiveSyncNavigation: new AbortController(), navigator: { onLine: true }, canUseProductionLiveSync: () => true,
+        view: 'av', surfaces: [], getActiveManagerReportPageSurface: () => '', getCurrentLoginCacheScopeKey: () => 'actor',
+        getProductionLiveSyncSideContext: () => ({ view: ctx.view, surfaces: ctx.surfaces }),
+        productionLiveSyncSideAdapters: { getViewAdapters: () => [{ id: 'side:settings' }] },
+        RETIRED_DATASET_KEYS: new Set(), getProductionCoreLiveProjection: () => 'browse',
+        createProductionCoreLiveAdapter: key => ({ id: `core:${key}` }),
+        window: { AgMetricLiveSyncRegistry: { views: { av: { kind: 'data' }, drive: { kind: 'data' }, home: { kind: 'static' } },
+            getCoreKeys: view => view === 'home' ? [] : ['reserves', 'master'] } },
+        appendSuspendTagBackgroundCustomerRepMap() {}, productionLiveSyncNavigationGeneration: 1, observeHlOrderVerificationContext: value => value
+    };
+    vm.createContext(ctx); vm.runInContext(extractAppFunction('getProductionLiveSyncContext'), ctx);
+    const open = ctx.getProductionLiveSyncContext();
+    assert.deepEqual(Array.from(open.previewAdapterIds), ['core:master']);
+    assert.equal(open.adapters[0].id, 'core:master');
+    ctx.activeAVTab = 'reserves'; const reserves = ctx.getProductionLiveSyncContext();
+    assert.equal(reserves.previewAdapterIds, undefined); assert.notEqual(reserves.viewKey, open.viewKey);
+    ctx.activeAVTab = 'open'; ctx.surfaces = ['dialog:request']; assert.equal(ctx.getProductionLiveSyncContext().previewAdapterIds, undefined);
+    ctx.view = 'drive'; ctx.surfaces = []; assert.equal(ctx.getProductionLiveSyncContext().previewAdapterIds, undefined);
+});
+
+test('production proof key matches the coordinator identity including sorted preview adapter IDs', () => {
+    const ctx = {};
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('productionVerifiedViewKey'), ctx);
+    const context = { scope: 'actor-scope', dataPermissionVersion: 'policy-v1', viewKey: 'av-open',
+        adapters: [{ id: 'core:master', cacheKey: 'master/browse' }, { id: 'side:settings', cacheKey: 'settings/v1' }],
+        previewAdapterIds: ['side:settings', 'core:master'] };
+    const proofKey = ctx.productionVerifiedViewKey(context);
+    const coordinatorKey = JSON.stringify([context.scope, context.dataPermissionVersion, context.viewKey,
+        context.adapters.map(adapter => [adapter.id, adapter.cacheKey]), ['core:master', 'side:settings']]);
+    assert.equal(proofKey, coordinatorKey);
+    assert.notEqual(proofKey, ctx.productionVerifiedViewKey({ ...context, previewAdapterIds: ['core:master'] }));
+    assert.notEqual(proofKey, ctx.productionVerifiedViewKey({ ...context, previewAdapterIds: undefined }));
+    assert.equal(ctx.productionVerifiedViewKey({ ...context, previewAdapterIds: [] }), JSON.stringify([
+        context.scope, context.dataPermissionVersion, context.viewKey,
+        context.adapters.map(adapter => [adapter.id, adapter.cacheKey]), []
+    ]), 'an explicit empty preview subset remains distinct, matching coordinator identity semantics');
+});
+
+test('AV filter-field union preserves Drive resolver parity and caches by dataset and access context', () => {
+    const calls = [];
+    let owner = 'account-a';
+    const ctx = { activeDriveTab: 'name', resolvedViewStateEpoch: 3,
+        appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'policy-a' } },
+        getSupabaseReadIdentityScope: () => owner,
+        DRIVE_COLUMN_FILTER_ALLOWED_HEADERS: [
+            { key: 'ITEMCODE', label: 'Item Code' }, { key: 'COMMONNAME', label: 'Common Name' },
+            { key: 'LOCATIONCODE', label: 'Location' }, { key: 'ASSIGNEDTO', label: 'Assigned To' }
+        ],
+        DRIVE_COLUMN_FILTER_ALLOWED_HEADER_KEYS: new Set(['ITEMCODE', 'COMMONNAME', 'LOCATIONCODE', 'ASSIGNEDTO']),
+        DRIVE_COLUMN_FILTER_COMMON_HEADERS: ['ITEMCODE', 'COMMONNAME', 'LOCATIONCODE', 'ASSIGNEDTO'],
+        normalizeDriveColumnFilterKey: value => { calls.push(String(value)); return String(value || '').trim().toUpperCase(); },
+        formatDriveColumnHeaderLabel: key => key,
+        Array, Object, Map, Set, String, Number, JSON
+    };
+    vm.createContext(ctx);
+    vm.runInContext(`let avColumnFilterFieldsCache = null;\n${extractAppFunction('getDriveColumnFilterFields')}\n${extractAppFunction('getAvColumnFilterFields')}`, ctx);
+    const items = [
+        { itemcode: 'A', 'Common Name': 'Rose', assignedto: 'Rep 1' },
+        { ITEMCODE: 'B', 'Location Code': 'North', assignedto: 'Rep 2' }
+    ];
+    const baseline = JSON.stringify(ctx.getDriveColumnFilterFields(items));
+    calls.length = 0;
+    assert.equal(JSON.stringify(ctx.getAvColumnFilterFields(items)), baseline);
+    assert.equal(calls.filter(value => value === 'itemcode').length, 1, 'a repeated source header is normalized once across all rows');
+    assert.equal(calls.filter(value => value === 'Common Name').length, 1);
+    assert.equal(calls.filter(value => value === 'assignedto').length, 1);
+    const callsAfterBuild = calls.length;
+    ctx.getAvColumnFilterFields(items);
+    assert.equal(calls.length, callsAfterBuild, 'a same-context lookup reuses the bounded AV cache');
+
+    owner = 'account-b';
+    ctx.getAvColumnFilterFields(items);
+    assert.ok(calls.length > callsAfterBuild, 'identity changes invalidate cached field metadata');
+    const afterOwner = calls.length;
+    ctx.appAccessSnapshotState.snapshot.dataPermissionVersion = 'policy-b';
+    ctx.getAvColumnFilterFields(items);
+    assert.ok(calls.length > afterOwner, 'permission changes invalidate cached field metadata');
+    const afterPermission = calls.length;
+    ctx.resolvedViewStateEpoch += 1;
+    ctx.getAvColumnFilterFields(items);
+    assert.ok(calls.length > afterPermission, 'resolved dataset changes invalidate cached field metadata');
+    const afterEpoch = calls.length;
+    ctx.activeDriveTab = 'season-sales-notes';
+    const seasonal = ctx.getAvColumnFilterFields(items);
+    assert.ok(calls.length > afterEpoch, 'the source tab is part of cache identity');
+    assert.ok(seasonal.some(field => field.key === 'ASSIGNEDTO'), 'Assigned To remains exposed only for its established tab');
+    assert.equal(JSON.stringify(ctx.getAvColumnFilterFields([...items])), JSON.stringify(ctx.getDriveColumnFilterFields(items)));
+});
+
+test('revision reads gate status refreshes only for current identity and matching data permissions', async () => {
+    const from = html.indexOf('readRevisions: (keys, options = {}) => withProductionLiveSyncSignal');
+    const to = html.indexOf('\n                readCachedSnapshot:', from);
+    assert.ok(from > 0 && to > from);
+    const source = html.slice(from + 'readRevisions: '.length, to).trim().replace(/,$/, '');
+    const readiness = [], gate = deferred();
+    let owner = 'actor-a';
+    const metadata = { contractVersion: 1, permissionVersion: 'policy-a', sources: [{ key: 'ph_master_inventory', revision: '7', state: 'ready' }] };
+    const ctx = { getSupabaseReadIdentityScope: () => owner, withProductionLiveSyncSignal: (_signal, action) => action(new AbortController().signal),
+        supabaseRpc: async () => metadata, inventoryStatusSync: { setSourceReady: value => readiness.push(value) },
+        appAccessSnapshotState: { snapshot: { dataPermissionVersion: 'policy-a' } } };
+    vm.createContext(ctx); const read = vm.runInContext(`(${source})`, ctx);
+    await read(['ph_master_inventory']); assert.deepEqual(readiness, [true]);
+    metadata.sources[0].state = 'importing'; await read(['ph_master_inventory']);
+    metadata.sources[0].state = 'ready'; metadata.permissionVersion = 'policy-b'; await read(['ph_master_inventory']);
+    assert.deepEqual(readiness, [true, false, false]);
+    ctx.supabaseRpc = () => gate.promise;
+    const pending = read(['ph_master_inventory']); owner = 'actor-b'; gate.resolve(metadata); await pending;
+    assert.equal(readiness.length, 3, 'late metadata from the prior identity is discarded');
+    ctx.supabaseRpc = async () => { throw new Error('metadata timeout'); };
+    await assert.rejects(read(['ph_master_inventory']), /metadata timeout/);
+    assert.deepEqual(readiness, [true, false, false, false], 'failed metadata fences pair retries');
 });
 
 test('SIGNED_OUT watcher invalidates pending native recovery before clearing the session', () => {

@@ -302,22 +302,28 @@ test('production subscription authenticates one inventory UPDATE listener and re
   const start = html.indexOf('subscribe: (changed, reconnected) => {');
   const end = html.indexOf('\n                }', start);
   const source = html.slice(start + 'subscribe: '.length, end + '\n                }'.length);
-  const handlers = [], status = { resumes: 0, suspends: 0, events: 0, removals: 0 };
+  const handlers = [], readiness = [], changed = [], status = { resumes: 0, suspends: 0, events: 0, removals: 0 };
   let scope = 'first', subscribed;
   const channel = { on: (_kind, filter, handler) => { handlers.push({ filter, handler }); return channel; },
     subscribe: handler => { subscribed = handler; return channel; } };
   const context = vm.createContext({
     nativeAuthProfile: { id: 'first' }, getSupabaseReadIdentityScope: () => scope,
     getSupabaseBrowserClient: () => ({ channel: () => channel, removeChannel: async () => { status.removals++; } }),
-    getInventoryStatusSync: () => ({ handleUpdate: () => { status.events++; }, resume: () => { status.resumes++; }, suspend: () => { status.suspends++; } }),
+    getInventoryStatusSync: () => ({ setSourceReady: ready => readiness.push(ready), handleUpdate: () => { status.events++; }, resume: () => { status.resumes++; }, suspend: () => { status.suspends++; } }),
   });
   const subscribe = vm.runInContext(`(${source})`, context);
-  const cleanup = subscribe(() => {}, () => {});
+  const cleanup = subscribe(payload => changed.push(payload), () => {});
   const master = handlers.filter(entry => entry.filter.table === 'ph_master_inventory');
   assert.equal(master.length, 1); assert.equal(master[0].filter.event, 'UPDATE');
   subscribed('SUBSCRIBED'); master[0].handler({ new: pair });
   assert.equal(status.resumes, 1); assert.equal(status.events, 1);
+  const metadata = handlers.find(entry => entry.filter.table === 'app_dataset_revisions');
+  for (const state of ['importing', 'interrupted', 'ready']) metadata.handler({ new: { key: 'ph_master_inventory', state } });
+  assert.deepEqual(readiness, [false, false, false, true]);
+  assert.equal(changed.length, 3, 'metadata also retains normal cohort reconciliation');
   scope = 'second'; master[0].handler({ new: pair }); subscribed('SUBSCRIBED');
+  metadata.handler({ new: { key: 'ph_master_inventory', state: 'importing' } });
+  assert.equal(readiness.length, 4, 'old-session metadata cannot gate the new session');
   assert.equal(status.resumes, 1); assert.equal(status.events, 1);
   cleanup();
   assert.equal(status.suspends, 1); assert.equal(status.removals, 1);

@@ -529,6 +529,51 @@ for (const finalFailure of [false, true]) test(`progressive display precedes com
     coordinator.reset();
 });
 
+test('a configured primary preview adapter displays before side adapters finish without committing early', async () => {
+    const primaryGate = deferred(), sideGate = deferred(), shown = [], committed = [];
+    const primary = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'],
+        stage: async ({ preview }) => {
+            preview({ rows: ['first page'], partial: true }); await primaryGate.promise;
+            preview({ rows: ['updated first page'], partial: true }); return { rows: ['all rows'] };
+        },
+        commit: value => committed.push(value) };
+    const side = { id: 'core:reserves', cacheKey: 'reserves/all', sourceKeys: ['reserves'],
+        stage: async () => { await sideGate.promise; return { rows: ['reserves'] }; }, commit: value => committed.push(value) };
+    const context = { scope: 'account-permissions', viewKey: 'av', progressive: true, visible: true, online: true,
+        previewAdapterIds: ['core:master'], adapters: [primary, side] };
+    const coordinator = createCoordinator({ getContext: () => context, concurrency: 2, setTimeout: () => 1, clearTimeout() {},
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }),
+        previewSnapshots: (...args) => shown.push(args),
+        commitSnapshots: entries => committed.push(entries) });
+    const pending = coordinator.check('visible-view'); await settle();
+    assert.equal(shown.length, 1, 'the primary first page is available while the side adapter is pending');
+    assert.deepEqual(shown[0][0].map(entry => entry.adapter.id), ['core:master']);
+    assert.equal(shown[0][0][0].value.partial, true);
+    assert.equal(typeof shown[0][2].sources.get, 'function', 'the established before-revision argument remains third');
+    assert.equal(shown[0][1].partialCohort, true);
+    assert.equal(committed.length, 0, 'a partial display never commits or proves a cohort');
+    primaryGate.resolve(); sideGate.resolve();
+    assert.equal(await pending, true);
+    assert.equal(shown.length, 2, 'a changed master object previews; the side adapter does not replay that identical subset');
+    assert.deepEqual(shown[1][0].map(entry => entry.adapter.id), ['core:master']);
+    assert.deepEqual(shown[1][0][0].value.rows, ['updated first page']);
+    assert.equal(committed.length, 1, 'the existing full-cohort commit runs only after every adapter and revision check completes');
+    coordinator.reset();
+});
+
+test('partial preview subsets must name unique visible adapters', async () => {
+    const adapter = { id: 'core:master', cacheKey: 'master/all', sourceKeys: ['inventory'], stage: async () => [], commit() {} };
+    const context = { scope: 'a', viewKey: 'av', progressive: true, visible: true, online: true,
+        previewAdapterIds: ['core:missing'], adapters: [adapter] };
+    const statuses = [];
+    const coordinator = createCoordinator({ getContext: () => context, setTimeout: () => 1, clearTimeout() {},
+        onStatus: status => statuses.push(status),
+        readRevisions: async keys => ({ contractVersion: 1, permissionVersion: 'p1', sources: keys.map(key => ({ key, state: 'ready', revision: '1' })) }) });
+    assert.equal(await coordinator.check(), false);
+    assert.match(statuses.at(-1).message, /preview adapter subset is invalid/);
+    coordinator.reset();
+});
+
 test('progressive callbacks cannot display an obsolete account response', async () => {
     const gate = deferred(), shown = [];
     const context = { scope: 'a', viewKey: 'drive', progressive: true, visible: true, online: true,
