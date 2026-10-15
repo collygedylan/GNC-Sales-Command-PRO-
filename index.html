@@ -114665,8 +114665,9 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 const info = getDockSuspendDcRequestPlanstartInfo(item);
                 return [getItemUniqueId(item), info.value, info.tone, info.valid];
             });
+            const mirrorPreparationState = isDockSuspendDcRequestMirrorPreparationPending() ? 'mirrors-preparing' : 'mirrors-ready';
             return { ...plan, allItems, searchItems, assignedItems, contSizeItems,
-                renderSignature: `${plan.renderSignature}:planstart:${JSON.stringify(planstartSignature)}` };
+                renderSignature: `${plan.renderSignature}:${mirrorPreparationState}:planstart:${JSON.stringify(planstartSignature)}` };
         }
 
         function getRequestSuspendTagSearchInputState(event = null) {
