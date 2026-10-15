@@ -67,7 +67,8 @@ export const inventoryAssignmentWitnessMigrationName = '20261014160924_inventory
 export const inventoryAssignmentInputGenerationMigrationName = '20261014161813_inventory_assignment_input_generation.sql';
 export const customerAssignmentOverridesMigrationName = '20261014214542_customer_assignment_overrides.sql';
 export const bulkMasterSnapshotMigrationName = '20261015012249_bulk_master_snapshot_v1.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName]);
+export const importHistoryRoutingMigrationName = '20261015165733_import_history_routing.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -229,6 +230,46 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === importHistoryRoutingMigrationName) return `select
+    (select count(*)=2 and bool_and(c.relrowsecurity)
+      and bool_and(not has_table_privilege('anon',c.oid,'select,insert,update,delete'))
+      and bool_and(not has_table_privilege('authenticated',c.oid,'select,insert,update,delete'))
+      and bool_and(not has_table_privilege('service_role',c.oid,'select,insert,update,delete'))
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='import_private' and c.relname in ('import_history_files','import_history_rows'))
+    and (select count(*)=3 and bool_and(p.prosecdef)
+      and bool_and(p.proconfig @> array['search_path=""','statement_timeout=55s'])
+      and bool_and(has_function_privilege('service_role',p.oid,'execute'))
+      and bool_and(not has_function_privilege('authenticated',p.oid,'execute'))
+      and bool_and(not has_function_privilege('anon',p.oid,'execute'))
+      from pg_proc p where p.oid in (
+        to_regprocedure('public.begin_import_history_v1(text,text,text,text,date,timestamptz,integer,text[],text)'),
+        to_regprocedure('public.stage_import_history_rows_v1(uuid,jsonb)'),
+        to_regprocedure('public.publish_import_history_v1(uuid)')))
+    and (select count(*)=2 and bool_and(p.prosecdef)
+      and bool_and(p.proconfig @> array['search_path=""'])
+      and bool_and(has_function_privilege('authenticated',p.oid,'execute'))
+      and bool_and(has_function_privilege('service_role',p.oid,'execute'))
+      and bool_and(not has_function_privilege('anon',p.oid,'execute'))
+      and bool_and(position('can_manage_eval_assignments' in p.prosrc)>0)
+      from pg_proc p where p.oid in (
+        to_regprocedure('public.list_import_history_v1(text,date,integer,integer)'),
+        to_regprocedure('public.get_import_history_rows_v1(uuid,integer,integer)')))
+    and exists(select 1 from pg_index i join pg_class c on c.oid=i.indexrelid
+      where c.oid=to_regclass('import_private.import_history_files_ready_page_idx')
+        and pg_get_indexdef(c.oid) ilike '%(dataset, report_date DESC, daily_sequence DESC)%'
+        and pg_get_expr(i.indpred,i.indrelid) ilike '%status%ready%')
+    and exists(select 1 from pg_class c where c.oid=to_regclass('import_private.import_history_rows_pkey')
+      and pg_get_indexdef(c.oid) ilike '%(snapshot_id, row_number)%')
+    and position('IMPORT_HISTORY_RETRY_CONFLICT' in pg_get_functiondef(
+      'public.begin_import_history_v1(text,text,text,text,date,timestamptz,integer,text[],text)'::regprocedure))>0
+    and position('IMPORT_HISTORY_ROW_RETRY_CONFLICT' in pg_get_functiondef(
+      'public.stage_import_history_rows_v1(uuid,jsonb)'::regprocedure))>0
+    and position('IMPORT_HISTORY_STAGE_GAP' in pg_get_functiondef(
+      'public.stage_import_history_rows_v1(uuid,jsonb)'::regprocedure))>0
+    and position('IMPORT_HISTORY_ROWS_INCOMPLETE' in pg_get_functiondef(
+      'public.publish_import_history_v1(uuid)'::regprocedure))>0
+    as installed`;
   if (name === bulkMasterSnapshotMigrationName) return `select
     exists(select 1 from pg_proc p
       where p.oid=to_regprocedure('public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)')

@@ -16650,6 +16650,20 @@ export type Database = {
         Args: { p_manifest: Json }
         Returns: Json
       }
+      begin_import_history_v1: {
+        Args: {
+          p_columns: string[]
+          p_dataset: string
+          p_expected_rows: number
+          p_file_id: string
+          p_file_name: string
+          p_report_date: string
+          p_source_hash: string
+          p_source_timestamp: string
+          p_source_version: string
+        }
+        Returns: Json
+      }
       bloomscapes_pending_command: {
         Args: { p_action: string; p_payload?: Json; p_request_id?: string }
         Returns: Json
@@ -17596,6 +17610,10 @@ export type Database = {
         Returns: Json
       }
       get_hosted_health_snapshot: { Args: never; Returns: Json }
+      get_import_history_rows_v1: {
+        Args: { p_after_row?: number; p_limit?: number; p_snapshot_id: string }
+        Returns: Json
+      }
       get_item_inquiry_coverage_v1: { Args: never; Returns: Json }
       get_limited_access_control_matrix_v1: {
         Args: { p_query?: Json }
@@ -17800,6 +17818,15 @@ export type Database = {
       }
       list_expired_codex_ops_evidence_service_v1: {
         Args: { p_limit?: number }
+        Returns: Json
+      }
+      list_import_history_v1: {
+        Args: {
+          p_before_date?: string
+          p_before_sequence?: number
+          p_dataset: string
+          p_limit?: number
+        }
         Returns: Json
       }
       manager_ncr_outbox_metadata_v1: {
@@ -18054,6 +18081,10 @@ export type Database = {
       }
       publish_access_control_policy_v1: {
         Args: { p_expected_revision: number; p_reason: string }
+        Returns: Json
+      }
+      publish_import_history_v1: {
+        Args: { p_snapshot_id: string }
         Returns: Json
       }
       reassign_eval_work_v1: {
@@ -18851,6 +18882,10 @@ export type Database = {
       stage_eval_item_low_stock_rows_v1: {
         Args: { p_file_version_id: string; p_rows: Json }
         Returns: number
+      }
+      stage_import_history_rows_v1: {
+        Args: { p_rows: Json; p_snapshot_id: string }
+        Returns: Json
       }
       submit_eval_work_legacy_v1: {
         Args: {

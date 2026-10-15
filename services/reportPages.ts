@@ -3,6 +3,10 @@ import { createElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef
 import { createRoot, type Root } from 'react-dom/client';
 import { useVirtualizer, type ReactVirtualizer } from '@tanstack/react-virtual';
 import type { ReportPage, ReportPageQuery, ReportRow, ReportRowsMount, ReportRowsMountOptions, ReportSession, ReportSessionConfig } from '../components/report-pages/contract';
+export { clearImportHistorySessions, createImportHistoryService, importHistoryDatasets, IMPORT_HISTORY_PAGE_SIZE } from './importHistory';
+export type { ImportHistoryCursor, ImportHistoryDataset, ImportHistoryFilePage, ImportHistoryRow, ImportHistoryRowPage, ImportHistoryServiceConfig, ImportHistorySnapshot, ImportHistoryTransport } from './importHistory';
+export { renderImportedFilesPanel } from '../components/import-history/ImportedFilesPanel';
+export type { ImportedFilesPanelState } from '../components/import-history/ImportedFilesPanel';
 
 const MAX_PAGES_PER_SURFACE = 8;
 const MAX_IN_FLIGHT = 2;

@@ -14976,6 +14976,10 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
             const id = String(viewId || '').trim();
             if (!id) return false;
             if (id === 'managers' && document.querySelector('#managers-content .assigned-filter-controls')) return false;
+            // The compact Manager layout already uses an in-flow sticky header.
+            // Fixing it inside the tablet scroll shell offsets it over the module
+            // content while the spacer remains in normal flow.
+            if (id === 'managers' && (window.innerWidth || document.documentElement.clientWidth || 0) <= 820) return false;
             const body = document.body;
             const iosActive = isIOSDevice() || (body && body.classList.contains('ios-device'));
             if (iosActive && body && body.classList.contains('viewport-phone')) return false;
@@ -32413,6 +32417,12 @@ let emailRecipientOpenGroupByContext={ bloom: '', av: '', drive: '', advertiseme
 let activeHomeTab='dashboard'; let managersSearchTerm=''; let activeShearApprovalDetailId=''; let activeProductivityTeamTab='inventory'; let selectedProductivityUser=''; let productivityDateStart=''; let productivityDateEnd=''; let productivityViewMode='cards'; let productivityHistoryByUser=new Map(); let productivityHistoryLoadState=new Map(); let productivityHistorySchemaReady=null; let productivityHistorySchemaPromise=null; let productivityHistorySchemaWarningShown=false; let productivityHistoryBackfillPromise=null; let productivityUserDirectoryState={ rows: [], loading: false, loaded: false, error: '', promise: null }; let inventoryTransactionHistoryState={ rows: [], loading: false, loaded: false, error: '', promise: null, action: 'all', search: '', dateStart: '', dateEnd: '' }; let managerAssignedItemsAssignedToFilter='all'; let managerEvalAssignmentSelection=new Set();
 let activeManagerEvalReport='s1-with-pri'; let activeManagerEvalReportView='name'; let managerEvalReportSelectedCommonName=''; let managerEvalReportSelectedBlock=''; let managerEvalReportSelectedLocation=''; let managerEvalReportSeasonFilter='all'; let managerEvalReportContSizeFilter='all'; let managerEvalReportAssignedToFilter='all'; let managerEvalReportPriorityFilter='all'; let managerEvalReportSettings={lowStockMaxSLts:150,holdAgeDays:5,locationNoteAgeDays:10,updatedBy:'',updatedAt:''}; let managerEvalReportSettingsState={loaded:false,loading:false,fallback:false,error:'',promise:null,saving:false}; let managerEvalReportCacheKey=''; let managerEvalReportCache=null;
 let managerHistoricalReportState={level:'names',commonNames:[],containerSizes:[],rows:[],selectedCommonName:'',selectedContSize:'',selectedColumns:['report_date','itemcode','locationcode','lotcode','ptravailable','holdstopcode','holdstopreason'],loadedColumns:[],dateStart:'',dateEnd:'',displayMode:'cards',loading:false,loadingMore:false,error:'',hasMore:false,nextCursor:null,dirty:false,requestToken:0,lastSearch:''};
+let managerHistoricalReportMode='inventory-history';
+let managerImportedHistoryUiState={owner:'',dataset:'drive',files:[],hasMoreFiles:false,hasPreviousFiles:false,filePageNumber:1,filePageCursors:[null],nextFileCursor:null,filesLoading:false,filesError:'',selectedSnapshotId:'',selectedSnapshot:null,selectedColumns:[],columnSearch:'',columnError:'',rows:[],rowsLoading:false,rowsRefreshing:false,rowsError:'',rowCount:0,rowPageNumber:1,rowPageCursors:[0],nextRow:null,hasMoreRows:false,fileRequestToken:0,rowRequestToken:0};
+let managerImportHistoryModulePromise=null;
+let managerImportHistoryModule=null;
+let managerImportHistoryService=null;
+let managerImportHistoryServiceOwner='';
 let managerTransactionsKeyedState={summary:{},availableDates:[],dateMetrics:[],allDates:[],files:[],selectedDate:'',search:'',loading:false,loadingMoreDates:false,loadingMoreFiles:false,loaded:false,error:'',allDatesHasMore:false,filesHasMore:false,allDatesTotal:0,filesTotal:0,requestToken:0};
 let managerOrdersState={level:'sources',sources:[],sourceKey:'',batches:[],batch:null,rows:[],assignees:[],unmatchedItems:[],unmatchedItemsTruncated:false,selectedBatchId:'',selectedAssigneeKeys:new Set(),loading:false,loaded:false,error:'',batchesHasMore:false,batchesNextCursor:null,rowsHasMore:false,rowsNextCursor:null,filteredRowCount:0,requestToken:0};
 let accessControlAdminState={data:null,loading:false,loaded:false,saving:false,publishing:false,error:'',selectedModule:'all',selectedRole:'all',viewMode:'users',editor:null,publishReason:'',requestToken:0,columnOffset:0,columnPageSize:8,subjectOffset:0,subjectPageSize:100,capabilities:null};
@@ -138206,11 +138216,255 @@ C.14.043 C.15.000
             return false;
         }
 
+        function managerImportHistoryCurrentOwner() {
+            return JSON.stringify([getSupabaseReadIdentityScope(), String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '')]);
+        }
+
+        function getManagerImportedHistoryState() {
+            const owner = managerImportHistoryCurrentOwner();
+            if (managerImportedHistoryUiState.owner !== owner) {
+                managerImportHistoryService?.clear();
+                managerImportHistoryService = null;
+                managerImportHistoryServiceOwner = '';
+                managerImportedHistoryUiState = {
+                    owner, dataset: 'drive', files: [], hasMoreFiles: false, hasPreviousFiles: false,
+                    filePageNumber: 1, filePageCursors: [null], nextFileCursor: null, filesLoading: false, filesError: '',
+                    selectedSnapshotId: '', selectedSnapshot: null, selectedColumns: [], columnSearch: '', columnError: '',
+                    rows: [], rowsLoading: false, rowsRefreshing: false, rowsError: '', rowCount: 0,
+                    rowPageNumber: 1, rowPageCursors: [0], nextRow: null, hasMoreRows: false,
+                    fileRequestToken: managerImportedHistoryUiState.fileRequestToken + 1,
+                    rowRequestToken: managerImportedHistoryUiState.rowRequestToken + 1
+                };
+            }
+            return managerImportedHistoryUiState;
+        }
+
+        async function getManagerImportedHistoryService() {
+            if (!canViewManagerHistoricalReport()) throw new Error('Historical Reports are available only to Dylan and Megan.');
+            const state = getManagerImportedHistoryState();
+            const owner = state.owner;
+            if (!owner || owner !== managerImportHistoryCurrentOwner()) throw staleSupabaseReadScopeError();
+            if (managerImportHistoryService && managerImportHistoryServiceOwner === owner) return managerImportHistoryService;
+            if (!managerImportHistoryModulePromise) {
+                managerImportHistoryModulePromise = import('/assets/report-pages.js?v=' + APP_VERSION).then(module => {
+                    managerImportHistoryModule = module;
+                    return module;
+                }).catch(error => {
+                    managerImportHistoryModulePromise = null;
+                    throw error;
+                });
+            }
+            const module = await managerImportHistoryModulePromise;
+            if (owner !== managerImportHistoryCurrentOwner() || !canViewManagerHistoricalReport()) throw staleSupabaseReadScopeError();
+            managerImportHistoryService = module.createImportHistoryService({
+                scopeKey: () => getSupabaseReadIdentityScope(),
+                permissionVersion: () => String(appAccessSnapshotState.snapshot?.dataPermissionVersion || ''),
+                transport: async (rpcName, payload, signal) => {
+                    const requestOwner = managerImportHistoryCurrentOwner();
+                    if (requestOwner !== owner || !canViewManagerHistoricalReport()) throw staleSupabaseReadScopeError();
+                    const reply = await supabaseRpc(rpcName, payload, { signal, timeoutMs: 20000 });
+                    if (requestOwner !== managerImportHistoryCurrentOwner() || !canViewManagerHistoricalReport()) throw staleSupabaseReadScopeError();
+                    return reply;
+                }
+            });
+            managerImportHistoryServiceOwner = owner;
+            void managerImportHistoryService.prefetchSnapshotChoices();
+            return managerImportHistoryService;
+        }
+
+        function setManagerHistoricalReportMode(mode = 'inventory-history') {
+            if (!canViewManagerHistoricalReport()) return false;
+            managerHistoricalReportMode = String(mode || '').trim().toLowerCase() === 'imported-files' ? 'imported-files' : 'inventory-history';
+            scheduleManagersRender(true);
+            if (managerHistoricalReportMode === 'imported-files' && !getManagerImportedHistoryState().files.length) {
+                void loadManagerImportedHistoryFiles(false);
+            }
+            return false;
+        }
+
+        function resetManagerImportedHistoryDatasetState(state, dataset) {
+            Object.assign(state, {
+                dataset, files: [], hasMoreFiles: false, hasPreviousFiles: false, filePageNumber: 1,
+                filePageCursors: [null], nextFileCursor: null, filesError: '', selectedSnapshotId: '', selectedSnapshot: null,
+                filesLoading: false, selectedColumns: [], columnSearch: '', columnError: '', rows: [], rowsLoading: false,
+                rowsRefreshing: false, rowsError: '', rowCount: 0,
+                rowPageNumber: 1, rowPageCursors: [0], nextRow: null, hasMoreRows: false
+            });
+        }
+
+        function setManagerImportedHistoryDataset(dataset = '') {
+            if (!['drive', 'soc', 'reserves'].includes(String(dataset))) return false;
+            const state = getManagerImportedHistoryState();
+            if (state.dataset === dataset) return false;
+            state.fileRequestToken += 1; state.rowRequestToken += 1;
+            resetManagerImportedHistoryDatasetState(state, dataset);
+            scheduleManagersRender(true);
+            void loadManagerImportedHistoryFiles(false);
+            return false;
+        }
+
+        async function loadManagerImportedHistoryFiles(force = false, direction = 'next') {
+            if (!canViewManagerHistoricalReport()) return false;
+            const state = getManagerImportedHistoryState();
+            if (state.filesLoading) return false;
+            let targetIndex = state.filePageNumber - 1;
+            let cursor = state.filePageCursors[targetIndex] || null;
+            if (force) { targetIndex = 0; cursor = null; }
+            else if (!state.files.length && !state.filesError && targetIndex === 0) { cursor = null; }
+            else if (direction === 'previous') { targetIndex = Math.max(0, targetIndex - 1); cursor = state.filePageCursors[targetIndex] || null; }
+            else {
+                if (!state.hasMoreFiles || !state.nextFileCursor) return false;
+                cursor = state.nextFileCursor;
+                targetIndex += 1;
+            }
+            const token = ++state.fileRequestToken, owner = state.owner, dataset = state.dataset;
+            state.filesLoading = true; state.filesError = '';
+            scheduleManagersRender(true);
+            let selectedToLoad = '';
+            try {
+                const service = await getManagerImportedHistoryService();
+                const result = await service.listSnapshots(dataset, cursor, force);
+                if (token !== state.fileRequestToken || owner !== managerImportHistoryCurrentOwner() || dataset !== state.dataset) return false;
+                state.files = result.files;
+                state.filePageNumber = targetIndex + 1;
+                state.filePageCursors = state.filePageCursors.slice(0, targetIndex);
+                state.filePageCursors[targetIndex] = cursor;
+                state.nextFileCursor = result.nextCursor;
+                state.hasMoreFiles = result.hasMore;
+                state.hasPreviousFiles = targetIndex > 0;
+                const selectedFile = result.files.find(file => file.snapshotId === state.selectedSnapshotId);
+                if (selectedFile) state.selectedSnapshot = selectedFile;
+                else if (!state.selectedSnapshot && targetIndex === 0 && result.files.length) selectedToLoad = result.files[0].snapshotId;
+            } catch (error) {
+                if (token === state.fileRequestToken && owner === managerImportHistoryCurrentOwner()) {
+                    state.filesError = getFriendlyBackendErrorMessage(error, 'Could not load imported file snapshots.');
+                }
+            } finally {
+                if (token === state.fileRequestToken && owner === managerImportHistoryCurrentOwner()) {
+                    state.filesLoading = false;
+                    scheduleManagersRender(true);
+                }
+            }
+            if (selectedToLoad) await selectManagerImportedHistorySnapshot(selectedToLoad);
+            return false;
+        }
+
+        function loadManagerImportedHistoryPreviousFiles() {
+            return loadManagerImportedHistoryFiles(false, 'previous');
+        }
+
+        async function selectManagerImportedHistorySnapshot(snapshotId = '') {
+            if (!canViewManagerHistoricalReport()) return false;
+            const state = getManagerImportedHistoryState();
+            const id = String(snapshotId || '').trim();
+            const snapshot = state.files.find(file => file.snapshotId === id) || state.selectedSnapshot?.snapshotId === id && state.selectedSnapshot || null;
+            if (!snapshot || snapshot.dataset !== state.dataset || id === state.selectedSnapshotId) return false;
+            state.selectedSnapshotId = id; state.selectedSnapshot = snapshot;
+            state.selectedColumns = snapshot.columns.slice(0, 8).map((_, index) => index);
+            state.columnSearch = ''; state.columnError = ''; state.rowCount = snapshot.rowCount;
+            state.rows = []; state.rowsError = ''; state.rowPageNumber = 1; state.rowPageCursors = [0];
+            state.nextRow = null; state.hasMoreRows = false; state.rowRequestToken += 1;
+            state.rowsLoading = false; state.rowsRefreshing = false;
+            scheduleManagersRender(true);
+            return loadManagerImportedHistoryRowsAt(0, false, 'reset');
+        }
+
+        async function loadManagerImportedHistoryRowsAt(afterRow, refresh, direction) {
+            const state = getManagerImportedHistoryState();
+            if (!canViewManagerHistoricalReport() || !state.selectedSnapshotId || state.rowsLoading) return false;
+            const id = state.selectedSnapshotId, owner = state.owner, token = ++state.rowRequestToken;
+            const columns = state.selectedSnapshot?.snapshotId === id ? state.selectedSnapshot.columns.slice() : [];
+            state.rowsLoading = true; state.rowsRefreshing = !!refresh && !!state.rows.length; state.rowsError = '';
+            scheduleManagersRender(true);
+            try {
+                const service = await getManagerImportedHistoryService();
+                const result = await service.readRows(id, columns, afterRow, refresh);
+                if (token !== state.rowRequestToken || owner !== managerImportHistoryCurrentOwner() || id !== state.selectedSnapshotId) return false;
+                state.rows = result.rows; state.nextRow = result.nextRow; state.hasMoreRows = result.hasMore;
+                if (direction === 'reset') { state.rowPageCursors = [0]; state.rowPageNumber = 1; }
+                else if (direction === 'next') {
+                    state.rowPageCursors = state.rowPageCursors.slice(0, state.rowPageNumber);
+                    state.rowPageCursors.push(afterRow); state.rowPageNumber += 1;
+                } else if (direction === 'previous') state.rowPageNumber = Math.max(1, state.rowPageNumber - 1);
+            } catch (error) {
+                if (token === state.rowRequestToken && owner === managerImportHistoryCurrentOwner()) {
+                    state.rowsError = getFriendlyBackendErrorMessage(error, 'Could not load this imported snapshot page.');
+                }
+            } finally {
+                if (token === state.rowRequestToken && owner === managerImportHistoryCurrentOwner()) {
+                    state.rowsLoading = false; state.rowsRefreshing = false;
+                    scheduleManagersRender(true);
+                }
+            }
+            return false;
+        }
+
+        function loadManagerImportedHistoryRows(refresh = true) {
+            const state = getManagerImportedHistoryState();
+            return loadManagerImportedHistoryRowsAt(state.rowPageCursors[state.rowPageNumber - 1] || 0, refresh, 'refresh');
+        }
+
+        function loadManagerImportedHistoryNextPage() {
+            const state = getManagerImportedHistoryState();
+            if (!state.hasMoreRows || state.nextRow === null) return false;
+            return loadManagerImportedHistoryRowsAt(state.nextRow, false, 'next');
+        }
+
+        function loadManagerImportedHistoryPreviousPage() {
+            const state = getManagerImportedHistoryState();
+            if (state.rowPageNumber <= 1) return false;
+            return loadManagerImportedHistoryRowsAt(state.rowPageCursors[state.rowPageNumber - 2] || 0, false, 'previous');
+        }
+
+        function toggleManagerImportedHistoryColumn(columnIndex, checked) {
+            const state = getManagerImportedHistoryState(), columns = state.selectedSnapshot?.columns || [];
+            const index = Number(columnIndex);
+            if (!Number.isSafeInteger(index) || index < 0 || index >= columns.length) return false;
+            const selected = new Set(state.selectedColumns);
+            if (checked && !selected.has(index) && selected.size >= 8) state.columnError = 'Choose up to 8 columns for a fast row view.';
+            else {
+                state.columnError = '';
+                if (checked) selected.add(index); else selected.delete(index);
+                state.selectedColumns = columns.map((_, column) => column).filter(column => selected.has(column));
+            }
+            scheduleManagersRender(true);
+            return false;
+        }
+
+        function setManagerImportedHistoryColumnSearch(value = '') {
+            const state = getManagerImportedHistoryState();
+            state.columnSearch = String(value || '').slice(0, 80);
+            const root = document.querySelector('[aria-label="Imported files history"]');
+            if (root) root.querySelectorAll('[data-import-column]').forEach(label => {
+                label.hidden = !!state.columnSearch && !String(label.getAttribute('data-import-column') || '').toLowerCase().includes(state.columnSearch.trim().toLowerCase());
+            });
+            return false;
+        }
+
+        function renderManagerImportedFilesPanel() {
+            const state = getManagerImportedHistoryState();
+            const selected = state.selectedSnapshot;
+            const viewState = {
+                dataset: state.dataset, files: state.files, hasMoreFiles: state.hasMoreFiles,
+                hasPreviousFiles: state.hasPreviousFiles, filePageNumber: state.filePageNumber,
+                filesLoading: state.filesLoading, filesError: state.filesError, selectedSnapshotId: state.selectedSnapshotId,
+                selectedSnapshot: selected, selectedColumnIndexes: state.selectedColumns, columnSearch: state.columnSearch,
+                columnError: state.columnError, rows: state.rows, rowsLoading: state.rowsLoading,
+                rowsRefreshing: state.rowsRefreshing, rowsError: state.rowsError, rowCount: state.rowCount,
+                pageNumber: state.rowPageNumber, pageCount: Math.max(1, Math.ceil(state.rowCount / 50)),
+                hasPrevious: state.rowPageNumber > 1, hasMoreRows: state.hasMoreRows
+            };
+            if (managerImportHistoryModule?.renderImportedFilesPanel) return managerImportHistoryModule.renderImportedFilesPanel(viewState);
+            return '<div class="rounded-xl border border-emerald-100 bg-white p-6 text-center text-sm font-bold text-emerald-700">Loading Imported Files tools…</div>';
+        }
+
         function renderManagerHistoricalReportPanel() {
             if (!canViewManagerHistoricalReport()) {
                 return '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">Historical Reports are available only to Dylan and Megan.</div>';
             }
             const state = managerHistoricalReportState;
+            const modeTabs = `<div class="inline-flex flex-wrap gap-2 rounded-2xl border border-emerald-100 bg-white p-2"><button type="button" aria-pressed="${managerHistoricalReportMode === 'inventory-history'}" class="min-h-[42px] rounded-xl border px-4 text-[10px] font-black uppercase tracking-[0.12em] ${managerHistoricalReportMode === 'inventory-history' ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-600'}" onclick="return setManagerHistoricalReportMode('inventory-history')">Inventory History</button><button type="button" aria-pressed="${managerHistoricalReportMode === 'imported-files'}" class="min-h-[42px] rounded-xl border px-4 text-[10px] font-black uppercase tracking-[0.12em] ${managerHistoricalReportMode === 'imported-files' ? 'border-[#007a4d] bg-[#007a4d] text-white' : 'border-slate-200 bg-white text-slate-600'}" onclick="return setManagerHistoricalReportMode('imported-files')">Imported Files</button></div>`;
+            if (managerHistoricalReportMode === 'imported-files') return `<div class="space-y-4">${modeTabs}${renderManagerImportedFilesPanel()}</div>`;
             const errorHtml = state.error ? `<div class="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700"><div>${escapeHtml(state.error)}</div><button type="button" class="mt-3 rounded-xl border border-red-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-red-700" onclick="return ${state.level === 'names' ? 'loadManagerHistoricalCommonNames(managersSearchTerm, true)' : (state.level === 'sizes' ? `selectManagerHistoricalCommonName('${escJsAttrValue(state.selectedCommonName)}')` : 'loadManagerHistoricalRows(true)')}">Retry</button></div>` : '';
             if (state.level === 'names') {
                 const term = String(firstNonEmptyValue(managersSearchTerm, state.lastSearch, '') || '').trim();
@@ -138220,7 +138474,7 @@ C.14.043 C.15.000
                         ? renderManagerHistoricalDrillResults(state.commonNames, 'names')
                         : `<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">${term ? 'No historical Common Names matched that search.' : 'No historical Common Names are available.'}</div>`);
                 const crumbText = term ? `Historical Report > Select Common Name (${state.commonNames.length} matches)` : `Historical Report > Browse Common Name (${state.commonNames.length} loaded)`;
-                return `<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, state.commonNames.length ? `${formatManagerHistoricalCount(state.commonNames.length)} names` : '')}${errorHtml}${content}</div>`;
+                return `<div class="space-y-4">${modeTabs}<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, state.commonNames.length ? `${formatManagerHistoricalCount(state.commonNames.length)} names` : '')}${errorHtml}${content}</div></div>`;
             }
             if (state.level === 'sizes') {
                 const filteredSizes = (Array.isArray(state.containerSizes) ? state.containerSizes : []).filter((row) => managerTextMatchesSearch([row && row.contsize]));
@@ -138228,7 +138482,7 @@ C.14.043 C.15.000
                     ? '<div class="rounded-2xl border border-emerald-100 bg-white p-8 text-center text-sm font-black text-emerald-700">Loading historical container sizes...</div>'
                     : (filteredSizes.length ? renderManagerHistoricalDrillResults(filteredSizes, 'sizes') : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No historical container sizes matched.</div>');
                 const crumbText = `Historical Report > ${state.selectedCommonName} > Select ContSize (${filteredSizes.length} sizes)`;
-                return `<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, `${formatManagerHistoricalCount(filteredSizes.length)} sizes`)}${errorHtml}${content}</div>`;
+                return `<div class="space-y-4">${modeTabs}<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, `${formatManagerHistoricalCount(filteredSizes.length)} sizes`)}${errorHtml}${content}</div></div>`;
             }
             const rows = getFilteredManagerHistoricalRows();
             const selectedCount = Array.isArray(state.selectedColumns) ? state.selectedColumns.length : 0;
@@ -138239,7 +138493,7 @@ C.14.043 C.15.000
                     ? (state.displayMode === 'grid' ? renderManagerHistoricalRowsGrid(rows) : `<div class="space-y-3">${rows.map(renderManagerHistoricalRowCard).join('')}</div>`)
                     : '<div class="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">No historical rows matched this Common Name, ContSize, and date range.</div>');
             const crumbText = `Historical Report > ${state.selectedCommonName} > ${state.selectedContSize} (${rows.length} rows)`;
-            return `<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, `${formatManagerHistoricalCount(rows.length)} loaded`)}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Historical Drive Rows</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Newest report dates appear first. Load more uses fast cursor paging.</div></div><div class="flex flex-wrap gap-2">${dirtyNotice}<button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 ${rows.length ? '' : 'pointer-events-none opacity-50'}" onclick="return exportManagerHistoricalLoadedRowsToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Loaded</button></div></div><div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]"><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">From<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateStart)}" onchange="setManagerHistoricalDateRange('start', this.value)"></label><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">To<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateEnd)}" onchange="setManagerHistoricalDateRange('end', this.value)"></label><button type="button" class="min-h-[48px] self-end rounded-xl bg-[#007a4d] px-5 py-3 text-[11px] font-black uppercase tracking-[0.13em] text-white shadow-sm ${selectedCount ? '' : 'pointer-events-none opacity-50'}" onclick="return loadManagerHistoricalRows(true)"><i class="ph-bold ph-play mr-1"></i>Run Report</button></div></div>${renderManagerHistoricalColumnChooser()}${errorHtml}${resultHtml}${state.hasMore ? `<button type="button" class="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-4 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm ${state.loadingMore ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerHistoricalRows(false)">${state.loadingMore ? 'Loading...' : 'Load 100 More Rows'}</button>` : ''}</div>`;
+            return `<div class="space-y-4">${modeTabs}<div class="space-y-4">${renderManagerHistoricalDriveChrome(crumbText, `${formatManagerHistoricalCount(rows.length)} loaded`)}<div class="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm"><div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"><div><div class="text-[10px] font-black uppercase tracking-[0.16em] text-[#007a4d]">Historical Drive Rows</div><div class="mt-1 text-[12px] font-semibold text-slate-500">Newest report dates appear first. Load more uses fast cursor paging.</div></div><div class="flex flex-wrap gap-2">${dirtyNotice}<button type="button" class="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-blue-700 ${rows.length ? '' : 'pointer-events-none opacity-50'}" onclick="return exportManagerHistoricalLoadedRowsToExcel()"><i class="ph-bold ph-download-simple mr-1"></i>Export Loaded</button></div></div><div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr_auto]"><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">From<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateStart)}" onchange="setManagerHistoricalDateRange('start', this.value)"></label><label class="text-[10px] font-black uppercase tracking-[0.13em] text-slate-500">To<input type="date" class="mt-1 w-full rounded-xl border border-emerald-100 px-3 py-3 text-sm font-black text-slate-900" value="${escapeHtml(state.dateEnd)}" onchange="setManagerHistoricalDateRange('end', this.value)"></label><button type="button" class="min-h-[48px] self-end rounded-xl bg-[#007a4d] px-5 py-3 text-[11px] font-black uppercase tracking-[0.13em] text-white shadow-sm ${selectedCount ? '' : 'pointer-events-none opacity-50'}" onclick="return loadManagerHistoricalRows(true)"><i class="ph-bold ph-play mr-1"></i>Run Report</button></div></div>${renderManagerHistoricalColumnChooser()}${errorHtml}${resultHtml}${state.hasMore ? `<button type="button" class="w-full rounded-2xl border border-emerald-200 bg-white px-4 py-4 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-700 shadow-sm ${state.loadingMore ? 'pointer-events-none opacity-60' : ''}" onclick="return loadManagerHistoricalRows(false)">${state.loadingMore ? 'Loading...' : 'Load 100 More Rows'}</button>` : ''}</div></div>`;
         }
 
         // null means All; [] is an intentionally empty selection. Never persist across accounts.
