@@ -23,6 +23,26 @@ function createHarness() {
   return { api: context.window.AgMetricAvDerivedRows, flushOne: () => queued.shift()?.(), queued };
 }
 
+test('list search tokenizes its query once while preserving prefix and word-start results', () => {
+  let tokenizations = 0;
+  const context = { Array, Map, WeakMap, String, searchFilterCache: new WeakMap(), searchFilterCacheEpoch: 1,
+    normalizeSearchValue: value => String(value).trim().toLowerCase(),
+    tokenizeSearchValue: value => { tokenizations++; return String(value).toLowerCase().split(/\s+/).filter(Boolean); },
+    getSearchValuesForProfile: row => row.values,
+    normalizedSearchTextHasWordStart: (value, term) => value.split(/\s+/).some(word => word.startsWith(term)),
+    beginInternalPerfMeasure: () => 0, recordInternalPerfDuration() {}, incrementInternalPerfCounter() {}, trimInternalCacheMap() {} };
+  vm.createContext(context);
+  vm.runInContext(['doesSearchProfilePrefixMatch', 'matchesItemSearch', 'filterBySearch'].map(extractAppFunction).join('\n'), context);
+  const rows = Array.from({ length: 12000 }, (_, id) => ({ id, values: [id % 2 ? 'red rose' : 'white daisy', `avh.${id}`] }));
+  for (const term of ['red', 'rose', 'red rose', 'avh.49', 'absent']) {
+    const prefix = rows.filter(row => context.matchesItemSearch(row, term, 'av_open', { prefixOnly: true }));
+    const expected = prefix.length ? prefix : rows.filter(row => context.matchesItemSearch(row, term, 'av_open'));
+    tokenizations = 0;
+    assert.deepEqual(Array.from(context.filterBySearch(rows, term, 'av_open')), expected);
+    assert.equal(tokenizations, 1);
+  }
+});
+
 test('render consumers can defer the first derivation slice and cancel before any row work', async () => {
   const h = createHarness();
   let mapped = 0;
@@ -271,6 +291,7 @@ test('chunked AV derivation preserves bucket filtering, approval, deduplication,
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
     getAvSalesItemCode: row => String(row.ITEMCODE || ''), decorateAvSalesReserveRow: row => row,
     buildAvHotPriceIndex: () => new Map(),
+    getSearchValuesForProfile: (row, profile) => { row.preparedSearchProfile = profile; return []; },
   };
   vm.createContext(context);
   vm.runInContext(source, context);
@@ -279,6 +300,7 @@ test('chunked AV derivation preserves bucket filtering, approval, deduplication,
   const syncDerivation = context.createAvSalesRowsDerivation('current');
   const syncRows = syncDerivation.finalize(syncDerivation.sourceRows.map(syncDerivation.mapRow).filter(Boolean));
   assert.deepEqual(Array.from(syncRows, row => row.UNIQUE_ID), expected);
+  assert.equal(syncRows.every(row => row.preparedSearchProfile === 'av_open'), true);
 
   const chunkedDerivation = context.createAvSalesRowsDerivation('current');
   const pending = context.window.AgMetricAvDerivedRows.prepare({
@@ -317,6 +339,7 @@ test('hot-price row batching preserves the matched source fields and season rule
     itemMatchesAvSalesBucket: () => true, getAvReserveLocationUniqueKey: row => row.UNIQUE_ID,
     firstNonEmptyValue: (...values) => values.find(value => value != null && value !== ''),
     getAvSalesItemCode: row => String(row.ITEMCODE || ''), decorateAvSalesReserveRow: row => row,
+    getSearchValuesForProfile: () => [],
   };
   vm.createContext(context);
   vm.runInContext(extractAppFunction('buildAvHotPriceIndex')
@@ -330,4 +353,29 @@ test('hot-price row batching preserves the matched source fields and season rule
   assert.equal(output[0].CAV_ITEMCODE, 'PRICE-A');
   assert.equal(output[0].CAV_FILENAME, 'prices.csv');
   assert.equal(output[0].CAV_LAST_UPDATED, '2026-10-15');
+});
+
+test('AV prepares filter selections once and preserves all/custom/empty facet semantics', () => {
+  let normalizations = 0;
+  const context = { Set, Array, String,
+    selectedAvSeasons: new Set(['S1']), selectedAvGenusNames: new Set([' Oak ']), selectedAvContSizes: new Set(['#2']),
+    avGenusSelectionMode: 'all', avContSizeSelectionMode: 'all',
+    normalizeAvSelectedSeasons: () => { normalizations++; },
+    normalizeAvFacetCompareKey: value => String(value || '').trim().toLowerCase(),
+    getAvFilterSeasonValue: row => row.season, itemMatchesAvHoldFilter: row => !row.hold,
+    getAvFilterGenusFacetValue: row => row.genus, getAvFilterContSizeFacetValue: row => row.size };
+  vm.createContext(context);
+  vm.runInContext(extractAppFunction('itemMatchesAvFacetSelection') + extractAppFunction('itemMatchesAvTopFilterSelections')
+    + extractAppFunction('createAvTopFilterPredicate'), context);
+  const rows = Array.from({ length: 1000 }, (_, index) => ({ season: index % 3 ? 'S1' : 'F1', hold: index % 7 === 0,
+    genus: index % 2 ? 'oak' : 'Maple', size: index % 5 ? '#2' : '#3' }));
+  for (const mode of ['all', 'custom']) {
+    context.avGenusSelectionMode = context.avContSizeSelectionMode = mode;
+    const expected = rows.filter(context.itemMatchesAvTopFilterSelections);
+    normalizations = 0;
+    assert.deepEqual(rows.filter(context.createAvTopFilterPredicate()), expected);
+    assert.equal(normalizations, 1);
+  }
+  context.selectedAvGenusNames = new Set();
+  assert.equal(rows.filter(context.createAvTopFilterPredicate()).length, 0);
 });

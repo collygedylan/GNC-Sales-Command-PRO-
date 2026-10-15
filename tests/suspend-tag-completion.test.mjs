@@ -69,6 +69,7 @@ function harness(options = {}) {
     refreshLocalDockSuspendDcRequestState() {}, markViewDirty() {},
     queueSuspendTagInventoryReconciliation() {},
     invalidateSuspendTagInventoryRows() {},
+    invalidateDockSuspendDcSourceRowLookup() {},
     getPendingPhotoUploadsForItem: () => [],
     reconcileConfirmedDriveEvidence: (...args) => { ctx.inventoryReconciliation = args; return true; },
     matchesSuspendTagInventoryIdentity: () => true,

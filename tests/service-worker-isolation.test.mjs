@@ -133,7 +133,7 @@ test('Phase 4 installs the AV scheduler and isolates new list code from the prev
   h.setFetch(async () => new Response('NEW LIST CODE'));
   await h.dispatch('install');
   h.setFetch(async () => { throw new Error('offline'); });
-  for (const path of [runtime, '/assets/av-derived-rows.js']) {
+  for (const path of [runtime, '/assets/av-derived-rows.js', '/assets/bounded-snapshot-cache.js']) {
     const result = await h.dispatch('fetch', { request: request(path, { destination: 'script' }) });
     assert.equal(await result.response.text(), 'NEW LIST CODE');
   }

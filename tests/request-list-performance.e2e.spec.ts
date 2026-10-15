@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Page, type Route, type TestInfo } from '@playwright/test';
 import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
 // @test-group: @home-role
@@ -134,56 +134,183 @@ async function openRequestView(page: Page) {
 
 async function instrumentRequestRender(page: Page) {
   await appEval(page, `(() => {
-    window.__requestListRenderDurations = [];
-    window.__requestListChunkDurations = [];
+    const profile = window.__requestListProfile = {
+      renderDurations: [], chunkDurations: [], operations: [], stage: 'setup',
+      activeRender: 0, nextRender: 1,
+    };
+    const timedFunctions = [
+      'syncRequestRenderChrome', 'syncRequestHeaderSearchChrome', 'getScopedRequestItems',
+      'appendDockSuspendDcRequestMirrorRows', 'reconcileRequestDrillState',
+      'buildPendingRequestRenderPlan', 'getRequestTabQueueCounts', 'buildRequestChunkRenderKey',
+      'syncRequestTabButtons', 'updateRequestTabButtonLabels', 'renderRequestCategoryToolbar',
+      'updateFooterRequestBadge', 'renderMarkupChunkedByKey', 'generateCard',
+      'setContainerHtml', 'setContainerHtmlWithSignature', 'appendHtmlFragment',
+    ];
+    for (const name of timedFunctions) {
+      const originalOperation = window[name];
+      if (typeof originalOperation !== 'function') continue;
+      window[name] = function(...args) {
+        const started = performance.now();
+        try { return originalOperation.apply(this, args); }
+        finally {
+          profile.operations.push({ stage: profile.stage, renderId: profile.activeRender,
+            name, durationMs: performance.now() - started });
+        }
+      };
+    }
     const originalFrame = window.requestAnimationFrame.bind(window);
-    window.requestAnimationFrame = callback => originalFrame(timestamp => {
+    window.requestAnimationFrame = callback => {
+      const associatedRender = profile.activeRender;
+      const associatedStage = profile.stage;
+      return originalFrame(timestamp => {
       const started = performance.now();
+      const previousRender = profile.activeRender;
+      const previousStage = profile.stage;
+      if (callback.name === 'renderNextChunk') profile.activeRender = associatedRender;
+      if (callback.name === 'renderNextChunk') profile.stage = associatedStage;
       try { callback(timestamp); }
       finally {
-        if (callback.name === 'renderNextChunk') window.__requestListChunkDurations.push(performance.now() - started);
+        if (callback.name === 'renderNextChunk') {
+          profile.chunkDurations.push({ stage: associatedStage, durationMs: performance.now() - started });
+        }
+        profile.activeRender = previousRender;
+        profile.stage = previousStage;
       }
-    });
+      });
+    };
     const original = renderRequest;
     renderRequest = function(...args) {
       const started = performance.now();
+      const renderId = profile.nextRender++;
+      const previousRender = profile.activeRender;
+      profile.activeRender = renderId;
       try { return original.apply(this, args); }
-      finally { window.__requestListRenderDurations.push(performance.now() - started); }
+      finally {
+        profile.renderDurations.push({ stage: profile.stage, renderId, durationMs: performance.now() - started });
+        profile.activeRender = previousRender;
+      }
     };
   })()`);
 }
 
-async function assertRequestRenderGate(page: Page) {
-  const durations = await appEval<number[]>(page, 'window.__requestListRenderDurations');
-  const chunks = await appEval<number[]>(page, 'window.__requestListChunkDurations');
+async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend') {
+  const result = await appEval<{
+    renderDurations: Array<{ stage: string; renderId: number; durationMs: number }>;
+    chunkDurations: Array<{ stage: string; durationMs: number }>;
+    operations: Array<{ stage: string; renderId: number; name: string; durationMs: number }>;
+  }>(page, 'window.__requestListProfile');
+  const durations = result.renderDurations.filter(item => item.stage === stage);
+  const chunks = result.chunkDurations.filter(item => item.stage === stage);
+  const operations = result.operations.filter(item => item.stage === stage);
   expect(durations.length).toBeGreaterThan(0);
-  console.log('REQUEST_LIST_RENDER_MEASUREMENT', JSON.stringify({ renderMs: durations, chunkMs: chunks,
+  const operationSummary = operations.reduce<Record<string, typeof operations>>((summary, item) => {
+    (summary[item.name] ||= []).push(item);
+    return summary;
+  }, {});
+  console.log('REQUEST_LIST_RENDER_MEASUREMENT', JSON.stringify({ stage, renderMs: durations, chunkMs: chunks,
+    operationMs: Object.fromEntries(Object.entries(operationSummary).map(([name, entries]) => [name, {
+      calls: entries?.length || 0,
+      totalMs: Number((entries || []).reduce((sum, item) => sum + item.durationMs, 0).toFixed(2)),
+      maxMs: Number(Math.max(0, ...(entries || []).map(item => item.durationMs)).toFixed(2)),
+    }])),
     browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
     datasetRows: { pending: 200, suspend: 1000 },
     instrumentation: { trace: 'off', screenshots: 'off' },
     cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.' }));
-  expect(Math.max(...durations, ...chunks)).toBeLessThan(100);
+  expect.soft(Math.max(...durations.map(item => item.durationMs), ...chunks.map(item => item.durationMs))).toBeLessThan(100);
 }
 
-test('Request and Suspend hydrate paged lists within the render gate', { tag: ['@home-role'] }, async ({ page, baseURL }) => {
+async function startRequestCpuProfile(page: Page) {
+  if (process.env.REQUEST_CPU_PROFILE !== '1') return null;
+  const session = await page.context().newCDPSession(page);
+  await session.send('Profiler.enable');
+  await session.send('Profiler.setSamplingInterval', { interval: 1000 });
+  await session.send('Profiler.start');
+  return session;
+}
+
+async function stopRequestCpuProfile(session: Awaited<ReturnType<typeof startRequestCpuProfile>>, testInfo: TestInfo) {
+  if (!session) return;
+  try {
+    const { profile } = await session.send('Profiler.stop') as { profile: {
+      nodes: Array<{ callFrame: { functionName: string; url: string; lineNumber: number }; hitCount?: number; id: number }>;
+      samples?: number[]; timeDeltas?: number[];
+    } };
+    const byId = new Map(profile.nodes.map(node => [node.id, node]));
+    const selfTime = new Map<string, number>();
+    (profile.samples || []).forEach((id, index) => {
+      const node = byId.get(id);
+      if (!node) return;
+      const key = `${node.callFrame.functionName || '(anonymous)'} @ ${node.callFrame.url}:${node.callFrame.lineNumber + 1}`;
+      selfTime.set(key, (selfTime.get(key) || 0) + ((profile.timeDeltas || [])[index] || 0));
+    });
+    const hottest = [...selfTime.entries()].sort((a, b) => b[1] - a[1]).slice(0, 30)
+      .map(([functionName, microseconds]) => ({ functionName, milliseconds: Number((microseconds / 1000).toFixed(2)) }));
+    console.log('REQUEST_CPU_PROFILE_SUMMARY', JSON.stringify({ samples: profile.samples?.length || 0, hottest }));
+    await testInfo.attach('request-cpu-profile.json', {
+      body: Buffer.from(JSON.stringify({ profile, hottest }, null, 2)), contentType: 'application/json',
+    });
+  } finally {
+    await session.detach();
+  }
+}
+
+async function attachRequestRenderTimings(page: Page, testInfo: TestInfo) {
+  try {
+    const evidence = await appEval<{
+      renderDurations: Array<{ stage: string; renderId: number; durationMs: number }>;
+      chunkDurations: Array<{ stage: string; durationMs: number }>;
+      operations: Array<{ stage: string; renderId: number; name: string; durationMs: number }>;
+    }>(page, 'window.__requestListProfile');
+    await testInfo.attach('request-render-timings.json', {
+      body: Buffer.from(JSON.stringify({
+        browserVersion: await page.context().browser()?.version(), viewport: page.viewportSize(),
+        datasetRows: { pending: 200, suspend: 1000 },
+        cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.',
+        ...evidence,
+      }, null, 2)),
+      contentType: 'application/json',
+    });
+  } catch (error) {
+    await testInfo.attach('request-render-timings-error.txt', {
+      body: Buffer.from(String(error)), contentType: 'text/plain',
+    });
+  }
+}
+
+test('Request and Suspend hydrate paged lists within the render gate', { tag: ['@home-role'] }, async ({ page, baseURL }, testInfo) => {
   if (!baseURL) throw new Error('The request list fixture requires a base URL.');
   const fixture = await installRequestListFixture(page, baseURL);
   await instrumentRequestRender(page);
-  await openRequestView(page);
-  await expect.poll(() => fixture.apiCalls.some(call => call.startsWith('dataset_read:request_queue:'))).toBe(true);
-  await expect(page.locator('#request-content [data-request-uid]')).toHaveCount(100);
-  await appEval(page, 'renderRequest()');
-  await assertRequestRenderGate(page);
-  await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 200/);
+  const cpuProfile = await startRequestCpuProfile(page);
+  try {
+    await appEval(page, `window.__requestListProfile.stage = 'Pending'`);
+    await openRequestView(page);
+    await expect.poll(() => fixture.apiCalls.some(call => call.startsWith('dataset_read:request_queue:'))).toBe(true);
+    await expect(page.locator('#request-content [data-request-uid]')).toHaveCount(100);
+    await appEval(page, 'renderRequest()');
+    await assertRequestRenderGate(page, 'Pending');
+    await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 200/);
 
-  await appEval(page, `setReqTab('suspend-tag')`);
-  await expect.poll(() => fixture.apiCalls.some(call => call.startsWith('dataset_read:suspend_tag:'))).toBe(true);
-  await page.waitForFunction(() => window.eval('Array.isArray(suspendTagInventory) && suspendTagInventory.length === 1000'));
-  await expect(page.locator('#request-content [data-request-uid]')).toHaveCount(100);
-  await appEval(page, 'renderRequest()');
-  await assertRequestRenderGate(page);
-  const pages = await page.locator('#request-content .browse-page-footer').allTextContents();
-  expect(pages.join(' ')).toMatch(/Rows 1[–-]100 of 1000/);
+    await appEval(page, `window.__requestListProfile.stage = 'Suspend'`);
+    await appEval(page, `setReqTab('suspend-tag')`);
+    await expect.poll(() => fixture.apiCalls.some(call => call.startsWith('dataset_read:suspend_tag:'))).toBe(true);
+    await page.waitForFunction(() => window.eval('Array.isArray(suspendTagInventory) && suspendTagInventory.length === 1000'));
+    // Wait for Suspend's own cards and footer. The Pending page remains mounted
+    // during background hydration, so a count-only wait can pass too early and
+    // the explicit rerender below would cancel Suspend's scheduled render.
+    await expect(page.locator('#request-content [data-request-uid="dock_suspend_dc_suspend-0000"]')).toBeVisible();
+    await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 1000/);
+    await expect(page.locator('#request-content [data-request-uid]')).toHaveCount(100);
+    await appEval(page, 'renderRequest()');
+    await assertRequestRenderGate(page, 'Suspend');
+    await expect(page.locator('#request-content .browse-page-footer')).toContainText(/Rows 1[–-]100 of 1000/);
+    const pages = await page.locator('#request-content .browse-page-footer').allTextContents();
+    expect(pages.join(' ')).toMatch(/Rows 1[–-]100 of 1000/);
+  } finally {
+    try { await attachRequestRenderTimings(page, testInfo); }
+    finally { await stopRequestCpuProfile(cpuProfile, testInfo); }
+  }
 });
 
 test('Archived Requests keeps the visible page stable through refresh, failure, retry, and pagination', { tag: ['@home-role'] }, async ({ page, baseURL }) => {

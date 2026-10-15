@@ -7108,6 +7108,7 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
     <script src="./assets/live-sync-adapters.js?v=V2026.10.14.003"></script>
     <script src="./assets/live-sync-coordinator.js?v=V2026.10.14.003"></script>
     <script src="./assets/av-derived-rows.js?v=V2026.10.14.003"></script>
+    <script src="./assets/bounded-snapshot-cache.js?v=V2026.10.14.003"></script>
     <script src="./assets/request-submission.js?v=V2026.10.14.003&mapping=20261014"></script>
     <script src="./assets/ops-precision-pilot.js?v=V2026.10.14.003"></script>
     <script src="./assets/production-schedule.js?v=V2026.10.14.003"></script>
@@ -18622,6 +18623,8 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         }
 
         function acceptCardLocationOnHandSourceReceipt(scope = '', permission = '', revision = '', allowAfterInvalidation = false) {
+            const accepted = acceptedLocOnHandAggregateReceipt;
+            if (accepted.valid && accepted.scope === scope && accepted.permission === permission && accepted.revision === revision) return true;
             const next = { scope:String(scope || ''), permission:String(permission || ''), revision:String(revision || '').trim() };
             if (!next.scope || !next.permission || !/^[1-9]\d*$/.test(next.revision)) return false;
             const current = acceptedLocOnHandAggregateReceipt;
@@ -21305,9 +21308,13 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                     syncMasterFieldsToSalesOfficeRow(canonicalMaster, row);
                 }
             });
+            let updatedSocRows = false;
             socInventory.forEach((row) => {
-                if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
+                if (!sameLinkedRow(row)) return;
+                applyLinkedRowCatalogData(row);
+                updatedSocRows = true;
             });
+            if (updatedSocRows) invalidateDockSuspendDcSourceRowLookup(socInventory);
             reservesInventory.forEach((row) => {
                 if (sameLinkedRow(row)) applyLinkedRowCatalogData(row);
             });
@@ -31622,6 +31629,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function saveCacheValue(cacheKey, data) {
             try{
                 const db=await openDB();
+                if (window.AgMetricBoundedSnapshotCache) return await window.AgMetricBoundedSnapshotCache.write(db, STORE_NAME, cacheKey, data);
                 const tx=db.transaction(STORE_NAME,"readwrite");
                 tx.objectStore(STORE_NAME).put(data,cacheKey);
                 return new Promise((resolve)=>{ tx.oncomplete=()=>resolve(true); tx.onerror=()=>resolve(false); });
@@ -31631,6 +31639,7 @@ bindFastInvokeById('footer-communication-btn', 'switchView', ['communication'], 
         async function loadCacheValue(cacheKey) {
             try{
                 const db=await openDB();
+                if (window.AgMetricBoundedSnapshotCache) return redactEvalSensitiveData(await window.AgMetricBoundedSnapshotCache.read(db, STORE_NAME, cacheKey));
                 return new Promise((resolve,reject)=>{
                     const tx=db.transaction(STORE_NAME,"readonly");
                     const request=tx.objectStore(STORE_NAME).get(cacheKey);
@@ -37102,9 +37111,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         function syncRequestRenderChrome() {
-            updateFooterRequestBadge();
+            activeReqTab = normalizeRequestTabValue(activeReqTab);
+            const queueCounts = getRequestTabQueueCounts();
+            updateFooterRequestBadge(queueCounts);
             updateFooterChatBadge();
-            syncRequestTabButtons();
+            syncRequestTabButtons(queueCounts);
             syncRequestHeaderSearchChrome();
         }
 
@@ -40318,11 +40329,12 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 'eval-work': 0
             };
             try {
-                const baseItems = getScopedRequestItems(requestsInventory);
+                const baseItems = getScopedRequestItems(requestsInventory, { includeDockSuspendMirrorRows: false });
                 // Category badges describe each authorized queue. A saved filter
                 // from another view must not change its count or hide its work.
                 counts.pending = baseItems.filter(isRequestPendingVisible).filter(isRegularRequestQueueItem).length;
-                counts['suspend-tag'] = getSuspendTagRequestItems(baseItems).filter(row => ['pending','denied'].includes(getSuspendTagStatus(row))).length;
+                const suspendSourceRows = canCurrentUserViewDockSuspendDcRequests() ? getDockSuspendDcSourceRows() : [];
+                counts['suspend-tag'] = countPendingSuspendTagQueueItems(baseItems, suspendSourceRows);
                 counts.moves = getApprovedMoveRequestRowsForCurrentUser(baseItems).length;
             } catch (error) {
                 console.warn('Request tab queue count failed', error);
@@ -40344,10 +40356,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return counts;
         }
 
-        function getRequestQueueAlertCount() {
-            const counts = getRequestTabQueueCounts();
+        function getRequestQueueAlertCount(counts = null) {
+            const snapshot = counts || getRequestTabQueueCounts();
             return ['pending', 'suspend-tag', 'moves', 'recount', 'shear-list', 'eval-work']
-                .reduce((total, key) => total + Math.max(0, Number(counts[key]) || 0), 0);
+                .reduce((total, key) => total + Math.max(0, Number(snapshot[key]) || 0), 0);
         }
 
         function formatRequestTabCount(count = 0) {
@@ -40400,7 +40412,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         }
 
         const requestCategoryToolbarMarkupByNode = new WeakMap();
-        function renderRequestCategoryToolbar() {
+        function renderRequestCategoryToolbar(counts = null) {
             const toolbar = document.getElementById('request-filter-toolbar');
             if (!toolbar) return false;
             if (requestSalesRepsManagerMode && activeReqTab === 'reps') {
@@ -40409,7 +40421,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 toolbar.dataset.toolbarSingleRow = 'true';
                 return true;
             }
-            const counts = getRequestTabQueueCounts();
+            counts = counts || getRequestTabQueueCounts();
             const categories = getAuthorizedRequestCategories();
             const categoryButtonsHtml = categories.map((category) => {
                 const count = Math.max(0, Number(counts[category]) || 0);
@@ -40594,7 +40606,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             return 'pending';
         }
 
-        function syncRequestTabButtons() {
+        function syncRequestTabButtons(counts = null) {
             activeReqTab = normalizeRequestTabValue(activeReqTab);
             const access = getRoleAccessState();
             const pendingTab = document.getElementById('tab-req-pending');
@@ -40623,8 +40635,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             if (recountTab) recountTab.classList.toggle('active', activeReqTab === 'recount');
             if (shearListTab) shearListTab.classList.toggle('active', activeReqTab === 'shear-list');
             if (evalWorkTab) evalWorkTab.classList.toggle('active', activeReqTab === 'eval-work');
-            updateRequestTabButtonLabels();
-            renderRequestCategoryToolbar();
+            counts = counts || getRequestTabQueueCounts();
+            updateRequestTabButtonLabels(counts);
+            renderRequestCategoryToolbar(counts);
         }
 
         function forcePendingRequestRoot(options = {}) {
@@ -41509,6 +41522,39 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
         }
 
+        async function prepareMasterSeasonAssignments(items, assertCurrent) {
+            const winners = new Map();
+            const eligibleRows = [];
+            for (let index = 0; index < items.length; index++) {
+                const item = items[index];
+                if (item && !isWorkflowProtectedAppTabAssignment(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, ''))) {
+                    const code = String(firstNonEmptyValue(item.ITEMCODE, item.itemcode, 'UNKNOWN')).trim().toUpperCase();
+                    if (code && code !== 'UNKNOWN') {
+                        if (hasUsableEndCapFolderValue(firstNonEmptyValue(item.END_CAP_FOLDER, item.end_cap_folder, ''))) item.APP_TAB_ASSIGNMENT = 'endcap';
+                        else {
+                            // Stable pairwise selection has the same first-winner
+                            // tie behavior as the synchronous sorted group.
+                            winners.set(code, pickSeasonWinnerCandidate([winners.get(code), item].filter(Boolean)));
+                            eligibleRows.push({ item, code });
+                        }
+                    }
+                }
+                if ((index + 1) % MASTER_PREPARATION_BATCH_SIZE === 0 && index + 1 < items.length) {
+                    await yieldToUiFrame();
+                    assertCurrent();
+                }
+            }
+            for (let index = 0; index < eligibleRows.length; index++) {
+                const { item, code } = eligibleRows[index];
+                const winner = winners.get(code);
+                applySeasonLocationAssignmentFields(item, winner && item.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location');
+                if ((index + 1) % MASTER_PREPARATION_BATCH_SIZE === 0 && index + 1 < eligibleRows.length) {
+                    await yieldToUiFrame();
+                    assertCurrent();
+                }
+            }
+        }
+
         async function prepareProductionMasterSnapshot(sourceRows = [], options = {}) {
             const rows = Array.isArray(sourceRows) ? sourceRows : [];
             const identity = String(options.identity || getSupabaseReadIdentityScope());
@@ -41520,6 +41566,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const avOpenRows = [];
             const avOpenByMasterId = new Map();
             const indexMaps = createMasterInventoryIndexMaps();
+            const inheritanceCandidates = { ncr: [], moved: [] };
             const limit = Number.isInteger(options.limit) ? Math.max(0, Math.min(rows.length, options.limit)) : rows.length;
 
             for (let offset = 0; offset < limit; offset += MASTER_PREPARATION_BATCH_SIZE) {
@@ -41534,6 +41581,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     item.DOM_ID = 'fi_' + (offset + index);
                     buildSearchIndex(item);
                     addMasterInventoryRowToIndexes(indexMaps, item);
+                    // Collect broad, immutable source candidates during bounded
+                    // preparation; current eligibility is still checked at commit.
+                    if (hasNcrLocationNote(item)) inheritanceCandidates.ncr.push(item);
+                    if (isMovedSeasonAvSourceSeason(item)) inheritanceCandidates.moved.push(item);
                     displayRows.push(item);
                 });
                 if (offset + MASTER_PREPARATION_BATCH_SIZE < limit) {
@@ -41543,7 +41594,8 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
 
             assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
-            applyMasterAppTabAssignments(displayRows);
+            await prepareMasterSeasonAssignments(displayRows, () => assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal));
+            assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
             const masterById = new Map(displayRows.map((item) => [String(item && item.UNIQUE_ID || '').trim(), item]));
             for (let offset = 0; offset < displayRows.length; offset += MASTER_PREPARATION_BATCH_SIZE) {
                 assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
@@ -41566,7 +41618,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
                 }
             }
-            preparedMasterRows.set(displayRows, { identity, permissionVersion, seasonKey, avOpenRows, avOpenByMasterId, indexMaps });
+            preparedMasterRows.set(displayRows, { identity, permissionVersion, seasonKey, avOpenRows, avOpenByMasterId, indexMaps, inheritanceCandidates });
             return { rawRows, payload: { data: displayRows }, rowCount: displayRows.length };
         }
 
@@ -43495,6 +43547,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             }
             if (safeTableName === 'ph_soc_master') {
                 socInventoryById = rebuildInventoryByIdMap(socInventory);
+                invalidateDockSuspendDcSourceRowLookup(socInventory);
                 invalidateLookup();
                 return;
             }
@@ -44562,6 +44615,9 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function hydrateNcrCurrentCropRowsFromSources(options = {}) {
             if (!Array.isArray(fullInventory) || !fullInventory.length) return 0;
             const now = new Date();
+            const candidates = Array.isArray(options.candidates) ? options.candidates : fullInventory;
+            const targets = candidates.filter((target) => isNcrCurrentCropInheritanceTarget(target, now));
+            if (!targets.length) return 0;
             const sourcesByLocation = new Map();
             fullInventory.forEach((source) => {
                 const key = getNcrCurrentCropLocationKey(source);
@@ -44572,8 +44628,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             let changed = 0;
             let remoteCount = 0;
             const maxRemote = Math.max(0, Number(options && options.maxRemote) || 10);
-            fullInventory.forEach((target) => {
-                if (!isNcrCurrentCropInheritanceTarget(target, now)) return;
+            targets.forEach((target) => {
                 const candidates = sourcesByLocation.get(getNcrCurrentCropLocationKey(target)) || [];
                 let bestSource = null;
                 let bestScore = -1;
@@ -44599,9 +44654,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         function hydrateMovedSeasonCurrentRowsFromSources(options = {}) {
             if (!Array.isArray(fullInventory) || !fullInventory.length) return 0;
             const sourcesByKey = new Map();
-            fullInventory.forEach((source) => {
+            const candidates = Array.isArray(options.candidates) ? options.candidates : fullInventory;
+            candidates.forEach((source) => {
+                if (!isMovedSeasonAvSourceSeason(source)) return;
                 const key = getMovedSeasonAvInheritanceKey(source);
-                if (!key || !hasNcrReusableCropData(source) || !isMovedSeasonAvSourceSeason(source)) return;
+                if (!key || !hasNcrReusableCropData(source)) return;
                 if (!sourcesByKey.has(key)) sourcesByKey.set(key, []);
                 sourcesByKey.get(key).push(source);
             });
@@ -55133,7 +55190,7 @@ let avTopControlsRenderToken = 0;
             }, Math.max(0, Number(delay) || 0));
         }
 
-        function updateFooterRequestBadge() {
+        function updateFooterRequestBadge(counts = null) {
             const button = document.getElementById('footer-request-btn');
             const badge = document.getElementById('footer-request-badge');
             if (!button || !badge) return;
@@ -55144,7 +55201,7 @@ let avTopControlsRenderToken = 0;
                 updateFooterNavState();
                 return;
             }
-            const queueCount = getRequestQueueAlertCount();
+            const queueCount = getRequestQueueAlertCount(counts);
             if (queueCount > 0) {
                 badge.innerText = '!';
                 badge.classList.remove('hidden');
@@ -59584,7 +59641,7 @@ function toggleDriveQuickRequestItem(domId) {
         }
 
         function matchesItemSearch(item, rawTerm, profileName = '', options = {}) {
-            const terms = tokenizeSearchValue(rawTerm);
+            const terms = Array.isArray(options?.terms) ? options.terms : tokenizeSearchValue(rawTerm);
             if (!terms.length) return true;
             const searchValues = getSearchValuesForProfile(item, profileName);
             if (!searchValues.length) return false;
@@ -59610,10 +59667,13 @@ function toggleDriveQuickRequestItem(domId) {
                 return cacheBucket.get(cacheKey);
             }
             const searchStartedAt = beginInternalPerfMeasure();
-            const prefixItems = scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName, { prefixOnly: true }));
+            const terms = tokenizeSearchValue(normalizedTerm);
+            const prefixOptions = { prefixOnly: true, terms };
+            const fallbackOptions = { terms };
+            const prefixItems = scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName, prefixOptions));
             const filteredItems = prefixItems.length
                 ? prefixItems
-                : scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName));
+                : scopedItems.filter(item => matchesItemSearch(item, normalizedTerm, profileName, fallbackOptions));
             recordInternalPerfDuration('searchRenderDurations', searchStartedAt, String(profileName || 'default').trim() || 'default');
             cacheBucket.set(cacheKey, filteredItems);
             trimInternalCacheMap(cacheBucket);
@@ -61638,7 +61698,7 @@ function toggleDriveQuickRequestItem(domId) {
                 if (prepared) {
                     fullInventory = res.data;
                     preparedRowsUnchanged = true;
-                    fullInventory.forEach((row, index) => {
+                    if (confirmedDriveEvidenceRows.size) fullInventory.forEach((row, index) => {
                         const preserved = preserveConfirmedDriveEvidence(row);
                         if (preserved !== row) {
                             preparedRowsUnchanged = false;
@@ -61656,8 +61716,9 @@ function toggleDriveQuickRequestItem(domId) {
                 const preparedIndexes = prepared ? takePreparedMasterIndexMaps(prepared, preparedRowsUnchanged) : null;
                 if (preparedIndexes) installMasterInventoryIndexMaps(preparedIndexes);
                 else rebuildMasterInventoryIndexes();
-                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
-                hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12 });
+                const inheritanceCandidates = preparedIndexes ? prepared.inheritanceCandidates : null;
+                hydrateNcrCurrentCropRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.ncr });
+                hydrateMovedSeasonCurrentRowsFromSources({ remote: !res._fromCache && !res._verifiedLiveSync, maxRemote: 12, candidates: inheritanceCandidates?.moved });
                 invalidateMasterDerivedInventories();
             }
 
@@ -87158,7 +87219,11 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 const uniqueKey = getAvReserveLocationUniqueKey(row) || String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.DOM_ID, `${getAvSalesItemCode(row)}|${firstNonEmptyValue(row && row.LOCATIONCODE, '')}|${firstNonEmptyValue(row && row.LOTCODE, '')}`));
                 if (uniqueKey && seen.has(uniqueKey)) return null;
                 if (uniqueKey) seen.add(uniqueKey);
-                return decorateAvSalesReserveRow(row, matchedReserveRows);
+                const decorated = decorateAvSalesReserveRow(row, matchedReserveRows);
+                // Prepare search text inside the bounded row derivation, before
+                // a search or a complete-cohort render needs it synchronously.
+                getSearchValuesForProfile(decorated, requireOpenOrReserve ? 'av_reserves' : 'av_open');
+                return decorated;
             };
 
             return {
@@ -87650,6 +87715,20 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             return true;
         }
 
+        function createAvTopFilterPredicate() {
+            normalizeAvSelectedSeasons();
+            const seasons = new Set(selectedAvSeasons);
+            const facetKeys = (selected, mode) => String(mode || 'all').trim().toLowerCase() === 'custom'
+                ? new Set((selected instanceof Set ? Array.from(selected) : []).map(normalizeAvFacetCompareKey).filter(Boolean))
+                : null;
+            const genusKeys = facetKeys(selectedAvGenusNames, avGenusSelectionMode);
+            const sizeKeys = facetKeys(selectedAvContSizes, avContSizeSelectionMode);
+            return (item) => seasons.has(getAvFilterSeasonValue(item))
+                && itemMatchesAvHoldFilter(item)
+                && (!genusKeys || genusKeys.has(normalizeAvFacetCompareKey(getAvFilterGenusFacetValue(item))))
+                && (!sizeKeys || sizeKeys.has(normalizeAvFacetCompareKey(getAvFilterContSizeFacetValue(item))));
+        }
+
         function getAvGenusSummaryLabel(options = []) {
             const normalizedOptions = Array.isArray(options) ? options : [];
             const selectedCount = selectedAvGenusNames.size;
@@ -87951,7 +88030,7 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
                 filteredItems = avSharedFilteredRowsCache.slice();
             } else {
                 filteredItems = applyAvColumnFiltersToItems(optionState.baseItems.slice())
-                    .filter((item) => itemMatchesAvTopFilterSelections(item));
+                    .filter(createAvTopFilterPredicate());
                 avSharedFilteredRowsCacheKey = filteredRowsCacheKey;
                 avSharedFilteredRowsCache = filteredItems.slice();
             }
@@ -91149,7 +91228,9 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
 
         function shouldUseChunkedAVOpenRender(rows = []) {
             if (!Array.isArray(rows)) return false;
-            return rows.length > 12;
+            // Even a filtered single card can contain rich photo/control markup.
+            // Keep it out of the publication/status/anchor restoration turn.
+            return rows.length > 0;
         }
 
         function renderAVOpenCardsChunked(container, crumb, rows, sourceView, crumbText, footerHtml = '') {
@@ -91186,16 +91267,6 @@ const nativeHeaders = await getNativeAuthRequestHeaders().catch(() => null);
             if (!total) {
                 container.style.minHeight = '';
                 setContainerHtmlWithSignature(container, `<div class="p-6 text-center text-gray-400">No rows found.</div>`, renderSignature);
-                recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
-                return;
-            }
-            if (iosConstrained && total <= Math.min(IOS_CHUNK_SYNC_ROW_LIMIT, chunkSize)) {
-                let fullHtml = '';
-                rows.forEach((row, rowIndex) => {
-                    fullHtml += generateCard(row, sourceView, 'status-teal', { rowIndex });
-                });
-                setContainerHtmlWithSignature(container, `${fullHtml}${footerHtml}`, renderSignature);
-                container.style.minHeight = '';
                 recordInternalPerfDuration('chunkRenderDurations', renderStartedAt, `av-open:${sourceView}`);
                 return;
             }
@@ -113701,14 +113772,46 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return uniqueId.indexOf('dock_suspend_dc_') === 0 ? uniqueId.slice('dock_suspend_dc_'.length) : uniqueId;
         }
 
+        function getDockSuspendDcSourceRowLookupRevision(sourceRows = getDockSuspendDcSourceRows()) {
+            const dataset = sourceRows === socInventory ? 'soc' : 'suspendTag';
+            return JSON.stringify([dataset, getDatasetLoadSignature(dataset), resolvedViewStateEpoch,
+                getSupabaseReadIdentityScope(), normalizePushUsername(currentUser)]);
+        }
+
+        let dockSuspendDcRequestSourceRowLookupCache = { sourceRows: null, revision: '', byId: new Map() };
+        function getDockSuspendDcSourceRowLookup(sourceRows = getDockSuspendDcSourceRows()) {
+            const rows = Array.isArray(sourceRows) ? sourceRows : [];
+            const revision = getDockSuspendDcSourceRowLookupRevision(sourceRows);
+            const cache = dockSuspendDcRequestSourceRowLookupCache;
+            if (cache.sourceRows === sourceRows && cache.revision === revision && cache.byId instanceof Map) return cache.byId;
+            const byId = new Map();
+            rows.forEach((row) => {
+                const uid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (uid && !byId.has(uid)) byId.set(uid, row);
+            });
+            dockSuspendDcRequestSourceRowLookupCache = { sourceRows, revision, byId };
+            return byId;
+        }
+
+        function invalidateDockSuspendDcSourceRowLookup(sourceRows = null) {
+            const cache = dockSuspendDcRequestSourceRowLookupCache;
+            if (!sourceRows || Array.isArray(sourceRows) || cache.byId.has(getDockSuspendDcRequestSourceUid(sourceRows))) {
+                dockSuspendDcRequestSourceRowLookupCache = { sourceRows: null, revision: '', byId: new Map() };
+            } else {
+                dockSuspendDcRequestSourceRowLookupCache.revision = '';
+            }
+            dockSuspendDcRequestMirrorRowsCacheKey = '';
+            dockSuspendDcRequestMirrorRowsCacheSource = null;
+            dockSuspendDcRequestMirrorRowsByIdCache = null;
+            dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+            requestScopedItemsCacheKey = '';
+            requestScopedItemsCache = null;
+        }
+
         function findDockSuspendDcRequestSourceRow(item = null) {
             const sourceUid = getDockSuspendDcRequestSourceUid(item);
             if (!sourceUid) return null;
-            const scopedRows = getDockSuspendDcSourceRows();
-            if (scopedRows !== socInventory) return scopedRows.find(row => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === sourceUid) || null;
-            return socInventoryById.get(sourceUid)
-                || (Array.isArray(socInventory) ? socInventory.find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === sourceUid) : null)
-                || null;
+            return getDockSuspendDcSourceRowLookup().get(sourceUid) || null;
         }
 
         const DOCK_SUSPEND_PLANSTART_ALIASES = Object.freeze(['PLANSTART', 'planstart', 'PLAN_START', 'plan_start', 'Plan Start', 'planStart', 'PLANSTARTDATE', 'planstartdate', 'PLAN_START_DATE', 'plan_start_date']);
@@ -114013,20 +114116,19 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         }
 
         let dockSuspendDcRequestMirrorRowsCacheKey = '';
+        let dockSuspendDcRequestMirrorRowsCacheSource = null;
         let dockSuspendDcRequestMirrorRowsCache = [];
 
         function getDockSuspendDcRequestMirrorRows() {
             if (!canCurrentUserViewDockSuspendDcRequests()) return [];
             const sourceRows = getDockSuspendDcSourceRows();
-            const cacheKey = [
-                resolvedViewStateEpoch,
-                getDatasetLoadSignature(sourceRows === socInventory ? 'soc' : 'suspendTag'),
-                buildDockSuspendDcRequestMirrorSignature(sourceRows),
-                normalizePushUsername(currentUser)
-            ].join('|');
-            if (dockSuspendDcRequestMirrorRowsCacheKey === cacheKey && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
+            const cacheKey = getDockSuspendDcSourceRowLookupRevision(sourceRows);
+            if (dockSuspendDcRequestMirrorRowsCacheSource === sourceRows
+                && dockSuspendDcRequestMirrorRowsCacheKey === cacheKey && Array.isArray(dockSuspendDcRequestMirrorRowsCache)) {
                 return dockSuspendDcRequestMirrorRowsCache.slice();
             }
+            dockSuspendDcRequestMirrorRowsByIdCache = null;
+            dockSuspendDcRequestMirrorRowsByDomIdCache = null;
             const seen = new Set();
             const rows = (Array.isArray(sourceRows) ? sourceRows : [])
                 .map((item, index) => buildDockSuspendDcRequestMirrorRow(item, index))
@@ -114038,6 +114140,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                     return true;
                 });
             dockSuspendDcRequestMirrorRowsCacheKey = cacheKey;
+            dockSuspendDcRequestMirrorRowsCacheSource = sourceRows;
             dockSuspendDcRequestMirrorRowsCache = rows;
             return rows.slice();
         }
@@ -114057,13 +114160,30 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
         function findDockSuspendDcRequestMirrorRowByUniqueId(uid = '') {
             const safeUid = String(uid || '').trim();
             if (!safeUid) return null;
-            return getDockSuspendDcRequestMirrorRows().find((row) => String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim() === safeUid) || null;
+            return dockSuspendDcRequestMirrorRowsById().get(safeUid) || null;
         }
 
         function findDockSuspendDcRequestMirrorRowByDomId(domId = '') {
             const safeDomId = String(domId || '').trim();
             if (!safeDomId) return null;
-            return getDockSuspendDcRequestMirrorRows().find((row) => String(firstNonEmptyValue(row && row.DOM_ID, row && row.dom_id, '') || '').trim() === safeDomId) || null;
+            return dockSuspendDcRequestMirrorRowsByDomId().get(safeDomId) || null;
+        }
+
+        let dockSuspendDcRequestMirrorRowsByIdCache = null;
+        let dockSuspendDcRequestMirrorRowsByDomIdCache = null;
+        function dockSuspendDcRequestMirrorRowsById() {
+            if (!canCurrentUserViewDockSuspendDcRequests()) return new Map();
+            const rows = getDockSuspendDcRequestMirrorRows();
+            if (dockSuspendDcRequestMirrorRowsByIdCache) return dockSuspendDcRequestMirrorRowsByIdCache;
+            dockSuspendDcRequestMirrorRowsByIdCache = new Map(rows.map(row => [String(row.UNIQUE_ID || row.unique_id || '').trim(), row]));
+            return dockSuspendDcRequestMirrorRowsByIdCache;
+        }
+        function dockSuspendDcRequestMirrorRowsByDomId() {
+            if (!canCurrentUserViewDockSuspendDcRequests()) return new Map();
+            const rows = getDockSuspendDcRequestMirrorRows();
+            if (dockSuspendDcRequestMirrorRowsByDomIdCache) return dockSuspendDcRequestMirrorRowsByDomIdCache;
+            dockSuspendDcRequestMirrorRowsByDomIdCache = new Map(rows.map(row => [String(row.DOM_ID || row.dom_id || '').trim(), row]));
+            return dockSuspendDcRequestMirrorRowsByDomIdCache;
         }
 
         function getDockSuspendDcRequestMirrorUidForRow(item = null) {
@@ -114095,6 +114215,25 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function getSuspendTagRequestItems(items = []) {
             return (Array.isArray(items) ? items : []).filter(isDockSuspendDcRequestMirrorRow).filter(isDockSuspendDcRequestSource);
+        }
+
+        function countPendingSuspendTagQueueItems(items = [], sourceRows = []) {
+            const countedSourceIds = new Set();
+            let count = 0;
+            getSuspendTagRequestItems(items).forEach((row) => {
+                if (!['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
+                const sourceUid = getDockSuspendDcRequestSourceUid(row);
+                if (sourceUid) countedSourceIds.add(sourceUid);
+                count += 1;
+            });
+            (Array.isArray(sourceRows) ? sourceRows : []).forEach((row) => {
+                if (!isDockSuspendDcRequestSource(row) || !['pending', 'denied'].includes(getSuspendTagStatus(row))) return;
+                const sourceUid = String(firstNonEmptyValue(row && row.UNIQUE_ID, row && row.unique_id, '') || '').trim();
+                if (!sourceUid || countedSourceIds.has(sourceUid)) return;
+                countedSourceIds.add(sourceUid);
+                count += 1;
+            });
+            return count;
         }
 
         function getRequestSuspendTagDockRaw(item = null) {
@@ -114312,12 +114451,50 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             return compareText(String(a && a.COMMONNAME || ''), String(b && b.COMMONNAME || ''));
         }
 
+        function sortRequestSuspendTagRows(items = [], collators = null) {
+            const textCompare = collators ? collators.text : (left, right) => left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+            const locationCompare = collators ? collators.location : (left, right) => left.localeCompare(right, undefined, { numeric: true });
+            const decorated = (Array.isArray(items) ? items : []).map((item, index) => {
+                const locationRaw = String(item && item.LOCATIONCODE || '').trim().toUpperCase();
+                const match = locationRaw.match(/^([A-Z]+)(?:\.(\d+))?(?:\.(\d+))?(?:\.(\d+))?$/);
+                return {
+                    item, index,
+                    dock: getRequestSuspendTagDockFilterOptionForItem(item),
+                    stop: String(firstNonEmptyValue(item && item.STOPNUMBER, item && item.STOP, item && item.stopnumber, item && item.stop, '') || ''),
+                    location: {
+                        raw: locationRaw,
+                        block: match ? (match[1] || '') : locationRaw,
+                        parts: match ? [match[2], match[3], match[4]].filter(part => part !== undefined).map(part => parseInt(part, 10)) : []
+                    },
+                    commonName: String(item && item.COMMONNAME || '')
+                };
+            });
+            decorated.sort((left, right) => {
+                const dockCompare = compareRequestSuspendTagDockOptions(left.dock, right.dock, textCompare);
+                if (dockCompare) return dockCompare;
+                const stopCompare = textCompare(left.stop, right.stop);
+                if (stopCompare) return stopCompare;
+                const blockCompare = textCompare(left.location.block, right.location.block);
+                if (blockCompare) return blockCompare;
+                const partCount = Math.max(left.location.parts.length, right.location.parts.length);
+                for (let index = 0; index < partCount; index++) {
+                    const leftPart = Number.isFinite(left.location.parts[index]) ? left.location.parts[index] : -1;
+                    const rightPart = Number.isFinite(right.location.parts[index]) ? right.location.parts[index] : -1;
+                    if (leftPart !== rightPart) return leftPart - rightPart;
+                }
+                const rawCompare = locationCompare(left.location.raw, right.location.raw);
+                if (rawCompare) return rawCompare;
+                return textCompare(left.commonName, right.commonName) || left.index - right.index;
+            });
+            return decorated.map(entry => entry.item);
+        }
+
         function buildSuspendTagRenderPlan(items) {
             const collators = {
                 text: new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' }).compare,
                 location: new Intl.Collator(undefined, { numeric: true }).compare
             };
-            const allItems = getSuspendTagRequestItems(items).sort((a, b) => compareRequestSuspendTagRows(a, b, collators));
+            const allItems = sortRequestSuspendTagRows(getSuspendTagRequestItems(items), collators);
             const searchItems = applyRequestSuspendTagCommonNameSearchFilter(allItems);
             const assignedItems = applyRequestSuspendTagAssignedToFilter(searchItems);
             const contSizeItems = applyRequestSuspendTagContSizeFilter(assignedItems);
@@ -114495,7 +114672,6 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             } else {
                 filterShell.innerHTML = renderRequestSuspendTagFilters(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
-                updateRequestSuspendTagFiltersInPlace(allItems, searchItems, assignedItems, contSizeItems, visibleItems);
             }
             if (crumb && typeof crumbText === 'string') crumb.innerText = crumbText;
             return container.querySelector('#request-suspend-tag-results');
@@ -114651,14 +114827,15 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 .join('\u001E');
         }
 
-        function getScopedRequestItems(items = requestsInventory) {
+        function getScopedRequestItems(items = requestsInventory, options = {}) {
             const sourceItems = Array.isArray(items) ? items : [];
             const roleAccess = getRoleAccessState();
             const capabilities = getRequestCapabilities();
             const requestScopeMode = capabilities ? capabilities.scope : 'none';
             const hasGlobalRequestAccess = requestScopeMode === 'global';
             const canUseCache = items === requestsInventory;
-            const includeDockSuspendMirrorRows = canUseCache && canCurrentUserViewDockSuspendDcRequests();
+            const includeDockSuspendMirrorRows = canUseCache && options.includeDockSuspendMirrorRows !== false && canCurrentUserViewDockSuspendDcRequests();
+            const useResultCache = canUseCache;
             const cacheKey = canUseCache ? [
                 resolvedViewStateEpoch,
                 getDatasetLoadSignature('requests'),
@@ -114670,7 +114847,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
                 currentUser,
                 currentUserDisplay
             ].join('|') : '';
-            if (canUseCache && requestScopedItemsCacheKey === cacheKey && Array.isArray(requestScopedItemsCache)) {
+            if (useResultCache && requestScopedItemsCacheKey === cacheKey && Array.isArray(requestScopedItemsCache)) {
                 incrementInternalPerfCounter('viewStateCacheHits');
                 return requestScopedItemsCache.slice();
             }
@@ -114687,7 +114864,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             if (includeDockSuspendMirrorRows) {
                 nextItems = appendDockSuspendDcRequestMirrorRows(nextItems);
             }
-            if (canUseCache) {
+            if (useResultCache) {
                 requestScopedItemsCacheKey = cacheKey;
                 requestScopedItemsCache = nextItems.slice();
             }
@@ -117161,7 +117338,12 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             scheduleRequestRenderSideData();
             bumpChunkRenderTokenByKey('request-main');
 
-            const baseRequestItems = getScopedRequestItems(requestsInventory);
+            // Dock Suspend mirrors belong only to Suspend's rendered dataset.
+            // Pending, reps, and other request tabs discard them downstream, so
+            // avoid materializing the rich 1,000-row mirror set for those views.
+            const baseRequestItems = getScopedRequestItems(requestsInventory, {
+                includeDockSuspendMirrorRows: activeReqTab === 'suspend-tag'
+            });
             const legacyViewerPanel = document.getElementById('request-dylan-filter-panel');
             if (legacyViewerPanel) {
                 legacyViewerPanel.innerHTML = '';
@@ -146915,6 +147097,7 @@ C.14.043 C.15.000
         }
 
         function invalidateSuspendTagInventoryRows(item = null) {
+            invalidateDockSuspendDcSourceRowLookup(item);
             if (!item || typeof item !== 'object') {
                 suspendTagReclassLoads.clear();
                 return;
@@ -167435,6 +167618,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function refreshLocalDockSuspendDcRequestState(reason = 'dock-suspend-request', changedRow = null) {
+            invalidateDockSuspendDcSourceRowLookup(changedRow);
             const changedDatasetKeys = getDatasetKeysForTable('ph_soc_master');
             const preserveDetail = isViewVisible('detail') && isDockSuspendDcRequestMirrorRow(activeItem);
             const visibleAffectedViews = getVisibleAffectedViewIds(changedDatasetKeys).filter(view => !preserveDetail || view !== 'detail');
@@ -168020,7 +168204,7 @@ ${folderNote ? `Folder Note: ${folderNote}
                         }
                     }
                 });
-                dockSuspendDcRequestMirrorRowsCacheKey = ''; requestScopedItemsCacheKey = '';
+                invalidateDockSuspendDcSourceRowLookup(current || source); requestScopedItemsCacheKey = '';
                 if (['save', 'complete', 'close'].includes(operation)) invalidateSuspendTagInventoryRows(current || source);
                 refreshLocalDockSuspendDcRequestState('suspend-tag-' + operation,current || source);
                 if (['save', 'complete', 'close'].includes(operation)) {
@@ -168428,6 +168612,7 @@ ${folderNote ? `Folder Note: ${folderNote}
         }
 
         function applyDockSuspendDcRequestRemovedState(row = null, completedAt = '', isMirrorRow = false) {
+            if (!isMirrorRow) invalidateDockSuspendDcSourceRowLookup(row);
             applyDockSuspendDcRequestHandledState(row, completedAt, isMirrorRow);
             clearDockSuspendDcRequestSuspendState(row);
             if (isMirrorRow) setDockSuspendDcRequestMirrorHidden(row, true);
@@ -168458,6 +168643,7 @@ ${folderNote ? `Folder Note: ${folderNote}
 
         function restoreDockSuspendDcRequestHandledState(row = null, snapshot = null) {
             if (!row || !snapshot) return;
+            invalidateDockSuspendDcSourceRowLookup(row);
             Object.keys(snapshot).forEach((key) => {
                 row[key] = snapshot[key];
             });

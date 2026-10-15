@@ -85,6 +85,7 @@ const ASSETS_TO_CACHE = [
   './assets/request-submission.js',
   './assets/inventory-list-contract.js',
   './assets/av-derived-rows.js',
+  './assets/bounded-snapshot-cache.js',
   './assets/live-tailwind-v2026082010.min.css',
   './assets/live-app-runtime-v2026082010.min.js?v=' + encodeURIComponent(APP_SHELL_BUILD),
   './assets/live-app-styles-base-v2026090503.css',

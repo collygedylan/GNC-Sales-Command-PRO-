@@ -120,7 +120,7 @@ function avCardChunkFixture({ ios = false, total = 100 } = {}) {
             frames.shift()();
         }
     };
-    return { ctx, rows, generated, batches, footers, container, crumb, start, flush };
+    return { ctx, rows, generated, batches, footers, container, crumb, start, flush, flushOne: () => frames.shift()?.() };
 }
 
 test('AV paginated cards render in bounded batches while preserving every row and footer', () => {
@@ -128,8 +128,11 @@ test('AV paginated cards render in bounded batches while preserving every row an
         for (const total of [20, 100]) {
             const fixture = avCardChunkFixture({ ios, total });
             assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows), true);
-            assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows.slice(0, 12)), false);
+            assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows.slice(0, 12)), true);
+            assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender([]), false);
             fixture.start();
+            assert.equal(fixture.generated.length, 0, 'rich cards are deferred out of the publication turn');
+            fixture.flushOne();
             assert.equal(fixture.generated.length, 4, 'first paint fills the viewport without synchronously rendering extra screens');
             assert.equal(fixture.footers.length, 0, 'footer waits for the full page');
             fixture.flush();
@@ -140,6 +143,19 @@ test('AV paginated cards render in bounded batches while preserving every row an
             assert.equal(fixture.crumb.innerText, 'AV rows');
             assert.ok(fixture.container.signature);
         }
+    }
+});
+
+test('a single filtered AV card also yields before replacing the retained display', () => {
+    for (const ios of [false, true]) {
+        const fixture = avCardChunkFixture({ ios, total: 1 });
+        assert.equal(fixture.ctx.shouldUseChunkedAVOpenRender(fixture.rows), true);
+        fixture.start();
+        assert.equal(fixture.generated.length, 0);
+        assert.equal(fixture.batches.length, 0);
+        fixture.flush();
+        assert.deepEqual(fixture.generated.map(row => row.id), [0]);
+        assert.deepEqual(fixture.footers, ['<footer/>']);
     }
 });
 

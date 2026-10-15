@@ -142,6 +142,7 @@ test('Suspend Tag quantity chips use exact hydrated inventory fields independent
 test('confirmed inventory writes invalidate only matching hydrated Suspend Tag card rows', () => {
   const loads = new Map();
   const ctx = { String, Object, Map, suspendTagReclassLoads:loads,
+    invalidateDockSuspendDcSourceRowLookup() {},
     getSuspendTagInventoryIdentity:item=>({itemCode:item.ITEMCODE,locationCode:item.LOCATIONCODE,lotCode:item.LOTCODE,source:item.SOURCE}) };
   vm.createContext(ctx); vm.runInContext(extract('invalidateSuspendTagInventoryRows'),ctx);
   const match = { identity:{itemCode:'PLANT-1',locationCode:'A1',lotCode:'LOT-A',source:'GREENLEAF'} };
