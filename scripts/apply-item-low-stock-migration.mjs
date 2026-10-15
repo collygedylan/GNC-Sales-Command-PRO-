@@ -66,7 +66,8 @@ export const inventoryAssignmentBatchesMigrationName = '20261014155536_inventory
 export const inventoryAssignmentWitnessMigrationName = '20261014160924_inventory_assignment_witness_projection.sql';
 export const inventoryAssignmentInputGenerationMigrationName = '20261014161813_inventory_assignment_input_generation.sql';
 export const customerAssignmentOverridesMigrationName = '20261014214542_customer_assignment_overrides.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName]);
+export const bulkMasterSnapshotMigrationName = '20261015012249_bulk_master_snapshot_v1.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -228,6 +229,66 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === bulkMasterSnapshotMigrationName) return `select
+    exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)')
+        and p.prosecdef and p.proconfig @> array['search_path=""','statement_timeout=55s','lock_timeout=5s']
+        and has_function_privilege('service_role',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('anon',p.oid,'execute')
+        and position('BULK_MASTER_IMPORT_REQUEST_ID_REUSED' in p.prosrc)>0
+        and position('BULK_MASTER_IMPORT_FENCE_LOST' in p.prosrc)>0
+        and position('request_row.response' in p.prosrc)>0)
+    and (select count(*)=3 and bool_and(c.relrowsecurity)
+      and bool_and(not has_table_privilege('anon',c.oid,'select,insert,update,delete'))
+      and bool_and(not has_table_privilege('authenticated',c.oid,'select,insert,update,delete'))
+      and bool_and(not has_table_privilege('service_role',c.oid,'select,insert,update,delete'))
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='app_sync_private' and c.relname in
+        ('ph_master_bulk_import_receipts_v1','ph_master_bulk_import_context_v1','ph_master_bulk_import_source_v1'))
+    and (select count(*)=2 from pg_trigger t
+      where t.tgrelid='public.ph_master_inventory'::regclass and not t.tgisinternal and t.tgenabled='O'
+        and ((t.tgname='aa00_ph_master_bulk_raw_context_v1'
+          and t.tgfoid=to_regprocedure('private.ph_master_bulk_isolation_v1()'))
+          or (t.tgname='aabz_ph_master_bulk_import_field_isolation_v1'
+            and t.tgfoid=to_regprocedure('private.ph_master_bulk_live_field_isolation_v1()'))))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.ph_master_bulk_crop_roll_defer_active_v1()')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and position('ph_master_inventory_import_run_v1' in p.prosrc)>0
+        and position('ph_master_bulk_import_context_v1' in p.prosrc)>0
+        and position('pg_backend_pid' in p.prosrc)>0
+        and position('txid_current' in p.prosrc)>0
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.sync_ph_master_bulk_crop_roll_v1(uuid,uuid,text[])')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and position('ph_master_inventory_import_run_v1' in p.prosrc)>0
+        and position('gnc.master_bulk_crop_roll_deferred' in p.prosrc)>0
+        and position('ph_master_bulk_import_context_v1' in p.prosrc)>0
+        and position('v2_crop_roll_drive_row_from_json' in p.prosrc)>0
+        and position('public.ph_crop_roll_drive_rows' in p.prosrc)>0
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.upsert_v2_crop_roll_drive_row_from_master()')
+        and p.prosecdef
+        and position('ph_master_bulk_crop_roll_defer_active_v1' in p.prosrc)>0)
+    and exists(select 1 from pg_trigger t
+      where t.tgrelid='public.ph_master_inventory'::regclass
+        and t.tgname='trg_v2_master_inventory_crop_roll_drive_rows'
+        and not t.tgisinternal and t.tgenabled='O'
+        and t.tgfoid=to_regprocedure('public.upsert_v2_crop_roll_drive_row_from_master()'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)')
+        and position('sync_ph_master_bulk_crop_roll_v1' in p.prosrc)>0
+        and position('gnc.master_bulk_crop_roll_deferred' in p.prosrc)>0
+        and position('previous_crop_roll_marker' in p.prosrc)>0
+        and position('coalesce(previous_crop_roll_marker' in p.prosrc)>0)
+    as installed`;
   if (name === customerAssignmentOverridesMigrationName) return `select
     to_regclass('sales_private.customer_rep_assignment_sources') is not null
     and to_regclass('sales_private.customer_rep_assignment_overrides') is not null

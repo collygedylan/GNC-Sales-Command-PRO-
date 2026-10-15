@@ -7,6 +7,7 @@ import { authorizeAppsScriptDeployment } from '../scripts/lib/apps-script-deploy
 
 const repository = 'example/app';
 const commit = 'a'.repeat(40), head = 'b'.repeat(40);
+const backendPath = '.github/workflows/apps-script-sync.yml';
 const options = { repository, eventName: 'workflow_dispatch', ref: 'refs/heads/main', commit,
   expectedCommit: commit, workflowRef: `${repository}/.github/workflows/apps-script-deploy.yml@refs/heads/main` };
 function harness(change = {}) {
@@ -22,6 +23,13 @@ function harness(change = {}) {
     steps: name === 'validation / pr-gate' ? [{ name: 'Require the selected unit and lint checks', status: 'completed', conclusion: 'success' }] : []
   }));
   if (change.jobs) jobs = change.jobs(jobs);
+  const backendWorkflow = { id: 10, path: backendPath, state: 'active', ...change.backendWorkflow };
+  const backendRun = { id: 88, workflow_id: backendWorkflow.id, run_number: 14, run_attempt: 1,
+    path: backendPath, event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
+    head_repository: { full_name: repository }, status: 'completed', conclusion: 'success', ...change.backendRun };
+  const backendJobs = [{ id: 310, run_id: backendRun.id, head_sha: commit,
+    name: 'Apply backend migrations and deploy Edge Functions', status: 'completed', conclusion: 'success',
+    ...change.backendDeployJob }];
   let mainReads = 0, runReads = 0, prReads = 0;
   const api = async endpoint => {
     calls.push(endpoint);
@@ -29,9 +37,19 @@ function harness(change = {}) {
       mainReads++;
       return { object: { sha: change.advanceMain && mainReads > 1 ? 'c'.repeat(40) : commit } };
     }
-    if (endpoint.endsWith('/actions/runs/88')) return { id: 88, path: '.github/workflows/publish-candidate.yml',
-      event: 'workflow_run', head_branch: 'main', head_repository: { full_name: repository },
-      status: 'completed', conclusion: 'success', ...change.publisher };
+    if (endpoint.endsWith('/actions/workflows/apps-script-sync.yml')) return backendWorkflow;
+    if (endpoint.endsWith('/actions/runs/88')) return backendRun;
+    const backendJobRun = endpoint.match(/\/actions\/runs\/(\d+)\/attempts\//);
+    const backendRunIds = new Set([backendRun.id, ...(change.backendRuns || []).map(candidate => candidate.id)]);
+    if (backendJobRun && backendRunIds.has(Number(backendJobRun[1]))) {
+      const runId = Number(backendJobRun[1]);
+      const rows = backendJobs.map(job => ({ ...job, run_id: runId }));
+      return { total_count: rows.length, jobs: rows };
+    }
+    if (endpoint.includes(`/actions/workflows/${backendWorkflow.id}/runs?`)) {
+      const runs = change.backendRuns || [];
+      return { total_count: runs.length, workflow_runs: runs };
+    }
     if (endpoint.includes('/commits/')) return [pr];
     if (endpoint.includes('/files?')) return change.files || [{ filename: 'Code.gs', status: 'modified' }];
     if (endpoint.endsWith('/pulls/391')) {
@@ -58,21 +76,35 @@ test('standard merged PR units and lint authorize Apps Script independently of p
   assert.equal(calls.filter(path => path.endsWith('/git/ref/heads/main')).length, 2);
 });
 
-test('trusted merge-controller completion publishes the newly merged current main', async () => {
-  const { api } = harness();
-  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', publisherRunId: 88, api });
+test('trusted backend completion publishes the newly merged current main', async () => {
+  const { api } = harness({ pr: { changed_files: 2 }, files: [
+    { filename: 'supabase/migrations/feature.sql', status: 'added' },
+    { filename: 'Code.gs', status: 'modified' }
+  ] });
+  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+    backendRunAttempt: 1, backendRunSha: commit, api });
   assert.equal(result.scriptChanged, true);
 });
 
 test('an unrelated merged UI PR does not republish Apps Script automatically', async () => {
   const { api } = harness({ files: [{ filename: 'index.html', status: 'modified' }] });
-  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', publisherRunId: 88, api });
+  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+    backendRunAttempt: 1, backendRunSha: commit, api });
   assert.equal(result.scriptChanged, false);
+});
+
+test('GAS-only changes allow the backend deploy job to be skipped', async () => {
+  const { api } = harness({ files: [{ filename: 'Code.gs', status: 'modified' }],
+    backendDeployJob: { conclusion: 'skipped' } });
+  const result = await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+    backendRunAttempt: 1, backendRunSha: commit, api });
+  assert.equal(result.scriptChanged, true);
 });
 
 test('renamed deployment consumers retain Apps Script path scope', async () => {
   const { api } = harness({ files: [{ filename: 'scripts/retired-script.mjs', previous_filename: 'scripts/apps-script-sync-lib.mjs', status: 'renamed' }] });
-  assert.equal((await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', publisherRunId: 88, api })).scriptChanged, true);
+  assert.equal((await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+    backendRunAttempt: 1, backendRunSha: commit, api })).scriptChanged, true);
 });
 
 test('authorization dependencies and renamed dependencies retain deployment scope', async () => {
@@ -81,7 +113,8 @@ test('authorization dependencies and renamed dependencies retain deployment scop
     for (const file of [{ filename: dependency, status: 'modified' },
       { filename: 'scripts/retired-dependency.mjs', previous_filename: dependency, status: 'renamed' }]) {
       const { api } = harness({ files: [file] });
-      assert.equal((await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', publisherRunId: 88, api })).scriptChanged, true);
+      assert.equal((await authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+        backendRunAttempt: 1, backendRunSha: commit, api })).scriptChanged, true);
     }
   }
 });
@@ -91,7 +124,7 @@ for (const [name, overrides, error] of [
   ['expected SHA', { expectedCommit: 'c'.repeat(40) }, 'EXPECTED_COMMIT_MISMATCH'],
   ['workflow', { workflowRef: `${repository}/.github/workflows/other.yml@refs/heads/main` }, 'WORKFLOW_NOT_TRUSTED'],
   ['untrusted event', { eventName: 'pull_request' }, 'EVENT_NOT_ELIGIBLE'],
-  ['missing publisher', { eventName: 'workflow_run' }, 'PUBLISHER_RUN_INVALID']
+  ['missing backend run', { eventName: 'workflow_run' }, 'BACKEND_RUN_INVALID']
 ]) test(`deployment rejects invalid ${name}`, async () => {
   await assert.rejects(authorizeAppsScriptDeployment({ ...options, ...overrides, api: harness().api }), new RegExp(error));
 });
@@ -122,18 +155,42 @@ test('new failed validation prevents fallback to older green validation', async 
   await assert.rejects(authorizeAppsScriptDeployment({ ...options, api }), /LATEST_VALIDATION_NOT_GREEN/);
 });
 
-test('untrusted controller and incomplete changed paths cannot publish', async () => {
-  for (const change of [{ publisher: { path: '.github/workflows/other.yml' } },
-    { publisher: { conclusion: 'failure' } }, { publisher: { head_repository: { full_name: 'attacker/app' } } }]) {
-    await assert.rejects(authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', publisherRunId: 88, api: harness(change).api }), /PUBLISHER_NOT_TRUSTED/);
+test('untrusted backend run and incomplete changed paths cannot publish', async () => {
+  for (const change of [{ backendRun: { path: '.github/workflows/other.yml' } },
+    { backendRun: { conclusion: 'failure' } }, { backendRun: { head_repository: { full_name: 'attacker/app' } } }]) {
+    await assert.rejects(authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+      backendRunAttempt: 1, backendRunSha: commit, api: harness(change).api }), /BACKEND_RUN_NOT_TRUSTED/);
   }
-  await assert.rejects(authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', publisherRunId: 88,
+  await assert.rejects(authorizeAppsScriptDeployment({ ...options, eventName: 'workflow_run', backendRunId: 88,
+    backendRunAttempt: 1, backendRunSha: commit,
     api: harness({ files: [] }).api }), /CHANGED_PATHS_INCOMPLETE/);
+});
+
+test('backend migrations require an exact-SHA successful backend deploy before manual Apps Script publication', async () => {
+  const files = [{ filename: 'supabase/migrations/feature.sql', status: 'added' }];
+  await assert.rejects(authorizeAppsScriptDeployment({ ...options, api: harness({ files }).api }), /BACKEND_RUNS_INVALID/);
+  const successful = { id: 89, workflow_id: 10, run_number: 15, run_attempt: 1, path: backendPath,
+    event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
+    head_repository: { full_name: repository }, status: 'completed', conclusion: 'success' };
+  const result = await authorizeAppsScriptDeployment({ ...options, api: harness({ files, backendRuns: [successful] }).api });
+  assert.equal(result.scriptChanged, true);
+});
+
+test('backend changes reject skipped or failed deploy jobs and do not fall back to an older success', async () => {
+  const files = [{ filename: 'database/schema.sql', status: 'modified' }];
+  const successful = { id: 89, workflow_id: 10, run_number: 15, run_attempt: 1, path: backendPath,
+    event: 'workflow_dispatch', head_branch: 'main', head_sha: commit,
+    head_repository: { full_name: repository }, status: 'completed', conclusion: 'success' };
+  await assert.rejects(authorizeAppsScriptDeployment({ ...options, api: harness({ files, backendRuns: [successful],
+    backendDeployJob: { conclusion: 'skipped' } }).api }), /BACKEND_DEPLOY_NOT_SUCCESSFUL/);
+  const failedLatest = { ...successful, id: 90, run_number: 16, conclusion: 'failure' };
+  await assert.rejects(authorizeAppsScriptDeployment({ ...options, api: harness({ files,
+    backendRuns: [successful, failedLatest] }).api }), /BACKEND_RUN_NOT_TRUSTED/);
 });
 
 test('Apps Script deployment is independent, guarded, and uses existing configured credentials', () => {
   const workflow = yaml.load(readFileSync(new URL('../.github/workflows/apps-script-deploy.yml', import.meta.url), 'utf8'));
-  assert.deepEqual(workflow.on.workflow_run.workflows, ['Publish validated candidate']);
+  assert.deepEqual(workflow.on.workflow_run.workflows, ['Deploy Supabase backend']);
   assert.ok(workflow.on.workflow_dispatch.inputs['expected-commit']);
   assert.equal(workflow.concurrency['cancel-in-progress'], false);
   const job = workflow.jobs['deploy-apps-script'];

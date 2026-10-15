@@ -18,6 +18,7 @@ function context(properties = new Map()) {
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (algorithm, value) => Array.from(createHash(algorithm).update(value, 'utf8').digest()),
       base64EncodeWebSafe: bytes => Buffer.from(bytes).toString('base64url'),
+      sleep: () => {},
     },
   });
   new vm.Script(code, { filename: 'Code.gs' }).runInContext(result);
@@ -93,29 +94,81 @@ function latestFile(id, name, data, modifiedAt) {
   return { id, name, data, modifiedAt };
 }
 
-function processMasterSnapshotBatch(ctx, files, existing = []) {
+function processMasterSnapshotBatch(ctx, files, existing = [], bulkRpcHandler = null, { mutateSourceDuringRpc = false } = {}) {
   const events = [];
+  const entries = files.map((file, index) => {
+    const name = typeof file.getName === 'function' ? file.getName() : file.name || `synthetic-${index}.csv`;
+    const modifiedAt = typeof file.getLastUpdated === 'function' ? file.getLastUpdated() : new Date(file.modifiedAt || `2026-09-${String(index + 1).padStart(2, '0')}T17:00:00Z`);
+    const id = typeof file.getId === 'function' ? file.getId() : file.id || `synthetic-file-${index}`;
+    return {
+      ...file,
+      getName: () => name,
+      getId: () => id,
+      getLastUpdated: () => modifiedAt,
+      getSize: () => typeof file.getSize === 'function' ? file.getSize() : file.size || Buffer.byteLength(JSON.stringify(file.data || [])),
+    };
+  });
   ctx.console = { log() {}, warn() {}, error(...args) { events.push({ type: 'error', detail: String(args[0] || '') }); } };
   ctx.getDriveFolderByIdWithRetry_ = folderId => ({ folderId });
   let readIndex = 0;
   ctx.listDriveFilesWithRetry_ = () => ({
-    hasNext: () => readIndex < files.length,
-    next: () => files[readIndex++],
+    hasNext: () => readIndex < entries.length,
+    next: () => entries[readIndex++],
   });
   ctx.extractDataFromFile = file => file.data;
-  ctx.fetchAllSupabaseData = () => existing;
-  ctx.fetchAllSupabaseRowIdsForMaster_ = () => existing.map(row => String(row.unique_id || '')).filter(Boolean);
-  ctx.fetchSupabaseRowsByIds_ = () => existing;
-  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return null; };
-  ctx.closeDatasetImportFence_ = () => events.push({ type: 'finish' });
+  let sourceChangedDuringRpc = false;
+  ctx.DriveApp = { getFileById: id => {
+    const file = entries.find(entry => entry.getId() === id);
+    if (!file || !sourceChangedDuringRpc || !mutateSourceDuringRpc) return file;
+    return { ...file, getLastUpdated: () => new Date(file.getLastUpdated().getTime() + 1000) };
+  } };
+  ctx.fetchAllSupabaseData = () => { events.push({ type: 'live-read' }); throw new Error('canonical bulk importer must not fetch live rows'); };
+  ctx.fetchAllSupabaseRowIdsForMaster_ = () => { events.push({ type: 'live-id-scan' }); throw new Error('canonical bulk importer must not scan existing IDs'); };
+  ctx.fetchSupabaseRowsByIds_ = () => { events.push({ type: 'live-compare-read' }); throw new Error('canonical bulk importer must not fetch compare rows'); };
+  ctx.beginDatasetImportFenceIfNeeded_ = () => { events.push({ type: 'begin' }); return { runId: '10000000-0000-4000-8000-000000000001' }; };
+  ctx.closeDatasetImportFence_ = (fence, succeeded, beforeFinish) => {
+    if (succeeded) {
+      events.push({ type: 'assignment-reconcile' });
+      if (typeof beforeFinish === 'function') beforeFinish();
+      events.push({ type: 'finish' });
+    }
+  };
   ctx.failDatasetImportFence_ = () => events.push({ type: 'fence-failed' });
   ctx.pushToSupabase = (_, rows) => events.push({ type: 'upsert', rows: plain(rows) });
   ctx.deleteFromSupabase = (_, ids) => events.push({ type: 'delete', ids: plain(ids) });
   ctx.moveDriveFileToFolderWithRetry_ = file => events.push({ type: 'archive', name: file.getName() });
+  ctx.moveAndNormalizeDriveAroundProcessedFiles_ = parsedFiles => {
+    parsedFiles.forEach(entry => ctx.moveDriveFileToFolderWithRetry_(entry.file));
+    return { warnings: [] };
+  };
   ctx.emitTableSyncLiveEvent_ = table => events.push({ type: 'table-event', table });
   ctx.reconcileSeasonSalesOfficeAfterImport_ = () => {};
-  ctx.callSupabaseRpc_ = () => ({ status: 'complete', resolved: 0 });
-  const result = invoke(ctx, 'processSnapshotBatchFolderLocked_', 'source', 'processed-test', 'ph_master_inventory', ctx.buildMasterPayload, {});
+  ctx.callSupabaseRpc_ = (name, payload) => {
+    if (name === 'bulk_import_master_snapshot_v1') {
+      events.push({ type: 'bulk-rpc', payload: plain(payload) });
+      if (bulkRpcHandler) {
+        const response = bulkRpcHandler(payload, events);
+        sourceChangedDuringRpc = true;
+        return response;
+      }
+      sourceChangedDuringRpc = true;
+      return {
+        published: true,
+        runId: payload.p_run_id,
+        requestId: payload.p_request_id,
+        sourceDigest: payload.p_source_digest,
+        sourceRows: payload.p_rows.length,
+        inserted: payload.p_rows.length,
+        updated: 0,
+        deleted: existing.length,
+        unchanged: 0,
+      };
+    }
+    events.push({ type: 'rpc', name, payload: plain(payload) });
+    return { status: 'complete', resolved: 0 };
+  };
+  const processedFolderId = vm.runInContext('FOLDERS.MASTER_PROCESSED', ctx);
+  const result = invoke(ctx, 'processSnapshotBatchFolderLocked_', 'source', processedFolderId, 'ph_master_inventory', ctx.buildMasterPayload, {});
   return { result, events };
 }
 
@@ -418,9 +471,14 @@ test('master batch skips empty files but imports and archives a valid replacemen
   assert.equal(result.failedFiles, 1);
   assert.deepEqual(plain(result.failedFileNames), ['empty.csv']);
   assert.equal(result.upsertCount, 1);
-  assert.equal(events.find(event => event.type === 'upsert').rows[0].itemcode, 'SYNTHETIC-ITEM');
+  const bulkCall = events.find(event => event.type === 'bulk-rpc');
+  assert.equal(bulkCall.payload.p_rows[0].values.itemcode, 'SYNTHETIC-ITEM');
   assert.deepEqual(events.filter(event => event.type === 'archive').map(event => event.name), ['replacement.csv']);
   assert.equal(events.some(event => event.type === 'table-event'), true, 'the committed valid replacement emits the ordinary table event');
+  assert.equal(events.some(event => ['upsert', 'delete'].includes(event.type)), false, 'canonical PH master uses the bulk RPC without REST writes');
+  assert.equal(events.filter(event => event.type === 'bulk-rpc').length, 1);
+  assert.equal(events.some(event => event.type.includes('live-read') || event.type === 'live-id-scan'), false);
+  assert.ok(events.findIndex(event => event.type === 'bulk-rpc') < events.findIndex(event => event.type === 'archive'), 'source files archive only after the RPC succeeds');
 });
 
 test('a nonempty unrecognized master file prevents applying a partial snapshot', () => {
@@ -440,7 +498,107 @@ test('a nonempty unrecognized master file prevents applying a partial snapshot',
   assert.deepEqual(plain(result.failedFileNames), ['unrecognized.csv']);
   assert.equal(result.upsertCount, 0);
   assert.equal(result.deleteCount, 0);
-  assert.equal(events.some(event => ['upsert', 'delete', 'archive', 'table-event'].includes(event.type)), false);
+  assert.equal(events.some(event => ['upsert', 'delete', 'bulk-rpc', 'archive', 'table-event'].includes(event.type)), false);
+});
+
+test('canonical master bulk payload keeps raw hold fields and per-file item6 masks while latest duplicate wins', () => {
+  const first = [
+    ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'LOCATION_NOTE', 'SUSPEND'],
+    ['SYNTHETIC-ITEM', 'TEST.LOC', 'Earlier Synthetic Plant', '#3', '27.F1', 'PH', '2', 'H', 'Synthetic hold', '', 'SUSPEND'],
+  ];
+  const second = [
+    ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON'],
+    ['SYNTHETIC-ITEM', 'TEST.LOC', 'Latest Synthetic Plant', '#3', '27.F1', 'PH', '2', 'S', 'Latest synthetic hold'],
+  ];
+  const { result, events } = processMasterSnapshotBatch(context(), [
+    latestFile('first', 'first.csv', first, '2026-09-08T17:00:00.000Z'),
+    latestFile('second', 'second.csv', second, '2026-09-09T17:00:00.000Z'),
+  ]);
+  const rows = events.find(event => event.type === 'bulk-rpc').payload.p_rows;
+  assert.equal(rows.length, 1, 'cross-file duplicate identity is merged into one row');
+  assert.equal(rows[0].values.commonname, 'Latest Synthetic Plant');
+  assert.equal(rows[0].values.holdstopcode, 'S');
+  assert.equal(rows[0].values.holdstopreason, 'Latest synthetic hold');
+  assert.equal(Object.hasOwn(rows[0].values, 'locationnote'), false, 'a header absent from the winning file remains absent');
+  assert.equal(Object.hasOwn(rows[0].values, 'assignedto'), false, 'the database owns assignedto preservation/derivation');
+  assert.deepEqual(plain(rows[0].rawFields), []);
+  assert.equal(result.filesProcessed, 2);
+  assert.deepEqual(events.filter(event => event.type === 'archive').map(event => event.name), ['first.csv', 'second.csv']);
+});
+
+test('canonical master bulk response retry reuses identical request identity and payload before archival', () => {
+  const data = [
+    ['ITEMCODE', 'LOCATIONCODE', 'COMMONNAME', 'CONTSIZE', 'LOTCODE', 'SOURCE', 'PRIORITY', 'HOLDSTOPCODE', 'HOLDSTOPREASON', 'LOCATION_NOTE'],
+    ['SYNTHETIC-ITEM', 'TEST.LOC', 'Synthetic Plant', '#3', '27.F1', 'PH', '2', 'H', 'Synthetic hold', 'Synthetic location note'],
+  ];
+  let attempts = 0;
+  let firstPayload;
+  const { result, events } = processMasterSnapshotBatch(context(), [latestFile('retry-file', 'retry.csv', data, '2026-09-08T17:00:00.000Z')], [], (payload) => {
+    attempts += 1;
+    if (attempts === 1) {
+      firstPayload = plain(payload);
+      throw new Error('network connection timed out');
+    }
+    assert.deepEqual(plain(payload), firstPayload);
+    return {
+      published: true,
+      runId: payload.p_run_id,
+      requestId: payload.p_request_id,
+      sourceDigest: payload.p_source_digest,
+      sourceRows: payload.p_rows.length,
+      inserted: payload.p_rows.length,
+      updated: 0,
+      deleted: 0,
+      unchanged: 0,
+    };
+  });
+  assert.equal(result.fatalFailure, false);
+  assert.equal(attempts, 2);
+  assert.equal(firstPayload.p_request_id, events.filter(event => event.type === 'bulk-rpc')[1].payload.p_request_id);
+  const row = events.find(event => event.type === 'bulk-rpc').payload.p_rows[0];
+  assert.equal(Object.hasOwn(row.values, 'holdstopcode'), true, 'raw hold source value remains available for database acknowledgment');
+  assert.equal(Object.hasOwn(row.values, 'holdstopreason'), true);
+  assert.ok(row.rawFields.includes('locationnote'), 'Item6 mask records this file header despite a raw null/blank value');
+  assert.ok(events.findIndex(event => event.type === 'bulk-rpc') < events.findIndex(event => event.type === 'archive'));
+});
+
+test('canonical master bulk response identity mismatch leaves source pending and fails its fence', () => {
+  const data = csv();
+  data[0].push('COMMONNAME');
+  data[1].push('Synthetic Plant');
+  const { result, events } = processMasterSnapshotBatch(context(), [latestFile('bad-response', 'pending.csv', data, '2026-09-08T17:00:00.000Z')], [], payload => ({
+    published: true,
+    runId: payload.p_run_id,
+    requestId: payload.p_request_id,
+    sourceDigest: 'f'.repeat(64),
+    sourceRows: payload.p_rows.length,
+    inserted: payload.p_rows.length,
+    updated: 0,
+    deleted: 0,
+    unchanged: 0,
+  }));
+  assert.equal(result.fatalFailure, true);
+  assert.equal(events.some(event => event.type === 'archive'), false);
+  assert.ok(events.some(event => event.type === 'fence-failed'));
+});
+
+test('canonical master source changed during bulk RPC stays pending and reports published-but-unarchived', () => {
+  const data = csv();
+  data[0].push('COMMONNAME');
+  data[1].push('Synthetic Plant');
+  const { result, events } = processMasterSnapshotBatch(context(), [
+    latestFile('changed-during-rpc', 'pending-after-publish.csv', data, '2026-09-08T17:00:00.000Z'),
+  ], [], null, { mutateSourceDuringRpc: true });
+
+  assert.equal(result.fatalFailure, true);
+  assert.equal(result.errorCode, 'MASTER_BULK_PUBLISHED_SOURCE_CHANGED');
+  assert.equal(result.failedFiles, 1);
+  assert.match(result.failedFileErrors[0].error, /snapshot was published, but a source file changed before archival/i);
+  assert.equal(events.some(event => event.type === 'archive'), false, 'the changed original remains in the drop folder');
+  assert.equal(events.some(event => event.type === 'finish'), false, 'the import fence is not finalized against an unverified source revision');
+  assert.ok(events.findIndex(event => event.type === 'assignment-reconcile') < events.findIndex(event => event.type === 'fence-failed'),
+    'source identity is rechecked after assignment reconciliation');
+  assert.ok(events.some(event => event.type === 'fence-failed'));
 });
 
 test('a retained failed source is re-read and imported after a valid replacement revision arrives', () => {

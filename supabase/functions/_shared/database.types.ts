@@ -16654,6 +16654,15 @@ export type Database = {
         Args: { p_action: string; p_payload?: Json; p_request_id?: string }
         Returns: Json
       }
+      bulk_import_master_snapshot_v1: {
+        Args: {
+          p_request_id: string
+          p_rows: Json
+          p_run_id: string
+          p_source_digest: string
+        }
+        Returns: Json
+      }
       bunch_note_card_command_v1: {
         Args: {
           p_actor_id: string

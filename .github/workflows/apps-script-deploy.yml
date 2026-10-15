@@ -2,7 +2,7 @@ name: Deploy Apps Script ingestion
 
 on:
   workflow_run:
-    workflows: [Publish validated candidate]
+    workflows: [Deploy Supabase backend]
     types: [completed]
   workflow_dispatch:
     inputs:
@@ -32,7 +32,9 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       EXPECTED_COMMIT: ${{ inputs.expected-commit }}
-      APPS_SCRIPT_PUBLISHER_RUN_ID: ${{ github.event.workflow_run.id }}
+      APPS_SCRIPT_BACKEND_RUN_ID: ${{ github.event.workflow_run.id }}
+      APPS_SCRIPT_BACKEND_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+      APPS_SCRIPT_BACKEND_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
       - uses: actions/checkout@v4
         with:
