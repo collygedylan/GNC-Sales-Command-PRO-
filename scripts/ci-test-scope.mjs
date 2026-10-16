@@ -2,7 +2,7 @@
 // Release proof verification independently checks every changed PR path.
 export function testScopeForPaths(paths) {
   const schema = name => /^(supabase|migrations|database\/migrations)\//.test(name) || /(?:^|\/)[^/]*_migration\.sql$/.test(name);
-  const backendOnly = name => schema(name) || ['deno.lock', 'deno.json', 'deno.jsonc'].includes(name);
+  const backendOnly = name => schema(name) || ['deno.lock', 'deno.json', 'deno.jsonc', 'services/reclassMove.ts'].includes(name);
   const shared = name => ['.github/', 'scripts/', 'tests/'].some(prefix => name.startsWith(prefix))
     || ['package.json', 'package-lock.json'].includes(name);
   const frontend = name => ['assets/', 'components/', 'styles/', 'src/', 'v2/', 'pages/', 'services/', 'utils/', 'live-src/', 'performance/'].some(prefix => name.startsWith(prefix))

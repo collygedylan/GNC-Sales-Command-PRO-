@@ -56,7 +56,7 @@ jobs:
             frontend:
               - '{index.html,Code.gs,manifest.json,OneSignalSDKWorker.js,CNAME,assets/**,components/**,styles/**,src/**,v2/**,pages/**,services/**,utils/**,live-src/**,scripts/**,tests/**,.github/**,performance/**,Dockerfile*,package.json,package-lock.json,playwright*.config.*,vite*.config.*,tsconfig*.json,lighthouserc.json}'
             backend:
-              - '{supabase/**,database/**,migrations/**,**/*_migration.sql,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
+              - '{supabase/**,database/**,migrations/**,**/*_migration.sql,services/reclassMove.ts,deno.lock,deno.json,deno.jsonc,.github/**,package.json,package-lock.json,scripts/**,tests/**}'
             schema:
               - '{supabase/**,database/**}'
 

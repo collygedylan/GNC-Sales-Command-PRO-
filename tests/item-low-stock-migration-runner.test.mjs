@@ -5,7 +5,7 @@ import { X509Certificate } from 'node:crypto';
 import pg from 'pg';
 import yaml from 'js-yaml';
 import {
-  validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName,
+  validateDatabaseTarget, migrationBody, applyItemLowStockMigration, migrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName,
   perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, releaseDatabaseMigrations, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, migrationContractQuery, upsertVaultSecret,
   productionBaselineVersion,
   classifyDatabaseError, formatSafeFailure, runReadOnlySchemaDiagnostic, validateDiagnosticContext,
@@ -50,7 +50,7 @@ test('mapping finalizer timeout is function-scoped and retains trusted importer 
 });
 
 test('customer assignment overrides deploy with private storage and protected manager operations', () => {
-  assert.equal(releaseDatabaseMigrations.at(-6), customerAssignmentOverridesMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-7), customerAssignmentOverridesMigrationName);
   const query = migrationContractQuery(customerAssignmentOverridesMigrationName);
   for (const table of ['customer_rep_assignment_sources', 'customer_rep_assignment_overrides', 'customer_rep_assignment_receipts']) {
     assert.ok(query.includes(table));
@@ -67,7 +67,7 @@ test('customer assignment overrides deploy with private storage and protected ma
 });
 
 test('bulk master ingestion deploys after assignment overrides with protected storage and bounded execution', () => {
-  assert.equal(releaseDatabaseMigrations.at(-5), bulkMasterSnapshotMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-6), bulkMasterSnapshotMigrationName);
   const query = migrationContractQuery(bulkMasterSnapshotMigrationName);
   for (const marker of ['bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)',
     'ph_master_bulk_import_receipts_v1', 'ph_master_bulk_import_context_v1', 'ph_master_bulk_import_source_v1',
@@ -93,7 +93,7 @@ test('bulk master ingestion deploys after assignment overrides with protected st
 });
 
 test('import history routing is release-registered with private storage and bounded RPC contracts', () => {
-  assert.equal(releaseDatabaseMigrations.at(-4), importHistoryRoutingMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-5), importHistoryRoutingMigrationName);
   const query = migrationContractQuery(importHistoryRoutingMigrationName);
   for (const marker of ['import_history_files','import_history_rows',
     'begin_import_history_v1(text,text,text,text,date,timestamptz,integer,text[],text)',
@@ -119,7 +119,7 @@ test('import history routing is release-registered with private storage and boun
 
 test('typed handover assignment fast path deploys after import history routing and preserves the generic protected path', () => {
   const name = handoverMasterAssignmentFastPathMigrationName;
-  assert.equal(releaseDatabaseMigrations.at(-3), name);
+  assert.equal(releaseDatabaseMigrations.at(-4), name);
   assert.ok(releaseDatabaseMigrations.indexOf(importHistoryRoutingMigrationName) < releaseDatabaseMigrations.indexOf(name));
   const query = migrationContractQuery(name);
   for (const marker of ['handover_normalize_assignment_v1()', "tg_table_name=''ph_master_inventory''then", 'doc:=to_jsonb(new)', 'jsonb_populate_record(new,patch)', 'jsonb_populate_record(null::public.%i,$1)']) {
@@ -138,7 +138,7 @@ test('typed handover assignment fast path deploys after import history routing a
 });
 
 test('bulk context lookup deploys with indexed plans and unchanged protected identity branches', () => {
-  assert.equal(releaseDatabaseMigrations.at(-2), bulkContextIndexPlanMigrationName);
+  assert.equal(releaseDatabaseMigrations.at(-3), bulkContextIndexPlanMigrationName);
   const query = migrationContractQuery(bulkContextIndexPlanMigrationName);
   for (const marker of ['ph_master_bulk_context_v1(uuid,text)', 'ph_master_bulk_context_analyze_v1()',
     'analyze app_sync_private.ph_master_bulk_import_context_v1', 't.tgtype=4', "t.tgenabled='O'",
@@ -154,7 +154,7 @@ test('bulk context lookup deploys with indexed plans and unchanged protected ide
 
 test('manager module revision signals register with private-source and metadata-only realtime contracts', () => {
   const name = managerModuleRevisionSignalsMigrationName;
-  assert.equal(releaseDatabaseMigrations.at(-1), name);
+  assert.equal(releaseDatabaseMigrations.at(-2), name);
   const query = migrationContractQuery(name);
   for (const marker of ['app_sync_private.sources', "modules=array['managers']", "dylan_only=(key<>'production_schedule_active')",
     'count(*)=32', "t.tgenabled='O'", "p.proname='touch_source'", 't.tgtype=case t.tgname', 'public.app_dataset_revisions',
@@ -202,7 +202,7 @@ test('handover release requires an armed minute job or an already completed Auth
 });
 
 test('approved SQL repair contracts verify every repaired body and retain restricted execution', () => {
-  assert.deepEqual(releaseDatabaseMigrations.slice(-38), [sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations.slice(-39), [sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName]);
   const functions = migrationContractQuery(sqlFunctionCorrectnessRepairsMigrationName);
   for (const marker of ['inventory_rows.available', 'v_before_state_hash', 'AURA_BUNCH_CREATION_DATE_UNAVAILABLE',
     "card.row_ids @> (action->''row_ids'')", 'outbox.event_id']) assert.ok(functions.includes(marker), marker);
@@ -248,6 +248,26 @@ test('master lineage cleanup is release-registered and keeps housekeeping privat
   assert.equal((source.match(/expired\.run_id <> p_run_id/g) || []).length, 2);
   assert.match(source, /set_config\('gnc\.master_lineage_cleanup_run', p_run_id::text, true\)/);
   assert.match(source, /MASTER_LINEAGE_CLEANUP_GUARD_MISMATCH/);
+});
+
+test('inventory Reclass move ledger is release-registered with private access, import overlay, and non-cascading audit', () => {
+  const name = inventoryReclassMovesMigrationName;
+  assert.equal(releaseDatabaseMigrations.at(-1), name);
+  const contract = migrationContractQuery(name);
+  for (const marker of ['ph_inventory_reclass_commands_v1', 'ph_inventory_reclass_batch_receipts_v1',
+    'ph_inventory_reclass_movements_v1', 'ph_inventory_reclass_import_aliases_v1',
+    'ph_inventory_reclass_import_conflicts_v1', 'bulk_import_master_snapshot_v1',
+    'apply_inventory_reclass_import_overlay_v1', 'target_duplicate', 'operation_order',
+    'ph_master_inventory_reclass_lineage_v1_idx', 'importStatus', "confdeltype='c'",
+    'ph_warehouse_assigned_items', 'DRIVE_RECLASS_ROW_NOT_ASSIGNED', 'INVENTORY_RECLASS_DESTINATION_SEASON_MISMATCH']) {
+    assert.ok(contract.includes(marker), marker);
+  }
+  assert.match(contract, /not exists\(select 1 from pg_constraint f[\s\S]*confdeltype='c'/);
+  const source = fs.readFileSync(new URL('../supabase/migrations/' + name, import.meta.url), 'utf8');
+  assert.doesNotThrow(() => migrationBody(source));
+  assert.match(source, /enable row level security/i);
+  assert.match(source, /apply_inventory_reclass_import_overlay_v1\(p_run_id,p_request_id\)/);
+  assert.match(source, /status.{0,80}importStatus|importStatus.{0,80}status/s);
 });
 
 test('season-sales CAV reconciliation lookup uses the exact normalized query expressions', () => {
@@ -381,7 +401,7 @@ test('baseline path fails closed when its identity or required contract is missi
   }
 });
 test('release schema handoff applies the perennial override after low-stock and verifies its exact database contract',async()=>{
-  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName,auraVoiceRoleAccessMigrationName,auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName,managerReportReadV2MigrationName,managerListReadV2MigrationName,inventoryLocationOnHandMigrationName,masterInventoryRealtimeMigrationName,eval2SharedLowStockThresholdMigrationName,masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName]);
+  assert.deepEqual(releaseDatabaseMigrations,[migrationName,perennialAssignmentMigrationName,passwordReconciliationMigrationName,productionScheduleMigrationName,auraHrCommandCenterMigrationName,scheduledHandoverMigrationName,requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName,reclassSplitMoveMigrationName,reclassEvalSubmitGuardsMigrationName,inventoryRowAssignmentAuthorityMigrationName,itemcodeDefaultOwnersMigrationName,inventoryRowAssignmentFenceIntegrationMigrationName,inventoryRowAssignmentFutureSnapshotsMigrationName,inventoryRowAssignmentLiveConsumersMigrationName,auraInternalQueryMigrationName,auraCommonNamePriorityMigrationName,auraDynamicSeasonScopeMigrationName,auraInventoryExplicitProjectionMigrationName,sqlFunctionCorrectnessRepairsMigrationName,sqlLintRuntimeContextMigrationName,reclassShearedMigrationName,reclassSmartShieldMigrationName,smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName,auraVoiceRoleAccessMigrationName,auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName,managerReportReadV2MigrationName,managerListReadV2MigrationName,inventoryLocationOnHandMigrationName,masterInventoryRealtimeMigrationName,eval2SharedLowStockThresholdMigrationName,masterLineageCleanupMigrationName,seasonSalesCavLookupMigrationName,seasonSalesEmptyCleanupMigrationName,seasonSalesWorklistMigrationName,inventoryAssignmentBatchesMigrationName,inventoryAssignmentWitnessMigrationName,inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName,inventoryReclassMovesMigrationName]);
   assert.match(migrationContractQuery(reclassShearedMigrationName),/enqueue_drive_reclass_inquiry_v5/);
   assert.match(migrationContractQuery(reclassShearedMigrationName),/quantity_text/);
   assert.match(migrationContractQuery(auraCommonNamePriorityMigrationName),/common_score/);

@@ -23,6 +23,10 @@ test('database workspace replays the production baseline and active chain withou
     const workspaceNames = readdirSync(migrations).sort();
     assert.equal(workspace.migrationCount, activeNames.length + 3);
     assert.equal(workspaceNames.length, activeNames.length + 3);
+    for (const name of workspaceNames) {
+      assert.doesNotMatch(readFileSync(path.join(migrations, name), 'utf8'), /\r\n/,
+        `disposable ${name} must use the same LF function-body text as Linux CI`);
+    }
     assert.equal(workspaceNames[0], '20260929195959_typegen_schema_bootstrap.sql');
     assert.equal(workspaceNames[1], '20260929200000_production_baseline.sql');
     assert.equal(workspaceNames[2], '20260929200001_baseline_private_catalog_postlude.sql');
@@ -75,6 +79,7 @@ test('database workspace replays the production baseline and active chain withou
       '20261008190038_reclass_sheared_action_v5.sql',
       '20261009053029_reclass_smart_priority_hold_shield_v6.sql',
       '20261009202507_prompt25_editable_field_shield_and_hold_clear.sql',
+      '20261015230000_inventory_reclass_moves_v1.sql',
     ]);
     for (const migration of activePermissionReferences) assert.match(migration.sql, /'drive\.reclass\.submit'/);
     assert.equal(readdirSync(path.join(root, 'supabase', 'migrations')).includes(workspaceNames[prerequisiteIndex]), false,
@@ -167,6 +172,11 @@ test('sandbox workspace layers discovered migrations and tests after the schema-
     const copiedMigrations = readdirSync(path.join(workspace.root, 'supabase/migrations')).sort();
     assert.deepEqual(copiedMigrations, ['20260929200000_sandbox_project_schema.sql', ...sourceMigrations]);
     assert.deepEqual(readdirSync(path.join(workspace.root, 'supabase/tests')).sort(), sourceTests.map(file => path.basename(file)).sort());
+    for (const directory of ['migrations', 'tests']) {
+      for (const name of readdirSync(path.join(workspace.root, 'supabase', directory))) {
+        assert.doesNotMatch(readFileSync(path.join(workspace.root, 'supabase', directory, name), 'utf8'), /\r\n/);
+      }
+    }
     const migration = readFileSync(path.join(workspace.root, 'supabase', 'migrations', '20260929200000_sandbox_project_schema.sql'), 'utf8');
     assert.match(migration, /CREATE TABLE "public"\."sandbox_profiles"/);
     assert.match(migration, /CREATE TABLE "bloomscapes_demo"\."environment"/);
