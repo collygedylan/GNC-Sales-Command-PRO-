@@ -184,6 +184,6 @@ test('post-login shell completes role initialization without the optional prefer
 test('navigation module URL and service worker cache use the current shell build', () => {
   const build = worker.match(/const APP_SHELL_BUILD = '([^']+)'/);
   assert.ok(build, 'service worker build marker should exist');
-  assert.ok(html.includes(`./assets/navigation-preferences.js?v=${build[1]}`));
+  assert.ok(html.includes(`./assets/navigation-preferences.js?v=${encodeURIComponent(build[1])}`));
   assert.ok(worker.includes(`'./assets/navigation-preferences.js?v=' + encodeURIComponent(APP_SHELL_BUILD)`));
 });

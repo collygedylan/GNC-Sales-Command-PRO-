@@ -15,12 +15,23 @@ function source(name) {
 const functions = ['cloneArgosReclassProposal', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
   'hasArgosReclassMoveUpProposal',
   'collectArgosReclassMoveProposal', 'collectArgosReclassV3Draft', 'changeArgosReclassMoveSplit',
-  'markArgosReclassProposalEdited', 'buildArgosReclassV3ProposalHtml'];
+  'markArgosReclassProposalEdited', 'getArgosReclassProposalRenderSignature', 'setArgosReclassAttributeIfChanged',
+  'buildArgosReclassV3ProposalHtml'];
 function fixture() {
   const entry = { unique_id: 'r1', values: { ptronhand: '25', lotcode: '27.F1', locationcode: 'A.01', season: 'F1' }, sourceRow: { ITEMCODE: 'TEST' } };
   const rowMap = {};
+  const cardAttributes = new Map([['data-reclass-row-card', 'r1']]);
+  const card = {
+    getAttribute: name => cardAttributes.get(name) ?? null,
+    setAttribute: (name, value) => cardAttributes.set(name, String(value)),
+    querySelector: () => ({ focus() {} }),
+  };
   const ctx = {
     Map, Set, console,
+    document: { querySelectorAll: selector => {
+      assert.equal(selector, '[data-reclass-row-card]');
+      return [card];
+    } },
     RECLASS_ACTION_WORKFLOW_V3_ORDER: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down'],
     RECLASS_ACTION_WORKFLOW_V5_ORDER: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship', 'recount', 'priority_change', 'move_up', 'move_down', 'sheared'],
     RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: ['hold', 'take_off_hold', 'stop_ship', 'off_stop_ship'],
@@ -34,6 +45,7 @@ function fixture() {
     getReclassActionWorkflowV5Config: action => ({ kind: action === 'sheared' ? 'sheared' : 'move', label: action === 'sheared' ? 'Sheared Request' : (action === 'move_up' ? 'Move Up Request' : 'Move Down Request') }),
     getArgosReclassRowCurrentSeason: row => row.values.season,
     getArgosReclassTemporaryOverlay: () => null,
+    getEvalWorkInquiryRowResolution: uid => ctx.argosReclassMultiActionState.rowResolutions.get(uid) || '',
     collectArgosReclassInventoryFieldEdits: () => [],
     getItemInquiryItemCode: row => row.ITEMCODE,
     captureEvalWorkLocalDraftSoon() {}, refreshArgosReclassMultiActionUi() {},
@@ -44,7 +56,7 @@ function fixture() {
   vm.runInContext(functions.map(source).join('\n'), ctx);
   const move = (splits = [{ quantity: '15', destinationSeason: 'X' }, { quantity: '5', destinationSeason: 'S1' }, { quantity: '5', destinationSeason: 'U1' }]) =>
     rowMap.move_up = { action: 'move_up', splits, applyHold: false, holdReason: '' };
-  return { ctx, entry, rowMap, move };
+  return { ctx, entry, rowMap, move, card };
 }
 
 test('collector preserves ordered repeated splits and exact OH without a hidden move hold', () => {
@@ -105,15 +117,17 @@ test('legacy adaptation and draft snapshots own their nested split arrays', () =
 });
 
 test('add/remove split edits invalidate a completed resolution and submission identity', () => {
-  const { ctx, rowMap, move } = fixture(); move([{ quantity: 15, destinationSeason: 'X' }]);
-  const button = { closest: () => ({ getAttribute: () => 'r1', querySelector: () => ({ focus() {} }) }) };
+  const { ctx, rowMap, move, card } = fixture(); move([{ quantity: 15, destinationSeason: 'X' }]);
+  const button = { closest: () => card };
   ctx.changeArgosReclassMoveSplit(button, 'move_up');
   assert.equal(rowMap.move_up.splits.length, 2);
   assert.equal(rowMap.move_up.splits[1].quantity, '');
   assert.equal(ctx.argosReclassMultiActionState.rowResolutions.has('r1'), false);
   assert.equal(ctx.argosInventoryTransactionState.idempotencyToken, 'edited-token');
+  assert.equal(card.getAttribute('data-reclass-proposal-signature'), ctx.getArgosReclassProposalRenderSignature('r1', ''));
   ctx.changeArgosReclassMoveSplit(button, 'move_up', 0);
   assert.equal(rowMap.move_up.splits.length, 1);
+  assert.equal(card.getAttribute('data-reclass-proposal-signature'), ctx.getArgosReclassProposalRenderSignature('r1', ''));
   ctx.changeArgosReclassMoveSplit(button, 'move_up', 0);
   assert.equal(rowMap.move_up.splits.length, 1, 'last row remains editable');
 });

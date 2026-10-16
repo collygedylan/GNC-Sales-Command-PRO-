@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test } from '@playwright/test';
 // @test-group: @local-e2e,@release-timing
 
@@ -75,7 +76,7 @@ test('main scrolling avoids forced layout reads and universal style invalidation
   expect(result.scrollClassApplied).toBe(true);
   expect(result.clientRectReads).toBe(0);
   expect(result.boundingRectReads).toBe(0);
-  expect(result.p95FrameGapMs).toBeLessThan(55);
+  assertFrontendUiTiming(expect(result.p95FrameGapMs), test.info().project);
 });
 
 test('realtime UI decoration is scoped to newly added content', {"tag":["@local-e2e","@release-timing"]}, async ({ page }) => {

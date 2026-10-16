@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import vm from 'node:vm';
+import { normalizeRelease } from '../scripts/deployment-fingerprint-lib.mjs';
 
 const source = readFileSync(new URL('../sw.js', import.meta.url), 'utf8');
 const origin = 'https://agmetric-isolation.test';
@@ -108,7 +109,8 @@ test('fresh install precaches the exact versioned runtime requested by the compi
   const build = h.evaluate('APP_SHELL_BUILD');
   const runtime = `/assets/live-app-runtime-v2026082010.min.js?v=${encodeURIComponent(build)}`;
   const shellBuilder = readFileSync(new URL('../scripts/build-live-shell.mjs', import.meta.url), 'utf8');
-  assert.match(shellBuilder, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE\}'/);
+  assert.match(shellBuilder, /const RELEASE_QUERY = encodeURIComponent\(RELEASE\)/);
+  assert.match(shellBuilder, /runtime\.src = '\.\/assets\/\$\{runtimeName\}\?v=\$\{RELEASE_QUERY\}'/);
   h.setFetch(async input => new Response(absolute(input).includes('live-app-runtime-') ? 'CURRENT RUNTIME' : 'CURRENT SHELL'));
   await h.dispatch('install');
   const cache = await h.caches.open(h.evaluate('CACHE_NAME'));
@@ -328,7 +330,7 @@ test('inactive production upgrade behavior remains, but active/current and forei
   ]);
   for (const client of h.clients) await h.dispatch('fetch', { clientId: client.id, request: request('/write', { method: 'POST', referrer: '' }) });
   assert.deepEqual(h.calls.navigated.map(call => call.id), ['root']);
-  assert.equal(new URL(h.calls.navigated[0].url).searchParams.get('shellv'), `V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`);
+  assert.equal(new URL(h.calls.navigated[0].url).searchParams.get('shellv'), normalizeRelease(`V${JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version}`));
   assert.match(h.calls.navigated[0].url, /shellr=photo-egress-r1-scope-r1/);
 });
 

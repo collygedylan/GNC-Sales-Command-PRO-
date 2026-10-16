@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { generatedBuildOutput } from './local-validation-evidence.mjs';
 import { discoverAllTests, discoverRepositoryFiles, readTestAnnotations } from './test-discovery.mjs';
+import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = root;
@@ -156,7 +157,7 @@ export function releaseMarkerOnly(file, before, after) {
   if (!releaseMarkerFiles.has(file)) return false;
   if (file === 'package.json' || file === 'package-lock.json') {
     const old = JSON.parse(before), next = JSON.parse(after);
-    if (!/^\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(old.version) || !/^\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(next.version)) return false;
+    if (!normalizeRelease(`V${old.version}`) || !normalizeRelease(`V${next.version}`)) return false;
     old.version = next.version;
     if (file === 'package-lock.json') old.packages[''].version = next.packages[''].version;
     return JSON.stringify(old) === JSON.stringify(next);
@@ -168,8 +169,9 @@ export function releaseMarkerOnly(file, before, after) {
     'scripts/build-live-shell.mjs': /const RELEASE\s*=\s*['"]([^'"]+)['"]/,
   };
   const previous = before.match(markers[file])?.[1], next = after.match(markers[file])?.[1];
-  return /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(previous || '') && /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/.test(next || '')
-    && before.replaceAll(previous, next).replaceAll('\r\n', '\n') === after.replaceAll('\r\n', '\n');
+  return Boolean(normalizeRelease(previous) && normalizeRelease(next))
+    && before.replaceAll(previous, next).replaceAll(encodeURIComponent(previous), encodeURIComponent(next))
+      .replaceAll(`shellv=${next}`, `shellv=${encodeURIComponent(next)}`).replaceAll('\r\n', '\n') === after.replaceAll('\r\n', '\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

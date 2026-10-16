@@ -1966,6 +1966,7 @@ const REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
 ]);
 const REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_ = 'plant-request-lifecycle-v2';
 const APPS_SCRIPT_DEPLOYMENT_COMMIT_ = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
+const APP_RELEASE_VERSION_ = 'AgData v2.0.0';
 const INVENTORY_TRANSACTION_REQUIRED_RECIPIENT_EMAILS_ = Object.freeze([
   EMAIL_APPROVAL_USER_EMAILS_.sunday_ellis,
   EMAIL_APPROVAL_USER_EMAILS_.sharon_combs,
@@ -9582,6 +9583,7 @@ function getAppsScriptDeploymentHealth_() {
   return {
     ok: true,
     service: 'gnc-apps-script',
+    release: APP_RELEASE_VERSION_,
     deployedCommit: APPS_SCRIPT_DEPLOYMENT_COMMIT_,
     lifecycleRecipientPolicyVersion: REQUEST_LIFECYCLE_RECIPIENT_POLICY_VERSION_,
     requiredRecipientCount: REQUEST_LIFECYCLE_REQUIRED_RECIPIENT_EMAILS_.length,

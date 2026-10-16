@@ -141,7 +141,10 @@ function submitHarness(failCreate = false) {
     getCurrentVisibleViewId: () => 'request',
     queueInteractiveViewRender: () => {},
   });
-  vm.runInContext(extract('submitArgosInventoryTransaction'), context);
+  vm.runInContext([
+    extract('getArgosInventoryTransactionPayloadForPendingMove'),
+    extract('submitArgosInventoryTransaction'),
+  ].join('\n'), context);
   return { dom, context, calls, state };
 }
 

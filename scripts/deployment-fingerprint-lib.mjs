@@ -2,10 +2,14 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const RELEASE_PATTERN = /^V\d{4}\.\d{2}\.\d{2}\.\d{2,3}$/;
+const SEMANTIC_RELEASE_PATTERN = /^(?:AgData\s+v|v)((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/i;
 const COMMIT_PATTERN = /^[a-f0-9]{40}$/i;
 
 export function normalizeRelease(value = '') {
-  const normalized = String(value || '').trim().toUpperCase();
+  const text = String(value || '').trim();
+  const semantic = SEMANTIC_RELEASE_PATTERN.exec(text);
+  if (semantic) return `AgData v${semantic[1]}`;
+  const normalized = text.toUpperCase();
   return RELEASE_PATTERN.test(normalized) ? normalized : '';
 }
 export function normalizeCommit(value = '') {

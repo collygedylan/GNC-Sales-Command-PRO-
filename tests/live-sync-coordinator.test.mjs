@@ -79,6 +79,56 @@ test('same row count updates and deletions replace the old snapshot', async () =
     f.revision = '3'; f.rows = []; await f.coordinator.check();
     assert.deepEqual(f.commits.at(-2), [{ id: 'dock-29' }]); assert.deepEqual(f.commits.at(-1), []);
 });
+
+test('a full projection request retains the verified browse cohort until its source changes', async () => {
+    const f = fixture();
+    f.context.dataPermissionVersion = 'role-v1';
+    f.adapter.projection = 'browse'; f.adapter.projectionFamily = 'complete-same-rows';
+    const full = { ...f.adapter, cacheKey: 'soc/full', projection: 'full' };
+    const background = { id: 'side:lookup', cacheKey: 'lookup/all', sourceKeys: ['lookup'],
+        stage: async () => [], commit: () => {} };
+    f.context.backgroundAdapters = [background];
+    await f.coordinator.check();
+    await f.coordinator.ensure(full, true);
+    const reads = f.reads;
+    await f.advance(250);
+    assert.equal(f.coordinator.getStatus().state, 'Up to date', 'a wider same-revision read is not a source change');
+    assert.equal(f.coordinator.getBackgroundStatus().state, 'Up to date');
+    await f.coordinator.check();
+    assert.equal(f.reads, reads, 'returning to browse does not download or downgrade the wider snapshot');
+    assert.equal(await f.coordinator.ensure(full), true);
+    assert.equal(f.reads, reads, 'the complete contract remains reusable');
+    f.revision = '2';
+    await f.coordinator.check();
+    const changedReads = f.reads;
+    await f.coordinator.ensure(full);
+    assert.equal(f.reads, changedReads + 1, 'a new browse revision invalidates its older full sibling');
+    f.permission = 'role-v2'; f.context.dataPermissionVersion = 'role-v2';
+    await f.coordinator.check();
+    const permissionReads = f.reads;
+    await f.coordinator.ensure(full);
+    assert.equal(f.reads, permissionReads + 1, 'permission changes discard all old projection contracts');
+});
+
+test('different filters and a narrower applied projection never retain obsolete snapshot ownership', async () => {
+    const f = fixture();
+    await f.coordinator.check();
+    await f.coordinator.ensure({ ...f.adapter, cacheKey: 'soc/other-filter' });
+    let reads = f.reads;
+    await f.coordinator.ensure(f.adapter);
+    assert.equal(f.reads, reads + 1, 'switching back to a filter must apply its own rows again');
+    f.adapter.projection = 'browse'; f.adapter.projectionFamily = 'same-rows';
+    const full = { ...f.adapter, cacheKey: 'soc/full', projection: 'full' };
+    await f.coordinator.ensure(full);
+    await f.coordinator.ensure(f.adapter, true);
+    reads = f.reads;
+    await f.coordinator.ensure(full);
+    assert.equal(f.reads, reads + 1, 'a forced narrow read invalidates previously installed full-field ownership');
+    await f.coordinator.ensure({ ...full, cacheKey: 'soc/other-season/full', projectionFamily: 'other-season' });
+    reads = f.reads;
+    await f.coordinator.ensure(full);
+    assert.equal(f.reads, reads + 1, 'a different season cannot retain the prior full-field ownership');
+});
 test('a previous-day source revision invalidates the prior cache and applies current rows', async () => {
     const f = fixture();
     f.changedAt = '2026-10-07T23:59:59Z';

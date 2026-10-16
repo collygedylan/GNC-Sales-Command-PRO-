@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test, type Page } from '@playwright/test';
 
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
@@ -821,7 +822,7 @@ test('Drive previews same-permission cache before revisions and keeps it display
     await testInfo.attach('cached-drive-first-card-timing.json', { body: JSON.stringify(cachedTiming, null, 2), contentType: 'application/json' });
     console.log('CACHED_DRIVE_FIRST_CARD_TIMING', JSON.stringify(cachedTiming));
     expect(cachedTiming.elapsedMs, JSON.stringify(cachedTiming)).toBeGreaterThanOrEqual(0);
-    expect(cachedTiming.elapsedMs, JSON.stringify(cachedTiming)).toBeLessThanOrEqual(1000);
+    assertFrontendUiTiming(expect(cachedTiming.elapsedMs, JSON.stringify(cachedTiming)), test.info().project);
     await expect(page.locator('#live-data-status-label')).toHaveText('Showing saved data · Checking for updates');
     expect(await page.evaluate(() => window.eval('productionLiveSyncVerifiedView === productionVerifiedViewKey()'))).toBe(false);
     const blockedExports = await page.evaluate(() => window.eval(`(() => {
@@ -901,7 +902,7 @@ test('Managers module picker opens without waiting for unrelated live datasets',
   await testInfo.attach('manager-picker-timing.json', { body: JSON.stringify(evidence, null, 2), contentType: 'application/json' });
   console.log('MANAGER_PICKER_TIMING', JSON.stringify(evidence.timing));
   expect(evidence.elapsedMs, JSON.stringify(evidence.timing)).toBeGreaterThanOrEqual(0);
-  expect(evidence.elapsedMs).toBeLessThanOrEqual(250);
+  assertFrontendUiTiming(expect(evidence.elapsedMs), test.info().project);
   expect(evidence.adapters).toEqual([]);
   expect(fixture.errors).toEqual([]);
   expect(fixture.blockedMutations).toEqual([]);

@@ -2,6 +2,7 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
 import { GitHubPaginationError, listGitHubApiItems } from './github-api-pagination.mjs';
 import { hasAttestedHotfix, isHotfixSkippedJob, verifyReleaseProof, verifySameRunReleaseProof } from './release-proof.mjs';
 import { testScopeForPaths, maySkipTestJob } from './ci-test-scope.mjs';
@@ -194,7 +195,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.ar
           ...(env.RELEASE_BROWSER_MODE ? { browserMode: env.RELEASE_BROWSER_MODE } : {}) },
         repository: env.GITHUB_REPOSITORY, commit: env.GITHUB_SHA,
         runId: Number(env.GITHUB_RUN_ID), attempt: Number(env.GITHUB_RUN_ATTEMPT),
-        release: `V${JSON.parse(readFileSync('package.json', 'utf8')).version}`, api,
+        release: await readExpectedRelease(), api,
       });
       output({ digest: result.digest, 'build-commit': result.buildCommit,
         'run-id': Number(env.RELEASE_PROOF_RUN_ID), attempt: Number(env.RELEASE_PROOF_ATTEMPT),

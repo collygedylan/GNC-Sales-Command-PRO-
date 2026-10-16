@@ -28,6 +28,16 @@ function recoveryHarness({ storageBlocked = false, offline = false, href = 'http
   return { root, events, storage };
 }
 
+test('semantic release recovery accepts legacy-to-semantic and semantic patch upgrades', async () => {
+  for (const from of ['V2026.10.14.003', 'AgData v2.0.0']) {
+    const h = recoveryHarness();
+    assert.equal(await h.root.recoverShellVersionMismatch(from, 'AgData v2.0.1'), true);
+    assert.equal(new URL(h.root.location.href).searchParams.get('shellv'), 'AgData v2.0.1');
+    const next = recoveryHarness({ storage: h.storage, href: h.root.location.href });
+    assert.equal(await next.root.recoverShellVersionMismatch(from, 'AgData v2.0.1'), false);
+  }
+});
+
 test('verified shell mismatch unregisters and clears assets before a single cache-busted hard reload', async () => {
   const h = recoveryHarness();
   const first = h.root.recoverShellVersionMismatch('V2026.10.01.002', 'V2026.10.01.003');
@@ -60,6 +70,23 @@ test('runtime and pre-runtime shell mismatch paths use the same recovery without
   assert.match(section(html, 'async function forceShellBuildReload(', 'async function maybeForceLatestStandaloneShell('), /return window\.recoverShellVersionMismatch\(APP_SHELL_BUILD, safeTargetBuild\)/);
   assert.match(section(html, 'const reloadToShellBuild =', 'const requestWaitingShellActivation ='), /window\.recoverShellVersionMismatch\(shellBuild, safeTargetBuild\)/);
   assert.doesNotMatch(section(html, 'async function recoverStandaloneShellController(', 'async function fetchLatestShellManifestInfo('), /clearBootCacheForShellUpdate\(true\)/);
+});
+
+test('iOS shell comparison uses canonical version text rather than CSS-transformed innerText', () => {
+  const versionElement = { innerText: 'AGDATA V2.0.0', textContent: 'AgData v2.0.0' };
+  const context = vm.createContext({
+    APP_SHELL_BUILD: 'AgData v2.0.0', APP_SHELL_VERSION: 'AgData v2.0.0',
+    document: { getElementById: id => id === 'header-version' ? versionElement : null },
+    window: { __APP_SHELL_VERSION__: 'AgData v2.0.0', __APP_SHELL_BUILD__: 'AgData v2.0.0' },
+    getCurrentShellUrlBuild: () => 'AgData v2.0.0', getStoredTargetShellBuild: () => '',
+  });
+  vm.runInContext(`${section(html, 'function getDisplayedShellBuild()', 'function getIosRuntimeShellMismatchReason()')}\n${section(html, 'function getIosRuntimeShellMismatchReason()', 'function getIosRuntimeRecoveryRecord()')}`, context);
+  assert.equal(context.getDisplayedShellBuild(), 'AgData v2.0.0');
+  assert.equal(context.getIosRuntimeShellMismatchReason(), '');
+
+  versionElement.textContent = 'AgData v1.9.9';
+  assert.equal(context.getIosRuntimeShellMismatchReason(), 'header:AgData v1.9.9', 'genuinely stale canonical display text remains detectable');
+  assert.match(section(html, '.nav-version-pill{', '\n'), /text-transform:none/);
 });
 
 test('native aliases accept username, display spelling, and full email consistently with the server', () => {

@@ -53,8 +53,8 @@ test('active Reclass picker describes priority and hold as live updates with que
     assert.match(option[0], /detail: 'Live update \+ queued inquiry'/);
     assert.doesNotMatch(option[0], /Email(?: report)? only/i);
   }
-  assert.match(options, /\{ value: 'move_up', label: 'Move Up Request', detail: 'Email only' \}/);
-  assert.match(options, /\{ value: 'move_down', label: 'Move Down Request', detail: 'Email only' \}/);
+  assert.match(options, /\{ value: 'move_up', label: 'Move Up', detail: 'Live move \+ queued inquiry' \}/);
+  assert.match(options, /\{ value: 'move_down', label: 'Move Down', detail: 'Live move \+ queued inquiry' \}/);
 });
 
 function loadDraftCollector(rowMap = {}) {

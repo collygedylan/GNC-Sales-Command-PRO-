@@ -4,8 +4,9 @@ import { createHash, createHmac, createSign, randomBytes } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, basename, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readExpectedRelease } from './deployment-fingerprint-lib.mjs';
 
-const RELEASE = 'V2026.08.16.14-photo-archive-1';
+const RELEASE = await readExpectedRelease(fileURLToPath(new URL('../', import.meta.url)));
 const CHICAGO_TIME_ZONE = 'America/Chicago';
 const RETENTION_DAYS = 10;
 const QUARANTINE_DAYS = 30;

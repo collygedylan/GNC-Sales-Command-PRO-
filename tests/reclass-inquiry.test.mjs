@@ -9,6 +9,17 @@ const root = process.cwd();
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const code = fs.readFileSync(path.join(root, 'Code.gs'), 'utf8');
 
+test('the fullscreen mobile Reclass panel avoids rasterizing an invisible outer shadow', () => {
+  const mobileStart = html.search(/@media\(max-width:640px\)\{\s*#argos-inventory-transaction-modal/);
+  assert.ok(mobileStart > 0);
+  const panelRule = html.slice(mobileStart).match(/\.argos-tx-panel\{([^}]+)\}/)?.[1] || '';
+  assert.match(panelRule, /width:100vw!important/);
+  assert.match(panelRule, /height:100dvh/);
+  assert.match(panelRule, /border-radius:0/);
+  assert.match(panelRule, /box-shadow:none/);
+  assert.match(html, /\.argos-tx-panel\{[^}]*box-shadow:0 28px 70px/, 'the inset desktop panel retains its shadow');
+});
+
 test('Reclass editor removes the action view and discloses server-determined Hold / Stop scope', () => {
   assert.doesNotMatch(html, /id="argos-reclass-action-view"/);
   assert.doesNotMatch(html, /function applyArgosReclassActionView\(/);
@@ -16,6 +27,8 @@ test('Reclass editor removes the action view and discloses server-determined Hol
   assert.match(html, /The selected row receives the Hold \/ Stop request/);
   assert.match(html, /the server determines that scope/);
   assert.match(html, /data-reclass-v3-proposal-field="reason"/);
+  assert.match(html, /Move quantities update live inventory when you send this inquiry\./);
+  assert.doesNotMatch(html, /Movement quantities remain an inquiry until keyed\./);
 });
 
 function firstNonEmptyValue(...values) {
@@ -1319,6 +1332,50 @@ test('Reclass editor avoids duplicate identity and season summary blocks', () =>
   assert.doesNotMatch(editor, /argos-reclass-season/);
   assert.match(editor, /Choose an action on each row/);
   assert.match(editor, /renderArgosReclassHoldScopeNotice/);
+});
+
+test('Reclass row disclosure is mobile-only; desktop opens with a hydrated editor', () => {
+  const helpersStart = html.indexOf('function getArgosReclassRowRenderSignature');
+  const helpersEnd = html.indexOf('function toggleArgosReclassRowCard', helpersStart);
+  assert.ok(helpersStart > 0 && helpersEnd > helpersStart);
+  const start = html.indexOf('function renderArgosReclassInquiryEditor');
+  const end = html.indexOf('function handleArgosReclassLocationNoteInput', start);
+  assert.ok(start > 0 && end > start);
+  const render = html.slice(start, end);
+  const desktopToggleRule = html.match(/@media\(min-width:641px\)\s*\{\s*\.argos-reclass-row-toggle\s*\{([^}]*)\}/)?.[1] || '';
+  assert.match(desktopToggleRule, /pointer-events:\s*none/);
+
+  const renderForViewport = (mobile) => {
+    const context = {
+      isArgosReclassMobileEditorViewport: () => mobile,
+      argosReclassRowEditorEntries: new Map(),
+      argosInventoryTransactionState: { sourceView: 'drive' },
+      RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
+      RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
+      getArgosReclassV3ScopeActionsForEntry: () => [],
+      getArgosReclassV3ActionCountForEntry: () => 0,
+      getArgosReclassRowProposalMap: () => ({}),
+      getArgosReclassTemporaryOverlay: () => null,
+      getArgosReclassV3HoldProposal: () => null,
+      getItemInquiryItemCode: () => '',
+      getEvalWorkInquiryRowResolution: () => '',
+      buildArgosReclassRowFieldsHtml: () => '<input data-reclass-editor-control>',
+      renderArgosReclassHoldScopeNotice: () => '',
+      escapeHtml: value => String(value ?? ''),
+    };
+    vm.createContext(context);
+    vm.runInContext(`${html.slice(helpersStart, helpersEnd)}\n${render}; this.renderEditor = renderArgosReclassInquiryEditor;`, context);
+    return context.renderEditor({ locationRows: [{ unique_id: 'source', values: { locationcode: 'A.01.001', lotcode: '27.F1', ptronhand: 1000, ptrreviewed: 0, ptravailable: 1000 } }] }, 'source');
+  };
+
+  const desktop = renderForViewport(false);
+  assert.match(desktop, /class="argos-reclass-row-toggle" aria-expanded="true"/);
+  assert.match(desktop, /data-reclass-row-hydrated="true"/);
+  assert.match(desktop, /data-reclass-editor-control/);
+  const mobile = renderForViewport(true);
+  assert.match(mobile, /class="argos-reclass-row-toggle" aria-expanded="false"/);
+  assert.match(mobile, /data-reclass-row-hydrated="false"/);
+  assert.doesNotMatch(mobile, /data-reclass-editor-control/);
 });
 
 test('Bloom Picker Order is Dylan-only and optional Productivity schema failure stays local', () => {

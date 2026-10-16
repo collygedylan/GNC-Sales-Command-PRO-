@@ -101,10 +101,11 @@
     root.addEventListener('online', () => notify('online', 'online'));
     root.addEventListener('offline', () => notify('offline', 'offline'));
 
+    const isShellRelease = value => /^(?:V?\d{4}\.\d{2}\.\d{2}\.\d+|AgData v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*))$/.test(value);
     // Filters are disposable UI state. Auth, inventory, drafts and outboxes are not.
     root.invalidateAppFiltersForVersion = targetBuild => {
         const target = String(targetBuild || '').trim();
-        if (!/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)) return false;
+        if (!isShellRelease(target)) return false;
         let updated = false;
         for (const storageName of ['localStorage', 'sessionStorage']) {
             try {
@@ -127,7 +128,7 @@
     // target during the short toast, even when its registration URL is older.
     root.reloadForServiceWorkerUpdate = targetBuild => {
         const target = String(targetBuild || '').trim();
-        if (/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)) root.__gncPwaTargetBuild = target;
+        if (isShellRelease(target)) root.__gncPwaTargetBuild = target;
         if (root.__gncPwaReloadPending) return false;
         root.__gncPwaReloadPending = true;
         if (!root.__gncShellUpdateToastShown && typeof root.showToast === 'function') {
@@ -163,7 +164,7 @@
         if (root.__gncPwaReloadPending) return Promise.resolve(false);
         const current = String(currentBuild || '').trim();
         const target = String(targetBuild || '').trim();
-        if (!current || current === target || !/^V?\d{4}\.\d{2}\.\d{2}\.\d+$/.test(target)
+        if (!current || current === target || !isShellRelease(target)
             || root.navigator?.onLine === false) return Promise.resolve(false);
         if (shellRecovery) return shellRecovery;
         const marker = `${current}:${target}`;

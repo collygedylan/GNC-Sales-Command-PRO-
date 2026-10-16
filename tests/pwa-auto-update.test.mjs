@@ -9,6 +9,23 @@ const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const oldBuild = 'V2026.10.12.001';
 const newBuild = 'V2026.10.12.002';
 
+test('semantic release activation preserves session and drafts while invalidating obsolete filters', () => {
+  const h = harness();
+  h.root.localStorage.setItem('gnc_app_filter_state_v1:rep_one', 'old');
+  h.root.localStorage.setItem('gnc_supabase_auth_v1', 'session');
+  h.root.localStorage.setItem('draft-request', 'unsent');
+  assert.equal(h.root.invalidateAppFiltersForVersion('AgData v2.0.0'), true);
+  assert.equal(h.root.localStorage.getItem('gnc_app_filter_state_v1:rep_one'), null);
+  assert.equal(h.root.localStorage.getItem('gnc_supabase_auth_v1'), 'session');
+  assert.equal(h.root.localStorage.getItem('draft-request'), 'unsent');
+  for (const value of ['AgData v02.0.0', 'AgData v2.0', 'AgData v2.0.0.extra']) {
+    assert.equal(h.root.invalidateAppFiltersForVersion(value), false);
+  }
+  h.root.reloadForServiceWorkerUpdate('AgData v2.0.1');
+  h.timers.shift()();
+  assert.equal(new URL(h.reloads[0]).searchParams.get('shellv'), 'AgData v2.0.1');
+});
+
 function storage(entries = []) {
   const values = new Map(entries);
   return {

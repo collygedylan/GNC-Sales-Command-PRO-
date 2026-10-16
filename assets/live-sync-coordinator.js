@@ -25,6 +25,30 @@
         const cancel = options.clearTimeout || clearTimeout;
         const cacheFreshnessMs = Math.max(1000, Number(options.cacheFreshnessMs) || 30000);
         const applied = new Map();
+        const appliedKey = adapter => JSON.stringify([adapter.id, adapter.cacheKey]);
+        const appliedFor = adapter => applied.get(appliedKey(adapter));
+        function rememberApplied(adapter, value, metadata) {
+            const sourceSignature = signature(metadata, adapter.sourceKeys);
+            const key = appliedKey(adapter);
+            // Browse and full reads share an identity, but are distinct verified
+            // contracts. Retain both at the same source revision so a full read
+            // cannot cause the background cohort to downgrade it to browse.
+            // Only an explicitly declared full superset can retain browse proof.
+            // Different filters, seasons, revisions, and all non-master adapters
+            // replace their prior contract. A browse commit always invalidates full.
+            for (const [otherKey, entry] of applied) {
+                if (entry.id !== adapter.id) continue;
+                const coveredBrowse = adapter.projection === 'full' && entry.projection === 'browse'
+                    && !!adapter.projectionFamily && adapter.projectionFamily === entry.projectionFamily
+                    && entry.sourceSignature === sourceSignature;
+                if (!coveredBrowse || otherKey === key) applied.delete(otherKey);
+            }
+            applied.set(key, { id: adapter.id, value, cacheKey: adapter.cacheKey, sourceSignature,
+                projection: adapter.projection, projectionFamily: adapter.projectionFamily,
+                signature: JSON.stringify([adapter.cacheKey, sourceSignature]) });
+            const siblings = [...applied].filter(([, entry]) => entry.id === adapter.id);
+            while (siblings.length > 2) applied.delete(siblings.shift()[0]);
+        }
         const requested = new Map();
         let epoch = 0, scope = '', permission = '', running = null, queued = false;
         let activeRun = null, backgroundRunning = null, backgroundGeneration = 0, backgroundTimer = null, backgroundController = null;
@@ -386,7 +410,7 @@
             // Require the complete adapter cohort so joined views never mix
             // cached and missing data, and never preview on a background pass.
             const needsCachedDisplay = (ctx.adapters || []).some(adapter => {
-                const previous = applied.get(adapter.id);
+                const previous = appliedFor(adapter);
                 return !previous || previous.cacheKey !== adapter.cacheKey;
             });
             let lastPreview = null;
@@ -401,7 +425,7 @@
                 options.previewSnapshots(entries, { ...ctx, partialCohort }, revisions);
             };
             const appliedDisplayEntries = (ctx.adapters || []).map(adapter => {
-                const previous = applied.get(adapter.id);
+                const previous = appliedFor(adapter);
                 return previous && previous.cacheKey === adapter.cacheKey ? { adapter, value: previous.value } : null;
             });
             const canRetainAppliedDisplay = !background && ctx.progressive && ctx.visible && ctx.dataPermissionVersion
@@ -434,7 +458,7 @@
             const beforeValue = await options.readRevisions(keys, { signal: run.controller?.signal });
             if (!current()) return discard();
             const before = snapshot(beforeValue, keys);
-            if (background && (ctx.adapters || []).length && (permission !== before.permissionVersion || (ctx.adapters || []).some(adapter => applied.get(adapter.id)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)])))) {
+            if (background && (ctx.adapters || []).length && (permission !== before.permissionVersion || (ctx.adapters || []).some(adapter => appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)])))) {
                 publish('Syncing', 'Source data changed; verifying visible data.');
                 signal('background-source-changed', 0);
                 return false;
@@ -467,10 +491,10 @@
                     { blockedSources: unique(blocked.flatMap(adapter => adapter.sourceKeys)), unavailableSources: keys.filter(key => before.sources.get(key).state === 'unavailable') });
                 return false;
             }
-            const changed = adapters.filter(adapter => applied.get(adapter.id)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]));
+            const changed = adapters.filter(adapter => appliedFor(adapter)?.signature !== JSON.stringify([adapter.cacheKey, signature(before, adapter.sourceKeys)]));
             const staged = [];
-            const display = new Map(adapters.filter(adapter => applied.get(adapter.id)?.cacheKey === adapter.cacheKey)
-                .map(adapter => [adapter.id, { adapter, value: applied.get(adapter.id).value }]));
+            const display = new Map(adapters.filter(adapter => appliedFor(adapter)?.cacheKey === adapter.cacheKey)
+                .map(adapter => [adapter.id, { adapter, value: appliedFor(adapter).value }]));
             const preview = (adapter, value) => {
                 if (!ctx.progressive || background || !options.previewSnapshots || !current() || value === undefined) return;
                 const old = display.get(adapter.id)?.value;
@@ -539,7 +563,7 @@
                     if (!current()) {
                         return discard('View settings changed; verifying the updated selection.');
                     }
-                    staged.forEach(({ adapter, value }) => applied.set(adapter.id, { value, cacheKey: adapter.cacheKey, signature: JSON.stringify([adapter.cacheKey, signature(after, adapter.sourceKeys)]) }));
+                    staged.forEach(({ adapter, value }) => rememberApplied(adapter, value, after));
                     staged.forEach(({ adapter, value }) => {
                         try { Promise.resolve(options.writeCachedSnapshot?.(adapter, value, cacheMeta(adapter, ctx, after))).catch(() => {}); }
                         catch (error) { /* Cache persistence must not invalidate an authoritative commit. */ }
@@ -661,7 +685,7 @@
         function ensure(adapter, force = false) {
             const ctx = context();
             if (!ctx?.scope || ctx.visible === false || ctx.online === false) return Promise.resolve(false);
-            const wasApplied = applied.get(adapter.id)?.cacheKey === adapter.cacheKey;
+            const wasApplied = appliedFor(adapter)?.cacheKey === adapter.cacheKey;
             if (!force && wasApplied) {
                 const contextKey = identity(ctx);
                 const verifiedAt = verifiedAtByIdentity.get(contextKey);
@@ -671,13 +695,13 @@
                 signal('cache-expired', 0);
                 return Promise.resolve(true);
             }
-            if (force) applied.delete(adapter.id);
+            if (force) applied.delete(appliedKey(adapter));
             if (running && activeRun?.epoch === epoch && identity(activeRun.context || {}) === identity(ctx)
                 && (!force || !wasApplied) && activeRun.adapters?.some(item => item.id === adapter.id && item.cacheKey === adapter.cacheKey)) {
-                return running.then(() => applied.get(adapter.id)?.cacheKey === adapter.cacheKey);
+                return running.then(() => appliedFor(adapter)?.cacheKey === adapter.cacheKey);
             }
             requested.set(adapter.id, adapter);
-            return check('loader').then((ok) => ok && applied.get(adapter.id)?.cacheKey === adapter.cacheKey);
+            return check('loader').then((ok) => ok && appliedFor(adapter)?.cacheKey === adapter.cacheKey);
         }
         function suspend() { epoch++; clearTimers(); closeSubscription(); queued = false; }
         return Object.freeze({ check, signal, ensure, reset, suspend,

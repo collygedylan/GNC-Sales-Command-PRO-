@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test } from '@playwright/test';
 // @test-group: @local-e2e,@release-timing,eval
 
@@ -147,7 +148,7 @@ test('large Eval Report2 cache rebuild stays off the render path and preserves e
       targetCases };
   })()`));
   await testInfo.attach('eval-report2-cold-render-path', { body: JSON.stringify(result), contentType: 'application/json' });
-  expect(result.renderPathMs).toBeLessThan(500);
+  assertFrontendUiTiming(expect(result.renderPathMs), test.info().project);
   expect(result).toMatchObject({ initialEmpty: true, loading: true, samePromise: true, editableWhileLoading: false,
     ready: true, rowCount: 9364, exactRowKeys: true, reportParity: true, membershipParity: true, events: [],
     firstLoadFailed: true, firstFailureEvent: true, failedTargetReadCalls: 5, retryTargetReadCalls: 5,

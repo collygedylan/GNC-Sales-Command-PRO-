@@ -15,7 +15,7 @@ const sourceChecks = [
   ['scripts/build-live-shell.mjs', `const RELEASE = '${release}'`],
   ['v2/src/services/api.ts', `export const APP_VERSION = '${release}'`],
   ['v2/public/manifest.webmanifest', `"version": "${release}"`],
-  ['v2/public/manifest.webmanifest', `"start_url": "./?shellv=${release}"`]
+  ['v2/public/manifest.webmanifest', `"start_url": "./?shellv=${encodeURIComponent(release)}"`]
 ];
 
 for (const [fileName, expectedText] of sourceChecks) {
@@ -24,7 +24,7 @@ for (const [fileName, expectedText] of sourceChecks) {
 }
 
 const v2Manifest = JSON.parse(await readFile(path.join(siteRoot, 'v2', 'manifest.webmanifest'), 'utf8'));
-if (v2Manifest.version !== release || v2Manifest.start_url !== `./?shellv=${release}`) {
+if (v2Manifest.version !== release || v2Manifest.start_url !== `./?shellv=${encodeURIComponent(release)}`) {
   throw new Error('DEPLOYMENT_RELEASE_V2_MANIFEST_MISMATCH');
 }
 

@@ -21,10 +21,28 @@ function appFunction(name) {
   return html.slice(start, start + next + 1);
 }
 
+test('preparation yield controller honors elapsed-work and row ceilings', async () => {
+  let clock = 0;
+  let yields = 0;
+  let fences = 0;
+  const context = vm.createContext({ MASTER_PREPARATION_MAX_ROWS_PER_YIELD: 512,
+    MASTER_PREPARATION_TIME_BUDGET_MS: 8,
+    performance: { now: () => { clock += 1; return clock; } },
+    yieldToUiFrame: async () => { yields += 1; },
+  });
+  vm.runInContext(appFunction('createMasterPreparationYieldController'), context);
+  const yieldIfNeeded = context.createMasterPreparationYieldController(() => { fences += 1; });
+  for (let index = 0; index < 25; index++) await yieldIfNeeded();
+  assert.equal(yields, 3, 'a slow row loop yields on elapsed work before reaching the row ceiling');
+  assert.equal(fences, yields, 'identity, permission, season, and cancellation checks follow each yield');
+});
+
 test('bounded season assignment matches synchronous groups including ties, exclusions, and duplicate IDs', async () => {
   let yields = 0;
+  let clock = 0;
   const ctx = vm.createContext({ Map, Set, Array, String, Number,
-    MASTER_PREPARATION_BATCH_SIZE: 64, yieldToUiFrame: async () => { yields++; },
+    MASTER_PREPARATION_MAX_ROWS_PER_YIELD: 512, MASTER_PREPARATION_TIME_BUDGET_MS: 8,
+    performance: { now: () => { clock += 0.1; return clock; } }, yieldToUiFrame: async () => { yields++; },
     firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== ''),
     isWorkflowProtectedAppTabAssignment: value => value === 'protected',
     hasUsableEndCapFolderValue: value => !!value,
@@ -32,7 +50,7 @@ test('bounded season assignment matches synchronous groups including ties, exclu
     compareSeasonWinnerCandidates: (a, b) => b.quantity - a.quantity || String(a.UNIQUE_ID).localeCompare(b.UNIQUE_ID),
     applySeasonLocationAssignmentFields: (row, value) => { row.APP_TAB_ASSIGNMENT = value; },
   });
-  vm.runInContext(appFunction('pickSeasonWinnerCandidate') + appFunction('assignSeasonWinnersForItemGroups')
+  vm.runInContext(appFunction('createMasterPreparationYieldController') + appFunction('pickSeasonWinnerCandidate') + appFunction('assignSeasonWinnersForItemGroups')
     + appFunction('prepareMasterSeasonAssignments'), ctx);
   const input = Array.from({ length: 200 }, (_, id) => ({ UNIQUE_ID: `uid-${id % 180}`, ITEMCODE: `item-${id % 3}`,
     quantity: id % 4, eligible: id % 5 !== 0, APP_TAB_ASSIGNMENT: id % 9 ? 'location' : 'protected',
@@ -95,10 +113,11 @@ test('repeated aggregate receipts reuse validated identity while stale and inval
   assert.equal(invalidations, 1);
 });
 
-function createHarness({ onYield = () => {} } = {}) {
+function createHarness({ onYield = () => {}, clockStep = 0 } = {}) {
   let identity = 'identity-a';
   let permission = 'permission-a';
   let season = { seasonCode: 'F1', salesYear: '2027' };
+  let clock = 0;
   const context = vm.createContext({
     appAccessSnapshotState: { snapshot: { dataPermissionVersion: permission } },
     getSupabaseReadIdentityScope: () => identity,
@@ -142,6 +161,7 @@ function createHarness({ onYield = () => {} } = {}) {
       return map;
     },
     yieldToUiFrame: async () => { onYield(); },
+    performance: { now: () => { clock += clockStep; return clock; } },
     JSON, WeakMap, Map, Array, Object, String, Number, Math, Promise, Error,
   });
   vm.runInContext(`${indexSource}\n${source}\nthis.api = { prepare: prepareProductionMasterSnapshot, current: getCurrentPreparedMasterRows, take: takePreparedMasterIndexMaps, buildIndexes: buildMasterInventoryIndexMaps };`, context);
@@ -155,12 +175,12 @@ function createHarness({ onYield = () => {} } = {}) {
 
 test('prepares master display and AV candidates in bounded batches without sharing source or search state', async () => {
   let yields = 0;
-  const harness = createHarness({ onYield: () => { yields += 1; } });
+  const harness = createHarness({ onYield: () => { yields += 1; }, clockStep: 0.001 });
   const input = Array.from({ length: 130 }, (_, index) => ({ UNIQUE_ID: `uid-${index}`, VALUE: index,
     nested: { source: 'unchanged' }, photo: { link: `photo-${index}` } }));
   const result = await harness.api.prepare(input);
 
-  assert.equal(yields, 8, 'formatting, winner selection, assignment, and AV projection yield at 64-row boundaries');
+  assert.equal(yields, 0, 'fast bounded preparation does not pay a frame wait for every 64-row chunk');
   assert.equal(result.rowCount, 130);
   assert.equal(result.rawRows.length, 130);
   assert.notEqual(result.payload.data, input);
@@ -175,6 +195,17 @@ test('prepares master display and AV candidates in bounded batches without shari
   assert.notEqual(prepared.avOpenRows[0], result.payload.data[0]);
   assert.notEqual(prepared.avOpenRows[0]._searchCandidates, result.payload.data[0]._searchCandidates);
   assert.deepEqual(JSON.parse(JSON.stringify(prepared.avOpenRows[0].photo)), { link: 'photo-0' });
+});
+
+test('master preparation yields at the elapsed-work budget or bounded row ceiling', async () => {
+  let yields = 0;
+  const harness = createHarness({ onYield: () => { yields += 1; }, clockStep: 0.001 });
+  const input = Array.from({ length: 1200 }, (_, index) => ({ UNIQUE_ID: `uid-${index}`, VALUE: index }));
+  const result = await harness.api.prepare(input);
+  assert.equal(result.rowCount, input.length);
+  assert.ok(yields <= 8, `formatting, both assignment passes, and AV projection stay within the 512-row ceiling; observed ${yields}`);
+  assert.ok(yields >= 3, 'formatting, assignment, and AV projection each yield at least once for large input');
+  assert.equal(result.payload.data[1199].APP_TAB_ASSIGNMENT, 'season');
 });
 
 test('prepared master indexes preserve full-rebuild duplicate and missing-key semantics', async () => {
@@ -236,7 +267,7 @@ test('prepared indexes are consumed once and replaced-row publications fall back
 
 test('discards a preparation when identity, permissions, or season changes across a yield', async () => {
   let harness;
-  harness = createHarness({ onYield: () => harness.setIdentity('identity-b') });
+  harness = createHarness({ onYield: () => harness.setIdentity('identity-b'), clockStep: 0.1 });
   const rows = Array.from({ length: 130 }, (_, index) => ({ UNIQUE_ID: `uid-${index}`, VALUE: index }));
   await assert.rejects(harness.api.prepare(rows), error => error.code === 'DATASET_READ_SCOPE_CHANGED');
 
@@ -255,7 +286,7 @@ test('cancels private preparation on abort, permission changes, and season chang
   for (const reason of ['abort', 'permission', 'season']) {
     const controller = new AbortController();
     let harness;
-    harness = createHarness({ onYield: () => {
+    harness = createHarness({ clockStep: 0.1, onYield: () => {
       if (reason === 'abort') controller.abort();
       else if (reason === 'permission') harness.setPermission('permission-b');
       else harness.setSeason({ seasonCode: 'S1', salesYear: '2028' });

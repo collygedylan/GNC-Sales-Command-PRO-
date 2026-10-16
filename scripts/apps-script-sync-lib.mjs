@@ -1,3 +1,5 @@
+import { normalizeRelease } from './deployment-fingerprint-lib.mjs';
+
 export const APPS_SCRIPT_VERSION_LIMIT = 200;
 export const APPS_SCRIPT_VERSION_WARNING_THRESHOLD = 180;
 export const APPS_SCRIPT_DEPLOYMENT_COMMIT_PLACEHOLDER = '__GNC_APPS_SCRIPT_DEPLOYMENT_COMMIT__';
@@ -195,7 +197,8 @@ export async function syncAppsScriptProject({
     return { versionCountBefore: versionCount, sourceUpdated: true, deploymentUpdated: false };
   }
 
-  const description = `GitHub Code.gs sync ${String(githubSha).slice(0, 7)}`;
+  const release = normalizeRelease(deploymentSource.match(/const APP_RELEASE_VERSION_\s*=\s*['"]([^'"]+)['"]/)?.[1]);
+  const description = release ? `${release} (${String(githubSha).slice(0, 7)})` : `GitHub Code.gs sync ${String(githubSha).slice(0, 7)}`;
   await beforeMutation();
   const versionResponse = await script.projects.versions.create({
     scriptId,

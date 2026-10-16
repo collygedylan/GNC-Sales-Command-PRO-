@@ -9,6 +9,69 @@ export type DriveLayoutOptions = {
   rep?: boolean;
 };
 
+export type VerifiedDriveSnapshot = { revision: string; scope: string; permission: string };
+
+/** Keep the real Drive cohort and inventory state intact while the focused
+ * fixture mounts only its target card after a verified full read. */
+export async function suppressDriveLayoutRenderer(page: Page) {
+  await page.evaluate(() => window.eval(`(() => {
+    if (!window.__driveLayoutOriginalRenderDrive) window.__driveLayoutOriginalRenderDrive = renderDrive;
+    renderDrive = () => {};
+    return true;
+  })()`));
+}
+
+export async function renderVerifiedDriveLayoutCard(page: Page, options: DriveLayoutOptions, uid: string,
+  snapshot: VerifiedDriveSnapshot, expectedRows: number, expectedQuantity: number) {
+  return page.evaluate(({ theme, photo, uid, snapshot, expectedRows, expectedQuantity }) => {
+    const root = window as any;
+    const bridgeName = '__verifiedDriveCardMountBridge';
+    root[bridgeName] = { snapshot, expectedRows, expectedQuantity };
+    try {
+      return window.eval(`(() => {
+        const bridge = window.${bridgeName};
+        const context = getProductionLiveSyncContext();
+        const state = getDatasetState('master');
+        const rows = fullInventory;
+        if (getCurrentVisibleViewId() !== 'drive' || context.view !== 'drive') throw new Error('VERIFIED_DRIVE_CARD_WRONG_VIEW');
+        if (!Array.isArray(rows) || rows.length !== bridge.expectedRows || !state.initialLoaded || !state.fullLoaded
+            || state.rowCompleteness !== 'complete' || state.fieldCoverage !== 'full'
+            || String(state.liveVerifiedRevision || '') !== bridge.snapshot.revision
+            || state.liveVerifiedScope !== bridge.snapshot.scope || state.liveVerifiedPermission !== bridge.snapshot.permission
+            || context.scope !== bridge.snapshot.scope || context.dataPermissionVersion !== bridge.snapshot.permission
+            || !isConfirmedInventoryReadRevisionCurrent(bridge.snapshot.revision)) {
+          throw new Error('VERIFIED_DRIVE_CARD_SNAPSHOT_NOT_CURRENT');
+        }
+        const ids = rows.map(row => String(row.UNIQUE_ID || row.unique_id || '').trim());
+        const requiredFields = ['UNIQUE_ID', 'ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE', 'LOTCODE', 'SEASON', 'SALEYEAR', 'PTRONHAND', 'PTRAVAILABLE'];
+        if (ids.some(id => !id) || new Set(ids).size !== bridge.expectedRows || countUniqueCacheCommonNames(rows) < 1200
+            || !rows.every(row => requiredFields.every(field => Object.prototype.hasOwnProperty.call(row, field)))) {
+          throw new Error('VERIFIED_DRIVE_CARD_INVENTORY_INCOMPLETE');
+        }
+        const source = rows.find(row => String(row.UNIQUE_ID || row.unique_id || '') === ${JSON.stringify(uid)});
+        if (!source || !source.DOM_ID || Number(source.PTRONHAND ?? source.ptronhand) !== bridge.expectedQuantity
+            || Number(source.PTRAVAILABLE ?? source.ptravailable) !== bridge.expectedQuantity) {
+          throw new Error('VERIFIED_DRIVE_CARD_SOURCE_MISMATCH');
+        }
+        document.body.classList.add('ops-precision-pilot');
+        document.body.dataset.opsTheme = ${JSON.stringify(theme === 'dark' ? 'dark' : 'light')};
+        document.body.classList.toggle('outdoor-mode', ${JSON.stringify(theme === 'outdoor')});
+        document.documentElement.classList.toggle('outdoor-mode', ${JSON.stringify(theme === 'outdoor')});
+        const host = document.getElementById('drive-content');
+        if (!host) throw new Error('VERIFIED_DRIVE_CARD_HOST_MISSING');
+        host.innerHTML = generateCard(source, 'drive', 'status-green', { preserveUnknownAvailability: true, verifiedQuantityRow: source });
+        host.querySelectorAll('img[data-deferred-card-photo]').forEach(image => hydrateDeferredCardPhoto(image));
+        host.dataset.driveDetailedRecords = 'true';
+        return { rowCount: rows.length, sourceUid: String(source.UNIQUE_ID || source.unique_id), revision: String(state.liveVerifiedRevision),
+          scope: state.liveVerifiedScope, permission: state.liveVerifiedPermission, theme: document.body.dataset.opsTheme,
+          photo: ${JSON.stringify(photo === true)} };
+      })()`);
+    } finally {
+      delete root[bridgeName];
+    }
+  }, { theme: options.theme, photo: options.photo, uid, snapshot, expectedRows, expectedQuantity });
+}
+
 /**
  * Install a synthetic, mutation-blocked account and mount a card from the real
  * Drive renderer. The rows contain no production data and no write is sent.
