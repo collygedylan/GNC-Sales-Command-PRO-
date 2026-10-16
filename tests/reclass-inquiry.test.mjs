@@ -1321,6 +1321,43 @@ test('Reclass editor avoids duplicate identity and season summary blocks', () =>
   assert.match(editor, /renderArgosReclassHoldScopeNotice/);
 });
 
+test('Reclass row disclosure is mobile-only; desktop opens with a hydrated editor', () => {
+  const start = html.indexOf('function renderArgosReclassInquiryEditor');
+  const end = html.indexOf('function handleArgosReclassLocationNoteInput', start);
+  assert.ok(start > 0 && end > start);
+  const render = html.slice(start, end);
+  const desktopToggleRule = html.match(/@media\(min-width:641px\)\s*\{\s*\.argos-reclass-row-toggle\s*\{([^}]*)\}/)?.[1] || '';
+  assert.match(desktopToggleRule, /pointer-events:\s*none/);
+
+  const renderForViewport = (mobile) => {
+    const context = {
+      isArgosReclassMobileEditorViewport: () => mobile,
+      argosReclassRowEditorEntries: new Map(),
+      argosInventoryTransactionState: { sourceView: 'drive' },
+      RECLASS_ACTION_WORKFLOW_V3_ENABLED: true,
+      RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
+      getArgosReclassV3ScopeActionsForEntry: () => [],
+      getArgosReclassV3ActionCountForEntry: () => 0,
+      getEvalWorkInquiryRowResolution: () => '',
+      buildArgosReclassRowFieldsHtml: () => '<input data-reclass-editor-control>',
+      renderArgosReclassHoldScopeNotice: () => '',
+      escapeHtml: value => String(value ?? ''),
+    };
+    vm.createContext(context);
+    vm.runInContext(`${render}; this.renderEditor = renderArgosReclassInquiryEditor;`, context);
+    return context.renderEditor({ locationRows: [{ unique_id: 'source', values: { locationcode: 'A.01.001', lotcode: '27.F1', ptronhand: 1000, ptrreviewed: 0, ptravailable: 1000 } }] }, 'source');
+  };
+
+  const desktop = renderForViewport(false);
+  assert.match(desktop, /class="argos-reclass-row-toggle" aria-expanded="true"/);
+  assert.match(desktop, /data-reclass-row-hydrated="true"/);
+  assert.match(desktop, /data-reclass-editor-control/);
+  const mobile = renderForViewport(true);
+  assert.match(mobile, /class="argos-reclass-row-toggle" aria-expanded="false"/);
+  assert.match(mobile, /data-reclass-row-hydrated="false"/);
+  assert.doesNotMatch(mobile, /data-reclass-editor-control/);
+});
+
 test('Bloom Picker Order is Dylan-only and optional Productivity schema failure stays local', () => {
   const bloomStart = html.indexOf('function canSubmitBloomPickerOrder');
   const bloomEnd = html.indexOf('function canUseCartInventoryActions', bloomStart);

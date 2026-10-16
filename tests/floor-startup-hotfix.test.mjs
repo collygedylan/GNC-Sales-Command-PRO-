@@ -72,6 +72,23 @@ test('runtime and pre-runtime shell mismatch paths use the same recovery without
   assert.doesNotMatch(section(html, 'async function recoverStandaloneShellController(', 'async function fetchLatestShellManifestInfo('), /clearBootCacheForShellUpdate\(true\)/);
 });
 
+test('iOS shell comparison uses canonical version text rather than CSS-transformed innerText', () => {
+  const versionElement = { innerText: 'AGDATA V2.0.0', textContent: 'AgData v2.0.0' };
+  const context = vm.createContext({
+    APP_SHELL_BUILD: 'AgData v2.0.0', APP_SHELL_VERSION: 'AgData v2.0.0',
+    document: { getElementById: id => id === 'header-version' ? versionElement : null },
+    window: { __APP_SHELL_VERSION__: 'AgData v2.0.0', __APP_SHELL_BUILD__: 'AgData v2.0.0' },
+    getCurrentShellUrlBuild: () => 'AgData v2.0.0', getStoredTargetShellBuild: () => '',
+  });
+  vm.runInContext(`${section(html, 'function getDisplayedShellBuild()', 'function getIosRuntimeShellMismatchReason()')}\n${section(html, 'function getIosRuntimeShellMismatchReason()', 'function getIosRuntimeRecoveryRecord()')}`, context);
+  assert.equal(context.getDisplayedShellBuild(), 'AgData v2.0.0');
+  assert.equal(context.getIosRuntimeShellMismatchReason(), '');
+
+  versionElement.textContent = 'AgData v1.9.9';
+  assert.equal(context.getIosRuntimeShellMismatchReason(), 'header:AgData v1.9.9', 'genuinely stale canonical display text remains detectable');
+  assert.match(section(html, '.nav-version-pill{', '\n'), /text-transform:none/);
+});
+
 test('native aliases accept username, display spelling, and full email consistently with the server', () => {
   const context = vm.createContext({ NATIVE_AUTH_ALIAS_DOMAIN: 'greenleafnursery.com' });
   vm.runInContext(section(html, 'function normalizeNativeAuthAlias(', 'let nativeAuthSessionRead'), context);

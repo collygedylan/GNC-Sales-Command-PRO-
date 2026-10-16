@@ -2,6 +2,13 @@ import { inventoryReadFixture } from './inventory-list-read-fixture.mjs';
 
 export const hlUserId = '54c87ebf-d76d-452b-96b4-beaaeb1742d9';
 export const hlRecipient = 'dylan_collyge@greenleafnursery.com';
+export function codexOpsCapabilitiesFixtureResponse({ method = '', pathname = '', body = null, authorization = '', token = '' } = {}) {
+  if (method !== 'POST' || pathname !== '/functions/v1/codex-ops-api'
+    || authorization !== `Bearer ${token}` || !token
+    || !body || typeof body !== 'object' || Array.isArray(body)
+    || Object.keys(body).length !== 1 || body.action !== 'capabilities') return null;
+  return { canView: false, submissionEnabled: false };
+}
 export function hlProfileRow({ id = hlUserId, username = 'dylan_collyge', role = 'ADMIN' } = {}) {
   return { id, legacy_user_id: null, username, display_name: username, role, division: '10', language: 'English',
     disabled_at: null, locked_until: null, must_change_password: false, passkey_pilot: false };
@@ -352,6 +359,7 @@ export function createHlOrderState(options = {}) {
 
 export async function installHlOrderFixture(page, baseURL, options = {}) {
   const control = createHlOrderState(options), username = options.username || 'dylan_collyge', role = options.role || 'ADMIN';
+  control.shellDiagnostics = [];
   control.appAccessReads = 0; control.backgroundMasterReads = 0;
   control.masterLaterPageReads = 0;
   control.runtimeRequests = 0; control.authTokenRequests = 0;
@@ -483,6 +491,14 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
     'access-control-allow-credentials': 'true', ...headers
   }, body: JSON.stringify(value) });
   page.on('pageerror', (error) => control.errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() !== 'info' || !message.text().startsWith('[Shell]')) return;
+    const payloadHandle = message.args()[1];
+    if (!payloadHandle) return;
+    void payloadHandle.jsonValue().then((payload) => {
+      if (payload && typeof payload === 'object' && control.shellDiagnostics.length < 20) control.shellDiagnostics.push(payload);
+    }).catch(() => {});
+  });
   const pendingRevisionReads = new Set();
   let revisionReadEpoch = 0;
   page.on('request', (request) => {
@@ -648,6 +664,15 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
       const start = rows.length ? (masterRead ? masterRead.offset : (demandPageSize ? offset : 0)) : 0;
       const total = masterRead ? masterRead.total : allRows.length;
       return json(route, rows, 200, { 'content-range': rows.length ? `${start}-${start + rows.length - 1}/${total}` : `*/${total}` });
+    }
+    if (url.pathname === '/functions/v1/codex-ops-api') {
+      const body = req.postDataJSON() || {};
+      const capabilities = method === 'POST' ? codexOpsCapabilitiesFixtureResponse({
+        method, pathname: url.pathname, body, authorization: req.headers().authorization || '', token
+      }) : null;
+      if (capabilities) return json(route, capabilities);
+      control.blockedMutations.push(`CODEX_OPS ${method}:${String(body.action || '')}`);
+      return json(route, { error: 'Blocked' }, 403);
     }
     if (url.pathname.endsWith('/functions/v1/app-api')) {
       const body = req.postDataJSON() || {};

@@ -1743,7 +1743,7 @@ body.viewport-compact #docks-filter-controls.docks-top-inline [data-dock-filter-
         .nav-header-company{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:rgba(236,253,245,.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .nav-header-meta{display:flex;flex-direction:column;align-items:flex-end;gap:.35rem;max-width:48%}
         .nav-header-meta-row{display:flex;align-items:center;justify-content:flex-end;gap:.4rem;flex-wrap:wrap}
-        .nav-version-pill{display:inline-flex;align-items:center;min-height:26px;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.28);color:#007a4d;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(7,94,63,.18)}
+        .nav-version-pill{display:inline-flex;align-items:center;min-height:26px;padding:.32rem .7rem;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid rgba(255,255,255,.28);color:#007a4d;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:none;box-shadow:0 6px 14px rgba(7,94,63,.18)}
         #side-drawer .drawer-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .leaf-launch-btn{display:inline-flex;align-items:center;gap:.34rem;min-height:26px;padding:.32rem .68rem;border-radius:999px;background:#111827;border:1px solid rgba(255,255,255,.22);color:#ecfdf5;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;box-shadow:0 6px 14px rgba(15,23,42,.2)}
 .leaf-launch-btn:active{transform:scale(.98)}
@@ -16197,7 +16197,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
 
         function getDisplayedShellBuild() {
             const versionEl = document.getElementById('header-version');
-            return String((versionEl && versionEl.innerText) || '').trim();
+            return String((versionEl && versionEl.textContent) || '').trim();
         }
 
         function getIosRuntimeShellMismatchReason() {
@@ -49473,7 +49473,7 @@ let avTopControlsRenderToken = 0;
             if (modal) return modal;
             modal = document.createElement('div');
             modal.id = 'argos-inventory-transaction-modal';
-            modal.className = 'hidden fixed inset-0 z-[10035] bg-slate-950/55 p-2 backdrop-blur-sm overflow-hidden flex items-center justify-center sm:p-4';
+            modal.className = 'hidden fixed inset-0 z-[10035] bg-slate-950/55 p-2 overflow-hidden flex items-center justify-center sm:p-4';
             modal.setAttribute('onclick', 'if(event.target===this) return closeArgosInventoryTransactionModal()');
             modal.innerHTML = `
                 <div class="argos-tx-panel w-full">

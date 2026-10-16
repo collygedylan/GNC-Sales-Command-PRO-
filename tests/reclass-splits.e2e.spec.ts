@@ -1,9 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 
-import { renderDriveLayoutCard, restoreDriveLayoutRenderer, settleDriveLayoutShell } from './fixtures/drive-card-layout';
+import { renderDriveLayoutCard, renderVerifiedDriveLayoutCard, restoreDriveLayoutRenderer, settleDriveLayoutShell, suppressDriveLayoutRenderer } from './fixtures/drive-card-layout';
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
-import { inventoryReadFixture } from './fixtures/inventory-list-read-fixture.mjs';
+import { captureReclassFailureDiagnostics, installReclassFailureDiagnostics } from './helpers/reclass-failure-diagnostics.mjs';
+import { isMasterBrowseInventoryReadBody } from './helpers/reclass-browse-request-tracker.mjs';
+import { waitForInitialHomeCohort, waitForVerifiedLiveCohort } from './helpers/initial-home-cohort.mjs';
+import { startReclassCdpTimeline } from './helpers/reclass-cdp-timeline.mjs';
 import { scheduleReclassPaintProbeCheck } from './helpers/reclass-paint-probe.mjs';
+import { installReclassStageTiming } from './helpers/reclass-stage-timing.mjs';
 // @test-group: @reclass-splits
 
 const DRIVE_EVIDENCE_KEYS = [
@@ -35,12 +39,24 @@ async function fixture(page: Page, baseURL: string, project: string,
       commonname: 'Synthetic Drive Card', contsize: '#3', locationcode: 'A.01.001', lotcode,
       season: scope.season, saleyear: scope.salesYear,
       ptronhand: String(sourceQuantity), ptrreviewed: '2', ptravailable: String(sourceQuantity), priority: '2', holdstopcode: '',
-      photo_link: 'https://example.test/old.jpg', photo_name: 'old.jpg', spec: 'old spec', caliper: 'old caliper',
+      photo_link: null, photo_name: null, spec: 'old spec', caliper: 'old caliper',
       match: 'old match', av_note: 'old AV note', pic_note: 'old pick', sales_note: 'old sales', last_updated: '2026-10-08T12:00:00Z' }),
       ...Array.from({ length: Math.max(0, inventoryRows - 1) }, (_, index) => hlMaster(`zz-volume-${String(index).padStart(4, '0')}`, {
         itemcode: `VOLUME.${String(index).padStart(4, '0')}`, commonname: `Synthetic volume row ${index}`, locationcode: `Z.${String(index).padStart(5, '0')}`,
         lotcode: '27.F1', season: 'F1', saleyear: '27', ptronhand: '100', ptravailable: '100' }))],
   });
+  const activeMasterBrowseRequests = new Set<import('@playwright/test').Request>();
+  const isMasterBrowseRead = (request: import('@playwright/test').Request) => {
+    if (!request.url().includes('/functions/v1/app-api') || request.method() !== 'POST') return false;
+    try {
+      return isMasterBrowseInventoryReadBody(request.postDataJSON());
+    } catch (_) { return false; }
+  };
+  const trackBrowseStart = (request: import('@playwright/test').Request) => { if (isMasterBrowseRead(request)) activeMasterBrowseRequests.add(request); };
+  const trackBrowseEnd = (request: import('@playwright/test').Request) => { activeMasterBrowseRequests.delete(request); };
+  page.on('request', trackBrowseStart);
+  page.on('requestfinished', trackBrowseEnd);
+  page.on('requestfailed', trackBrowseEnd);
   await settleDriveLayoutShell(page, project);
   const calls: any[] = [];
   let rejectNext = false;
@@ -61,94 +77,218 @@ async function fixture(page: Page, baseURL: string, project: string,
     if (body.operation === 'status') return reply({ ok: true, status: deliveryStatus, jobId: 'synthetic-reclass' });
     return route.fallback();
   });
-  let verifiedFullSnapshot: { revision: string; scope: string; permission: string; complete: boolean } | null = null;
+  let verifiedFullSnapshot: { revision: string; scope: string; permission: string; complete: boolean; rowCount: number;
+    uniqueIdCount: number; uniqueCommonNameCount: number; requiredFieldsPresent: boolean } | null = null;
   if (inventoryRows >= 1200) {
-    const loaded = await page.evaluate(() => window.eval("(async () => await ensureDatasetLoaded('master', 'full', { force: true }))()"));
-    expect(loaded, 'the representative full inventory must load through the production verified read path').toBe(true);
+    const failedRequests: Array<{ method: string; url: string; failure: string }> = [];
+    const responseDiagnostics: Array<Record<string, unknown>> = [];
+    const failedRequestHandler = (request: import('@playwright/test').Request) => {
+      let urlPath = '';
+      try { urlPath = new URL(request.url()).pathname; } catch (_) {}
+      failedRequests.push({ method: request.method(), url: urlPath, failure: request.failure()?.errorText || 'unknown request failure' });
+    };
+    const responseHandler = async (response: import('@playwright/test').Response) => {
+      try {
+        const url = new URL(response.url());
+        const isSupabaseApi = url.hostname.endsWith('.supabase.co');
+        const isRestRead = url.pathname.startsWith('/rest/v1/');
+        if (!isSupabaseApi || (!isRestRead && !['/functions/v1/app-api', '/rest/v1/rpc/get_my_dataset_revisions_v1'].includes(url.pathname))) return;
+        const request = response.request();
+        let body: Record<string, unknown> | null = null;
+        try { body = request.postDataJSON() as Record<string, unknown> | null; } catch (_) {}
+        const headers = await response.allHeaders();
+        responseDiagnostics.push({ method: request.method(), path: url.pathname, status: response.status(),
+          contentRange: headers['content-range'] || '',
+          action: typeof body?.action === 'string' ? body.action : '', operation: typeof body?.operation === 'string' ? body.operation : '',
+          dataset: typeof body?.dataset === 'string' ? body.dataset : '',
+          allowOrigin: headers['access-control-allow-origin'] || '', allowCredentials: headers['access-control-allow-credentials'] || '',
+          allowMethods: headers['access-control-allow-methods'] || '', allowHeaders: headers['access-control-allow-headers'] || '' });
+      } catch (_) { /* Diagnostics must never affect the fixture read. */ }
+    };
+    page.on('requestfailed', failedRequestHandler);
+    page.on('response', responseHandler);
+    await page.evaluate(factory => {
+      const root = window as any;
+      root.__reclassFailureDiagnostics = window.eval(`(${factory})`)(window);
+    }, installReclassFailureDiagnostics.toString());
+    let loadResult: boolean | null = null;
+    let loadError = '';
+    let diagnostics: Record<string, unknown> | null = null;
+    let loadInstrumentation: Record<string, unknown> | null;
+    let startupCohort: Record<string, unknown> | null = null;
+    let driveCohort: Record<string, unknown> | null = null;
+    try {
+      startupCohort = await waitForInitialHomeCohort(async () => page.evaluate(() => window.eval(`(() => {
+        const context = getProductionLiveSyncContext();
+        const coordinator = getProductionLiveSyncCoordinator();
+        const status = coordinator.getStatus();
+        const contextKey = productionVerifiedViewKey(context);
+        const verifiedView = productionLiveSyncVerifiedView;
+        const accessPermission = String(appAccessSnapshotState.snapshot?.dataPermissionVersion || '');
+        const roleReady = document.body.classList.contains('role-access-ready');
+        const initialHomeApplied = hasAppliedInitialHomeView === true;
+        const ready = roleReady && initialHomeApplied && String(currentRole || '').toUpperCase() === 'ADMIN'
+          && !!context.scope && !!context.dataPermissionVersion && context.dataPermissionVersion === accessPermission
+          && status.state === 'Up to date' && status.contextKey === contextKey && verifiedView === contextKey;
+        return { ready, status, role: String(currentRole || ''), user: String(currentUser || ''), roleReady, initialHomeApplied,
+          scope: context.scope, permission: context.dataPermissionVersion, accessPermission, view: context.view,
+          contextKey, verifiedView };
+      })()`)));
+      await suppressDriveLayoutRenderer(page);
+      await page.evaluate(() => window.eval(`(() => { switchView('drive'); return true; })()`));
+      driveCohort = await waitForVerifiedLiveCohort(async () => page.evaluate(() => window.eval(`(() => {
+        const context = getProductionLiveSyncContext();
+        const coordinator = getProductionLiveSyncCoordinator();
+        const status = coordinator.getStatus();
+        const contextKey = productionVerifiedViewKey(context);
+        const verifiedView = productionLiveSyncVerifiedView;
+        const master = context.adapters.find(adapter => adapter.id === 'core:master');
+        const state = getDatasetState('master');
+        const ready = document.body.classList.contains('role-access-ready') && context.view === 'drive'
+          && master?.projection === 'browse' && !!context.scope && !!context.dataPermissionVersion
+          && status.state === 'Up to date' && status.contextKey === contextKey && verifiedView === contextKey
+          && state.initialLoaded === true && state.liveVerifiedScope === context.scope
+          && state.liveVerifiedPermission === context.dataPermissionVersion;
+        return { ready, status, view: context.view, scope: context.scope, permission: context.dataPermissionVersion,
+          contextKey, verifiedView, masterProjection: master?.projection || '', rowCount: fullInventory.length,
+          revision: String(state.liveVerifiedRevision || '') };
+      })()`)), { label: 'Drive', timeoutMs: 60_000 });
+      loadResult = await page.evaluate(() => window.eval("(async () => await ensureDatasetLoaded('master', 'full', { force: true }))()"));
+      if (!loadResult) diagnostics = await page.evaluate(() => window.eval(`(() => {
+        const coordinator = getProductionLiveSyncCoordinator();
+        const state = getDatasetState('master');
+        const context = getProductionLiveSyncContext();
+        const requestedFull = createProductionCoreLiveAdapter('master', 'full');
+        const ids = fullInventory.map(row => String(row.UNIQUE_ID || row.unique_id || '').trim());
+        const uniqueNames = countUniqueCacheCommonNames(fullInventory);
+        const requiredFields = ['UNIQUE_ID', 'ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE', 'LOTCODE', 'SEASON', 'SALEYEAR', 'PTRONHAND', 'PTRAVAILABLE'];
+        return { coordinatorStatus: coordinator.getStatus(), coordinatorStatistics: coordinator.getStatistics(),
+          datasetState: { initialLoaded: state.initialLoaded, fullLoaded: state.fullLoaded, rowCompleteness: state.rowCompleteness,
+            fieldCoverage: state.fieldCoverage, liveVerifiedRevision: String(state.liveVerifiedRevision || ''),
+            liveVerifiedScope: state.liveVerifiedScope, liveVerifiedPermission: state.liveVerifiedPermission },
+          inventory: { rowCount: fullInventory.length, uniqueIdCount: new Set(ids.filter(Boolean)).size, emptyIdCount: ids.filter(id => !id).length,
+            uniqueCommonNameCount: uniqueNames,
+            requiredFieldsPresent: fullInventory.every(row => requiredFields.every(field => Object.prototype.hasOwnProperty.call(row, field))),
+            partialGuard: masterRowsLookPartialForCurrentScope(fullInventory) },
+          context: { visible: context.visible, online: context.online, scope: context.scope,
+            permissionVersion: context.dataPermissionVersion, view: context.view, surfaces: context.surfaces,
+            adapters: context.adapters.map(adapter => ({ id: adapter.id, cacheKey: adapter.cacheKey, sourceKeys: adapter.sourceKeys })) },
+          requestedFullAdapter: { id: requestedFull.id, cacheKey: requestedFull.cacheKey, sourceKeys: requestedFull.sourceKeys },
+          coordinatorEvents: window.__reclassFailureDiagnostics?.coordinatorEvents || [] };
+      })()`));
+    } catch (error) {
+      const failure = await captureReclassFailureDiagnostics(error, () => page.evaluate(() => {
+        const root = window as any;
+        const safe = (read: () => unknown) => { try { return read(); } catch (diagnosticError) { return { error: String(diagnosticError) }; } };
+        const coordinator = typeof getProductionLiveSyncCoordinator === 'function' ? safe(() => getProductionLiveSyncCoordinator()) as any : null;
+        const state = typeof getDatasetState === 'function' ? safe(() => getDatasetState('master')) as any : null;
+        const visible = (selector: string) => {
+          const element = document.querySelector(selector);
+          return !!element && !!element.getClientRects().length && getComputedStyle(element).display !== 'none';
+        };
+        return { url: location.href, readyState: document.readyState, loginVisible: visible('#view-login'),
+          runtimeLoaded: typeof getProductionLiveSyncCoordinator === 'function',
+          shell: { version: root.__APP_SHELL_VERSION__ || '', build: root.__APP_SHELL_BUILD__ || '',
+            queryBuild: new URL(location.href).searchParams.get('shellv') || '' },
+          coordinatorStatus: coordinator?.getStatus?.() || null, coordinatorStatistics: coordinator?.getStatistics?.() || null,
+          state: state ? { fullLoaded: state.fullLoaded, revision: state.liveVerifiedRevision, scope: state.liveVerifiedScope,
+            permission: state.liveVerifiedPermission } : null,
+          contexts: root.__reclassFailureDiagnostics?.contextSnapshots || [], events: root.__reclassFailureDiagnostics?.coordinatorEvents || [] };
+      }), { pageUrl: page.url(), pageClosed: page.isClosed() });
+      loadError = failure.loadError;
+      diagnostics = { ...failure.diagnostics, diagnosticCaptureError: failure.diagnosticCaptureError };
+    } finally {
+      try {
+        loadInstrumentation = await page.evaluate(() => {
+          const root = window as any;
+          const handle = root.__reclassFailureDiagnostics;
+          if (!handle) return null;
+          const result = { records: handle.records, contextSnapshots: handle.contextSnapshots, coordinatorEvents: handle.coordinatorEvents };
+          handle.restore();
+          delete root.__reclassFailureDiagnostics;
+          return result;
+        });
+      } catch (error) {
+        loadInstrumentation = { captureError: error instanceof Error ? `${error.name}: ${error.message}` : String(error) };
+      }
+      page.off('requestfailed', failedRequestHandler);
+      page.off('response', responseHandler);
+      if (diagnostics) {
+        diagnostics.startupCohort = startupCohort;
+        diagnostics.driveCohort = driveCohort;
+        diagnostics.failureInstrumentation = loadInstrumentation;
+        diagnostics.shellDiagnostics = control.shellDiagnostics;
+        diagnostics.loadError = loadError;
+        diagnostics.failedRequests = failedRequests;
+        diagnostics.corsResponses = responseDiagnostics;
+        await test.info().attach('reclass-full-inventory-load-diagnostics.json', { contentType: 'application/json', body: JSON.stringify(diagnostics, null, 2) });
+      }
+    }
+    if (loadResult === true) {
+      const successfulLoad = await page.evaluate(() => window.eval(`(() => {
+        const state = getDatasetState('master');
+        const status = getProductionLiveSyncCoordinator()?.getStatus?.();
+        return { coordinatorStatus: status, rowCount: fullInventory.length, rowCompleteness: state.rowCompleteness,
+          fieldCoverage: state.fieldCoverage, revision: String(state.liveVerifiedRevision || ''),
+          scope: String(state.liveVerifiedScope || ''), permission: String(state.liveVerifiedPermission || '') };
+      })()`));
+      await test.info().attach('reclass-full-inventory-load-diagnostics.json', { contentType: 'application/json', body: JSON.stringify({
+        loadResult, successfulLoad, instrumentation: loadInstrumentation,
+        startupCohort, driveCohort,
+        failedRequests, corsResponses: responseDiagnostics,
+        shellDiagnostics: control.shellDiagnostics,
+      }, null, 2) });
+    }
+    expect(loadResult, `the representative full inventory must load through the production verified read path${loadError ? `: ${loadError}` : ''}`).toBe(true);
     verifiedFullSnapshot = await page.evaluate(() => window.eval(`(() => {
       const state = getDatasetState('master');
       const context = getProductionLiveSyncContext();
       return { revision: String(state.liveVerifiedRevision || ''), scope: String(state.liveVerifiedScope || ''), permission: String(state.liveVerifiedPermission || ''),
         complete: state.initialLoaded === true && state.fullLoaded === true && state.rowCompleteness === 'complete' && state.fieldCoverage === 'full'
           && state.liveVerifiedScope === context.scope && state.liveVerifiedPermission === context.dataPermissionVersion
-          && isConfirmedInventoryReadRevisionCurrent(state.liveVerifiedRevision) };
+          && isConfirmedInventoryReadRevisionCurrent(state.liveVerifiedRevision)
+          && !masterRowsLookPartialForCurrentScope(fullInventory), rowCount: fullInventory.length,
+        uniqueIdCount: new Set(fullInventory.map(row => String(row.UNIQUE_ID || row.unique_id || '').trim()).filter(Boolean)).size,
+        uniqueCommonNameCount: countUniqueCacheCommonNames(fullInventory),
+        requiredFieldsPresent: fullInventory.every(row => ['UNIQUE_ID', 'ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE', 'LOTCODE', 'SEASON', 'SALEYEAR', 'PTRONHAND', 'PTRAVAILABLE']
+          .every(field => Object.prototype.hasOwnProperty.call(row, field))) };
     })()`));
     expect(verifiedFullSnapshot.revision, 'a revision from a completed full production read is required').toMatch(/^[1-9]\d*$/);
     expect(verifiedFullSnapshot.complete).toBe(true);
+    expect(verifiedFullSnapshot.rowCount).toBe(inventoryRows);
+    expect(verifiedFullSnapshot.uniqueIdCount).toBe(inventoryRows);
+    expect(verifiedFullSnapshot.uniqueCommonNameCount).toBeGreaterThanOrEqual(1200);
+    expect(verifiedFullSnapshot.requiredFieldsPresent).toBe(true);
   }
   const mount = async () => {
     const preserveVerifiedInventory = inventoryRows >= 1200;
     if (preserveVerifiedInventory) {
-      await page.evaluate(({ snapshot, expectedRows, physicalColumns }) => {
-        const root = window as any;
-        root.__reclassVerifiedInventoryBridge = { rows: window.eval('fullInventory'), snapshot, expectedRows, physicalColumns };
-        const ready = window.eval(`(() => {
-          const bridge = window.__reclassVerifiedInventoryBridge;
-          const state = getDatasetState('master');
-          const context = getProductionLiveSyncContext();
-          return Array.isArray(bridge.rows) && bridge.rows.length === bridge.expectedRows && state.fullLoaded === true && state.fieldCoverage === 'full'
-            && String(state.liveVerifiedRevision || '') === bridge.snapshot.revision && state.liveVerifiedScope === bridge.snapshot.scope
-            && state.liveVerifiedPermission === bridge.snapshot.permission && context.scope === bridge.snapshot.scope
-            && context.dataPermissionVersion === bridge.snapshot.permission && isConfirmedInventoryReadRevisionCurrent(bridge.snapshot.revision);
+      const mounted = await renderVerifiedDriveLayoutCard(page, { theme: 'light', knownQuantities: true },
+        'drive-layout-synthetic-1-no-photo', verifiedFullSnapshot!, inventoryRows, sourceQuantity);
+      expect(mounted.rowCount).toBe(inventoryRows);
+      expect(mounted.sourceUid).toBe('drive-layout-synthetic-1-no-photo');
+      return;
+    }
+    await renderDriveLayoutCard(page, { theme: 'light', knownQuantities: true });
+    await page.evaluate(({ scope, lotcode, sourceQuantity }) => {
+      const root = window as any;
+      root.__reclassFixtureBridge = { scope, lotcode, sourceQuantity };
+      try {
+        return window.eval(`(() => {
+          const { scope, lotcode, sourceQuantity } = window.__reclassFixtureBridge;
+          const source = fullInventory.find(row => row.UNIQUE_ID === 'drive-layout-synthetic-1-no-photo' || row.unique_id === 'drive-layout-synthetic-1-no-photo');
+          if (!source) throw new Error('Reclass fixture source row is missing after inventory mount.');
+          source.PTRONHAND = sourceQuantity; source.PTRAVAILABLE = sourceQuantity;
+          source.ptronhand = String(sourceQuantity); source.ptravailable = String(sourceQuantity);
+          source.SEASON = scope.season; source.SALEYEAR = scope.salesYear; source.LOTCODE = lotcode;
+          source.season = scope.season; source.saleyear = scope.salesYear; source.lotcode = lotcode;
+          source.LAST_UPDATED = '2026-10-08T12:00:00Z'; source.last_updated = '2026-10-08T12:00:00Z';
+          source.DOM_ID = source.DOM_ID || 'fi_0';
+          rebuildMasterInventoryIndexes();
+          return true;
         })()`);
-        if (!ready) { delete root.__reclassVerifiedInventoryBridge; throw new Error('RECLASS_FIXTURE_VERIFIED_INVENTORY_NOT_READY'); }
-      }, { snapshot: verifiedFullSnapshot, expectedRows: inventoryRows, physicalColumns: inventoryReadFixture.physicalColumns });
-    }
-    try {
-      await renderDriveLayoutCard(page, { theme: 'light', knownQuantities: true });
-      const restored = await page.evaluate(({ values, sourceQuantity, preserveVerifiedInventory }) => {
-        const root = window as any;
-        root.__reclassFixtureBridge = { values, sourceQuantity, preserveVerifiedInventory };
-        try {
-          return window.eval(`(() => {
-        const { values, sourceQuantity, preserveVerifiedInventory } = window.__reclassFixtureBridge;
-        const verified = preserveVerifiedInventory ? window.__reclassVerifiedInventoryBridge : null;
-        if (preserveVerifiedInventory) {
-          if (!verified || !Array.isArray(verified.rows) || verified.rows.length !== verified.expectedRows) throw new Error('RECLASS_FIXTURE_VERIFIED_INVENTORY_MISSING');
-          const hasRequiredFormattedFields = verified.rows.every(row => ['UNIQUE_ID', 'ITEMCODE', 'COMMONNAME', 'CONTSIZE', 'LOCATIONCODE',
-            'LOTCODE', 'SEASON', 'SALEYEAR', 'PTRONHAND', 'PTRAVAILABLE'].every(field => Object.prototype.hasOwnProperty.call(row, field)));
-          const uniqueCommonNames = countUniqueCacheCommonNames(verified.rows);
-          if (!hasRequiredFormattedFields || uniqueCommonNames < 1200) throw new Error('RECLASS_FIXTURE_VERIFIED_INVENTORY_INCOMPLETE');
-          const state = getDatasetState('master');
-          const context = getProductionLiveSyncContext();
-          if (String(state.liveVerifiedRevision || '') !== verified.snapshot.revision || state.liveVerifiedScope !== verified.snapshot.scope
-              || state.liveVerifiedPermission !== verified.snapshot.permission || context.scope !== verified.snapshot.scope
-              || context.dataPermissionVersion !== verified.snapshot.permission || !isConfirmedInventoryReadRevisionCurrent(verified.snapshot.revision)) {
-            throw new Error('RECLASS_FIXTURE_VERIFIED_SNAPSHOT_CHANGED');
-          }
-          fullInventory = verified.rows;
-          state.rowCompleteness = 'complete';
-          state.fieldCoverage = 'full';
-        }
-        let source = fullInventory.find(row => row.UNIQUE_ID === 'drive-layout-synthetic-1-no-photo' || row.unique_id === 'drive-layout-synthetic-1-no-photo');
-        if (!source) throw new Error('Reclass fixture source row is missing after inventory mount.');
-        source.PTRONHAND = sourceQuantity; source.PTRAVAILABLE = sourceQuantity;
-        source.ptronhand = String(sourceQuantity); source.ptravailable = String(sourceQuantity);
-        source.SEASON = values.season;
-        source.SALEYEAR = values.salesYear;
-        source.LOTCODE = values.lotcode;
-        source.season = values.season; source.saleyear = values.salesYear; source.lotcode = values.lotcode;
-        source.LAST_UPDATED = '2026-10-08T12:00:00Z'; source.last_updated = '2026-10-08T12:00:00Z';
-        source.DOM_ID = source.DOM_ID || 'fi_0';
-        rebuildMasterInventoryIndexes();
-        return { rowCount: fullInventory.length, physicalCoverage: preserveVerifiedInventory, uniqueCommonNames: preserveVerifiedInventory ? countUniqueCacheCommonNames(fullInventory) : null };
-          })()`);
-        } finally {
-          delete root.__reclassFixtureBridge;
-          delete root.__reclassVerifiedInventoryBridge;
-        }
-      }, { values: { ...scope, lotcode }, sourceQuantity, preserveVerifiedInventory });
-      if (preserveVerifiedInventory) {
-        expect(restored.rowCount).toBe(inventoryRows);
-        expect(restored.physicalCoverage).toBe(true);
-        expect(restored.uniqueCommonNames).toBeGreaterThanOrEqual(1200);
-      }
-    } finally {
-      await page.evaluate(() => {
-        delete (window as any).__reclassFixtureBridge;
-        delete (window as any).__reclassVerifiedInventoryBridge;
-      });
-    }
+      } finally { delete root.__reclassFixtureBridge; }
+    }, { scope, lotcode, sourceQuantity });
   };
   await mount();
   const confirmInventoryRevision = async () => page.evaluate(({ snapshot }) => {
@@ -160,12 +300,11 @@ async function fixture(page: Page, baseURL: string, project: string,
     const context = getProductionLiveSyncContext();
     const master = getDatasetState('master');
     if (snapshot) {
-      if (!master.initialLoaded || !master.fullLoaded || String(master.liveVerifiedRevision || '') !== snapshot.revision
+      if (!master.initialLoaded || !master.fullLoaded || master.rowCompleteness !== 'complete' || master.fieldCoverage !== 'full'
+          || String(master.liveVerifiedRevision || '') !== snapshot.revision
           || master.liveVerifiedScope !== snapshot.scope || master.liveVerifiedPermission !== snapshot.permission
           || context.scope !== snapshot.scope || context.dataPermissionVersion !== snapshot.permission
           || !isConfirmedInventoryReadRevisionCurrent(snapshot.revision)) throw new Error('RECLASS_FIXTURE_VERIFIED_SNAPSHOT_CHANGED');
-      master.rowCompleteness = 'complete';
-      master.fieldCoverage = 'full';
       return true;
     }
     master.initialLoaded = true;
@@ -183,6 +322,21 @@ async function fixture(page: Page, baseURL: string, project: string,
   }, { snapshot: verifiedFullSnapshot });
   const open = async (expand = true) => {
     await confirmInventoryRevision();
+    if (verifiedFullSnapshot) {
+      expect(activeMasterBrowseRequests.size, 'the verified Drive browse cohort must be fully settled before opening the warm Item Inquiry').toBe(0);
+      await page.evaluate(() => window.eval(`(() => {
+        const context = getProductionLiveSyncContext();
+        const coordinator = getProductionLiveSyncCoordinator();
+        const status = coordinator.getStatus();
+        const state = getDatasetState('master');
+        const contextKey = productionVerifiedViewKey(context);
+        if (context.view !== 'drive' || status.state !== 'Up to date' || status.contextKey !== contextKey
+            || productionLiveSyncVerifiedView !== contextKey || !state.fullLoaded || state.fieldCoverage !== 'full'
+            || state.rowCompleteness !== 'complete' || state.liveVerifiedScope !== context.scope
+            || state.liveVerifiedPermission !== context.dataPermissionVersion) throw new Error('RECLASS_FIXTURE_OPEN_REQUIRES_SETTLED_VERIFIED_DRIVE');
+        return true;
+      })()`));
+    }
     const warmSnapshot = await page.evaluate(() => window.eval(`(() => {
       const row = findItemByUniqueId('drive-layout-synthetic-1-no-photo');
       const group = getVerifiedCachedArgosItemInquiryGroup(row);
@@ -241,7 +395,7 @@ async function installLiveMoveEndpoint(page: Page, baseURL: string, control: any
   return requests;
 }
 
-async function installPaintTimingProbe(page: Page, options: { phase: 'open' | 'expand' | 'optimistic'; uid: string; sourceQuantity?: number; targetQuantity?: number }) {
+async function installPaintTimingProbe(page: Page, options: { phase: 'open' | 'expand' | 'optimistic'; uid: string; sourceQuantity?: number; targetQuantity?: number; requireHydrated?: boolean }) {
   await page.evaluate(({ config, schedulerSource }) => {
     const schedulePaintCheck = new Function(`return (${schedulerSource})`)();
     const root = window as any;
@@ -265,6 +419,7 @@ async function installPaintTimingProbe(page: Page, options: { phase: 'open' | 'e
         if (quantity(source, 'PTRONHAND') !== config.sourceQuantity || quantity(source, 'PTRAVAILABLE') !== config.sourceQuantity
           || !metrics.includes(`OH ${config.sourceQuantity}`) || !metrics.includes(`AVL ${config.sourceQuantity}`)) return;
       }
+      if (config.requireHydrated && sourceCard.querySelector('[data-reclass-row-hydrated="true"]') == null) return;
       if (config.phase === 'expand' && sourceCard.querySelector('[data-reclass-row-hydrated="true"]') == null) return;
       if (config.phase === 'optimistic') {
         const pending = state.pendingReclassMove;
@@ -281,6 +436,12 @@ async function installPaintTimingProbe(page: Page, options: { phase: 'open' | 'e
         if (visible(document.getElementById('loading-spinner')) || visible(document.querySelector('.argos-reclass-move-waiting'))) return;
       }
       probe.result = { elapsedMs: performance.now() - probe.startedAt, phase: config.phase };
+      if (config.phase === 'optimistic') {
+        try {
+          performance.mark('reclass-610-optimistic-painted');
+          performance.measure('reclass-610-click-to-optimistic-paint', 'reclass-610-apply-captured', 'reclass-610-optimistic-painted');
+        } catch {}
+      }
       probe.observer?.disconnect();
     };
     probe.finishAfterPaint = finishAfterPaint;
@@ -320,6 +481,148 @@ async function readPaintTimingProbe(page: Page) {
     throw new Error(`RECLASS_PAINT_PROBE_TIMEOUT:${JSON.stringify(diagnostic)}; ${String(error)}`, { cause: error });
   }
   return page.evaluate(() => (window as any).__reclassPaintTimingProbe.result as { elapsedMs: number; phase: string });
+}
+
+async function installApplyStageTiming(page: Page) {
+  const names = [
+    'submitArgosInventoryTransaction',
+    'collectArgosReclassV3Draft',
+    'buildInventoryReclassMoveCommand',
+    'buildOptimisticInventoryReclassMoveModel',
+    'buildItemInquiryViewModel',
+    'renderArgosInventoryTransactionInquiryModel',
+    'renderArgosReclassInquiryEditor',
+    'setArgosReclassMoveInputsLocked',
+    'persistPendingArgosInventoryReclassMove',
+  ];
+  const missing = await page.evaluate(({ source, targetNames }) => {
+    const install = new Function(`return (${source})`)();
+    const handle = install(window, targetNames);
+    (window as any).__reclass610StageTiming = handle;
+    return handle.missing;
+  }, { source: installReclassStageTiming.toString(), targetNames: names });
+  return missing as string[];
+}
+
+async function installOpenStageTiming(page: Page) {
+  const names = [
+    'openArgosInventoryTransactionModal',
+    'getVerifiedCachedArgosItemInquiryGroup',
+    'ensureArgosInventoryTransactionModal',
+    'buildItemInquiryViewModel',
+    'renderArgosReclassInquiryEditor',
+    'captureArgosInventoryTransactionDraftBaseline',
+    'loadArgosItemInquiryRows',
+    'refreshArgosInventoryTransactionLotOptions',
+    'refreshArgosInventoryTransactionPriorityOptions',
+  ];
+  return await page.evaluate(({ source, targetNames }) => {
+    const install = new Function(`return (${source})`)();
+    const handle = install(window, targetNames, undefined, {
+      selector: '.app-drive-card-reclass .app-card-bottom-btn',
+      markName: 'reclass-610-open-captured',
+      label: 'Open',
+    });
+    (window as any).__reclass610OpenStageTiming = handle;
+    return handle.missing;
+  }, { source: installReclassStageTiming.toString(), targetNames: names }) as string[];
+}
+
+async function takeOpenStageTiming(page: Page) {
+  return await page.evaluate(() => {
+    const root = window as any;
+    const handle = root.__reclass610OpenStageTiming;
+    if (!handle) return null;
+    const result = { missing: handle.missing, ...handle.getSnapshot() };
+    handle.restore();
+    delete root.__reclass610OpenStageTiming;
+    return result;
+  }).catch((error) => ({ captureError: error instanceof Error ? `${error.name}: ${error.message}` : String(error) }));
+}
+
+async function installReclassDisclosureDiagnostics(page: Page, uid: string) {
+  await page.evaluate((targetUid) => {
+    const root = window as any;
+    const host = document.getElementById('argos-reclass-item-inquiry');
+    let card = host?.querySelector(`[data-reclass-row-card="${CSS.escape(targetUid)}"]`) || null;
+    const events: Array<Record<string, unknown>> = [];
+    const cardIds = new WeakMap<Element, number>();
+    let nextCardId = 1;
+    const cardId = (element: Element | null) => {
+      if (!element) return null;
+      let id = cardIds.get(element);
+      if (!id) { id = nextCardId++; cardIds.set(element, id); }
+      return id;
+    };
+    const rowFor = (element: Element | null) => {
+      const row = element?.closest('[data-reclass-row-card]') || null;
+      return row?.getAttribute('data-reclass-row-card') === targetUid ? row : null;
+    };
+    const push = (entry: Record<string, unknown>) => {
+      if (events.length >= 40) return;
+      events.push({ at: performance.now(), ...entry });
+    };
+    const state = (row: Element | null) => row ? { cardId: cardId(row), expanded: row.getAttribute('data-reclass-row-expanded'),
+      ariaExpanded: row.querySelector('.argos-reclass-row-toggle')?.getAttribute('aria-expanded') || '',
+      hydrated: row.querySelector('[data-reclass-row-hydrated="true"]') != null } : null;
+    const record = (type: string, target: Element | null, attribute = '', event?: Event) => {
+      const row = rowFor(target);
+      if (!row) return;
+      push({ type, attribute, ...state(row), action: target?.getAttribute('data-reclass-v3-action') || '',
+        targetClass: typeof target?.className === 'string' ? target.className.slice(0, 100) : '',
+        isTrusted: event?.isTrusted, clickDetail: (event as MouseEvent | undefined)?.detail });
+    };
+    const onClick = (event: Event) => {
+      const target = event.target instanceof Element ? event.target : null;
+      record('click', target, '', event);
+    };
+    const cardObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) record('attribute', mutation.target instanceof Element ? mutation.target : null, mutation.attributeName || '');
+    });
+    const observeCard = (next: Element | null) => {
+      cardObserver.disconnect();
+      card = next;
+      if (card) cardObserver.observe(card, { subtree: true, attributes: true, attributeFilter: ['data-reclass-row-expanded', 'aria-expanded'] });
+    };
+    observeCard(card);
+    const hostObserver = new MutationObserver(() => {
+      const next = host?.querySelector(`[data-reclass-row-card="${CSS.escape(targetUid)}"]`) || null;
+      if (next === card) return;
+      const previous = card;
+      push({ type: 'card-replaced', previousCardId: cardId(previous), nextCardId: cardId(next),
+        previous: state(previous), next: state(next) });
+      observeCard(next);
+    });
+    if (host) hostObserver.observe(host, { subtree: true, childList: true });
+    const originalRenderer = root.renderArgosReclassInquiryEditor;
+    const wrappedRenderer = typeof originalRenderer === 'function' ? function (this: unknown, ...args: unknown[]) {
+      const before = host?.querySelector(`[data-reclass-row-card="${CSS.escape(targetUid)}"]`) || null;
+      const stack = String(new Error().stack || '').split('\n').slice(1, 5).map((line) => line.trim());
+      const result = Reflect.apply(originalRenderer, this, args);
+      push({ type: 'render-call', previousCardId: cardId(before), caller: stack });
+      return result;
+    } : null;
+    if (wrappedRenderer) root.renderArgosReclassInquiryEditor = wrappedRenderer;
+    document.addEventListener('click', onClick, true);
+    root.__reclassDisclosureDiagnostics = {
+      getSnapshot: () => ({ events: events.slice(), finalCardId: cardId(card), ...state(card) }),
+      restore: () => { cardObserver.disconnect(); hostObserver.disconnect(); document.removeEventListener('click', onClick, true);
+        if (wrappedRenderer && root.renderArgosReclassInquiryEditor === wrappedRenderer) root.renderArgosReclassInquiryEditor = originalRenderer;
+        return true; },
+    };
+  }, uid);
+}
+
+async function takeReclassDisclosureDiagnostics(page: Page) {
+  return await page.evaluate(() => {
+    const root = window as any;
+    const handle = root.__reclassDisclosureDiagnostics;
+    if (!handle) return null;
+    const snapshot = handle.getSnapshot();
+    handle.restore();
+    delete root.__reclassDisclosureDiagnostics;
+    return snapshot;
+  }).catch((error) => ({ captureError: error instanceof Error ? `${error.name}: ${error.message}` : String(error) }));
 }
 
 async function populate(page: Page, action: 'move_up' | 'move_down' = 'move_up') {
@@ -599,17 +902,61 @@ test('Move Up commits live stock before Priority inquiry and does not queue the 
 });
 
 test('610-unit live move stays responsive, replays the exact command after timeout, and queues only the remaining draft once', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
+  // This representative fixture verifies Drive browse and full 10k-row reads;
+  // iPhone also performs two authenticated shell boots. Keep interaction gates
+  // below strict; allow setup to finish so they can report independently.
+  test.setTimeout(180_000);
   const f = await fixture(page, baseURL!, info.project.name, { season: 'F1', salesYear: '27' }, 10_000, 1000);
-  await installPaintTimingProbe(page, { phase: 'open', uid: 'drive-layout-synthetic-1-no-photo', sourceQuantity: 1000 });
-  const row = await f.open(false);
-  const cachedInquiryOpen = await readPaintTimingProbe(page);
-  expect(await page.locator('#toast-notification').innerText()).not.toContain('Loading Item Inquiry');
-  if (await row.locator('.argos-reclass-row-toggle').getAttribute('aria-expanded') === 'true') {
-    await row.locator('.argos-reclass-row-toggle').click();
+  const mobileEditor = await page.evaluate(() => matchMedia('(max-width: 640px)').matches);
+  const missingOpenTimingTargets = await installOpenStageTiming(page);
+  await installPaintTimingProbe(page, { phase: 'open', uid: 'drive-layout-synthetic-1-no-photo', sourceQuantity: 1000, requireHydrated: !mobileEditor });
+  let row: Awaited<ReturnType<typeof f.open>>;
+  let cachedInquiryOpen: Awaited<ReturnType<typeof readPaintTimingProbe>>;
+  let openStageTiming: unknown;
+  try {
+    row = await f.open(false);
+    cachedInquiryOpen = await readPaintTimingProbe(page);
+  } finally {
+    openStageTiming = await takeOpenStageTiming(page);
+    await info.attach('reclass-610-open-stage-timing.json', { contentType: 'application/json', body: JSON.stringify({
+      datasetRows: 10_000,
+      warmCache: true,
+      missingOpenTimingTargets,
+      paintProbe: await page.evaluate(() => (window as any).__reclassPaintTimingProbe?.result || null).catch(() => null),
+      timing: openStageTiming,
+    }, null, 2) });
   }
-  await installPaintTimingProbe(page, { phase: 'expand', uid: 'drive-layout-synthetic-1-no-photo' });
-  await row.locator('.argos-reclass-row-toggle').click();
-  const hydratedEditorOpen = await readPaintTimingProbe(page);
+  await info.attach('reclass-610-open-paint-metrics.json', { contentType: 'application/json', body: JSON.stringify({
+    datasetRows: 10_000, warmCache: true, cachedInquiryOpenMs: cachedInquiryOpen.elapsedMs,
+  }, null, 2) });
+  expect(cachedInquiryOpen.elapsedMs).toBeLessThanOrEqual(150);
+  expect(await page.locator('#toast-notification').innerText()).not.toContain('Loading Item Inquiry');
+  let cdpTimeline: Awaited<ReturnType<typeof startReclassCdpTimeline>> = null;
+  let cdpTimelineAttached = false;
+  const attachCdpTimeline = async () => {
+    if (!cdpTimeline || cdpTimelineAttached) return;
+    cdpTimelineAttached = true;
+    const capture = await cdpTimeline.stop();
+    cdpTimeline = null;
+    if (capture.rawTrace) await info.attach('reclass-610-chromium-timeline.json', { contentType: 'application/json', body: capture.rawTrace });
+    await info.attach('reclass-610-chromium-timeline-summary.json', { contentType: 'application/json', body: JSON.stringify({
+      enabledBy: 'GNC_RECLASS_TIMELINE=1', startError: capture.startError, stopError: capture.stopError, summary: capture.summary,
+    }, null, 2) });
+  };
+  try {
+  await installReclassDisclosureDiagnostics(page, 'drive-layout-synthetic-1-no-photo');
+  let hydratedEditorOpen = cachedInquiryOpen;
+  if (mobileEditor) {
+    expect(await row.locator('.argos-reclass-row-toggle').getAttribute('aria-expanded')).toBe('false');
+    await installPaintTimingProbe(page, { phase: 'expand', uid: 'drive-layout-synthetic-1-no-photo' });
+    await row.locator('.argos-reclass-row-toggle').click();
+    hydratedEditorOpen = await readPaintTimingProbe(page);
+  } else {
+    // Desktop intentionally renders the editor expanded and hydrated, and CSS
+    // disables its disclosure button. The open-click probe includes hydration.
+    expect(await row.locator('.argos-reclass-row-toggle').getAttribute('aria-expanded')).toBe('true');
+    expect(await row.locator('[data-reclass-row-hydrated="true"]')).toHaveCount(1);
+  }
   await row.locator('[data-reclass-v3-action="priority_change"]').click();
   await row.locator('[data-reclass-v3-proposal-action="priority_change"][data-reclass-v3-proposal-field="priority"]').fill('1');
   await row.locator('[data-reclass-v3-action="move_up"]').click();
@@ -694,10 +1041,14 @@ test('610-unit live move stays responsive, replays the exact command after timeo
     return response;
   });
 
+  const missingTimingTargets = await installApplyStageTiming(page);
+  expect(missingTimingTargets).toEqual([]);
   await installPaintTimingProbe(page, { phase: 'optimistic', uid: 'drive-layout-synthetic-1-no-photo', sourceQuantity: 390, targetQuantity: 610 });
+  cdpTimeline = await startReclassCdpTimeline(page);
   await page.locator('#argos-inventory-transaction-apply').click();
   await firstStarted;
   const optimisticVisible = await readPaintTimingProbe(page);
+  await attachCdpTimeline();
   expect(optimisticVisible.elapsedMs).toBeLessThan(100);
   const immediate = await page.evaluate(() => window.eval(`(() => {
     const model = argosInventoryTransactionState.inquiryModel;
@@ -768,9 +1119,33 @@ test('610-unit live move stays responsive, replays the exact command after timeo
     optimisticQuantityPaintMs: optimisticVisible.elapsedMs,
   }, null, 2) });
   expect(f.control.blockedMutations).toEqual([]);
+  } finally {
+    await attachCdpTimeline();
+    const disclosureDiagnostics = await takeReclassDisclosureDiagnostics(page);
+    await info.attach('reclass-610-disclosure-diagnostics.json', { contentType: 'application/json', body: JSON.stringify(disclosureDiagnostics, null, 2) });
+    let timing: unknown;
+    try {
+      timing = await page.evaluate(() => {
+        const root = window as any;
+        const handle = root.__reclass610StageTiming;
+        if (!handle) return null;
+        const result = handle.getSnapshot();
+        handle.restore();
+        delete root.__reclass610StageTiming;
+        return result;
+      });
+    } catch (error) {
+      timing = { captureError: error instanceof Error ? `${error.name}: ${error.message}` : String(error) };
+    }
+    await info.attach('reclass-610-stage-timing.json', { contentType: 'application/json', body: JSON.stringify({
+      timing,
+      paintProbe: await page.evaluate(() => (window as any).__reclassPaintTimingProbe?.result || null).catch(() => null),
+    }, null, 2) });
+  }
 });
 
 test('definitive live move rejection restores the original worksheet and retains the draft', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
+  test.setTimeout(180_000);
   const f = await fixture(page, baseURL!, info.project.name, { season: 'F1', salesYear: '27' }, 10_000, 1000);
   const row = await f.open();
   await row.locator('[data-reclass-v3-action="move_up"]').click();
