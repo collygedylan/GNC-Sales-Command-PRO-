@@ -15,6 +15,7 @@ import {
 const fixtureFunctions = () => [
   ['apply_inventory_reclass_move_v1', 'uuid, text, bigint, text, jsonb, jsonb', 'destination_season text;\ndestination_lot text;\nactor_username text;\nis_manager boolean;\nassigned_to_actor boolean;', 'create temporary table reclass_move_targets_v1 (destination_season text primary key) on commit drop;'],
   ['apply_inventory_reclass_moves_v1', 'uuid, text, bigint, jsonb', 'source_uid text;', 'create temporary table reclass_move_claims_v1 (lineage_key text primary key) on commit drop;'],
+  ['apply_inventory_reclass_moves_set_v1', 'uuid, text, bigint, jsonb, uuid', '', 'create temporary table reclass_batch_source_before_v1 (source_index integer) on commit drop; create temporary table reclass_batch_source_json_v1 (source_index integer, source_before jsonb) on commit drop;'],
   ['apply_inventory_reclass_import_overlay_v1', 'uuid, uuid', 'movement_request record;\nmovement record;\nsource_stage record;\ntarget_stage record;\nsource_rows integer;\nsource_matches boolean;\nall_pre boolean;\nall_post boolean;\ntarget_count integer;\ntarget_pre boolean;\ntarget_post boolean;\ndesired_status text;\nconflict_reason_value text;', 'perform (select count(*) from pg_temp.ph_master_bulk_stage_v1 s join pg_temp.ph_master_bulk_map_v1 m using(row_number));'],
   ['ph_refresh_hold_learning_itemcode_batch', 'text, integer', 'v_job_name text;\nv_batch_size integer;', 'create temp table tmp_hl_batch on commit drop as select v_job_name as name limit v_batch_size;'],
   ['ph_refresh_hold_learning_summary_batch', 'text, integer', 'v_job_name text;\nv_batch_size integer;', 'create temp table tmp_hl_summary on commit drop as select v_job_name as name limit v_batch_size;'],
@@ -25,7 +26,7 @@ const fixtureFunctions = () => [
   ['bulk_import_master_snapshot_v1', 'uuid, uuid, jsonb, text', 'v_rows jsonb;', 'create temp table ph_master_bulk_stage_v1 on commit drop as select 1::bigint as row_number, \'{}\'::jsonb as raw_values, array[]::text[] as raw_item6_fields, array[]::text[] as field_keys, null::text as lineage_key, null::text as source_hash, null::text as unique_id, null::text as itemcode, null::text as contsize, null::text as locationcode, null::text as lotcode, null::text as source, null::numeric as ptronhand, null::numeric as ptravailable where false; create temp table ph_master_bulk_map_v1 on commit drop as select row_number, null::text as canonical_unique_id, null::integer as candidate_count from pg_temp.ph_master_bulk_stage_v1;'],
 ].map(([name, args, declarations, ddl]) => {
   const body = (declarations ? 'DECLARE\n' + declarations + '\n' : '') + 'BEGIN\n  ' + ddl + '\nEND;';
-  const schema = name === 'apply_inventory_reclass_import_overlay_v1' ? 'private' : 'public';
+  const schema = name === 'apply_inventory_reclass_import_overlay_v1' || name === 'apply_inventory_reclass_moves_set_v1' ? 'private' : 'public';
   return { schema, name, arguments: args, argumentNames: [], body,
     definition: 'CREATE OR REPLACE FUNCTION ' + schema + '.' + name + '() RETURNS void LANGUAGE plpgsql AS $$' + body + '$$;' };
 });

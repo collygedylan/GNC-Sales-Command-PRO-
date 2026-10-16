@@ -730,11 +730,20 @@ begin
   actor_username:=lower(btrim(coalesce(actor_profile.username,'')));
   is_manager:=actor_role in ('ADMIN','ADMINISTRATOR','MANAGER');
 
+  create temporary table if not exists reclass_batch_source_before_v1(
+    source_index integer primary key,like public.ph_master_inventory) on commit drop;
+  create temporary table if not exists reclass_batch_source_after_v1(
+    source_index integer primary key,like public.ph_master_inventory) on commit drop;
+  create temporary table if not exists reclass_batch_target_before_v1(
+    source_index integer,destination_season text,like public.ph_master_inventory,
+    primary key(source_index,destination_season)) on commit drop;
+  create temporary table if not exists reclass_batch_target_after_v1(
+    source_index integer,destination_season text,like public.ph_master_inventory,
+    primary key(source_index,destination_season)) on commit drop;
   create temporary table if not exists reclass_batch_sources_v1(
     source_index integer primary key,source_uid text unique,child_command text not null,child_request_id uuid not null,
-    source_identity jsonb not null,source_before jsonb not null,source_lineage text not null,source_season text not null,
-    source_stem text not null,source_on_hand numeric,source_available numeric,total_quantity numeric not null default 0,
-    source_after jsonb
+    source_identity jsonb not null,source_lineage text not null,source_season text not null,
+    source_stem text not null,source_on_hand numeric,source_available numeric,total_quantity numeric not null default 0
   ) on commit drop;
   create temporary table if not exists reclass_batch_lines_v1(
     source_index integer not null,line_index integer not null,direction text not null,destination_season text not null,
@@ -742,73 +751,88 @@ begin
   ) on commit drop;
   create temporary table if not exists reclass_batch_targets_v1(
     source_index integer not null,destination_season text not null,destination_lot text not null,quantity numeric not null,
-    destination_uid text not null,destination_lineage text,destination_before jsonb,destination_after jsonb,match_count integer not null default 0,
+    destination_uid text not null,destination_lineage text,destination_after jsonb,match_count integer not null default 0,
     primary key(source_index,destination_season)
   ) on commit drop;
+  create temporary table if not exists reclass_batch_source_json_v1(
+    source_index integer primary key,source_before jsonb not null,source_after jsonb not null) on commit drop;
+  create temporary table if not exists reclass_batch_target_json_v1(
+    source_index integer not null,destination_season text not null,destination_before jsonb,destination_after jsonb not null,
+    primary key(source_index,destination_season)) on commit drop;
   truncate table pg_temp.reclass_batch_sources_v1,pg_temp.reclass_batch_lines_v1,pg_temp.reclass_batch_targets_v1;
+  truncate table pg_temp.reclass_batch_source_before_v1,pg_temp.reclass_batch_source_after_v1,
+    pg_temp.reclass_batch_target_before_v1,pg_temp.reclass_batch_target_after_v1,
+    pg_temp.reclass_batch_source_json_v1,pg_temp.reclass_batch_target_json_v1;
 
-  with source_rows as materialized (
-    select e.ordinality::integer source_index,btrim(coalesce(e.value#>>'{source,uniqueId}','')) source_uid,
-      'reclass-batch:'||left(encode(extensions.digest(convert_to(p_command_id||':'||e.ordinality::text,'UTF8'),'sha256'),'hex'),40) child_command,
-      gen_random_uuid() child_request_id,e.value#>'{source,identity}' source_identity,to_jsonb(m) source_before
-    from jsonb_array_elements(p_moves) with ordinality e(value,ordinality)
-    join public.ph_master_inventory m on m.unique_id=btrim(coalesce(e.value#>>'{source,uniqueId}',''))
-    order by e.ordinality
-  )
+  insert into pg_temp.reclass_batch_source_before_v1
+  select e.ordinality::integer,m.*
+  from jsonb_array_elements(p_moves) with ordinality e(value,ordinality)
+  join public.ph_master_inventory m on m.unique_id=btrim(coalesce(e.value#>>'{source,uniqueId}',''))
+  order by e.ordinality;
+  insert into pg_temp.reclass_batch_source_json_v1(source_index,source_before,source_after)
+    select b.source_index,to_jsonb(b)-'source_index','{}'::jsonb
+    from pg_temp.reclass_batch_source_before_v1 b;
   insert into pg_temp.reclass_batch_sources_v1(source_index,source_uid,child_command,child_request_id,
-    source_identity,source_before,source_lineage,source_season,source_stem,source_on_hand,source_available)
-  select source_index,source_uid,child_command,child_request_id,source_identity,source_before,
-    private.ph_master_inventory_lineage_key_v1(source_before),
-    upper(btrim(coalesce(nullif(source_before->>'season',''),
-      nullif(regexp_replace(coalesce(source_before->>'lotcode',''),'^.*[.]',''),''),''))),
-    regexp_replace(source_before->>'lotcode','[.][^.]+$',''),
-    private.reclass_numeric_v1(source_before->>'ptronhand'),private.reclass_numeric_v1(source_before->>'ptravailable')
-  from source_rows order by source_index;
+    source_identity,source_lineage,source_season,source_stem,source_on_hand,source_available)
+  select e.ordinality::integer,b.unique_id::text,
+    'reclass-batch:'||left(encode(extensions.digest(convert_to(p_command_id||':'||e.ordinality::text,'UTF8'),'sha256'),'hex'),40),
+    gen_random_uuid(),e.value#>'{source,identity}',private.ph_master_inventory_lineage_key_v1(j.source_before),
+    upper(btrim(coalesce(nullif(b.season::text,''),nullif(regexp_replace(coalesce(b.lotcode::text,''),'^.*[.]',''),''),''))),
+    regexp_replace(b.lotcode::text,'[.][^.]+$',''),private.reclass_numeric_v1(b.ptronhand::text),
+    private.reclass_numeric_v1(b.ptravailable::text)
+  from jsonb_array_elements(p_moves) with ordinality e(value,ordinality)
+  join pg_temp.reclass_batch_source_before_v1 b on b.source_index=e.ordinality
+  join pg_temp.reclass_batch_source_json_v1 j using(source_index)
+  order by e.ordinality;
   get diagnostics source_count=row_count;
   if source_count<>jsonb_array_length(p_moves) then raise exception using errcode='40001',message='INVENTORY_RECLASS_SOURCE_MISSING'; end if;
   analyze pg_temp.reclass_batch_sources_v1;
 
   if not is_manager and exists(select 1 from pg_temp.reclass_batch_sources_v1 s
+    join pg_temp.reclass_batch_source_before_v1 b using(source_index)
     where not exists(select 1 from public.ph_warehouse_assigned_items a where a.present_in_drive
-      and upper(btrim(coalesce(a.itemcode_normalized,a.itemcode,'')))=upper(btrim(coalesce(s.source_before->>'itemcode','')))
+      and upper(btrim(coalesce(a.itemcode_normalized,a.itemcode,'')))=upper(btrim(coalesce(b.itemcode::text,'')))
       and lower(regexp_replace(btrim(coalesce(a.genusname_normalized,a.genusname,'')),'[[:space:]]+',' ','g'))
-        =lower(regexp_replace(btrim(coalesce(s.source_before->>'genusname','')),'[[:space:]]+',' ','g'))
+        =lower(regexp_replace(btrim(coalesce(b.genusname::text,'')),'[[:space:]]+',' ','g'))
       and lower(regexp_replace(btrim(coalesce(a.assignedto,'')),'[^a-z0-9]+','_','g'))=actor_username)) then
     raise exception using errcode='42501',message='DRIVE_RECLASS_ROW_NOT_ASSIGNED';
   end if;
-  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s where
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s
+    join pg_temp.reclass_batch_source_before_v1 b using(source_index) where
     s.source_identity-array['unique_id','itemcode','contsize','locationcode','lotcode','season','ptronhand','ptravailable']<>'{}'::jsonb
-    or s.source_identity->>'unique_id' is distinct from s.source_before->>'unique_id'
-    or s.source_identity->>'itemcode' is distinct from s.source_before->>'itemcode'
-    or s.source_identity->>'contsize' is distinct from s.source_before->>'contsize'
-    or s.source_identity->>'locationcode' is distinct from s.source_before->>'locationcode'
-    or s.source_identity->>'lotcode' is distinct from s.source_before->>'lotcode'
-    or s.source_identity->>'season' is distinct from s.source_before->>'season'
-    or s.source_identity->>'ptronhand' is distinct from s.source_before->>'ptronhand'
-    or s.source_identity->>'ptravailable' is distinct from s.source_before->>'ptravailable') then
+    or s.source_identity->>'unique_id' is distinct from b.unique_id::text
+    or s.source_identity->>'itemcode' is distinct from b.itemcode::text
+    or s.source_identity->>'contsize' is distinct from b.contsize::text
+    or s.source_identity->>'locationcode' is distinct from b.locationcode::text
+    or s.source_identity->>'lotcode' is distinct from b.lotcode::text
+    or s.source_identity->>'season' is distinct from b.season::text
+    or s.source_identity->>'ptronhand' is distinct from b.ptronhand::text
+    or s.source_identity->>'ptravailable' is distinct from b.ptravailable::text) then
     raise exception using errcode='40001',message='INVENTORY_RECLASS_SOURCE_CHANGED';
   end if;
-  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s where s.source_before->>'lotcode' !~ '^.+[.](F1|S1|U1|U2|U3|X|Y|Z)$') then
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    where b.lotcode::text !~ '^.+[.](F1|S1|U1|U2|U3|X|Y|Z)$') then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_LOT_INVALID';
   end if;
-  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s where
-    upper(substring(s.source_before->>'lotcode' from '[.]([^.]+)$')) is distinct from s.source_season) then
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    where upper(substring(b.lotcode::text from '[.]([^.]+)$')) is distinct from s.source_season) then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_LOT_SEASON_AMBIGUOUS';
   end if;
   if exists(select 1 from pg_temp.reclass_batch_sources_v1 s where s.source_on_hand is null or s.source_available is null) then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_QUANTITY_UNKNOWN';
   end if;
-  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s where
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    where
     (select count(*) from public.ph_master_inventory m
-      where coalesce(m.warehouseid,m.warehousei,'')=coalesce(s.source_before->>'warehouseid',s.source_before->>'warehousei','')
-        and coalesce(m.itemcode,'')=coalesce(s.source_before->>'itemcode','')
-        and coalesce(m.contsize,'')=coalesce(s.source_before->>'contsize','')
-        and coalesce(m.locationcode,'')=coalesce(s.source_before->>'locationcode','')
-        and coalesce(m.lotcode,'')=coalesce(s.source_before->>'lotcode','')
-        and coalesce(m.source,'')=coalesce(s.source_before->>'source','')
-        and coalesce(m.desigitem,'')=coalesce(s.source_before->>'desigitem','')
-        and coalesce(m.desigcust,'')=coalesce(s.source_before->>'desigcust','')
-        and coalesce(m.desigloc,'')=coalesce(s.source_before->>'desigloc',''))<>1) then
+      where coalesce(m.warehouseid,m.warehousei,'')=coalesce(b.warehouseid::text,b.warehousei::text,'')
+        and coalesce(m.itemcode,'')=coalesce(b.itemcode::text,'')
+        and coalesce(m.contsize,'')=coalesce(b.contsize::text,'')
+        and coalesce(m.locationcode,'')=coalesce(b.locationcode::text,'')
+        and coalesce(m.lotcode,'')=coalesce(b.lotcode::text,'')
+        and coalesce(m.source,'')=coalesce(b.source::text,'')
+        and coalesce(m.desigitem,'')=coalesce(b.desigitem::text,'')
+        and coalesce(m.desigcust,'')=coalesce(b.desigcust::text,'')
+        and coalesce(m.desigloc,'')=coalesce(b.desigloc::text,''))<>1) then
     raise exception using errcode='40001',message='INVENTORY_RECLASS_SOURCE_AMBIGUOUS';
   end if;
 
@@ -834,7 +858,6 @@ begin
       or s.total_quantity>s.source_available) then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_QUANTITY_UNDERFLOW';
   end if;
-
   insert into pg_temp.reclass_batch_targets_v1(source_index,destination_season,destination_lot,quantity,destination_uid)
   select s.source_index,l.destination_season,s.source_stem||'.'||l.destination_season,sum(l.quantity),gen_random_uuid()::text
   from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_lines_v1 l using(source_index)
@@ -844,16 +867,17 @@ begin
     match_count=x.matches
   from (select t.source_index,t.destination_season,count(m.unique_id)::integer matches,min(m.unique_id) destination_uid
     from pg_temp.reclass_batch_targets_v1 t join pg_temp.reclass_batch_sources_v1 s using(source_index)
+    join pg_temp.reclass_batch_source_before_v1 b using(source_index)
     left join public.ph_master_inventory m on
-      coalesce(m.warehouseid,m.warehousei,'')=coalesce(s.source_before->>'warehouseid',s.source_before->>'warehousei','')
-      and coalesce(m.itemcode,'')=coalesce(s.source_before->>'itemcode','')
-      and coalesce(m.contsize,'')=coalesce(s.source_before->>'contsize','')
-      and coalesce(m.locationcode,'')=coalesce(s.source_before->>'locationcode','')
+      coalesce(m.warehouseid,m.warehousei,'')=coalesce(b.warehouseid::text,b.warehousei::text,'')
+      and coalesce(m.itemcode,'')=coalesce(b.itemcode::text,'')
+      and coalesce(m.contsize,'')=coalesce(b.contsize::text,'')
+      and coalesce(m.locationcode,'')=coalesce(b.locationcode::text,'')
       and coalesce(m.lotcode,'')=t.destination_lot
-      and coalesce(m.source,'')=coalesce(s.source_before->>'source','')
-      and coalesce(m.desigitem,'')=coalesce(s.source_before->>'desigitem','')
-      and coalesce(m.desigcust,'')=coalesce(s.source_before->>'desigcust','')
-      and coalesce(m.desigloc,'')=coalesce(s.source_before->>'desigloc','')
+      and coalesce(m.source,'')=coalesce(b.source::text,'')
+      and coalesce(m.desigitem,'')=coalesce(b.desigitem::text,'')
+      and coalesce(m.desigcust,'')=coalesce(b.desigcust::text,'')
+      and coalesce(m.desigloc,'')=coalesce(b.desigloc::text,'')
     group by t.source_index,t.destination_season) x
   where x.source_index=t.source_index and x.destination_season=t.destination_season;
   if exists(select 1 from pg_temp.reclass_batch_targets_v1 where match_count>1) then
@@ -861,41 +885,42 @@ begin
   end if;
   if exists(select 1 from pg_temp.reclass_batch_targets_v1 t
     join public.ph_master_inventory m on m.unique_id=t.destination_uid
-    where upper(btrim(coalesce(m.season,''))) is distinct from t.destination_season) then
+    where upper(btrim(coalesce(m.season::text,''))) is distinct from t.destination_season) then
     raise exception using errcode='40001',message='INVENTORY_RECLASS_DESTINATION_SEASON_MISMATCH';
   end if;
-  update pg_temp.reclass_batch_targets_v1 t set destination_before=to_jsonb(m)
-    from public.ph_master_inventory m where m.unique_id=t.destination_uid;
-  if exists(select 1 from pg_temp.reclass_batch_targets_v1 t
-    where t.destination_before is not null and
-      (private.reclass_numeric_v1(t.destination_before->>'ptronhand') is null
-        or private.reclass_numeric_v1(t.destination_before->>'ptravailable') is null)) then
+  insert into pg_temp.reclass_batch_target_before_v1
+    select t.source_index,t.destination_season,m.* from pg_temp.reclass_batch_targets_v1 t
+    join public.ph_master_inventory m on m.unique_id=t.destination_uid where t.match_count=1;
+  insert into pg_temp.reclass_batch_target_json_v1(source_index,destination_season,destination_before,destination_after)
+    select b.source_index,b.destination_season,to_jsonb(b)-array['source_index','destination_season'],'{}'::jsonb
+    from pg_temp.reclass_batch_target_before_v1 b;
+  if exists(select 1 from pg_temp.reclass_batch_target_before_v1 b
+    where private.reclass_numeric_v1(b.ptronhand::text) is null
+      or private.reclass_numeric_v1(b.ptravailable::text) is null) then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_DESTINATION_QUANTITY_UNKNOWN';
   end if;
-  update pg_temp.reclass_batch_targets_v1 t set destination_after=t.destination_before||jsonb_build_object(
-    'ptronhand',(private.reclass_numeric_v1(t.destination_before->>'ptronhand')+t.quantity)::text,
-    'ptravailable',(private.reclass_numeric_v1(t.destination_before->>'ptravailable')+t.quantity)::text,
-    'last_updated',clock_timestamp())
-    where t.destination_before is not null;
   update pg_temp.reclass_batch_targets_v1 t set destination_after=(
     select coalesce(jsonb_object_agg(e.key,e.value),'{}'::jsonb) from pg_temp.reclass_batch_sources_v1 s
-    cross join lateral jsonb_each(s.source_before) e where s.source_index=t.source_index and e.key=any(safe_fields))
+    join pg_temp.reclass_batch_source_json_v1 sj using(source_index)
+    cross join lateral jsonb_each(sj.source_before) e where s.source_index=t.source_index and e.key=any(safe_fields))
     ||jsonb_build_object('unique_id',t.destination_uid,'lotcode',t.destination_lot,'season',t.destination_season,
       'last_updated',clock_timestamp(),'concat','reclass-move:'||encode(extensions.digest(convert_to(p_command_id||':'||t.destination_uid,'UTF8'),'sha256'),'hex'))
     ||(select coalesce(jsonb_object_agg(z.field,'0'::jsonb),'{}'::jsonb) from unnest(zero_fields) z(field))
     ||jsonb_build_object('ptronhand',t.quantity::text,'ptravailable',t.quantity::text)
-    where t.destination_before is null;
-  update pg_temp.reclass_batch_targets_v1 t set destination_lineage=private.ph_master_inventory_lineage_key_v1(t.destination_after);
+    where t.match_count=0;
+  update pg_temp.reclass_batch_targets_v1 t set destination_lineage=case when t.match_count=1
+      then private.ph_master_inventory_lineage_key_v1(j.destination_before)
+      else private.ph_master_inventory_lineage_key_v1(t.destination_after) end
+    from pg_temp.reclass_batch_target_json_v1 j
+    where t.match_count=1 and j.source_index=t.source_index and j.destination_season=t.destination_season;
+  update pg_temp.reclass_batch_targets_v1 t set destination_lineage=private.ph_master_inventory_lineage_key_v1(t.destination_after)
+    where t.match_count=0;
   if exists(select 1 from pg_temp.reclass_batch_sources_v1 group by source_lineage having count(*)>1)
     or exists(select 1 from pg_temp.reclass_batch_targets_v1 group by destination_lineage having count(*)>1)
     or exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_targets_v1 t
       on t.destination_lineage=s.source_lineage) then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_OVERLAP_INVALID';
   end if;
-  update pg_temp.reclass_batch_sources_v1 s set source_after=s.source_before||jsonb_build_object(
-    'ptronhand',(s.source_on_hand-s.total_quantity)::text,'ptravailable',(s.source_available-s.total_quantity)::text,
-    'last_updated',clock_timestamp());
-
   insert into private.ph_inventory_reclass_commands_v1(request_id,actor_id,command_id,request,result)
   select s.child_request_id,p_actor_id,s.child_command,jsonb_build_object('expectedRevision',p_expected_revision+case when s.source_index=1 then 0 else 1 end,
     'sourceUid',s.source_uid,'sourceIdentity',s.source_identity,'lines',m.value->'lines'),'{}'::jsonb
@@ -906,28 +931,42 @@ begin
     update public.ph_master_inventory m set ptronhand=(s.source_on_hand-s.total_quantity)::text,
       ptravailable=(s.source_available-s.total_quantity)::text,last_updated=clock_timestamp()
     from pg_temp.reclass_batch_sources_v1 s where m.unique_id=s.source_uid
-    returning m.unique_id,to_jsonb(m.*) row_value
+    returning m.*
   )
-  update pg_temp.reclass_batch_sources_v1 s set source_after=u.row_value
-  from updated_sources u where u.unique_id=s.source_uid;
+  insert into pg_temp.reclass_batch_source_after_v1
+    select s.source_index,u.* from updated_sources u join pg_temp.reclass_batch_sources_v1 s on s.source_uid=u.unique_id;
   with updated_targets as (
-    update public.ph_master_inventory m set ptronhand=t.destination_after->>'ptronhand',
-      ptravailable=t.destination_after->>'ptravailable',last_updated=clock_timestamp()
-    from pg_temp.reclass_batch_targets_v1 t where t.destination_before is not null and m.unique_id=t.destination_uid
-    returning m.unique_id,to_jsonb(m.*) row_value
+    update public.ph_master_inventory m set ptronhand=(private.reclass_numeric_v1(b.ptronhand::text)+t.quantity)::text,
+      ptravailable=(private.reclass_numeric_v1(b.ptravailable::text)+t.quantity)::text,last_updated=clock_timestamp()
+    from pg_temp.reclass_batch_targets_v1 t join pg_temp.reclass_batch_target_before_v1 b
+      using(source_index,destination_season)
+    where t.match_count=1 and m.unique_id=t.destination_uid
+    returning m.*
   )
-  update pg_temp.reclass_batch_targets_v1 t set destination_after=u.row_value
-  from updated_targets u where u.unique_id=t.destination_uid;
+  insert into pg_temp.reclass_batch_target_after_v1
+    select t.source_index,t.destination_season,u.* from updated_targets u
+    join pg_temp.reclass_batch_targets_v1 t on t.destination_uid=u.unique_id;
   with inserted_targets as (
     insert into public.ph_master_inventory as inserted
     select destination_row.*
     from pg_temp.reclass_batch_targets_v1 t
     cross join lateral jsonb_populate_record(null::public.ph_master_inventory,t.destination_after) as destination_row
-    where t.destination_before is null order by t.source_index,t.destination_season
-    returning inserted.unique_id,to_jsonb(inserted.*) row_value
+    where t.match_count=0 order by t.source_index,t.destination_season
+    returning inserted.*
   )
-  update pg_temp.reclass_batch_targets_v1 t set destination_after=i.row_value
-  from inserted_targets i where i.unique_id=t.destination_uid;
+  insert into pg_temp.reclass_batch_target_after_v1
+    select t.source_index,t.destination_season,i.* from inserted_targets i
+    join pg_temp.reclass_batch_targets_v1 t on t.destination_uid=i.unique_id;
+  update pg_temp.reclass_batch_source_json_v1 j set source_after=to_jsonb(a)-'source_index'
+    from pg_temp.reclass_batch_source_after_v1 a where a.source_index=j.source_index;
+  update pg_temp.reclass_batch_target_json_v1 j set destination_after=to_jsonb(a)-array['source_index','destination_season']
+    from pg_temp.reclass_batch_target_after_v1 a
+    where a.source_index=j.source_index and a.destination_season=j.destination_season;
+  insert into pg_temp.reclass_batch_target_json_v1(source_index,destination_season,destination_before,destination_after)
+    select a.source_index,a.destination_season,null,to_jsonb(a)-array['source_index','destination_season']
+    from pg_temp.reclass_batch_target_after_v1 a
+    where not exists(select 1 from pg_temp.reclass_batch_target_json_v1 j
+      where j.source_index=a.source_index and j.destination_season=a.destination_season);
   insert into private.ph_inventory_reclass_import_aliases_v1(lineage_key,canonical_unique_id,request_id)
   select t.destination_lineage,t.destination_uid,s.child_request_id
   from pg_temp.reclass_batch_targets_v1 t join pg_temp.reclass_batch_sources_v1 s using(source_index)
@@ -944,32 +983,36 @@ begin
     source_before,source_after,destination_before,destination_after)
   select s.child_request_id,l.line_index,l.direction,l.destination_season,l.quantity,s.source_uid,t.destination_uid,
     s.source_lineage,t.destination_lineage,
-    jsonb_build_object('unique_id',s.source_uid,'itemcode',s.source_before->'itemcode','contsize',s.source_before->'contsize',
-      'locationcode',s.source_before->'locationcode','lotcode',s.source_before->'lotcode','season',s.source_before->'season',
-      'source',s.source_before->'source','warehouseid',coalesce(s.source_before->>'warehouseid',s.source_before->>'warehousei'),
-      'desigitem',s.source_before->'desigitem','desigcust',s.source_before->'desigcust','desigloc',s.source_before->'desigloc'),
-    jsonb_build_object('unique_id',t.destination_uid,'itemcode',s.source_before->'itemcode','contsize',s.source_before->'contsize',
-      'locationcode',s.source_before->'locationcode','lotcode',to_jsonb(t.destination_lot),'season',to_jsonb(t.destination_season),
-      'source',s.source_before->'source','warehouseid',coalesce(s.source_before->>'warehouseid',s.source_before->>'warehousei'),
-      'desigitem',s.source_before->'desigitem','desigcust',s.source_before->'desigcust','desigloc',s.source_before->'desigloc'),
-    s.source_before,s.source_after,t.destination_before,t.destination_after
+    jsonb_build_object('unique_id',s.source_uid,'itemcode',sj.source_before->'itemcode','contsize',sj.source_before->'contsize',
+      'locationcode',sj.source_before->'locationcode','lotcode',sj.source_before->'lotcode','season',sj.source_before->'season',
+      'source',sj.source_before->'source','warehouseid',coalesce(sj.source_before->>'warehouseid',sj.source_before->>'warehousei'),
+      'desigitem',sj.source_before->'desigitem','desigcust',sj.source_before->'desigcust','desigloc',sj.source_before->'desigloc'),
+    jsonb_build_object('unique_id',t.destination_uid,'itemcode',sj.source_before->'itemcode','contsize',sj.source_before->'contsize',
+      'locationcode',sj.source_before->'locationcode','lotcode',to_jsonb(t.destination_lot),'season',to_jsonb(t.destination_season),
+      'source',sj.source_before->'source','warehouseid',coalesce(sj.source_before->>'warehouseid',sj.source_before->>'warehousei'),
+      'desigitem',sj.source_before->'desigitem','desigcust',sj.source_before->'desigcust','desigloc',sj.source_before->'desigloc'),
+    sj.source_before,sj.source_after,tj.destination_before,tj.destination_after
   from pg_temp.reclass_batch_lines_v1 l
   join pg_temp.reclass_batch_sources_v1 s using(source_index)
-  join pg_temp.reclass_batch_targets_v1 t using(source_index,destination_season);
+  join pg_temp.reclass_batch_targets_v1 t using(source_index,destination_season)
+  join pg_temp.reclass_batch_source_json_v1 sj using(source_index)
+  join pg_temp.reclass_batch_target_json_v1 tj using(source_index,destination_season);
 
   insert into public.ph_inventory_transactions(unique_id,action,actor_id,actor_username,actor_display,source_table,source_unique_id,
     destination_table,destination_unique_id,source_itemcode,source_lotcode,source_locationcode,destination_itemcode,
     destination_lotcode,destination_locationcode,quantity,source_before,source_after,destination_before,destination_after,
     status,event_type,raw_payload,search_text)
   select gen_random_uuid()::text,l.direction,p_actor_id,actor_profile.username,coalesce(actor_profile.display_name,actor_profile.username),
-    'ph_master_inventory',s.source_uid,'ph_master_inventory',t.destination_uid,s.source_before->>'itemcode',s.source_before->>'lotcode',
-    s.source_before->>'locationcode',s.source_before->>'itemcode',t.destination_lot,s.source_before->>'locationcode',l.quantity,
-    s.source_before,s.source_after,t.destination_before,t.destination_after,'applied','inventory_reclass_move',
+    'ph_master_inventory',s.source_uid,'ph_master_inventory',t.destination_uid,sj.source_before->>'itemcode',sj.source_before->>'lotcode',
+    sj.source_before->>'locationcode',sj.source_before->>'itemcode',t.destination_lot,sj.source_before->>'locationcode',l.quantity,
+    sj.source_before,sj.source_after,tj.destination_before,tj.destination_after,'applied','inventory_reclass_move',
     jsonb_build_object('commandId',s.child_command,'requestId',s.child_request_id),
-    lower(concat_ws(' ',actor_profile.username,s.source_before->>'itemcode',s.source_before->>'lotcode',
-      s.source_before->>'locationcode',t.destination_lot,t.destination_season))
+    lower(concat_ws(' ',actor_profile.username,sj.source_before->>'itemcode',sj.source_before->>'lotcode',
+      sj.source_before->>'locationcode',t.destination_lot,t.destination_season))
   from pg_temp.reclass_batch_lines_v1 l join pg_temp.reclass_batch_sources_v1 s using(source_index)
   join pg_temp.reclass_batch_targets_v1 t using(source_index,destination_season)
+  join pg_temp.reclass_batch_source_json_v1 sj using(source_index)
+  join pg_temp.reclass_batch_target_json_v1 tj using(source_index,destination_season)
   order by s.source_index,l.line_index;
 
   select coalesce(array_agg(uid),'{}'::text[]) into touched_ids from (
@@ -984,9 +1027,9 @@ begin
   select coalesce(jsonb_agg(jsonb_build_object('table','ph_master_inventory','row',r.row_value)
       order by r.source_index,r.row_order,r.destination_season),'[]'::jsonb) into result_rows
   from (select s.source_index,0 row_order,''::text destination_season,s.source_after row_value
-      from pg_temp.reclass_batch_sources_v1 s
+      from pg_temp.reclass_batch_source_json_v1 s
     union all select t.source_index,1,t.destination_season,t.destination_after
-      from pg_temp.reclass_batch_targets_v1 t) r;
+      from pg_temp.reclass_batch_target_json_v1 t) r;
   select coalesce(jsonb_agg(jsonb_build_object('line',l.line_index,'direction',l.direction,
       'destinationSeason',l.destination_season,'quantity',l.quantity,'sourceUniqueId',s.source_uid,
       'destinationUniqueId',t.destination_uid,'sourceIndex',s.source_index) order by s.source_index,l.line_index),'[]'::jsonb)
@@ -999,10 +1042,10 @@ begin
   select revision into current_revision from public.app_dataset_revisions where key='ph_master_inventory';
   with row_values as (
     select s.source_index,0 row_order,''::text destination_season,s.source_after row_value
-    from pg_temp.reclass_batch_sources_v1 s
+    from pg_temp.reclass_batch_source_json_v1 s
     union all
     select t.source_index,1,t.destination_season,t.destination_after
-    from pg_temp.reclass_batch_targets_v1 t
+    from pg_temp.reclass_batch_target_json_v1 t
   ), source_rows as (
     select r.source_index,jsonb_agg(jsonb_build_object('table','ph_master_inventory','row',r.row_value)
       order by r.row_order,r.destination_season) rows_value

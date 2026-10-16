@@ -12,6 +12,9 @@ const SUPPORTED = Object.freeze({
   'public.apply_inventory_reclass_moves_v1': Object.freeze({
     args: ['uuid', 'text', 'bigint', 'jsonb'], declarations: ['source_uid text;'],
   }),
+  'private.apply_inventory_reclass_moves_set_v1': Object.freeze({
+    args: ['uuid', 'text', 'bigint', 'jsonb', 'uuid'], declarations: [],
+  }),
   'private.apply_inventory_reclass_import_overlay_v1': Object.freeze({
     args: ['uuid', 'uuid'], declarations: ['movement_request record;', 'movement record;', 'source_stage record;', 'target_stage record;',
       'source_rows integer;', 'source_matches boolean;', 'all_pre boolean;', 'all_post boolean;', 'target_count integer;',
