@@ -81,3 +81,31 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
 #global-header-inline-back:popover-open{position:fixed!important;inset:calc(env(safe-area-inset-top,0px) + 12px) auto auto 12px!important;margin:0!important;display:flex!important;min-width:44px;min-height:44px;background:var(--ops-surface,#fff);border:1px solid var(--ops-border,#bcd9cd);border-radius:12px;color:var(--ops-brand-strong,#007a4d)}
 .location-base-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:72px;margin:0 0 12px;padding:16px;border:1px solid var(--ops-border,#bbdbc9);border-radius:var(--ops-radius-md,12px);background:var(--ops-surface,#fff);color:var(--ops-text,#18372b);text-align:left;cursor:pointer;touch-action:manipulation}
 .location-base-card strong,.location-base-card small{display:block}.location-base-card strong{font-size:1.3rem;color:var(--ops-brand-strong,#007a4d)}
+/* Weekday surfaces remain pastel in either theme. Keep action colors independent. */
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] {
+            color: #111827; --ops-text: #111827; --ops-text-muted: #374151;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"]
+        :not(button, button *, .app-suspend-tag-actions *, .app-drive-card-reclass *, input, textarea, select) {
+            color: #111827 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(input:not([type="checkbox"]), textarea, select) {
+            color: #111827 !important; background-color: #ffffff !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"]
+        :is(.bg-gray-50, .bg-gray-100, .bg-slate-50, .bg-slate-100):not(button, button *) {
+            background-color: #f3f4f6 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-white:not(button, button *) {
+            background-color: #ffffff !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .app-card-qty-chip {
+            background: #ecfdf5 !important;
+        }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-emerald-50:not(button, button *) { background-color: #ecfdf5 !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-blue-50:not(button, button *) { background-color: #eff6ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-sky-50:not(button, button *) { background-color: #f0f9ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-violet-50:not(button, button *) { background-color: #f5f3ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-purple-50:not(button, button *) { background-color: #faf5ff !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] .bg-amber-50:not(button, button *) { background-color: #fffbeb !important; }
+        #request-content .app-suspend-tag-compact-card[class*="app-planstart-"] :is(.bg-red-50,.bg-red-100):not(button, button *) { background-color: #fee2e2 !important; }
