@@ -970,7 +970,7 @@ textarea.argos-reclass-row-input{min-height:3.5rem;resize:vertical}
 }
 @media(max-width:640px){
     #argos-inventory-transaction-modal{padding:0!important;align-items:stretch!important;justify-content:stretch!important}
-    .argos-tx-panel{width:100vw!important;max-width:none!important;height:100dvh;max-height:100dvh!important;border-radius:0}
+    .argos-tx-panel{width:100vw!important;max-width:none!important;height:100dvh;max-height:100dvh!important;border-radius:0;box-shadow:none}
     .argos-tx-header{padding:max(.55rem,env(safe-area-inset-top)) .68rem .55rem}
     .argos-tx-title{font-size:1.08rem}
     .argos-tx-subtitle{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.25}
@@ -10620,9 +10620,22 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
 
         async function ensureNativeAppSessionBridge(force = false) {
             if (!NATIVE_AUTH_ENABLED || !nativeAuthSessionActive) return null;
+            const bridgeEpoch = nativeAuthRecoveryEpoch;
+            const bridgeSubject = String(nativeAuthSessionUserId || nativeAuthProfile?.id || '').trim();
+            const stillOwnsBridge = () => bridgeEpoch === nativeAuthRecoveryEpoch
+                && nativeAuthSessionActive
+                && !!bridgeSubject
+                && (!nativeAuthSessionUserId || String(nativeAuthSessionUserId).trim() === bridgeSubject)
+                && (!nativeAuthProfile?.id || String(nativeAuthProfile.id).trim() === bridgeSubject);
+            if (!stillOwnsBridge()) return null;
             if (!force) {
                 const existingToken = getCurrentAppSessionToken();
-                if (existingToken) return { ok: true, token: existingToken, source: 'cached-bridge' };
+                const existingRecord = readPersistedAppSessionRecord();
+                const expectedUsername = String(nativeAuthProfile?.username || currentUser || '').trim().toLowerCase();
+                const recordUsername = String(existingRecord?.username || '').trim().toLowerCase();
+                if (existingToken && expectedUsername && recordUsername === expectedUsername && stillOwnsBridge()) {
+                    return { ok: true, token: existingToken, source: 'cached-bridge' };
+                }
             }
             const payload = await postAppFunctionJson(APP_API_FUNCTION_URL, {
                 action: 'native_session_bridge'
@@ -10631,6 +10644,10 @@ body.ios-device.viewport-phone.current-view-request #view-request .request-swipe
                 timeoutMs: 14000,
                 label: 'Native session bridge'
             });
+            // A logout or account switch may occur while the bridge request is
+            // in flight. Never let its old actor token repopulate session state.
+            // Token refresh for the same subject does not invalidate this owner.
+            if (!stillOwnsBridge()) return null;
             if (!payload || payload.ok !== true || !payload.session || !payload.session.token) return null;
             persistAppSessionRecord({
                 token: payload.session.token,
@@ -10913,6 +10930,7 @@ const FORCE_VISIBLE_VIEW_REFRESH_IDS = new Set(['drive', 'crop-roll', 'av', 'res
         const DASHBOARD_SYNC_METADATA_TTL_MS = 45000;
         const DASHBOARD_SYNC_METADATA_LIMIT = 30;
         let realtimeChannels = [];
+        let realtimeSubscriptionGeneration = 0;
         let realtimeChangeTimer = null;
         let realtimeChangeQueue = [];
         let realtimeDirtyIdsByTable = new Map();
@@ -23035,6 +23053,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         let pendingRealtimeDatasetFlushTimer = null;
 
         function queueRealtimeDatasetFlush(tableNames = [], delay = 0) {
+            if (document.hidden) return;
             const names = Array.isArray(tableNames) ? tableNames : [tableNames];
             names.map((value) => String(value || '').trim()).filter(Boolean).forEach((name) => pendingRealtimeDatasetFlushTables.add(name));
             if (!pendingRealtimeDatasetFlushTables.size) return;
@@ -23042,6 +23061,10 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const nextDelay = Math.max(0, Number(delay) || 0);
             pendingRealtimeDatasetFlushTimer = setTimeout(() => {
                 pendingRealtimeDatasetFlushTimer = null;
+                if (document.hidden) {
+                    pendingRealtimeDatasetFlushTables.clear();
+                    return;
+                }
                 if (shouldDeferInteractiveBackgroundWork()) {
                     queueRealtimeDatasetFlush(Array.from(pendingRealtimeDatasetFlushTables), INTERACTION_REFRESH_DEFER_MS);
                     return;
@@ -23053,6 +23076,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function queueRealtimeChange(tableName = '', payload = null) {
+            if (document.hidden) return;
             realtimeChangeQueue.push({ tableName, payload });
             if (realtimeChangeTimer) clearTimeout(realtimeChangeTimer);
             const flushQueuedRealtimeChanges = () => {
@@ -23185,6 +23209,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
         }
 
         function cleanupRealtime() {
+            realtimeSubscriptionGeneration += 1;
             clearRealtimeReconnectTimer();
             clearVisibleViewPollSync();
             if (realtimeFallbackStartTimer) {
@@ -23195,6 +23220,11 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 try { supabaseClient.removeChannel(channel); } catch (e) {}
             });
             realtimeChannels = [];
+            if (pendingRealtimeDatasetFlushTimer) {
+                clearTimeout(pendingRealtimeDatasetFlushTimer);
+                pendingRealtimeDatasetFlushTimer = null;
+            }
+            pendingRealtimeDatasetFlushTables.clear();
             if (realtimeChangeTimer) {
                 clearTimeout(realtimeChangeTimer);
                 realtimeChangeTimer = null;
@@ -23209,12 +23239,23 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 clearTimeout(syncCatchupTimer);
                 syncCatchupTimer = null;
             }
+            if (foregroundRefreshTimer) {
+                clearTimeout(foregroundRefreshTimer);
+                foregroundRefreshTimer = null;
+            }
+            foregroundRefreshQueuedAt = 0;
             clearRequestViewLiveSync();
             realtimeTableStatus = Object.create(null);
             appLiveEventAreaStatus = Object.create(null);
             realtimeStartupUntil = 0;
             liveSyncMode = 'idle';
             updateSyncDiagnostics();
+        }
+
+        function isCurrentLegacyRealtimeSubscription(generation = -1) {
+            return generation === realtimeSubscriptionGeneration
+                && !document.hidden
+                && !(typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync());
         }
 
         function getPassiveSyncIdleMode(viewId = '') {
@@ -23620,6 +23661,7 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
             const tableList = normalizeRealtimeTableList((tables && tables.length) ? tables : activeRealtimeTables);
             activeRealtimeTables = tableList;
             cleanupRealtime();
+            const subscriptionGeneration = realtimeSubscriptionGeneration;
             if (!shouldUseRealtime()) {
                 startFallbackSync(getFallbackSyncInterval(), tableList);
                 return;
@@ -23643,9 +23685,11 @@ function broadcastRowSyncSnapshot(item, prefix = '', options = {}) {
                 const channel = realtimeClient
                     .channel(buildRealtimeChannelName(tableName, safeArea))
                     .on('postgres_changes', buildRealtimeChangeOptions(tableName, safeArea), (payload) => {
+                        if (!isCurrentLegacyRealtimeSubscription(subscriptionGeneration)) return;
                         queueRealtimeChange(tableName, payload);
                     })
                     .subscribe((status) => {
+                        if (!isCurrentLegacyRealtimeSubscription(subscriptionGeneration)) return;
                         const channelStatus = String(status || '').trim().toUpperCase();
                         const isRequiredTable = isRealtimeRequiredTableForCurrentView(tableName);
                         if (tableName === APP_LIVE_EVENTS_TABLE && safeArea) setAppLiveEventAreaStatus(safeArea, channelStatus);
@@ -36853,6 +36897,10 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                 // to validate. Re-entering inventory must then recheck its
                 // season-derived collections even if physical stock is unchanged.
                 id: `core:${key}`, projection, cacheKey: JSON.stringify([key, definition.table, query, projection, season && [season.seasonCode, season.salesYear], ...(key === 'master' ? ['complete-identity-v3'] : [])]),
+                // Both master projections read the same complete all-season rows.
+                // Full adds fields; it may retain same-revision browse proof without
+                // authorizing reuse across another season or filtered side adapter.
+                projectionFamily: key === 'master' ? JSON.stringify([key, definition.table, season && [season.seasonCode, season.salesYear], 'complete-identity-v3']) : '',
                 sourceKeys: window.AgMetricLiveSyncRegistry.getSourceKeys([`core:${key}`]),
                 stage: (options = {}) => withProductionLiveSyncSignal(options.signal, async (signal) => {
                     const preparationScope = key === 'master' ? getSupabaseReadIdentityScope() : '';
@@ -41880,6 +41928,27 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
 
         var preparedMasterRows = new WeakMap();
         const MASTER_PREPARATION_BATCH_SIZE = 64;
+        const MASTER_PREPARATION_MAX_ROWS_PER_YIELD = 512;
+        const MASTER_PREPARATION_TIME_BUDGET_MS = 8;
+
+        function createMasterPreparationYieldController(assertCurrent) {
+            let batchStartedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                ? performance.now() : Date.now();
+            let rowsSinceYield = 0;
+            return function yieldIfNeeded(processedRows = 1) {
+                rowsSinceYield += Math.max(1, Number(processedRows) || 1);
+                const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                    ? performance.now() : Date.now();
+                if (rowsSinceYield < MASTER_PREPARATION_MAX_ROWS_PER_YIELD
+                    && now - batchStartedAt < MASTER_PREPARATION_TIME_BUDGET_MS) return null;
+                return yieldToUiFrame().then(() => {
+                    assertCurrent();
+                    rowsSinceYield = 0;
+                    batchStartedAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
+                        ? performance.now() : Date.now();
+                });
+            };
+        }
 
         function currentMasterPreparationSeasonKey() {
             const season = getCurrentAppSeasonSettings();
@@ -41898,6 +41967,7 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
         async function prepareMasterSeasonAssignments(items, assertCurrent) {
             const winners = new Map();
             const eligibleRows = [];
+            let yieldIfNeeded = createMasterPreparationYieldController(assertCurrent);
             for (let index = 0; index < items.length; index++) {
                 const item = items[index];
                 if (item && !isWorkflowProtectedAppTabAssignment(firstNonEmptyValue(item.APP_TAB_ASSIGNMENT, item.app_tab_assignment, ''))) {
@@ -41912,18 +41982,19 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                         }
                     }
                 }
-                if ((index + 1) % MASTER_PREPARATION_BATCH_SIZE === 0 && index + 1 < items.length) {
-                    await yieldToUiFrame();
-                    assertCurrent();
+                if (index + 1 < items.length) {
+                    const pause = yieldIfNeeded();
+                    if (pause) await pause;
                 }
             }
+            yieldIfNeeded = createMasterPreparationYieldController(assertCurrent);
             for (let index = 0; index < eligibleRows.length; index++) {
                 const { item, code } = eligibleRows[index];
                 const winner = winners.get(code);
                 applySeasonLocationAssignmentFields(item, winner && item.UNIQUE_ID === winner.UNIQUE_ID ? 'season' : 'location');
-                if ((index + 1) % MASTER_PREPARATION_BATCH_SIZE === 0 && index + 1 < eligibleRows.length) {
-                    await yieldToUiFrame();
-                    assertCurrent();
+                if (index + 1 < eligibleRows.length) {
+                    const pause = yieldIfNeeded();
+                    if (pause) await pause;
                 }
             }
         }
@@ -41941,9 +42012,11 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
             const indexMaps = createMasterInventoryIndexMaps();
             const inheritanceCandidates = { ncr: [], moved: [] };
             const limit = Number.isInteger(options.limit) ? Math.max(0, Math.min(rows.length, options.limit)) : rows.length;
+            const assertCurrent = () => assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+            const yieldFormattingIfNeeded = createMasterPreparationYieldController(assertCurrent);
 
             for (let offset = 0; offset < limit; offset += MASTER_PREPARATION_BATCH_SIZE) {
-                assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                assertCurrent();
                 const batch = rows.slice(offset, Math.min(limit, offset + MASTER_PREPARATION_BATCH_SIZE));
                 // Cache/source rows and display rows have separate ownership. Copy
                 // bounded batches so neither formatters nor photos can mutate raw data.
@@ -41961,36 +42034,45 @@ let dockViewLevel=0; let selectedDockNum=null; let selectedDockStop=null; let pe
                     displayRows.push(item);
                 });
                 if (offset + MASTER_PREPARATION_BATCH_SIZE < limit) {
-                    await yieldToUiFrame();
-                    assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                    const pause = yieldFormattingIfNeeded(batch.length);
+                    if (pause) await pause;
                 }
             }
 
-            assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
-            await prepareMasterSeasonAssignments(displayRows, () => assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal));
-            assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+            assertCurrent();
+            await prepareMasterSeasonAssignments(displayRows, assertCurrent);
+            assertCurrent();
             const masterById = new Map(displayRows.map((item) => [String(item && item.UNIQUE_ID || '').trim(), item]));
+            const yieldIfNeeded = createMasterPreparationYieldController(assertCurrent);
             for (let offset = 0; offset < displayRows.length; offset += MASTER_PREPARATION_BATCH_SIZE) {
-                assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                assertCurrent();
                 const end = Math.min(displayRows.length, offset + MASTER_PREPARATION_BATCH_SIZE);
                 for (let index = offset; index < end; index++) {
                     const masterItem = displayRows[index];
-                    if (!masterItem || !shouldIncludeMasterItemInAvSeasonView(masterItem)) continue;
+                    if (!masterItem || !shouldIncludeMasterItemInAvSeasonView(masterItem)) {
+                        if (index + 1 < displayRows.length) {
+                            const pause = yieldIfNeeded();
+                            if (pause) await pause;
+                        }
+                        continue;
+                    }
                     const avItem = { ...masterItem };
                     const uniqueId = String(avItem.UNIQUE_ID || '').trim();
                     syncMasterFieldsToRow(masterById.get(uniqueId) || findLinkedMasterRow(avItem) || masterItem,
                         avItem, EXACT_ROW_SYNC_KEYS, { attachMasterLink: false });
-                    if (!isEvalScopedDataRowVisibleToCurrentUser(avItem)
-                        || !shouldIncludeMasterItemInAvSeasonView(avItem)) continue;
-                    avItem.DOM_ID = 'avo_' + (avItem.UNIQUE_ID || avOpenRows.length);
-                    avOpenByMasterId.set(String(avItem.UNIQUE_ID || '').trim(), avItem);
-                    avOpenRows.push(avItem);
-                }
-                if (end < displayRows.length) {
-                    await yieldToUiFrame();
-                    assertMasterPreparationCurrent(identity, permissionVersion, seasonKey, signal);
+                    if (isEvalScopedDataRowVisibleToCurrentUser(avItem)
+                        && shouldIncludeMasterItemInAvSeasonView(avItem)) {
+                        avItem.DOM_ID = 'avo_' + (avItem.UNIQUE_ID || avOpenRows.length);
+                        avOpenByMasterId.set(String(avItem.UNIQUE_ID || '').trim(), avItem);
+                        avOpenRows.push(avItem);
+                    }
+                    if (index + 1 < displayRows.length) {
+                        const pause = yieldIfNeeded();
+                        if (pause) await pause;
+                    }
                 }
             }
+            assertCurrent();
             preparedMasterRows.set(displayRows, { identity, permissionVersion, seasonKey, avOpenRows, avOpenByMasterId, indexMaps, inheritanceCandidates });
             return { rawRows, payload: { data: displayRows }, rowCount: displayRows.length };
         }
@@ -50010,6 +50092,11 @@ let avTopControlsRenderToken = 0;
         function markArgosReclassProposalEdited(uid = '') {
             if (argosReclassMultiActionState.rowResolutions instanceof Map) argosReclassMultiActionState.rowResolutions.delete(uid);
             if (argosInventoryTransactionState) argosInventoryTransactionState.idempotencyToken = generateArgosInventoryTransactionId('reclass_inquiry');
+            document.querySelectorAll('[data-reclass-row-card]').forEach((card) => {
+                if (card.getAttribute('data-reclass-row-card') !== String(uid)) return;
+                setArgosReclassAttributeIfChanged(card, 'data-reclass-proposal-signature',
+                    getArgosReclassProposalRenderSignature(uid, getEvalWorkInquiryRowResolution(uid)));
+            });
             captureEvalWorkLocalDraftSoon();
         }
 
@@ -50087,6 +50174,8 @@ let avTopControlsRenderToken = 0;
                     resolutionBadge.textContent = resolution === 'done' ? 'Done' : (resolution === 'no_action' ? 'No Action' : 'Needs Review');
                 }
                 card.setAttribute('data-reclass-row-edit-count', String(count));
+                setArgosReclassAttributeIfChanged(card, 'data-reclass-proposal-signature',
+                    getArgosReclassProposalRenderSignature(entry.unique_id, resolution));
             });
             return true;
         }
@@ -50224,7 +50313,7 @@ let avTopControlsRenderToken = 0;
                 const holdHtml = proposal.applyHold
                         ? '<p class="argos-reclass-action-scope-notice" role="alert">This saved move uses a retired Hold option. Remove and re-add the move, then select On Hold in the action grid.</p>'
                         : '<p class="argos-reclass-action-scope-notice" role="note">Use On Hold or Off Hold in the action grid for hold changes.</p>';
-                return `<fieldset class="argos-reclass-move-editor" data-reclass-move-action="${normalized}"><legend>${escapeHtml(rule.label)}</legend><p data-reclass-move-balance data-over-limit="${getArgosReclassMoveBalance(entry).remaining < 0}" role="status">${escapeHtml(getArgosReclassMoveBalanceText(entry))}</p>${splitRows}<button type="button" class="argos-reclass-action-btn" onclick="return changeArgosReclassMoveSplit(this,'${normalized}')" ${proposal.splits.length >= 100 ? 'disabled' : ''}>Add destination</button>${holdHtml}<small>Movement quantities remain an inquiry until keyed.</small></fieldset>`;
+                return `<fieldset class="argos-reclass-move-editor" data-reclass-move-action="${normalized}"><legend>${escapeHtml(rule.label)}</legend><p data-reclass-move-balance data-over-limit="${getArgosReclassMoveBalance(entry).remaining < 0}" role="status">${escapeHtml(getArgosReclassMoveBalanceText(entry))}</p>${splitRows}<button type="button" class="argos-reclass-action-btn" onclick="return changeArgosReclassMoveSplit(this,'${normalized}')" ${proposal.splits.length >= 100 ? 'disabled' : ''}>Add destination</button>${holdHtml}<small>Move quantities update live inventory when you send this inquiry.</small></fieldset>`;
             }
             return `<div class="argos-reclass-action-proposal"><span>Re-Count Request</span><strong>Read-only Item Inquiry</strong><small>No proposed value boxes are added.</small></div>`;
         }
@@ -50338,6 +50427,47 @@ let avTopControlsRenderToken = 0;
             return true;
         }
 
+        function getArgosReclassRowRenderSignature(entry = null, renderState = null) {
+            const canonicalize = (value) => {
+                if (Array.isArray(value)) return value.map(canonicalize);
+                if (!value || typeof value !== 'object') return value;
+                return Object.keys(value).sort().reduce((result, key) => {
+                    result[key] = canonicalize(value[key]);
+                    return result;
+                }, {});
+            };
+            return JSON.stringify(canonicalize({ unique_id: String(entry && entry.unique_id || ''), values: entry && entry.values || {},
+                itemcode: getItemInquiryItemCode(entry && entry.sourceRow), renderState: renderState || {} }));
+        }
+
+        function getArgosReclassProposalRenderSignature(uid = '', resolution = '') {
+            const canonicalize = (value) => {
+                if (Array.isArray(value)) return value.map(canonicalize);
+                if (!value || typeof value !== 'object') return value;
+                return Object.keys(value).sort().reduce((result, key) => {
+                    result[key] = canonicalize(value[key]);
+                    return result;
+                }, {});
+            };
+            return JSON.stringify(canonicalize({ uid: String(uid || ''),
+                proposals: getArgosReclassRowProposalMap(uid, false) || {},
+                temporary: getArgosReclassTemporaryOverlay(uid, false) || {},
+                holdProposal: getArgosReclassV3HoldProposal() || null,
+                resolution: String(resolution || '') }));
+        }
+
+        function getArgosReclassRowBodyId(uid = '') {
+            return `argos-reclass-row-body-${encodeURIComponent(String(uid || ''))}`;
+        }
+
+        function setArgosReclassAttributeIfChanged(element = null, name = '', value = '') {
+            if (!element || !name) return false;
+            const normalized = String(value == null ? '' : value);
+            if (element.getAttribute(name) === normalized) return false;
+            element.setAttribute(name, normalized);
+            return true;
+        }
+
         function toggleArgosReclassRowCard(button = null) {
             const card = button && button.closest ? button.closest('[data-reclass-row-card]') : null;
             if (!card) return false;
@@ -50363,7 +50493,7 @@ let avTopControlsRenderToken = 0;
                 const expanded = !mobileEditor;
                 const hydrated = !mobileEditor;
                 const fieldsHtml = hydrated ? buildArgosReclassRowFieldsHtml(entry) : '';
-                const rowBodyId = `argos-reclass-row-body-${index}`;
+                const rowBodyId = getArgosReclassRowBodyId(uid);
                 const metrics = [
                     ['OH', values.ptronhand],
                     ['REV', values.ptrreviewed],
@@ -50374,7 +50504,12 @@ let avTopControlsRenderToken = 0;
                 const resolution = getEvalWorkInquiryRowResolution(uid);
                 const resolutionBadge = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
                     ? `<em class="eval-work-row-resolution-badge" data-eval-row-resolution-badge data-resolution="${escapeHtml(resolution)}">${resolution === 'done' ? 'Done' : (resolution === 'no_action' ? 'No Action' : 'Needs Review')}</em>` : '';
-                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-scope-actions="${escapeHtml(scopeActions.join(','))}" data-reclass-row-edit-count="${actionCount}" data-eval-row-resolution="${escapeHtml(resolution)}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${rowBodyId}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}${resolutionBadge}<span class="argos-reclass-row-edit-count" data-reclass-row-edit-count ${actionCount ? '' : 'hidden'}>${actionCount} Action${actionCount === 1 ? '' : 's'}</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${rowBodyId}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
+                const optimisticCommand = String(entry && entry.sourceRow && entry.sourceRow.__optimisticReclassMove || '');
+                const proposalSignature = getArgosReclassProposalRenderSignature(uid, resolution);
+                const renderSignature = getArgosReclassRowRenderSignature(entry, {
+                    scopeActions, actionCount, resolution, isOrigin, proposalSignature, optimisticCommand, fieldsHtml
+                });
+                return `<section class="argos-reclass-row-card ${isOrigin ? 'argos-reclass-row-card--origin' : ''}" data-reclass-row-card="${escapeHtml(uid)}" data-reclass-row-index="${index}" data-reclass-model-signature="${escapeHtml(renderSignature)}" data-reclass-proposal-signature="${escapeHtml(proposalSignature)}" data-reclass-optimistic-command="${escapeHtml(optimisticCommand)}" data-reclass-row-expanded="${expanded ? 'true' : 'false'}" data-reclass-scope-actions="${escapeHtml(scopeActions.join(','))}" data-reclass-row-edit-count="${actionCount}" data-eval-row-resolution="${escapeHtml(resolution)}"><div class="argos-reclass-row-title"><button type="button" class="argos-reclass-row-toggle" aria-expanded="${expanded ? 'true' : 'false'}" aria-controls="${escapeHtml(rowBodyId)}" onclick="return toggleArgosReclassRowCard(this)"><span class="argos-reclass-row-toggle-copy"><span>${escapeHtml(values.locationcode || 'Unassigned')} · Lot ${escapeHtml(values.lotcode || '—')}</span><span class="argos-reclass-row-toggle-meta">${metrics}</span></span><span class="argos-reclass-row-toggle-side">${isOrigin ? '<em>Originating Row</em>' : ''}${resolutionBadge}<span class="argos-reclass-row-edit-count" data-reclass-row-edit-count ${actionCount ? '' : 'hidden'}>${actionCount} Action${actionCount === 1 ? '' : 's'}</span><i class="ph-bold ph-caret-down argos-reclass-row-caret" aria-hidden="true"></i></span></button></div><div id="${escapeHtml(rowBodyId)}" class="argos-reclass-row-grid" data-reclass-row-body="${escapeHtml(uid)}" data-reclass-row-hydrated="${hydrated ? 'true' : 'false'}">${fieldsHtml}</div></section>`;
             }).join('') || '<div class="p-4 text-sm font-bold text-slate-600">No current rows were found for this ItemCode.</div>';
             const evalWorkCopy = argosInventoryTransactionState && argosInventoryTransactionState.sourceView === 'eval-work'
                 ? ' · Every row must be Mark Done or No Action before Submit' : ' · Open a Location/Lot and combine the actions needed';
@@ -52631,7 +52766,7 @@ let avTopControlsRenderToken = 0;
                     throw new Error('The source quantity is unknown or insufficient. Refresh the worksheet before moving stock.');
                 }
                 rows[sourceIndex] = { ...source, PTRONHAND: String(onHand - total), ptronhand: String(onHand - total),
-                    PTRAVAILABLE: String(available - total), ptravailable: String(available - total) };
+                    PTRAVAILABLE: String(available - total), ptravailable: String(available - total), __optimisticReclassMove: command.commandId };
                 movedUids.push(uid);
                 const grouped = new Map();
                 move.lines.forEach((line) => grouped.set(line.destinationSeason, (grouped.get(line.destinationSeason) || 0) + line.quantity));
@@ -52663,11 +52798,180 @@ let avTopControlsRenderToken = 0;
             return { model: buildItemInquiryViewModel(state.item, rows), movedUids };
         }
 
+        function reconcileArgosReclassCardDraftState(previousCard = null, nextCard = null, preserveHydratedBody = false) {
+            if (!previousCard || !nextCard) return false;
+            const previousBody = previousCard.querySelector('[data-reclass-row-body]');
+            const nextBody = nextCard.querySelector('[data-reclass-row-body]');
+            const wasHydrated = !!(previousBody && previousBody.getAttribute('data-reclass-row-hydrated') === 'true');
+            if (!preserveHydratedBody && wasHydrated && nextBody && nextBody.getAttribute('data-reclass-row-hydrated') !== 'true'
+                && typeof hydrateArgosReclassRowCard === 'function') hydrateArgosReclassRowCard(nextCard);
+
+            const controlKey = (control, index) => {
+                const field = control.getAttribute('data-reclass-field');
+                if (field) return `field:${field}`;
+                const proposalAction = control.getAttribute('data-reclass-v3-proposal-action');
+                const proposalField = control.getAttribute('data-reclass-v3-proposal-field');
+                if (proposalAction || proposalField) return `proposal:${proposalAction || ''}:${proposalField || ''}:${control.getAttribute('data-reclass-split-index') || ''}`;
+                const actionField = control.getAttribute('data-reclass-action-field');
+                if (actionField) return `action:${actionField}`;
+                return `${String(control.tagName || '').toLowerCase()}:${control.id || control.name || index}`;
+            };
+            const previousControls = Array.from(previousCard.querySelectorAll('input,select,textarea,button'));
+            const nextControls = Array.from(nextCard.querySelectorAll('input,select,textarea,button'));
+            const nextByKey = new Map(nextControls.map((control, index) => [controlKey(control, index), control]));
+            const active = previousCard.ownerDocument && previousCard.ownerDocument.activeElement;
+            let focusedKey = null;
+            let selection = null;
+            const details = Array.from(previousCard.querySelectorAll('details')).map((element) => !!element.open);
+            if (preserveHydratedBody && wasHydrated) {
+                const expanded = previousCard.getAttribute('data-reclass-row-expanded') === 'true';
+                nextCard.setAttribute('data-reclass-row-expanded', expanded ? 'true' : 'false');
+                const toggle = nextCard.querySelector('.argos-reclass-row-toggle');
+                if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                Array.from(nextCard.querySelectorAll('details')).forEach((element, index) => {
+                    if (index < details.length) element.open = details[index];
+                });
+                nextCard.scrollTop = previousCard.scrollTop;
+                if (previousBody && nextBody) nextBody.scrollTop = previousBody.scrollTop;
+                return { focusedKey, selection, preserveHydratedBody: true };
+            }
+            previousControls.forEach((control, index) => {
+                const type = String(control.type || '').toLowerCase();
+                const isCheck = type === 'checkbox' || type === 'radio';
+                const value = isCheck ? !!control.checked : String(control.value == null ? '' : control.value);
+                const baseline = isCheck ? !!control.defaultChecked : String(control.defaultValue == null ? '' : control.defaultValue);
+                if (active === control) {
+                    focusedKey = controlKey(control, index);
+                    if (typeof control.selectionStart === 'number') selection = [control.selectionStart, control.selectionEnd];
+                }
+                if (control.readOnly || control.disabled || value === baseline) return;
+                const replacement = nextByKey.get(controlKey(control, index));
+                if (!replacement || replacement.readOnly || replacement.disabled) return;
+                if (isCheck) replacement.checked = value;
+                else if (replacement.tagName === 'SELECT' && !Array.from(replacement.options || []).some((option) => option.value === value)) return;
+                else replacement.value = value;
+            });
+            Array.from(nextCard.querySelectorAll('details')).forEach((element, index) => {
+                if (index < details.length) element.open = details[index];
+            });
+            const expanded = previousCard.getAttribute('data-reclass-row-expanded') === 'true';
+            nextCard.setAttribute('data-reclass-row-expanded', expanded ? 'true' : 'false');
+            const toggle = nextCard.querySelector('.argos-reclass-row-toggle');
+            if (toggle) toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            nextCard.scrollTop = previousCard.scrollTop;
+            if (previousBody && nextBody) nextBody.scrollTop = previousBody.scrollTop;
+            return { focusedKey, selection };
+        }
+
+        function findArgosReclassCardControl(card = null, key = '') {
+            if (!card || !key) return null;
+            const controls = Array.from(card.querySelectorAll('input,select,textarea,button'));
+            return controls.find((control, index) => {
+                const field = control.getAttribute('data-reclass-field');
+                if (field) return `field:${field}` === key;
+                const action = control.getAttribute('data-reclass-v3-proposal-action');
+                const proposalField = control.getAttribute('data-reclass-v3-proposal-field');
+                if (action || proposalField) return `proposal:${action || ''}:${proposalField || ''}:${control.getAttribute('data-reclass-split-index') || ''}` === key;
+                const actionField = control.getAttribute('data-reclass-action-field');
+                if (actionField) return `action:${actionField}` === key;
+                return `${String(control.tagName || '').toLowerCase()}:${control.id || control.name || index}` === key;
+            }) || null;
+        }
+
+        function reconcileArgosReclassInquiryMarkup(host = null, markup = '') {
+            if (!host || !host.ownerDocument) return false;
+            const template = host.ownerDocument.createElement('template');
+            template.innerHTML = String(markup == null ? '' : markup);
+            const nextList = template.content.querySelector('.argos-reclass-row-list');
+            const currentList = host.querySelector('.argos-reclass-row-list');
+            if (!nextList || !currentList) {
+                host.innerHTML = String(markup == null ? '' : markup);
+                return true;
+            }
+            const currentCards = new Map(Array.from(currentList.querySelectorAll('[data-reclass-row-card]'))
+                .map((card) => [String(card.getAttribute('data-reclass-row-card') || ''), card])
+                .filter(([uid]) => !!uid));
+            const nextCards = Array.from(nextList.querySelectorAll('[data-reclass-row-card]'));
+            const focusRestores = [];
+            const reconciledCards = nextCards.map((nextCard) => {
+                const uid = String(nextCard.getAttribute('data-reclass-row-card') || '');
+                const currentCard = uid ? currentCards.get(uid) : null;
+                if (!currentCard) return nextCard;
+                const currentSignature = String(currentCard.getAttribute('data-reclass-model-signature') || '');
+                const nextSignature = String(nextCard.getAttribute('data-reclass-model-signature') || '');
+                if (currentSignature && nextSignature && currentSignature === nextSignature) {
+                    setArgosReclassAttributeIfChanged(currentCard, 'data-reclass-row-index', nextCard.getAttribute('data-reclass-row-index') || '');
+                    return currentCard;
+                }
+                if ((!currentSignature || !nextSignature) && currentCard.outerHTML === nextCard.outerHTML) return currentCard;
+                const currentBody = currentCard.querySelector('[data-reclass-row-body]');
+                const nextBody = nextCard.querySelector('[data-reclass-row-body]');
+                const proposalSignature = String(nextCard.getAttribute('data-reclass-proposal-signature') || '');
+                const optimisticCommand = String(nextCard.getAttribute('data-reclass-optimistic-command') || '');
+                const pendingCommandId = typeof argosInventoryTransactionState !== 'undefined' && argosInventoryTransactionState
+                    && argosInventoryTransactionState.pendingReclassMove && argosInventoryTransactionState.pendingReclassMove.command
+                    ? String(argosInventoryTransactionState.pendingReclassMove.command.commandId || '') : '';
+                const preserveHydratedBody = !!(optimisticCommand && optimisticCommand === pendingCommandId
+                    && currentBody && currentBody.getAttribute('data-reclass-row-hydrated') === 'true'
+                    && proposalSignature && proposalSignature === String(currentCard.getAttribute('data-reclass-proposal-signature') || ''));
+                const draftState = reconcileArgosReclassCardDraftState(currentCard, nextCard, preserveHydratedBody);
+                const expanded = currentCard.getAttribute('data-reclass-row-expanded') === 'true';
+                Array.from(currentCard.attributes).forEach((attribute) => {
+                    if (!nextCard.hasAttribute(attribute.name)) currentCard.removeAttribute(attribute.name);
+                });
+                Array.from(nextCard.attributes).forEach((attribute) => setArgosReclassAttributeIfChanged(currentCard, attribute.name, attribute.value));
+                setArgosReclassAttributeIfChanged(currentCard, 'data-reclass-row-expanded', expanded ? 'true' : 'false');
+                const currentToggle = currentCard.querySelector('.argos-reclass-row-toggle');
+                const nextToggle = nextCard.querySelector('.argos-reclass-row-toggle');
+                if (currentToggle && nextToggle) setArgosReclassAttributeIfChanged(nextToggle, 'aria-expanded', expanded ? 'true' : 'false');
+                if (preserveHydratedBody && currentBody && nextBody) {
+                    const currentTitle = currentCard.querySelector('.argos-reclass-row-title');
+                    const nextTitle = nextCard.querySelector('.argos-reclass-row-title');
+                    if (currentTitle && nextTitle) currentTitle.replaceWith(nextTitle);
+                    else currentCard.replaceChildren(...Array.from(nextCard.childNodes));
+                } else currentCard.replaceChildren(...Array.from(nextCard.childNodes));
+                if (draftState && draftState.focusedKey) focusRestores.push({ card: currentCard, ...draftState });
+                return currentCard;
+            });
+            const desiredListNodes = reconciledCards.length ? reconciledCards : Array.from(nextList.childNodes);
+            const desiredSet = new Set(desiredListNodes);
+            Array.from(currentList.childNodes).forEach((node) => { if (!desiredSet.has(node)) node.remove(); });
+            let cursor = currentList.firstChild;
+            desiredListNodes.forEach((node) => {
+                if (node === cursor) cursor = cursor.nextSibling;
+                else currentList.insertBefore(node, cursor);
+            });
+            const nextListPosition = Array.from(template.content.childNodes).indexOf(nextList);
+            const nextLeadingNodes = Array.from(template.content.childNodes).slice(0, Math.max(0, nextListPosition));
+            const currentLeadingNodes = [];
+            for (const node of Array.from(host.childNodes)) {
+                if (node === currentList) break;
+                currentLeadingNodes.push(node);
+            }
+            const sameLeadingMarkup = currentLeadingNodes.map((node) => node.outerHTML || node.textContent || '').join('')
+                === nextLeadingNodes.map((node) => node.outerHTML || node.textContent || '').join('');
+            if (!sameLeadingMarkup) {
+                currentLeadingNodes.forEach((node) => node.remove());
+                nextLeadingNodes.forEach((node) => host.insertBefore(node, currentList));
+            }
+            const trailingNodes = Array.from(host.childNodes).slice(Array.from(host.childNodes).indexOf(currentList) + 1);
+            trailingNodes.forEach((node) => node.remove());
+            focusRestores.forEach(({ card, focusedKey, selection }) => {
+                const focused = findArgosReclassCardControl(card, focusedKey);
+                if (!focused || typeof focused.focus !== 'function') return;
+                try { focused.focus({ preventScroll: true }); } catch { focused.focus(); }
+                if (selection && typeof focused.setSelectionRange === 'function') {
+                    try { focused.setSelectionRange(selection[0], selection[1]); } catch {}
+                }
+            });
+            return true;
+        }
+
         function renderArgosInventoryTransactionInquiryModel(state = null) {
             const host = document.getElementById('argos-reclass-item-inquiry');
             if (!host || !state || !state.inquiryModel) return false;
-            host.innerHTML = renderArgosReclassInquiryEditor(state.inquiryModel, state.snapshot && state.snapshot.uniqueId);
-            return true;
+            const markup = renderArgosReclassInquiryEditor(state.inquiryModel, state.snapshot && state.snapshot.uniqueId);
+            return reconcileArgosReclassInquiryMarkup(host, markup);
         }
 
         function setArgosReclassMoveInputsLocked(locked = false) {
@@ -61493,12 +61797,25 @@ function toggleDriveQuickRequestItem(domId) {
         }
         async function restoreNativeAuthSessionOnStartup() {
             if (hasExplicitLogoutMarker() || !NATIVE_AUTH_ENABLED) return false;
+            const restoreEpoch = nativeAuthRecoveryEpoch;
+            const initialSubject = String(nativeAuthSessionUserId || nativeAuthProfile?.id || '').trim();
             startLoginNetworkTrace('restore');
             const profile = await loadNativeAuthProfile(true).catch(() => null);
             if (!profile) {
                 try { window.GncLoginTrace?.finish('failed'); } catch (_) { /* Timing only. */ }
                 return false;
             }
+            const restoreSubject = String(profile.id || '').trim();
+            const ownsRestore = () => !!restoreSubject
+                && nativeAuthRecoveryEpoch === restoreEpoch
+                && nativeAuthSessionActive === true
+                && (!initialSubject || initialSubject === restoreSubject)
+                && String(nativeAuthSessionUserId || '').trim() === restoreSubject
+                && String(nativeAuthProfile?.id || '').trim() === restoreSubject;
+            // The profile loader fences its network read, but a logout or
+            // account switch can still arrive after it resolves and before
+            // this continuation applies the captured profile to the UI.
+            if (!ownsRestore()) return false;
             const loginInputs = document.getElementById('login-inputs');
             const spinner = document.getElementById('loading-spinner');
             if (loginInputs) loginInputs.classList.add('hidden');
@@ -61512,7 +61829,9 @@ function toggleDriveQuickRequestItem(domId) {
             currentUserLanguage = normalizeAppUserLanguage(profile.language || 'English');
             safeRole = String(currentRole).toUpperCase().replace(/\s+/g, '');
             if (profile.must_change_password === true) {
+                if (!ownsRestore()) return false;
                 await getSupabaseBrowserClient().auth.signOut().catch(() => {});
+                if (!ownsRestore()) return false;
                 nativeAuthSessionActive = false;
                 nativeAuthAccessToken = '';
                 clearCachedNativeAuthProfile();
@@ -61521,9 +61840,12 @@ function toggleDriveQuickRequestItem(domId) {
             }
             try {
                 await (window.GncLoginTrace?.measure('session-bridge', () => ensureNativeAppSessionBridge(false)) ?? ensureNativeAppSessionBridge(false)).catch(() => null);
+                if (!ownsRestore()) return false;
                 await finalizeLogin(currentUser, '', false, { restoredSession: true, skipBiometricPrompt: true, sessionSource: 'native-auth' });
+                if (!ownsRestore()) return false;
                 return true;
             } catch (error) {
+                if (!ownsRestore()) return false;
                 finishInitialAppLoad();
                 clearInMemorySessionIdentity();
                 resetLoginUiState();
@@ -119835,6 +120157,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
 
         function queueForegroundRefresh(delay = 220) {
             if (!currentUser) return;
+            if (document.hidden) return;
             if (typeof canUseProductionLiveSync === 'function' && canUseProductionLiveSync()) {
                 signalProductionLiveSync('foreground', Math.min(Number(delay) || 0, 250));
                 return;
@@ -119858,6 +120181,7 @@ if (detailSourceView === 'review' || detailSourceView === 'move-up' || (detailSo
             foregroundRefreshTimer = setTimeout(() => {
                 foregroundRefreshTimer = null;
                 foregroundRefreshQueuedAt = 0;
+                if (document.hidden) return;
                 lastForegroundRefreshRunAt = Date.now();
                 const currentSyncView = resolveRealtimeContextViewId(typeof getCurrentVisibleViewId === 'function' ? getCurrentVisibleViewId() : (activeRealtimeViewId || 'home'));
                 const liveSyncPolicy = getLiveSyncPolicy(currentSyncView);

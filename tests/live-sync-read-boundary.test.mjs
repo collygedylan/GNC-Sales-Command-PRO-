@@ -24,7 +24,7 @@ test('the inventory list contract script loads before inline live-sync consumers
 const start = html.indexOf('const supabaseReadInFlight = new Map();');
 const end = html.indexOf('async function getResponseError(', start);
 assert.ok(start > 0 && end > start);
-const deferred = () => { let resolve; const promise = new Promise((done) => { resolve = done; }); return { promise, resolve }; };
+const deferred = () => { let resolve, reject; const promise = new Promise((done, fail) => { resolve = done; reject = fail; }); return { promise, resolve, reject }; };
 const settle = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
 function extractAppFunction(name) {
     const match = html.match(new RegExp(`(?:async )?function ${name}\\(`));
@@ -1565,6 +1565,167 @@ test('native profile read cannot install an account after sign-out changes the a
     assert.equal(ctx.nativeAuthProfile, null, 'the late profile is not installed after the session changes');
 });
 
+test('native session bridge cannot persist a prior subject after logout or account switch', async () => {
+    const makeContext = () => {
+        const gate = deferred(), persisted = [];
+        const ctx = { NATIVE_AUTH_ENABLED: true, nativeAuthSessionActive: true,
+            nativeAuthRecoveryEpoch: 4, nativeAuthSessionUserId: 'account-a',
+            nativeAuthProfile: { id: 'account-a', username: 'alice', display_name: 'Alice', role: 'Admin' },
+            currentUser: 'alice', currentUserDisplay: 'Alice', currentRole: 'Admin',
+            APP_API_FUNCTION_URL: 'https://api.example.invalid',
+            postAppFunctionJson: () => gate.promise,
+            getCurrentAppSessionToken: () => '',
+            persistAppSessionRecord: record => { persisted.push(record); },
+            firstNonEmptyValue: (...values) => values.find(value => value != null && String(value).trim() !== '') || '' };
+        vm.createContext(ctx);
+        vm.runInContext(extractAppFunction('ensureNativeAppSessionBridge'), ctx);
+        return { ctx, gate, persisted };
+    };
+
+    for (const transition of ['logout', 'account-b']) {
+        const { ctx, gate, persisted } = makeContext();
+        const pending = ctx.ensureNativeAppSessionBridge(true);
+        // A routine refresh for the same subject remains within the bridge owner.
+        ctx.nativeAuthAccessToken = 'refreshed-access-token';
+        if (transition === 'logout') {
+            ctx.nativeAuthRecoveryEpoch++;
+            ctx.nativeAuthSessionActive = false;
+            ctx.nativeAuthSessionUserId = '';
+            ctx.nativeAuthProfile = null;
+        } else {
+            ctx.nativeAuthRecoveryEpoch++;
+            ctx.nativeAuthSessionUserId = 'account-b';
+            ctx.nativeAuthProfile = { id: 'account-b', username: 'bob', role: 'User' };
+        }
+        gate.resolve({ ok: true, session: { token: 'old-account-session-token', expiresAt: Date.now() + 60000,
+            username: 'alice', role: 'Admin' } });
+        assert.equal(await pending, null, `stale bridge result is discarded after ${transition}`);
+        assert.deepEqual(persisted, [], `old account token is never persisted after ${transition}`);
+    }
+
+    {
+        const { ctx, persisted } = makeContext();
+        ctx.nativeAuthRecoveryEpoch++;
+        ctx.nativeAuthSessionUserId = 'account-b';
+        ctx.nativeAuthProfile = { id: 'account-b', username: 'bob', role: 'User' };
+        ctx.currentUser = 'bob';
+        ctx.getCurrentAppSessionToken = () => 'old-account-session-token';
+        ctx.readPersistedAppSessionRecord = () => ({ token: 'old-account-session-token', username: 'alice' });
+        let bridgeRequests = 0;
+        ctx.postAppFunctionJson = async () => {
+            bridgeRequests++;
+            return { ok: true, session: { token: 'new-account-session-token', expiresAt: Date.now() + 60000,
+                username: 'bob', role: 'User' } };
+        };
+        const result = await ctx.ensureNativeAppSessionBridge(false);
+        assert.equal(result && result.token, 'new-account-session-token', 'cached token owned by another username is bypassed');
+        assert.equal(bridgeRequests, 1);
+        assert.equal(persisted[0].username, 'bob');
+    }
+
+    const { ctx, gate, persisted } = makeContext();
+    const pending = ctx.ensureNativeAppSessionBridge(true);
+    ctx.nativeAuthAccessToken = 'refreshed-access-token';
+    gate.resolve({ ok: true, session: { token: 'same-account-session-token', expiresAt: Date.now() + 60000,
+        username: 'alice', role: 'Admin' } });
+    const result = await pending;
+    assert.equal(result && result.ok, true);
+    assert.equal(result && result.token, 'same-account-session-token');
+    assert.equal(result && result.source, 'native-bridge');
+    assert.equal(persisted.length, 1, 'same-subject token refresh does not invalidate the bridge result');
+    assert.equal(persisted[0].username, 'alice');
+});
+
+test('native startup restore fences profile, bridge, and finalize continuations to their original subject', async () => {
+    const profileA = { id: 'account-a', username: 'alice', display_name: 'Alice', role: 'Admin', division: '10', language: 'English' };
+    const profileB = { id: 'account-b', username: 'bob', display_name: 'Bob', role: 'User', division: '20', language: 'English' };
+    const makeContext = ({ loadProfile, bridge, finalize } = {}) => {
+        const calls = [];
+        const ctx = { Error, String, Promise, NATIVE_AUTH_ENABLED: true, nativeAuthRecoveryEpoch: 11,
+            nativeAuthSessionUserId: 'account-a', nativeAuthSessionActive: true, nativeAuthProfile: profileA,
+            nativeAuthAccessToken: 'token-a', nativeAuthProfileRestorePending: true, nativeAuthRestoreRetryPromise: null,
+            document: { hidden: false, getElementById: () => null }, window: {}, navigator: { onLine: true },
+            hasExplicitLogoutMarker: () => false, startLoginNetworkTrace() {}, loadNativeAuthProfile: loadProfile || (async () => profileA),
+            beginInitialAppLoad() {}, scheduleLoginStartupWatchdog() {}, normalizeAppUserLanguage: value => value,
+            ensureNativeAppSessionBridge: bridge || (async () => ({ ok: true })),
+            finalizeLogin: finalize || (async (...args) => { calls.push(['finalize', ...args]); }),
+            getSupabaseBrowserClient: () => ({ auth: { signOut: async () => {} } }),
+            finishInitialAppLoad: () => calls.push(['finish-load']),
+            clearInMemorySessionIdentity: () => { calls.push(['clear-identity']); ctx.currentUser = ''; },
+            resetLoginUiState: () => calls.push(['reset-login']),
+            currentUser: '', currentUserDisplay: '', currentRole: '', currentUserDivision: '10', currentUserLanguage: 'English', safeRole: '' };
+        vm.createContext(ctx);
+        vm.runInContext(extractAppFunction('restoreNativeAuthSessionOnStartup'), ctx);
+        return { ctx, calls };
+    };
+
+    {
+        const profileRead = deferred(), readStarted = deferred();
+        const { ctx, calls } = makeContext({ loadProfile: () => { readStarted.resolve(); return profileRead.promise; } });
+        const restore = ctx.restoreNativeAuthSessionOnStartup();
+        await readStarted.promise;
+        ctx.nativeAuthRecoveryEpoch++;
+        ctx.nativeAuthSessionActive = false;
+        ctx.nativeAuthSessionUserId = '';
+        ctx.nativeAuthProfile = null;
+        profileRead.resolve(profileA);
+        assert.equal(await restore, false, 'logout while profile loading prevents identity restoration');
+        assert.equal(ctx.currentUser, '', 'stale profile does not repopulate the logged-out identity');
+        assert.equal(calls.some(call => call[0] === 'finalize'), false);
+    }
+
+    for (const transition of ['logout', 'account-b']) {
+        const bridge = deferred(), bridgeStarted = deferred();
+        const { ctx, calls } = makeContext({ bridge: () => { bridgeStarted.resolve(); return bridge.promise; } });
+        const restore = ctx.restoreNativeAuthSessionOnStartup();
+        await bridgeStarted.promise;
+        ctx.nativeAuthRecoveryEpoch++;
+        if (transition === 'logout') {
+            ctx.nativeAuthSessionActive = false;
+            ctx.nativeAuthSessionUserId = '';
+            ctx.nativeAuthProfile = null;
+            ctx.currentUser = '';
+        } else {
+            ctx.nativeAuthSessionActive = true;
+            ctx.nativeAuthSessionUserId = 'account-b';
+            ctx.nativeAuthProfile = profileB;
+            ctx.currentUser = 'bob';
+        }
+        bridge.resolve(null);
+        assert.equal(await restore, false, `${transition} while bridge is pending cancels the old restore`);
+        assert.equal(calls.some(call => call[0] === 'finalize'), false, 'stale bridge continuation never finalizes');
+        assert.equal(ctx.currentUser, transition === 'logout' ? '' : 'bob', 'stale restore does not overwrite the newer identity');
+        assert.equal(calls.some(call => call[0] === 'clear-identity' || call[0] === 'reset-login'), false,
+            'stale restore does not clear or reset the newer session UI');
+    }
+
+    {
+        const finalizeGate = deferred(), finalizeStarted = deferred();
+        const { ctx, calls } = makeContext({ finalize: () => { finalizeStarted.resolve(); return finalizeGate.promise; } });
+        const restore = ctx.restoreNativeAuthSessionOnStartup();
+        await finalizeStarted.promise;
+        ctx.nativeAuthRecoveryEpoch++;
+        ctx.nativeAuthSessionUserId = 'account-b';
+        ctx.nativeAuthProfile = profileB;
+        ctx.currentUser = 'bob';
+        finalizeGate.reject(new Error('old account finalize failed after switch'));
+        assert.equal(await restore, false, 'a stale finalize failure is not reported as a successful restore');
+        assert.equal(ctx.currentUser, 'bob');
+        assert.equal(calls.some(call => call[0] === 'clear-identity' || call[0] === 'reset-login'), false,
+            'stale finalize failure does not reset the new account UI');
+    }
+
+    {
+        const calls = [];
+        const { ctx } = makeContext({ bridge: async () => null,
+            finalize: async (...args) => { calls.push(args); } });
+        assert.equal(await ctx.restoreNativeAuthSessionOnStartup(), true,
+            'same-subject startup can continue when the legacy app-session bridge is temporarily unavailable');
+        assert.equal(calls.length, 1);
+        assert.equal(calls[0][0], 'alice');
+    }
+});
+
 test('native password sign-in does not revoke a valid SDK session for a retryable profile failure', async () => {
     let signOuts = 0;
     const session = { access_token: 'valid-token', user: { id: 'account-a' } };
@@ -1599,6 +1760,110 @@ test('native profile restore retries only in foreground and coalesces resume sig
     assert.equal(restores, 1, 'focus and visibility signals share one restore attempt');
     gate.resolve(true);
     assert.deepEqual(await Promise.all([first, joined]), [true, true]);
+});
+
+test('legacy realtime suspension clears queued work and rejects late channel callbacks', () => {
+    const calls = [];
+    const channel = { id: 'legacy-channel' };
+    const ctx = { document: { hidden: true }, realtimeSubscriptionGeneration: 8,
+        realtimeChannels: [channel], supabaseClient: { removeChannel: value => calls.push(['remove-channel', value]) },
+        realtimeChangeTimer: 11, realtimeChangeQueue: [{ tableName: 'ph_master_inventory' }],
+        pendingRealtimeDatasetFlushTimer: 12, pendingRealtimeDatasetFlushTables: new Set(['ph_master_inventory']),
+        fallbackSyncInterval: 13, syncCatchupTimer: 14, foregroundRefreshTimer: 15, foregroundRefreshQueuedAt: 1234,
+        realtimeFallbackStartTimer: 16, realtimeTableStatus: {}, appLiveEventAreaStatus: {}, liveSyncMode: 'realtime',
+        clearTimeout: value => calls.push(['clear-timeout', value]), clearInterval: value => calls.push(['clear-interval', value]),
+        clearRealtimeReconnectTimer() {}, clearVisibleViewPollSync() {}, clearRequestViewLiveSync() {}, updateSyncDiagnostics() {},
+        canUseProductionLiveSync: () => false };
+    vm.createContext(ctx);
+    vm.runInContext(`${extractAppFunction('cleanupRealtime')}
+        ${extractAppFunction('isCurrentLegacyRealtimeSubscription')}`, ctx);
+    const staleGeneration = ctx.realtimeSubscriptionGeneration;
+    assert.equal(ctx.isCurrentLegacyRealtimeSubscription(staleGeneration), false, 'hidden pages reject legacy realtime callbacks');
+    ctx.document.hidden = false;
+    assert.equal(ctx.isCurrentLegacyRealtimeSubscription(staleGeneration), true, 'visible legacy callbacks remain enabled before suspension');
+    ctx.cleanupRealtime();
+    assert.equal(ctx.realtimeSubscriptionGeneration, staleGeneration + 1, 'cleanup invalidates in-flight channel callbacks');
+    assert.equal(ctx.isCurrentLegacyRealtimeSubscription(staleGeneration), false, 'late subscription status/events are discarded');
+    assert.deepEqual(calls.find(call => call[0] === 'remove-channel'), ['remove-channel', channel]);
+    for (const id of [11, 12, 14, 15, 16]) assert.ok(calls.some(call => call[0] === 'clear-timeout' && call[1] === id), `queued timeout ${id} is cleared`);
+    assert.ok(calls.some(call => call[0] === 'clear-interval' && call[1] === 13), 'fallback polling interval is stopped');
+    assert.equal(ctx.pendingRealtimeDatasetFlushTables.size, 0, 'missed realtime deltas are recovered from the visible refresh, not replayed later');
+    assert.equal(ctx.foregroundRefreshQueuedAt, 0);
+    assert.equal(ctx.realtimeChannels.length, 0);
+});
+
+test('legacy foreground and realtime work cannot be queued while hidden', () => {
+    const scheduled = [];
+    const ctx = { document: { hidden: true }, navigator: { onLine: true }, currentUser: { id: 'alice' },
+        realtimeSubscriptionGeneration: 2, realtimeChangeQueue: [], realtimeChangeTimer: null,
+        pendingRealtimeDatasetFlushTables: new Set(), pendingRealtimeDatasetFlushTimer: null,
+        foregroundRefreshTimer: null, foregroundRefreshQueuedAt: 0,
+        setTimeout: callback => { scheduled.push(callback); return scheduled.length; }, clearTimeout() {},
+        canUseProductionLiveSync: () => true, signalProductionLiveSync: () => scheduled.push('native-signal') };
+    vm.createContext(ctx);
+    vm.runInContext(`${extractAppFunction('queueForegroundRefresh')}\n${extractAppFunction('queueRealtimeChange')}`, ctx);
+    ctx.queueForegroundRefresh(0);
+    ctx.queueRealtimeChange('ph_master_inventory', { eventType: 'UPDATE' });
+    assert.deepEqual(scheduled, [], 'hidden legacy work does not start a timer or signal the native coordinator');
+    assert.deepEqual(ctx.realtimeChangeQueue, []);
+    assert.equal(ctx.foregroundRefreshTimer, null);
+});
+
+test('late legacy SUBSCRIBED, CLOSED and row events are inert after suspension', () => {
+    let rowCallback; let statusCallback; let sideEffects = 0;
+    const channel = { on(_type, _options, callback) { rowCallback = callback; return this; },
+        subscribe(callback) { statusCallback = callback; return this; } };
+    const ctx = { document: { hidden: false }, navigator: { onLine: true }, Date, Promise,
+        REALTIME_STARTUP_GRACE_MS: 5000, APP_LIVE_EVENTS_TABLE: 'app_live_events',
+        realtimeSubscriptionGeneration: 0, realtimeChannels: [], realtimeChangeTimer: null,
+        realtimeChangeQueue: [], realtimeDirtyIdsByTable: new Map(), realtimeTableStatus: {},
+        pendingRealtimeDatasetFlushTables: new Set(), pendingRealtimeDatasetFlushTimer: null,
+        fallbackSyncInterval: null, realtimeFallbackStartTimer: null, syncCatchupTimer: null,
+        foregroundRefreshTimer: null, foregroundRefreshQueuedAt: 0, activeRealtimeTables: [],
+        activeRealtimeContextViewId: 'home', activeVisibleViewPollMs: 0, liveSyncMode: 'idle',
+        appLiveEventAreaStatus: {}, realtimeStartupUntil: 0,
+        clearTimeout() {}, clearInterval() {}, clearRealtimeReconnectTimer() {}, clearVisibleViewPollSync() {},
+        clearRequestViewLiveSync() {}, updateSyncDiagnostics() {},
+        canUseProductionLiveSync: () => false, normalizeRealtimeTableList: tables => tables,
+        shouldUseRealtime: () => true, getSupabaseBrowserClient: () => ({ channel: () => channel }),
+        buildRealtimeChannelName: () => 'legacy-test', buildRealtimeChangeOptions: () => ({}),
+        setRealtimeTableStatus() { sideEffects++; }, queueRealtimeChange() { sideEffects++; },
+        isRealtimeRequiredTableForCurrentView() { sideEffects++; return true; },
+        getLiveSyncPolicy() { sideEffects++; return { realtimeTables: [] }; } };
+    vm.createContext(ctx);
+    vm.runInContext(`${extractAppFunction('cleanupRealtime')}\n${extractAppFunction('isCurrentLegacyRealtimeSubscription')}\n${extractAppFunction('initializeRealtime')}`, ctx);
+    ctx.initializeRealtime(['ph_master_inventory']);
+    assert.equal(typeof rowCallback, 'function');
+    assert.equal(typeof statusCallback, 'function');
+    ctx.document.hidden = true;
+    ctx.cleanupRealtime();
+    const sideEffectsBeforeLateCallbacks = sideEffects;
+    rowCallback({ eventType: 'UPDATE' });
+    statusCallback('SUBSCRIBED');
+    statusCallback('CLOSED');
+    assert.equal(sideEffects, sideEffectsBeforeLateCallbacks, 'removed channel callbacks cannot queue catchup or change subscription state');
+    assert.equal(ctx.liveSyncMode, 'idle', 'late CLOSED/SUBSCRIBED statuses cannot replace the suspended state');
+});
+
+test('visible legacy foreground refresh remains coalesced to one recovery read', async () => {
+    const scheduled = []; const reads = [];
+    const ctx = { document: { hidden: false }, navigator: { onLine: true }, currentUser: { id: 'alice' },
+        foregroundRefreshTimer: null, foregroundRefreshQueuedAt: 0, lastForegroundRefreshRunAt: 0,
+        backgroundRefreshInFlight: false, lastBackgroundRefreshAt: 0,
+        setTimeout: callback => { scheduled.push(callback); return scheduled.length; }, clearTimeout() {},
+        isTouchConstrainedDevice: () => false, shouldSkipPassiveRefreshAfterLocalSave: () => false,
+        updateSyncDiagnostics() {}, getCurrentVisibleViewId: () => 'home',
+        resolveRealtimeContextViewId: value => value, getLiveSyncPolicy: () => ({ realtimeTables: [], pollMs: 0 }),
+        shouldDeferInteractiveBackgroundWork: () => false, shouldUseRealtime: () => false,
+        isIOSDevice: () => false, isStandaloneApp: () => false,
+        fetchBackgroundData: async source => { reads.push(source); } };
+    vm.createContext(ctx);
+    vm.runInContext(extractAppFunction('queueForegroundRefresh'), ctx);
+    ctx.queueForegroundRefresh(0);
+    ctx.queueForegroundRefresh(0);
+    assert.equal(scheduled.length, 1, 'repeated visible resume signals coalesce');
+    await scheduled[0]();
+    assert.deepEqual(reads, ['background'], 'the visible legacy path performs one recovery read');
 });
 
 

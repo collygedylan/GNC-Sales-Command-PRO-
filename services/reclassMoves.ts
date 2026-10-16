@@ -1,8 +1,10 @@
 import { normalizeReclassMoveCommand, type ReclassMoveCommand } from './reclassMove.ts';
+import { decodeInventoryReclassReceipt } from './reclassReceipt.ts';
 
 type JsonRecord = Record<string, unknown>;
 type RequestOptions = { timeoutMs: number; label: string; idempotencyKey?: string };
 type Request = (payload: JsonRecord, options: RequestOptions) => Promise<unknown>;
+const RECEIPT_ENCODING = 'master-null-elision-v1';
 
 export interface ConfirmedInventoryReclassMove {
   table: 'ph_master_inventory';
@@ -56,7 +58,7 @@ function unwrap(value: unknown): unknown {
 }
 
 export function confirmedInventoryReclassMoveReceipt(value: unknown): InventoryReclassMoveReceipt {
-  const result = unwrap(value);
+  const result = decodeInventoryReclassReceipt(unwrap(value));
   if (!record(result)) throw new Error('INVENTORY_RECLASS_RECEIPT_INVALID');
   if (result.status === 'pending' || result.status === 'conflict') {
     const error = new Error(result.status === 'pending' ? 'INVENTORY_RECLASS_OUTCOME_PENDING' : 'INVENTORY_RECLASS_CONFLICT');
@@ -178,7 +180,7 @@ export function createInventoryReclassMovesService(request: Request) {
   return {
     async submit(input: JsonRecord): Promise<InventoryReclassMoveReceipt> {
       const command: ReclassMoveCommand = normalizeReclassMoveCommand({ action: 'inventory_reclass_move', ...input });
-      const payload: JsonRecord = { action: 'inventory_reclass_move', ...command };
+      const payload: JsonRecord = { action: 'inventory_reclass_move', ...command, receiptEncoding: RECEIPT_ENCODING };
       const response = await request(payload, { timeoutMs: 30000, label: 'Inventory Reclass move', idempotencyKey: command.commandId });
       try {
         return assertInventoryReclassMoveReceiptMatchesCommand(confirmedInventoryReclassMoveReceipt(response), command);
@@ -192,10 +194,10 @@ export function createInventoryReclassMovesService(request: Request) {
     async status(commandId: string, expectedCommand?: JsonRecord): Promise<InventoryReclassMoveStatus> {
       const id = String(commandId || '').trim();
       if (!/^[A-Za-z0-9:_.-]{12,180}$/.test(id)) throw new Error('INVENTORY_RECLASS_COMMAND_INVALID');
-      const rawResponse = await request({ action: 'inventory_reclass_move', operation: 'status', commandId: id },
+      const rawResponse = await request({ action: 'inventory_reclass_move', operation: 'status', commandId: id, receiptEncoding: RECEIPT_ENCODING },
         { timeoutMs: 15000, label: 'Inventory Reclass status' });
       try {
-        const response = unwrap(rawResponse);
+        const response = decodeInventoryReclassReceipt(unwrap(rawResponse));
         if (!record(response) || response.ok !== true || !['missing', 'pending', 'applied', 'acknowledged', 'conflict'].includes(String(response.status || ''))) {
           throw new Error('INVENTORY_RECLASS_STATUS_INVALID');
         }

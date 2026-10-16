@@ -4,6 +4,7 @@ import { assertInventoryReclassMoveReceiptMatchesCommand, createInventoryReclass
 import fs from 'node:fs';
 import path from 'node:path';
 import vm from 'node:vm';
+import { JSDOM } from 'jsdom';
 
 const html = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf8');
 
@@ -176,6 +177,229 @@ test('pending and conflict command statuses are never accepted as confirmed inve
     moves: [{ source, lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 20 }] }] };
   await assert.rejects(pending.submit(command), error => error.code === 'INVENTORY_RECLASS_OUTCOME_PENDING' && error.status === 503);
   await assert.rejects(conflict.submit(command), error => error.code === 'INVENTORY_RECLASS_CONFLICT' && error.status === 409);
+});
+
+test('optimistic inquiry rerender patches keyed cards in place and preserves drafts', async () => {
+  const dom = new JSDOM('<div id="argos-reclass-item-inquiry"></div>');
+  const ctx = { document: dom.window.document, renderArgosReclassInquiryEditor: () => '',
+    getItemInquiryItemCode: row => String(row && row.itemcode || '') };
+  ctx.hydrateArgosReclassRowCard = card => {
+    const body = card.querySelector('[data-reclass-row-body]');
+    body.innerHTML = '<input data-reclass-field="locationnote" value="new baseline"><span data-reclass-move-balance>Remaining -220</span>';
+    body.setAttribute('data-reclass-row-hydrated', 'true');
+    return true;
+  };
+  vm.createContext(ctx);
+  vm.runInContext(`${extractAppFunction('reconcileArgosReclassCardDraftState')}
+    ${extractAppFunction('findArgosReclassCardControl')}
+    ${extractAppFunction('setArgosReclassAttributeIfChanged')}
+    ${extractAppFunction('reconcileArgosReclassInquiryMarkup')}
+    ${extractAppFunction('getArgosReclassRowRenderSignature')}
+    ${extractAppFunction('getArgosReclassRowBodyId')}
+    ${extractAppFunction('renderArgosInventoryTransactionInquiryModel')}`, ctx);
+
+  const card = (uid, quantity, { expanded = false, hydrated = false, input = '', signature = 'stable',
+    proposalSignature = 'proposal-stable', optimisticCommand = '' } = {}) =>
+    `<section class="argos-reclass-row-card" data-reclass-row-card="${uid}" data-reclass-model-signature="${signature}" data-reclass-proposal-signature="${proposalSignature}" data-reclass-optimistic-command="${optimisticCommand}" data-reclass-row-expanded="${expanded}"><div class="argos-reclass-row-title"><button class="argos-reclass-row-toggle" aria-expanded="${expanded}" aria-controls="${ctx.getArgosReclassRowBodyId(uid)}">Toggle</button><span class="quantity">OH ${quantity}</span></div><div id="${ctx.getArgosReclassRowBodyId(uid)}" data-reclass-row-body="${uid}" data-reclass-row-hydrated="${hydrated}">${input}</div><details><summary>Details</summary></details></section>`;
+  const stableMarkup = card('stable-uid', 25, { input: '<input value="stable baseline">' });
+  const sourceMarkup = card('source-uid', 100, { expanded: false, hydrated: false, signature: 'source-before' });
+  const initialMarkup = `<div class="argos-reclass-inquiry-heading">Rows 2</div><div class="argos-reclass-row-list">${stableMarkup}${sourceMarkup}</div>`;
+  const host = ctx.document.getElementById('argos-reclass-item-inquiry');
+  ctx.argosInventoryTransactionState = { pendingReclassMove: { command: { commandId: 'command-1' } } };
+  host.innerHTML = initialMarkup;
+  const stableNode = host.querySelector('[data-reclass-row-card="stable-uid"]');
+  const rowList = host.querySelector('.argos-reclass-row-list');
+  const stableInput = stableNode.querySelector('input');
+  stableInput.value = 'stable draft';
+
+  const sourceNode = host.querySelector('[data-reclass-row-card="source-uid"]');
+  sourceNode.setAttribute('data-reclass-row-expanded', 'true');
+  sourceNode.querySelector('.argos-reclass-row-toggle').setAttribute('aria-expanded', 'true');
+  const sourceBody = sourceNode.querySelector('[data-reclass-row-body]');
+  sourceBody.setAttribute('data-reclass-row-hydrated', 'true');
+  sourceBody.innerHTML = '<input data-reclass-field="locationnote" value="original"><span data-reclass-move-balance>Remaining 390</span>';
+  const sourceBodyNode = sourceBody;
+  sourceNode.querySelector('details').open = true;
+  const draftInput = sourceBody.querySelector('input');
+  draftInput.value = 'unsaved field draft';
+  draftInput.focus();
+  draftInput.setSelectionRange(2, 8);
+  const mutationRecords = [];
+  const observer = new dom.window.MutationObserver(records => mutationRecords.push(...records));
+  observer.observe(host, { childList: true, subtree: true });
+
+  let rendered = `<div class="argos-reclass-inquiry-heading">Rows 3</div><div class="argos-reclass-row-list">${stableMarkup}${card('source-uid', 390, {
+    signature: 'source-after', proposalSignature: 'proposal-stable', optimisticCommand: 'command-1' })}${card('target-uid', 610, { optimisticCommand: 'command-1' })}</div>`;
+  ctx.renderArgosReclassInquiryEditor = () => rendered;
+  const state = { inquiryModel: { locationRows: [{ unique_id: 'stable-uid' }, { unique_id: 'source-uid' }, { unique_id: 'target-uid' }] }, snapshot: { uniqueId: 'source-uid' } };
+  assert.equal(ctx.renderArgosInventoryTransactionInquiryModel(state), true);
+
+  assert.equal(host.querySelector('[data-reclass-row-card="stable-uid"]'), stableNode,
+    'an unchanged keyed card and its controls keep their node identity');
+  assert.equal(stableNode.querySelector('input'), stableInput);
+  const updatedSource = host.querySelector('[data-reclass-row-card="source-uid"]');
+  assert.equal(updatedSource, sourceNode, 'changed model rows keep their stable card container attached');
+  assert.equal(updatedSource.querySelector('.quantity').textContent, 'OH 390');
+  assert.equal(updatedSource.getAttribute('data-reclass-row-expanded'), 'true');
+  assert.equal(updatedSource.querySelector('[data-reclass-row-body]').getAttribute('data-reclass-row-hydrated'), 'true');
+  assert.equal(updatedSource.querySelector('[data-reclass-row-body]'), sourceBodyNode,
+    'a quantity-only optimistic change keeps the locked hydrated editor body intact');
+  assert.equal(updatedSource.querySelector('[data-reclass-move-balance]').textContent, 'Remaining 390',
+    'pending move quantities do not become a misleading negative balance after optimistic subtraction');
+  assert.equal(updatedSource.querySelector('details').open, true, 'expanded detail sections remain open');
+  const restoredDraft = updatedSource.querySelector('[data-reclass-field="locationnote"]');
+  assert.equal(restoredDraft.value, 'unsaved field draft');
+  assert.equal(dom.window.document.activeElement, restoredDraft, 'focus follows the changed card control');
+  assert.deepEqual([restoredDraft.selectionStart, restoredDraft.selectionEnd], [2, 8]);
+  assert.equal(host.querySelector('[data-reclass-row-card="target-uid"] .quantity').textContent, 'OH 610');
+  const quantityUpdateRemovals = observer.takeRecords().flatMap(record => Array.from(record.removedNodes));
+  for (const node of [rowList, stableNode, sourceNode, sourceBodyNode]) {
+    assert.equal(quantityUpdateRemovals.includes(node), false,
+      'a quantity-only update never detaches the list, existing cards, or pending editor');
+  }
+  const sourceBodyId = sourceNode.querySelector('[data-reclass-row-body]').id;
+  rendered = `<div class="argos-reclass-inquiry-heading">Rows 3</div><div class="argos-reclass-row-list">${card('target-uid', 610, { optimisticCommand: 'command-1' })}${card('source-uid', 390, {
+    signature: 'source-hidden-field-updated', proposalSignature: 'proposal-changed', optimisticCommand: 'command-1' })}${stableMarkup}</div>`;
+  ctx.renderArgosInventoryTransactionInquiryModel(state);
+  assert.deepEqual(Array.from(rowList.querySelectorAll('[data-reclass-row-card]')).map(node => node.getAttribute('data-reclass-row-card')),
+    ['target-uid', 'source-uid', 'stable-uid'], 'keyed cards follow the refreshed model order');
+  assert.equal(sourceNode.querySelector('[data-reclass-row-body]').id, sourceBodyId, 'reordering does not alter a keyed row body id');
+  const bodyIds = Array.from(rowList.querySelectorAll('[data-reclass-row-body]')).map(node => node.id);
+  assert.equal(new Set(bodyIds).size, bodyIds.length, 'new and reordered rows keep unique body ids');
+  rowList.querySelectorAll('[data-reclass-row-card]').forEach(cardNode => {
+    assert.equal(cardNode.querySelector('.argos-reclass-row-toggle').getAttribute('aria-controls'), cardNode.querySelector('[data-reclass-row-body]').id,
+      'each disclosure continues to target its own row body');
+  });
+  assert.notEqual(ctx.getArgosReclassRowBodyId('row/one'), ctx.getArgosReclassRowBodyId('row%2Fone'),
+    'encoded source IDs cannot collide');
+
+  const optimisticSource = updatedSource;
+  rendered = `<div class="argos-reclass-inquiry-heading">Rows 3</div><div class="argos-reclass-row-list">${stableMarkup}${card('source-uid', 390, {
+    signature: 'source-hidden-field-updated', proposalSignature: 'proposal-changed', optimisticCommand: 'command-1' })}${card('target-uid', 610, { optimisticCommand: 'command-1' })}</div>`;
+  ctx.renderArgosInventoryTransactionInquiryModel(state);
+  const hiddenFieldUpdatedSource = host.querySelector('[data-reclass-row-card="source-uid"]');
+  assert.equal(hiddenFieldUpdatedSource, optimisticSource,
+    'the model signature refreshes a hydrated row in place even when visible quantity text is unchanged');
+  assert.equal(hiddenFieldUpdatedSource.querySelector('[data-reclass-field="locationnote"]').value, 'unsaved field draft');
+
+  const previousCommandBody = sourceNode.querySelector('[data-reclass-row-body]');
+  rendered = `<div class="argos-reclass-inquiry-heading">Rows 3</div><div class="argos-reclass-row-list">${stableMarkup}${card('source-uid', 390, {
+    signature: 'source-other-command', proposalSignature: 'proposal-changed', optimisticCommand: 'command-2' })}${card('target-uid', 610)}</div>`;
+  ctx.renderArgosInventoryTransactionInquiryModel(state);
+  assert.notEqual(sourceNode.querySelector('[data-reclass-row-body]'), previousCommandBody,
+    'a marker belonging to a different command cannot retain the previous pending editor');
+  const pendingBody = sourceNode.querySelector('[data-reclass-row-body]');
+  rendered = `<div class="argos-reclass-inquiry-heading">Rows 3</div><div class="argos-reclass-row-list">${stableMarkup}${card('source-uid', 390, {
+    signature: 'source-canonical', proposalSignature: 'proposal-changed' })}${card('target-uid', 610)}</div>`;
+  ctx.renderArgosInventoryTransactionInquiryModel(state);
+  assert.notEqual(sourceNode.querySelector('[data-reclass-row-body]'), pendingBody,
+    'a canonical receipt refreshes the body even before the pending state is retired');
+
+  rendered = `<div class="argos-reclass-inquiry-heading">Rows 2</div><div class="argos-reclass-row-list">${stableMarkup}${card('source-uid', 100, { signature: 'source-rollback' })}</div>`;
+  assert.equal(ctx.renderArgosInventoryTransactionInquiryModel(state), true, 'rollback rerenders the authoritative original model');
+  assert.equal(host.querySelector('[data-reclass-row-card="stable-uid"]'), stableNode);
+  assert.equal(host.querySelector('.argos-reclass-row-list'), rowList, 'the live row-list container is never detached');
+  await new Promise(resolve => setTimeout(resolve, 0));
+  observer.disconnect();
+  const removedNodes = mutationRecords.flatMap(record => Array.from(record.removedNodes));
+  assert.equal(removedNodes.includes(rowList), false, 'reconciliation never removes or reattaches the live list');
+  // Explicit model reordering moves existing nodes with insertBefore. MutationObserver
+  // reports that move as a removal; node identity (checked above) must still survive.
+  assert.equal(host.querySelector('[data-reclass-row-card="source-uid"]'), sourceNode);
+  assert.equal(host.querySelector('[data-reclass-row-card="source-uid"] .quantity').textContent, 'OH 100');
+  assert.equal(host.querySelector('[data-reclass-row-card="target-uid"]'), null, 'the optimistic target is removed on rollback');
+  assert.equal(host.querySelector('[data-reclass-row-card="source-uid"] [data-reclass-field="locationnote"]').value, 'unsaved field draft');
+  assert.notEqual(ctx.getArgosReclassRowRenderSignature({ unique_id: 'source-uid', values: { ptronhand: '390', ptravailable: '390' }, sourceRow: { itemcode: 'ITEM-1' } }),
+    ctx.getArgosReclassRowRenderSignature({ unique_id: 'source-uid', values: { ptronhand: '390', ptravailable: '389' }, sourceRow: { itemcode: 'ITEM-1' } }),
+    'render signatures cover model values beyond the visible quantity chips');
+  dom.window.close();
+});
+
+test('editing actions before the 610-unit preview retains the pending body with a current proposal signature', () => {
+  const dom = new JSDOM('<div id="argos-reclass-item-inquiry"></div>');
+  const rules = { priority_change: { kind: 'priority', label: 'Priority Change' }, move_up: { kind: 'move', label: 'Move Up' } };
+  const physical = { unique_id: 'source-uid', itemcode: 'ITEM-1', locationcode: 'A.01.001', lotcode: '27.F1',
+    season: 'F1', ptronhand: '1000', ptravailable: '1000', priority: '2' };
+  const model = rows => ({ rows, locationRows: rows.map(row => ({ unique_id: row.unique_id, values: { ...row }, sourceRow: row })) });
+  const state = { item: physical, snapshot: { uniqueId: physical.unique_id }, inquiryModel: model([physical]) };
+  const ctx = { document: dom.window.document, window: dom.window, Map,
+    argosInventoryTransactionState: state,
+    argosReclassMultiActionState: { rowProposals: new Map(), rowResolutions: new Map(), holdStopProposals: {} },
+    argosReclassRowEditorEntries: new Map(), RECLASS_ACTION_WORKFLOW_V2_ENABLED: true,
+    RECLASS_ACTION_WORKFLOW_V3_ENABLED: true, RECLASS_ACTION_WORKFLOW_V3_HOLD_ACTIONS: [],
+    RECLASS_ACTION_WORKFLOW_V5_ORDER: Object.keys(rules), RECLASS_ACTION_WORKFLOW_V2_SEASONS: ['F1', 'U1'],
+    ARGOS_INVENTORY_TRANSACTION_REQUEST_LABELS: {}, isArgosReclassMobileEditorViewport: () => false,
+    canCurrentUserSubmitRepInventoryOperations: () => false, getReclassActionWorkflowV5Config: action => rules[action],
+    getReclassActionWorkflowV2Config: action => rules[action], getArgosReclassTemporaryOverlay: () => null,
+    getArgosReclassScopeSettings: () => ({ season: 'F1', salesYear: 2027 }),
+    getEvalWorkInquiryRowResolution: () => '', renderArgosReclassInventoryFields: () => '',
+    getArgosReclassRowCurrentSeason: entry => entry.values.season,
+    getItemInquiryItemCode: row => row?.itemcode || '', buildItemInquiryViewModel: (_item, rows) => model(rows),
+    parseAppNumber: value => value == null ? null : Number(value),
+    generateArgosInventoryTransactionId: () => 'draft-id', captureEvalWorkLocalDraftSoon() {},
+    escapeHtml: value => String(value).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;'),
+  };
+  vm.createContext(ctx);
+  for (const name of ['getArgosReclassRowProposalMap', 'getArgosReclassV3Proposal', 'getArgosReclassV3HoldProposal',
+    'cloneArgosReclassProposal', 'getArgosReclassMoveBalance', 'getArgosReclassMoveBalanceText',
+    'markArgosReclassProposalEdited', 'getArgosReclassV3ScopeActionsForEntry', 'getArgosReclassV3ActionCountForEntry',
+    'refreshArgosReclassMultiActionUi', 'toggleArgosReclassV3Action', 'handleArgosReclassV3ProposalInput',
+    'buildArgosReclassV3ProposalHtml', 'isArgosReclassLocationDetailsOpen', 'buildArgosReclassActionFieldsHtml',
+    'buildArgosReclassRowFieldsHtml', 'getArgosReclassRowEditorEntry', 'renderArgosReclassHoldScopeNotice',
+    'getArgosReclassRowRenderSignature', 'getArgosReclassProposalRenderSignature', 'getArgosReclassRowBodyId',
+    'setArgosReclassAttributeIfChanged', 'renderArgosReclassInquiryEditor', 'reconcileArgosReclassCardDraftState',
+    'findArgosReclassCardControl', 'reconcileArgosReclassInquiryMarkup', 'renderArgosInventoryTransactionInquiryModel',
+    'buildOptimisticInventoryReclassMoveModel', 'setArgosReclassMoveInputsLocked']) {
+    vm.runInContext(extractAppFunction(name), ctx);
+  }
+  try {
+    ctx.renderArgosInventoryTransactionInquiryModel(state);
+    const host = ctx.document.getElementById('argos-reclass-item-inquiry');
+    const card = host.querySelector('[data-reclass-row-card="source-uid"]');
+    const initialSignature = card.getAttribute('data-reclass-proposal-signature');
+    const edit = (action, field, value) => {
+      const input = card.querySelector(`[data-reclass-v3-proposal-action="${action}"][data-reclass-v3-proposal-field="${field}"]`);
+      input.value = value;
+      ctx.handleArgosReclassV3ProposalInput(input);
+      assert.equal(card.getAttribute('data-reclass-proposal-signature'), ctx.getArgosReclassProposalRenderSignature('source-uid', ''),
+        'input edits refresh the signature from the actual proposal state');
+    };
+    ctx.toggleArgosReclassV3Action(card.querySelector('[data-reclass-v3-action="priority_change"]'), 'priority_change');
+    assert.notEqual(card.getAttribute('data-reclass-proposal-signature'), initialSignature);
+    edit('priority_change', 'priority', '1');
+    ctx.toggleArgosReclassV3Action(card.querySelector('[data-reclass-v3-action="move_up"]'), 'move_up');
+    assert.equal(card.getAttribute('data-reclass-proposal-signature'), ctx.getArgosReclassProposalRenderSignature('source-uid', ''));
+    edit('move_up', 'quantity', '610');
+    edit('move_up', 'destinationSeason', 'U1');
+    const pendingBody = card.querySelector('[data-reclass-row-body]');
+    const quantityInput = pendingBody.querySelector('[data-reclass-v3-proposal-field="quantity"]');
+    const balance = pendingBody.querySelector('[data-reclass-move-balance]').textContent;
+    assert.match(balance, /On Hand: 1000.*Requested \(Up \+ Down\): 610.*Remaining: 390/);
+
+    const command = { commandId: 'command-610', moves: [{ source: { uniqueId: 'source-uid' },
+      lines: [{ direction: 'move_up', destinationSeason: 'U1', quantity: 610 }] }] };
+    const preview = ctx.buildOptimisticInventoryReclassMoveModel(state, command);
+    state.pendingReclassMove = { command };
+    state.inquiryModel = preview.model;
+    ctx.renderArgosInventoryTransactionInquiryModel(state);
+    ctx.setArgosReclassMoveInputsLocked(true);
+    assert.equal(card.querySelector('[data-reclass-row-body]'), pendingBody, 'real edits do not cause an optimistic body replacement');
+    assert.equal(card.querySelector('[data-reclass-v3-proposal-field="quantity"]'), quantityInput);
+    assert.equal(quantityInput.disabled, true);
+    assert.equal(quantityInput.value, '610');
+    assert.equal(pendingBody.querySelector('[data-reclass-move-balance]').textContent, balance);
+    assert.match(card.querySelector('.argos-reclass-row-toggle-meta').textContent, /OH 390.*AVL 390/);
+    assert.equal(ctx.getArgosReclassV3Proposal('source-uid', 'priority_change').priority, '1');
+
+    // A canonical receipt must refresh the retained body even while pending
+    // still exists; only its committed movement proposal is retired.
+    delete ctx.getArgosReclassRowProposalMap('source-uid').move_up;
+    state.inquiryModel = model(preview.model.rows.map(row => { const copy = { ...row }; delete copy.__optimisticReclassMove; return copy; }));
+    ctx.renderArgosInventoryTransactionInquiryModel(state);
+    assert.notEqual(card.querySelector('[data-reclass-row-body]'), pendingBody);
+    assert.equal(card.querySelector('[data-reclass-move-action="move_up"]'), null);
+    assert.equal(card.querySelector('[data-reclass-v3-proposal-field="priority"]').value, '1');
+  } finally { dom.window.close(); }
 });
 
 test('committed receipts remain confirmed when upstream import reconciliation is pending or conflicted', async () => {

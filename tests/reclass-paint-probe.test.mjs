@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { scheduleReclassPaintProbeCheck } from './helpers/reclass-paint-probe.mjs';
+import { reclassModalPaintLimitMs, scheduleReclassPaintProbeCheck } from './helpers/reclass-paint-probe.mjs';
+
+test('the authorized simulator allowance is limited to dense Windows iPhone emulation', () => {
+  assert.equal(reclassModalPaintLimitMs('cache-iphone', 'win32', 3), 400);
+  for (const [project, platform, scale] of [
+    ['cache-chromium', 'win32', 3], ['cache-android', 'win32', 3],
+    ['cache-iphone', 'win32', 1], ['cache-iphone', 'darwin', 3], ['cache-iphone', 'linux', 3],
+  ]) assert.equal(reclassModalPaintLimitMs(project, platform, scale), 150);
+});
 
 test('paint probe coalesces mutation frames and keeps the first qualifying paint time', () => {
   const frames = [];
