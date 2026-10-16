@@ -237,6 +237,27 @@ test('assignments use cached canonical reps, UUID mutations and preserve drafts 
   unmount();dom.window.close();
 });
 
+test('customer assignment rep catalog prefetches concurrently and survives a same-session remount',async()=>{
+  const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const root=dom.window.document.getElementById('root'),firstOperations=[];let secondRepCalls=0;
+  const repsResult={ok:true,rows:[{salesrepId:'01',salesrepName:'Morgan Smith'}],total:1,page:0,pageSize:100,revision:'catalog-r1'};
+  const pageResult={ok:true,rows:[{...row,revision:'catalog-r1',hasOverride:false}],total:1,page:0,pageSize:50,revision:'catalog-r1',canEdit:true};
+  const first=dom.window.MappingEditor.mountCustomerRepMapping(root,async payload=>{
+    firstOperations.push(payload.operation);
+    return payload.operation==='reps'?repsResult:pageResult;
+  },()=>{},'manager:catalog-cache');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.deepEqual(firstOperations.slice(0,2),['reps','list'],'rep choices begin warming without waiting for the first page');
+  first();
+  const second=dom.window.MappingEditor.mountCustomerRepMapping(root,async payload=>{
+    if(payload.operation==='reps'){secondRepCalls++;return repsResult;}
+    return pageResult;
+  },()=>{},'manager:catalog-cache');
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(secondRepCalls,0,'the authenticated session and unchanged dataset revision reuse the small rep catalog');
+  second();dom.window.close();
+});
+
 test('rep catalog validation rejects S99 and noncanonical or forged names',async()=>{
   const dom=new JSDOM('<div id="root"></div>',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
   const root=dom.window.document.getElementById('root');
@@ -340,6 +361,19 @@ test('rep directory loads every bounded page and caches it only at the matching 
   },'manager:directory-test');
   const first=await client.reps(new dom.window.AbortController().signal);assert.equal(first.length,101);assert.deepEqual(calls.map(call=>call.page),[0,1]);
   client.setRevision('directory-r1');assert.equal(await client.reps(new dom.window.AbortController().signal),first);assert.equal(calls.length,2);
+  client.dispose();dom.window.close();
+});
+
+test('startup rep prefetch seeds the same scoped catalog cache used by the editor',async()=>{
+  const dom=new JSDOM('',{runScripts:'outside-only'});dom.window.eval(mappingBrowserBundle());
+  const calls=[];const choices=[{salesrepId:'01',salesrepName:'Morgan Smith'}];
+  const transport=async payload=>{calls.push(payload);return{ok:true,rows:choices,total:1,page:0,pageSize:100,revision:'prefetch-r1'};};
+  const warmed=await dom.window.MappingEditor.prefetchCustomerRepOptions(transport,'manager:prefetch',new dom.window.AbortController().signal);
+  const client=dom.window.MappingEditor.createCustomerRepAssignments(transport,'manager:prefetch');
+  const reused=await client.reps(new dom.window.AbortController().signal);
+  assert.equal(warmed,reused);assert.equal(calls.length,1);assert.equal(reused[0].salesrepName,'Morgan Smith');
+  const otherIdentity=await dom.window.MappingEditor.prefetchCustomerRepOptions(transport,'manager:other',new dom.window.AbortController().signal);
+  assert.notEqual(otherIdentity,warmed);assert.equal(calls.length,2);
   client.dispose();dom.window.close();
 });
 

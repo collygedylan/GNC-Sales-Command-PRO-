@@ -25,6 +25,35 @@ test('disjoint remote edits rebase a narrow request patch to canonical version',
     assert.deepEqual({ ...plan.patch }, { req_spec: 'local spec' });
 });
 
+test('intentional Done status rebases without a Keep my value conflict', () => {
+    const completion = { ...draft({ req_status: 'Complete' }, true), baseValues: { req_status: 'Pending', req_spec: 'old spec' } };
+    const plan = planRequestWorkConflictRebase(completion, canonical(7, { req_status: 'In Progress', req_spec: 'new spec' }));
+    assert.equal(plan.status, 'rebase');
+    assert.equal(plan.expectedVersion, 7);
+    assert.deepEqual({ ...plan.patch }, { req_status: 'Complete' });
+});
+
+test('an explicit completion command owns only its locally edited fields on rebase', () => {
+    const completion = { ...draft({ req_spec: 'my edited spec', req_status: 'Complete' }, true), intentPolicy: 'local-command',
+        baseValues: { req_status: 'Pending', req_spec: 'base spec', req_comments: 'base comments' } };
+    const plan = planRequestWorkConflictRebase(completion, canonical(8, { req_status: 'In Progress', req_spec: 'remote spec', req_comments: 'new remote comment' }));
+    assert.equal(plan.status, 'rebase');
+    assert.deepEqual({ ...plan.patch }, { req_spec: 'my edited spec', req_status: 'Complete' });
+    assert.equal(Object.hasOwn(plan.patch, 'req_comments'), false);
+});
+
+test('manual Done can supersede an earlier edit conflict and background retries retain its command type', () => {
+    const start = html.indexOf('        async function saveData(');
+    const end = html.indexOf('        function normalizeRequestWorkDraftValue(', start);
+    const save = html.slice(start, end);
+    const guards = save.match(/if \([^\n]*isRequestWorkConflictBlocked\(itemToSave\)[^\n]*/g) || [];
+    assert.equal(guards.length, 2);
+    for (const guard of guards) assert.match(guard, /!isComplete/);
+    const flush = html.slice(html.indexOf('        async function flushPendingRequestWorkEdits('));
+    assert.match(flush, /entry\.conflictType = blocked\.complete && blocked\.intentPolicy === 'local-command' \? 'request-completion' : 'request-work'/);
+    assert.match(flush, /if \(complete && isRequestComplete\(formatted\)\) confirmQueueCompletion\(formatted\)/);
+});
+
 test('overlapping edits require explicit per-field choices and retain completion intent', () => {
     const conflicted = draft({ req_spec: 'local spec', req_comments: 'local comments' }, true);
     const result = planRequestWorkConflictRebase(conflicted, canonical(6, { req_spec: 'remote spec', req_comments: 'base comments' }));

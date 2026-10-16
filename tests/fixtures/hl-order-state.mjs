@@ -800,6 +800,13 @@ export async function installHlOrderFixture(page, baseURL, options = {}) {
         control.blockedMutations.push(`PROHIBITED_NATIVE_DB:${body.method}:${body.table}`);
         return json(route, { ok: false, error: 'Native Auth sessions must use PostgREST with RLS for database access.', code: 'DIRECT_RLS_REQUIRED' }, 410);
       }
+      if (body.action === 'customer-rep-map' && body.operation === 'reps'
+        && ['ADMIN', 'ADMINISTRATOR', 'MANAGER'].includes(String(role || '').trim().toUpperCase())) {
+        // Manager-only read used by the assignment picker startup prefetch. AV
+        // fixtures have no rep directory, so the valid empty page is sufficient.
+        return json(route, { ok: true, rows: [], total: 0, page: Number(body.page) || 0,
+          pageSize: Number(body.pageSize) || 100, revision: 'hl-fixture-reps-r1' });
+      }
       if (body.action === 'season_sales_office' && body.operation === 'access') return json(route, { ok: true, allowed: false, canManage: false, users: [] });
       if (['list', 'get', 'state'].includes(body.operation) || /get|load|status|preferences|capabilit|health|telemetry|event/.test(body.action || '')) return json(route, { ok: true, data: [], preferences: {}, eligible: false });
       control.blockedMutations.push(`API ${body.action}:${body.operation || ''}:${body.dataset || ''}`); return json(route, { ok: false, error: 'Blocked' }, 403);

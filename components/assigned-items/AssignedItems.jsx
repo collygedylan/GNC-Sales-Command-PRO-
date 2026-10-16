@@ -2,6 +2,7 @@ import React, { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } 
 import { createRoot } from 'react-dom/client';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ReportPageSessionProvider, useReportPage } from '../../services/reportPages';
+import { renderIdentity } from '../../services/renderIdentity.mjs';
 
 const codeOf = row => String(row?.ITEMCODE || '').trim().toUpperCase();
 const idOf = row => String(row?.MASTER_UNIQUE_ID || row?.UNIQUE_ID || '');
@@ -146,16 +147,17 @@ function AssignedItemsView(props) {
       const output = new Array(count);
       pageRows.forEach((page, offset) => page.rows.forEach((row, index) => {
         const absolute = offset + index;
-        if (absolute < count) output[absolute] = { type: 'row', row, key: idOf(row) || `row:${absolute}` };
+        if (absolute < count) output[absolute] = { type: 'row', row, key: renderIdentity(row, idOf(row)) };
       }));
       return output;
     }
     const output = [];
     let previous = null;
-    rows.forEach((row, index) => {
+    rows.forEach(row => {
       const assigned = isAssigned(row);
-      if (grouped && (previous === null || assigned !== previous)) output.push({ type: 'group', assigned, key: `group:${assigned ? 'assigned' : 'unassigned'}:${index}` });
-      output.push({ type: 'row', row, key: idOf(row) || `row:${index}` });
+      const key = renderIdentity(row, idOf(row));
+      if (grouped && (previous === null || assigned !== previous)) output.push({ type: 'group', assigned, key: `group:${assigned ? 'assigned' : 'unassigned'}:${key}` });
+      output.push({ type: 'row', row, key });
       previous = assigned;
     });
     return output;
@@ -165,7 +167,9 @@ function AssignedItemsView(props) {
     entries.forEach((entry, index) => { if (entry.type === 'row') output.set(idOf(entry.row), index); });
     return output;
   }, [entries]);
-  const getItemKey = useCallback(index => entries[index]?.key || index, [entries]);
+  // Empty server-page slots have no record yet; their query/offset identity is
+  // deliberately different from the database identity used when a row arrives.
+  const getItemKey = useCallback(index => entries[index]?.key || `page-slot:${pageQueryKey}:${index}`, [entries, pageQueryKey]);
   const getScrollElement = useCallback(() => props.scrollElement || document.getElementById('main-scroll-area'), [props.scrollElement]);
   const estimateSize = useCallback(index => entries[index]?.type === 'group' ? 42 : mobile ? 360 : 64, [entries, mobile]);
   const virtualizer = useVirtualizer({ count: entries.length, getItemKey, getScrollElement, estimateSize, overscan: 2, gap: mobile ? 12 : 0, scrollMargin });
@@ -314,8 +318,8 @@ function AssignedItemsView(props) {
   const renderEntry = index => {
     const entry = entries[index];
     if (!entry) return pageSource ? (mobile
-      ? <div key={`loading:${index}`} ref={measure} data-index={index} data-virtual-index={index} role="status" className="rounded-xl border border-slate-100 bg-white p-4 text-xs text-slate-500">Loading row…</div>
-      : <tr key={`loading:${index}`} ref={measure} data-index={index} data-virtual-index={index}><td colSpan={colSpan} className="px-3 py-3 text-xs font-semibold text-slate-500">Loading row…</td></tr>) : null;
+      ? <div key={getItemKey(index)} ref={measure} data-index={index} data-virtual-index={index} role="status" className="rounded-xl border border-slate-100 bg-white p-4 text-xs text-slate-500">Loading row…</div>
+      : <tr key={getItemKey(index)} ref={measure} data-index={index} data-virtual-index={index}><td colSpan={colSpan} className="px-3 py-3 text-xs font-semibold text-slate-500">Loading row…</td></tr>) : null;
     if (entry.type === 'group') return mobile ? <div key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'} className={`rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</div> : <tr key={entry.key} ref={measure} data-index={index} data-virtual-index={index} data-manager-assigned-group={entry.assigned ? 'assigned' : 'unassigned'}><td colSpan={colSpan} className={`border-y px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] ${entry.assigned ? 'border-blue-100 bg-blue-50 text-blue-800' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>{entry.assigned ? 'Assigned' : 'Unassigned'}</td></tr>;
     const code = codeOf(entry.row);
     const rowId = idOf(entry.row), rowProps = { row: entry.row, columns, canManageAssignments: props.canManageAssignments, snapshotCurrent, options, ownerDraft: props.ownerDrafts?.[code], pendingOwner: props.pendingCodes?.has(code), selected: props.selectedCodes || EMPTY_SET, lowStockState: lowStock, handlers, getReason: props.getReason, index, measure, historyExpanded: expanded.has(`history:${rowId}`), onToggleHistory: onToggle };
@@ -339,7 +343,7 @@ function AssignedItemsView(props) {
     {pageSource && pageOffsets.map(offset => <AssignedItemsReportPage key={`${pageQueryKey}:${offset}`} source={{ ...pageSource, sourceRevision: pageState.revision }} offset={offset} onPage={onPage} />)}
     {pageError && !pageRows.size && <div role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{pageError.message || 'Assigned Items could not be loaded.'}</div>}
     <div className="sr-only" aria-live="polite">Showing {pageSource ? [...pageRows.values()].reduce((sum, page) => sum + page.rows.length, 0) : rows.length} matching rows from {pageState.total ?? props.totalRows ?? rows.length} rows.</div>
-    {mobile ? <div data-manager-assigned-mobile-list className="ai-mobile-list">{indexes.length ? indexes.map((index, position) => <React.Fragment key={entries[index]?.key || index}>{gaps[position] > 0 && <div aria-hidden="true" style={{ height: `${gaps[position]}px` }} />}{renderEntry(index)}</React.Fragment>) : <p>No rows match. Change or clear filters above.</p>}{tailGap > 0 && <div aria-hidden="true" style={{ height: `${tailGap}px` }} />}</div> : <div data-manager-assigned-desktop-table className="overflow-x-auto rounded-2xl border border-emerald-100 bg-white shadow-sm"><table className="min-w-full text-left text-xs font-bold text-slate-600"><thead className="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><tr>{groupCount > 0 && <th className="px-3 py-3">Bulk</th>}{columns.map(([field, label]) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <th key={field} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} className={`assigned-column-trigger min-h-[44px] px-3 py-2 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button></th>; })}</tr></thead><tbody>{indexes.length ? <>{indexes.map((index, position) => <React.Fragment key={entries[index]?.key || index}>{gaps[position] > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${gaps[position]}px`, padding: 0 }} /></tr>}{renderEntry(index)}</React.Fragment>)}{tailGap > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${tailGap}px`, padding: 0 }} /></tr>}</> : <tr><td colSpan={colSpan} className="p-4">No rows match. Change or clear filters above.</td></tr>}</tbody></table></div>}
+    {mobile ? <div data-manager-assigned-mobile-list className="ai-mobile-list">{indexes.length ? indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <div aria-hidden="true" style={{ height: `${gaps[position]}px` }} />}{renderEntry(index)}</React.Fragment>) : <p>No rows match. Change or clear filters above.</p>}{tailGap > 0 && <div aria-hidden="true" style={{ height: `${tailGap}px` }} />}</div> : <div data-manager-assigned-desktop-table className="overflow-x-auto rounded-2xl border border-emerald-100 bg-white shadow-sm"><table className="min-w-full text-left text-xs font-bold text-slate-600"><thead className="bg-emerald-50 text-[10px] font-black uppercase tracking-[0.14em] text-[#007a4d]"><tr>{groupCount > 0 && <th className="px-3 py-3">Bulk</th>}{columns.map(([field, label]) => { const filter = props.columnFilters?.[field] || {}, sorted = props.sort?.field === field, active = filter.active || sorted; return <th key={field} aria-sort={sorted ? props.sort.direction === 'asc' ? 'ascending' : 'descending' : 'none'}><button type="button" data-assigned-filter-trigger={field} aria-label={`Filter and sort ${label}`} aria-expanded={!!filter.open} className={`assigned-column-trigger min-h-[44px] px-3 py-2 text-left ${active ? 'is-filtered' : ''}`} onClick={event => handlers.onColumnFilter(field, event)}><span>{label}</span><span className={`assigned-filter-value ${filter.active ? '' : 'is-inactive'}`}>{filter.label || 'All'}</span><span aria-hidden="true" className="assigned-filter-icon">⏷</span>{sorted && <span aria-hidden="true" className="assigned-sort-icon">{props.sort.direction === 'asc' ? '↑' : '↓'}</span>}</button></th>; })}</tr></thead><tbody>{indexes.length ? <>{indexes.map((index, position) => <React.Fragment key={getItemKey(index)}>{gaps[position] > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${gaps[position]}px`, padding: 0 }} /></tr>}{renderEntry(index)}</React.Fragment>)}{tailGap > 0 && <tr aria-hidden="true"><td colSpan={colSpan} style={{ height: `${tailGap}px`, padding: 0 }} /></tr>}</> : <tr><td colSpan={colSpan} className="p-4">No rows match. Change or clear filters above.</td></tr>}</tbody></table></div>}
     <div data-manager-assigned-full-list-status className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-[11px] font-black uppercase tracking-[0.14em] text-emerald-800">Showing {pageSource ? pageState.total ?? props.totalRows ?? rows.length : rows.length} matching row{(pageState.total ?? rows.length) === 1 ? '' : 's'}. Search checks the complete {pageState.total ?? props.totalRows ?? rows.length}-row list.</div>
   </div>;
 }

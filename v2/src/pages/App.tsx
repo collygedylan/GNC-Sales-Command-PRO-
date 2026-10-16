@@ -1384,7 +1384,7 @@ function ModuleDetail({ view, row, session, demoMode, onBack, onToast }: {
             ['R3', '27.F1', 'H.03.000', 'LD', '1', '94', '0', '94'],
           ].map((cells, index) => (
             <tr key={cells[0]} className={index === 0 ? 'is-current' : ''}>
-              {cells.map((cell, cellIndex) => <td key={`${cell}-${cellIndex}`}>{cell}</td>)}
+              {['row', 'lot', 'location', 'source', 'priority', 'on-hand', 'review', 'available'].map((field, cellIndex) => <td key={field}>{cells[cellIndex]}</td>)}
               <td><button type="button" className="table-open" onClick={() => sandboxToast(`Row ${cells[0]} opened`)}>Open</button></td>
             </tr>
           ))}
@@ -1440,8 +1440,8 @@ function ModuleDetail({ view, row, session, demoMode, onBack, onToast }: {
     if (activeTab === 'items' || activeTab === 'stops' || activeTab === 'queue' || activeTab === 'modules' || activeTab === 'approval' || activeTab === 'shortage' || activeTab === 'moves' || activeTab === 'po' || activeTab === 'recounts' || activeTab === 'blocks' || activeTab === 'crop-roll' || activeTab === 'stock' || activeTab === 'availability' || activeTab === 'reports' || activeTab === 'columns' || activeTab === 'materials' || activeTab === 'mistakes') {
       return (
         <div className="live-subrow-list">
-          {[1, 2, 3].map(index => (
-            <button type="button" key={index} onClick={() => sandboxToast(`${tabs.find(tab => tab.id === activeTab)?.label} row ${index} opened`)}>
+          {[{ id: 'primary', ordinal: 1 }, { id: 'review', ordinal: 2 }, { id: 'additional', ordinal: 3 }].map(({ id, ordinal: index }) => (
+            <button type="button" key={id} onClick={() => sandboxToast(`${tabs.find(tab => tab.id === activeTab)?.label} row ${index} opened`)}>
               <span className="live-subrow-index">{String(index).padStart(2, '0')}</span>
               <span><strong>{index === 1 ? row.title : `${tabs.find(tab => tab.id === activeTab)?.label} ${index}`}</strong><small>{index === 1 ? row.meta : `${row.meta} | Test row ${index}`}</small></span>
               <Chip tone={index === 2 ? 'warning' : row.tone} label={index === 2 ? 'Review' : status} />

@@ -44,6 +44,25 @@ function makeBridge(scopeKey,overrides={}){const calls=[];return {calls,bridge:{
 }}};}
 async function openFolder(all=false){if(all)fireEvent.click(await screen.findByRole('button',{name:/Molly Dixon/}));fireEvent.click(await screen.findByRole('button',{name:/Customer 001/}));}
 
+test('report lookup choices retain their DOM and options while a revision refresh is pending', async () => {
+ let hold = false; const releases = [];
+ const fixture = makeBridge('dylan:directory-cache', { read: async query => {
+  if (hold && query.recordKind === 'all') await new Promise(resolve => releases.push(resolve));
+  return pageFor(query, 'all', query.operation === 'reps' ? [group(REP, 'Molly Dixon')]
+   : query.operation === 'customers' ? [group('c:001', 'Customer 001')] : []);
+ }});
+ const view = render(React.createElement(HistoricalRequestsView, { bridge: fixture.bridge }));
+ const select = await screen.findByLabelText('Reporting customer');
+ await waitFor(() => assert.match(select.textContent, /Customer 001/));
+ hold = true;
+ view.rerender(React.createElement(HistoricalRequestsView, { bridge: { ...fixture.bridge, revisionKey: 'rev2' } }));
+ await waitFor(() => assert.ok(releases.length));
+ assert.equal(screen.getByLabelText('Reporting customer'), select);
+ assert.match(select.textContent, /Customer 001/);
+ hold = false; releases.forEach(resolve => resolve());
+ await waitFor(() => assert.match(select.textContent, /Customer 001/));
+});
+
 test('drills rep to exact customer/consignee folder and renders specs, photos, sent data and unresolved pricing for Dylan',async()=>{
  const fixture=makeBridge('dylan:all',{scope:'all'});render(React.createElement(HistoricalRequestsView,{bridge:fixture.bridge}));await openFolder(true);
  await screen.findByText('Unresolved value: Current master list price is unavailable or invalid.');await screen.findByText('6–8 feet');

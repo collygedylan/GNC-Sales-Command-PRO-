@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react';
-import useSWR, { SWRConfig, type Cache, type State } from 'swr';
+import { SWRConfig, type Cache, type State } from 'swr';
+import { useRevisionedSnapshot } from '../../services/useRevisionedSnapshot';
 import type {
   CountRow,
   CountingLotRow,
@@ -144,8 +145,6 @@ function CountingApp({ bridge, onExit }: { bridge: FieldCountingBridge; onExit?:
     if (previousRevisionKey.current === bridge.revisionKey) return;
     previousRevisionKey.current = bridge.revisionKey;
     setPage(0);
-    setBlockOptions([]);
-    setLocationOptions([]);
     setOrders({});
   }, [bridge.revisionKey]);
 
@@ -153,10 +152,11 @@ function CountingApp({ bridge, onExit }: { bridge: FieldCountingBridge; onExit?:
     countType, ...(scope.block ? { block: scope.block } : {}),
     ...(scope.location ? { location: scope.location } : {}), page
   };
-  const key = bridge.scopeKey ? [bridge.scopeKey, countType, scope.block, scope.location, page, bridge.revisionKey] as const : null;
-  const keyText = key ? readKey(...key) : '';
-  const { data, error: loadError, isLoading, mutate: mutateCurrent } = useSWR<FieldCountingSnapshot>(
-    key,
+  const key = bridge.scopeKey ? [bridge.scopeKey, countType, scope.block, scope.location, page] as const : null;
+  const keyText = key ? readKey(...key, '') : '';
+  const { data, error: loadError, isLoading, mutate: mutateCurrent } = useRevisionedSnapshot<FieldCountingSnapshot>(
+    keyText || null,
+    bridge.revisionKey,
     async () => {
       const controller = new AbortController();
       controllers.current.get(keyText)?.abort();

@@ -27,9 +27,9 @@ export function createProductionScheduleClient(request) {
     metadata(signal) { return send('metadata', {}, signal); },
     status(signal) { return send('status', {}, signal); },
     refresh(signal) { return send('refresh', {}, signal); },
-    rows({ sheet, sheetId, q = '', filters = {}, cursor = null, limit = 100 }, signal) {
+    rows({ sheet, sheetId, q = '', filters = {}, cursor = null, limit = 20 }, signal) {
       if (!Number.isInteger(Number(sheetId))) throw new TypeError('A sheet ID is required.');
-      const safeLimit = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(limit) || 100)));
+      const safeLimit = Math.min(MAX_PAGE_SIZE, Math.max(1, Math.floor(Number(limit) || 20)));
       // Empty-header worksheets are valid. They still get source-row cards and
       // can load all fields lazily from the detail endpoint.
       const columnIndexes = getScheduleCardColumnIndexes(sheet);

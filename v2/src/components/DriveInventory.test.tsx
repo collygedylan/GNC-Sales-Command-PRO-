@@ -1,15 +1,30 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { Profiler, StrictMode, useState } from 'react';
+import { cleanup, fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react';
+import { Profiler, StrictMode, useState, type ReactElement, type ReactNode } from 'react';
+import { SWRConfig } from 'swr';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DriveInventory, aggregateDriveRows, safeInventoryPhotoUrl } from './DriveInventory';
 import { fetchInventoryPage } from '../services/api';
 import type { InventoryRow, PageResult } from '../types';
 
-vi.mock('../services/api', () => ({ fetchInventoryPage: vi.fn() }));
+const apiHarness = vi.hoisted(() => ({ scope: null as null | (() => void) }));
+vi.mock('../services/api', () => ({
+  fetchInventoryPage: vi.fn(),
+  getInventoryReadScopeKey: () => 'test-sandbox-scope',
+  subscribeInventorySessionScope: (callback: () => void) => { apiHarness.scope = callback; return () => { apiHarness.scope = null; }; }
+}));
 vi.mock('../services/runtime', () => ({ loadRuntimeConfig: vi.fn().mockResolvedValue({ supabaseUrl: 'https://sandbox-project.supabase.co' }) }));
 
 const fetchPage = vi.mocked(fetchInventoryPage);
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: IsolatedSWR });
+}
+
+function IsolatedSWR({ children }: { children: ReactNode }) {
+  const [cache] = useState(() => new Map());
+  return <SWRConfig value={{ provider: () => cache, revalidateOnFocus: false }}>{children}</SWRConfig>;
+}
 
 function page(rows: InventoryRow[], options: Partial<PageResult<InventoryRow>> = {}): PageResult<InventoryRow> {
   return { rows, page: 0, pageSize: 100, total: rows.length, source: 'sandbox', ...options };
@@ -127,6 +142,49 @@ describe('Drive Mode sandbox inventory', () => {
     expect(screen.getByText(/previous complete results/)).toBeTruthy();
   });
 
+  it('revalidates the loaded page window so deletes and reordered rows are reflected', async () => {
+    fetchPage.mockResolvedValueOnce(page([inventoryRow()], { total: 201 }))
+      .mockResolvedValueOnce(page([inventoryRow({ unique_id: 'uid-2', itemcode: '200.020.1', commonname: 'Second Pear' })], { page: 1, total: 201 }))
+      .mockResolvedValueOnce(page([inventoryRow({ unique_id: 'uid-3', itemcode: '300.020.1', commonname: 'A New Top Pear' })], { total: 201 }))
+      .mockResolvedValueOnce(page([inventoryRow({ commonname: 'Precision Pear' })], { page: 1, total: 201 }));
+    render(<DriveInventory />);
+    await screen.findByText('Precision Pear');
+    const more = screen.getByRole('button', { name: 'Load 100 more rows' });
+    await waitFor(() => expect(more.hasAttribute('disabled')).toBe(false));
+    fireEvent.click(more);
+    await screen.findByText('Second Pear');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh inventory' }));
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(4));
+    await screen.findByText('A New Top Pear');
+    expect(screen.getByText('Precision Pear')).toBeTruthy();
+    expect(screen.queryByText('Second Pear')).toBeNull();
+    const cards = screen.getAllByRole('article');
+    expect(cards[0].textContent).toContain('A New Top Pear');
+    expect(cards[1].textContent).toContain('Precision Pear');
+    expect(screen.getByText(/of 201 rows/)).toBeTruthy();
+  });
+
+  it('hides loaded inventory when a later page is denied', async () => {
+    fetchPage.mockResolvedValueOnce(page([inventoryRow()], { total: 101 }))
+      .mockRejectedValueOnce(Object.assign(new Error('permission denied'), { status: 403, code: '42501' }));
+    render(<DriveInventory />);
+    await screen.findByRole('article');
+    fireEvent.click(screen.getByRole('button', { name: 'Load 100 more rows' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('article')).toBeNull());
+  });
+
+  it('hides cached cards immediately when a refreshed read is denied', async () => {
+    fetchPage.mockResolvedValueOnce(page([inventoryRow()]))
+      .mockRejectedValueOnce(Object.assign(new Error('permission denied'), { status: 403, code: '42501' }));
+    render(<DriveInventory />);
+    await screen.findByRole('article');
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh inventory' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('article')).toBeNull());
+  });
+
   it('labels a cached snapshot and does not imply the cache is a complete inventory', async () => {
     fetchPage.mockResolvedValueOnce(page([inventoryRow()], { source: 'cache' }));
     render(<DriveInventory />);
@@ -168,12 +226,34 @@ describe('Drive Mode sandbox inventory', () => {
     expect(screen.getByText(/narrow the search/i)).toBeTruthy();
   });
 
-  it('cancels its active request on unmount', () => {
+  it('keeps its shared first-page read alive after unmount', () => {
     fetchPage.mockReturnValue(new Promise(() => {}));
     const view = render(<DriveInventory />);
     const signal = fetchPage.mock.calls[0][0]?.signal;
     view.unmount();
-    expect(signal?.aborted).toBe(true);
+    expect(signal?.aborted).toBe(false);
+  });
+
+  it('reuses a pending normal read when a consumer unmounts and remounts', async () => {
+    let resolvePending!: (value: PageResult<InventoryRow>) => void;
+    fetchPage.mockImplementation(() => new Promise(resolve => { resolvePending = resolve; }));
+    function MountHarness() {
+      const [mounted, setMounted] = useState(true);
+      return <>
+        <button type="button" onClick={() => setMounted(value => !value)}>{mounted ? 'Unmount inventory' : 'Remount inventory'}</button>
+        {mounted ? <DriveInventory /> : null}
+      </>;
+    }
+
+    render(<MountHarness />);
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(1));
+    const signal = fetchPage.mock.calls[0][0]?.signal;
+    fireEvent.click(screen.getByRole('button', { name: 'Unmount inventory' }));
+    expect(signal?.aborted).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Remount inventory' }));
+    resolvePending(page([inventoryRow()]));
+    expect(await screen.findByText('Precision Pear')).toBeTruthy();
+    expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 
   it('consumes a route-selected first page once and returns to the normal refresh path', async () => {

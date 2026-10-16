@@ -6,7 +6,7 @@ import { repoRoot } from './tooling-process.mjs';
 
 const frontendAdapters = new Set([
   'services/liveDatabase.ts', 'services/databaseRest.ts', 'services/commandCenterDatabase.ts',
-  'v2/src/services/api.ts', 'v2/src/components/CompanyDirectory.tsx',
+  'v2/src/services/api.ts', 'v2/src/services/companyDirectory.ts',
 ]);
 const ignored = /(?:^|\/)(?:node_modules|vendor|dist|storybook-static|\.gnc-local|legacy_fallback)(?:\/|$)|(?:\.test\.[cm]?[jt]sx?|_test\.ts|\.typecheck\.ts|\.generated\.ts|database\.types\.ts|\.min\.[cm]?js)$/;
 // These checked-in bundles are built from authored source covered below.

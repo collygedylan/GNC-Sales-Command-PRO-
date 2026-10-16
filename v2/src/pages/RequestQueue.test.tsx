@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Profiler, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RequestQueue } from './RequestQueue';
@@ -7,7 +7,7 @@ import type { RequestQueueProps } from './RequestQueue';
 import type { RequestRow } from '../services/api';
 import type { RequestColumnKey } from './requestQueueConfig';
 
-afterEach(() => cleanup());
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 const row: RequestRow = {
   unique_id: 'queue-1',
@@ -21,6 +21,27 @@ const row: RequestRow = {
 const rows = [row];
 
 describe('Que rendering boundary', () => {
+  it('retains hydrated cards and their DOM nodes when a background refresh clones the rows', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => { frames.push(callback); return frames.length; });
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const largeRows = Array.from({ length: 120 }, (_, index) => ({ ...row, unique_id: `stable-${index}` }));
+    const props: RequestQueueProps = {
+      rows: largeRows, allRows: largeRows, activeTab: 'request', displayMode: 'cards',
+      columnKeys: ['item', 'common', 'loc'], loading: false,
+      onTab: vi.fn(), onOpen: vi.fn(), onRemove: vi.fn(), onRefresh: vi.fn()
+    };
+    const view = render(<RequestQueue {...props} />);
+    expect(screen.getAllByRole('article')).toHaveLength(24);
+    while (frames.length) act(() => frames.shift()?.(performance.now()));
+    const hydratedCards = screen.getAllByRole('article');
+    expect(hydratedCards).toHaveLength(96);
+    view.rerender(<RequestQueue {...props} rows={largeRows.map(value => ({ ...value }))} loading />);
+    expect(screen.getAllByRole('article')).toHaveLength(96);
+    expect(screen.getAllByRole('article')[95]).toBe(hydratedCards[95]);
+    expect(screen.queryByText('Loading rows...')).toBeNull();
+  });
+
   it('does not rerender unchanged list rows for shell-only updates', () => {
     const commits = vi.fn();
     const props: RequestQueueProps = {

@@ -152,7 +152,7 @@ function pendingRequestReuseFixture() {
     extractFunction(html, 'compareRequestLocationCodes', 'function buildPendingRequestRenderPlan('),
     extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot('),
     extractFunction(html, 'getRequestPendingReuseContextSnapshot', 'function rememberCompletedPendingRequestRender('),
-    extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome()'),
+    extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome('),
     extractFunction(html, 'canReuseCompletedPendingRequestRender', 'function cancelProductionRefresh(')
   ].join('\n'), ctx);
   const plan = ctx.buildPendingRequestRenderPlan(rows);
@@ -728,6 +728,7 @@ function productionListFixture({ key = 'request-main', tab = 'pending', signatur
   };
   const refresh = { pending: 0, containers: new Set() };
   const ctx = {
+    window: {},
     productionLiveSyncActiveRender: refresh,
     activeReqTab: tab,
     document: { createElement: () => { calls.created++; return { childNodes: [], querySelectorAll: () => ({ length: 0 }) }; } },
@@ -1129,7 +1130,7 @@ test('Pending reuse is completed-render-only, keeps native scope out of shared l
   const plan = extractFunction(html, 'buildPendingRequestRenderPlan', 'function getRequestPendingReuseContextSnapshot(');
   assert.doesNotMatch(plan, /getProductionLiveSyncContext|canUseProductionLiveSync/,
     'the shared Pending plan remains usable by legacy rendering without requiring native sync');
-  const remember = extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome()');
+  const remember = extractFunction(html, 'rememberCompletedPendingRequestRender', 'function syncRequestRenderChrome(');
   assert.match(remember, /options|contextSnapshot/);
   assert.match(remember, /cardNodes/);
   assert.match(remember, /getContainerRenderSignature/);
@@ -1192,6 +1193,13 @@ test('anchor restoration avoids forced layout on the fallback and preserves offs
   });
   assert.deepEqual(assignments, [240], 'browser scrollTop assignment uses its native clamping behavior');
 
+  ctx.restoreProductionRefreshAnchor({
+    root: { isConnected: true, querySelector() { throw new Error('top-of-list must not follow a clipped card anchor'); } },
+    scroller: fallbackScroller, view: 'request', top: 0,
+    anchors: [{ attribute: 'data-request-uid', value: 'row-1', offset: -12 }]
+  });
+  assert.deepEqual(assignments, [240, 0], 'a reader at the top stays at the top through sticky-header layout changes');
+
   const remainingAssignments = [];
   const card = { getBoundingClientRect: () => ({ top: 132 }) };
   const anchorRoot = { isConnected: true, querySelector: selector => selector === '[id="row-1"]' ? card : null };
@@ -1212,4 +1220,19 @@ test('anchor restoration avoids forced layout on the fallback and preserves offs
   const scheduler = extractFunction(html, 'scheduleProductionLiveSyncRender', 'function retainAppliedProductionDisplay(');
   assert.match(scheduler, /!refresh\.retainedRequestList\) restoreProductionRefreshAnchor\(anchor\)/,
     'the exact unchanged Request list retained in the staging helper skips redundant anchor measurement');
+});
+
+test('refresh anchors use stable row identifiers before shared action labels', () => {
+  const cards = ['first', 'second'].map((id, index) => ({
+    getAttribute: key => ({ 'data-request-uid': id, 'aria-label': 'Open photo editor', onclick: 'openCard(event)' })[key],
+    getBoundingClientRect: () => ({ top: 100 + index * 200, bottom: 280 + index * 200 })
+  }));
+  const root = { querySelectorAll: () => cards };
+  const scroller = { getBoundingClientRect: () => ({ top: 80, bottom: 800 }), scrollTop: 0 };
+  const ctx = { VIEW_LOAD_UI: { request: { container: 'request-content' } }, lastUserInteractionAt: 0, lastScrollAt: 0,
+    document: { getElementById: id => id === 'request-content' ? root : scroller } };
+  vm.createContext(ctx);
+  vm.runInContext(extractFunction(html, 'captureProductionRefreshAnchor', 'function restoreProductionRefreshAnchor('), ctx);
+  const anchors = ctx.captureProductionRefreshAnchor('request').anchors;
+  assert.deepEqual(Array.from(anchors, a => [a.attribute, a.value]), [['data-request-uid', 'first'], ['data-request-uid', 'second']]);
 });

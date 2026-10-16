@@ -7,6 +7,7 @@ import { reclassShearedProposal } from './reclassSheared';
 import { confirmedReclassLiveEditsFromResult } from './reclassLiveEdits';
 import { inquiryFieldEdits, validateReclassEditableFieldProposals } from './reclassEditableFields';
 import { mountCustomerRepMapping } from './customerRepMapping';
+import { prefetchCustomerRepOptions } from './customerRepAssignments';
 import { historicalRequestsQuery } from './historicalRequests';
 import { createInventoryStatusSync } from './inventoryStatusSync';
 import { createRequestArchivePagesService, type RequestArchivePageReader } from './requestArchivePages';
@@ -28,6 +29,7 @@ export function createLegacyDatabaseBridge(fetcher: FetchWithTimeout) {
     },
     inquiryFieldEdits, validateReclassEditableFieldProposals,
     mountCustomerRepMapping,
+    prefetchCustomerRepOptions,
     async readHistoricalRequests(client: SupabaseClient<Database>, input: unknown, signal?: AbortSignal) {
       const query = historicalRequestsQuery(input);
       const args: Database['public']['Functions']['historical_requests_read_v1']['Args'] = { p_query: { ...query } };

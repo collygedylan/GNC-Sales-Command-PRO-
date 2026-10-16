@@ -178,7 +178,7 @@ function useChunkedRows<T>(rows: T[], batch = 30, maximum = 96) {
     let frame = 0;
     const target = Math.min(rows.length, maximum);
     const initialCount = Math.min(batch, target);
-    setCount(current => current === initialCount ? current : initialCount);
+    setCount(current => Math.max(initialCount, Math.min(current, target)));
     const pump = () => {
       if (cancelled) return;
       setCount(current => {
@@ -192,7 +192,7 @@ function useChunkedRows<T>(rows: T[], batch = 30, maximum = 96) {
       cancelled = true;
       if (frame) window.cancelAnimationFrame(frame);
     };
-  }, [rows, batch, maximum]);
+  }, [rows.length, batch, maximum]);
   return rows.slice(0, count);
 }
 

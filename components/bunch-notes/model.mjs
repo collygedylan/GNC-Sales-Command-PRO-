@@ -11,7 +11,13 @@ export function operationalTokens(value) {
     offset = match.index + match[0].length;
   }
   if (offset < input.length) tokens.push({ text: input.slice(offset) });
-  return tokens;
+  const occurrences = new Map();
+  return tokens.map(token => {
+    const identity = JSON.stringify([token.color || '', token.text]);
+    const occurrence = occurrences.get(identity) || 0;
+    occurrences.set(identity, occurrence + 1);
+    return { ...token, key: `${identity}:${occurrence}` };
+  });
 }
 export function normalizeNote(value) {
   const source = value.source_all || value.source || [];

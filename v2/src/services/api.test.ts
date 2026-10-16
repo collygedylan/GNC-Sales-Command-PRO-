@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+// @vitest-environment jsdom
+
 const harness = vi.hoisted(() => ({
   calls: [] as Array<[string, ...unknown[]]>,
   response: null as unknown,
   cachedRows: null as unknown[] | null,
   cacheKeys: [] as string[],
-  readKeys: [] as string[]
+  readKeys: [] as string[],
 }));
 
 vi.mock('@supabase/supabase-js', () => ({
@@ -35,7 +37,7 @@ vi.mock('./cache', () => ({
   savePreference: vi.fn()
 }));
 
-import { dbRows, fetchInventoryPage, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession, patchRow, REQUEST_TABLE, isAdminSession, isEvalSession } from './api';
+import { dbRows, fetchInventoryPage, getInventoryReadScopeKey, subscribeInventorySessionScope, INVENTORY_CARD_COLUMN_NAMES, INVENTORY_TABLE, storeSession, patchRow, REQUEST_TABLE, isAdminSession, isEvalSession } from './api';
 
 describe('Eval data access boundary', () => {
   it('recognizes Eval role variants while leaving explicit Admin roles distinct', () => {
@@ -96,6 +98,44 @@ afterEach(() => {
 });
 
 describe('sandbox inventory projection', () => {
+  it('keeps the in-memory cache scope opaque and rotates it when the session changes', () => {
+    const first = getInventoryReadScopeKey();
+    let notified = 0;
+    const unsubscribe = subscribeInventorySessionScope(() => { notified += 1; });
+    storeSession({ token: 'secret-session-token', username: 'manager', role: 'manager' });
+    const second = getInventoryReadScopeKey();
+    expect(second).not.toBe(first);
+    expect(second).not.toContain('secret-session-token');
+    expect(notified).toBe(1);
+    unsubscribe();
+  });
+
+  it('detects account changes that occurred while no inventory view was mounted', () => {
+    const storageKey = 'gnc:v2:sandbox-session';
+    const previous = localStorage.getItem(storageKey);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({ token: 'sandbox:first', username: 'first', role: 'manager' }));
+      const first = getInventoryReadScopeKey();
+      localStorage.setItem(storageKey, JSON.stringify({ token: 'sandbox:second', username: 'second', role: 'manager' }));
+      const second = getInventoryReadScopeKey();
+      expect(second).not.toBe(first);
+      expect(second).not.toContain('sandbox:second');
+    } finally {
+      if (previous === null) localStorage.removeItem(storageKey);
+      else localStorage.setItem(storageKey, previous);
+    }
+  });
+
+  it('rotates the inventory scope when another tab clears storage', () => {
+    const first = getInventoryReadScopeKey();
+    const changed = vi.fn();
+    const unsubscribe = subscribeInventorySessionScope(changed);
+    window.dispatchEvent(new StorageEvent('storage', { key: null }));
+    expect(changed).toHaveBeenCalledOnce();
+    expect(getInventoryReadScopeKey()).not.toBe(first);
+    unsubscribe();
+  });
+
   it('uses a schema-backed narrow projection, count, stable order, bounded page, search, and cancellation', async () => {
     const signal = new AbortController().signal;
     harness.response = { data: [{ unique_id: 'sandbox-1', commonname: 'Pear', photo_link: null }], count: 501, error: null };

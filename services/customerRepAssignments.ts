@@ -60,7 +60,11 @@ export function createCustomerRepAssignments(transport: MappingTransport, identi
   async function reps(signal: AbortSignal): Promise<RepOption[]> {
     const requestedRevision=currentRevision;
     const cached = repCaches.get(scope);
-    if (cached && currentRevision && cached.revision === currentRevision) return cached.reps;
+    if (cached && (!currentRevision || cached.revision === currentRevision)) {
+      currentRevision=cached.revision;
+      repCaches.delete(scope);repCaches.set(scope,cached);
+      return cached.reps;
+    }
     const first = await transport({ action:'customer-rep-map', operation:'reps', page:0, pageSize:100 }, signal);
     if (!isRecord(first) || first.ok !== true || !Array.isArray(first.rows) || !Number.isSafeInteger(first.total)
       || !Number.isSafeInteger(first.page) || first.page !== 0 || !Number.isSafeInteger(first.pageSize)
@@ -85,7 +89,9 @@ export function createCustomerRepAssignments(transport: MappingTransport, identi
         throw new Error('Sales rep choices contain an invalid assignment. Refresh and try again.');
       seen.add(value.salesrepId);return{salesrepId:value.salesrepId,salesrepName:value.salesrepName};
     });
-    currentRevision=revision;repCaches.set(scope,{revision,reps:rows});return rows;
+    currentRevision=revision;repCaches.delete(scope);repCaches.set(scope,{revision,reps:rows});
+    while(repCaches.size>16)repCaches.delete(repCaches.keys().next().value!);
+    return rows;
   }
 
   function setRevision(revision:string):void{
@@ -117,9 +123,16 @@ export function createCustomerRepAssignments(transport: MappingTransport, identi
   }
 
   return {
-    reps,setRevision,cachedPage,storePage,invalidate,list,dispose(){repCaches.delete(scope);pageCache.clear();},
+    reps,setRevision,getRevision:()=>currentRevision,cachedPage,storePage,invalidate,list,dispose(){pageCache.clear();},
     saveNames(row:MappingRow,customerName:string,consigneeName:string,signal:AbortSignal){return mutation('save',row,undefined,signal,{customerName,consigneeName});},
     assign(row:MappingRow,salesrepId:string,signal:AbortSignal){return mutation('assign',row,salesrepId,signal);},
     reset(row:MappingRow,signal:AbortSignal){return mutation('reset',row,undefined,signal);},
   };
+}
+
+/** Warm the same identity-scoped rep catalog used by the mounted assignment editor. */
+export async function prefetchCustomerRepOptions(transport: MappingTransport, identityScope: string, signal: AbortSignal): Promise<RepOption[]> {
+  const assignments = createCustomerRepAssignments(transport, identityScope);
+  try { return await assignments.reps(signal); }
+  finally { assignments.dispose(); }
 }

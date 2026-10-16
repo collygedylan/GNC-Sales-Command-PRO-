@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import useSWR, { SWRConfig, type Cache, type State } from 'swr';
+import { SWRConfig, type Cache, type State } from 'swr';
+import { useRevisionedSnapshot } from '../../services/useRevisionedSnapshot';
+import { readHistoricalReportingDirectory } from '../../services/historicalRequests';
 import type {
   HistoricalRequestGroup,
   HistoricalRequestRow,
@@ -14,7 +16,7 @@ type Level = 'reps' | 'customers' | 'requests';
 type PageResult = { data?: HistoricalRequestsPage; error?: Error; isLoading: boolean; retry(): void };
 
 function keyFor(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery) {
-  return JSON.stringify([bridge.scopeKey, bridge.role, bridge.revisionKey, query.operation, query.repKey, query.recordKind, query.dateFrom, query.dateTo, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
+  return JSON.stringify([bridge.scopeKey, bridge.role, query.operation, query.repKey, query.recordKind, query.dateFrom, query.dateTo, query.customerKey || '', query.consigneeKey || '', query.page || 0, query.pageSize || PAGE_SIZE]);
 }
 
 function redactFinancials(page: HistoricalRequestsPage): HistoricalRequestsPage {
@@ -31,7 +33,7 @@ function redactFinancials(page: HistoricalRequestsPage): HistoricalRequestsPage 
 function usePage(bridge: HistoricalRequestsBridge, query: HistoricalRequestsQuery | null): PageResult {
   const controllers = useRef(new Map<string, AbortController>());
   const key = query ? keyFor(bridge, query) : null;
-  const result = useSWR<HistoricalRequestsPage>(key, async () => {
+  const result = useRevisionedSnapshot<HistoricalRequestsPage>(key, bridge.revisionKey, async () => {
     if (!query) throw new Error('Historical requests query is unavailable.');
     const controller = new AbortController();
     if (key) {
@@ -124,8 +126,6 @@ function ExecutiveReports({ bridge, recordKind, repKey, customerKey, dateFrom, d
   const [grouping, setGrouping] = useState<'summary' | 'months' | 'reps' | 'customers'>('summary');
   const [reportRep, setReportRep] = useState('');
   const [reportCustomer, setReportCustomer] = useState('');
-  const [directory, setDirectory] = useState<{ reps: HistoricalRequestGroup[]; customers: HistoricalRequestGroup[] }>({ reps: [], customers: [] });
-  const [directoryError, setDirectoryError] = useState('');
   const [reportPage, setReportPage] = useState(0);
   const [preset, setPreset] = useState('all');
   const [month, setMonth] = useState('');
@@ -136,26 +136,16 @@ function ExecutiveReports({ bridge, recordKind, repKey, customerKey, dateFrom, d
     ...(selectedRep ? { repKey: selectedRep } : {}),
     ...(selectedCustomer ? { customerKey: selectedCustomer } : {}) };
   const report = usePage(bridge, validDates ? { operation: grouping, recordKind, ...filters, page: reportPage, pageSize: PAGE_SIZE } : null);
+  const directoryState = useRevisionedSnapshot(
+    JSON.stringify(['historical-reporting-directory', bridge.scopeKey, bridge.role, selectedRep || '']),
+    bridge.revisionKey, () => readHistoricalReportingDirectory(bridge, selectedRep),
+    { revalidateOnFocus: true, revalidateOnReconnect: true, dedupingInterval: 2000 },
+  );
+  const directory = directoryState.data || { reps: [], customers: [] };
+  const directoryError = directoryState.error?.message || '';
   useEffect(() => {
-    const controller = new AbortController();
-    setDirectory({ reps: [], customers: [] }); setDirectoryError('');
-    async function readAll(operation: 'reps' | 'customers', selectedRep?: string) {
-      const result: HistoricalRequestGroup[] = []; let revision = '';
-      for (let page = 0; ; page++) {
-        const data = await bridge.read({ operation, recordKind: 'all', ...(selectedRep ? { repKey: selectedRep } : {}), page, pageSize: 100 }, controller.signal);
-        if (data.scope !== 'all' || !data.financials) { onScopeInvalid(); throw new Error('Reporting scope changed. Refresh the report.'); }
-        if (revision && revision !== data.revision) throw new Error('Reporting source data changed. Refresh the report.');
-        revision = data.revision;
-        result.push(...data.rows.filter(isGroup));
-        if (result.length >= data.total) return result;
-        if (!data.rows.length || page >= 10000) throw new Error('The complete reporting directory could not be read.');
-      }
-    }
-    void Promise.all([readAll('reps'), readAll('customers', selectedRep)]).then(([reps, customers]) => {
-      if (!controller.signal.aborted) setDirectory({ reps, customers });
-    }).catch(error => { if (!controller.signal.aborted) setDirectoryError(error.message); });
-    return () => controller.abort();
-  }, [bridge.scopeKey, bridge.revisionKey, selectedRep]);
+    if ((directoryState.error as (Error & { status?: number }) | undefined)?.status === 403) onScopeInvalid();
+  }, [directoryState.error, onScopeInvalid]);
   useEffect(() => { setReportPage(0); }, [grouping, recordKind, reportRep, reportCustomer, repKey, customerKey, dateFrom, dateTo]);
   useEffect(() => { setReportCustomer(''); }, [reportRep, repKey]);
   const ready = historicalRequestsRoleCanViewFinancials(bridge.role) && !report.error && report.data?.scope === 'all' && report.data.financials === true;

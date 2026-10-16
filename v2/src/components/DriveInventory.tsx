@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronRight, Image as ImageIcon, Loader2, RefreshCw, Search } from 'lucide-react';
-import { fetchInventoryPage } from '../services/api';
+import { fetchInventoryPage, getInventoryReadScopeKey, subscribeInventorySessionScope } from '../services/api';
 import { DRIVE_INVENTORY_PAGE_SIZE, type DriveInventoryPrefetch } from '../services/driveInventoryPrefetch';
 import { loadRuntimeConfig } from '../services/runtime';
 import type { InventoryRow, PageResult } from '../types';
+import { useRevisionedSnapshot } from '../../../services/useRevisionedSnapshot';
 
 const PAGE_SIZE = DRIVE_INVENTORY_PAGE_SIZE;
 const MAX_PAGES = 10;
@@ -15,6 +16,7 @@ type Snapshot = {
   total: number;
   source: PageResult<InventoryRow>['source'];
   search: string;
+  scopeKey: string;
 };
 
 export type DriveItemGroup = {
@@ -176,16 +178,23 @@ function DriveInventoryView({ onOpen, initialPage }: { onOpen?: (row: InventoryR
   const [search, setSearch] = useState('');
   const [settledSearch, setSettledSearch] = useState('');
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
-  const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [trustedStorageHost, setTrustedStorageHost] = useState('');
+  const [readScopeKey, setReadScopeKey] = useState('');
+  const [scopeGeneration, setScopeGeneration] = useState(0);
+  const snapshotRef = useRef<Snapshot | null>(snapshot);
+  snapshotRef.current = snapshot;
   const pagingController = useRef<AbortController | null>(null);
+  const firstPageController = useRef<{ key: string; controller: AbortController } | null>(null);
   const generation = useRef(0);
   const consumedInitialPage = useRef<DriveInventoryPrefetch | null>(null);
+  const abandonedInitialPage = useRef<DriveInventoryPrefetch | null>(null);
   const activeInitialPage = useRef<DriveInventoryPrefetch | null>(null);
+  const prefetchKeyIds = useRef(new WeakMap<DriveInventoryPrefetch, number>());
+  const nextPrefetchKeyId = useRef(1);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setSettledSearch(search.trim()), SEARCH_DEBOUNCE_MS);
@@ -193,55 +202,121 @@ function DriveInventoryView({ onOpen, initialPage }: { onOpen?: (row: InventoryR
   }, [search]);
 
   useEffect(() => {
-    const candidatePrefetch = initialPage && consumedInitialPage.current !== initialPage ? initialPage : null;
-    const prefetchedPage = settledSearch === '' && refreshKey === 0 ? candidatePrefetch : null;
-    if (prefetchedPage) activeInitialPage.current = prefetchedPage;
-    else if (candidatePrefetch && activeInitialPage.current === candidatePrefetch) {
-      consumedInitialPage.current = candidatePrefetch;
-      activeInitialPage.current = null;
+    let active = true;
+    const refreshScope = () => {
+      if (!active) return;
+      setReadScopeKey(getInventoryReadScopeKey());
+      setScopeGeneration(value => value + 1);
+    };
+    refreshScope();
+    const unsubscribe = subscribeInventorySessionScope(refreshScope);
+    return () => { active = false; unsubscribe(); };
+  }, []);
+
+
+  const candidatePrefetch = initialPage && consumedInitialPage.current !== initialPage ? initialPage : null;
+  const prefetchedPage = settledSearch === '' && refreshKey === 0 ? candidatePrefetch : null;
+  const firstPageReadArgs = useRef({ prefetchedPage, settledSearch, readScopeKey });
+  firstPageReadArgs.current = { prefetchedPage, settledSearch, readScopeKey };
+  const readFirstPage = useCallback(async () => {
+    const { prefetchedPage: selectedPrefetch, settledSearch: query, readScopeKey: scopeKey } = firstPageReadArgs.current;
+    if (selectedPrefetch) return selectedPrefetch.promise;
+    const requestKey = JSON.stringify([scopeKey, query]);
+    if (firstPageController.current && firstPageController.current.key !== requestKey) {
+      firstPageController.current.controller.abort();
+    }
+    const controller = new AbortController();
+    firstPageController.current = { key: requestKey, controller };
+    const first = await fetchInventoryPage({ page: 0, pageSize: PAGE_SIZE, search: query, signal: controller.signal });
+    const current = snapshotRef.current;
+    const canRefreshLoadedWindow = first.source === 'sandbox' && current?.scopeKey === scopeKey &&
+      current.search === query && current.nextPage > 1;
+    if (!canRefreshLoadedWindow) return first;
+    const tails = await Promise.all(Array.from({ length: current.nextPage - 1 }, (_, index) =>
+      fetchInventoryPage({ page: index + 1, pageSize: PAGE_SIZE, search: query, signal: controller.signal })
+    ));
+    return { ...first, rows: [...first.rows, ...tails.flatMap(result => result.rows)] };
+  }, []);
+  let routePrefetchKey = 'normal';
+  if (initialPage) {
+    let id = prefetchKeyIds.current.get(initialPage);
+    if (!id) { id = nextPrefetchKeyId.current++; prefetchKeyIds.current.set(initialPage, id); }
+    routePrefetchKey = `route-${id}${settledSearch === '' && abandonedInitialPage.current === initialPage ? '-abandoned' : ''}`;
+  }
+  const snapshotKey = readScopeKey ? JSON.stringify(['drive-inventory', readScopeKey, settledSearch, routePrefetchKey]) : null;
+  const snapshotRevision = `${refreshKey}:${scopeGeneration}`;
+  const firstPage = useRevisionedSnapshot<PageResult<InventoryRow>>(
+    snapshotKey,
+    snapshotRevision,
+    readFirstPage,
+    { revalidateOnFocus: true, dedupingInterval: 1000 }
+  );
+
+  useEffect(() => {
+    if (prefetchedPage) {
+      activeInitialPage.current = prefetchedPage;
     }
     const releasePrefetch = prefetchedPage?.retain();
-    pagingController.current?.abort();
-    pagingController.current = null;
-    const controller = new AbortController();
-    const currentGeneration = ++generation.current;
-    setLoading(true);
-    setLoadingMore(false);
-    setError('');
-    (prefetchedPage?.promise ?? fetchInventoryPage({ page: 0, pageSize: PAGE_SIZE, search: settledSearch, signal: controller.signal }))
-      .then(result => {
-        if (controller.signal.aborted || generation.current !== currentGeneration) return;
-        if (prefetchedPage && activeInitialPage.current === prefetchedPage) {
-          consumedInitialPage.current = prefetchedPage;
-          activeInitialPage.current = null;
-        }
-        const cachedRows = result.source === 'cache' ? filterCachedRows(result.rows, settledSearch) : result.rows;
-        setSnapshot({
-          rows: cachedRows,
-          nextPage: 1,
-          total: result.source === 'cache' ? cachedRows.length : result.total,
-          source: result.source,
-          search: settledSearch
-        });
-      })
-      .catch(reason => {
-        if (controller.signal.aborted || generation.current !== currentGeneration || isAbort(reason)) return;
-        if (prefetchedPage && activeInitialPage.current === prefetchedPage) {
-          consumedInitialPage.current = prefetchedPage;
-          activeInitialPage.current = null;
-        }
-        setError(reason instanceof Error ? reason.message : 'Inventory could not be loaded. Retry when the connection is available.');
-      })
-      .finally(() => {
-        if (generation.current === currentGeneration) setLoading(false);
-      });
     return () => {
-      controller.abort();
+      if (prefetchedPage && activeInitialPage.current === prefetchedPage) {
+        activeInitialPage.current = null;
+        if (consumedInitialPage.current !== prefetchedPage) {
+          consumedInitialPage.current = prefetchedPage;
+          abandonedInitialPage.current = prefetchedPage;
+        }
+      }
       releasePrefetch?.();
     };
-  }, [settledSearch, refreshKey, initialPage]);
+  }, [prefetchedPage]);
 
-  useEffect(() => () => pagingController.current?.abort(), []);
+  useEffect(() => {
+    pagingController.current?.abort();
+    pagingController.current = null;
+    const currentGeneration = ++generation.current;
+    setLoadingMore(false);
+    setError('');
+    return () => {
+      if (generation.current === currentGeneration) generation.current += 1;
+    };
+  }, [snapshotKey, snapshotRevision]);
+
+  useEffect(() => {
+    const result = firstPage.data;
+    if (!result || !readScopeKey) return;
+    if (prefetchedPage && activeInitialPage.current === prefetchedPage) {
+      consumedInitialPage.current = prefetchedPage;
+      activeInitialPage.current = null;
+    }
+    const cachedRows = result.source === 'cache' ? filterCachedRows(result.rows, settledSearch) : result.rows;
+    setSnapshot(current => {
+      const canRetainPages = current?.scopeKey === readScopeKey && current.search === settledSearch;
+      const retained = canRetainPages ? current : null;
+      const rows = cachedRows;
+      return {
+        rows,
+        nextPage: result.source === 'sandbox' ? (retained?.nextPage ?? 1) : 1,
+        total: result.source === 'cache' ? rows.length : result.total,
+        source: result.source,
+        search: settledSearch,
+        scopeKey: readScopeKey
+      };
+    });
+    setError('');
+  }, [firstPage.data, prefetchedPage, readScopeKey, settledSearch]);
+
+  useEffect(() => {
+    if (firstPage.error) setError(firstPage.error.message || 'Inventory could not be loaded. Retry when the connection is available.');
+  }, [firstPage.error]);
+
+  useEffect(() => () => { pagingController.current?.abort(); }, []);
+
+  const accessDenied = isInventoryAccessDenial(firstPage.error);
+  const visibleSnapshot = !accessDenied && snapshot?.scopeKey === readScopeKey ? snapshot : null;
+  const loading = !readScopeKey || firstPage.isValidating;
+
+  useEffect(() => {
+    if (accessDenied) setSnapshot(null);
+  }, [accessDenied]);
 
   useEffect(() => {
     let current = true;
@@ -253,38 +328,40 @@ function DriveInventoryView({ onOpen, initialPage }: { onOpen?: (row: InventoryR
   }, []);
 
   const loadMore = useCallback(async () => {
-    if (!snapshot || loading || loadingMore || snapshot.rows.length >= snapshot.total || snapshot.nextPage >= MAX_PAGES) return;
+    if (!visibleSnapshot || loading || loadingMore || visibleSnapshot.rows.length >= visibleSnapshot.total || visibleSnapshot.nextPage >= MAX_PAGES) return;
     const controller = new AbortController();
     pagingController.current = controller;
     const currentGeneration = generation.current;
     setLoadingMore(true);
     setError('');
     try {
-      const result = await fetchInventoryPage({ page: snapshot.nextPage, pageSize: PAGE_SIZE, search: snapshot.search, signal: controller.signal });
+      const result = await fetchInventoryPage({ page: visibleSnapshot.nextPage, pageSize: PAGE_SIZE, search: visibleSnapshot.search, signal: controller.signal });
       if (controller.signal.aborted || generation.current !== currentGeneration) return;
       setSnapshot(current => {
-        if (!current || current.search !== snapshot.search) return current;
+        if (!current || current.search !== visibleSnapshot.search || current.scopeKey !== readScopeKey) return current;
         return {
           rows: mergeRows(current.rows, result.rows),
-          nextPage: snapshot.nextPage + 1,
+          nextPage: visibleSnapshot.nextPage + 1,
           total: result.total,
           source: current.source === 'cache' || result.source === 'cache' ? 'cache' : 'sandbox',
-          search: current.search
+          search: current.search,
+          scopeKey: current.scopeKey
         };
       });
     } catch (reason) {
       if (!controller.signal.aborted && !isAbort(reason) && generation.current === currentGeneration) {
+        if (isInventoryAccessDenial(reason)) setSnapshot(null);
         setError(reason instanceof Error ? reason.message : 'More inventory could not be loaded. Existing rows are still available.');
       }
     } finally {
       if (pagingController.current === controller) pagingController.current = null;
       if (generation.current === currentGeneration) setLoadingMore(false);
     }
-  }, [snapshot, loading, loadingMore]);
+  }, [visibleSnapshot, loading, loadingMore, readScopeKey]);
 
-  const groups = useMemo(() => aggregateDriveRows(snapshot?.rows || [], trustedStorageHost), [snapshot?.rows, trustedStorageHost]);
-  const hasMore = Boolean(snapshot && snapshot.rows.length < snapshot.total && snapshot.nextPage < MAX_PAGES);
-  const stale = Boolean(snapshot && snapshot.search !== settledSearch);
+  const groups = useMemo(() => aggregateDriveRows(visibleSnapshot?.rows || [], trustedStorageHost), [visibleSnapshot?.rows, trustedStorageHost]);
+  const hasMore = Boolean(visibleSnapshot && visibleSnapshot.rows.length < visibleSnapshot.total && visibleSnapshot.nextPage < MAX_PAGES);
+  const stale = Boolean(visibleSnapshot && visibleSnapshot.search !== settledSearch);
 
   return (
     <section className="drive-inventory" aria-label="Drive Mode inventory">
@@ -300,16 +377,16 @@ function DriveInventoryView({ onOpen, initialPage }: { onOpen?: (row: InventoryR
       </div>
       <div className="drive-result-status" aria-live="polite">
         {loading ? <span><Loader2 className="drive-spin" size={15} /> {snapshot ? 'Updating inventory…' : 'Loading sandbox inventory…'}</span> : null}
-        {!loading && snapshot ? <span>{snapshot.source === 'cache' ? `Cached snapshot · ${snapshot.rows.length.toLocaleString()} rows` : `Sandbox inventory · ${snapshot.rows.length.toLocaleString()} of ${snapshot.total.toLocaleString()} rows`}</span> : null}
+        {!loading && visibleSnapshot ? <span>{visibleSnapshot.source === 'cache' ? `Cached snapshot · ${visibleSnapshot.rows.length.toLocaleString()} rows` : `Sandbox inventory · ${visibleSnapshot.rows.length.toLocaleString()} of ${visibleSnapshot.total.toLocaleString()} rows`}</span> : null}
         {stale ? <span className="drive-stale">Showing previous complete results while search updates.</span> : null}
       </div>
       {error ? <div className="drive-error" role="alert"><AlertCircle size={17} /> <span>{error}</span><button type="button" onClick={() => setRefreshKey(key => key + 1)}>Retry</button></div> : null}
-      {!loading && !snapshot?.rows.length && !error ? <p className="drive-empty">No sandbox inventory rows matched this search.</p> : null}
+      {!loading && !visibleSnapshot?.rows.length && !error ? <p className="drive-empty">No sandbox inventory rows matched this search.</p> : null}
       <div className={`drive-item-list ${stale ? 'is-stale' : ''}`}>
         {groups.map(group => {
           const isExpanded = expanded.has(group.key);
-          const totalIsComplete = Boolean(snapshot?.source === 'sandbox' && snapshot.rows.length >= snapshot.total);
-          const quantityLabel = totalIsComplete ? '' : snapshot?.source === 'cache' ? ' cached' : ' loaded';
+          const totalIsComplete = Boolean(visibleSnapshot?.source === 'sandbox' && visibleSnapshot.rows.length >= visibleSnapshot.total);
+          const quantityLabel = totalIsComplete ? '' : visibleSnapshot?.source === 'cache' ? ' cached' : ' loaded';
           return (
             <article className="drive-item-card" key={group.key}>
               <div className="drive-item-heading">
@@ -335,7 +412,7 @@ function DriveInventoryView({ onOpen, initialPage }: { onOpen?: (row: InventoryR
                   <span><small>Available</small><strong>{displayQuantity(location.available)}</strong></span>
                   <span><small>On Hand</small><strong>{displayQuantity(location.onHand)}</strong></span>
                   {onOpen ? <button type="button" className="drive-row-open" onClick={() => {
-                    const row = snapshot?.rows.find(candidate => value(candidate, ['locationcode', 'LOCATIONCODE']) === location.name && value(candidate, ['lotcode', 'LOTCODE']) === location.lot);
+                    const row = visibleSnapshot?.rows.find(candidate => value(candidate, ['locationcode', 'LOCATIONCODE']) === location.name && value(candidate, ['lotcode', 'LOTCODE']) === location.lot);
                     if (row) onOpen(row);
                   }}>Open row</button> : null}
                 </div>)}
@@ -345,9 +422,9 @@ function DriveInventoryView({ onOpen, initialPage }: { onOpen?: (row: InventoryR
         })}
       </div>
       {hasMore ? <button type="button" className="drive-load-more" onClick={() => void loadMore()} disabled={loadingMore || loading}>
-        {loadingMore ? <><Loader2 className="drive-spin" size={16} /> Loading rows…</> : `Load ${Math.min(PAGE_SIZE, snapshot!.total - snapshot!.rows.length)} more rows`}
+        {loadingMore ? <><Loader2 className="drive-spin" size={16} /> Loading rows…</> : `Load ${Math.min(PAGE_SIZE, visibleSnapshot!.total - visibleSnapshot!.rows.length)} more rows`}
       </button> : null}
-      {snapshot && snapshot.nextPage >= MAX_PAGES && snapshot.rows.length < snapshot.total ? <p className="drive-bound-notice">Showing the first {snapshot.rows.length.toLocaleString()} matching rows. Narrow the search to browse more inventory.</p> : null}
+      {visibleSnapshot && visibleSnapshot.nextPage >= MAX_PAGES && visibleSnapshot.rows.length < visibleSnapshot.total ? <p className="drive-bound-notice">Showing the first {visibleSnapshot.rows.length.toLocaleString()} matching rows. Narrow the search to browse more inventory.</p> : null}
     </section>
   );
 }
@@ -356,6 +433,13 @@ export const DriveInventory = memo(DriveInventoryView);
 
 function isAbort(reason: unknown) {
   return Boolean(reason && typeof reason === 'object' && 'name' in reason && reason.name === 'AbortError');
+}
+
+function isInventoryAccessDenial(reason: unknown) {
+  if (!reason || typeof reason !== 'object') return false;
+  const error = reason as { status?: unknown; code?: unknown; message?: unknown };
+  return ['401', '403', '42501'].includes(String(error.status ?? '')) || ['401', '403', '42501'].includes(String(error.code ?? '')) ||
+    (typeof error.message === 'string' && /not authorized|permission denied|blocked sandbox/i.test(error.message));
 }
 
 function filterCachedRows(rows: InventoryRow[], search: string) {

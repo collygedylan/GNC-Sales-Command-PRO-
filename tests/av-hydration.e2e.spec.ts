@@ -14,6 +14,7 @@ const PREVIEW_DISPLAY_ROW_LIMIT = 50;
 
 type CpuProfileNode = {
   id: number;
+  children?: number[];
   callFrame?: { functionName?: string; url?: string; lineNumber?: number };
 };
 
@@ -34,6 +35,64 @@ function summarizeCpuProfile(value: unknown) {
   return { sampleCount: samples.length, sampledMs: timeDeltas.reduce((sum, value) => sum + value, 0) / 1000, topFrames };
 }
 
+function summarizeCpuProfileForLongTasks(value: unknown, pageTimeAtProfileEndMs: number, longTasks: Array<{ startTime: number; endTime: number }>) {
+  if (!value || typeof value !== 'object' || !Number.isFinite(pageTimeAtProfileEndMs)) return [];
+  const profile = value as { nodes?: unknown; samples?: unknown; timeDeltas?: unknown; startTime?: unknown; endTime?: unknown };
+  const nodes = Array.isArray(profile.nodes) ? profile.nodes as CpuProfileNode[] : [];
+  const samples = Array.isArray(profile.samples) ? profile.samples.map(Number) : [];
+  const timeDeltas = Array.isArray(profile.timeDeltas) ? profile.timeDeltas.map(Number) : [];
+  const nodeById = new Map(nodes.map(node => [Number(node.id), node]));
+  const parentById = new Map<number, number>();
+  nodes.forEach(node => (node.children || []).forEach(child => parentById.set(Number(child), Number(node.id))));
+  const profileEndMs = Number(profile.endTime) / 1000;
+  const profileStartMs = Number(profile.startTime) / 1000;
+  if (!Number.isFinite(profileEndMs) || !Number.isFinite(profileStartMs)) return [];
+  const pageOffsetMs = pageTimeAtProfileEndMs - profileEndMs;
+  const samplesByTask = longTasks.map(task => ({
+    task,
+    selfFrames: new Map<string, number>(),
+    stacks: new Map<string, number>(),
+    sampledCpuMs: 0
+  }));
+  let sampleStartMs = profileStartMs + pageOffsetMs;
+  for (let index = 0; index < Math.min(samples.length, timeDeltas.length); index++) {
+    const durationMs = Math.max(0, timeDeltas[index] / 1000);
+    const sampleEndMs = sampleStartMs + durationMs;
+    const sampledNodeId = samples[index];
+    const sampledNode = nodeById.get(sampledNodeId);
+    const frame = sampledNode?.callFrame || {};
+    const frameName = String(frame.functionName || '(anonymous)');
+    const frameUrl = String(frame.url || '');
+    const frameLabel = `${frameName} [${frameUrl}]`;
+    const stackLabels: string[] = [];
+    let cursor: number | undefined = sampledNodeId;
+    const seen = new Set<number>();
+    while (cursor !== undefined && !seen.has(cursor) && stackLabels.length < 32) {
+      seen.add(cursor);
+      const stackFrame = nodeById.get(cursor)?.callFrame || {};
+      stackLabels.push(`${String(stackFrame.functionName || '(anonymous)')} [${String(stackFrame.url || '')}]`);
+      cursor = parentById.get(cursor);
+    }
+    const stackLabel = stackLabels.reverse().join(' <- ');
+    for (const target of samplesByTask) {
+      const overlapMs = Math.max(0, Math.min(sampleEndMs, target.task.endTime) - Math.max(sampleStartMs, target.task.startTime));
+      if (!overlapMs) continue;
+      target.sampledCpuMs += overlapMs;
+      target.selfFrames.set(frameLabel, (target.selfFrames.get(frameLabel) || 0) + overlapMs);
+      target.stacks.set(stackLabel, (target.stacks.get(stackLabel) || 0) + overlapMs);
+    }
+    sampleStartMs = sampleEndMs;
+  }
+  return samplesByTask.map(({ task, selfFrames, stacks, sampledCpuMs }) => ({
+    ...task,
+    sampledCpuMs,
+    topSelfFrames: Array.from(selfFrames, ([frame, selfTimeMs]) => ({ frame, selfTimeMs }))
+      .sort((a, b) => b.selfTimeMs - a.selfTimeMs).slice(0, 12),
+    topCallStacks: Array.from(stacks, ([stack, selfTimeMs]) => ({ stack, selfTimeMs }))
+      .sort((a, b) => b.selfTimeMs - a.selfTimeMs).slice(0, 8)
+  }));
+}
+
 function syntheticMasterRows() {
   return Array.from({ length: SYNTHETIC_MASTER_ROWS }, (_, index) => hlMaster(`av-hydration-${String(index + 1).padStart(5, '0')}`, {
     itemcode: `AVH.${String(index + 1).padStart(5, '0')}`,
@@ -45,7 +104,7 @@ function syntheticMasterRows() {
 
 async function installAvTimingProbe(page: Page) {
   const installed = await page.evaluate(() => window.eval(`(() => {
-    const probe = window.__avHydrationTiming = { startedAt: 0, startedEpochMs: 0, firstCardAt: 0, firstCardEpochMs: 0, renderDurations: [], chunkCallbackDurations: [], renderStages: [], renderSubOperations: [], activeRenderId: 0, renderIdCounter: 0, processSubOperations: [], activeProcessId: 0, processIdCounter: 0, processLoads: [], liveRenderSchedules: [], longTaskDurations: [], longTasks: [], slowSyncOperations: [], slowAsyncOperations: [],
+    const probe = window.__avHydrationTiming = { startedAt: 0, startedEpochMs: 0, firstCardAt: 0, firstCardEpochMs: 0, renderDurations: [], chunkCallbackDurations: [], chunkCallbackWindows: [], renderStages: [], renderSubOperations: [], activeRenderId: 0, renderIdCounter: 0, processSubOperations: [], activeProcessId: 0, processIdCounter: 0, processLoads: [], liveRenderSchedules: [], longTaskDurations: [], longTasks: [], slowSyncOperations: [], slowAsyncOperations: [],
       searchStartedAt: 0, searchResultAt: 0, observer: null, searchObserver: null, longTaskObserver: null };
     const SLOW_OPERATION_THRESHOLD_MS = 10;
     const MAX_SLOW_OPERATION_RECORDS = 100;
@@ -99,7 +158,11 @@ async function installAvTimingProbe(page: Page) {
       if (probe.startedAt && callback.name === 'renderNextChunk') {
         const started = performance.now();
         try { callback.call(window, timestamp); }
-        finally { probe.chunkCallbackDurations.push(performance.now() - started); }
+        finally {
+          const ended = performance.now();
+          probe.chunkCallbackDurations.push(ended - started);
+          probe.chunkCallbackWindows.push({ startedAt: started, endedAt: ended });
+        }
         return;
       }
       callback.call(window, timestamp);
@@ -293,6 +356,7 @@ async function installAvTimingProbe(page: Page) {
         probe.firstCardEpochMs = 0;
         probe.renderDurations = [];
         probe.chunkCallbackDurations = [];
+        probe.chunkCallbackWindows = [];
         probe.renderStages = [];
         probe.renderSubOperations = [];
         probe.activeRenderId = 0;
@@ -352,12 +416,31 @@ async function installAvTimingProbe(page: Page) {
 async function timingEvidence(page: Page) {
   return page.evaluate(() => window.eval(`(() => {
     const probe = window.__avHydrationTiming;
+    const renderWindows = (probe?.renderStages || []).map(stage => [stage.startedAt, stage.startedAt + stage.durationMs]);
+    const chunkWindows = (probe?.chunkCallbackWindows || []).map(window => [window.startedAt, window.endedAt]);
+    const renderIntervals = [...renderWindows, ...chunkWindows]
+      .filter(interval => Number.isFinite(interval[0]) && Number.isFinite(interval[1]) && interval[1] > interval[0])
+      .sort((left, right) => left[0] - right[0]);
+    const nonRenderLongTaskDurationsMs = (probe?.longTasks || []).map(task => {
+      const taskStart = task.startTime, taskEnd = task.endTime;
+      let covered = 0, activeStart = null, activeEnd = null;
+      for (const [windowStart, windowEnd] of renderIntervals) {
+        const start = Math.max(taskStart, windowStart), end = Math.min(taskEnd, windowEnd);
+        if (end <= start) continue;
+        if (activeEnd === null) { activeStart = start; activeEnd = end; }
+        else if (start <= activeEnd) activeEnd = Math.max(activeEnd, end);
+        else { covered += activeEnd - activeStart; activeStart = start; activeEnd = end; }
+      }
+      if (activeEnd !== null) covered += activeEnd - activeStart;
+      return Math.max(0, task.durationMs - covered);
+    });
     return {
       firstCardMs: probe?.firstCardAt && probe?.startedAt ? probe.firstCardAt - probe.startedAt : null,
       startedEpochMs: Number(probe?.startedEpochMs) || null,
       firstCardEpochMs: Number(probe?.firstCardEpochMs) || null,
       dataRenderDurationsMs: Array.isArray(probe?.renderDurations) ? probe.renderDurations.slice() : [],
       chunkCallbackDurationsMs: Array.isArray(probe?.chunkCallbackDurations) ? probe.chunkCallbackDurations.slice() : [],
+      chunkCallbackWindows: Array.isArray(probe?.chunkCallbackWindows) ? probe.chunkCallbackWindows.slice() : [],
       renderStages: Array.isArray(probe?.renderStages) ? probe.renderStages.slice() : [],
       renderSubOperations: Array.isArray(probe?.renderSubOperations) ? probe.renderSubOperations.slice() : [],
       processSubOperations: Array.isArray(probe?.processSubOperations) ? probe.processSubOperations.slice() : [],
@@ -365,6 +448,7 @@ async function timingEvidence(page: Page) {
       liveRenderSchedules: Array.isArray(probe?.liveRenderSchedules) ? probe.liveRenderSchedules.slice() : [],
       longTaskDurationsMs: Array.isArray(probe?.longTaskDurations) ? probe.longTaskDurations.slice() : [],
       longTasks: Array.isArray(probe?.longTasks) ? probe.longTasks.slice() : [],
+      nonRenderLongTaskDurationsMs,
       slowSyncOperations: Array.isArray(probe?.slowSyncOperations) ? probe.slowSyncOperations.slice() : [],
       slowAsyncOperations: Array.isArray(probe?.slowAsyncOperations) ? probe.slowAsyncOperations.slice() : [],
       maxMainThreadOperationMs: Math.max(0, ...(probe?.renderDurations || []), ...(probe?.chunkCallbackDurations || []), ...(probe?.longTaskDurations || [])),
@@ -475,15 +559,19 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
   let cpuProfileSummary: ReturnType<typeof summarizeCpuProfile> | null = null;
   let cpuProfileWindowStart: { timeOriginMs: number; pageTimeMs: number } | null = null;
   let cpuProfileWindowEnd: { timeOriginMs: number; pageTimeMs: number } | null;
+  let cpuProfileStartBracket: { before: { timeOriginMs: number; pageTimeMs: number }; after: { timeOriginMs: number; pageTimeMs: number } } | null = null;
   const cpuProfileEnabled = process.env.AV_CPU_PROFILE === '1';
   try {
     if (cpuProfileEnabled) {
       cpuProfilerSession = await page.context().newCDPSession(page);
       await cpuProfilerSession.send('Profiler.enable');
       await cpuProfilerSession.send('Profiler.setSamplingInterval', { interval: 1000 });
+      const before = await page.evaluate(() => ({ timeOriginMs: performance.timeOrigin, pageTimeMs: performance.now() }));
       await cpuProfilerSession.send('Profiler.start');
       cpuProfilerStarted = true;
-      cpuProfileWindowStart = await page.evaluate(() => ({ timeOriginMs: performance.timeOrigin, pageTimeMs: performance.now() }));
+      const after = await page.evaluate(() => ({ timeOriginMs: performance.timeOrigin, pageTimeMs: performance.now() }));
+      cpuProfileWindowStart = before;
+      cpuProfileStartBracket = { before, after };
     }
     await page.locator('#home-tile-av').click();
     await Promise.all([fixture.waitForHeldMasterLaterPage(), sideReadStarted]);
@@ -500,7 +588,8 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(preview.firstCardMs).toBeGreaterThanOrEqual(0);
     expect.soft(preview.firstCardMs).toBeLessThan(1000);
     expect(preview.dataRenderDurationsMs.length).toBeGreaterThan(0);
-    expect.soft(preview.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
+    expect.soft(Math.max(0, ...preview.dataRenderDurationsMs, ...preview.chunkCallbackDurationsMs)).toBeLessThanOrEqual(150);
+    expect.soft(Math.max(0, ...preview.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(100);
     expect(preview.master.fieldCoverage).not.toBe('full');
     expect(preview.master.rowCompleteness).not.toBe('complete');
     expect(preview.verified).toBe(false);
@@ -562,7 +651,8 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(full.master.fieldCoverage).toBe('browse');
     expect(full.master.rowCompleteness).toBe('complete');
     expect(full.previewRows).toBe(SYNTHETIC_MASTER_ROWS);
-    expect.soft(full.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
+    expect.soft(Math.max(0, ...full.dataRenderDurationsMs, ...full.chunkCallbackDurationsMs)).toBeLessThanOrEqual(150);
+    expect.soft(Math.max(0, ...full.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(100);
     expect(await search.inputValue()).toBe('AVH.00049');
     await expect(page.locator('#av-content [data-dom-id]').filter({ hasText: 'AVH.00049' }).first()).toBeVisible();
 
@@ -584,14 +674,16 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     const warm = await timingEvidence(page);
     await captureMilestone('warm-repeat', warm);
     expect.soft(warm.firstCardMs).toBeLessThan(1000);
-    expect.soft(warm.maxMainThreadOperationMs).toBeLessThanOrEqual(200);
+    expect.soft(Math.max(0, ...warm.dataRenderDurationsMs, ...warm.chunkCallbackDurationsMs)).toBeLessThanOrEqual(150);
+    expect.soft(Math.max(0, ...warm.nonRenderLongTaskDurationsMs)).toBeLessThanOrEqual(100);
     expect(fixture.backgroundMasterReads).toBe(readsBeforeWarmRepeat);
     expect(warm.master.rowCompleteness).toBe('complete');
     expect(warm.verified).toBe(true);
 
     const evidence = {
       kind: 'isolated-client-render-fixture', datasetRows: SYNTHETIC_MASTER_ROWS,
-      acceptedAvMainThreadOperationLimitMs: 200,
+      acceptedAvDomRenderLimitMs: 150,
+      acceptedBackgroundLongTaskLimitMs: 100,
       environment: {
         nodeVersion: process.version,
         browserVersion: await page.context().browser()?.version(),
@@ -623,18 +715,27 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
         await testInfo.attach('av-hydration-cpu-profile-summary.json', {
           body: JSON.stringify(cpuProfileSummary, null, 2), contentType: 'application/json'
         });
-        const timelineEvidence = await page.evaluate(() => {
-          const probe = window.eval('window.__avHydrationTiming') as {
-            longTasks?: Array<{ startTime: number; endTime: number; durationMs: number }>;
-            slowSyncOperations?: Array<{ name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }>;
-            slowAsyncOperations?: Array<{ name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }>;
-          } | undefined;
-          return {
-            longTasks: Array.isArray(probe?.longTasks) ? probe.longTasks.slice() : [],
-            slowSyncOperations: Array.isArray(probe?.slowSyncOperations) ? probe.slowSyncOperations.slice() : [],
-            slowAsyncOperations: Array.isArray(probe?.slowAsyncOperations) ? probe.slowAsyncOperations.slice() : []
-          };
-        });
+        const longTaskRecords = new Map<string, { milestone: string; startTime: number; endTime: number; durationMs: number }>();
+        const syncOperationRecords = new Map<string, { name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }>();
+        const asyncOperationRecords = new Map<string, { name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }>();
+        for (const milestone of milestones) {
+          const evidence = milestone.evidence && typeof milestone.evidence === 'object'
+            ? milestone.evidence as Record<string, unknown> : {};
+          const longTasks = Array.isArray(evidence.longTasks) ? evidence.longTasks as Array<{ startTime: number; endTime: number; durationMs: number }> : [];
+          const slowSyncOperations = Array.isArray(evidence.slowSyncOperations)
+            ? evidence.slowSyncOperations as Array<{ name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }> : [];
+          const slowAsyncOperations = Array.isArray(evidence.slowAsyncOperations)
+            ? evidence.slowAsyncOperations as Array<{ name: string; startedAt: number; endedAt: number; durationMs: number; [key: string]: unknown }> : [];
+          longTasks.forEach(task => longTaskRecords.set(`${task.startTime}:${task.endTime}`,
+            longTaskRecords.get(`${task.startTime}:${task.endTime}`) || { milestone: milestone.name, ...task }));
+          slowSyncOperations.forEach(operation => syncOperationRecords.set(`${operation.name}:${operation.startedAt}:${operation.endedAt}`, operation));
+          slowAsyncOperations.forEach(operation => asyncOperationRecords.set(`${operation.name}:${operation.startedAt}:${operation.endedAt}`, operation));
+        }
+        const timelineEvidence = {
+          longTasks: Array.from(longTaskRecords.values()),
+          slowSyncOperations: Array.from(syncOperationRecords.values()),
+          slowAsyncOperations: Array.from(asyncOperationRecords.values())
+        };
         const correlatedLongTasks = timelineEvidence.longTasks.map((task: { startTime: number; endTime: number; durationMs: number }) => ({
           ...task,
           overlappingSynchronousOperations: timelineEvidence.slowSyncOperations.filter((operation: { startedAt: number; endedAt: number }) =>
@@ -642,11 +743,13 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
           overlappingAsynchronousOperations: timelineEvidence.slowAsyncOperations.filter((operation: { startedAt: number; endedAt: number }) =>
             operation.startedAt <= task.endTime && operation.endedAt >= task.startTime)
         }));
+        const longTaskCpuAttribution = summarizeCpuProfileForLongTasks(stopped.profile,
+          Number(cpuProfileWindowEnd?.pageTimeMs), timelineEvidence.longTasks);
         await testInfo.attach('av-hydration-cpu-profile-timeline.json', {
-          body: JSON.stringify({ sampleIntervalUs: 1000, cpuProfileWindowStart, cpuProfileWindowEnd,
+          body: JSON.stringify({ sampleIntervalUs: 1000, cpuProfileWindowStart, cpuProfileStartBracket, cpuProfileWindowEnd,
             profileSampledMs: cpuProfileSummary.sampledMs,
             clock: 'Long-task and operation start/end times use page performance.now(); CPU samples use the adjacent CDP profile window. Async overlaps show wall-clock coincidence only; synchronous overlaps identify code executing on the main thread.',
-            correlatedLongTasks }, null, 2), contentType: 'application/json'
+            correlatedLongTasks, longTaskCpuAttribution }, null, 2), contentType: 'application/json'
         });
         console.log('AV_HYDRATION_CPU_PROFILE_SUMMARY', JSON.stringify(cpuProfileSummary));
       } catch (error) {
