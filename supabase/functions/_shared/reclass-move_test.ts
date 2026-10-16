@@ -53,7 +53,7 @@ Deno.test("Reclass movement contract rejects extra keys, stale/malformed quantit
   for (const invalid of [
     { ...valid, actorId: "forged" },
     { ...valid, expectedRevision: 0 },
-    { ...valid, source: { ...source, identity: { ...source.identity, ptronhand: 700 } } },
+    { ...valid, source: { ...source, identity: { ...source.identity, ptronhand: {} } } },
     { ...valid, source: { ...source, identity: { ...source.identity, unexpected: "value" } } },
     { ...valid, lines: [{ direction: "move_up", destinationSeason: "U1", quantity: 610.5 }] },
     { ...valid, lines: [{ direction: "move_up", destinationSeason: "Q1", quantity: 610 }] },

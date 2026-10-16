@@ -407,7 +407,7 @@ export function migrationContractQuery(name) {
         to_regprocedure('public.get_inventory_reclass_move_status_compact_v1(uuid,text)')))
     and exists(select 1 from pg_proc p
       where p.oid=to_regprocedure('private.encode_inventory_reclass_rows_v1(jsonb)')
-        and p.provolatile='i' and p.prosecdef and p.proconfig @> array['search_path=""']
+        and p.provolatile='s' and p.prosecdef and p.proconfig @> array['search_path=""']
         and not has_function_privilege('anon',p.oid,'execute')
         and not has_function_privilege('authenticated',p.oid,'execute')
         and not has_function_privilege('service_role',p.oid,'execute'))

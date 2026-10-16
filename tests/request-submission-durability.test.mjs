@@ -169,6 +169,74 @@ function extractFunction(name, nextDeclaration) {
     return appSource.slice(start, end).trim();
 }
 
+test('request photo IndexedDB codec preserves File metadata and supports legacy Blob records', async () => {
+    const context = { Blob, File, ArrayBuffer, Uint8Array, Number, String, Object, Error, Date };
+    vm.runInNewContext(extractFunction('encodeRequestBlobRecord', 'function decodeRequestBlobRecord('), context);
+    vm.runInNewContext(extractFunction('decodeRequestBlobRecord', 'async function putRequestBlobRecord('), context);
+
+    const original = new File([new Uint8Array([0, 1, 128, 255])], 'field-photo.jpg', {
+        type: 'image/jpeg', lastModified: 1_760_000_000_123
+    });
+    const record = { blobId: 'request:REQ-1:token', requestId: 'REQ-1', fileName: original.name,
+        contentType: original.type, blob: original, createdAt: '2026-10-16T00:00:00.000Z', acknowledged: false };
+    const encoded = await context.encodeRequestBlobRecord(record);
+    assert.equal(Object.hasOwn(encoded, 'blob'), false, 'the IDB record must not contain a File/Blob');
+    assert.equal(encoded.blobEncoding, 'arraybuffer-v1');
+    assert.equal(encoded.fileName, original.name);
+    assert.equal(encoded.contentType, original.type);
+    assert.equal(encoded.blobLastModified, original.lastModified);
+    assert.ok(encoded.blobBytes instanceof ArrayBuffer);
+    assert.deepEqual([...new Uint8Array(encoded.blobBytes)], [0, 1, 128, 255]);
+
+    const restored = context.decodeRequestBlobRecord(encoded);
+    assert.ok(restored.blob instanceof File);
+    assert.equal(Object.hasOwn(restored, 'blobBytes'), false, 'decoded records do not retain duplicate encoded bytes');
+    assert.equal(Object.hasOwn(restored, 'blobEncoding'), false);
+    assert.equal(restored.blob.name, original.name);
+    assert.equal(restored.blob.type, original.type);
+    assert.equal(restored.blob.lastModified, original.lastModified);
+    assert.deepEqual([...new Uint8Array(await restored.blob.arrayBuffer())], [0, 1, 128, 255]);
+    assert.deepEqual({ blobId: restored.blobId, requestId: restored.requestId, createdAt: restored.createdAt,
+        acknowledged: restored.acknowledged }, { blobId: record.blobId, requestId: record.requestId,
+        createdAt: record.createdAt, acknowledged: false });
+
+    const legacy = { ...record, blob: new Blob([new Uint8Array([9, 8, 7])], { type: 'image/jpeg' }) };
+    const restoredLegacy = context.decodeRequestBlobRecord(legacy);
+    assert.equal(restoredLegacy.blob, legacy.blob, 'existing Blob records remain readable without conversion');
+    assert.deepEqual([...new Uint8Array(await restoredLegacy.blob.arrayBuffer())], [9, 8, 7]);
+
+    const unknownEncoding = { blobId: 'future', blobEncoding: 'future-v2', blobBytes: new ArrayBuffer(1) };
+    const corruptEncoding = { blobId: 'corrupt', blobEncoding: 'arraybuffer-v1', blobBytes: 'not-bytes' };
+    const rawRows = [encoded, legacy, unknownEncoding, corruptEncoding];
+    context.REQUEST_BLOB_STORE = 'request_blobs';
+    context.openDB = async () => ({ transaction(storeName, mode) {
+        assert.equal(storeName, 'request_blobs');
+        assert.equal(mode, 'readonly');
+        return { objectStore(name) {
+            assert.equal(name, 'request_blobs');
+            return { getAll() {
+                const request = {};
+                queueMicrotask(() => { request.result = rawRows; request.onsuccess?.(); });
+                return request;
+            } };
+        } };
+    } });
+    vm.runInNewContext(extractFunction('getAllIndexedDbRecords', 'async function encodeRequestBlobRecord('), context);
+    const hydratedRows = await context.getAllIndexedDbRecords('request_blobs');
+    assert.equal(hydratedRows.length, 4, 'a malformed/unknown record must not hide valid pending records');
+    assert.ok(hydratedRows[0].blob instanceof File, 'the normal request blob reader rehydrates encoded bytes');
+    assert.equal(hydratedRows[1].blob, legacy.blob, 'the normal reader preserves legacy Blob records');
+    assert.equal(hydratedRows[2], unknownEncoding, 'unknown encodings are preserved for forward compatibility');
+    assert.equal(hydratedRows[3], corruptEncoding, 'a corrupt record is isolated without dropping its metadata');
+    const metadataRows = await context.getAllIndexedDbRecords('request_blobs', { decodeRequestBlobs: false });
+    assert.equal(metadataRows[0], encoded, 'metadata-only cleanup reads raw rows without rehydrating bytes');
+    assert.equal(Object.hasOwn(metadataRows[0], 'blob'), false);
+
+    const unreadable = new Blob([new Uint8Array([1])], { type: 'image/jpeg' });
+    Object.defineProperty(unreadable, 'arrayBuffer', { value: () => Promise.reject(new Error('synthetic photo byte read failure')) });
+    await assert.rejects(() => context.encodeRequestBlobRecord({ ...record, blob: unreadable }), /synthetic photo byte read failure/);
+});
+
 test('request commit telemetry cannot interrupt retained drafts or a successful retry', async () => {
     for (const telemetry of ['available', 'missing', 'throwing']) {
         const captured = [], retries = [], refreshed = [];

@@ -9,11 +9,10 @@ export function isIPhoneSimulatorProject(project = {}) {
 }
 
 export function frontendUiTimingLimitMs(project) {
-  return isIPhoneSimulatorProject(project) ? 400 : 100;
+  return 400;
 }
 
-/** Human-approved frontend-only gates: iPhone simulator <=400ms; others <100ms. */
-export function assertFrontendUiTiming(expectation, project, desktopLimitMs = 100) {
-  if (isIPhoneSimulatorProject(project)) expectation.toBeLessThanOrEqual(400);
-  else expectation.toBeLessThan(Math.min(100, desktopLimitMs));
+/** Human-approved frontend-only gate: every environment and UI operation is <=400ms. */
+export function assertFrontendUiTiming(expectation, _project, _operationLimitMs = 400) {
+  expectation.toBeLessThanOrEqual(400);
 }

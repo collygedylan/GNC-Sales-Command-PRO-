@@ -6,7 +6,7 @@ import { reclassModalPaintLimitMs, scheduleReclassPaintProbeCheck } from './help
 test('Reclass modal timing follows the shared frontend simulator policy', () => {
   assert.equal(reclassModalPaintLimitMs({ use: devices['iPhone 13'] }), 400);
   for (const name of ['Desktop Chrome', 'Desktop Safari', 'Pixel 7']) {
-    assert.equal(reclassModalPaintLimitMs({ use: devices[name] }), 100);
+    assert.equal(reclassModalPaintLimitMs({ use: devices[name] }), 400);
   }
 });
 

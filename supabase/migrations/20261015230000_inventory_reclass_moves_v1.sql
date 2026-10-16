@@ -530,8 +530,8 @@ begin
   for destination_aggregates in select target.* from pg_temp.reclass_move_targets_v1 target order by target.destination_lot loop
     if destination_aggregates.destination_before is null then
       insert into public.ph_master_inventory
-      select destination_row.*
-      from jsonb_populate_record(null::public.ph_master_inventory,destination_aggregates.destination_after) as destination_row;
+      select populated_destination.*
+      from jsonb_populate_record(null::public.ph_master_inventory,destination_aggregates.destination_after) as populated_destination;
       select to_jsonb(m.*) into destination_after_json from public.ph_master_inventory m
       where m.unique_id=destination_aggregates.destination_uid;
     else
@@ -948,9 +948,9 @@ begin
     join pg_temp.reclass_batch_targets_v1 t on t.destination_uid=u.unique_id;
   with inserted_targets as (
     insert into public.ph_master_inventory as inserted
-    select destination_row.*
+    select populated_destination.*
     from pg_temp.reclass_batch_targets_v1 t
-    cross join lateral jsonb_populate_record(null::public.ph_master_inventory,t.destination_after) as destination_row
+    cross join lateral jsonb_populate_record(null::public.ph_master_inventory,t.destination_after) as populated_destination
     where t.match_count=0 order by t.source_index,t.destination_season
     returning inserted.*
   )

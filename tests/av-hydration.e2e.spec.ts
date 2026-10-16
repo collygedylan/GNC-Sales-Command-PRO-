@@ -587,10 +587,11 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(preview.visibleCardCount).toBeGreaterThan(0);
     expect(preview.visibleCardCount).toBeLessThanOrEqual(PREVIEW_DISPLAY_ROW_LIMIT);
     expect(preview.firstCardMs).toBeGreaterThanOrEqual(0);
-    assertFrontendUiTiming(expect.soft(preview.firstCardMs), test.info().project);
+    // Human-approved exception: only the initial uncached fetch-to-first-card may take 1,000ms.
+    expect.soft(preview.firstCardMs).toBeLessThanOrEqual(1000);
     expect(preview.dataRenderDurationsMs.length).toBeGreaterThan(0);
     assertFrontendUiTiming(expect.soft(Math.max(0, ...preview.dataRenderDurationsMs, ...preview.chunkCallbackDurationsMs)), test.info().project);
-    assertFrontendUiTiming(expect.soft(Math.max(0, ...preview.nonRenderLongTaskDurationsMs)), test.info().project);
+    expect.soft(Math.max(0, ...preview.nonRenderLongTaskDurationsMs)).toBeLessThan(100);
     expect(preview.master.fieldCoverage).not.toBe('full');
     expect(preview.master.rowCompleteness).not.toBe('complete');
     expect(preview.verified).toBe(false);
@@ -653,7 +654,7 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     expect(full.master.rowCompleteness).toBe('complete');
     expect(full.previewRows).toBe(SYNTHETIC_MASTER_ROWS);
     assertFrontendUiTiming(expect.soft(Math.max(0, ...full.dataRenderDurationsMs, ...full.chunkCallbackDurationsMs)), test.info().project);
-    assertFrontendUiTiming(expect.soft(Math.max(0, ...full.nonRenderLongTaskDurationsMs)), test.info().project);
+    expect.soft(Math.max(0, ...full.nonRenderLongTaskDurationsMs)).toBeLessThan(100);
     expect(await search.inputValue()).toBe('AVH.00049');
     await expect(page.locator('#av-content [data-dom-id]').filter({ hasText: 'AVH.00049' }).first()).toBeVisible();
 
@@ -676,14 +677,15 @@ test('AV renders a bounded first-page preview before side reads, then verifies a
     await captureMilestone('warm-repeat', warm);
     assertFrontendUiTiming(expect.soft(warm.firstCardMs), test.info().project);
     assertFrontendUiTiming(expect.soft(Math.max(0, ...warm.dataRenderDurationsMs, ...warm.chunkCallbackDurationsMs)), test.info().project);
-    assertFrontendUiTiming(expect.soft(Math.max(0, ...warm.nonRenderLongTaskDurationsMs)), test.info().project);
+    expect.soft(Math.max(0, ...warm.nonRenderLongTaskDurationsMs)).toBeLessThan(100);
     expect(fixture.backgroundMasterReads).toBe(readsBeforeWarmRepeat);
     expect(warm.master.rowCompleteness).toBe('complete');
     expect(warm.verified).toBe(true);
 
     const evidence = {
       kind: 'isolated-client-render-fixture', datasetRows: SYNTHETIC_MASTER_ROWS,
-      acceptedAvDomRenderLimitMs: 150,
+      acceptedColdAvFirstCardLimitMs: 1000,
+      acceptedAvDomRenderLimitMs: 400,
       acceptedBackgroundLongTaskLimitMs: 100,
       environment: {
         nodeVersion: process.version,

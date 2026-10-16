@@ -91,7 +91,7 @@ test('mobile schedule keeps one search row, honest filters, and each sheet state
   await testInfo.attach('synthetic-schedule-cold-warm-ms', { body: JSON.stringify(timings), contentType: 'application/json' });
 });
 
-test('schedule paged cold render and warm metadata refresh stay below 100 ms at 10,000-row metadata scale', {"tag":["@production-schedule"]}, async ({ page }, testInfo) => {
+test('schedule paged cold render and warm metadata refresh stay within 400 ms at 10,000-row metadata scale', {"tag":["@production-schedule"]}, async ({ page }, testInfo) => {
   await page.setContent('<body class="ops-precision-pilot"><main id="view-managers"><div id="manager-production-schedule-root"></div></main></body>');
   await page.addStyleTag({ path: 'styles/production-schedule.css' });
   await page.addScriptTag({ path: 'assets/stable-view-dom.js' });

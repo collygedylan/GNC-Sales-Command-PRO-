@@ -27,6 +27,20 @@ function confirmedEvidence(uid: string, lastUpdated: string) {
   });
 }
 
+function confirmedHoldReceipt(row: Record<string, any>, reason: string, revision: number, lastUpdated: string, jobId: string) {
+  Object.assign(row, { holdstopcode: 'H', HOLDSTOPCODE: 'H', holdstopreason: reason, HOLDSTOPREASON: reason,
+    av_rule_last_clear_reason: 'hold_requested', AV_RULE_LAST_CLEAR_REASON: 'hold_requested',
+    av_rule_last_cleared_at: lastUpdated, AV_RULE_LAST_CLEARED_AT: lastUpdated, last_updated: lastUpdated, LAST_UPDATED: lastUpdated });
+  const evidence = Object.fromEntries(DRIVE_EVIDENCE_KEYS.map(key => [key,
+    key === 'last_updated' ? lastUpdated : row[key] ?? row[key.toUpperCase()] ?? null]));
+  return { ok: true, status: 'queued', jobId, queuedAt: lastUpdated,
+    workflowPolicyVersion: 'reclass-action-workflow-v7-editable-fields-20261009',
+    inventoryFields: [], inventoryRevision: String(revision),
+    liveEdits: [{ unique_id: String(row.unique_id ?? row.UNIQUE_ID), priority: row.priority ?? row.PRIORITY ?? null,
+      holdstopcode: 'H', holdstopreason: reason, av_rule_last_clear_reason: 'hold_requested',
+      av_rule_last_cleared_at: lastUpdated, last_updated: lastUpdated, evidence }] };
+}
+
 
 // The real editor/submit handlers run against intercepted requests. Unknown
 // writes remain rejected by the existing fixture; no real inventory/email is used.
@@ -62,9 +76,17 @@ async function fixture(page: Page, baseURL: string, project: string,
   page.on('requestfailed', trackBrowseEnd);
   await settleDriveLayoutShell(page, project);
   const calls: any[] = [];
+  const createReplies: Array<Record<string, unknown>> = [];
   let rejectNext = false;
   let deliveryStatus = 'queued';
   let createReply: ((body: Record<string, any>) => unknown) | null = null;
+  const summarizeCreateReply = (payload: unknown) => {
+    const value = payload && typeof payload === 'object' ? payload as Record<string, any> : {};
+    return { ok: value.ok === true, status: String(value.status || ''), code: String(value.code || ''),
+      jobIdPresent: typeof value.jobId === 'string' && !!value.jobId, workflowPolicyVersion: String(value.workflowPolicyVersion || ''),
+      inventoryRevision: String(value.inventoryRevision || ''), liveEditCount: Array.isArray(value.liveEdits) ? value.liveEdits.length : 0,
+      inventoryFieldReceiptCount: Array.isArray(value.inventoryFields) ? value.inventoryFields.length : 0 };
+  };
   await page.route('**/functions/v1/app-api', async route => {
     if (route.request().method() !== 'POST') return route.fallback();
     const body = route.request().postDataJSON();
@@ -73,9 +95,20 @@ async function fixture(page: Page, baseURL: string, project: string,
       headers: { 'access-control-allow-origin': new URL(baseURL).origin, 'access-control-allow-credentials': 'true' }, body: JSON.stringify(payload) });
     if (body.operation === 'create') {
       calls.push(structuredClone(body));
-      if (rejectNext) { rejectNext = false; return reply({ ok: false, error: 'Synthetic queue failure; your draft is retained.' }); }
-      if (createReply) return reply(await createReply(body));
-      return reply({ ok: true, status: 'queued', jobId: 'synthetic-reclass', queuedAt: new Date().toISOString() });
+      if (rejectNext) {
+        rejectNext = false;
+        const payload = { ok: false, error: 'Synthetic queue failure; your draft is retained.' };
+        createReplies.push(summarizeCreateReply(payload));
+        return reply(payload);
+      }
+      if (createReply) {
+        const payload = await createReply(body);
+        createReplies.push(summarizeCreateReply(payload));
+        return reply(payload);
+      }
+      const payload = { ok: true, status: 'queued', jobId: 'synthetic-reclass', queuedAt: new Date().toISOString() };
+      createReplies.push(summarizeCreateReply(payload));
+      return reply(payload);
     }
     if (body.operation === 'status') return reply({ ok: true, status: deliveryStatus, jobId: 'synthetic-reclass' });
     return route.fallback();
@@ -359,7 +392,122 @@ async function fixture(page: Page, baseURL: string, project: string,
     if (expand && await row.locator('.argos-reclass-row-toggle').getAttribute('aria-expanded') !== 'true') await row.locator('.argos-reclass-row-toggle').click();
     return row;
   };
-  return { control, calls, open, mount, confirmInventoryRevision, failNext: () => { rejectNext = true; }, conflict: () => { deliveryStatus = 'conflict'; }, setCreateReply: (replyFactory: (body: Record<string, any>) => unknown) => { createReply = replyFactory; } };
+  return { control, calls, createReplies, open, mount, confirmInventoryRevision, failNext: () => { rejectNext = true; }, conflict: () => { deliveryStatus = 'conflict'; }, setCreateReply: (replyFactory: (body: Record<string, any>) => unknown) => { createReply = replyFactory; } };
+}
+
+async function expectReclassModalHiddenWithDiagnostics(page: Page, f: Awaited<ReturnType<typeof fixture>>, moveRequests: Array<Record<string, any>>) {
+  try {
+    await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
+  } catch (error) {
+    const browserState = await page.evaluate(() => window.eval(`(() => {
+      const state = argosInventoryTransactionState;
+      const source = fullInventory.find(row => String(row.UNIQUE_ID || row.unique_id || '') === 'drive-layout-synthetic-1-no-photo');
+      const toast = document.getElementById('toast-notification');
+      const apply = document.getElementById('argos-inventory-transaction-apply');
+      const pending = state?.pendingReclassMove;
+      const holdProposals = argosReclassMultiActionState?.holdStopProposals || {};
+      const hold = Object.values(holdProposals)[0] || null;
+      const proposals = getArgosReclassRowProposalMap('drive-layout-synthetic-1-no-photo', false) || {};
+      const draftErrors = Array.from(document.querySelectorAll('#argos-inventory-transaction-modal [aria-invalid="true"], #argos-inventory-transaction-modal [role="alert"], #argos-inventory-transaction-modal .field-error, #argos-inventory-transaction-modal .argos-reclass-error'))
+        .map(node => String(node.textContent || node.getAttribute('aria-label') || '').trim().slice(0, 240)).filter(Boolean).slice(0, 12);
+      return { modalVisible: !!document.getElementById('argos-inventory-transaction-modal')?.getClientRects().length,
+        toastText: String(toast?.innerText || '').slice(0, 500), applyText: String(apply?.textContent || ''), applyDisabled: !!apply?.disabled,
+        submitting: !!state?.submitting, pendingMove: pending ? { uncertain: !!pending.uncertain, inFlight: !!pending.inFlight,
+          commandIdPresent: !!pending.command?.commandId, movedUidCount: Array.isArray(pending.movedUids) ? pending.movedUids.length : 0 } : null,
+        holdDraft: hold ? { action: String(hold.action || ''), reasonPresent: !!String(hold.reason || '').trim(),
+          reasonLength: String(hold.reason || '').length, sourceUidPresent: !!String(hold.sourceUid || '').trim() } : null,
+        draftErrorState: { validationMessages: draftErrors,
+          modelErrorPresent: !!(state?.inquiryModel?.error || state?.inquiryModel?.draftError),
+          invalidFieldCount: document.querySelectorAll('#argos-inventory-transaction-modal [aria-invalid="true"]').length },
+        proposalActions: Object.keys(proposals).sort(), source: source ? { onHand: String(source.PTRONHAND ?? source.ptronhand ?? ''),
+          available: String(source.PTRAVAILABLE ?? source.ptravailable ?? ''), season: String(source.SEASON ?? source.season ?? ''),
+          holdCode: String(source.HOLDSTOPCODE ?? source.holdstopcode ?? '') } : null };
+    })()`));
+    const source = f.control.master.find((row: any) => row.unique_id === 'drive-layout-synthetic-1-no-photo');
+    const submitProbe = await page.evaluate(() => window.eval('window.__reclassSubmitProbe || null'));
+    await test.info().attach('reclass-final-submit-failure-diagnostics.json', { contentType: 'application/json', body: JSON.stringify({
+      error: error instanceof Error ? error.message.slice(0, 1200) : String(error).slice(0, 1200), browserState,
+      submitProbe,
+      createRequestCount: f.calls.length, createReplies: f.createReplies,
+      moveRequestCount: moveRequests.length, moveOperations: moveRequests.map(request => String(request.operation || '')),
+      datasetRevision: String(f.control.datasetRevision || ''), sourceControl: source ? { onHand: String(source.PTRONHAND ?? source.ptronhand ?? ''),
+        available: String(source.PTRAVAILABLE ?? source.ptravailable ?? ''), season: String(source.SEASON ?? source.season ?? ''),
+        holdCode: String(source.HOLDSTOPCODE ?? source.holdstopcode ?? '') } : null,
+    }, null, 2) });
+    throw error;
+  }
+}
+
+async function installReclassSubmitDiagnostics(page: Page) {
+  await page.evaluate(() => {
+    const root = window as any;
+    const probe: any = root.__reclassSubmitProbe = { events: [], payloads: [], toastEvents: [] };
+    const summarizePayload = (payload: any) => ({
+      requestActions: Array.isArray(payload?.transaction?.requestActions) ? payload.transaction.requestActions.map(String) : [],
+      holdStopProposals: Array.isArray(payload?.transaction?.holdStopProposals) ? payload.transaction.holdStopProposals.map((item: any) => ({
+        action: String(item?.action || ''), reasonPresent: !!String(item?.reason || '').trim(), sourceUidPresent: !!String(item?.sourceUid || '').trim(),
+      })) : [],
+      rowOverlays: Array.isArray(payload?.rowOverlays) ? payload.rowOverlays.map((overlay: any) => ({
+        uniqueId: String(overlay?.unique_id || ''), actions: Array.isArray(overlay?.proposals) ? overlay.proposals.map((item: any) => String(item?.action || '')) : [],
+        moveLines: Array.isArray(overlay?.proposals) ? overlay.proposals.filter((item: any) => ['move_up', 'move_down'].includes(String(item?.action || '')))
+          .flatMap((item: any) => Array.isArray(item?.splits) ? item.splits.map((split: any) => ({ quantity: Number(split.quantity), destinationSeason: String(split.destinationSeason || '') })) : []) : [],
+      })) : [],
+    });
+    const originalBuild = root.buildArgosInventoryTransactionPayload;
+    if (typeof originalBuild === 'function') {
+      root.buildArgosInventoryTransactionPayload = function(...args: any[]) {
+        try {
+          const payload = originalBuild.apply(this, args);
+          probe.payloads.push(summarizePayload(payload));
+          return payload;
+        } catch (error) {
+          probe.payloads.push({ buildError: String((error as Error)?.message || error).slice(0, 300) });
+          throw error;
+        }
+      };
+      probe.originalBuild = originalBuild;
+    }
+    const originalSubmit = root.submitArgosInventoryTransaction;
+    if (typeof originalSubmit === 'function') {
+      root.submitArgosInventoryTransaction = function(...args: any[]) {
+        const state = window.eval('argosInventoryTransactionState');
+        const actionState = window.eval('argosReclassMultiActionState');
+        const holds = actionState?.holdStopProposals || {};
+        const event: any = { at: performance.now(), type: 'submit-start', uid: String(state?.snapshot?.uniqueId || state?.uid || ''),
+          submitting: !!state?.submitting, pendingMove: !!state?.pendingReclassMove,
+          holdActions: Object.values(holds).map((item: any) => ({ action: String(item?.action || ''),
+            reasonPresent: !!String(item?.reason || '').trim(), sourceUidPresent: !!String(item?.sourceUid || '').trim() })) };
+        probe.events.push(event);
+        let result: any;
+        try { result = originalSubmit.apply(this, args); }
+        catch (error) { event.type = 'submit-throw'; event.error = String((error as Error)?.message || error).slice(0, 300); throw error; }
+        if (result && typeof result.then === 'function') return Promise.resolve(result).then((value: unknown) => {
+          event.type = 'submit-finish'; event.result = value === false ? 'false' : value === true ? 'true' : typeof value; return value;
+        }, (error: unknown) => { event.type = 'submit-reject'; event.error = String((error as Error)?.message || error).slice(0, 300); throw error; });
+        event.type = 'submit-finish'; event.result = result === false ? 'false' : result === true ? 'true' : typeof result; return result;
+      };
+      probe.originalSubmit = originalSubmit;
+    }
+    const originalShowToast = root.showToast;
+    if (typeof originalShowToast === 'function') {
+      root.showToast = function(...args: any[]) {
+        probe.toastEvents.push({ at: performance.now(), title: String(args[0] || '').slice(0, 120),
+          message: String(args[1] || '').slice(0, 300), isError: args[2] === true });
+        return originalShowToast.apply(this, args);
+      };
+      probe.originalShowToast = originalShowToast;
+    }
+    const toast = document.getElementById('toast-notification');
+    if (toast && typeof MutationObserver !== 'undefined') {
+      let previous = '';
+      const observer = new MutationObserver(() => {
+        const text = String(toast.innerText || '').trim().slice(0, 300);
+        if (text && text !== previous) { probe.toastEvents.push({ at: performance.now(), text }); previous = text; }
+      });
+      observer.observe(toast, { subtree: true, childList: true, characterData: true, attributes: true });
+      probe.toastObserver = observer;
+    }
+  });
 }
 
 async function installLiveMoveEndpoint(page: Page, baseURL: string, control: any) {
@@ -670,15 +818,48 @@ test('closing a pending inquiry and reopening preserves the new inquiry draft wh
   await row.locator('[data-reclass-v3-action="hold"]').click();
   await row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('new inquiry draft');
   await expect(page.locator('#argos-inventory-transaction-apply')).toBeEnabled();
-  finish({ ok: true, status: 'queued', jobId: 'first-inquiry' });
+  const firstSource = f.control.master.find((candidate: any) => candidate.unique_id === 'drive-layout-synthetic-1-no-photo');
+  if (!firstSource) throw new Error('The first confirmed Hold receipt requires the source row.');
+  f.control.datasetRevision = 500;
+  finish(confirmedHoldReceipt(firstSource, 'first pending inquiry', 500, '2026-10-16T12:00:00Z', 'first-inquiry'));
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('gnc_reclass_delivery_jobs_v1') || '[]').length)).toBe(1);
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeVisible();
   await expect(move.getByLabel('Move Down quantity 1', { exact: true })).toHaveValue('15');
   await expect(row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]')).toHaveValue('new inquiry draft');
   await expect(page.locator('#argos-inventory-transaction-apply')).toBeEnabled();
-  f.setCreateReply(() => ({ ok: true, status: 'queued', jobId: 'second-inquiry' }));
+  const refreshResult = await page.evaluate(() => window.eval('getProductionLiveSyncCoordinator().check("stale-inquiry-receipt-settle")'));
+  expect(refreshResult, 'the new move must use a fresh permission-scoped inventory read after the prior Hold receipt').toBe(true);
+  await expect.poll(() => page.evaluate(() => window.eval(`(() => {
+    const context = getProductionLiveSyncContext();
+    const state = getDatasetState('master');
+    return !!state.liveVerifiedRevision && state.liveVerifiedScope === context.scope
+      && state.liveVerifiedPermission === context.dataPermissionVersion
+      && isConfirmedInventoryReadRevisionCurrent(state.liveVerifiedRevision)
+      && productionLiveSyncVerifiedView === productionVerifiedViewKey(context);
+  })()`))).toBe(true);
+  await expect(row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]')).toHaveValue('new inquiry draft');
+  expect(await page.evaluate(() => window.eval(`(() => {
+    const source = findItemByUniqueId('drive-layout-synthetic-1-no-photo');
+    return source?.HOLDSTOPREASON ?? source?.holdstopreason;
+  })()`)))
+    .toBe('first pending inquiry');
+  f.setCreateReply(() => {
+    const row = f.control.master.find((candidate: any) => candidate.unique_id === 'drive-layout-synthetic-1-no-photo');
+    if (!row) throw new Error('The confirmed Hold reply requires the current source row.');
+    const lastUpdated = '2026-10-16T12:01:00Z';
+    Object.assign(row, { holdstopcode: 'H', holdstopreason: 'new inquiry draft',
+      av_rule_last_clear_reason: 'hold_requested', av_rule_last_cleared_at: lastUpdated, last_updated: lastUpdated });
+    const evidence = Object.fromEntries(DRIVE_EVIDENCE_KEYS.map(key => [key, key === 'last_updated' ? lastUpdated : row[key] ?? null]));
+    f.control.datasetRevision = Math.max(900, Number(f.control.datasetRevision || 0) + 1);
+    return { ok: true, status: 'queued', jobId: 'second-inquiry', queuedAt: lastUpdated,
+      workflowPolicyVersion: 'reclass-action-workflow-v7-editable-fields-20261009',
+      inventoryFields: [], inventoryRevision: String(f.control.datasetRevision),
+      liveEdits: [{ unique_id: row.unique_id, priority: row.priority ?? null, holdstopcode: 'H', holdstopreason: 'new inquiry draft',
+        av_rule_last_clear_reason: 'hold_requested', av_rule_last_cleared_at: lastUpdated, last_updated: lastUpdated, evidence }] };
+  });
+  await installReclassSubmitDiagnostics(page);
   await page.locator('#argos-inventory-transaction-apply').click();
-  await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
+  await expectReclassModalHiddenWithDiagnostics(page, f, moveRequests);
   expect(f.calls).toHaveLength(2);
   expect(moveRequests).toHaveLength(1);
   expect(moveRequests.map(request => request.moves[0].lines[0].direction)).toEqual(['move_down']);
@@ -735,10 +916,13 @@ test('Move Down commits live inventory and a failed inquiry retains the separate
   expect(f.calls).toHaveLength(0);
   await page.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('Quality Review');
   f.setCreateReply(() => {
-    Object.assign(f.control.master[0], { priority: '2', holdstopcode: 'H', holdstopreason: 'quality review',
-      av_rule_last_clear_reason: 'priority_hold_edit', av_rule_last_cleared_at: '2026-10-09T12:01:00Z', last_updated: '2026-10-09T12:01:00Z' });
-    f.control.datasetRevision = 501;
-    return confirmedLiveEditResponse('2');
+    const source = f.control.master.find((item: any) => item.unique_id === 'drive-layout-synthetic-1-no-photo');
+    if (!source) throw new Error('The confirmed Hold reply requires the current source row.');
+    const lastUpdated = '2026-10-16T12:01:00Z';
+    Object.assign(source, { priority: '2', PRIORITY: '2' });
+    const revision = Math.max(602, 600 + moveRequests.length + 1);
+    f.control.datasetRevision = revision;
+    return confirmedHoldReceipt(source, 'quality review', revision, lastUpdated, 'move-down-hold');
   });
   f.failNext(); await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#toast-notification')).toContainText('Inventory moves were saved. Your remaining inquiry draft is still open; retry to send only those remaining actions.');
@@ -852,17 +1036,21 @@ test('rejected and stale V6 replies do not overwrite local inventory or discard 
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeVisible();
   await expect(row.locator('[data-reclass-v3-proposal-action="priority_change"][data-reclass-v3-proposal-field="priority"]')).toHaveValue('1');
   await expect(row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]')).toHaveValue('quality review');
-  const beforeStale = await page.evaluate(() => window.eval(`(() => ({ priority: fullInventory[0].PRIORITY, hold: fullInventory[0].HOLDSTOPCODE, reason: fullInventory[0].HOLDSTOPREASON }))()`));
+  const beforeStale = await page.evaluate(() => window.eval(`(() => ({ priority: String(fullInventory[0].PRIORITY || ''), hold: String(fullInventory[0].HOLDSTOPCODE || ''), reason: String(fullInventory[0].HOLDSTOPREASON || '') }))()`));
 
   await page.evaluate(() => window.eval(`getDatasetState('master').liveVerifiedRevision = '900'`));
   f.setCreateReply(() => confirmedLiveEditResponse());
   await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
-  await expect(page.locator('#toast-notification')).toContainText('needs a refresh before it can be confirmed');
-  const afterStale = await page.evaluate(() => window.eval(`(() => ({ priority: fullInventory[0].PRIORITY, hold: fullInventory[0].HOLDSTOPCODE, reason: fullInventory[0].HOLDSTOPREASON }))()`));
+  await expect(page.locator('#toast-notification')).toContainText('Your inquiry was accepted. The latest inventory status is being refreshed automatically.');
+  const afterStale = await page.evaluate(() => window.eval(`(() => ({ priority: String(fullInventory[0].PRIORITY || ''), hold: String(fullInventory[0].HOLDSTOPCODE || ''), reason: String(fullInventory[0].HOLDSTOPREASON || '') }))()`));
   expect(afterStale).toEqual(beforeStale);
+  expect(f.calls).toHaveLength(2);
   const queued = await page.evaluate(() => JSON.parse(localStorage.getItem('gnc_reclass_delivery_jobs_v1') || '[]'));
   expect(queued).toHaveLength(1);
+  expect(queued[0].payload.rowOverlays[0].proposals).toEqual(expect.arrayContaining([
+    expect.objectContaining({ action: 'priority_change', priority: '1' }),
+  ]));
   expect(queued[0].payload.transaction.holdStopProposals).toEqual([{ action: 'hold', reason: 'quality review', sourceUid: 'drive-layout-synthetic-1-no-photo' }]);
   expect(f.control.blockedMutations).toEqual([]);
 });
@@ -1400,7 +1588,7 @@ test('Take off hold YES queues the inquiry and retains confirmed photos and spec
   await expect(page.locator('#toast-notification')).toContainText('Hold removed');
   expect(f.calls[0].transaction.requestActions).toEqual(['take_off_hold']);
   expect(f.calls[0].rowOverlays[0].proposals).toEqual([]);
-  expect(await page.evaluate(() => window.eval(`(() => {const row=fullInventory.find(row=>row.UNIQUE_ID==='drive-layout-synthetic-1-no-photo');return {hold:row.HOLDSTOPCODE,photo:row.PHOTO_LINK,spec:row.SPEC,onHand:Number(row.PTRONHAND)};})()`)))
+  expect(await page.evaluate(() => window.eval(`(() => {const row=fullInventory.find(row=>row.UNIQUE_ID==='drive-layout-synthetic-1-no-photo');return {hold:String(row.HOLDSTOPCODE || ''),photo:row.PHOTO_LINK,spec:row.SPEC,onHand:Number(row.PTRONHAND)};})()`)))
     .toEqual({hold:'',photo,spec:'keep specs',onHand:25});
   expect(f.control.blockedMutations).toEqual([]);
 });

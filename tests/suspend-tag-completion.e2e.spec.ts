@@ -356,7 +356,13 @@ async function harness(page: Page, baseURL: string, rows = fixtures, options: { 
   };
   const showStatus = async (status: 'active' | 'completed') => {
     const filters = page.locator('#request-suspend-tag-filter-shell .mobile-browse-filters');
-    if (await filters.count() && await filters.getAttribute('open') === null) await filters.locator('summary').click();
+    // The mobile disclosure is decorated on the next animation frame after
+    // seeding or reloading. Wait for it before deciding whether to open it.
+    if ((page.viewportSize()?.width || 0) <= 767) {
+      await expect(filters).toBeVisible();
+      if (await filters.getAttribute('open') === null) await filters.locator('summary').click();
+    }
+    await expect(page.locator('#request-suspend-tag-status-filter')).toBeVisible();
     await page.locator('#request-suspend-tag-status-filter').selectOption(status);
   };
   const nativeRefresh = async (nextRows: FixtureRow[]) => {
