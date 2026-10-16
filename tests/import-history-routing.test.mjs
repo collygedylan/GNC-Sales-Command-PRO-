@@ -92,13 +92,16 @@ function installLatestImportHarness(ctx, events, configuredFile, dataset = 'soc'
 
 function installBackfillHarness(ctx, properties, filesByArchive = {}) {
   const triggers = [];
+  const clock = Date.parse('2026-10-16T06:00:00Z');
+  ctx.Date = class extends Date { constructor(...args) { super(...(args.length ? args : [clock])); } static now() { return clock; } };
+  ctx.Utilities.formatDate = (date, _zone, pattern) => pattern === 'HH:mm:ss' ? '01:00:00' : pattern === 'Z' ? '-0500' : date.toISOString().slice(0, 10);
   ctx.LockService = { getUserLock: () => ({ tryLock: () => true, releaseLock() {} }) };
   ctx.ScriptApp = {
     getProjectTriggers: () => triggers.slice(),
     deleteTrigger: trigger => { const index = triggers.indexOf(trigger); if (index >= 0) triggers.splice(index, 1); },
     newTrigger: handler => {
       const trigger = { handler, delay: 0, getHandlerFunction: () => handler, timeBased() { return this; },
-        after(delay) { this.delay = delay; return this; }, create() { triggers.push(this); return this; } };
+        after(delay) { this.delay = delay; return this; }, at(date) { this.delay = date.getTime() - clock; return this; }, create() { triggers.push(this); return this; } };
       return trigger;
     },
   };
