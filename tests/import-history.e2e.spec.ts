@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 
@@ -170,8 +171,8 @@ test('Manager Imported Files browses cached immutable snapshots with bounded 50Ã
   expect(renderMeasurement.rows).toBe(50);
   expect(renderMeasurement.columns).toBe(171);
   expect(renderMeasurement.cells).toBe(400);
-  expect(renderMeasurement.coldMs).toBeLessThan(100);
-  expect(renderMeasurement.warmMs).toBeLessThan(100);
+  assertFrontendUiTiming(expect(renderMeasurement.coldMs), test.info().project);
+  assertFrontendUiTiming(expect(renderMeasurement.warmMs), test.info().project);
 
   const nextRows = history.getByRole('button', { name: 'Next', exact: true });
   await nextRows.click();

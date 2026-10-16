@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test, type Page } from '@playwright/test';
 import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 import type { Database } from '../supabase/functions/_shared/database.types';
@@ -101,7 +102,7 @@ test('Company Directory keeps 10k rows responsive with stable 50-row pagination'
   console.log('DIRECTORY_FIRST_FILTER', JSON.stringify({ project: info.project.name, ...firstRender }));
   const firstRenderMs = firstRender.totalMs;
   expect(firstRender.retainedSearchInput).toBe(true);
-  expect(firstRenderMs).toBeLessThan(100);
+  assertFrontendUiTiming(expect(firstRenderMs), test.info().project);
   await expect(root.locator('tbody tr')).toHaveCount(1);
   await expect(root.locator('[aria-label="Company directory pagination"]')).toContainText('Page 1 of 1');
 
@@ -117,7 +118,7 @@ test('Company Directory keeps 10k rows responsive with stable 50-row pagination'
   });
   console.log('DIRECTORY_WARM_FILTER', JSON.stringify({ project: info.project.name, ...warmRender }));
   const warmRenderMs = warmRender.totalMs;
-  expect(warmRenderMs).toBeLessThan(100);
+  assertFrontendUiTiming(expect(warmRenderMs), test.info().project);
   await expect(root.locator('tbody tr')).toHaveCount(50);
   await root.getByRole('button', { name: 'Next page' }).click();
   await expect(root.locator('[aria-label="Company directory pagination"]')).toContainText('Page 2 of 200');
@@ -140,7 +141,7 @@ test('Company Directory keeps 10k rows responsive with stable 50-row pagination'
     root.querySelector('[data-company-directory-form]')!.getBoundingClientRect();
     return performance.now() - start;
   });
-  expect(modalMs).toBeLessThanOrEqual(150);
+  assertFrontendUiTiming(expect(modalMs), test.info().project);
   await info.attach('directory-performance', { contentType: 'application/json', body: JSON.stringify({
     environment: info.project.name, records: 10000, pageSize: 50, networkPageSize: 1000,
     firstLocalFilterRenderMs: firstRenderMs, warmLocalFilterRenderMs: warmRenderMs, cachedModalRenderMs: modalMs,

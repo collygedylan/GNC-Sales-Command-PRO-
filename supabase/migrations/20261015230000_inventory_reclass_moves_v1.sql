@@ -19,6 +19,8 @@ create table if not exists private.ph_inventory_reclass_batch_receipts_v1 (
   command_id text not null,
   request jsonb not null,
   child_request_ids uuid[] not null default '{}'::uuid[],
+  backend_pid integer,
+  transaction_id bigint,
   result jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default clock_timestamp(),
   unique(actor_id, command_id)
@@ -112,6 +114,106 @@ begin
 end
 $function$;
 revoke all on function private.record_inventory_reclass_import_conflict_v1(uuid,uuid,uuid,text,text,text,jsonb) from public, anon, authenticated, service_role;
+
+-- Bind crop-roll deferral to this authenticated batch and the current SQL
+-- transaction. A caller-set marker alone can never bypass the live row hook.
+create or replace function private.ph_inventory_reclass_batch_context_v1(p_request_id uuid default null)
+returns boolean
+language sql stable security definer set search_path = ''
+as $function$
+  select coalesce(auth.role(),'')='service_role'
+    and p_request_id is not null
+    and current_setting('gnc.inventory_reclass_batch',true)=p_request_id::text
+    and exists(select 1 from private.ph_inventory_reclass_batch_receipts_v1 b
+      where b.request_id=p_request_id and b.backend_pid=pg_backend_pid() and b.transaction_id=txid_current()
+        and b.result='{}'::jsonb)
+$function$;
+revoke all on function private.ph_inventory_reclass_batch_context_v1(uuid) from public,anon,authenticated,service_role;
+
+create or replace function private.ph_master_bulk_crop_roll_defer_active_v1()
+returns boolean language plpgsql volatile security definer set search_path = '' as $function$
+declare v_run_id uuid; v_request_id uuid; v_marker text;
+begin
+  v_marker:=current_setting('gnc.master_bulk_crop_roll_deferred',true);
+  if coalesce(v_marker,'')<>'' then
+    v_run_id:=private.ph_master_inventory_import_run_v1();
+    if v_run_id is not null and v_marker like v_run_id::text||':%' then
+      begin v_request_id:=split_part(v_marker,':',2)::uuid; exception when others then return false; end;
+      return v_marker=v_run_id::text||':'||v_request_id::text and exists(
+        select 1 from app_sync_private.ph_master_bulk_import_context_v1 c
+        where c.run_id=v_run_id and c.request_id=v_request_id and c.backend_pid=pg_backend_pid()
+          and c.transaction_id=txid_current());
+    end if;
+  end if;
+  v_marker:=current_setting('gnc.inventory_reclass_batch',true);
+  if coalesce(v_marker,'')='' then return false; end if;
+  begin v_request_id:=v_marker::uuid; exception when others then return false; end;
+  return v_marker=v_request_id::text and private.ph_inventory_reclass_batch_context_v1(v_request_id);
+end
+$function$;
+revoke all on function private.ph_master_bulk_crop_roll_defer_active_v1() from public,anon,authenticated,service_role;
+
+create or replace function private.sync_ph_master_bulk_crop_roll_v1(
+  p_run_id uuid,p_request_id uuid,p_touched_ids text[]
+)
+returns jsonb language plpgsql security definer set search_path = '' as $function$
+declare
+  v_active_run uuid; v_marker text; v_touched integer; v_deleted integer; v_upserted integer;
+  v_reclass boolean:=false;
+begin
+  if coalesce(auth.role(),'')<>'service_role' then raise exception using errcode='42501',message='BULK_CROP_ROLL_SYNC_FORBIDDEN'; end if;
+  if p_request_id is null or p_touched_ids is null then raise exception using errcode='22023',message='BULK_CROP_ROLL_SYNC_INPUT_INVALID'; end if;
+  v_marker:=current_setting('gnc.master_bulk_crop_roll_deferred',true);
+  if p_run_id is null then
+    v_reclass:=private.ph_inventory_reclass_batch_context_v1(p_request_id);
+    if not v_reclass or current_setting('gnc.inventory_reclass_batch',true) is distinct from p_request_id::text then
+      raise exception using errcode='55000',message='BULK_CROP_ROLL_SYNC_CONTEXT_INVALID';
+    end if;
+  else
+    v_active_run:=private.ph_master_inventory_import_run_v1();
+    if v_active_run is distinct from p_run_id or v_marker is distinct from p_run_id::text||':'||p_request_id::text
+      or not exists(select 1 from app_sync_private.ph_master_bulk_import_context_v1 c
+        where c.run_id=p_run_id and c.request_id=p_request_id and c.backend_pid=pg_backend_pid()
+          and c.transaction_id=txid_current()) then
+      raise exception using errcode='55000',message='BULK_CROP_ROLL_SYNC_CONTEXT_INVALID';
+    end if;
+  end if;
+  select count(distinct id)::integer into v_touched from unnest(p_touched_ids) ids(id) where id is not null;
+  delete from public.ph_crop_roll_drive_rows crop
+  where crop.master_unique_id=any(p_touched_ids) and not exists(
+    select 1 from public.ph_master_inventory master where master.unique_id=crop.master_unique_id
+      and btrim(coalesce(master.locationcode,''))<>'' and btrim(coalesce(master.itemcode,''))<>'');
+  get diagnostics v_deleted=row_count;
+  insert into public.ph_crop_roll_drive_rows
+  select mapped.* from public.ph_master_inventory master
+  cross join lateral public.v2_crop_roll_drive_row_from_json(to_jsonb(master)) mapped
+  where master.unique_id=any(p_touched_ids) and mapped.unique_id is not null
+  order by master.unique_id
+  on conflict(unique_id) do update set
+    master_unique_id=excluded.master_unique_id,source_table=excluded.source_table,crop_roll_view=excluded.crop_roll_view,
+    warehouseid=excluded.warehouseid,plantgroupcode=excluded.plantgroupcode,itemcode=excluded.itemcode,
+    qualitycode=excluded.qualitycode,contsize=excluded.contsize,commonname=excluded.commonname,genus=excluded.genus,
+    genusname=excluded.genusname,botanicalname=excluded.botanicalname,lotcode=excluded.lotcode,locationcode=excluded.locationcode,
+    source=excluded.source,desigitem=excluded.desigitem,desigcust=excluded.desigcust,desigloc=excluded.desigloc,
+    priority=excluded.priority,ptravailable=excluded.ptravailable,ptronhand=excluded.ptronhand,ptrreviewed=excluded.ptrreviewed,
+    s_lts=excluded.s_lts,season_supply=excluded.season_supply,saleyear=excluded.saleyear,itemspec=excluded.itemspec,
+    locationnote=excluded.locationnote,locationnotedate=excluded.locationnotedate,locationptn1=excluded.locationptn1,
+    fieldtagcolor=excluded.fieldtagcolor,holdstopcode=excluded.holdstopcode,holdstopreason=excluded.holdstopreason,
+    holdstopbegindate=excluded.holdstopbegindate,season=excluded.season,blockalpha=excluded.blockalpha,
+    blocknumber=excluded.blocknumber,app_tab_assignment=excluded.app_tab_assignment,assignedto=excluded.assignedto,
+    date_completed=excluded.date_completed,av_note=excluded.av_note,sales_note=excluded.sales_note,salesnote=excluded.salesnote,
+    match=excluded.match,loc_match_qty=excluded.loc_match_qty,initial_ptr=excluded.initial_ptr,spec=excluded.spec,
+    caliper=excluded.caliper,photo_link=excluded.photo_link,photo_name=excluded.photo_name,dock_photo_link=excluded.dock_photo_link,
+    dock_photo_name=excluded.dock_photo_name,flyer_photo_link=excluded.flyer_photo_link,flyer_photo_name=excluded.flyer_photo_name,
+    flyer_completed=excluded.flyer_completed,flyer_av_note=excluded.flyer_av_note,flyer_match=excluded.flyer_match,
+    flyer_loc_match_qty=excluded.flyer_loc_match_qty,flyer_spec=excluded.flyer_spec,flyer_caliper=excluded.flyer_caliper,
+    flyer_pick=excluded.flyer_pick,flyer_initial_ptr=excluded.flyer_initial_ptr,search_text=excluded.search_text,
+    master_updated_at=excluded.master_updated_at,updated_at=now();
+  get diagnostics v_upserted=row_count;
+  return jsonb_build_object('touched',v_touched,'deleted',v_deleted,'upserted',v_upserted,'context',case when v_reclass then 'reclass' else 'import' end);
+end
+$function$;
+revoke all on function private.sync_ph_master_bulk_crop_roll_v1(uuid,uuid,text[]) from public,anon,authenticated,service_role;
 
 create or replace function private.reclass_numeric_v1(p_value text)
 returns numeric
@@ -428,7 +530,8 @@ begin
   for destination_aggregates in select target.* from pg_temp.reclass_move_targets_v1 target order by target.destination_lot loop
     if destination_aggregates.destination_before is null then
       insert into public.ph_master_inventory
-      select (jsonb_populate_record(null::public.ph_master_inventory,destination_aggregates.destination_after)).*;
+      select destination_row.*
+      from jsonb_populate_record(null::public.ph_master_inventory,destination_aggregates.destination_after) as destination_row;
       select to_jsonb(m.*) into destination_after_json from public.ph_master_inventory m
       where m.unique_id=destination_aggregates.destination_uid;
     else
@@ -514,27 +617,11 @@ declare
   actor_role text;
   permission_scope text;
   request_value jsonb;
-  move jsonb;
-  source_value jsonb;
-  source_uid text;
-  source_row public.ph_master_inventory%rowtype;
-  source_json jsonb;
-  target_lot text;
-  target_season text;
-  source_season text;
-  line_value jsonb;
   line_count integer:=0;
-  source_count integer:=0;
   current_revision bigint;
-  move_index integer:=0;
-  child_command text;
-  child_result jsonb;
   child_ids uuid[]:='{}'::uuid[];
-  rows_value jsonb:='[]'::jsonb;
-  movements_value jsonb:='[]'::jsonb;
   result_value jsonb;
-  destination_seasons text[];
-  claimed_lineage text;
+  previous_reclass_marker text;
 begin
   if coalesce(auth.role(),'') <> 'service_role' then raise exception using errcode='42501',message='INVENTORY_RECLASS_FORBIDDEN'; end if;
   if p_actor_id is null or p_expected_revision is null or p_expected_revision < 1
@@ -563,78 +650,433 @@ begin
   current_revision:=private.lock_ph_master_inventory_for_live_edit_v6();
   if current_revision is distinct from p_expected_revision then raise exception using errcode='40001',message='INVENTORY_RECLASS_REVISION_CONFLICT'; end if;
 
-  create temporary table if not exists reclass_move_claims_v1(lineage_key text primary key,source_uid text,claim_type text) on commit drop;
-  truncate table pg_temp.reclass_move_claims_v1;
   if exists(select 1 from jsonb_array_elements(p_moves) e(value)
     where jsonb_typeof(value) is distinct from 'object' or value - array['source','lines'] <> '{}'::jsonb
       or not (value ?& array['source','lines']) or jsonb_typeof(value->'source') is distinct from 'object'
       or jsonb_typeof(value->'lines') is distinct from 'array' or jsonb_array_length(value->'lines')<1) then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_MOVE_INVALID';
   end if;
+  if exists(select 1 from jsonb_array_elements(p_moves) e(value)
+    where btrim(coalesce(value#>>'{source,uniqueId}',''))='' or length(value#>>'{source,uniqueId}')>1000
+      or jsonb_typeof(value#>'{source,identity}') is distinct from 'object') then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_SOURCE_INVALID';
+  end if;
   if exists(select 1 from jsonb_array_elements(p_moves) e(value) group by value #>> '{source,uniqueId}' having count(*)>1) then
     raise exception using errcode='22023',message='INVENTORY_RECLASS_OVERLAP_INVALID';
   end if;
   select sum(jsonb_array_length(value->'lines'))::integer into line_count from jsonb_array_elements(p_moves) e(value);
   if line_count>100 then raise exception using errcode='22023',message='INVENTORY_RECLASS_LINES_INVALID'; end if;
-  for move in select value from jsonb_array_elements(p_moves) loop
-    move_index:=move_index+1; source_count:=source_count+1;
-    source_value:=move->'source'; source_uid:=btrim(coalesce(source_value->>'uniqueId',''));
-    if source_uid='' or length(source_uid)>1000 or jsonb_typeof(source_value->'identity') is distinct from 'object' then
-      raise exception using errcode='22023',message='INVENTORY_RECLASS_SOURCE_INVALID';
-    end if;
-    select * into source_row from public.ph_master_inventory m where m.unique_id=source_uid;
-    if source_row.unique_id is null then raise exception using errcode='40001',message='INVENTORY_RECLASS_SOURCE_MISSING'; end if;
-    source_json:=to_jsonb(source_row);
-    claimed_lineage:=private.ph_master_inventory_lineage_key_v1(source_json);
-    insert into pg_temp.reclass_move_claims_v1(lineage_key,source_uid,claim_type) values(claimed_lineage,source_uid,'source')
-      on conflict do nothing;
-    if not found then raise exception using errcode='22023',message='INVENTORY_RECLASS_OVERLAP_INVALID'; end if;
-    source_season:=upper(btrim(coalesce(nullif(source_row.season,''),nullif(regexp_replace(coalesce(source_row.lotcode,''),'^.*[.]',''),''),'')));
-    if source_row.lotcode !~ '^.+[.](F1|S1|U1|U2|U3|X|Y|Z)$'
-      or upper(substring(source_row.lotcode from '[.]([^.]+)$')) is distinct from source_season then
-      raise exception using errcode='22023',message='INVENTORY_RECLASS_LOT_INVALID';
-    end if;
-    destination_seasons:=array(select distinct upper(btrim(value->>'destinationSeason')) from jsonb_array_elements(move->'lines') e(value));
-    foreach target_season in array destination_seasons loop
-      if target_season not in ('F1','S1','U1','U2','U3','X','Y','Z') or target_season=source_season then
-        raise exception using errcode='22023',message='INVENTORY_RECLASS_DESTINATION_INVALID';
-      end if;
-      target_lot:=regexp_replace(source_row.lotcode,'[.][^.]+$','')||'.'||target_season;
-      claimed_lineage:=private.ph_master_inventory_lineage_key_v1(source_json||jsonb_build_object('lotcode',target_lot,'season',target_season));
-      insert into pg_temp.reclass_move_claims_v1(lineage_key,source_uid,claim_type) values(claimed_lineage,source_uid,'target')
-        on conflict do nothing;
-      if not found then raise exception using errcode='22023',message='INVENTORY_RECLASS_OVERLAP_INVALID'; end if;
-    end loop;
-    for line_value in select value from jsonb_array_elements(move->'lines') loop
-      if jsonb_typeof(line_value) is distinct from 'object' or line_value - array['direction','destinationSeason','quantity'] <> '{}'::jsonb
-        or jsonb_typeof(line_value->'quantity') is distinct from 'number'
-        or line_value->>'direction' not in ('move_up','move_down') then
-        raise exception using errcode='22023',message='INVENTORY_RECLASS_LINE_INVALID';
-      end if;
-    end loop;
-  end loop;
+  if exists(select 1 from jsonb_array_elements(p_moves) e(value)
+    cross join lateral jsonb_array_elements(value->'lines') l(line)
+    where jsonb_typeof(line) is distinct from 'object'
+      or line-array['direction','destinationSeason','quantity']<>'{}'::jsonb
+      or not (line ?& array['direction','destinationSeason','quantity'])
+      or jsonb_typeof(line->'direction') is distinct from 'string'
+      or jsonb_typeof(line->'destinationSeason') is distinct from 'string'
+      or jsonb_typeof(line->'quantity') is distinct from 'number'
+      or line->>'direction' not in ('move_up','move_down')) then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_LINE_INVALID';
+  end if;
   insert into private.ph_inventory_reclass_batch_receipts_v1(actor_id,command_id,request)
     values(p_actor_id,p_command_id,request_value) returning * into batch_row;
-  move_index:=0;
-  for move in select value from jsonb_array_elements(p_moves) loop
-    move_index:=move_index+1;
-    source_value:=move->'source'; source_uid:=source_value->>'uniqueId';
-    child_command:='reclass-batch:'||left(encode(extensions.digest(convert_to(p_command_id||':'||move_index::text,'UTF8'),'sha256'),'hex'),40);
-    select revision into current_revision from public.app_dataset_revisions where key='ph_master_inventory';
-    child_result:=public.apply_inventory_reclass_move_v1(p_actor_id,child_command,current_revision,source_uid,source_value->'identity',move->'lines');
-    child_ids:=array_append(child_ids,(child_result->>'requestId')::uuid);
-    rows_value:=rows_value||coalesce(child_result->'rows','[]'::jsonb);
-    movements_value:=movements_value||coalesce((select jsonb_agg(value||jsonb_build_object('sourceIndex',move_index)) from jsonb_array_elements(child_result->'movements') e(value)),'[]'::jsonb);
-  end loop;
-  select revision into current_revision from public.app_dataset_revisions where key='ph_master_inventory';
-  result_value:=jsonb_build_object('ok',true,'commandId',p_command_id,'requestId',batch_row.request_id,'revision',current_revision,
-    'rows',rows_value,'movements',movements_value,'status','applied','importStatus','pending');
-  update private.ph_inventory_reclass_batch_receipts_v1 set child_request_ids=child_ids,result=result_value where request_id=batch_row.request_id;
+  previous_reclass_marker:=current_setting('gnc.inventory_reclass_batch',true);
+  update private.ph_inventory_reclass_batch_receipts_v1 set backend_pid=pg_backend_pid(),transaction_id=txid_current()
+    where request_id=batch_row.request_id;
+  perform set_config('gnc.inventory_reclass_batch',batch_row.request_id::text,true);
+  result_value:=private.apply_inventory_reclass_moves_set_v1(p_actor_id,p_command_id,p_expected_revision,p_moves,batch_row.request_id);
+  select coalesce(array_agg(value::uuid),'{}'::uuid[]) into child_ids
+    from jsonb_array_elements_text(result_value->'_childRequestIds') e(value);
+  result_value:=result_value-'_childRequestIds';
+  perform set_config('gnc.inventory_reclass_batch',coalesce(previous_reclass_marker,''),true);
+  update private.ph_inventory_reclass_batch_receipts_v1 set backend_pid=null,transaction_id=null,
+    child_request_ids=child_ids,result=result_value
+    where request_id=batch_row.request_id;
   return result_value;
 end
 $function$;
 revoke all on function public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb) from public,anon,authenticated;
 grant execute on function public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb) to service_role;
+
+-- Multi-source requests share one authorization/fence and use set-based stock
+-- writes. Child receipts and audit lines remain one-for-one with the request.
+create or replace function private.apply_inventory_reclass_moves_set_v1(
+  p_actor_id uuid,p_command_id text,p_expected_revision bigint,p_moves jsonb,p_batch_request_id uuid
+)
+returns jsonb language plpgsql security definer set search_path = '' as $function$
+declare
+  actor_profile public.profiles%rowtype;
+  actor_role text;
+  actor_username text;
+  is_manager boolean;
+  current_revision bigint;
+  source_count integer;
+  line_count integer;
+  result_rows jsonb;
+  result_movements jsonb;
+  child_ids jsonb;
+  touched_ids text[];
+  crop_roll_result jsonb;
+  safe_fields text[]:=array['itemcode','commonname','contsize','locationcode','source','warehousei','warehouseid','season',
+    'qualitycode','field_tag_color','fieldtagcolor','s_lts','plantgroupcode','listprice','itemspec','desigitem','desigcust','desigloc',
+    'priority','saleyear','blockalpha','blocknumber','bay','grower','si_lts','a_lts','ai_lts','varietycode','genusname','botanicalname',
+    'reversecommon','sortnamevariety','containersort','nationalaccount','salesrepid','salesrepname','printedcontainercode'];
+  zero_fields text[]:=array['ptronhand','ptravailable','ptrreviewed','season_supply','season_oh','season_demand','season_available',
+    'ext_ptronhand','end_cap_qty','loc_match_qty','initial_ptr','largeptrqty','maxorderquantity'];
+begin
+  select * into actor_profile from public.profiles p where p.id=p_actor_id and p.disabled_at is null
+    and (p.locked_until is null or p.locked_until<=now()) and not p.must_change_password;
+  if actor_profile.id is null then raise exception using errcode='42501',message='INVENTORY_RECLASS_PROFILE_INACTIVE'; end if;
+  actor_role:=private.normalized_profile_role(actor_profile.role);
+  actor_username:=lower(btrim(coalesce(actor_profile.username,'')));
+  is_manager:=actor_role in ('ADMIN','ADMINISTRATOR','MANAGER');
+
+  create temporary table if not exists reclass_batch_source_before_v1(
+    source_index integer primary key,like public.ph_master_inventory) on commit drop;
+  create temporary table if not exists reclass_batch_source_after_v1(
+    source_index integer primary key,like public.ph_master_inventory) on commit drop;
+  create temporary table if not exists reclass_batch_target_before_v1(
+    source_index integer,destination_season text,like public.ph_master_inventory,
+    primary key(source_index,destination_season)) on commit drop;
+  create temporary table if not exists reclass_batch_target_after_v1(
+    source_index integer,destination_season text,like public.ph_master_inventory,
+    primary key(source_index,destination_season)) on commit drop;
+  create temporary table if not exists reclass_batch_sources_v1(
+    source_index integer primary key,source_uid text unique,child_command text not null,child_request_id uuid not null,
+    source_identity jsonb not null,source_lineage text not null,source_season text not null,
+    source_stem text not null,source_on_hand numeric,source_available numeric,total_quantity numeric not null default 0
+  ) on commit drop;
+  create temporary table if not exists reclass_batch_lines_v1(
+    source_index integer not null,line_index integer not null,direction text not null,destination_season text not null,
+    quantity numeric not null,primary key(source_index,line_index)
+  ) on commit drop;
+  create temporary table if not exists reclass_batch_targets_v1(
+    source_index integer not null,destination_season text not null,destination_lot text not null,quantity numeric not null,
+    destination_uid text not null,destination_lineage text,destination_after jsonb,match_count integer not null default 0,
+    primary key(source_index,destination_season)
+  ) on commit drop;
+  create temporary table if not exists reclass_batch_source_json_v1(
+    source_index integer primary key,source_before jsonb not null,source_after jsonb not null) on commit drop;
+  create temporary table if not exists reclass_batch_target_json_v1(
+    source_index integer not null,destination_season text not null,destination_before jsonb,destination_after jsonb not null,
+    primary key(source_index,destination_season)) on commit drop;
+  truncate table pg_temp.reclass_batch_sources_v1,pg_temp.reclass_batch_lines_v1,pg_temp.reclass_batch_targets_v1;
+  truncate table pg_temp.reclass_batch_source_before_v1,pg_temp.reclass_batch_source_after_v1,
+    pg_temp.reclass_batch_target_before_v1,pg_temp.reclass_batch_target_after_v1,
+    pg_temp.reclass_batch_source_json_v1,pg_temp.reclass_batch_target_json_v1;
+
+  insert into pg_temp.reclass_batch_source_before_v1
+  select e.ordinality::integer,m.*
+  from jsonb_array_elements(p_moves) with ordinality e(value,ordinality)
+  join public.ph_master_inventory m on m.unique_id=btrim(coalesce(e.value#>>'{source,uniqueId}',''))
+  order by e.ordinality;
+  insert into pg_temp.reclass_batch_source_json_v1(source_index,source_before,source_after)
+    select b.source_index,to_jsonb(b)-'source_index','{}'::jsonb
+    from pg_temp.reclass_batch_source_before_v1 b;
+  insert into pg_temp.reclass_batch_sources_v1(source_index,source_uid,child_command,child_request_id,
+    source_identity,source_lineage,source_season,source_stem,source_on_hand,source_available)
+  select e.ordinality::integer,b.unique_id::text,
+    'reclass-batch:'||left(encode(extensions.digest(convert_to(p_command_id||':'||e.ordinality::text,'UTF8'),'sha256'),'hex'),40),
+    gen_random_uuid(),e.value#>'{source,identity}',private.ph_master_inventory_lineage_key_v1(j.source_before),
+    upper(btrim(coalesce(nullif(b.season::text,''),nullif(regexp_replace(coalesce(b.lotcode::text,''),'^.*[.]',''),''),''))),
+    regexp_replace(b.lotcode::text,'[.][^.]+$',''),private.reclass_numeric_v1(b.ptronhand::text),
+    private.reclass_numeric_v1(b.ptravailable::text)
+  from jsonb_array_elements(p_moves) with ordinality e(value,ordinality)
+  join pg_temp.reclass_batch_source_before_v1 b on b.source_index=e.ordinality
+  join pg_temp.reclass_batch_source_json_v1 j using(source_index)
+  order by e.ordinality;
+  get diagnostics source_count=row_count;
+  if source_count<>jsonb_array_length(p_moves) then raise exception using errcode='40001',message='INVENTORY_RECLASS_SOURCE_MISSING'; end if;
+  analyze pg_temp.reclass_batch_sources_v1;
+
+  if not is_manager and exists(select 1 from pg_temp.reclass_batch_sources_v1 s
+    join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    where not exists(select 1 from public.ph_warehouse_assigned_items a where a.present_in_drive
+      and upper(btrim(coalesce(a.itemcode_normalized,a.itemcode,'')))=upper(btrim(coalesce(b.itemcode::text,'')))
+      and lower(regexp_replace(btrim(coalesce(a.genusname_normalized,a.genusname,'')),'[[:space:]]+',' ','g'))
+        =lower(regexp_replace(btrim(coalesce(b.genusname::text,'')),'[[:space:]]+',' ','g'))
+      and lower(regexp_replace(btrim(coalesce(a.assignedto,'')),'[^a-z0-9]+','_','g'))=actor_username)) then
+    raise exception using errcode='42501',message='DRIVE_RECLASS_ROW_NOT_ASSIGNED';
+  end if;
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s
+    join pg_temp.reclass_batch_source_before_v1 b using(source_index) where
+    s.source_identity-array['unique_id','itemcode','contsize','locationcode','lotcode','season','ptronhand','ptravailable']<>'{}'::jsonb
+    or s.source_identity->>'unique_id' is distinct from b.unique_id::text
+    or s.source_identity->>'itemcode' is distinct from b.itemcode::text
+    or s.source_identity->>'contsize' is distinct from b.contsize::text
+    or s.source_identity->>'locationcode' is distinct from b.locationcode::text
+    or s.source_identity->>'lotcode' is distinct from b.lotcode::text
+    or s.source_identity->>'season' is distinct from b.season::text
+    or s.source_identity->>'ptronhand' is distinct from b.ptronhand::text
+    or s.source_identity->>'ptravailable' is distinct from b.ptravailable::text) then
+    raise exception using errcode='40001',message='INVENTORY_RECLASS_SOURCE_CHANGED';
+  end if;
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    where b.lotcode::text !~ '^.+[.](F1|S1|U1|U2|U3|X|Y|Z)$') then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_LOT_INVALID';
+  end if;
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    where upper(substring(b.lotcode::text from '[.]([^.]+)$')) is distinct from s.source_season) then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_LOT_SEASON_AMBIGUOUS';
+  end if;
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s where s.source_on_hand is null or s.source_available is null) then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_QUANTITY_UNKNOWN';
+  end if;
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    where
+    (select count(*) from public.ph_master_inventory m
+      where coalesce(m.warehouseid,m.warehousei,'')=coalesce(b.warehouseid::text,b.warehousei::text,'')
+        and coalesce(m.itemcode,'')=coalesce(b.itemcode::text,'')
+        and coalesce(m.contsize,'')=coalesce(b.contsize::text,'')
+        and coalesce(m.locationcode,'')=coalesce(b.locationcode::text,'')
+        and coalesce(m.lotcode,'')=coalesce(b.lotcode::text,'')
+        and coalesce(m.source,'')=coalesce(b.source::text,'')
+        and coalesce(m.desigitem,'')=coalesce(b.desigitem::text,'')
+        and coalesce(m.desigcust,'')=coalesce(b.desigcust::text,'')
+        and coalesce(m.desigloc,'')=coalesce(b.desigloc::text,''))<>1) then
+    raise exception using errcode='40001',message='INVENTORY_RECLASS_SOURCE_AMBIGUOUS';
+  end if;
+
+  insert into pg_temp.reclass_batch_lines_v1(source_index,line_index,direction,destination_season,quantity)
+  select s.source_index,l.ordinality::integer,l.value->>'direction',upper(btrim(l.value->>'destinationSeason')),
+    private.reclass_numeric_v1(l.value->>'quantity')
+  from jsonb_array_elements(p_moves) with ordinality m(value,ordinality)
+  join pg_temp.reclass_batch_sources_v1 s on s.source_index=m.ordinality
+  cross join lateral jsonb_array_elements(m.value->'lines') with ordinality l(value,ordinality);
+  get diagnostics line_count=row_count;
+  analyze pg_temp.reclass_batch_lines_v1;
+  if line_count>100 or exists(select 1 from pg_temp.reclass_batch_lines_v1 l
+    where l.direction is null or l.direction not in ('move_up','move_down') or l.destination_season is null
+      or l.destination_season not in ('F1','S1','U1','U2','U3','X','Y','Z')
+      or l.destination_season=(select s.source_season from pg_temp.reclass_batch_sources_v1 s where s.source_index=l.source_index)
+      or l.quantity is null or l.quantity<1 or l.quantity<>trunc(l.quantity) or l.quantity>2147483647) then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_LINE_INVALID';
+  end if;
+  update pg_temp.reclass_batch_sources_v1 s set total_quantity=q.quantity
+  from (select l.source_index,sum(l.quantity) quantity from pg_temp.reclass_batch_lines_v1 l group by l.source_index) q
+  where q.source_index=s.source_index;
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 s where s.total_quantity>s.source_on_hand
+      or s.total_quantity>s.source_available) then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_QUANTITY_UNDERFLOW';
+  end if;
+  insert into pg_temp.reclass_batch_targets_v1(source_index,destination_season,destination_lot,quantity,destination_uid)
+  select s.source_index,l.destination_season,s.source_stem||'.'||l.destination_season,sum(l.quantity),gen_random_uuid()::text
+  from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_lines_v1 l using(source_index)
+  group by s.source_index,l.destination_season,s.source_stem;
+  analyze pg_temp.reclass_batch_targets_v1;
+  update pg_temp.reclass_batch_targets_v1 t set destination_uid=case when x.matches=1 then x.destination_uid else t.destination_uid end,
+    match_count=x.matches
+  from (select t.source_index,t.destination_season,count(m.unique_id)::integer matches,min(m.unique_id) destination_uid
+    from pg_temp.reclass_batch_targets_v1 t join pg_temp.reclass_batch_sources_v1 s using(source_index)
+    join pg_temp.reclass_batch_source_before_v1 b using(source_index)
+    left join public.ph_master_inventory m on
+      coalesce(m.warehouseid,m.warehousei,'')=coalesce(b.warehouseid::text,b.warehousei::text,'')
+      and coalesce(m.itemcode,'')=coalesce(b.itemcode::text,'')
+      and coalesce(m.contsize,'')=coalesce(b.contsize::text,'')
+      and coalesce(m.locationcode,'')=coalesce(b.locationcode::text,'')
+      and coalesce(m.lotcode,'')=t.destination_lot
+      and coalesce(m.source,'')=coalesce(b.source::text,'')
+      and coalesce(m.desigitem,'')=coalesce(b.desigitem::text,'')
+      and coalesce(m.desigcust,'')=coalesce(b.desigcust::text,'')
+      and coalesce(m.desigloc,'')=coalesce(b.desigloc::text,'')
+    group by t.source_index,t.destination_season) x
+  where x.source_index=t.source_index and x.destination_season=t.destination_season;
+  if exists(select 1 from pg_temp.reclass_batch_targets_v1 where match_count>1) then
+    raise exception using errcode='40001',message='INVENTORY_RECLASS_DESTINATION_AMBIGUOUS';
+  end if;
+  if exists(select 1 from pg_temp.reclass_batch_targets_v1 t
+    join public.ph_master_inventory m on m.unique_id=t.destination_uid
+    where upper(btrim(coalesce(m.season::text,''))) is distinct from t.destination_season) then
+    raise exception using errcode='40001',message='INVENTORY_RECLASS_DESTINATION_SEASON_MISMATCH';
+  end if;
+  insert into pg_temp.reclass_batch_target_before_v1
+    select t.source_index,t.destination_season,m.* from pg_temp.reclass_batch_targets_v1 t
+    join public.ph_master_inventory m on m.unique_id=t.destination_uid where t.match_count=1;
+  insert into pg_temp.reclass_batch_target_json_v1(source_index,destination_season,destination_before,destination_after)
+    select b.source_index,b.destination_season,to_jsonb(b)-array['source_index','destination_season'],'{}'::jsonb
+    from pg_temp.reclass_batch_target_before_v1 b;
+  if exists(select 1 from pg_temp.reclass_batch_target_before_v1 b
+    where private.reclass_numeric_v1(b.ptronhand::text) is null
+      or private.reclass_numeric_v1(b.ptravailable::text) is null) then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_DESTINATION_QUANTITY_UNKNOWN';
+  end if;
+  update pg_temp.reclass_batch_targets_v1 t set destination_after=(
+    select coalesce(jsonb_object_agg(e.key,e.value),'{}'::jsonb) from pg_temp.reclass_batch_sources_v1 s
+    join pg_temp.reclass_batch_source_json_v1 sj using(source_index)
+    cross join lateral jsonb_each(sj.source_before) e where s.source_index=t.source_index and e.key=any(safe_fields))
+    ||jsonb_build_object('unique_id',t.destination_uid,'lotcode',t.destination_lot,'season',t.destination_season,
+      'last_updated',clock_timestamp(),'concat','reclass-move:'||encode(extensions.digest(convert_to(p_command_id||':'||t.destination_uid,'UTF8'),'sha256'),'hex'))
+    ||(select coalesce(jsonb_object_agg(z.field,'0'::jsonb),'{}'::jsonb) from unnest(zero_fields) z(field))
+    ||jsonb_build_object('ptronhand',t.quantity::text,'ptravailable',t.quantity::text)
+    where t.match_count=0;
+  update pg_temp.reclass_batch_targets_v1 t set destination_lineage=case when t.match_count=1
+      then private.ph_master_inventory_lineage_key_v1(j.destination_before)
+      else private.ph_master_inventory_lineage_key_v1(t.destination_after) end
+    from pg_temp.reclass_batch_target_json_v1 j
+    where t.match_count=1 and j.source_index=t.source_index and j.destination_season=t.destination_season;
+  update pg_temp.reclass_batch_targets_v1 t set destination_lineage=private.ph_master_inventory_lineage_key_v1(t.destination_after)
+    where t.match_count=0;
+  if exists(select 1 from pg_temp.reclass_batch_sources_v1 group by source_lineage having count(*)>1)
+    or exists(select 1 from pg_temp.reclass_batch_targets_v1 group by destination_lineage having count(*)>1)
+    or exists(select 1 from pg_temp.reclass_batch_sources_v1 s join pg_temp.reclass_batch_targets_v1 t
+      on t.destination_lineage=s.source_lineage) then
+    raise exception using errcode='22023',message='INVENTORY_RECLASS_OVERLAP_INVALID';
+  end if;
+  insert into private.ph_inventory_reclass_commands_v1(request_id,actor_id,command_id,request,result)
+  select s.child_request_id,p_actor_id,s.child_command,jsonb_build_object('expectedRevision',p_expected_revision+case when s.source_index=1 then 0 else 1 end,
+    'sourceUid',s.source_uid,'sourceIdentity',s.source_identity,'lines',m.value->'lines'),'{}'::jsonb
+  from pg_temp.reclass_batch_sources_v1 s join jsonb_array_elements(p_moves) with ordinality m(value,ordinality)
+    on m.ordinality=s.source_index order by s.source_index;
+
+  with updated_sources as (
+    update public.ph_master_inventory m set ptronhand=(s.source_on_hand-s.total_quantity)::text,
+      ptravailable=(s.source_available-s.total_quantity)::text,last_updated=clock_timestamp()
+    from pg_temp.reclass_batch_sources_v1 s where m.unique_id=s.source_uid
+    returning m.*
+  )
+  insert into pg_temp.reclass_batch_source_after_v1
+    select s.source_index,u.* from updated_sources u join pg_temp.reclass_batch_sources_v1 s on s.source_uid=u.unique_id;
+  with updated_targets as (
+    update public.ph_master_inventory m set ptronhand=(private.reclass_numeric_v1(b.ptronhand::text)+t.quantity)::text,
+      ptravailable=(private.reclass_numeric_v1(b.ptravailable::text)+t.quantity)::text,last_updated=clock_timestamp()
+    from pg_temp.reclass_batch_targets_v1 t join pg_temp.reclass_batch_target_before_v1 b
+      using(source_index,destination_season)
+    where t.match_count=1 and m.unique_id=t.destination_uid
+    returning m.*
+  )
+  insert into pg_temp.reclass_batch_target_after_v1
+    select t.source_index,t.destination_season,u.* from updated_targets u
+    join pg_temp.reclass_batch_targets_v1 t on t.destination_uid=u.unique_id;
+  with inserted_targets as (
+    insert into public.ph_master_inventory as inserted
+    select destination_row.*
+    from pg_temp.reclass_batch_targets_v1 t
+    cross join lateral jsonb_populate_record(null::public.ph_master_inventory,t.destination_after) as destination_row
+    where t.match_count=0 order by t.source_index,t.destination_season
+    returning inserted.*
+  )
+  insert into pg_temp.reclass_batch_target_after_v1
+    select t.source_index,t.destination_season,i.* from inserted_targets i
+    join pg_temp.reclass_batch_targets_v1 t on t.destination_uid=i.unique_id;
+  update pg_temp.reclass_batch_source_json_v1 j set source_after=to_jsonb(a)-'source_index'
+    from pg_temp.reclass_batch_source_after_v1 a where a.source_index=j.source_index;
+  update pg_temp.reclass_batch_target_json_v1 j set destination_after=to_jsonb(a)-array['source_index','destination_season']
+    from pg_temp.reclass_batch_target_after_v1 a
+    where a.source_index=j.source_index and a.destination_season=j.destination_season;
+  insert into pg_temp.reclass_batch_target_json_v1(source_index,destination_season,destination_before,destination_after)
+    select a.source_index,a.destination_season,null,to_jsonb(a)-array['source_index','destination_season']
+    from pg_temp.reclass_batch_target_after_v1 a
+    where not exists(select 1 from pg_temp.reclass_batch_target_json_v1 j
+      where j.source_index=a.source_index and j.destination_season=a.destination_season);
+  insert into private.ph_inventory_reclass_import_aliases_v1(lineage_key,canonical_unique_id,request_id)
+  select t.destination_lineage,t.destination_uid,s.child_request_id
+  from pg_temp.reclass_batch_targets_v1 t join pg_temp.reclass_batch_sources_v1 s using(source_index)
+  on conflict(lineage_key) do update set canonical_unique_id=excluded.canonical_unique_id,request_id=excluded.request_id
+  where private.ph_inventory_reclass_import_aliases_v1.canonical_unique_id=excluded.canonical_unique_id;
+  if exists(select 1 from pg_temp.reclass_batch_targets_v1 t
+    where not exists(select 1 from private.ph_inventory_reclass_import_aliases_v1 a
+      where a.lineage_key=t.destination_lineage and a.canonical_unique_id=t.destination_uid)) then
+    raise exception using errcode='40001',message='INVENTORY_RECLASS_DESTINATION_AMBIGUOUS';
+  end if;
+
+  insert into private.ph_inventory_reclass_movements_v1(request_id,line_index,direction,destination_season,quantity,
+    source_unique_id,destination_unique_id,source_lineage_key,destination_lineage_key,source_identity,destination_identity,
+    source_before,source_after,destination_before,destination_after)
+  select s.child_request_id,l.line_index,l.direction,l.destination_season,l.quantity,s.source_uid,t.destination_uid,
+    s.source_lineage,t.destination_lineage,
+    jsonb_build_object('unique_id',s.source_uid,'itemcode',sj.source_before->'itemcode','contsize',sj.source_before->'contsize',
+      'locationcode',sj.source_before->'locationcode','lotcode',sj.source_before->'lotcode','season',sj.source_before->'season',
+      'source',sj.source_before->'source','warehouseid',coalesce(sj.source_before->>'warehouseid',sj.source_before->>'warehousei'),
+      'desigitem',sj.source_before->'desigitem','desigcust',sj.source_before->'desigcust','desigloc',sj.source_before->'desigloc'),
+    jsonb_build_object('unique_id',t.destination_uid,'itemcode',sj.source_before->'itemcode','contsize',sj.source_before->'contsize',
+      'locationcode',sj.source_before->'locationcode','lotcode',to_jsonb(t.destination_lot),'season',to_jsonb(t.destination_season),
+      'source',sj.source_before->'source','warehouseid',coalesce(sj.source_before->>'warehouseid',sj.source_before->>'warehousei'),
+      'desigitem',sj.source_before->'desigitem','desigcust',sj.source_before->'desigcust','desigloc',sj.source_before->'desigloc'),
+    sj.source_before,sj.source_after,tj.destination_before,tj.destination_after
+  from pg_temp.reclass_batch_lines_v1 l
+  join pg_temp.reclass_batch_sources_v1 s using(source_index)
+  join pg_temp.reclass_batch_targets_v1 t using(source_index,destination_season)
+  join pg_temp.reclass_batch_source_json_v1 sj using(source_index)
+  join pg_temp.reclass_batch_target_json_v1 tj using(source_index,destination_season);
+
+  insert into public.ph_inventory_transactions(unique_id,action,actor_id,actor_username,actor_display,source_table,source_unique_id,
+    destination_table,destination_unique_id,source_itemcode,source_lotcode,source_locationcode,destination_itemcode,
+    destination_lotcode,destination_locationcode,quantity,source_before,source_after,destination_before,destination_after,
+    status,event_type,raw_payload,search_text)
+  select gen_random_uuid()::text,l.direction,p_actor_id,actor_profile.username,coalesce(actor_profile.display_name,actor_profile.username),
+    'ph_master_inventory',s.source_uid,'ph_master_inventory',t.destination_uid,sj.source_before->>'itemcode',sj.source_before->>'lotcode',
+    sj.source_before->>'locationcode',sj.source_before->>'itemcode',t.destination_lot,sj.source_before->>'locationcode',l.quantity,
+    sj.source_before,sj.source_after,tj.destination_before,tj.destination_after,'applied','inventory_reclass_move',
+    jsonb_build_object('commandId',s.child_command,'requestId',s.child_request_id),
+    lower(concat_ws(' ',actor_profile.username,sj.source_before->>'itemcode',sj.source_before->>'lotcode',
+      sj.source_before->>'locationcode',t.destination_lot,t.destination_season))
+  from pg_temp.reclass_batch_lines_v1 l join pg_temp.reclass_batch_sources_v1 s using(source_index)
+  join pg_temp.reclass_batch_targets_v1 t using(source_index,destination_season)
+  join pg_temp.reclass_batch_source_json_v1 sj using(source_index)
+  join pg_temp.reclass_batch_target_json_v1 tj using(source_index,destination_season)
+  order by s.source_index,l.line_index;
+
+  select coalesce(array_agg(uid),'{}'::text[]) into touched_ids from (
+    select source_uid uid from pg_temp.reclass_batch_sources_v1
+    union select destination_uid from pg_temp.reclass_batch_targets_v1
+  ) touched;
+  crop_roll_result:=private.sync_ph_master_bulk_crop_roll_v1(null,p_batch_request_id,touched_ids);
+  if (crop_roll_result->>'touched')::integer<>(select count(distinct id) from unnest(touched_ids) ids(id)) then
+    raise exception using errcode='55000',message='INVENTORY_RECLASS_CROP_ROLL_SYNC_INCOMPLETE';
+  end if;
+
+  select coalesce(jsonb_agg(jsonb_build_object('table','ph_master_inventory','row',r.row_value)
+      order by r.source_index,r.row_order,r.destination_season),'[]'::jsonb) into result_rows
+  from (select s.source_index,0 row_order,''::text destination_season,s.source_after row_value
+      from pg_temp.reclass_batch_source_json_v1 s
+    union all select t.source_index,1,t.destination_season,t.destination_after
+      from pg_temp.reclass_batch_target_json_v1 t) r;
+  select coalesce(jsonb_agg(jsonb_build_object('line',l.line_index,'direction',l.direction,
+      'destinationSeason',l.destination_season,'quantity',l.quantity,'sourceUniqueId',s.source_uid,
+      'destinationUniqueId',t.destination_uid,'sourceIndex',s.source_index) order by s.source_index,l.line_index),'[]'::jsonb)
+    into result_movements
+  from pg_temp.reclass_batch_lines_v1 l join pg_temp.reclass_batch_sources_v1 s using(source_index)
+    join pg_temp.reclass_batch_targets_v1 t using(source_index,destination_season);
+
+  select coalesce(jsonb_agg(s.child_request_id order by s.source_index),'[]'::jsonb) into child_ids
+  from pg_temp.reclass_batch_sources_v1 s;
+  select revision into current_revision from public.app_dataset_revisions where key='ph_master_inventory';
+  with row_values as (
+    select s.source_index,0 row_order,''::text destination_season,s.source_after row_value
+    from pg_temp.reclass_batch_source_json_v1 s
+    union all
+    select t.source_index,1,t.destination_season,t.destination_after
+    from pg_temp.reclass_batch_target_json_v1 t
+  ), source_rows as (
+    select r.source_index,jsonb_agg(jsonb_build_object('table','ph_master_inventory','row',r.row_value)
+      order by r.row_order,r.destination_season) rows_value
+    from row_values r group by r.source_index
+  ), movement_values as (
+    select l.source_index,jsonb_build_object('line',l.line_index,'direction',l.direction,
+      'destinationSeason',l.destination_season,'quantity',l.quantity,'sourceUniqueId',s.source_uid,
+      'destinationUniqueId',t.destination_uid) movement_value,l.line_index
+    from pg_temp.reclass_batch_lines_v1 l
+    join pg_temp.reclass_batch_sources_v1 s using(source_index)
+    join pg_temp.reclass_batch_targets_v1 t using(source_index,destination_season)
+  ), source_movements as (
+    select m.source_index,jsonb_agg(m.movement_value order by m.line_index) movements_value
+    from movement_values m group by m.source_index
+  ), responses as (
+    select s.child_request_id,jsonb_build_object('ok',true,'commandId',s.child_command,
+      'requestId',s.child_request_id,'revision',current_revision,'rows',r.rows_value,
+      'movements',m.movements_value,'status','applied','importStatus','pending') result_value
+    from pg_temp.reclass_batch_sources_v1 s
+    join source_rows r using(source_index)
+    join source_movements m using(source_index)
+  )
+  update private.ph_inventory_reclass_commands_v1 c set result=r.result_value
+  from responses r where c.request_id=r.child_request_id;
+  update private.ph_inventory_reclass_batch_receipts_v1 set child_request_ids=(select array_agg(s.child_request_id order by s.source_index)
+    from pg_temp.reclass_batch_sources_v1 s) where request_id=p_batch_request_id;
+  return jsonb_build_object('ok',true,'commandId',p_command_id,'requestId',p_batch_request_id,'revision',current_revision,
+    'rows',result_rows,'movements',result_movements,'status','applied','importStatus','pending','_childRequestIds',child_ids);
+end
+$function$;
+revoke all on function private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid) from public,anon,authenticated,service_role;
 
 create or replace function public.get_inventory_reclass_move_status_v1(p_actor_id uuid,p_command_id text)
 returns jsonb

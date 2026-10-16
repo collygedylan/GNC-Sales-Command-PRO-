@@ -43,6 +43,34 @@ test('Reclass status lookup proves the same command and returns the top-level co
     payload: { action: 'inventory_reclass_move', operation: 'status', commandId: command.commandId, moves: [] } }), /STATUS_INVALID/);
 });
 
+test('Reclass compact transport is an additive RPC adapter and preserves receipt metadata', async () => {
+  const compact = { ok: true, commandId: command.commandId, revision: 18, status: 'applied', importStatus: 'pending',
+    rowEncoding: 'master-null-elision-v1', rowColumns: ['unique_id'],
+    rows: [{ table: 'ph_master_inventory', values: { unique_id: 'server-target' } }], movements: [] };
+  const calls = [];
+  const supabase = { rpc: async (name, params) => { calls.push({ name, params }); return { data: compact, error: null }; } };
+  const compactCommand = { ...command, receiptEncoding: 'master-null-elision-v1' };
+  const result = await handleInventoryReclassMove({ supabase, actorProfile: actor, payload: compactCommand });
+  assert.equal(calls[0].name, 'apply_inventory_reclass_moves_compact_v1');
+  assert.equal(result.rowEncoding, 'master-null-elision-v1');
+  assert.equal(result.importStatus, 'pending');
+  const status = await handleInventoryReclassMove({ supabase, actorProfile: actor,
+    payload: { action: 'inventory_reclass_move', operation: 'status', commandId: command.commandId,
+      receiptEncoding: 'master-null-elision-v1' } });
+  assert.equal(calls[1].name, 'get_inventory_reclass_move_status_compact_v1');
+  assert.deepEqual(status, compact);
+  assert.deepEqual(calls[0].params.p_moves[0].source, source);
+  assert.equal(Object.hasOwn(calls[0].params.p_moves[0], 'receiptEncoding'), false);
+});
+
+test('Reclass API rejects unsupported receipt codecs before RPC dispatch', async () => {
+  let called = false;
+  const supabase = { rpc: async () => { called = true; return { data: null, error: null }; } };
+  await assert.rejects(handleInventoryReclassMove({ supabase, actorProfile: actor,
+    payload: { ...command, receiptEncoding: 'unknown-v9' } }), /RECEIPT_ENCODING_UNSUPPORTED/);
+  assert.equal(called, false);
+});
+
 test('Reclass API errors are sanitized and route registration remains in the app-api entrypoint', () => {
   assert.deepEqual(inventoryReclassMoveError({ code: '40001', message: 'INVENTORY_RECLASS_SOURCE_CHANGED', details: 'sensitive SQL' }), {
     status: 409,

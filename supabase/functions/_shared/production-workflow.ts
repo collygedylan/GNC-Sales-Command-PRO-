@@ -118,21 +118,30 @@ function requireReclassMoveActor(actor: JsonRecord) {
 
 export async function handleInventoryReclassMove({ supabase, actorProfile, payload }: ReclassMoveContext) {
   requireReclassMoveActor(actorProfile);
+  const receiptEncoding = payload.receiptEncoding;
+  if (receiptEncoding !== undefined && receiptEncoding !== 'master-null-elision-v1') {
+    throw new Error('INVENTORY_RECLASS_RECEIPT_ENCODING_UNSUPPORTED');
+  }
+  const compactReceipt = receiptEncoding === 'master-null-elision-v1';
   if (payload.operation === 'status') {
-    const allowed = new Set(['action', 'operation', 'commandId']);
+    const allowed = new Set(['action', 'operation', 'commandId', 'receiptEncoding']);
     if (Object.keys(payload).some((key) => !allowed.has(key)) || payload.action !== 'inventory_reclass_move') {
       throw new Error('INVENTORY_RECLASS_STATUS_INVALID');
     }
     const commandId = text(payload.commandId);
     if (!/^[A-Za-z0-9:_.-]{12,180}$/.test(commandId)) throw new Error('INVENTORY_RECLASS_COMMAND_INVALID');
-    const { data, error } = await supabase.rpc('get_inventory_reclass_move_status_v1', {
+    const { data, error } = await supabase.rpc(compactReceipt
+      ? 'get_inventory_reclass_move_status_compact_v1' : 'get_inventory_reclass_move_status_v1', {
       p_actor_id: String(actorProfile.id), p_command_id: commandId,
     });
     if (error) throw error;
     return data;
   }
-  const command = normalizeReclassMoveCommand(payload);
-  const { data, error } = await supabase.rpc('apply_inventory_reclass_moves_v1', {
+  const commandPayload = { ...payload };
+  delete commandPayload.receiptEncoding;
+  const command = normalizeReclassMoveCommand(commandPayload);
+  const { data, error } = await supabase.rpc(compactReceipt
+    ? 'apply_inventory_reclass_moves_compact_v1' : 'apply_inventory_reclass_moves_v1', {
     p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
     p_expected_revision: command.expectedRevision, p_moves: jsonValue(command.moves),
   });

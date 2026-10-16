@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test } from '@playwright/test';
 import { hlMaster, installHlOrderFixture } from './fixtures/hl-order-state.mjs';
 import { nativeVisibilityBrowser } from './fixtures/native-visibility-browser';
@@ -64,7 +65,7 @@ test('native PWA foreground keeps the cached Drive DOM and session through a tem
   expect(resumed.trusted).toBe(true);
   expect(resumed.sameNode).toBe(true);
   expect(resumed.loginVisible).toBe(false);
-  expect(resumed.elapsedMs).toBeLessThan(100);
+  assertFrontendUiTiming(expect(resumed.elapsedMs), test.info().project);
   await fixture.waitForRevisionIdle();
   await expect(page.locator('#view-login')).toBeHidden();
   await expect(page.locator('#loading-spinner')).toBeHidden();

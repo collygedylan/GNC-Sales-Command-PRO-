@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 // @test-group: @production-schedule
@@ -161,8 +162,8 @@ test('schedule paged cold render and warm metadata refresh stay below 100 ms at 
   expect(cold.rowCount).toBe(20);
   expect(await page.evaluate(() => (window as any).scheduleCalls.find((call: any) => call.operation === 'rows')?.limit)).toBe(20);
   expect(cold.metadataRowCount).toBe(10000);
-  expect(cold.mountToPaintMs).toBeLessThan(100);
-  expect(cold.applyMs).toBeLessThan(100);
+  assertFrontendUiTiming(expect(cold.mountToPaintMs), test.info().project);
+  assertFrontendUiTiming(expect(cold.applyMs), test.info().project);
 
   const warmIdentity = await page.evaluate(() => {
     const win = window as any;
@@ -202,9 +203,9 @@ test('schedule paged cold render and warm metadata refresh stay below 100 ms at 
   await writeFile(completeEvidencePath, JSON.stringify(completeEvidence, null, 2));
   console.log('[production-schedule-full-perf]', JSON.stringify(completeEvidence));
   await testInfo.attach('schedule-20-row-performance', { path: completeEvidencePath, contentType: 'application/json' });
-  expect(warm.refreshToPaintMs).toBeLessThan(100);
+  assertFrontendUiTiming(expect(warm.refreshToPaintMs), test.info().project);
   expect(warm.applyMs.length).toBeGreaterThan(0);
-  for (const applyMs of warm.applyMs) expect(applyMs).toBeLessThan(100);
+  for (const applyMs of warm.applyMs) assertFrontendUiTiming(expect(applyMs), test.info().project);
   expect(warm.sameCard).toBeTruthy();
   expect(warm.sameSearch).toBeTruthy();
   expect(warm.noLayoutShift).toBeTruthy();

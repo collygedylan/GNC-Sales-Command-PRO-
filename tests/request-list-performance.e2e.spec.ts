@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test, type Page, type Route, type TestInfo } from '@playwright/test';
 import { writeFile } from 'node:fs/promises';
 import { installHlOrderFixture } from './fixtures/hl-order-state.mjs';
@@ -293,8 +294,7 @@ async function assertRequestRenderGate(page: Page, stage: 'Pending' | 'Suspend')
     instrumentation: { trace: 'off', screenshots: 'off' },
     cacheConditions: 'Fresh isolated login then repeated renders in the same verified context.' }));
   const maximumMeasuredMs = Math.max(...durations.map(item => item.durationMs), ...chunks.map(item => item.durationMs));
-  if (stage === 'Pending') expect.soft(maximumMeasuredMs).toBeLessThan(100);
-  else expect.soft(maximumMeasuredMs).toBeLessThanOrEqual(150);
+  assertFrontendUiTiming(expect.soft(maximumMeasuredMs), test.info().project);
 }
 
 async function startRequestCpuProfile(page: Page) {
@@ -648,11 +648,11 @@ test('cold Request startup stays locked until 12,000 customer choices are warm, 
   expect(selection).toMatchObject({ customerHeading: 'Select Customer' });
   // This first screen selects a sales rep; the following Select Customer screen
   // retains the stricter, user-required 50 ms limit.
-  expect(selection.elapsedToModalFrameMs).toBeLessThanOrEqual(150);
+  assertFrontendUiTiming(expect(selection.elapsedToModalFrameMs), test.info().project);
   expect(selection.customerLoading).toBe('');
   expect(selection.firstCustomer).toBe('Benchmark Customer 00000');
   expect(selection.visibleCount).toBeGreaterThan(0);
-  expect(selection.elapsedToCustomerFrameMs).toBeLessThan(50);
+  assertFrontendUiTiming(expect(selection.elapsedToCustomerFrameMs), test.info().project, 50);
 
   const card = page.locator('#existing-folder-container .request-choice-card').first();
   const originalCard = await card.elementHandle();

@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test, type Page } from '@playwright/test';
 
 import { renderDriveLayoutCard, renderVerifiedDriveLayoutCard, restoreDriveLayoutRenderer, settleDriveLayoutShell, suppressDriveLayoutRenderer } from './fixtures/drive-card-layout';
@@ -651,10 +652,13 @@ async function populate(page: Page, action: 'move_up' | 'move_down' = 'move_up')
   return { row, move };
 }
 
-test('closing a pending inquiry and reopening enables the new draft without stale completion changing it', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
+test('closing a pending inquiry and reopening preserves the new inquiry draft when stale work completes', { tag: ['@reclass-splits'] }, async ({ page, baseURL }, info) => {
   const f = await fixture(page, baseURL!, info.project.name, { season: 'F1', salesYear: '27' }, 1, 100);
   const moveRequests = await installLiveMoveEndpoint(page, baseURL!, f.control);
-  await f.open(); await populate(page);
+  await f.open();
+  let row = page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"]');
+  await row.locator('[data-reclass-v3-action="hold"]').click();
+  await row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('first pending inquiry');
   let finish!: (result: unknown) => void;
   f.setCreateReply(() => new Promise(resolve => { finish = resolve; }));
   await page.locator('#argos-inventory-transaction-apply').click();
@@ -662,19 +666,25 @@ test('closing a pending inquiry and reopening enables the new draft without stal
   await expect(page.locator('#argos-inventory-transaction-apply')).toBeDisabled();
   await page.locator('#argos-inventory-transaction-modal').getByRole('button', { name: 'Cancel', exact: true }).click();
   await f.open(); const { move } = await populate(page, 'move_down');
+  row = page.locator('[data-reclass-row-card="drive-layout-synthetic-1-no-photo"]');
+  await row.locator('[data-reclass-v3-action="hold"]').click();
+  await row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]').fill('new inquiry draft');
   await expect(page.locator('#argos-inventory-transaction-apply')).toBeEnabled();
   finish({ ok: true, status: 'queued', jobId: 'first-inquiry' });
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('gnc_reclass_delivery_jobs_v1') || '[]').length)).toBe(1);
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeVisible();
   await expect(move.getByLabel('Move Down quantity 1', { exact: true })).toHaveValue('15');
+  await expect(row.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]')).toHaveValue('new inquiry draft');
   await expect(page.locator('#argos-inventory-transaction-apply')).toBeEnabled();
   f.setCreateReply(() => ({ ok: true, status: 'queued', jobId: 'second-inquiry' }));
   await page.locator('#argos-inventory-transaction-apply').click();
   await expect(page.locator('#argos-inventory-transaction-modal')).toBeHidden();
   expect(f.calls).toHaveLength(2);
-  expect(moveRequests).toHaveLength(2);
-  expect(moveRequests.map(request => request.moves[0].lines[0].direction)).toEqual(['move_up', 'move_down']);
+  expect(moveRequests).toHaveLength(1);
+  expect(moveRequests.map(request => request.moves[0].lines[0].direction)).toEqual(['move_down']);
   expect(f.calls[0].idempotencyToken).not.toBe(f.calls[1].idempotencyToken);
+  expect(f.calls[0].transaction.holdStopProposals).toEqual([expect.objectContaining({ action: 'hold', reason: 'first pending inquiry' })]);
+  expect(f.calls[1].transaction.holdStopProposals).toEqual([expect.objectContaining({ action: 'hold', reason: 'new inquiry draft' })]);
   expect(f.control.blockedMutations).toEqual([]);
 });
 
@@ -731,8 +741,9 @@ test('Move Down commits live inventory and a failed inquiry retains the separate
     return confirmedLiveEditResponse('2');
   });
   f.failNext(); await page.locator('#argos-inventory-transaction-apply').click();
-  await expect(page.locator('#toast-notification')).toContainText('Synthetic queue failure');
+  await expect(page.locator('#toast-notification')).toContainText('Inventory moves were saved. Your remaining inquiry draft is still open; retry to send only those remaining actions.');
   await expect(page.locator('[data-reclass-v3-proposal-action="hold"][data-reclass-v3-proposal-field="reason"]')).toHaveValue('quality review');
+  expect(f.calls).toHaveLength(1, 'the inquiry request fails after the independent stock move has committed');
   expect(moveRequests).toHaveLength(1);
   expect(moveRequests[0].moves[0].lines).toEqual([
     { direction: 'move_down', destinationSeason: 'X', quantity: 15 },
@@ -753,7 +764,7 @@ test('Move Down commits live inventory and a failed inquiry retains the separate
   ]));
   expect(moveRequests).toHaveLength(1, 'retrying the separate Hold inquiry must not replay stock');
   expect(await page.evaluate(() => window.eval(`({oh:Number(fullInventory[0].PTRONHAND),season:fullInventory[0].SEASON,hold:fullInventory[0].HOLDSTOPCODE})`)))
-    .toEqual({ oh: 25, season: 'F1', hold: 'H' });
+    .toEqual({ oh: 0, season: 'F1', hold: 'H' });
   expect(f.control.blockedMutations).toEqual([]);
 });
 
@@ -1120,7 +1131,7 @@ test('610-unit live move stays responsive, replays the exact command after timeo
   await firstStarted;
   const optimisticVisible = await readPaintTimingProbe(page);
   await attachCdpTimeline();
-  expect(optimisticVisible.elapsedMs).toBeLessThan(100);
+  assertFrontendUiTiming(expect(optimisticVisible.elapsedMs), test.info().project);
   const immediate = await page.evaluate(() => window.eval(`(() => {
     const model = argosInventoryTransactionState.inquiryModel;
     const source = model.rows.find(row => String(row.UNIQUE_ID || row.unique_id || '').includes('drive-layout-synthetic-1-no-photo'));
@@ -1180,10 +1191,10 @@ test('610-unit live move stays responsive, replays the exact command after timeo
     const target = fullInventory.find(row => row.UNIQUE_ID === 'server-target-u1');
     return [Number(source.PTRONHAND), Number(source.PTRAVAILABLE), Number(target.PTRONHAND), Number(target.PTRAVAILABLE)];
   })()`))).toEqual([390, 390, 610, 610]);
-  const modalPaintLimitMs = reclassModalPaintLimitMs(info.project.name, process.platform, info.project.use.deviceScaleFactor);
-  expect(cachedInquiryOpen.elapsedMs).toBeLessThanOrEqual(modalPaintLimitMs);
-  expect(hydratedEditorOpen.elapsedMs).toBeLessThanOrEqual(modalPaintLimitMs);
-  expect(optimisticVisible.elapsedMs).toBeLessThan(100);
+  const modalPaintLimitMs = reclassModalPaintLimitMs(info.project);
+  assertFrontendUiTiming(expect(cachedInquiryOpen.elapsedMs), test.info().project);
+  assertFrontendUiTiming(expect(hydratedEditorOpen.elapsedMs), test.info().project);
+  assertFrontendUiTiming(expect(optimisticVisible.elapsedMs), test.info().project);
   await info.attach('reclass-610-paint-metrics.json', { contentType: 'application/json', body: JSON.stringify({
     datasetRows: 10_000,
     warmCache: true,

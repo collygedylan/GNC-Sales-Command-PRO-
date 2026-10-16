@@ -1,3 +1,4 @@
+import { assertFrontendUiTiming } from './helpers/frontend-ui-timing.mjs';
 import { expect, test, type Page } from '@playwright/test';
 // @test-group: @local-e2e,@release-timing
 
@@ -94,7 +95,7 @@ test('10,000-row reports reuse the index and local filters without low-stock req
   })()`));
   await testInfo.attach('module-loading-timings', { body: JSON.stringify(metrics, null, 2), contentType: 'application/json' });
   expect(metrics).toMatchObject({ lowStockReads: 0, filterDownloads: 0, rows: 10000, groups: 3200 });
-  expect(metrics.filterP95Ms).toBeLessThan(1000);
+  assertFrontendUiTiming(expect(metrics.filterP95Ms), test.info().project);
   expect(metrics.newLookupMs).toBeLessThan(metrics.oldLookupMs * .5);
   await expect(page.locator('.manager-eval2-item-card').first()).toBeVisible();
   // Apply operates on real controls and the compiled renderer.
@@ -144,8 +145,8 @@ test('10,000-row reports reuse the index and local filters without low-stock req
   await page.waitForFunction(() => (window as any).__applyReportTiming?.firstRowsMs != null, undefined, { timeout: 15_000 });
   const apply = await page.evaluate(() => ({...(window as any).__applyReportTiming, stages:(window as any).__applyStages}));
   await testInfo.attach('apply-report-timings', { body:JSON.stringify(apply), contentType:'application/json' });
-  expect(apply.acknowledgeMs).toBeLessThan(100);
-  expect(apply.firstRowsMs).toBeLessThan(1000);
+  assertFrontendUiTiming(expect(apply.acknowledgeMs), test.info().project);
+  assertFrontendUiTiming(expect(apply.firstRowsMs), test.info().project);
   expect(await page.evaluate(() => (window as any).eval("getManagerEvalReport2SelectedReportIds().join(',')"))).toBe('u1');
 });
 
