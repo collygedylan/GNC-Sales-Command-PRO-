@@ -71,7 +71,12 @@ export const importHistoryRoutingMigrationName = '20261015165733_import_history_
 export const handoverMasterAssignmentFastPathMigrationName = '20261015183500_handover_master_assignment_fast_path.sql';
 export const bulkContextIndexPlanMigrationName = '20261015192500_bulk_context_index_plan.sql';
 export const managerModuleRevisionSignalsMigrationName = '20261015213506_manager_module_revision_signals.sql';
-export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName]);
+export const inventoryReclassMovesMigrationName = '20261015230000_inventory_reclass_moves_v1.sql';
+export const inventoryReclassQuantityTriggerFastpathsMigrationName = '20261016093000_reclass_quantity_update_trigger_fastpaths_v1.sql';
+export const inventoryReclassCompactTriggerIdentityMigrationName = '20261016120000_reclass_compact_trigger_identity_v1.sql';
+export const inventoryReclassCompactBatchChildReceiptsMigrationName = '20261016140000_reclass_compact_batch_child_receipts_v1.sql';
+export const inventoryReclassNullElisionRpcMigrationName = '20261016160000_reclass_null_elision_rpc_v1.sql';
+export const releaseDatabaseMigrations = Object.freeze([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName, productionScheduleMigrationName, auraHrCommandCenterMigrationName, scheduledHandoverMigrationName, requestArchiveMigrationName, handoverAssignmentMigrationName, readOptimizationMigrationName, auraInventoryV2MigrationName, nellyAccessAuditMigrationName, evalDeliveryArchiveHealthMigrationName, auraInventoryMatchMigrationName, auraLlmFreeTierMigrationName, suspendTagApprovalMigrationName, structuredBunchNotesMigrationName, bunchNoteCardsMigrationName, bunchNoteCardCommandsMigrationName, reclassSplitMoveMigrationName, reclassEvalSubmitGuardsMigrationName, inventoryRowAssignmentAuthorityMigrationName, itemcodeDefaultOwnersMigrationName, inventoryRowAssignmentFenceIntegrationMigrationName, inventoryRowAssignmentFutureSnapshotsMigrationName, inventoryRowAssignmentLiveConsumersMigrationName, auraInternalQueryMigrationName, auraCommonNamePriorityMigrationName, auraDynamicSeasonScopeMigrationName, auraInventoryExplicitProjectionMigrationName, sqlFunctionCorrectnessRepairsMigrationName, sqlLintRuntimeContextMigrationName, reclassShearedMigrationName, reclassSmartShieldMigrationName, smartShieldRawImportMigrationName, requestQueueRemoveMigrationName, prompt25HotfixMigrationName, customerRepMappingMigrationName, bunchAutoCompletionMigrationName, fieldCountingMigrationName, customerRepMappingFinalizeTimeoutMigrationName, historicalRequestsMigrationName, auraVoiceRoleAccessMigrationName, auraVoiceSocReadsMigrationName, requestMappingIdentityMigrationName, historicalRequestsPriceFallbackMigrationName, reclassConcurrentHoldMigrationName, salesActorRoleBoundariesMigrationName, navigationRoleBoundariesMigrationName, requestHistoryDrilldownMigrationName, auraEnterpriseDomainVoiceMigrationName, managerReportReadV2MigrationName, managerListReadV2MigrationName, inventoryLocationOnHandMigrationName, masterInventoryRealtimeMigrationName, eval2SharedLowStockThresholdMigrationName, masterLineageCleanupMigrationName, seasonSalesCavLookupMigrationName, seasonSalesEmptyCleanupMigrationName, seasonSalesWorklistMigrationName, inventoryAssignmentBatchesMigrationName, inventoryAssignmentWitnessMigrationName, inventoryAssignmentInputGenerationMigrationName, customerAssignmentOverridesMigrationName, bulkMasterSnapshotMigrationName, importHistoryRoutingMigrationName, handoverMasterAssignmentFastPathMigrationName, bulkContextIndexPlanMigrationName, managerModuleRevisionSignalsMigrationName, inventoryReclassMovesMigrationName, inventoryReclassQuantityTriggerFastpathsMigrationName, inventoryReclassCompactTriggerIdentityMigrationName, inventoryReclassCompactBatchChildReceiptsMigrationName, inventoryReclassNullElisionRpcMigrationName]);
 const baselineIncludedMigrations = new Set([migrationName, perennialAssignmentMigrationName, passwordReconciliationMigrationName]);
 export const productionBaselineVersion = '20260929200000';
 
@@ -233,6 +238,188 @@ export async function runReadOnlySchemaDiagnostic({ client, onPhase = () => {} }
 }
 
 export function migrationContractQuery(name) {
+  if (name === inventoryReclassCompactTriggerIdentityMigrationName) return `select
+    (select count(*)=2 and bool_and(p.prosecdef) and bool_and(p.provolatile='i')
+      and bool_and(p.proconfig @> array['search_path=""'])
+      and (select proowner from pg_proc where oid=to_regprocedure('private.ph_master_inventory_lineage_key_v1(public.ph_master_inventory)'))
+        =(select proowner from pg_proc where oid=to_regprocedure('private.ph_master_inventory_lineage_key_v1(jsonb)'))
+      and (select proowner from pg_proc where oid=to_regprocedure('private.ph_master_inventory_stable_identity_v7(public.ph_master_inventory)'))
+        =(select proowner from pg_proc where oid=to_regprocedure('private.ph_master_inventory_stable_identity_v7(jsonb)'))
+      and bool_and(not has_function_privilege('anon',p.oid,'execute'))
+      and bool_and(not has_function_privilege('authenticated',p.oid,'execute'))
+      and bool_and(not has_function_privilege('service_role',p.oid,'execute'))
+      from pg_proc p where p.oid in (
+        to_regprocedure('private.ph_master_inventory_lineage_key_v1(public.ph_master_inventory)'),
+        to_regprocedure('private.ph_master_inventory_stable_identity_v7(public.ph_master_inventory)')))
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.guard_ph_master_inventory_priority_hold_v1()')
+      and position('ph_master_inventory_lineage_key_v1(new)' in p.prosrc)>0
+      and position('ph_master_inventory_lineage_key_v1(old)' in p.prosrc)>0
+      and position('ph_master_inventory_lineage_key_v1(to_jsonb(new))' in p.prosrc)=0
+      and position('ph_master_inventory_lineage_key_v1(to_jsonb(old))' in p.prosrc)=0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.refresh_ph_master_inventory_item6_lineage_v7()')
+      and position('ph_master_inventory_stable_identity_v7(new)' in p.prosrc)>0
+      and position('ph_master_inventory_lineage_key_v1(new)' in p.prosrc)>0
+      and position('stable_identity_v7(to_jsonb(new))' in p.prosrc)=0
+      and position('lineage_key_v1(to_jsonb(new))' in p.prosrc)=0) as installed`;
+  if (name === inventoryReclassCompactBatchChildReceiptsMigrationName) return `select
+    exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.replay_inventory_reclass_batch_child_v1(uuid)')
+      and p.prosecdef and p.proconfig @> array['search_path=""']
+      and not has_function_privilege('anon',p.oid,'execute')
+      and not has_function_privilege('authenticated',p.oid,'execute')
+      and not has_function_privilege('service_role',p.oid,'execute')
+      and position('b.request_id=parent_request_id' in p.prosrc)>0
+      and position('batch_row.child_request_ids[source_index] is distinct from p_child_request_id' in p.prosrc)>0
+      and position('batchRequestId' in p.prosrc)>0
+      and position('sourceIndex' in p.prosrc)>0
+      and position('movement.value->>''sourceUniqueId''' in p.prosrc)>0
+      and position('movement.value->>''sourceUniqueId''=source_uid' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)')
+      and position('replay_inventory_reclass_batch_child_v1(command_row.request_id)' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p where p.oid=to_regprocedure('private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)')
+      and position('_batchResultReference' in p.prosrc)>0
+      and position('result=r.result_value' in p.prosrc)=0) as installed`;
+  if (name === inventoryReclassQuantityTriggerFastpathsMigrationName) return `select
+    (select count(*)=3 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname in ('aaa_ph_master_inventory_priority_hold_shield','aaa_ph_master_inventory_priority_hold_shield_insert',
+        'aaa_ph_master_inventory_priority_hold_shield_delete') and not t.tgisinternal)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='aaa_ph_master_inventory_priority_hold_shield' and (t.tgtype & 16)<>0 and t.tgqual is not null
+      and t.tgfoid='private.guard_ph_master_inventory_priority_hold_v1()'::regprocedure)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='aab_ph_master_inventory_item6_guard_v7' and (t.tgtype & 16)<>0 and t.tgqual is not null
+      and t.tgfoid='private.guard_ph_master_inventory_item6_fields_v7()'::regprocedure)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='aab_ph_master_inventory_item6_guard_v7_delete' and (t.tgtype & 8)<>0)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='zzz_ph_master_inventory_item6_lineage_v7' and (t.tgtype & 4)<>0)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='zzz_ph_master_inventory_item6_lineage_v7_update' and (t.tgtype & 16)<>0 and t.tgqual is not null
+      and t.tgfoid='private.refresh_ph_master_inventory_item6_lineage_v7()'::regprocedure)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='trigger_inventory_changes' and t.tgqual is not null
+      and t.tgfoid='public.check_inventory_changes_and_reset()'::regprocedure)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='sync_season_sales_av_note_reset' and t.tgqual is not null
+      and t.tgfoid='private.sync_season_sales_av_note_reset_v1()'::regprocedure)
+    and exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname='trigger_new_assignment' and t.tgqual is not null
+      and t.tgfoid='public.notify_new_assignment()'::regprocedure)
+    and not exists(select 1 from pg_trigger t where t.tgrelid='public.ph_master_inventory'::regclass
+      and t.tgname in ('aaa_ph_master_inventory_priority_hold_shield','aab_ph_master_inventory_item6_guard_v7',
+        'zzz_ph_master_inventory_item6_lineage_v7_update') and t.tgisinternal) as installed`;
+  if (name === inventoryReclassMovesMigrationName) return `select
+    (select count(*)=5 and bool_and(c.relrowsecurity)
+      and bool_and(not has_table_privilege('anon',c.oid,'select,insert,update,delete'))
+      and bool_and(not has_table_privilege('authenticated',c.oid,'select,insert,update,delete'))
+      and bool_and(not has_table_privilege('service_role',c.oid,'select,insert,update,delete'))
+      from pg_class c join pg_namespace n on n.oid=c.relnamespace
+      where n.nspname='private' and c.relname=any(array['ph_inventory_reclass_commands_v1',
+        'ph_inventory_reclass_batch_receipts_v1','ph_inventory_reclass_movements_v1',
+        'ph_inventory_reclass_import_aliases_v1','ph_inventory_reclass_import_conflicts_v1']::text[]))
+    and (select count(*)=3 and bool_and(p.prosecdef)
+      and bool_and(p.proconfig @> array['search_path=""'])
+      and bool_and(has_function_privilege('service_role',p.oid,'execute'))
+      and bool_and(not has_function_privilege('anon',p.oid,'execute'))
+      and bool_and(not has_function_privilege('authenticated',p.oid,'execute'))
+      from pg_proc p where p.oid in (
+        to_regprocedure('public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)'),
+        to_regprocedure('public.apply_inventory_reclass_moves_v1(uuid,text,bigint,jsonb)'),
+        to_regprocedure('public.get_inventory_reclass_move_status_v1(uuid,text)')))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.apply_inventory_reclass_moves_set_v1(uuid,text,bigint,jsonb,uuid)')
+        and position('INVENTORY_RECLASS_OVERLAP_INVALID' in p.prosrc)>0
+        and position('ph_inventory_reclass_movements_v1' in p.prosrc)>0
+        and position('reclass_batch_source_before_v1' in p.prosrc)>0
+        and position('reclass_batch_source_after_v1' in p.prosrc)>0
+        and position('reclass_batch_target_before_v1' in p.prosrc)>0
+        and position('reclass_batch_target_after_v1' in p.prosrc)>0
+        and position('reclass_batch_source_json_v1' in p.prosrc)>0
+        and position('reclass_batch_target_json_v1' in p.prosrc)>0
+        and position('returning m.*' in lower(p.prosrc))>0
+        and position('apply_inventory_reclass_move_v1' in p.prosrc)=0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.apply_inventory_reclass_move_v1(uuid,text,bigint,text,jsonb,jsonb)')
+        and position('ph_warehouse_assigned_items' in p.prosrc)>0
+        and position('DRIVE_RECLASS_ROW_NOT_ASSIGNED' in p.prosrc)>0
+        and position('INVENTORY_RECLASS_DESTINATION_SEASON_MISMATCH' in p.prosrc)>0)
+    and not exists(select 1 from pg_constraint f
+      where f.contype='f' and f.confdeltype='c' and f.conrelid in (
+        'private.ph_inventory_reclass_commands_v1'::regclass,
+        'private.ph_inventory_reclass_batch_receipts_v1'::regclass,
+        'private.ph_inventory_reclass_movements_v1'::regclass,
+        'private.ph_inventory_reclass_import_aliases_v1'::regclass,
+        'private.ph_inventory_reclass_import_conflicts_v1'::regclass))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.bulk_import_master_snapshot_v1(uuid,uuid,jsonb,text)')
+        and position('apply_inventory_reclass_import_overlay_v1(p_run_id,p_request_id)' in p.prosrc)>0
+        and position('ph_inventory_reclass_movements_v1' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.apply_inventory_reclass_import_overlay_v1(uuid,uuid)')
+        and p.prosecdef and p.proconfig @> array['search_path=""']
+        and position('record_inventory_reclass_import_conflict_v1' in p.prosrc)>0
+        and position('operation_order' in p.prosrc)>0
+        and position('target_duplicate' in p.prosrc)>0
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from information_schema.columns
+      where table_schema='private' and table_name='ph_inventory_reclass_commands_v1'
+        and column_name='operation_order' and is_identity='YES')
+    and (select count(*)=2 and bool_and(p.prosecdef) and bool_and(p.proconfig @> array['search_path=""'])
+      and bool_and(not has_function_privilege('anon',p.oid,'execute'))
+      and bool_and(not has_function_privilege('authenticated',p.oid,'execute'))
+      and bool_and(not has_function_privilege('service_role',p.oid,'execute'))
+      from pg_proc p where p.oid in (
+        to_regprocedure('private.ph_inventory_reclass_batch_context_v1(uuid)'),
+        to_regprocedure('private.ph_master_bulk_crop_roll_defer_active_v1()')))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.ph_inventory_reclass_batch_context_v1(uuid)')
+        and position('backend_pid' in p.prosrc)>0 and position('transaction_id' in p.prosrc)>0
+        and position('auth.role' in p.prosrc)>0 and position('gnc.inventory_reclass_batch' in p.prosrc)>0)
+    and exists(select 1 from information_schema.columns
+      where table_schema='private' and table_name='ph_inventory_reclass_batch_receipts_v1'
+        and column_name='backend_pid')
+    and exists(select 1 from information_schema.columns
+      where table_schema='private' and table_name='ph_inventory_reclass_batch_receipts_v1'
+        and column_name='transaction_id')
+    and exists(select 1 from pg_index i
+      where i.indexrelid=to_regclass('public.ph_master_inventory_reclass_lineage_v1_idx')
+        and i.indrelid='public.ph_master_inventory'::regclass and i.indisvalid and i.indisready
+        and position('warehouseid' in pg_get_indexdef(i.indexrelid))>0
+        and position('desigloc' in pg_get_indexdef(i.indexrelid))>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.get_inventory_reclass_move_status_v1(uuid,text)')
+        and position('importStatus' in p.prosrc)>0 and position('status' in p.prosrc)>0)
+    as installed`;
+  if (name === inventoryReclassNullElisionRpcMigrationName) return `select
+    (select count(*)=2 and bool_and(p.prosecdef) and bool_and(p.proconfig @> array['search_path=""'])
+      and bool_and(has_function_privilege('service_role',p.oid,'execute'))
+      and bool_and(not has_function_privilege('anon',p.oid,'execute'))
+      and bool_and(not has_function_privilege('authenticated',p.oid,'execute'))
+      from pg_proc p where p.oid in (
+        to_regprocedure('public.apply_inventory_reclass_moves_compact_v1(uuid,text,bigint,jsonb)'),
+        to_regprocedure('public.get_inventory_reclass_move_status_compact_v1(uuid,text)')))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('private.encode_inventory_reclass_rows_v1(jsonb)')
+        and p.provolatile='s' and p.prosecdef and p.proconfig @> array['search_path=""']
+        and not has_function_privilege('anon',p.oid,'execute')
+        and not has_function_privilege('authenticated',p.oid,'execute')
+        and not has_function_privilege('service_role',p.oid,'execute'))
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.apply_inventory_reclass_moves_compact_v1(uuid,text,bigint,jsonb)')
+        and position('apply_inventory_reclass_moves_v1' in p.prosrc)>0
+        and position('encode_inventory_reclass_rows_v1' in p.prosrc)>0)
+    and exists(select 1 from pg_proc p
+      where p.oid=to_regprocedure('public.get_inventory_reclass_move_status_compact_v1(uuid,text)')
+        and position('get_inventory_reclass_move_status_v1' in p.prosrc)>0
+        and position('encode_inventory_reclass_rows_v1' in p.prosrc)>0)
+    as installed`;
   if (name === managerModuleRevisionSignalsMigrationName) return `select
     (select count(*)=8 and bool_and(client_enabled) and bool_and(modules=array['managers'])
       and bool_and(dylan_only=(key<>'production_schedule_active'))

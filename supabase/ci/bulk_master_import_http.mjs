@@ -34,7 +34,7 @@ const REQUIRED_SOURCE_FIELDS = Object.freeze([
 ]);
 const HANDOVER_TRANSITION_KEY = 'kayla_knepp_to_nelly_aguilar_20261002';
 const HANDOVER_SUCCESSOR_ID = '961b0a0f-11a6-4db5-b066-582f772ab8e7';
-const EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT = 24;
+const EXPECTED_MASTER_PRODUCTION_TRIGGER_COUNT = 28;
 
 function appScriptContext() {
   const code = readFileSync(new URL('../../Code.gs', import.meta.url), 'utf8');

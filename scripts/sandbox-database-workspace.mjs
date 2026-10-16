@@ -102,16 +102,16 @@ export function createSandboxDatabaseWorkspace({ root = repoRoot, includeTests =
     if (!/^project_id\s*=\s*"[^"]+"\s*$/m.test(config)) throw new Error('DATABASE_PROJECT_ID_CONFIG_INVALID');
     const projectId = `gncsandbox${process.pid}${Math.random().toString(36).slice(2, 8)}`.toLowerCase();
     writeFileSync(path.join(supabaseDir, 'config.toml'), config.replace(/^project_id\s*=\s*"[^"]+"\s*$/m, `project_id = "${projectId}"`));
-    writeFileSync(path.join(migrationsDir, catalogMigrationName), migration);
+    writeFileSync(path.join(migrationsDir, catalogMigrationName), migration.replaceAll('\r\n', '\n'));
     for (const name of sandboxMigrationNames) {
       const source = resolveSafePath(rootReal, `supabase/sandbox/migrations/${name}`, { kind: 'MIGRATION' });
-      writeFileSync(path.join(migrationsDir, name), readFileSync(source));
+      writeFileSync(path.join(migrationsDir, name), readFileSync(source, 'utf8').replaceAll('\r\n', '\n'));
     }
     if (includeTests) {
       const testsDir = path.join(supabaseDir, 'tests');
       mkdirSync(testsDir, { recursive: true });
       for (const { basename, source } of safeTestFiles) {
-        writeFileSync(path.join(testsDir, basename), readFileSync(source));
+        writeFileSync(path.join(testsDir, basename), readFileSync(source, 'utf8').replaceAll('\r\n', '\n'));
       }
     }
     writeFileSync(path.join(supabaseDir, 'seed.sql'), '');

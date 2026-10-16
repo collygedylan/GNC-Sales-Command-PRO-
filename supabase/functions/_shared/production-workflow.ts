@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.112.3";
 import type { Database } from "./database.types.ts";
 import { jsonValue } from "../../../services/database-contract-runtime.ts";
+import { normalizeReclassMoveCommand } from "../../../services/reclassMove.ts";
 
 /** Protected adapters; actorProfile and moduleAllowed come from the authenticated
  * API context, never from the request JSON. SQL repeats active-profile checks. */
@@ -103,6 +104,62 @@ export async function handleInventoryTransactionHistory({ supabase, actorProfile
   });
   if (error) throw error;
   return data;
+}
+
+type ReclassMoveContext = Pick<WorkflowContext, 'supabase' | 'actorProfile' | 'payload'>;
+
+function requireReclassMoveActor(actor: JsonRecord) {
+  const locked = Date.parse(text(actor.locked_until));
+  if (!text(actor.id) || !text(actor.username) || actor.disabled_at || actor.must_change_password !== false
+    || (actor.locked_until && (!Number.isFinite(locked) || locked > Date.now()))) {
+    throw new Error('INVENTORY_RECLASS_PROFILE_INACTIVE');
+  }
+}
+
+export async function handleInventoryReclassMove({ supabase, actorProfile, payload }: ReclassMoveContext) {
+  requireReclassMoveActor(actorProfile);
+  const receiptEncoding = payload.receiptEncoding;
+  if (receiptEncoding !== undefined && receiptEncoding !== 'master-null-elision-v1') {
+    throw new Error('INVENTORY_RECLASS_RECEIPT_ENCODING_UNSUPPORTED');
+  }
+  const compactReceipt = receiptEncoding === 'master-null-elision-v1';
+  if (payload.operation === 'status') {
+    const allowed = new Set(['action', 'operation', 'commandId', 'receiptEncoding']);
+    if (Object.keys(payload).some((key) => !allowed.has(key)) || payload.action !== 'inventory_reclass_move') {
+      throw new Error('INVENTORY_RECLASS_STATUS_INVALID');
+    }
+    const commandId = text(payload.commandId);
+    if (!/^[A-Za-z0-9:_.-]{12,180}$/.test(commandId)) throw new Error('INVENTORY_RECLASS_COMMAND_INVALID');
+    const { data, error } = await supabase.rpc(compactReceipt
+      ? 'get_inventory_reclass_move_status_compact_v1' : 'get_inventory_reclass_move_status_v1', {
+      p_actor_id: String(actorProfile.id), p_command_id: commandId,
+    });
+    if (error) throw error;
+    return data;
+  }
+  const commandPayload = { ...payload };
+  delete commandPayload.receiptEncoding;
+  const command = normalizeReclassMoveCommand(commandPayload);
+  const { data, error } = await supabase.rpc(compactReceipt
+    ? 'apply_inventory_reclass_moves_compact_v1' : 'apply_inventory_reclass_moves_v1', {
+    p_actor_id: String(actorProfile.id), p_command_id: command.commandId,
+    p_expected_revision: command.expectedRevision, p_moves: jsonValue(command.moves),
+  });
+  if (error) throw error;
+  return data;
+}
+
+export function inventoryReclassMoveError(error: unknown) {
+  const source = record(error);
+  const message = error instanceof Error ? error.message : text(source.message);
+  const code = /^(?:INVENTORY_RECLASS|DRIVE_RECLASS)_[A-Z0-9_]+$/.test(message) ? message : 'INVENTORY_RECLASS_UNAVAILABLE';
+  const forbidden = /FORBIDDEN|PERMISSION_REQUIRED|PROFILE_INACTIVE|ACTOR_REQUIRED/.test(code) || source.code === '42501';
+  const conflict = /CONFLICT|CHANGED|MISSING|AMBIGUOUS|MISMATCH|REFRESH_REQUIRED/.test(code) || source.code === '40001';
+  const status = forbidden ? 403 : conflict ? 409 : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 503 : 400;
+  return { status, body: { ok: false, code, message: forbidden ? 'You do not have access to Reclass this inventory.'
+    : conflict ? 'Inventory changed or is refreshing. Refresh and review the source row before retrying.'
+      : code === 'INVENTORY_RECLASS_UNAVAILABLE' ? 'The inventory movement could not be saved. Retry with the same command.'
+        : 'Review the movement details and try again.' } };
 }
 
 export function workflowError(error: unknown) {

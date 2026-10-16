@@ -363,6 +363,7 @@ test('PR path filters select affected tests and match the artifact reuse classif
   assert.equal(performance.jobs.changes.permissions['pull-requests'], 'read');
   const cases = [
     [['supabase/functions/aura-llm-router/index.ts'], { frontend: false, backend: true, schema: true }],
+    [['services/reclassMove.ts'], { frontend: true, backend: true, schema: false }],
     [['supabase/migrations/fixture.sql'], { frontend: false, backend: true, schema: true }],
     [['deno.lock', 'deno.jsonc'], { frontend: false, backend: true, schema: false }],
     [['docs/release.md'], { frontend: false, backend: false, schema: false }],

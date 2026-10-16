@@ -16456,6 +16456,35 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_inventory_reclass_move_v1: {
+        Args: {
+          p_actor_id: string
+          p_command_id: string
+          p_expected_revision: number
+          p_lines: Json
+          p_source_identity: Json
+          p_source_uid: string
+        }
+        Returns: Json
+      }
+      apply_inventory_reclass_moves_compact_v1: {
+        Args: {
+          p_actor_id: string
+          p_command_id: string
+          p_expected_revision: number
+          p_moves: Json
+        }
+        Returns: Json
+      }
+      apply_inventory_reclass_moves_v1: {
+        Args: {
+          p_actor_id: string
+          p_command_id: string
+          p_expected_revision: number
+          p_moves: Json
+        }
+        Returns: Json
+      }
       apply_inventory_transaction_v1: {
         Args: {
           p_actor_id: string
@@ -17612,6 +17641,14 @@ export type Database = {
       get_hosted_health_snapshot: { Args: never; Returns: Json }
       get_import_history_rows_v1: {
         Args: { p_after_row?: number; p_limit?: number; p_snapshot_id: string }
+        Returns: Json
+      }
+      get_inventory_reclass_move_status_compact_v1: {
+        Args: { p_actor_id: string; p_command_id: string }
+        Returns: Json
+      }
+      get_inventory_reclass_move_status_v1: {
+        Args: { p_actor_id: string; p_command_id: string }
         Returns: Json
       }
       get_item_inquiry_coverage_v1: { Args: never; Returns: Json }

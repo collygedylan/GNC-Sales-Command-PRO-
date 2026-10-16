@@ -85078,6 +85078,142 @@ export const contracts: RuntimeContracts<Database> = {
         }
       ]
     },
+    "apply_inventory_reclass_move_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_lines": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_source_identity": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            },
+            "p_source_uid": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "apply_inventory_reclass_moves_compact_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_moves": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "apply_inventory_reclass_moves_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_expected_revision": {
+              "schema": {
+                "oneOf": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "p_moves": {
+              "schema": {
+                "oneOf": [
+                  "json",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
     "apply_inventory_transaction_v1": {
       "oneOf": [
         {
@@ -88007,6 +88143,54 @@ export const contracts: RuntimeContracts<Database> = {
               "optional": true
             },
             "p_snapshot_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "get_inventory_reclass_move_status_compact_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "get_inventory_reclass_move_status_v1": {
+      "oneOf": [
+        {
+          "object": {
+            "p_actor_id": {
+              "schema": {
+                "oneOf": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "p_command_id": {
               "schema": {
                 "oneOf": [
                   "string",
@@ -93034,6 +93218,21 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "apply_codex_ops_service_event_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "apply_inventory_reclass_move_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "apply_inventory_reclass_moves_compact_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "apply_inventory_reclass_moves_v1": {
       "oneOf": [
         "json"
       ]
@@ -98486,6 +98685,16 @@ export const contracts: RuntimeContracts<Database> = {
       ]
     },
     "get_import_history_rows_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "get_inventory_reclass_move_status_compact_v1": {
+      "oneOf": [
+        "json"
+      ]
+    },
+    "get_inventory_reclass_move_status_v1": {
       "oneOf": [
         "json"
       ]
