@@ -1,6 +1,6 @@
 {
   "schemaVersion": "gnc-release-artifact-v1",
-  "commit": "c26625869c33250c3f639e996ead7df4d4608681",
+  "commit": "c282deb1bec6764f65ca5621d74afaa11342c197",
   "release": "V2026.10.14.003",
   "files": [
     {
@@ -825,8 +825,8 @@
     },
     {
       "path": "assets/vendor/supabase-browser-2.112.3.min.js",
-      "bytes": 1049367,
-      "sha256": "6708944fc05d11dd35bb4bd3190d8ddf3492a9586a80fd6ac8f09658a8404910"
+      "bytes": 1050790,
+      "sha256": "87bbdc9397319d935394c4f4a1e8d03231ba0ec92c99c264924084b1c8287b6b"
     },
     {
       "path": "components/common/auraQueryPanel.js",
@@ -841,12 +841,12 @@
     {
       "path": "deployment.json",
       "bytes": 188,
-      "sha256": "a21fc9d211ec2f171240a1b2b294af1ee7f54e015f9e73d319a6c4e164d82a1f"
+      "sha256": "49a2f9cf4de68f5cfc981635ed42de2e42c3ffc25e01ec38470ab79e66bf0adb"
     },
     {
-      "path": "deployments/c26625869c33250c3f639e996ead7df4d4608681.json",
+      "path": "deployments/c282deb1bec6764f65ca5621d74afaa11342c197.json",
       "bytes": 188,
-      "sha256": "a21fc9d211ec2f171240a1b2b294af1ee7f54e015f9e73d319a6c4e164d82a1f"
+      "sha256": "49a2f9cf4de68f5cfc981635ed42de2e42c3ffc25e01ec38470ab79e66bf0adb"
     },
     {
       "path": "index.html",
@@ -1121,7 +1121,7 @@
     {
       "path": "v2/sw.js.map",
       "bytes": 4807,
-      "sha256": "f2afe578617ba0fe0ce321194cb078cfae348c1fc1ff30156b549349cc8ebccd"
+      "sha256": "e2561ac90fe0b18ea14edda1924f762ac3973cab6f77954ded9274aeddfb9385"
     },
     {
       "path": "v2/v2-cache-migration.js",
